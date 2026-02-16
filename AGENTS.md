@@ -66,6 +66,14 @@ Every branch ties back to a GitHub Issue via its ID.
 - `CLAUDE.md` — Claude-specific instructions
 - `AGENTS.md` — This file (universal AI agent instructions)
 
+## Agent Behavior
+
+- Do not refactor code unless explicitly asked
+- Before creating new files, check if similar patterns or utilities already exist
+- Prefer small, focused commits over large ones
+- When fixing a bug, write a test that reproduces it first (when test framework is available)
+- Read `docs/decisions/` for Architecture Decision Records before making structural changes
+
 ## Security
 
 - Never commit secrets, API keys, or credentials
