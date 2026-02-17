@@ -93,7 +93,9 @@ Optional: **Shared workspaces** (for cross-team needs)
 ### Built-in Roles
 
 #### Viewer
-Read-only access. Can:
+Read-only access.
+
+Can:
 - Ask questions (OPAA searches documents)
 - Download documents
 - View conversation history
@@ -106,7 +108,9 @@ Cannot:
 - View other workspaces
 
 #### Editor
-Can modify documents. Can:
+Can modify documents.
+
+Can:
 - Everything viewers can do
 - Upload new documents
 - Edit document metadata
@@ -119,7 +123,9 @@ Cannot:
 - Delete workspace
 
 #### Admin
-Full workspace control. Can:
+Full workspace control.
+
+Can:
 - Everything editors can do
 - Manage users and roles
 - Change workspace settings
@@ -128,7 +134,9 @@ Full workspace control. Can:
 - View audit logs
 
 #### Owner
-Only one per workspace. Can:
+Only one per workspace.
+
+Can:
 - Transfer workspace ownership
 - Delete workspace
 - All admin permissions

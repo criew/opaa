@@ -177,29 +177,3 @@ Deployment & Infrastructure
 **Can I use my own LLM?**
 → Yes! See [LLM Integration](./features/llm-integration.md) — OpenAI-Compatible APIs section
 
-## 🔗 External References
-
-- [Confluence](https://www.atlassian.com/software/confluence) — Example data source
-- [Mattermost](https://mattermost.com/) — Example chat platform integration
-- [Elasticsearch](https://www.elastic.co/elasticsearch/) — Example vector database
-- [PostgreSQL + pgvector](https://github.com/pgvector/pgvector) — Lightweight vector storage
-- [OpenAI API](https://openai.com/api/) — Example LLM provider
-- [Kubernetes](https://kubernetes.io/) — Deployment platform
-
-## 📝 Document Metadata
-
-| Document | Length | Audience | Read Time |
-|----------|--------|----------|-----------|
-| [VISION.md](./VISION.md) | 3 pages | Everyone | 15 min |
-| [CONCEPTS.md](./CONCEPTS.md) | 2 pages | Everyone | 10 min |
-| [GETTING-STARTED.md](./GETTING-STARTED.md) | 1 page | New readers | 5 min |
-| [User Frontends](./features/user-frontends.md) | 2 pages | Frontend/PM | 10 min |
-| [Data Indexing & RAG](./features/data-indexing-rag.md) | 2 pages | Backend/Data | 12 min |
-| [LLM Integration](./features/llm-integration.md) | 2 pages | ML/Backend | 10 min |
-| [Deployment](./features/deployment-infrastructure.md) | 3 pages | DevOps/Ops | 15 min |
-| [Access Control](./features/access-control-workspaces.md) | 2 pages | Security/Ops | 10 min |
-
----
-
-**Last Updated:** February 2024
-**Total Documentation:** ~15 pages

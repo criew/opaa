@@ -66,16 +66,7 @@ All use the same codebase. Model choice made at deployment time.
 
 #### Option A: Kubernetes (Recommended for Large Orgs)
 
-Production-grade on-premises deployment:
-
-```
-Requirements:
-  - Kubernetes cluster (1.20+)
-  - 3+ worker nodes (or single node for testing)
-  - 16+ GB total RAM
-  - 100+ GB storage for vector database
-  - Persistent volume support
-```
+Production-grade on-premises deployment.
 
 **Infrastructure:**
 - Load balancer for ingress
@@ -91,25 +82,15 @@ Requirements:
 
 #### Option B: Docker Compose (Small to Mid-Size Orgs)
 
-Simpler deployment for smaller teams:
-
-```
-Requirements:
-  - Single server with Docker & Docker Compose
-  - 8+ GB RAM
-  - 50+ GB storage
-  - Exposed on internal network only
-```
+Simpler deployment for smaller teams.
 
 **Services:**
-- opaa-api (REST API & chat server)
-- opaa-web-ui (static web files, served by API)
+- opaa-app (main application: REST API, chat server, web UI)
 - postgres (database for metadata)
 - postgres-pgvector (vector storage with pgvector)
 - redis (caching)
-- indexer (background task processing)
 
-**File:**
+**Example:**
 ```yaml
 version: '3.8'
 services:
@@ -123,7 +104,7 @@ services:
   redis:
     image: redis:7-alpine
 
-  opaa-api:
+  opaa-app:
     image: opaa:latest
     ports:
       - "8080:8080"
@@ -132,16 +113,6 @@ services:
       REDIS_URL: redis://redis:6379
       LLM_PROVIDER: ${LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
-    depends_on:
-      - postgres
-      - redis
-
-  opaa-indexer:
-    image: opaa:latest
-    command: python -m opaa.indexer
-    environment:
-      DATABASE_URL: postgres://...
-      REDIS_URL: redis://redis:6379
     depends_on:
       - postgres
       - redis
@@ -261,47 +232,19 @@ performance:
 
 ## Scaling Considerations
 
-### Small Organization (< 100 employees, < 10K documents)
+OPAA is designed to scale from small teams to large enterprises. Concrete hardware requirements and sizing recommendations will be defined once the technology stack is established. The architecture supports:
 
-**Infrastructure:**
-- Single server (or small Kubernetes cluster)
-- PostgreSQL with pgvector
-- 8-16 GB RAM
-- 100 GB storage
-- 5-10 queries/day average
+- **Small deployments:** Single-server Docker Compose setup for teams and small organizations
+- **Medium deployments:** Multi-node Kubernetes cluster for mid-size organizations
+- **Large deployments:** Distributed infrastructure with horizontal scaling for enterprises
 
-**Cost:** $50-500/month (infrastructure) + LLM API costs
+### Cost Optimization Strategies
 
-### Mid-Size Organization (100-1000 employees, 50K documents)
-
-**Infrastructure:**
-- 3-node Kubernetes cluster
-- Elasticsearch or Milvus for vector DB
-- 32-64 GB RAM total
-- 500 GB - 1 TB storage
-- 100-500 queries/day average
-
-**Cost:** $2,000-5,000/month (infrastructure) + LLM API costs
-
-### Large Organization (1000+ employees, 1M+ documents)
-
-**Infrastructure:**
-- 10+ node Kubernetes cluster
-- Distributed Elasticsearch or Milvus
-- 256+ GB RAM
-- 10+ TB storage
-- Auto-scaling enabled
-- 5,000+ queries/day average
-
-**Cost:** $20,000+/month (infrastructure) + LLM API costs
-
-### Cost Optimization
-
-- Use cheaper vector DB (PostgreSQL) for small deployments
-- Use cheaper embedding model (text-embedding-3-small)
-- Route simple queries to faster/cheaper LLM
-- Cache frequent answers
-- Batch indexing during off-hours
+- Use lightweight vector database (e.g. PostgreSQL + pgvector) for smaller deployments
+- Use cost-effective embedding models
+- Route simple queries to faster/cheaper LLM providers
+- Cache frequent answers to reduce LLM API costs
+- Batch indexing during off-peak hours
 
 ---
 

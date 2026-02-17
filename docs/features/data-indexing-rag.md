@@ -35,13 +35,18 @@ OPAA connects to multiple source types:
 - **Email Exports** — MBOX, PST files
 - **Email Services** — Gmail API, Microsoft Graph API
 
-#### 3. **File Systems & Storage**
+#### 3. **File Systems & Cloud Storage**
 - **Local File Systems** — On-premises servers
-- **Cloud Storage** — S3, Azure Blob, Google Cloud Storage
+- **Cloud Storage** — S3, Azure Blob, Google Cloud Storage, Google Drive, Dropbox
 - **Network Drives** — SMB/CIFS shares
 - **Git Repositories** — Documentation in GitHub/GitLab
 
-#### 4. **Document Formats**
+#### 4. **Issue Trackers & Project Management**
+- **Jira** — Issues, comments, attachments
+- **GitHub Issues / GitLab Issues** — Issues, discussions, pull requests
+- **Custom Issue Trackers** — Via REST API
+
+#### 5. **Document Formats**
 Automatically detected and processed:
 - **Markdown** (.md)
 - **AsciiDoc** (.adoc)
@@ -51,7 +56,7 @@ Automatically detected and processed:
 - **HTML** (.html)
 - **Structured Data** (.json, .csv, .xml)
 
-#### 5. **APIs & Custom Sources**
+#### 6. **APIs & Custom Sources**
 - **REST APIs** — Any system with documented API
 - **Webhooks** — Push updates to OPAA
 - **Custom Connectors** — Extensible plugin system
