@@ -15,8 +15,8 @@ OPAA is an **open-source RAG (Retrieval-Augmented Generation) system** for organ
 
 ## Key Features
 
-- **Multiple User Interfaces:** Web chat, chat bot integrations (Mattermost, RocketChat, Signal), REST API
-- **Flexible Data Sources:** Confluence, email archives, file systems, cloud storage, custom APIs
+- **Multiple User Interfaces:** Web chat, chat bot integrations (Mattermost, RocketChat, Slack, Telegram, Signal, WhatsApp), REST API
+- **Flexible Data Sources:** Confluence, Jira, email archives, file systems, cloud storage, issue trackers, custom APIs
 - **Configurable LLM Providers:** OpenAI, Anthropic, open-source models, or local deployments
 - **Multiple Vector Databases:** Elasticsearch, PostgreSQL + pgvector, Milvus, or cloud options
 - **Workspace Isolation:** Multi-team support with role-based access control
@@ -93,7 +93,7 @@ Technology choices will be made during implementation. OPAA is intentionally **t
 - **LLM Provider:** Any OpenAI-compatible API (OpenAI, Anthropic Claude, Ollama, vLLM, etc.)
 - **Vector Database:** Elasticsearch, PostgreSQL + pgvector, Milvus, cloud alternatives
 - **Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP, or on-premises
-- **Data Sources:** Confluence, Gmail, S3, SharePoint, custom APIs, and more
+- **Data Sources:** Confluence, Jira, Gmail, S3, SharePoint, Google Drive, Dropbox, issue trackers, and more
 
 ## License
 

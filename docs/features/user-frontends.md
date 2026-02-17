@@ -93,10 +93,12 @@ Administrators can customize:
 ### Supported Platforms
 
 OPAA provides native plugins for:
-- **Mattermost** — Similar to Slack, self-hosted option
+- **Mattermost** — Self-hosted team communication
+- **Slack** — Widely-used team messaging platform
+- **Telegram** — Cloud-based messaging with bot API
 - **RocketChat** — Open-source chat platform
 - **Signal** — Secure messaging (via bot API)
-- **Slack-Compatible APIs** — Any platform supporting Slack-compatible webhooks
+- **WhatsApp** — Business messaging (via WhatsApp Business API)
 - **Custom Chat Bots** — Via REST API (for proprietary systems)
 
 ### User Interaction Pattern

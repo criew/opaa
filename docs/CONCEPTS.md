@@ -119,9 +119,18 @@ A self-contained area in OPAA where documents and users are isolated from other 
 - Control who can see what
 - Example: "Engineering" workspace only visible to engineering team
 
+**Workspace Hierarchy:**
+Workspaces can be organized in layers. When a user searches, OPAA retrieves results across all workspaces the user has access to, ranked by relevance:
+
+1. **Organization-wide workspace** — Company policies, all-hands notes, public documentation (visible to everyone)
+2. **Team/Project workspaces** — Engineering docs, marketing plans, project-specific knowledge (visible to team members)
+3. **Personal workspace** — Individual notes, personal bookmarks, private documents (visible only to the user)
+
+This means a search for "remote work policy" could return the company-wide HR policy (from the organization workspace) alongside your team's specific remote work guidelines (from your team workspace) and your personal notes on the topic.
+
 **Analogy:**
 - Like separate Slack workspaces or Google Drive folders with permissions
-- User in "Engineering" workspace doesn't see documents from "Marketing" workspace
+- User in "Engineering" workspace doesn't see documents from "Marketing" workspace, but both see documents from the "Company" workspace
 
 ---
 
@@ -145,10 +154,11 @@ Any system where organizational knowledge is stored.
 
 **Examples:**
 - Confluence (wiki platform)
+- Jira, GitHub Issues, GitLab (issue trackers)
 - Gmail (email)
-- S3 (cloud file storage)
+- S3, Google Drive, Dropbox (cloud file storage)
 - SharePoint (document management)
-- GitHub (code documentation)
+- GitHub, GitLab (code documentation)
 
 ---
 
@@ -242,6 +252,8 @@ Software that knows how to connect to a specific data source and extract documen
 - Confluence connector — Knows how to authenticate with Confluence API, extract pages
 - Email connector — Knows how to connect to IMAP servers, parse emails
 - S3 connector — Knows how to authenticate with AWS, list and download files
+- Google Drive connector — Knows how to use Google APIs, download documents
+- Jira connector — Knows how to read issues, comments, and attachments
 
 ---
 
@@ -373,6 +385,9 @@ Documents inherit permissions from their source system.
 - When indexed in OPAA, it keeps the same permissions
 - Only engineers can see it in OPAA searches
 
+**Identity Provider Integration:**
+OPAA needs to know who users are and what groups they belong to. This is typically handled by connecting to an organizational identity provider such as Keycloak, Active Directory, or Okta. The exact integration approach (direct LDAP, OIDC, SAML) is an open question that will be decided during implementation.
+
 ---
 
 ### Audit Logging
@@ -431,12 +446,25 @@ Processing multiple items together instead of one at a time.
 
 ---
 
+### Multi-Model Strategy
+
+Using different AI models for different tasks to optimize cost, speed, and quality.
+
+**Example:**
+- **Embedding model** (local, cheap): Converts documents and questions to vectors for search
+- **Reasoning model** (cloud, powerful): Generates the final answer from retrieved documents
+- **Summarization model** (mid-tier): Creates document summaries for previews
+
+This means an organization can run a local embedding model on-premises (free, fast) while using a cloud-based reasoning model (higher quality) only for generating answers — combining the best of both worlds.
+
+---
+
 ### Cost Optimization
 
 Strategies to reduce LLM API costs.
 
 **Techniques:**
-- Use cheaper models (GPT-3.5 instead of GPT-4)
+- Use multi-model strategy (cheap models for simple tasks, powerful models only when needed)
 - Cache answers to frequent questions
 - Use local models (free after infrastructure cost)
 - Batch requests during off-hours
@@ -464,13 +492,30 @@ Document: Remote Work Policy
 
 ---
 
+### Indexing Triggers: Scheduled vs. Event-Based
+
+There are two approaches to keeping the index up-to-date:
+
+**Scheduled indexing (polling):**
+- OPAA checks data sources on a regular schedule (e.g. every hour, daily at 2 AM)
+- Simple to implement, works with any data source
+- Trade-off: Changes are only visible after the next scheduled run
+
+**Event-based indexing (push):**
+- Data sources notify OPAA when documents change (via webhooks, events, or APIs)
+- Changes are indexed much faster (minutes instead of hours)
+- Requires data source to support event notifications
+- Example: Confluence sends a webhook when a page is updated → OPAA re-indexes that page immediately
+
+OPAA supports both models. The choice depends on the data source's capabilities and the organization's freshness requirements.
+
 ### Real-Time Sync
 
-Immediately updating OPAA when source documents change.
+Immediately updating OPAA when source documents change (within seconds).
 
 **Example:** User edits Confluence page → OPAA automatically updates within seconds
 
-**Status in OPAA:** Out of scope (eventual consistency model) — documents updated on regular schedule
+**Status in OPAA:** Not a primary goal — event-based indexing provides near-real-time updates (minutes), which is sufficient for most use cases. True real-time sync (seconds) may be added later for specific data sources.
 
 ---
 

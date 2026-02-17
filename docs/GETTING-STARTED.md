@@ -204,19 +204,20 @@ Best for: Architects, lead developers
 ## Common Questions
 
 **Q: How long does it take to read everything?**
-A: ~2 hours for complete understanding, 1 hour for role-specific path
+A: ~2 hours for complete understanding, 1 hour for role-specific path.
 
 **Q: Can I just read one feature spec?**
-A: Yes, but start with VISION.md System Architecture first for context
+A: Yes, but start with VISION.md System Architecture first for context.
 
 **Q: Where do I find the answer to [specific question]?**
-A: See [INDEX.md](./INDEX.md) — "Common Questions" section
+A: See [INDEX.md](./INDEX.md) — "Common Questions" section.
 
 **Q: Are there code examples?**
-A: These are product/design documents, not technical specs. Code will be in the actual implementation.
+A: These are product/design documents, not technical specs.
+Code will be in the actual implementation.
 
 **Q: What if I get confused by terminology?**
-A: Jump to [CONCEPTS.md](./CONCEPTS.md) and search for the term
+A: Jump to [CONCEPTS.md](./CONCEPTS.md) and search for the term.
 
 ---
 

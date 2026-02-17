@@ -6,6 +6,8 @@
 
 OPAA transforms scattered organizational knowledge — stored in wikis, emails, file systems, and document repositories — into a unified, accessible intelligence layer. Through configurable AI models and deployment options, organizations can deploy OPAA on-premises, in the cloud, or in hybrid setups while maintaining full control over data and infrastructure.
 
+OPAA is built on principles of **digital sovereignty**, **no vendor lock-in**, and **dual vendor strategy** — ensuring organizations remain in full control of their data, infrastructure, and technology choices at all times.
+
 ---
 
 ## The Problem
@@ -30,7 +32,7 @@ OPAA solves this by creating a unified intelligence layer over disparate knowled
 | **Authority & Trust** | Every answer includes source documents, ensuring users can verify information and trust recommendations |
 | **Cross-Silo Visibility** | Seamless search across Confluence, email archives, file systems, and other repositories as a single interface |
 | **Flexible Integration** | Deploy on your infrastructure with your choice of LLM provider (OpenAI, open-source models, private APIs) |
-| **Evolving Knowledge** | New documents are automatically indexed and available for search without manual reindexing |
+| **Evolving Knowledge** | New and updated documents are automatically detected and re-indexed, keeping answers always up-to-date |
 
 ---
 
@@ -56,7 +58,7 @@ A healthcare organization uses OPAA to index compliance policies, audit document
 ┌─────────────────────────────────────────────────────────┐
 │                    USER INTERFACES                      │
 ├─────────────────────────────────────────────────────────┤
-│  Web Chat │ Mattermost │ Signal │ RocketChat │ Custom   │
+│  Web │ Mattermost │ Slack │ Telegram │ Signal │ Custom    │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
@@ -94,7 +96,7 @@ A healthcare organization uses OPAA to index compliance policies, audit document
 ### 1. **User Frontends** (External Interface)
 Multiple interfaces for different usage patterns:
 - **Web Interface:** Browser-based chat UI with search and document browsing
-- **Chat Integrations:** Native plugins for Mattermost, RocketChat, Signal, and other platforms
+- **Chat Integrations:** Native plugins for Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, and other platforms
 - **REST API:** Programmatic access for custom integrations
 
 ### 2. **Orchestration Layer** (Request Processing)
@@ -134,15 +136,16 @@ Continuous document processing:
 Every component should be swappable and configurable. Organizations choose their:
 - LLM provider (OpenAI, open-source models, private APIs)
 - Vector database (Elasticsearch, PostgreSQL + pgvector, Milvus, etc.)
-- Data sources (Confluence, Gmail, SharePoint, S3, etc.)
-- Chat platforms (Mattermost, RocketChat, Signal, custom)
+- Data sources (Confluence, Jira, Gmail, SharePoint, Google Drive, Dropbox, S3, issue trackers, etc.)
+- Chat platforms (Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, custom)
 
-### 🏢 **On-Premises by Default**
-Built for organizations that need data sovereignty:
-- All data stays in your infrastructure
+### 🏢 **Digital Sovereignty & On-Premises by Default**
+Built for organizations that need full control over their data and technology:
+- All data stays in your infrastructure — no external dependencies required
 - No data sent to external services unless explicitly configured
 - Support for air-gapped deployments
 - Cloud deployment as an alternative, not a requirement
+- Dual vendor strategy: avoid lock-in by supporting multiple providers for every component
 
 ### 🔌 **Extensible Architecture**
 Easy to add new integrations:
@@ -169,7 +172,8 @@ Every answer includes:
 ## Feature Categories & Capabilities
 
 ### **User Interactions**
-- Ask natural language questions
+- Ask natural language questions in one-to-one conversations with the system
+- Organize group chats where multiple users interact with OPAA collaboratively
 - Browse indexed documents
 - Download source documents
 - Share answers and sources with colleagues
@@ -179,7 +183,7 @@ Every answer includes:
 ### **Data & Knowledge Management**
 - Index documents from multiple sources simultaneously
 - Support for multiple file formats (Markdown, AsciiDoc, PDF, Word, PowerPoint)
-- Automatic incremental indexing as documents change
+- Automatic change detection in data sources with event-based or scheduled re-indexing
 - Manage document lifecycles (archive, delete, re-index)
 - Configure indexing schedules and priorities
 
@@ -248,7 +252,7 @@ Understanding how the five major feature areas connect and depend on each other:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         USER FRONTENDS                          │
-│         (Web Chat, Mattermost, RocketChat, Signal, API)        │
+│      (Web, Mattermost, Slack, Telegram, Signal, API)           │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                    ┌───────────┴────────────┐
@@ -314,13 +318,17 @@ How features depend on and interact with each other:
 A: Yes, when deployed with local LLM models and without external integrations.
 
 **Q: Is my data secure?**
-A: OPAA is designed for on-premises deployment. Data remains in your infrastructure and is not sent to external services unless explicitly configured. All communication can be encrypted end-to-end.
+A: OPAA is designed for on-premises deployment. Data remains in your infrastructure and is not sent to external services unless explicitly configured.
+All communication can be encrypted end-to-end.
 
 **Q: What LLM models are supported?**
-A: Any OpenAI-compatible API, plus local models like Ollama, Llama, and others. The system is model-agnostic.
+A: Any OpenAI-compatible API, plus local models like Ollama, Llama, and others.
+The system is model-agnostic.
 
 **Q: Can multiple teams use the same OPAA instance?**
-A: Yes, through workspace isolation and role-based access control. Each team can have its own workspace with separate documents and permissions.
+A: Yes, through workspace isolation and role-based access control.
+Each team can have its own workspace with separate documents and permissions.
 
 **Q: How does OPAA handle sensitive documents?**
-A: Documents can be tagged with access controls. The system respects these permissions at query time, only returning information the user is authorized to access.
+A: Documents can be tagged with access controls.
+The system respects these permissions at query time, only returning information the user is authorized to access.
