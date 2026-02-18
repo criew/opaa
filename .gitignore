@@ -23,3 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 /.claude/settings.local.json
+
+# Backend (Gradle/Java)
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+*.jar
+*.war
+
+# Environment
+.env
+.env.*
