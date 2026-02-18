@@ -9,16 +9,32 @@ Licensed under Apache 2.0. Contributions from humans and AI agents are equally w
 
 > Architecture documentation lives in `docs/decisions/`. Read the ADRs there for context on major decisions.
 
-The tech stack has not been chosen yet. This section will be updated once the first technology decisions are made.
+- **Backend:** Java 21 + Spring Boot 3.5.10 + Spring AI 1.1.2 (Gradle 9.3.1, Kotlin DSL)
+- **Database:** PostgreSQL 18 + pgvector
+- **Frontend:** React + TypeScript + Material UI (TBD)
+
+> See [ADR-0002](docs/decisions/0002-mvp-technology-stack.md) for full rationale.
 
 ## Build & Test
 
-> Commands will be added once the tech stack is established.
-
 ```bash
-# Build: TBD
-# Test: TBD
-# Lint: TBD
+# Build
+cd backend && ./gradlew build
+
+# Test
+cd backend && ./gradlew test
+
+# Run (mock profile, no DB/LLM required)
+cd backend && ./gradlew bootRun --args='--spring.profiles.active=mock'
+
+# Run (local profile, requires PostgreSQL)
+cd backend && ./gradlew bootRun
+
+# Format check
+cd backend && ./gradlew spotlessCheck
+
+# Auto-format
+cd backend && ./gradlew spotlessApply
 ```
 
 ## Code Conventions
@@ -65,6 +81,7 @@ Every branch ties back to a GitHub Issue via its ID.
 - `CONTRIBUTING.md` — Contributor guide
 - `CLAUDE.md` — Claude-specific instructions
 - `AGENTS.md` — This file (universal AI agent instructions)
+- `backend/` — Spring Boot backend (Gradle project)
 
 ## Agent Behavior
 

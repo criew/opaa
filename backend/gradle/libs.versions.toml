@@ -1,0 +1,6 @@
+[versions]
+spring-ai = "1.1.2"
+spotless = "8.2.1"
+
+[plugins]
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
