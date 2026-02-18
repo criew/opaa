@@ -3,6 +3,10 @@ spring:
     name: opaa
   profiles:
     default: local
+  ai:
+    ollama:
+      embedding:
+        enabled: false
 
 # Placeholder: LLM configuration
 opaa:
@@ -24,9 +28,9 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:postgresql://localhost:5432/opaa
-    username: opaa
-    password: opaa
+    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa}
+    username: ${OPAA_DB_USERNAME:opaa}
+    password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
     enabled: false
   ai:
@@ -41,9 +45,9 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: jdbc:postgresql://postgres:5432/opaa
-    username: opaa
-    password: opaa
+    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa}
+    username: ${OPAA_DB_USERNAME:opaa}
+    password: ${OPAA_DB_PASSWORD:opaa}
   ai:
     openai:
       api-key: ${OPAA_LLM_API_KEY:sk-placeholder}

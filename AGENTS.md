@@ -30,7 +30,11 @@ cd backend && ./gradlew bootRun --args='--spring.profiles.active=mock'
 # Run (local profile, requires PostgreSQL)
 cd backend && ./gradlew bootRun
 
-# Lint: TBD
+# Format check
+cd backend && ./gradlew spotlessCheck
+
+# Auto-format
+cd backend && ./gradlew spotlessApply
 ```
 
 ## Code Conventions
