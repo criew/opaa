@@ -31,9 +31,9 @@ OPAA needs a technology stack to implement the MVP defined in [docs/MVP.md](../M
 - **MSW (Mock Service Worker)** enables frontend development and testing without a running backend by intercepting HTTP requests.
 - The frontend communicates exclusively via the backend's REST API, making it one of many possible clients.
 
-### Database: PostgreSQL 16 + pgvector
+### Database: PostgreSQL 18 + pgvector
 
-- **PostgreSQL 16** serves as the single database for both relational data and vector storage.
+- **PostgreSQL 18** serves as the single database for both relational data and vector storage.
 - **pgvector** adds vector similarity search capabilities without requiring a separate vector database.
 - **Liquibase** manages database schema migrations, providing XML/YAML-based changesets with rollback support.
 - This reduces operational complexity (one database to manage) while providing sufficient performance for MVP scale.
