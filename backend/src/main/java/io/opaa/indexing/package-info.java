@@ -1,4 +1,2 @@
-/**
- * Document indexing and processing for OPAA.
- */
+/** Document indexing and processing for OPAA. */
 package io.opaa.indexing;
