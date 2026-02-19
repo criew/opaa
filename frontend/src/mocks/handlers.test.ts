@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { mockIndexingStatus, mockQueryResponse } from './fixtures'
 
 describe('MSW Handlers', () => {
+  describe('GET /api/health', () => {
+    it('returns health status', async () => {
+      const response = await fetch('/api/health')
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.status).toBe('UP')
+    })
+  })
+
   describe('POST /api/v1/indexing/trigger', () => {
     it('returns indexing status', async () => {
       const response = await fetch('/api/v1/indexing/trigger', { method: 'POST' })

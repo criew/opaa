@@ -1,3 +1,7 @@
+export interface HealthResponse {
+  status: string
+}
+
 export type IndexingStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 
 export interface IndexingStatusResponse {

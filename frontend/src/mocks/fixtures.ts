@@ -1,4 +1,8 @@
-import type { IndexingStatusResponse, QueryResponse } from '../types/api'
+import type { HealthResponse, IndexingStatusResponse, QueryResponse } from '../types/api'
+
+export const mockHealthResponse: HealthResponse = {
+  status: 'UP',
+}
 
 export const mockIndexingStatus: IndexingStatusResponse = {
   status: 'COMPLETED',
