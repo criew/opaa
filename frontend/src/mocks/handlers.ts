@@ -1,8 +1,17 @@
 import { http, HttpResponse } from 'msw'
-import { mockIndexingStatus, mockQueryResponse, mockErrorResponse } from './fixtures'
+import {
+  mockHealthResponse,
+  mockIndexingStatus,
+  mockQueryResponse,
+  mockErrorResponse,
+} from './fixtures'
 import type { QueryRequest } from '../types/api'
 
 export const handlers = [
+  http.get('/api/health', () => {
+    return HttpResponse.json(mockHealthResponse)
+  }),
+
   http.post('/api/v1/indexing/trigger', () => {
     return HttpResponse.json(mockIndexingStatus)
   }),

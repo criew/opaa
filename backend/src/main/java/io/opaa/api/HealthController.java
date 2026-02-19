@@ -1,6 +1,6 @@
 package io.opaa.api;
 
-import java.util.Map;
+import io.opaa.api.dto.HealthResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
   @GetMapping("/health")
-  public Map<String, String> health() {
-    return Map.of("status", "UP");
+  public HealthResponse health() {
+    return new HealthResponse("UP");
   }
 }
