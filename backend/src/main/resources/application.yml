@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: opaa
+  profiles:
+    default: local
+  ai:
+    ollama:
+      embedding:
+        enabled: false
+
+# Placeholder: LLM configuration
+opaa:
+  llm:
+    provider: ${OPAA_LLM_PROVIDER:openai}
+    api-key: ${OPAA_LLM_API_KEY:}
+    api-base: ${OPAA_LLM_API_BASE:https://api.openai.com}
+    model: ${OPAA_LLM_MODEL:gpt-4o}
+  embedding:
+    model: ${OPAA_EMBEDDING_MODEL:text-embedding-3-small}
+  pgvector:
+    dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
+  documents:
+    path: ${OPAA_DOCUMENTS_PATH:./documents}
+  cors:
+    allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa}
+    username: ${OPAA_DB_USERNAME:opaa}
+    password: ${OPAA_DB_PASSWORD:opaa}
+  liquibase:
+    enabled: false
+  ai:
+    openai:
+      api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
+    ollama:
+      base-url: ${OPAA_OLLAMA_BASE_URL:http://localhost:11434}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa}
+    username: ${OPAA_DB_USERNAME:opaa}
+    password: ${OPAA_DB_PASSWORD:opaa}
+  ai:
+    openai:
+      api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
+    ollama:
+      base-url: ${OPAA_OLLAMA_BASE_URL:http://ollama:11434}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mock
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaAutoConfiguration
+  ai:
+    openai:
+      api-key: mock-key

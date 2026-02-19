@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: OPAA API
+  description: Open Project AI Assistant REST API
+  version: 0.1.0
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/indexing/trigger:
+    post:
+      operationId: triggerIndexing
+      tags: [indexing]
+      summary: Trigger document indexing
+      responses:
+        "200":
+          description: Indexing triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/indexing/status:
+    get:
+      operationId: getIndexingStatus
+      tags: [indexing]
+      summary: Get current indexing status
+      responses:
+        "200":
+          description: Current indexing status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/query:
+    post:
+      operationId: submitQuery
+      tags: [query]
+      summary: Ask a question against indexed documents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "200":
+          description: Query answered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: UP
+
+    IndexingStatusResponse:
+      type: object
+      required: [status, documentCount, chunkCount, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [IDLE, RUNNING, COMPLETED, FAILED]
+          example: COMPLETED
+        documentCount:
+          type: integer
+          example: 42
+        chunkCount:
+          type: integer
+          example: 1337
+        message:
+          type: string
+          nullable: true
+          example: Indexing completed successfully
+        timestamp:
+          type: string
+          format: date-time
+
+    QueryRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: What is the project architecture?
+
+    QueryResponse:
+      type: object
+      required: [answer, sources, metadata]
+      properties:
+        answer:
+          type: string
+          example: The project uses a modular monolith architecture...
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceReference"
+        metadata:
+          $ref: "#/components/schemas/QueryMetadata"
+
+    SourceReference:
+      type: object
+      required: [fileName, relevanceScore, excerpt]
+      properties:
+        fileName:
+          type: string
+          example: architecture-overview.md
+        relevanceScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          example: 0.92
+        excerpt:
+          type: string
+          example: The system is structured as a modular monolith...
+
+    QueryMetadata:
+      type: object
+      required: [model, tokenCount, durationMs]
+      properties:
+        model:
+          type: string
+          example: gpt-4o
+        tokenCount:
+          type: integer
+          example: 847
+        durationMs:
+          type: integer
+          format: int64
+          example: 1523
+
+    ErrorResponse:
+      type: object
+      required: [error, status, timestamp]
+      properties:
+        error:
+          type: string
+        status:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
