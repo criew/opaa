@@ -45,6 +45,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_document_chunks_document_id
             onDelete: CASCADE
+        - createIndex:
+            indexName: idx_document_chunks_document_id
+            tableName: document_chunks
+            columns:
+              - column:
+                  name: document_id
         - sql:
             comment: "Create HNSW index for cosine similarity search on embeddings"
             sql: >
@@ -55,5 +61,8 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: DROP INDEX IF EXISTS idx_document_chunks_embedding;
+        - dropIndex:
+            indexName: idx_document_chunks_document_id
+            tableName: document_chunks
         - dropTable:
             tableName: document_chunks

@@ -2,18 +2,10 @@ databaseChangeLog:
   - changeSet:
       id: 001-enable-pgvector-extension
       author: opaa
-      comment: "Enable pgvector and related PostgreSQL extensions"
+      comment: "Enable pgvector extension"
       changes:
         - sql:
             sql: CREATE EXTENSION IF NOT EXISTS vector;
-        - sql:
-            sql: CREATE EXTENSION IF NOT EXISTS hstore;
-        - sql:
-            sql: CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       rollback:
-        - sql:
-            sql: DROP EXTENSION IF EXISTS "uuid-ossp";
-        - sql:
-            sql: DROP EXTENSION IF EXISTS hstore;
         - sql:
             sql: DROP EXTENSION IF EXISTS vector;
