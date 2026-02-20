@@ -56,6 +56,8 @@ spring:
     url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
+  liquibase:
+    enabled: true
   ai:
     openai:
       api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
