@@ -97,6 +97,12 @@ Each feature spec provides:
 
 ---
 
+### UI Design Drafts
+
+- **[`design/README.md`](./design/README.md)** — UI design prototypes from Google Stitch (HTML + screenshots)
+  - Chat Interface, Document Browser, System Settings
+  - Design theme: Dark mode, `#137fec`, Inter font
+
 ### Architecture & Decisions
 
 - **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — How humans and AI collaborate on this project

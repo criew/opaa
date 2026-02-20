@@ -11,7 +11,7 @@ Licensed under Apache 2.0. Contributions from humans and AI agents are equally w
 
 - **Backend:** Java 21 + Spring Boot 3.5.10 + Spring AI 1.1.2 (Gradle 9.3.1, Kotlin DSL)
 - **Database:** PostgreSQL 18 + pgvector, Liquibase
-- **Frontend:** React + TypeScript + Material UI 7 + Vitest + MSW (TBD)
+- **Frontend:** React 19 + TypeScript + Material UI 7 + React Router 7 + Zustand + Vitest + MSW
 - **CI:** GitHub Actions
 - **Deployment:** Docker Compose
 
@@ -28,12 +28,15 @@ cd backend && ./gradlew bootRun
 cd backend && ./gradlew spotlessCheck
 cd backend && ./gradlew spotlessApply
 
-# Frontend (from frontend/) — TBD
-npm ci                   # Install dependencies
-npm run dev              # Dev server
-npm run build            # Production build
-npm run lint             # Lint
-npm run test             # Tests (Vitest)
+# Frontend (from frontend/)
+npm ci                                  # Install dependencies
+VITE_ENABLE_MOCKS=true npm run dev      # Dev server with MSW mocks
+npm run dev                             # Dev server (needs backend on :8080)
+npm run build                           # Production build
+npm run lint                            # Lint (ESLint)
+npm run test                            # Tests (Vitest)
+npm run format:check                    # Check Prettier formatting
+npm run format                          # Auto-format with Prettier
 ```
 
 ## Code Conventions
@@ -81,6 +84,8 @@ Every branch ties back to a GitHub Issue via its ID.
 - `CLAUDE.md` — Claude-specific instructions
 - `AGENTS.md` — This file (universal AI agent instructions)
 - `backend/` — Spring Boot backend (Gradle project)
+- `frontend/` — React frontend (Vite project)
+- `frontend/src/test/test-utils.tsx` — Shared test render helpers
 
 ## Agent Behavior
 

@@ -61,3 +61,4 @@ Thumbs.db
 
 # Claude
 /.claude/settings.local.json
+**/.claude/agent-memory/

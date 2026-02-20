@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockIndexingStatus, mockQueryResponse } from './fixtures'
+import { mockIndexingStatus, mockQueryResponses } from './fixtures'
 
 describe('MSW Handlers', () => {
   describe('GET /api/health', () => {
@@ -35,7 +35,7 @@ describe('MSW Handlers', () => {
   })
 
   describe('POST /api/v1/query', () => {
-    it('returns query response for valid question', async () => {
+    it('returns a random query response for valid question', async () => {
       const response = await fetch('/api/v1/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,10 +44,12 @@ describe('MSW Handlers', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.answer).toBe(mockQueryResponse.answer)
-      expect(data.sources).toHaveLength(3)
-      expect(data.sources[0].fileName).toBe('architecture-overview.md')
+      expect(data.answer).toBeTruthy()
+      expect(data.sources.length).toBeGreaterThanOrEqual(1)
       expect(data.metadata.model).toBe('gpt-4o')
+
+      const allAnswers = mockQueryResponses.map((r) => r.answer)
+      expect(allAnswers).toContain(data.answer)
     })
 
     it('returns 400 for blank question', async () => {
