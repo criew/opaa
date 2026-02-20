@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: opaa-postgres
+    environment:
+      POSTGRES_DB: opaa
+      POSTGRES_USER: opaa
+      POSTGRES_PASSWORD: opaa
+    ports:
+      - "5432:5432"
+    volumes:
+      - opaa-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  opaa-postgres-data:
