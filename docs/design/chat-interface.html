@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OPAA Chat Interface</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922", // Slightly adjusted for deep dark theme
+                        "surface-dark": "#1c2127",
+                        "surface-dark-hover": "#283039",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "sans": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111418; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283039; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a4552; 
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 overflow-hidden h-screen flex">
+<!-- Sidebar -->
+<aside class="w-[280px] flex-shrink-0 flex flex-col h-full bg-[#111418] border-r border-[#283039] overflow-y-auto">
+<!-- Logo Header -->
+<div class="p-4 pt-6">
+<div class="flex gap-3 items-center">
+<div class="bg-primary/20 flex items-center justify-center rounded-lg size-10 text-primary">
+<span class="material-symbols-outlined text-3xl">token</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-tight tracking-tight">OPAA</h1>
+<p class="text-[#9dabb9] text-xs font-medium uppercase tracking-wider">Enterprise AI</p>
+</div>
+</div>
+</div>
+<!-- New Chat Button -->
+<div class="px-4 py-2">
+<button class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-blue-600 transition-colors text-white text-sm font-semibold shadow-lg shadow-blue-900/20">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>New Chat</span>
+</button>
+</div>
+<!-- Navigation Lists -->
+<div class="flex-1 overflow-y-auto px-2 py-4 flex flex-col gap-6">
+<!-- Workspaces -->
+<div class="flex flex-col gap-1">
+<h3 class="px-3 text-[#9dabb9] text-xs font-semibold uppercase tracking-wider mb-1">Workspaces</h3>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-dark-hover text-white group transition-colors" href="#">
+<span class="material-symbols-outlined text-[#9dabb9] group-hover:text-white transition-colors">folder_open</span>
+<span class="text-sm font-medium">HR &amp; Policy</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-dark-hover text-[#9dabb9] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">code</span>
+<span class="text-sm font-medium">Engineering</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-dark-hover text-[#9dabb9] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="text-sm font-medium">Legal</span>
+</a>
+</div>
+<!-- Recent History -->
+<div class="flex flex-col gap-1">
+<h3 class="px-3 text-[#9dabb9] text-xs font-semibold uppercase tracking-wider mb-1">Recent History</h3>
+<div class="flex flex-col gap-1">
+<span class="px-3 text-[11px] text-[#5c6b7f] font-medium mt-1">Today</span>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-dark-hover border-l-2 border-primary text-white" href="#">
+<span class="material-symbols-outlined text-[18px] text-primary">chat_bubble</span>
+<span class="text-sm truncate">Remote work policy inquiry</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-dark-hover text-[#9dabb9] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">chat_bubble_outline</span>
+<span class="text-sm truncate">Q3 Financial Summaries</span>
+</a>
+</div>
+<div class="flex flex-col gap-1 mt-2">
+<span class="px-3 text-[11px] text-[#5c6b7f] font-medium">Yesterday</span>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-dark-hover text-[#9dabb9] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">chat_bubble_outline</span>
+<span class="text-sm truncate">Project Alpha Specs</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Footer / User Profile -->
+<div class="mt-auto p-4 border-t border-[#283039]">
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-dark-hover text-[#9dabb9] hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<div class="flex items-center justify-between gap-3 px-3 py-2 mt-1 rounded-lg hover:bg-surface-dark-hover cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-8 ring-2 ring-[#283039]" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBSoNQfVOVg813iiGOFeS141East09i86I_wcSMXa0r0ezW_YhevD6sycvGoNIR_fUa0sye5BM776ugfX4kEDuhvW95tvnjxC6vFdhsucOcCTpw-BIiw2VtFyVECBXt25AosSlpmV2J7eban3EmTxThfLI1HVrXf90Dpr6Bu_jnX7rJfxPg6ibZEF0WyvQ7fS0RePaBbms0o0R1pUW3SRL8v-vYE9JDlmrzRPABY4-C70nNKtb863caTsQjJq1A5I0n_7b13BwIiME");'></div>
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Alex Morgan</span>
+<span class="text-[#9dabb9] text-xs">alex.m@opaa.com</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[#9dabb9] group-hover:text-white">logout</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full bg-background-dark relative">
+<!-- Header Mobile Only (Hidden on Desktop) -->
+<div class="md:hidden flex items-center justify-between p-4 border-b border-[#283039] bg-[#111418]">
+<span class="font-bold text-lg">OPAA</span>
+<button class="text-white">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+<!-- Chat Area -->
+<div class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center">
+<div class="w-full max-w-4xl flex flex-col gap-8 pb-24">
+<!-- Date Separator -->
+<div class="flex justify-center">
+<span class="text-xs font-medium text-[#5c6b7f] bg-[#1c2127] px-3 py-1 rounded-full border border-[#283039]">Today, 10:23 AM</span>
+</div>
+<!-- User Message -->
+<div class="flex items-end gap-3 justify-end group">
+<div class="flex flex-col items-end gap-1 max-w-[80%]">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[#9dabb9] text-xs">You</span>
+</div>
+<div class="text-base font-normal leading-relaxed rounded-2xl rounded-tr-sm px-5 py-3.5 bg-primary text-white shadow-md">
+                            What is our policy on remote work?
+                        </div>
+</div>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-8 mb-1 shrink-0 ring-2 ring-background-dark" data-alt="User avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDvxnoEXMLKn7vuCg5UamrmnGU6um8pDhMKCSGfgMSDNvrUjNju-YM4UmVKre3PMkEsfD_9Ed9qJLdL5drMah46H1jKQaXRpopnTa-jRaoBY0rXVU103L6bCwxgNSgQ_g16fs7YvOyTBlOSG8gpDZVFGn0XYa-wbT6YsnYUhrUowg-6XINkG1wXMwR3t00kIBhXjJVo5-gugU_aajx3NoI4XZBxLdgJZujjFZvHZJuM_BcTLbxaiUBmrobDjmOGIxcjuZTmLQfGHww");'></div>
+</div>
+<!-- AI Response -->
+<div class="flex items-start gap-4 max-w-full">
+<div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full size-8 flex items-center justify-center shrink-0 mt-1 shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined text-white text-[18px]">smart_toy</span>
+</div>
+<div class="flex flex-col gap-3 flex-1 min-w-0">
+<!-- AI Header -->
+<div class="flex items-center gap-2">
+<span class="text-white font-medium text-sm">OPAA Assistant</span>
+<span class="text-[#5c6b7f] text-xs px-1.5 py-0.5 rounded bg-[#1c2127] border border-[#283039]">AI Model v4.2</span>
+</div>
+<!-- Content -->
+<div class="text-slate-200 text-base leading-relaxed space-y-4">
+<p>Based on the <span class="text-primary font-medium hover:underline cursor-pointer">Remote Work Policy 2024</span>, employees are eligible for flexible work arrangements under the following guidelines:</p>
+<ul class="list-disc pl-5 space-y-2 marker:text-[#5c6b7f]">
+<li><strong>Eligibility:</strong> Employees can work remotely for up to <span class="bg-yellow-500/10 text-yellow-500 px-1 rounded">3 days per week</span> after successfully completing their probation period.</li>
+<li><strong>Core Hours:</strong> While remote, employees must be available during core business hours (10:00 AM - 3:00 PM EST).</li>
+<li><strong>Departmental Rules:</strong> This policy applies to all departments unless specific on-site requirements are mandated by the department head (e.g., physical security, hardware labs).</li>
+</ul>
+<p>Please note that approval is required from your direct manager before establishing a recurring remote schedule.</p>
+</div>
+<!-- Citations Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+<!-- Source 1 -->
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-all border border-[#283039] rounded-xl p-3 flex items-start gap-3 group cursor-pointer">
+<div class="bg-red-500/10 text-red-500 rounded-lg p-2 shrink-0">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<h4 class="text-white font-medium text-sm truncate group-hover:text-primary transition-colors">Remote Work Policy 2024</h4>
+<span class="text-[#9dabb9] hover:text-white transition-colors material-symbols-outlined text-[18px]">open_in_new</span>
+</div>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-green-400 font-medium">95% Match</span>
+<span class="text-[#5c6b7f]">•</span>
+<span class="text-[#9dabb9]">Updated 2 days ago</span>
+</div>
+<div class="mt-2 flex gap-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wide">Confidential</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-[#283039] text-[#9dabb9] border border-[#3a4552]">PDF • 2.4 MB</span>
+</div>
+</div>
+</div>
+<!-- Source 2 -->
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-all border border-[#283039] rounded-xl p-3 flex items-start gap-3 group cursor-pointer">
+<div class="bg-blue-500/10 text-blue-500 rounded-lg p-2 shrink-0">
+<span class="material-symbols-outlined">article</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-0.5">
+<h4 class="text-white font-medium text-sm truncate group-hover:text-primary transition-colors">HR Handbook - Section 4</h4>
+<span class="text-[#9dabb9] hover:text-white transition-colors material-symbols-outlined text-[18px]">open_in_new</span>
+</div>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-green-400 font-medium">88% Match</span>
+<span class="text-[#5c6b7f]">•</span>
+<span class="text-[#9dabb9]">Updated 1 month ago</span>
+</div>
+<div class="mt-2 flex gap-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wide">Internal</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-[#283039] text-[#9dabb9] border border-[#3a4552]">Doc • 150 KB</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Feedback Actions -->
+<div class="flex items-center gap-2 mt-2">
+<button class="flex items-center justify-center p-1.5 rounded-lg text-[#9dabb9] hover:bg-[#283039] hover:text-white transition-colors" title="Copy">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<button class="flex items-center justify-center p-1.5 rounded-lg text-[#9dabb9] hover:bg-[#283039] hover:text-white transition-colors" title="Regenerate">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+</button>
+<div class="w-px h-4 bg-[#283039] mx-1"></div>
+<button class="flex items-center justify-center p-1.5 rounded-lg text-[#9dabb9] hover:bg-[#283039] hover:text-green-400 transition-colors" title="Helpful">
+<span class="material-symbols-outlined text-[18px]">thumb_up</span>
+</button>
+<button class="flex items-center justify-center p-1.5 rounded-lg text-[#9dabb9] hover:bg-[#283039] hover:text-red-400 transition-colors" title="Not Helpful">
+<span class="material-symbols-outlined text-[18px]">thumb_down</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Input Area -->
+<div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-background-dark via-background-dark to-transparent">
+<div class="max-w-4xl mx-auto">
+<div class="relative flex items-end gap-2 bg-[#1c2127] border border-[#283039] rounded-2xl p-2 shadow-2xl shadow-black/50 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all">
+<!-- Attachment Button -->
+<button class="p-2 text-[#9dabb9] hover:text-white hover:bg-[#283039] rounded-xl transition-colors mb-0.5">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<!-- Textarea -->
+<textarea class="w-full bg-transparent border-none text-white placeholder-[#5c6b7f] focus:ring-0 resize-none py-3 px-2 max-h-48 overflow-y-auto" placeholder="Ask a follow-up question or search knowledge base..." rows="1"></textarea>
+<!-- Actions Right -->
+<div class="flex items-center gap-1 mb-0.5">
+<button class="p-2 text-[#9dabb9] hover:text-white hover:bg-[#283039] rounded-xl transition-colors hidden sm:block">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="p-2 bg-primary hover:bg-blue-600 text-white rounded-xl transition-colors shadow-lg shadow-blue-500/20">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<div class="text-center mt-2">
+<p class="text-[11px] text-[#5c6b7f]">OPAA can make mistakes. Verify critical information from source documents.</p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

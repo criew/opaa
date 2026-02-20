@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// TODO: Add code-splitting (lazy-load MUI, pages) to reduce bundle size below 500 kB
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],

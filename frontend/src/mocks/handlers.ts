@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import {
   mockHealthResponse,
   mockIndexingStatus,
-  mockQueryResponse,
+  getRandomMockResponse,
   mockErrorResponse,
 } from './fixtures'
 import type { QueryRequest } from '../types/api'
@@ -28,6 +28,6 @@ export const handlers = [
         { status: 400 },
       )
     }
-    return HttpResponse.json(mockQueryResponse)
+    return HttpResponse.json(getRandomMockResponse())
   }),
 ]
