@@ -4,9 +4,8 @@ spring:
   profiles:
     default: local
   ai:
-    ollama:
-      embedding:
-        enabled: false
+    model:
+      embedding: openai
     vectorstore:
       pgvector:
         initialize-schema: false
