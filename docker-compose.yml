@@ -4,17 +4,47 @@ services:
     container_name: opaa-postgres
     environment:
       POSTGRES_DB: opaa
-      POSTGRES_USER: opaa
-      POSTGRES_PASSWORD: opaa
+      POSTGRES_USER: ${OPAA_DB_USERNAME:-opaa}
+      POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}
     ports:
       - "5432:5432"
     volumes:
-      - opaa-postgres-data:/var/lib/postgresql
+      - opaa-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  backend:
+    build: ./backend
+    container_name: opaa-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OPAA_DB_USERNAME: ${OPAA_DB_USERNAME:-opaa}
+      OPAA_DB_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}
+      OPAA_LLM_PROVIDER: ${OPAA_LLM_PROVIDER:-openai}
+      OPAA_LLM_API_KEY: ${OPAA_LLM_API_KEY:-}
+      OPAA_LLM_API_BASE: ${OPAA_LLM_API_BASE:-https://api.openai.com}
+      OPAA_LLM_MODEL: ${OPAA_LLM_MODEL:-gpt-4o}
+      OPAA_EMBEDDING_MODEL: ${OPAA_EMBEDDING_MODEL:-text-embedding-3-small}
+      OPAA_DOCUMENTS_PATH: ${OPAA_DOCUMENTS_PATH:-/app/documents}
+      OPAA_OLLAMA_BASE_URL: ${OPAA_OLLAMA_BASE_URL:-http://ollama:11434}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${OPAA_DOCUMENTS_PATH_HOST:-./documents}:/app/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: opaa-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   opaa-postgres-data:
