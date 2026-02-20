@@ -17,9 +17,10 @@ This feature describes how OPAA controls who can see what, enabling multi-team, 
 OPAA provides access control at multiple levels:
 
 1. **Workspaces** — Logical groupings of documents and users (teams, departments)
-2. **Roles** — Job functions with specific permissions
-3. **Document Permissions** — Fine-grained control over individual documents
-4. **Query-Time Enforcement** — Permissions checked when user searches
+2. **Personal Workspaces** — Auto-created private spaces for individual user documents
+3. **Roles** — Job functions with specific permissions
+4. **Document Permissions** — Fine-grained control over individual documents
+5. **Query-Time Enforcement** — Permissions checked when user searches
 
 ---
 
@@ -33,6 +34,8 @@ A **workspace** is a self-contained area of OPAA:
 - Users in one workspace don't see documents from another
 - Each workspace can have its own indexing schedule
 
+A special type of workspace, the **Personal Workspace** ("My Documents"), is automatically created for each user. It functions identically to a regular workspace but is owned and visible exclusively to a single user. Users cannot be added as members of another user's personal workspace. See [Personal Workspaces](#personal-workspaces) below.
+
 ### Workspace Examples
 
 | Workspace | Members | Documents | Visibility |
@@ -41,6 +44,7 @@ A **workspace** is a self-contained area of OPAA:
 | Marketing | Marketing team | Brand guidelines, Campaign plans | Only marketing |
 | HR | HR staff | Policies, Handbooks | Only HR (sensitive) |
 | Company | All employees | Public policies, All-hands notes | Everyone |
+| My Documents (Sarah) | Sarah only | Uploaded research, notes, drafts | Only Sarah |
 
 ### Workspace Management
 
@@ -86,6 +90,85 @@ Optional: **Shared workspaces** (for cross-team needs)
 - Role-based permissions within shared workspace
 - Audit logging tracks who searched what
 
+### Personal Workspaces
+
+#### Auto-Creation
+
+When a user first logs in or uploads their first document, OPAA automatically creates a personal workspace:
+
+```
+Workspace: "My Documents"
+  Type: personal
+  Owner: [user]
+  Members: [user] (cannot be changed)
+  Visibility: private (only the owner)
+  Auto-created: true
+  Deletable: no (exists as long as user account exists)
+```
+
+#### Characteristics
+
+- One per user, cannot be duplicated
+- User is always Owner with full control
+- Cannot invite other members directly
+- Documents are shared OUT of the personal workspace into team workspaces (not the reverse)
+- Has its own indexing scope for RAG queries
+- Included in cross-workspace search results (for the owning user only)
+
+#### Storage
+
+Personal workspace documents are stored on the deployment's configured storage backend (S3, network drive, or local filesystem). The storage location is transparent to the user. See [Data Indexing & RAG — User Document Upload](./data-indexing-rag.md#user-document-upload) for details.
+
+---
+
+## Cross-Workspace Document Sharing
+
+### Concept
+
+Users can share documents from their personal workspace into team workspaces where they have Editor (or higher) role. This makes personal documents discoverable and searchable by other workspace members.
+
+### How Sharing Works
+
+1. User has a document in "My Documents"
+2. User selects "Share to workspace" and picks a target workspace (e.g., "Engineering")
+3. User must have at least Editor role in the target workspace
+4. The document's indexed chunks gain the target workspace ID
+5. Members of "Engineering" can now find the document in search results
+6. The original document remains in the user's personal workspace
+
+### Sharing Model
+
+```
+Document: "Q1 Design Review"
+  Owner: Sarah Chen
+  Home workspace: My Documents (Sarah)
+  Shared to: [Engineering, Architecture]
+
+  Visibility:
+    - Sarah: always (owner)
+    - Engineering members: yes (shared)
+    - Architecture members: yes (shared)
+    - Marketing members: no (not shared)
+```
+
+### Sharing vs. Moving
+
+- **Share:** Document visible in multiple workspaces. Single source of truth. Owner retains control.
+- **Move:** (Not supported) Documents always have a home workspace. If a user wants to permanently place a document in a team workspace, they upload directly to that workspace (requires Editor role).
+
+### Revoking Shared Access
+
+- Document owner can revoke sharing at any time
+- Workspace Admin can remove a shared document from their workspace
+- When sharing is revoked, the document's chunks lose the workspace tag and are no longer returned in that workspace's search results
+
+### Upload Directly to Team Workspace
+
+Users with Editor role in a team workspace can also upload documents directly to that workspace (bypassing the personal workspace). In this case:
+- The document's home workspace is the team workspace
+- The uploading user is the document owner
+- Standard workspace permissions apply
+
 ---
 
 ## Roles & Permissions
@@ -116,6 +199,7 @@ Can:
 - Edit document metadata
 - Add/remove documents
 - Change document permissions
+- Share personal documents into the workspace
 
 Cannot:
 - Manage users
@@ -169,6 +253,8 @@ CustomRole:
 | View sources | ✅ | ✅ | ✅ | ✅ |
 | Add documents | ❌ | ✅ | ✅ | ✅ |
 | Edit documents | ❌ | ✅* | ✅ | ✅ |
+| Upload documents | ❌ | ✅ | ✅ | ✅ |
+| Share documents into workspace | ❌ | ✅ | ✅ | ✅ |
 | Delete documents | ❌ | ❌ | ✅ | ✅ |
 | Change permissions | ❌ | ❌ | ✅ | ✅ |
 | Manage users | ❌ | ❌ | ✅ | ✅ |
@@ -401,6 +487,7 @@ All documents in one workspace, role-based permissions:
 
 ### Strategy 3: Hybrid (Recommended)
 Multiple workspaces + cross-team searches:
+- **Personal Workspaces:** Every user has "My Documents" (private, auto-created)
 - **Public Workspace:** Everyone included (policies, all-hands notes)
 - **Team Workspaces:** Isolated by team (engineering, marketing, hr)
 - **Special Workspaces:** Cross-functional (executive, board)
@@ -408,13 +495,14 @@ Multiple workspaces + cross-team searches:
 User access example:
 ```
 Employee: Sarah Chen
-  Workspaces: [Company, Engineering, Executive]
-  Roles: [viewer in Company, editor in Engineering, viewer in Executive]
+  Workspaces: [My Documents, Company, Engineering, Executive]
+  Roles: [owner in My Documents, viewer in Company, editor in Engineering, viewer in Executive]
 ```
 
 Cross-team search:
-- Sarah can search all three workspaces simultaneously
+- Sarah can search all four workspaces simultaneously
 - Results filtered by her role in each workspace
+- Documents she uploaded privately appear alongside team and company documents
 - Workspace name shown in results
 
 ---
@@ -464,6 +552,22 @@ Restrictions:
   - Downloads logged
 ```
 
+### User Offboarding with Personal Workspace
+
+When a user leaves the organization, their personal workspace requires special handling:
+
+```
+1. Personal workspace documents shared to team workspaces remain accessible
+   (ownership transfers to workspace admin)
+2. Unshared personal documents can be:
+   - Transferred to another user or workspace
+   - Archived
+   - Deleted (after retention period)
+3. Personal workspace is deactivated (not deleted, for audit purposes)
+4. All sharing relationships from the personal workspace are preserved
+   under the new owner
+```
+
 ---
 
 ## Integration Points
@@ -484,6 +588,9 @@ Restrictions:
 - Should we support approval workflows for sensitive documents?
 - Should we support delegation (user A delegates their permissions to B)?
 - Should we support document classification (public/internal/confidential)?
+- Should shared documents support read-only vs. editable sharing?
+- Should there be a limit on how many workspaces a document can be shared to?
+- Should workspace admins be able to "request" documents from users' personal workspaces?
 
 ---
 
