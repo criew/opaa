@@ -43,7 +43,9 @@ Each feature spec provides:
 **[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** — How documents are indexed and retrieved
 
 - 5 data source categories (wikis, email, file systems, APIs, custom)
+- User document uploads (via Web UI, Chat, REST API)
 - Document processing pipeline (extraction → chunking → embedding → storage)
+- Storage backend abstraction (S3, network drive, local filesystem)
 - Multiple vector database backends (Elasticsearch, PostgreSQL, Milvus, cloud options)
 - Retrieval & ranking with confidence scoring
 - Advanced features (multi-language, caching, semantic deduplication)
@@ -86,6 +88,8 @@ Each feature spec provides:
 **[`features/access-control-workspaces.md`](./features/access-control-workspaces.md)** — Permissions and multi-tenancy
 
 - Workspace isolation and management
+- Personal workspaces ("My Documents") auto-created per user
+- Cross-workspace document sharing
 - Role-based access control (Viewer, Editor, Admin, Owner)
 - Document-level permissions
 - Query-time permission enforcement
@@ -114,8 +118,9 @@ Orchestration Layer
     └→ LLM Integration (Generate response)
 
 Data Indexing & RAG
-    ├→ Supported Data Sources
-    └→ Vector Databases
+    ├→ Supported Data Sources (Connectors)
+    ├→ User Document Uploads (via Frontends)
+    └→ Document Storage Backends + Vector Databases
 
 Deployment & Infrastructure
     └→ All other features (Infrastructure for all)
@@ -173,6 +178,9 @@ Deployment & Infrastructure
 
 **How do I index my documents?**
 → Read [Data Indexing & RAG](./features/data-indexing-rag.md) — Supported Data Sources section
+
+**Can users upload their own documents?**
+→ Yes! Read [Data Indexing & RAG](./features/data-indexing-rag.md) — User Document Upload section and [Access Control](./features/access-control-workspaces.md) — Personal Workspaces section
 
 **Can I use my own LLM?**
 → Yes! See [LLM Integration](./features/llm-integration.md) — OpenAI-Compatible APIs section

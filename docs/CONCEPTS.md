@@ -124,9 +124,16 @@ Workspaces can be organized in layers. When a user searches, OPAA retrieves resu
 
 1. **Organization-wide workspace** — Company policies, all-hands notes, public documentation (visible to everyone)
 2. **Team/Project workspaces** — Engineering docs, marketing plans, project-specific knowledge (visible to team members)
-3. **Personal workspace** — Individual notes, personal bookmarks, private documents (visible only to the user)
+3. **Personal workspace ("My Documents")** — Auto-created for each user. Stores documents uploaded by the user. Private by default, but documents can be shared into team workspaces.
 
 This means a search for "remote work policy" could return the company-wide HR policy (from the organization workspace) alongside your team's specific remote work guidelines (from your team workspace) and your personal notes on the topic.
+
+**Personal Workspace Details:**
+- Automatically created when a user first logs in or uploads a document
+- One per user, cannot be deleted (deactivated on offboarding)
+- User is always the Owner with full control
+- Documents can be shared OUT into team workspaces (not the reverse)
+- See [Access Control & Workspaces — Personal Workspaces](./features/access-control-workspaces.md#personal-workspaces)
 
 **Analogy:**
 - Like separate Slack workspaces or Google Drive folders with permissions
@@ -254,6 +261,46 @@ Software that knows how to connect to a specific data source and extract documen
 - S3 connector — Knows how to authenticate with AWS, list and download files
 - Google Drive connector — Knows how to use Google APIs, download documents
 - Jira connector — Knows how to read issues, comments, and attachments
+
+---
+
+### User Document Upload
+
+The act of a user pushing a document into OPAA through a frontend interface (Web UI, Chat, REST API), as opposed to OPAA pulling documents from configured data sources via connectors.
+
+**Key differences from connector-based ingestion:**
+- User actively pushes documents (vs. OPAA pulling from sources)
+- Triggered on-demand by user action (vs. scheduled or event-based)
+- Documents land in the user's personal workspace by default
+- Original files are stored on OPAA's configurable storage backend
+
+See [Data Indexing & RAG — User Document Upload](./features/data-indexing-rag.md#user-document-upload) for details.
+
+---
+
+### Storage Backend
+
+The pluggable file storage system where uploaded documents are persisted. This is separate from the vector database — the storage backend holds original files (PDF, DOCX, etc.) for download and re-processing, while the vector database holds embeddings for search.
+
+**Supported backends (chosen at deployment time):**
+- **S3-Compatible Object Storage** — AWS S3, MinIO (cloud/hybrid)
+- **Network Drive (SMB/NFS)** — Shared file system mount (on-premises)
+- **Local Filesystem** — Direct disk storage (development/small deployments)
+
+---
+
+### Cross-Workspace Document Sharing
+
+Making a document from one workspace (typically personal) visible and searchable in another workspace. The document is not duplicated — instead, its indexed data is tagged with multiple workspace IDs.
+
+**How it works:**
+- User shares a document from "My Documents" into a team workspace
+- User must have Editor role (or higher) in the target workspace
+- The document's indexed chunks gain additional workspace tags
+- Members of the target workspace can now find the document in search results
+- Owner can revoke sharing at any time
+
+See [Access Control & Workspaces — Cross-Workspace Document Sharing](./features/access-control-workspaces.md#cross-workspace-document-sharing) for details.
 
 ---
 
@@ -529,6 +576,10 @@ Immediately updating OPAA when source documents change (within seconds).
 | **Semantic** | Based on meaning, not keywords | "Remote work" ≈ "work from home" |
 | **LLM** | AI language model | GPT-4, Claude, Llama |
 | **Workspace** | Isolated knowledge base area | "Engineering" team docs |
+| **Personal Workspace** | Auto-created private workspace per user | "My Documents" for each user |
+| **User Upload** | User pushes document into OPAA | Drag-and-drop in Web UI |
+| **Storage Backend** | Pluggable file storage for uploads | S3, network drive, local |
+| **Cross-Workspace Sharing** | Make document visible in another workspace | Share from "My Documents" to "Engineering" |
 | **Role** | Permission set | Admin, Editor, Viewer |
 | **Vector DB** | Database optimized for similarity | Elasticsearch, Milvus, pgvector |
 | **Latency** | Time to answer | < 4 seconds target |
