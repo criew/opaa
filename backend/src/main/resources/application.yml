@@ -10,7 +10,7 @@ spring:
       pgvector:
         initialize-schema: false
         index-type: hnsw
-        distance-type: cosine_distance
+        distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 # Placeholder: LLM configuration
