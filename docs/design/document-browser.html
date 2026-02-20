@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OPAA - Document Browser</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111418", // Matches the example background
+                        "surface-dark": "#1c2128",     // Slightly lighter for cards/surfaces
+                        "border-dark": "#2d3748",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Sidebar -->
+<div class="w-64 h-full flex-shrink-0 border-r border-slate-800 bg-[#111418] flex flex-col justify-between p-4">
+<div class="flex flex-col gap-4">
+<div class="flex gap-3 items-center px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Abstract AI logo in blue and purple gradient" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCB3dgbB1SdWmH2fFa6IueyNY_ZAAwZoYfEliVZ0VSEzU6SS-s97qhO0GFf7CQnwj9y7MLheO5gR_A2IHHL59FW-MhEhAMfyhTfTqF4cZzYuCAgG03yzTxq2PXP0iVsjtGReviwygSZxqg8fae-0IM4vl-vKnRguj7lKvsd5g1R9IcNSz_nHSYQqF2xnFVCi62M1MRwaWUnSP3wmY9VPzezotWJKh2qqVI6TEWke5589lh5QFMTV0xcEsZJY9e3S84_LGacQukHGgo");'></div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-normal">OPAA</h1>
+<p class="text-[#9dabb9] text-xs font-normal leading-normal">Enterprise AI Knowledge</p>
+</div>
+</div>
+<div class="flex flex-col gap-1 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#9dabb9] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<p class="text-sm font-medium leading-normal">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/20 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">description</span>
+<p class="text-sm font-medium leading-normal">Documents</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#9dabb9] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">link</span>
+<p class="text-sm font-medium leading-normal">Connectors</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#9dabb9] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium leading-normal">Settings</p>
+</a>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 mt-auto rounded-lg hover:bg-slate-800 cursor-pointer transition-colors">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="Profile picture of a man" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjBCWqBDrtJ59psUXTxyQtLi-tmeLZf69vxaPJvleGO-n6ffaPfjK7dni6Tor0jsqm1QyQ8oZnEarOax10PTYEoBtzKtfBXWgxgLC78pLhyuYQfs2uJ1gswdRe8bzEYr-taO6ZqvThrNIZEopLYNL4PX-Xajqxg2XhalZ4qq8XGWzTCsQi2FvEnrTS3bjDMo5d2QvyiTMVaY-VjlREugerqJYaaOJ7FEI3vHxWou68_i7B7F6y9PQxwd0WlmOgb1sHqIF7RUcUA_4");'></div>
+<div class="flex flex-col">
+<p class="text-white text-sm font-medium leading-normal">Alex Morgan</p>
+<p class="text-[#9dabb9] text-xs font-normal">Admin</p>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 bg-[#111418] h-full">
+<!-- Header & Filters -->
+<div class="flex flex-col border-b border-slate-800 bg-[#111418] z-10">
+<div class="px-6 py-5 flex items-center justify-between">
+<div>
+<h2 class="text-2xl font-bold text-white tracking-tight">Document Library</h2>
+<p class="text-[#9dabb9] text-sm mt-1">Manage and search 12,403 indexed organizational assets.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors border border-slate-700">
+<span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+                            Upload
+                        </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                            New Index
+                        </button>
+</div>
+</div>
+<!-- Search & Filter Bar -->
+<div class="px-6 pb-4 flex flex-col gap-4">
+<div class="flex gap-4">
+<div class="flex-1 relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 material-symbols-outlined">search</span>
+<input class="w-full bg-slate-800/50 border border-slate-700 text-white placeholder-slate-400 text-sm rounded-lg focus:ring-primary focus:border-primary block pl-10 p-2.5" placeholder="Search documents by name, content, entity, or metadata..." type="text"/>
+</div>
+<button class="flex items-center gap-2 px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-300 rounded-lg text-sm hover:text-white hover:border-slate-600 transition-colors">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+                            Advanced
+                        </button>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-full text-xs font-medium whitespace-nowrap">
+                            Type: All
+                            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600 rounded-full text-xs font-medium whitespace-nowrap transition-colors">
+                            Status: Any
+                            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600 rounded-full text-xs font-medium whitespace-nowrap transition-colors">
+                            Date: Last 30 Days
+                            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 border border-slate-700 hover:border-slate-600 rounded-full text-xs font-medium whitespace-nowrap transition-colors">
+                            Workspace: Engineering
+                            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<div class="w-px h-6 bg-slate-700 mx-1"></div>
+<button class="text-xs text-slate-400 hover:text-white font-medium px-2">Clear Filters</button>
+</div>
+</div>
+</div>
+<!-- Content Split View -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Table Section -->
+<div class="flex-1 overflow-y-auto min-w-0">
+<table class="w-full text-left border-collapse">
+<thead class="bg-[#1c2128] sticky top-0 z-10">
+<tr>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+<div class="flex items-center gap-1 cursor-pointer hover:text-slate-200">
+                                        Document Name
+                                        <span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+</th>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">Source</th>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">Last Indexed</th>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">Status</th>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">Access</th>
+<th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800">
+<!-- Row 1 (Active/Selected) -->
+<tr class="bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-red-500/20 text-red-400">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white group-hover:text-primary transition-colors">Q3_Financial_Report_2023.pdf</span>
+<span class="text-xs text-slate-500">2.4 MB • Updated by J. Smith</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-[18px]">folder_shared</span>
+<span class="text-sm text-slate-300">SharePoint</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-300">Oct 24, 2023</span>
+<span class="block text-xs text-slate-500">14:30 PM</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        Indexed
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-400 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+                                        Restricted
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-800/50 transition-colors cursor-pointer">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-blue-500/20 text-blue-400">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Re: Project Alpha Kickoff</span>
+<span class="text-xs text-slate-500">145 KB • Sent by Sarah L.</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-[18px]">mail_outline</span>
+<span class="text-sm text-slate-300">Exchange</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-300">Oct 24, 2023</span>
+<span class="block text-xs text-slate-500">11:15 AM</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        Indexed
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-400 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">public</span>
+                                        Internal
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-800/50 transition-colors cursor-pointer">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-sky-500/20 text-sky-400">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Engineering Onboarding Wiki</span>
+<span class="text-xs text-slate-500">Confluence Page</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-[18px]">dns</span>
+<span class="text-sm text-slate-300">Confluence</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-300">Oct 23, 2023</span>
+<span class="block text-xs text-slate-500">09:45 AM</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                        Pending
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-400 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+                                        Engineering
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-800/50 transition-colors cursor-pointer">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-indigo-500/20 text-indigo-400">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">JIRA-3402: Login Latency Fix</span>
+<span class="text-xs text-slate-500">Ticket #3402</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-[18px]">bug_report</span>
+<span class="text-sm text-slate-300">Jira</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-300">Oct 23, 2023</span>
+<span class="block text-xs text-slate-500">08:20 AM</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+<span class="material-symbols-outlined text-[14px]">error</span>
+                                        Failed
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="text-sm text-slate-400 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">group</span>
+                                        DevOps
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-slate-800 flex items-center justify-between">
+<span class="text-sm text-slate-400">Showing <span class="text-white font-medium">1-4</span> of <span class="text-white font-medium">12,403</span> documents</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-sm border border-slate-700 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-50" disabled="">Previous</button>
+<button class="px-3 py-1 text-sm border border-slate-700 rounded hover:bg-slate-800 text-slate-300">Next</button>
+</div>
+</div>
+</div>
+<!-- Preview Pane (Right Sidebar) -->
+<div class="w-[400px] flex-shrink-0 bg-[#1c2128] border-l border-slate-800 flex flex-col h-full overflow-y-auto hidden lg:flex">
+<!-- Preview Header -->
+<div class="p-6 border-b border-slate-800">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 rounded-lg bg-red-500/20 text-red-400">
+<span class="material-symbols-outlined text-[28px]">picture_as_pdf</span>
+</div>
+<div class="flex gap-2">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded transition-colors" title="Open external">
+<span class="material-symbols-outlined">open_in_new</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors" title="Close preview">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<h3 class="text-lg font-bold text-white mb-1 leading-snug">Q3_Financial_Report_2023.pdf</h3>
+<p class="text-sm text-slate-400">SharePoint / Finance / Reports</p>
+</div>
+<!-- AI Insights / Extract -->
+<div class="p-6 border-b border-slate-800 bg-slate-900/30">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
+<span class="text-xs font-bold text-primary uppercase tracking-wide">AI Extracted Insights</span>
+</div>
+<div class="space-y-3">
+<div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+<p class="text-xs text-slate-500 uppercase font-semibold mb-1">Key Entities</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-slate-700 text-xs text-slate-300">$4.5M Revenue</span>
+<span class="px-2 py-1 rounded bg-slate-700 text-xs text-slate-300">Project Alpha</span>
+<span class="px-2 py-1 rounded bg-slate-700 text-xs text-slate-300">Q3</span>
+<span class="px-2 py-1 rounded bg-slate-700 text-xs text-slate-300">Global Tech Corp</span>
+</div>
+</div>
+<div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+<p class="text-xs text-slate-500 uppercase font-semibold mb-1">Summary</p>
+<p class="text-sm text-slate-300 leading-relaxed">The Q3 report indicates a strong 15% growth in recurring revenue driven by enterprise adoption. Project Alpha's launch date is confirmed for early Q4.</p>
+</div>
+</div>
+</div>
+<!-- Metadata Details -->
+<div class="p-6 flex-1">
+<h4 class="text-sm font-semibold text-white mb-4">Metadata</h4>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-500">File Size</span>
+<span class="text-sm text-slate-300 font-mono">2.4 MB</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-500">Author</span>
+<div class="flex items-center gap-2">
+<div class="bg-indigo-500 h-5 w-5 rounded-full flex items-center justify-center text-[10px] text-white">JS</div>
+<span class="text-sm text-slate-300">J. Smith</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-500">Created</span>
+<span class="text-sm text-slate-300">Oct 20, 2023</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-500">Last Modified</span>
+<span class="text-sm text-slate-300">Oct 24, 2023</span>
+</div>
+<div class="pt-4 border-t border-slate-800">
+<h4 class="text-sm font-semibold text-white mb-3">Permissions</h4>
+<div class="flex gap-2 flex-wrap">
+<span class="px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-xs">Confidential</span>
+<span class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-xs">Managers Group</span>
+<span class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-xs">Finance Team</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions Footer -->
+<div class="p-4 border-t border-slate-800 bg-[#111418] flex gap-3">
+<button class="flex-1 py-2 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium transition-colors border border-slate-700">
+                            View Permissions
+                        </button>
+<button class="flex-1 py-2 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors shadow-lg shadow-primary/20">
+                            Re-index
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

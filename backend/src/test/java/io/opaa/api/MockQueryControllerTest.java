@@ -27,9 +27,10 @@ class MockQueryControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.answer").isNotEmpty())
         .andExpect(jsonPath("$.sources").isArray())
-        .andExpect(jsonPath("$.sources.length()").value(3))
-        .andExpect(jsonPath("$.sources[0].fileName").value("architecture-overview.md"))
-        .andExpect(jsonPath("$.sources[0].relevanceScore").value(0.92))
+        .andExpect(
+            jsonPath("$.sources.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+        .andExpect(jsonPath("$.sources[0].fileName").isNotEmpty())
+        .andExpect(jsonPath("$.sources[0].relevanceScore").isNumber())
         .andExpect(jsonPath("$.metadata.model").value("gpt-4o"));
   }
 

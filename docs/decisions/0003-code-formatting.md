@@ -33,7 +33,7 @@ Key considerations:
 
 - Java: Google Java Format (2 spaces, sorted imports, no unused imports)
 - Kotlin DSL: 4 spaces, trimmed trailing whitespace
-- Frontend formatting will be added when the frontend is scaffolded (likely Prettier)
+- Frontend (TypeScript/TSX): Prettier (no semicolons, single quotes, trailing commas, 100-char line width). Enforced via `npm run format:check` / `npm run format`.
 
 ## Consequences
 

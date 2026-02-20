@@ -1,34 +1,29 @@
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
-import Box from '@mui/material/Box'
-import Container from '@mui/material/Container'
-import Typography from '@mui/material/Typography'
+import { CssBaseline, ThemeProvider } from '@mui/material'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
+import theme from './theme/theme'
+import AppShell from './layouts/AppShell'
+import ChatPage from './pages/ChatPage'
+import DocumentsPage from './pages/DocumentsPage'
+import SettingsPage from './pages/SettingsPage'
 
-const theme = createTheme()
-
-function App() {
+export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="sm">
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '100vh',
-          }}
-        >
-          <Typography variant="h2" component="h1" gutterBottom>
-            OPAA
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Open Project AI Assistant
-          </Typography>
-        </Box>
-      </Container>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route index element={<Navigate to="/chat" replace />} />
+              <Route path="chat" element={<ChatPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/chat" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }
-
-export default App
