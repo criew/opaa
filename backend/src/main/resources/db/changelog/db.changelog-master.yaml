@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-enable-pgvector-extension.yaml
+  - include:
+      file: db/changelog/changes/002-create-documents-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-document-chunks-table.yaml
+  - include:
+      file: db/changelog/changes/004-create-indexing-jobs-table.yaml
