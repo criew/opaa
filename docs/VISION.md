@@ -18,6 +18,7 @@ Modern organizations face a critical knowledge challenge:
 - **Discovery Friction:** Employees spend hours searching for information rather than using it
 - **Context Loss:** Documents exist but are difficult to find, understand, and trust
 - **Dependency on People:** Key information often exists only in people's heads
+- **Individual Knowledge Silos:** Employees accumulate personal documents, notes, and research that are valuable to the organization but have no easy path into the shared knowledge base
 - **Tool Proliferation:** Each data source requires a different search interface
 
 OPAA solves this by creating a unified intelligence layer over disparate knowledge sources, making organizational knowledge instantly accessible, searchable, and actionable.
@@ -32,6 +33,7 @@ OPAA solves this by creating a unified intelligence layer over disparate knowled
 | **Authority & Trust** | Every answer includes source documents, ensuring users can verify information and trust recommendations |
 | **Cross-Silo Visibility** | Seamless search across Confluence, email archives, file systems, and other repositories as a single interface |
 | **Flexible Integration** | Deploy on your infrastructure with your choice of LLM provider (OpenAI, open-source models, private APIs) |
+| **Personal Knowledge Management** | Employees can upload their own documents into a private workspace, making personal knowledge searchable and shareable with teams on demand |
 | **Evolving Knowledge** | New and updated documents are automatically detected and re-indexed, keeping answers always up-to-date |
 
 ---
@@ -50,6 +52,9 @@ A support team uses OPAA's web interface to provide better customer answers. Ins
 ### 4. **Compliance & Audit Trail** (Regulated Industries)
 A healthcare organization uses OPAA to index compliance policies, audit documents, and regulatory guidance. When questioned, the system provides exact source references, creating an auditable trail for compliance investigations.
 
+### 5. **Personal Knowledge Contributor** (Individual Users)
+A senior engineer uploads technical research papers, meeting notes, and design sketches into their personal "My Documents" workspace. The documents are immediately indexed and searchable in their private area. When a design document is finalized, they share it into the "Engineering" team workspace, making it discoverable by the entire engineering team. The original stays in their personal workspace for their own reference.
+
 ---
 
 ## System Architecture (High Level)
@@ -58,14 +63,17 @@ A healthcare organization uses OPAA to index compliance policies, audit document
 ┌─────────────────────────────────────────────────────────┐
 │                    USER INTERFACES                      │
 ├─────────────────────────────────────────────────────────┤
-│  Web │ Mattermost │ Slack │ Telegram │ Signal │ Custom    │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
+│  Web │ Mattermost │ Slack │ Telegram │ Signal │ Custom  │
+│                                                         │
+│  Questions & Answers          Document Upload           │
+└────────────┬──────────────────────┬─────────────────────┘
+             │                      │
+┌────────────▼──────────────────────▼─────────────────────┐
 │              OPAA ORCHESTRATION LAYER                   │
 ├─────────────────────────────────────────────────────────┤
 │  • Request Processing  • Permissions & Access Control  │
 │  • Response Generation  • Document Retrieval           │
+│  • Upload Processing    • Workspace Management         │
 └────────────┬─────────────────────┬─────────────────────┘
              │                     │
     ┌────────▼──────┐    ┌─────────▼────────┐
@@ -85,7 +93,17 @@ A healthcare organization uses OPAA to index compliance policies, audit document
 ┌────────────▼──────────────────────────────────────────┐
 │            DATA INDEXING & INGESTION LAYER            │
 ├──────────────────────────────────────────────────────┤
+│  Connectors:                                          │
 │  • Confluence │ Email │ File Systems │ Custom Sources │
+│                                                       │
+│  User Uploads:                                        │
+│  • Web UI │ Chat Attachments │ REST API               │
+└──────────────────────┬───────────────────────────────┘
+                       │
+┌──────────────────────▼───────────────────────────────┐
+│            DOCUMENT STORAGE                           │
+├──────────────────────────────────────────────────────┤
+│  • S3 │ Network Drive (SMB/NFS) │ Local Filesystem   │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -98,6 +116,7 @@ Multiple interfaces for different usage patterns:
 - **Web Interface:** Browser-based chat UI with search and document browsing
 - **Chat Integrations:** Native plugins for Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, and other platforms
 - **REST API:** Programmatic access for custom integrations
+- **Document Upload:** Users can upload documents directly through the Web UI, chat integrations, or REST API. Uploaded documents are stored and indexed into the user's personal workspace.
 
 ### 2. **Orchestration Layer** (Request Processing)
 The central coordination system:
@@ -122,8 +141,11 @@ Flexible model configuration:
 - Enables response generation and summarization
 
 ### 5. **Data Indexing Pipeline** (Knowledge Ingestion)
-Continuous document processing:
-- Monitors data sources (Confluence, email servers, file systems)
+Two ingestion modes feed the same processing pipeline:
+- **Connector-Based:** Monitors data sources (Confluence, email servers, file systems) and pulls documents automatically on schedule or via events
+- **User Upload:** Receives documents uploaded by users through frontends, stores them on a configurable storage backend (S3, network drive, local filesystem)
+
+Both pathways share the same document processing pipeline:
 - Extracts, chunks, and embeds documents
 - Stores embeddings in vector databases
 - Updates indices incrementally as new documents arrive
@@ -137,6 +159,7 @@ Every component should be swappable and configurable. Organizations choose their
 - LLM provider (OpenAI, open-source models, private APIs)
 - Vector database (Elasticsearch, PostgreSQL + pgvector, Milvus, etc.)
 - Data sources (Confluence, Jira, Gmail, SharePoint, Google Drive, Dropbox, S3, issue trackers, etc.)
+- Document storage backends (S3, network drives, local filesystem)
 - Chat platforms (Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, custom)
 
 ### 🏢 **Digital Sovereignty & On-Premises by Default**
@@ -182,8 +205,10 @@ Every answer includes:
 
 ### **Data & Knowledge Management**
 - Index documents from multiple sources simultaneously
+- Upload personal documents through Web UI, chat clients, or REST API
 - Support for multiple file formats (Markdown, AsciiDoc, PDF, Word, PowerPoint)
 - Automatic change detection in data sources with event-based or scheduled re-indexing
+- Share documents from personal workspace into team workspaces
 - Manage document lifecycles (archive, delete, re-index)
 - Configure indexing schedules and priorities
 
@@ -201,7 +226,9 @@ Every answer includes:
 - Scaling for large organizations
 
 ### **Access Control & Workspaces**
+- Personal workspaces auto-created per user ("My Documents")
 - Multi-user workspaces
+- Cross-workspace document sharing
 - Role-based access control (RBAC)
 - Document-level permissions
 - Audit logging
@@ -280,10 +307,17 @@ Understanding how the five major feature areas connect and depend on each other:
        ┌──────────▼──────────────────────┐
        │   DATA SOURCES                  │
        │                                 │
+       │ Connectors:                     │
        │ - Confluence                    │
        │ - Email Archives                │
        │ - File Systems                  │
        │ - Custom APIs                   │
+       │                                 │
+       │ User Uploads:                   │
+       │ - Web UI / Chat / REST API      │
+       │                                 │
+       │ Document Storage:               │
+       │ - S3 / Network Drive / Local    │
        └─────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
@@ -303,7 +337,7 @@ How features depend on and interact with each other:
 
 | Feature | Depends On | Used By | Key Integration Point |
 |---------|-----------|---------|----------------------|
-| **User Frontends** | Access Control | All users | Request entry point |
+| **User Frontends** | Access Control | All users | Request entry point + document upload |
 | **Orchestration** | RAG, LLM, Access Control | All requests | Central coordinator |
 | **Data Indexing & RAG** | LLM (for embeddings) | Orchestration | Document retrieval |
 | **LLM Integration** | Deployment | Data Indexing, Orchestration | Answer generation & embeddings |
@@ -328,6 +362,9 @@ The system is model-agnostic.
 **Q: Can multiple teams use the same OPAA instance?**
 A: Yes, through workspace isolation and role-based access control.
 Each team can have its own workspace with separate documents and permissions.
+
+**Q: Can individual users upload their own documents?**
+A: Yes. Every user gets an auto-created personal workspace ("My Documents") where they can upload and index documents privately. Users can then share documents into team workspaces they have access to.
 
 **Q: How does OPAA handle sensitive documents?**
 A: Documents can be tagged with access controls.
