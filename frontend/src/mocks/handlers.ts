@@ -1,11 +1,35 @@
 import { http, HttpResponse } from 'msw'
 import {
   mockHealthResponse,
-  mockIndexingStatus,
+  mockIndexingIdle,
+  mockIndexingCompleted,
   getRandomMockResponse,
   mockErrorResponse,
 } from './fixtures'
-import type { QueryRequest } from '../types/api'
+import type { IndexingStatusResponse, QueryRequest } from '../types/api'
+
+let indexingPollCount = 0
+let indexingActive = false
+
+export function resetIndexingState() {
+  indexingPollCount = 0
+  indexingActive = false
+}
+
+const INDEXING_POLL_STEPS = 5
+const TOTAL_DOCUMENTS = 42
+const TOTAL_CHUNKS = 1337
+
+function getRunningStatus(step: number): IndexingStatusResponse {
+  const progress = Math.min(step / INDEXING_POLL_STEPS, 1)
+  return {
+    status: 'RUNNING',
+    documentCount: Math.round(TOTAL_DOCUMENTS * progress),
+    chunkCount: Math.round(TOTAL_CHUNKS * progress),
+    message: `Indexing in progress... ${Math.round(TOTAL_DOCUMENTS * progress)} documents processed`,
+    timestamp: new Date().toISOString(),
+  }
+}
 
 export const handlers = [
   http.get('/api/health', () => {
@@ -13,11 +37,24 @@ export const handlers = [
   }),
 
   http.post('/api/v1/indexing/trigger', () => {
-    return HttpResponse.json(mockIndexingStatus)
+    indexingPollCount = 0
+    indexingActive = true
+    return HttpResponse.json(getRunningStatus(0))
   }),
 
   http.get('/api/v1/indexing/status', () => {
-    return HttpResponse.json(mockIndexingStatus)
+    if (!indexingActive) {
+      return HttpResponse.json(mockIndexingIdle)
+    }
+
+    indexingPollCount++
+
+    if (indexingPollCount >= INDEXING_POLL_STEPS) {
+      indexingActive = false
+      return HttpResponse.json(mockIndexingCompleted)
+    }
+
+    return HttpResponse.json(getRunningStatus(indexingPollCount))
   }),
 
   http.post('/api/v1/query', async ({ request }) => {
