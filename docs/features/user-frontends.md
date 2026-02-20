@@ -21,6 +21,7 @@ All interfaces share:
 - Common permission model
 - Consistent response format
 - Source document attribution
+- Document upload capability (files processed and indexed)
 
 ---
 
@@ -33,6 +34,7 @@ The web interface is a browser-based chat application with document browsing cap
 **Core Screens:**
 - **Chat Screen:** Ask questions, see responses with sources
 - **Document Browser:** Search and browse indexed documents
+- **My Documents:** Personal workspace with upload, manage, and share functionality
 - **History:** View past conversations and searches
 - **Settings:** Manage user preferences, API tokens
 
@@ -76,6 +78,23 @@ OPAA Response:
 - Filter by date indexed
 - Filter by workspace/project
 - Filter by confidence score
+
+#### Document Upload
+- Drag-and-drop file upload area in the personal workspace view
+- Multi-file upload support (batch)
+- Upload progress indicator with file validation feedback
+- Supported format detection and file size validation
+- Post-upload: document appears in "My Documents" within seconds
+- Indexing status shown (processing, indexed, failed)
+- Quick-share action: select target workspace(s) directly after upload
+
+#### Document Management (My Documents)
+- List view of all personally uploaded documents
+- Sort by date, name, size, or indexing status
+- Delete uploaded documents
+- View which workspaces a document is shared to
+- Share/unshare documents to team workspaces
+- Re-upload (new version) of an existing document
 
 ### Configuration
 
@@ -131,6 +150,9 @@ security review. See: Tool Approval Process (updated Jan 2024)"
 ```
 /opaa ask <question>        — Ask a question
 /opaa search <term>         — Full-text search
+/opaa upload <attachment>   — Upload attached file to My Documents
+/opaa share <doc> <workspace> — Share a document to a workspace
+/opaa my-docs              — List recent uploads in My Documents
 /opaa config               — Show workspace settings
 /opaa feedback <message>   — Rate last answer
 /opaa sources             — Show source documents from last answer
@@ -141,6 +163,13 @@ Users can react with 👍 or 👎 to answers. The system:
 - Tracks answer quality
 - Enables model improvement over time
 - Alerts admins to potentially bad answers
+
+#### File Upload via Chat
+- Users attach a file to a message mentioning the bot
+- Bot acknowledges receipt and begins processing
+- Notification when indexing is complete
+- File is stored in user's personal workspace by default
+- User can specify target workspace: "@opaa-bot upload to Engineering"
 
 #### Message Threading
 All conversations happen in a single thread:
@@ -222,6 +251,80 @@ Returns:
 - Metadata
 - Related documents
 - Download links
+```
+
+#### Upload Document
+```
+POST /api/v1/documents/upload
+Content-Type: multipart/form-data
+
+Fields:
+  file: <binary>
+  workspace: "string (optional, defaults to personal workspace)"
+  tags: ["string"] (optional)
+  description: "string" (optional)
+
+Response:
+{
+  "document_id": "upload-456",
+  "filename": "design-review.pdf",
+  "workspace_id": "personal-user-123",
+  "status": "processing",
+  "storage_path": "s3://opaa-uploads/user-123/design-review.pdf",
+  "estimated_index_time_seconds": 30
+}
+```
+
+#### Share Document to Workspace
+```
+POST /api/v1/documents/{id}/share
+{
+  "target_workspace": "workspace-eng",
+  "action": "share"
+}
+
+Response:
+{
+  "document_id": "upload-456",
+  "shared_to": ["workspace-eng", "workspace-arch"],
+  "status": "shared"
+}
+```
+
+#### Unshare Document from Workspace
+```
+POST /api/v1/documents/{id}/share
+{
+  "target_workspace": "workspace-eng",
+  "action": "unshare"
+}
+
+Response:
+{
+  "document_id": "upload-456",
+  "shared_to": ["workspace-arch"],
+  "status": "unshared"
+}
+```
+
+#### List User's Uploaded Documents
+```
+GET /api/v1/documents/my-uploads?status=indexed&limit=20
+
+Response:
+{
+  "documents": [
+    {
+      "id": "upload-456",
+      "filename": "design-review.pdf",
+      "uploaded_at": "2026-02-16T10:30:00Z",
+      "status": "indexed",
+      "shared_to": ["workspace-eng"],
+      "file_size_bytes": 2048576
+    }
+  ],
+  "total": 42
+}
 ```
 
 #### Feedback
