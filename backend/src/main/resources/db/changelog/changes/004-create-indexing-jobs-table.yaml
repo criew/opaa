@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-indexing-jobs-table
+      author: opaa
+      comment: "Create indexing_jobs table for tracking indexing operations"
+      changes:
+        - createTable:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: RUNNING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: documents_processed
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: documents_failed
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: started_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamp with time zone
+              - column:
+                  name: error_message
+                  type: text
+        - sql:
+            comment: "Add check constraint for indexing job status values"
+            sql: >
+              ALTER TABLE indexing_jobs
+              ADD CONSTRAINT chk_indexing_jobs_status
+              CHECK (status IN ('RUNNING', 'COMPLETED', 'FAILED'));
+      rollback:
+        - dropTable:
+            tableName: indexing_jobs

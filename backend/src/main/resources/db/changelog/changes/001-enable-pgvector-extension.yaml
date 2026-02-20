@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-enable-pgvector-extension
+      author: opaa
+      comment: "Enable pgvector extension"
+      changes:
+        - sql:
+            sql: CREATE EXTENSION IF NOT EXISTS vector;
+      rollback:
+        - sql:
+            sql: DROP EXTENSION IF EXISTS vector;

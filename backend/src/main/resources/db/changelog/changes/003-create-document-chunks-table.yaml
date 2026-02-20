@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-document-chunks-table
+      author: opaa
+      comment: "Create document_chunks table with vector embedding and HNSW index"
+      changes:
+        - createTable:
+            tableName: document_chunks
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: document_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: chunk_index
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: chunk_text
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding
+                  type: vector(1536)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: document_chunks
+            baseColumnNames: document_id
+            referencedTableName: documents
+            referencedColumnNames: id
+            constraintName: fk_document_chunks_document_id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_document_chunks_document_id
+            tableName: document_chunks
+            columns:
+              - column:
+                  name: document_id
+        - sql:
+            comment: "Create HNSW index for cosine similarity search on embeddings"
+            sql: >
+              CREATE INDEX idx_document_chunks_embedding
+              ON document_chunks
+              USING hnsw (embedding vector_cosine_ops)
+              WITH (m = 16, ef_construction = 64);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_document_chunks_embedding;
+        - dropIndex:
+            indexName: idx_document_chunks_document_id
+            tableName: document_chunks
+        - dropTable:
+            tableName: document_chunks
