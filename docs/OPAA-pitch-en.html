@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPAA — Open Project AI Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 12mm 14mm 10mm 14mm;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* === HEADER === */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5mm;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .badge {
+    background: rgba(19, 127, 236, 0.15);
+    border: 1px solid rgba(19, 127, 236, 0.3);
+    color: #58a6ff;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* === HERO === */
+  .hero {
+    text-align: center;
+    margin-bottom: 5mm;
+  }
+
+  .hero h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .hero h1 .accent {
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 11.5px;
+    color: #8b949e;
+    line-height: 1.5;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  /* === SCREENS (2 large) === */
+  .screens {
+    display: flex;
+    gap: 4mm;
+    margin-bottom: 5mm;
+  }
+
+  .screen-card {
+    flex: 1;
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .screen-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .screen-label {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .screen-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-blue { background: #137fec; }
+  .dot-green { background: #2ea043; }
+
+  .screen-label span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #c9d1d9;
+    letter-spacing: 0.2px;
+  }
+
+  .screen-desc {
+    font-size: 9px;
+    color: #6e7681;
+    padding: 0 12px 8px 27px;
+    line-height: 1.4;
+  }
+
+  /* === BENEFITS (5 columns) === */
+  .benefits {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3mm;
+    margin-bottom: 5mm;
+  }
+
+  .benefit {
+    background: linear-gradient(135deg, rgba(19, 127, 236, 0.06) 0%, rgba(14, 165, 233, 0.03) 100%);
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 9px 8px;
+    text-align: center;
+  }
+
+  .benefit-icon {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 5px;
+    background: rgba(19, 127, 236, 0.12);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+  }
+
+  .benefit h3 {
+    font-size: 9px;
+    font-weight: 700;
+    color: #e6edf3;
+    margin-bottom: 3px;
+    letter-spacing: -0.2px;
+  }
+
+  .benefit p {
+    font-size: 7px;
+    color: #8b949e;
+    line-height: 1.35;
+  }
+
+  /* === COMPARISON === */
+  .comparison {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 5mm;
+  }
+
+  .comparison h2 {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .comp-table th, .comp-table td {
+    padding: 4px 8px;
+    font-size: 8.5px;
+    text-align: left;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .comp-table th {
+    font-weight: 700;
+    color: #c9d1d9;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .comp-table th:first-child { width: 28%; }
+  .comp-table th:nth-child(2) { color: #58a6ff; }
+
+  .comp-table td { color: #8b949e; }
+  .comp-table td:nth-child(2) { color: #c9d1d9; font-weight: 500; }
+
+  .comp-table tr:last-child td { border-bottom: none; }
+
+  .check { color: #2ea043; font-weight: 700; }
+  .cross { color: #6e7681; }
+
+  /* === FOOTER === */
+  .footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 4mm;
+    border-top: 1px solid #21262d;
+  }
+
+  .tech-stack {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tech-tag {
+    background: #21262d;
+    color: #8b949e;
+    font-size: 7.5px;
+    font-weight: 500;
+    padding: 3px 7px;
+    border-radius: 4px;
+  }
+
+  .footer-right {
+    text-align: right;
+  }
+
+  .github-link {
+    font-size: 9px;
+    font-weight: 600;
+    color: #58a6ff;
+    text-decoration: none;
+  }
+
+  .license {
+    font-size: 7px;
+    color: #6e7681;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">OPAA</div>
+    </div>
+    <div class="badge">Open Source &bull; Self-Hosted &bull; Apache 2.0</div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Your Company Knowledge. <span class="accent">One Question Away.</span></h1>
+    <p>OPAA connects wikis, emails, SharePoint, issue trackers and file shares into one intelligent assistant. Ask in natural language — get answers with source references. Self-hosted, no data ever leaves your network.</p>
+  </div>
+
+  <!-- SCREENS (2 large) -->
+  <div class="screens">
+    <div class="screen-card">
+      <img src="design/chat-interface.png" alt="Chat Interface">
+      <div class="screen-label">
+        <div class="screen-dot dot-blue"></div>
+        <span>AI Chat with Sources</span>
+      </div>
+      <div class="screen-desc">Ask a question, get answers with original documents and confidentiality levels</div>
+    </div>
+    <div class="screen-card">
+      <img src="design/document-browser.png" alt="Document Browser">
+      <div class="screen-label">
+        <div class="screen-dot dot-green"></div>
+        <span>Document Browser</span>
+      </div>
+      <div class="screen-desc">All sources searchable in one place — with AI-extracted insights</div>
+    </div>
+  </div>
+
+  <!-- BENEFITS (5 columns) -->
+  <div class="benefits">
+    <div class="benefit">
+      <div class="benefit-icon">🔒</div>
+      <h3>Digital Sovereignty</h3>
+      <p>All data stays in your infrastructure. No cloud dependency.</p>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">🔌</div>
+      <h3>No Vendor Lock-in</h3>
+      <p>Every component is swappable — LLM, database, data sources.</p>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">📖</div>
+      <h3>Always with Sources</h3>
+      <p>Every answer links to the original document. No guessing, no hallucinations.</p>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">🎨</div>
+      <h3>Your Branding</h3>
+      <p>Logo, colors, theme and AI model fully configurable.</p>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">⚡</div>
+      <h3>Open Source</h3>
+      <p>Apache 2.0 license. No license fees. Community-driven.</p>
+    </div>
+  </div>
+
+  <!-- COMPARISON -->
+  <div class="comparison">
+    <h2>OPAA vs. Typical SaaS Solutions</h2>
+    <table class="comp-table">
+      <tr>
+        <th></th>
+        <th>OPAA</th>
+        <th>SaaS Alternatives</th>
+      </tr>
+      <tr>
+        <td>Data Ownership</td>
+        <td><span class="check">✓</span> Everything stays with you</td>
+        <td><span class="cross">✗</span> Data in third-party cloud</td>
+      </tr>
+      <tr>
+        <td>AI Model</td>
+        <td><span class="check">✓</span> Your choice (OpenAI, Ollama, local)</td>
+        <td><span class="cross">✗</span> Predetermined, not changeable</td>
+      </tr>
+      <tr>
+        <td>Data Sources</td>
+        <td><span class="check">✓</span> Wikis, email, issue trackers, S3, SharePoint …</td>
+        <td><span class="cross">✗</span> Usually own platform only</td>
+      </tr>
+      <tr>
+        <td>Source References</td>
+        <td><span class="check">✓</span> Every answer with original document</td>
+        <td><span class="cross">✗</span> Often a black box</td>
+      </tr>
+      <tr>
+        <td>Cost</td>
+        <td><span class="check">✓</span> Open Source — no license fees</td>
+        <td><span class="cross">✗</span> Per-user licensing</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="tech-stack">
+      <span class="tech-tag">React 19</span>
+      <span class="tech-tag">TypeScript</span>
+      <span class="tech-tag">Java 21</span>
+      <span class="tech-tag">Spring Boot</span>
+      <span class="tech-tag">Spring AI</span>
+      <span class="tech-tag">PostgreSQL + pgvector</span>
+      <span class="tech-tag">Docker</span>
+    </div>
+    <div class="footer-right">
+      <a class="github-link" href="https://github.com/criew/opaa">github.com/criew/opaa</a>
+      <div class="license">Apache 2.0 License &bull; Open Source</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
