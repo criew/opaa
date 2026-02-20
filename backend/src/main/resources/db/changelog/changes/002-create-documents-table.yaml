@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-documents-table
+      author: opaa
+      comment: "Create documents table for tracking indexed documents"
+      changes:
+        - createTable:
+            tableName: documents
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: varchar(2000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: varchar(255)
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: chunk_count
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: indexed_at
+                  type: timestamp with time zone
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: "Add check constraint for document status values"
+            sql: >
+              ALTER TABLE documents
+              ADD CONSTRAINT chk_documents_status
+              CHECK (status IN ('PENDING', 'INDEXED', 'FAILED'));
+      rollback:
+        - dropTable:
+            tableName: documents

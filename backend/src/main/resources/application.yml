@@ -7,6 +7,12 @@ spring:
     ollama:
       embedding:
         enabled: false
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        index-type: hnsw
+        distance-type: cosine_distance
+        dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 # Placeholder: LLM configuration
 opaa:
@@ -34,7 +40,7 @@ spring:
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
-    enabled: false
+    enabled: true
   ai:
     openai:
       api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
