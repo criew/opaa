@@ -2,9 +2,10 @@ package io.opaa.indexing;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -13,12 +14,11 @@ import java.util.UUID;
 @Table(name = "document_chunks")
 public class DocumentChunk {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
-  private UUID id;
+  @Id private UUID id;
 
-  @Column(name = "document_id", nullable = false)
-  private UUID documentId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "document_id", nullable = false)
+  private Document document;
 
   @Column(name = "chunk_index", nullable = false)
   private int chunkIndex;
@@ -33,8 +33,9 @@ public class DocumentChunk {
 
   protected DocumentChunk() {}
 
-  public DocumentChunk(UUID documentId, int chunkIndex, String chunkText) {
-    this.documentId = documentId;
+  public DocumentChunk(Document document, int chunkIndex, String chunkText) {
+    this.id = UUID.randomUUID();
+    this.document = document;
     this.chunkIndex = chunkIndex;
     this.chunkText = chunkText;
   }
@@ -43,8 +44,8 @@ public class DocumentChunk {
     return id;
   }
 
-  public UUID getDocumentId() {
-    return documentId;
+  public Document getDocument() {
+    return document;
   }
 
   public int getChunkIndex() {

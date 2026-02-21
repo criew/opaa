@@ -17,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -42,7 +41,6 @@ class DocumentIndexingIntegrationTest {
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
     registry.add("opaa.indexing.batch-size", () -> 10);
     registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
@@ -60,7 +58,6 @@ class DocumentIndexingIntegrationTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private DocumentChunkRepository documentChunkRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
-  @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -96,42 +93,74 @@ class DocumentIndexingIntegrationTest {
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
 
     List<DocumentChunk> chunks = documentChunkRepository.findAll();
     assertThat(chunks).isNotEmpty();
+    assertThat(chunks).allMatch(c -> c.getChunkText() != null && !c.getChunkText().isBlank());
+    assertThat(chunks).allMatch(c -> c.getDocument() != null);
 
+    // Verify embeddings were stored via native query in repository
     for (DocumentChunk chunk : chunks) {
-      Integer count =
-          jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM document_chunks WHERE id = ? AND embedding IS NOT NULL",
-              Integer.class,
-              chunk.getId());
-      assertThat(count).isEqualTo(1);
+      assertThat(documentChunkRepository.countByIdWithEmbedding(chunk.getId())).isEqualTo(1);
     }
   }
 
   @Test
-  void skipsUnparseableFilesAndContinues() throws IOException {
+  void skipsUnsupportedFileFormatsAndContinues() throws IOException {
     Files.writeString(sharedTempDir.resolve("good.txt"), "Valid content here.");
     Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
 
     IndexingJob job = documentIndexingService.triggerIndexing();
 
     assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    // Only .txt is a supported format, .csv is filtered out by DocumentService
     assertThat(job.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(job.getDocumentsFailed()).isZero();
+
+    // Verify only the supported file was indexed
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(1);
+    assertThat(documents.getFirst().getFileName()).isEqualTo("good.txt");
+    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
   }
 
   @Test
   void reindexingReplacesOldChunks() throws IOException {
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
 
-    documentIndexingService.triggerIndexing();
+    IndexingJob firstJob = documentIndexingService.triggerIndexing();
+    assertThat(firstJob.getDocumentsProcessed()).isEqualTo(1);
 
+    // Remember initial state
+    long initialChunkCount = documentChunkRepository.count();
+    assertThat(initialChunkCount).isGreaterThanOrEqualTo(1);
+    Document initialDoc = documentRepository.findAll().getFirst();
+    assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+
+    // Update file and re-index
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
-    documentIndexingService.triggerIndexing();
+    IndexingJob secondJob = documentIndexingService.triggerIndexing();
 
+    assertThat(secondJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(documentRepository.count()).isEqualTo(1);
-    assertThat(documentChunkRepository.count()).isGreaterThanOrEqualTo(1);
+
+    // Verify chunks were replaced (not accumulated)
+    long newChunkCount = documentChunkRepository.count();
+    assertThat(newChunkCount).isGreaterThanOrEqualTo(1);
+
+    // Verify the document content was actually re-indexed
+    Document reindexedDoc = documentRepository.findAll().getFirst();
+    assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(reindexedDoc.getIndexedAt()).isNotNull();
+
+    // Verify chunk text was updated
+    List<DocumentChunk> chunks = documentChunkRepository.findAll();
+    assertThat(chunks).isNotEmpty();
+    String allChunkText =
+        chunks.stream().map(DocumentChunk::getChunkText).reduce("", String::concat);
+    assertThat(allChunkText).contains("Updated");
   }
 
   /** Fake embedding model that returns deterministic embeddings for testing. */

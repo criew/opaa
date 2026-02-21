@@ -24,7 +24,7 @@ class MockIndexingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("COMPLETED"))
         .andExpect(jsonPath("$.documentCount").value(42))
-        .andExpect(jsonPath("$.chunkCount").value(1337))
+        .andExpect(jsonPath("$.chunkCount").doesNotExist())
         .andExpect(jsonPath("$.message").value("Indexing completed successfully"))
         .andExpect(jsonPath("$.timestamp").exists());
   }

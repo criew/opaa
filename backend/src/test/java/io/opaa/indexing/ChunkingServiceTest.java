@@ -10,7 +10,7 @@ class ChunkingServiceTest {
 
   @Test
   void chunksShortTextIntoSingleChunk() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3));
+    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 50, 3));
     var doc = new Document("This is a short text that should fit into one chunk.");
     List<Document> result = service.chunkDocuments(List.of(doc));
 
@@ -20,7 +20,7 @@ class ChunkingServiceTest {
 
   @Test
   void chunksLongTextIntoMultipleChunks() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3));
+    var service = new ChunkingService(new IndexingProperties("./docs", 100, 50, 3));
     // Create a long text that needs multiple chunks
     String longText = "This is sentence number one. ".repeat(200);
     var doc = new Document(longText);
@@ -31,7 +31,7 @@ class ChunkingServiceTest {
 
   @Test
   void preservesMetadataInChunks() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3));
+    var service = new ChunkingService(new IndexingProperties("./docs", 100, 50, 3));
     String longText = "Word ".repeat(500);
     var doc = new Document(longText);
     doc.getMetadata().put("source", "test.txt");
@@ -43,7 +43,7 @@ class ChunkingServiceTest {
 
   @Test
   void handlesEmptyDocumentList() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3));
+    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 50, 3));
     List<Document> result = service.chunkDocuments(List.of());
 
     assertThat(result).isEmpty();

@@ -20,7 +20,6 @@ describe('MSW Handlers', () => {
       expect(response.status).toBe(200)
       expect(data.status).toBe(mockIndexingStatus.status)
       expect(data.documentCount).toBe(mockIndexingStatus.documentCount)
-      expect(data.chunkCount).toBe(mockIndexingStatus.chunkCount)
     })
   })
 
