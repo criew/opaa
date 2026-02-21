@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
-    String documentPath, int chunkSize, int chunkOverlap, int batchSize, int retryAttempts) {
+    String documentPath, int chunkSize, int batchSize, int retryAttempts) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -12,9 +12,6 @@ public record IndexingProperties(
     }
     if (chunkSize <= 0) {
       chunkSize = 1000;
-    }
-    if (chunkOverlap < 0) {
-      chunkOverlap = 100;
     }
     if (batchSize <= 0) {
       batchSize = 50;

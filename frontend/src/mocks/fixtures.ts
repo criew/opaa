@@ -7,7 +7,6 @@ export const mockHealthResponse: HealthResponse = {
 export const mockIndexingStatus: IndexingStatusResponse = {
   status: 'COMPLETED',
   documentCount: 42,
-  chunkCount: 1337,
   message: 'Indexing completed successfully',
   timestamp: '2025-01-15T10:30:00Z',
 }

@@ -86,7 +86,7 @@ components:
 
     IndexingStatusResponse:
       type: object
-      required: [status, documentCount, chunkCount, timestamp]
+      required: [status, documentCount, timestamp]
       properties:
         status:
           type: string
@@ -95,9 +95,6 @@ components:
         documentCount:
           type: integer
           example: 42
-        chunkCount:
-          type: integer
-          example: 1337
         message:
           type: string
           nullable: true
