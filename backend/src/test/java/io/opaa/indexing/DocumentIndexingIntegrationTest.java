@@ -33,11 +33,18 @@ class DocumentIndexingIntegrationTest {
   static PostgreSQLContainer<?> postgres =
       new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg18"));
 
+  @TempDir static Path sharedTempDir;
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
+    registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
+    registry.add("opaa.indexing.chunk-size", () -> 100);
+    registry.add("opaa.indexing.chunk-overlap", () -> 10);
+    registry.add("opaa.indexing.batch-size", () -> 10);
+    registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
   @TestConfiguration
@@ -49,8 +56,6 @@ class DocumentIndexingIntegrationTest {
     }
   }
 
-  @TempDir Path tempDir;
-
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private DocumentChunkRepository documentChunkRepository;
@@ -58,47 +63,43 @@ class DocumentIndexingIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws IOException {
     documentChunkRepository.deleteAll();
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
-  }
-
-  @DynamicPropertySource
-  static void indexingProperties(DynamicPropertyRegistry registry) {
-    registry.add("opaa.indexing.chunk-size", () -> 100);
-    registry.add("opaa.indexing.chunk-overlap", () -> 10);
-    registry.add("opaa.indexing.batch-size", () -> 10);
-    registry.add("opaa.indexing.retry-attempts", () -> 1);
+    // Clean up any leftover files from previous tests
+    if (Files.exists(sharedTempDir)) {
+      try (var files = Files.list(sharedTempDir)) {
+        files.forEach(
+            f -> {
+              try {
+                Files.deleteIfExists(f);
+              } catch (IOException e) {
+                // ignore cleanup failures
+              }
+            });
+      }
+    }
   }
 
   @Test
   void indexesDocumentsEndToEnd() throws IOException {
-    // Arrange: create test documents
-    Files.writeString(tempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
-    Files.writeString(tempDir.resolve("notes.txt"), "Some plain text notes for testing.");
+    Files.writeString(sharedTempDir.resolve("test.md"), "# Test Document\n\nThis is test content.");
+    Files.writeString(sharedTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
 
-    // Set document path dynamically
-    setDocumentPath(tempDir.toAbsolutePath().toString());
-
-    // Act
     IndexingJob job = documentIndexingService.triggerIndexing();
 
-    // Assert: job completed
     assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
     assertThat(job.getDocumentsProcessed()).isEqualTo(2);
     assertThat(job.getDocumentsFailed()).isZero();
 
-    // Assert: documents stored
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
 
-    // Assert: chunks stored
     List<DocumentChunk> chunks = documentChunkRepository.findAll();
     assertThat(chunks).isNotEmpty();
 
-    // Assert: embeddings are present (non-null)
     for (DocumentChunk chunk : chunks) {
       Integer count =
           jdbcTemplate.queryForObject(
@@ -111,11 +112,8 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void skipsUnparseableFilesAndContinues() throws IOException {
-    Files.writeString(tempDir.resolve("good.txt"), "Valid content here.");
-    // Create a file with unsupported extension (will be filtered out)
-    Files.writeString(tempDir.resolve("bad.csv"), "a,b,c");
-
-    setDocumentPath(tempDir.toAbsolutePath().toString());
+    Files.writeString(sharedTempDir.resolve("good.txt"), "Valid content here.");
+    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
 
     IndexingJob job = documentIndexingService.triggerIndexing();
 
@@ -125,28 +123,15 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void reindexingReplacesOldChunks() throws IOException {
-    Files.writeString(tempDir.resolve("doc.txt"), "Original content.");
-    setDocumentPath(tempDir.toAbsolutePath().toString());
+    Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
 
-    // First indexing
-    documentIndexingService.triggerIndexing();
-    long firstChunkCount = documentChunkRepository.count();
-
-    // Update document and re-index
-    Files.writeString(tempDir.resolve("doc.txt"), "Updated content with more text.");
     documentIndexingService.triggerIndexing();
 
-    // Should still have only 1 document
+    Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
+    documentIndexingService.triggerIndexing();
+
     assertThat(documentRepository.count()).isEqualTo(1);
-    // Chunks replaced (not duplicated)
     assertThat(documentChunkRepository.count()).isGreaterThanOrEqualTo(1);
-  }
-
-  private void setDocumentPath(String path) {
-    // We use reflection or a dynamic property - since IndexingProperties is a record,
-    // we rely on @DynamicPropertySource or test context.
-    // For this test, we pass the tempDir path as a system property
-    System.setProperty("opaa.indexing.document-path", path);
   }
 
   /** Fake embedding model that returns deterministic embeddings for testing. */
