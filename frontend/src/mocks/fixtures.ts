@@ -4,12 +4,23 @@ export const mockHealthResponse: HealthResponse = {
   status: 'UP',
 }
 
-export const mockIndexingStatus: IndexingStatusResponse = {
+export const mockIndexingIdle: IndexingStatusResponse = {
+  status: 'IDLE',
+  documentCount: 0,
+  chunkCount: 0,
+  message: null,
+  timestamp: '2025-01-15T10:00:00Z',
+}
+
+export const mockIndexingCompleted: IndexingStatusResponse = {
   status: 'COMPLETED',
   documentCount: 42,
   message: 'Indexing completed successfully',
   timestamp: '2025-01-15T10:30:00Z',
 }
+
+/** @deprecated Use mockIndexingCompleted instead */
+export const mockIndexingStatus = mockIndexingCompleted
 
 export const mockQueryResponses: QueryResponse[] = [
   {

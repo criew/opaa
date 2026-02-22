@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockIndexingStatus, mockQueryResponses } from './fixtures'
+import { mockQueryResponses } from './fixtures'
 
 describe('MSW Handlers', () => {
   describe('GET /api/health', () => {
@@ -13,23 +13,36 @@ describe('MSW Handlers', () => {
   })
 
   describe('POST /api/v1/indexing/trigger', () => {
-    it('returns indexing status', async () => {
+    it('returns RUNNING status', async () => {
       const response = await fetch('/api/v1/indexing/trigger', { method: 'POST' })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.status).toBe(mockIndexingStatus.status)
-      expect(data.documentCount).toBe(mockIndexingStatus.documentCount)
+      expect(data.status).toBe('RUNNING')
+      expect(data.documentCount).toBe(0)
     })
   })
 
   describe('GET /api/v1/indexing/status', () => {
-    it('returns indexing status', async () => {
+    it('returns IDLE when no indexing has been triggered', async () => {
       const response = await fetch('/api/v1/indexing/status')
       const data = await response.json()
 
       expect(response.status).toBe(200)
+      expect(data.status).toBe('IDLE')
+    })
+
+    it('progresses to COMPLETED after trigger and multiple polls', async () => {
+      await fetch('/api/v1/indexing/trigger', { method: 'POST' })
+
+      let data
+      for (let i = 0; i < 5; i++) {
+        const response = await fetch('/api/v1/indexing/status')
+        data = await response.json()
+      }
+
       expect(data.status).toBe('COMPLETED')
+      expect(data.documentCount).toBe(42)
     })
   })
 
