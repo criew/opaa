@@ -1,10 +1,9 @@
 package io.opaa.indexing;
 
-import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Activates all indexing-related beans only when NOT running in mock profile. This consolidates the
@@ -34,18 +33,9 @@ public class IndexingConfiguration {
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
-      DocumentChunkRepository documentChunkRepository,
-      EmbeddingModel embeddingModel,
-      JdbcTemplate jdbcTemplate,
-      IndexingProperties properties) {
+      VectorStore vectorStore) {
     return new FileProcessingService(
-        documentService,
-        chunkingService,
-        documentRepository,
-        documentChunkRepository,
-        embeddingModel,
-        jdbcTemplate,
-        properties);
+        documentService, chunkingService, documentRepository, vectorStore);
   }
 
   @Bean

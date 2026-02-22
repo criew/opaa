@@ -12,7 +12,7 @@ spring:
       embedding: openai
     vectorstore:
       pgvector:
-        initialize-schema: false
+        initialize-schema: true
         index-type: hnsw
         distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
