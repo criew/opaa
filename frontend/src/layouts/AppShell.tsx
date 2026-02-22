@@ -5,6 +5,9 @@ import { useTheme } from '@mui/material/styles'
 import { Outlet } from 'react-router-dom'
 import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
+import AdminDrawer from '../components/admin/AdminDrawer'
+import AdminDrawerToggle from '../components/admin/AdminDrawerToggle'
+import IndexingSnackbar from '../components/admin/IndexingSnackbar'
 import { useUiStore } from '../stores/uiStore'
 
 export default function AppShell() {
@@ -41,8 +44,21 @@ export default function AppShell() {
         }}
       >
         <MobileHeader />
+        <Box
+          sx={{
+            display: { xs: 'none', md: 'flex' },
+            justifyContent: 'flex-end',
+            px: 1,
+            py: 0.5,
+          }}
+        >
+          <AdminDrawerToggle />
+        </Box>
         <Outlet />
       </Box>
+
+      <AdminDrawer />
+      <IndexingSnackbar />
     </Box>
   )
 }
