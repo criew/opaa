@@ -35,13 +35,17 @@ opaa:
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+logging:
+  level:
+    org.hibernate.orm.connections.pooling: WARN
+
 ---
 spring:
   config:
     activate:
       on-profile: local
   datasource:
-    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa}
+    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
@@ -58,7 +62,7 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa}
+    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
