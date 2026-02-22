@@ -12,11 +12,14 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -56,12 +59,13 @@ class DocumentIndexingIntegrationTest {
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private DocumentRepository documentRepository;
-  @Autowired private DocumentChunkRepository documentChunkRepository;
+  @Autowired private VectorStore vectorStore;
+  @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
 
   @BeforeEach
   void setUp() throws IOException {
-    documentChunkRepository.deleteAll();
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     // Clean up any leftover files from previous tests
@@ -96,15 +100,13 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
 
-    List<DocumentChunk> chunks = documentChunkRepository.findAll();
-    assertThat(chunks).isNotEmpty();
-    assertThat(chunks).allMatch(c -> c.getChunkText() != null && !c.getChunkText().isBlank());
-    assertThat(chunks).allMatch(c -> c.getDocument() != null);
-
-    // Verify embeddings were stored via native query in repository
-    for (DocumentChunk chunk : chunks) {
-      assertThat(documentChunkRepository.countByIdWithEmbedding(chunk.getId())).isEqualTo(1);
-    }
+    // Verify chunks with embeddings were stored in vector_store
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("test").topK(100).similarityThreshold(0.0).build());
+    assertThat(results).isNotEmpty();
+    assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
+    assertThat(results).allMatch(r -> r.getMetadata().containsKey("document_id"));
   }
 
   @Test
@@ -134,8 +136,10 @@ class DocumentIndexingIntegrationTest {
     assertThat(firstJob.getDocumentsProcessed()).isEqualTo(1);
 
     // Remember initial state
-    long initialChunkCount = documentChunkRepository.count();
-    assertThat(initialChunkCount).isGreaterThanOrEqualTo(1);
+    List<org.springframework.ai.document.Document> initialResults =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("content").topK(100).similarityThreshold(0.0).build());
+    assertThat(initialResults).isNotEmpty();
     Document initialDoc = documentRepository.findAll().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
 
@@ -146,20 +150,20 @@ class DocumentIndexingIntegrationTest {
     assertThat(secondJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(documentRepository.count()).isEqualTo(1);
 
-    // Verify chunks were replaced (not accumulated)
-    long newChunkCount = documentChunkRepository.count();
-    assertThat(newChunkCount).isGreaterThanOrEqualTo(1);
-
     // Verify the document content was actually re-indexed
     Document reindexedDoc = documentRepository.findAll().getFirst();
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
 
-    // Verify chunk text was updated
-    List<DocumentChunk> chunks = documentChunkRepository.findAll();
-    assertThat(chunks).isNotEmpty();
+    // Verify chunk text was updated via similarity search
+    List<org.springframework.ai.document.Document> newResults =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("Updated").topK(100).similarityThreshold(0.0).build());
+    assertThat(newResults).isNotEmpty();
     String allChunkText =
-        chunks.stream().map(DocumentChunk::getChunkText).reduce("", String::concat);
+        newResults.stream()
+            .map(org.springframework.ai.document.Document::getText)
+            .reduce("", String::concat);
     assertThat(allChunkText).contains("Updated");
   }
 
