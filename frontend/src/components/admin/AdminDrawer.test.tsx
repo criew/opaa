@@ -10,7 +10,6 @@ describe('AdminDrawer', () => {
     useIndexingStore.setState({
       status: 'IDLE',
       documentCount: 0,
-      chunkCount: 0,
       message: null,
       timestamp: null,
       isPolling: false,
@@ -62,14 +61,12 @@ describe('AdminDrawer', () => {
     useIndexingStore.setState({
       status: 'COMPLETED',
       documentCount: 42,
-      chunkCount: 1337,
       timestamp: '2025-01-15T10:30:00Z',
     })
     renderWithProviders(<AdminDrawer />)
 
     expect(screen.getByText(/completed/i)).toBeInTheDocument()
     expect(screen.getByText(/documents: 42/i)).toBeInTheDocument()
-    expect(screen.getByText(/chunks: 1337/i)).toBeInTheDocument()
   })
 
   it('does not render content when drawer is closed', () => {

@@ -15,7 +15,6 @@ interface Snackbar {
 interface IndexingState {
   status: IndexingStatus
   documentCount: number
-  chunkCount: number
   message: string | null
   timestamp: string | null
   isPolling: boolean
@@ -35,7 +34,6 @@ let pollIntervalId: ReturnType<typeof setInterval> | null = null
 export const useIndexingStore = create<IndexingState>((set, get) => ({
   status: 'IDLE',
   documentCount: 0,
-  chunkCount: 0,
   message: null,
   timestamp: null,
   isPolling: false,
@@ -48,7 +46,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       set({
         status: response.status,
         documentCount: response.documentCount,
-        chunkCount: response.chunkCount,
         message: response.message,
         timestamp: response.timestamp,
       })
@@ -77,7 +74,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
         set({
           status: response.status,
           documentCount: response.documentCount,
-          chunkCount: response.chunkCount,
           message: response.message,
           timestamp: response.timestamp,
         })
