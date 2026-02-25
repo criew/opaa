@@ -303,6 +303,8 @@ OPAA supports multiple vector database backends. Organizations choose based on:
 ### Implementation Detail
 Vector database choice made at **deployment time**, not application design. No vendor lock-in. Switching databases requires re-indexing but no code changes.
 
+OPAA uses Spring AI's `VectorStore` abstraction for all indexing and retrieval operations. Embedding generation, storage, and similarity search are delegated to the `VectorStore` interface, making the vector database backend interchangeable via configuration.
+
 ---
 
 ## Retrieval & Ranking

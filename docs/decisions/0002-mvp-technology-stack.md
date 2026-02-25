@@ -35,7 +35,7 @@ OPAA needs a technology stack to implement the MVP defined in [docs/MVP.md](../M
 
 - **PostgreSQL 18** serves as the single database for both relational data and vector storage.
 - **pgvector** adds vector similarity search capabilities without requiring a separate vector database.
-- **Liquibase** manages database schema migrations, providing XML/YAML-based changesets with rollback support.
+- **Liquibase** manages application-specific schema migrations (`documents`, `indexing_jobs`), providing XML/YAML-based changesets with rollback support. The `vector_store` table is managed by Spring AI via `initialize-schema: true`.
 - This reduces operational complexity (one database to manage) while providing sufficient performance for MVP scale.
 
 ### Document Parsing: Apache Tika via Spring AI
@@ -68,6 +68,7 @@ OPAA needs a technology stack to implement the MVP defined in [docs/MVP.md](../M
 - **Enterprise adoption**: Java/Spring Boot is widely adopted in enterprise environments, lowering the barrier for contributions and deployments.
 - **Deployment simplicity**: Docker Compose makes it trivial to run the full stack locally or in demos.
 - **LLM flexibility**: OpenAI-compatible interface means switching between cloud and local models requires only configuration changes.
+- **Vector store portability**: Spring AI's `VectorStore` abstraction allows switching the vector database backend (pgvector, Milvus, Qdrant, etc.) through configuration alone — no code changes required.
 - **Document format support**: Apache Tika handles format diversity without per-format implementation effort.
 - **Parallel development**: MSW and backend mock profiles allow frontend and backend to be developed independently against a shared API contract.
 - **Reliable testing**: Testcontainers ensures integration tests run against real PostgreSQL + pgvector, both locally and in CI.

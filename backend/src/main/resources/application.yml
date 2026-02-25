@@ -3,17 +3,20 @@ spring:
     name: opaa
   profiles:
     default: local
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
   ai:
     model:
       embedding: openai
     vectorstore:
       pgvector:
-        initialize-schema: false
+        initialize-schema: true
         index-type: hnsw
         distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
-# Placeholder: LLM configuration
 opaa:
   llm:
     provider: ${OPAA_LLM_PROVIDER:openai}
@@ -24,10 +27,17 @@ opaa:
     model: ${OPAA_EMBEDDING_MODEL:text-embedding-3-small}
   pgvector:
     dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
-  documents:
-    path: ${OPAA_DOCUMENTS_PATH:./documents}
+  indexing:
+    document-path: ${OPAA_INDEXING_DOCUMENT_PATH:./documents}
+    chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
+    batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
+    retry-attempts: ${OPAA_INDEXING_RETRY_ATTEMPTS:3}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    org.hibernate.orm.connections.pooling: WARN
 
 ---
 spring:
@@ -35,7 +45,7 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa}
+    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
@@ -52,7 +62,7 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa}
+    url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
   liquibase:
@@ -73,6 +83,7 @@ spring:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
       - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
       - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAutoConfiguration
