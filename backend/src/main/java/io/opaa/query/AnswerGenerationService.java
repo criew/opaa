@@ -52,7 +52,13 @@ public class AnswerGenerationService {
         .map(
             chunk -> {
               String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
-              return "[Source: " + fileName + "]\n" + chunk.getText();
+              String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
+              var header = new StringBuilder("[Source: " + fileName);
+              if (!documentId.isEmpty()) {
+                header.append(", ID: ").append(documentId);
+              }
+              header.append("]\n");
+              return header + chunk.getText();
             })
         .collect(Collectors.joining("\n\n---\n\n"));
   }

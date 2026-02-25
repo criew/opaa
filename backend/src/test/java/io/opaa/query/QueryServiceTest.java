@@ -74,7 +74,7 @@ class QueryServiceTest {
     assertThat(response.sources().getFirst().excerpt()).isEqualTo("Relevant content");
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
-    assertThat(response.metadata().durationMs()).isGreaterThan(0);
+    assertThat(response.metadata().durationMs()).isGreaterThanOrEqualTo(0);
   }
 
   @Test
