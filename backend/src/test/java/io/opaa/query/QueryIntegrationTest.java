@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +18,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -131,38 +130,5 @@ class QueryIntegrationTest {
 
     assertThat(response.answer()).contains("don't have enough context");
     assertThat(response.sources()).isEmpty();
-  }
-
-  static class FakeEmbeddingModel implements EmbeddingModel {
-
-    @Override
-    public EmbeddingResponse call(org.springframework.ai.embedding.EmbeddingRequest request) {
-      List<Embedding> embeddings =
-          request.getInstructions().stream()
-              .map(
-                  text ->
-                      new Embedding(
-                          generateFakeEmbedding(), request.getInstructions().indexOf(text)))
-              .toList();
-      return new EmbeddingResponse(embeddings);
-    }
-
-    @Override
-    public float[] embed(org.springframework.ai.document.Document document) {
-      return generateFakeEmbedding();
-    }
-
-    @Override
-    public List<float[]> embed(List<String> texts) {
-      return texts.stream().map(t -> generateFakeEmbedding()).toList();
-    }
-
-    private float[] generateFakeEmbedding() {
-      float[] embedding = new float[1536];
-      for (int i = 0; i < embedding.length; i++) {
-        embedding[i] = (float) Math.sin(i * 0.01);
-      }
-      return embedding;
-    }
   }
 }

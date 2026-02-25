@@ -11,6 +11,16 @@ spring:
     model:
       chat: ${OPAA_AI_CHAT_PROVIDER:openai}
       embedding: openai
+    openai:
+      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
+      chat:
+        options:
+          model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
+          temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
+          maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
+      embedding:
+        options:
+          model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -45,16 +55,6 @@ spring:
   liquibase:
     enabled: true
   ai:
-    openai:
-      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
-      chat:
-        options:
-          model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
-          temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
-          maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
-      embedding:
-        options:
-          model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://localhost:11434}
 
@@ -70,16 +70,6 @@ spring:
   liquibase:
     enabled: true
   ai:
-    openai:
-      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
-      chat:
-        options:
-          model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
-          temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
-          maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
-      embedding:
-        options:
-          model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://ollama:11434}
 
