@@ -41,7 +41,7 @@ public class QueryService {
 
     ChatResponse chatResponse = answerGenerationService.generateAnswer(question, relevantChunks);
 
-    String answer = chatResponse.getResult().getOutput().getText();
+    String answer = extractAnswer(chatResponse);
     List<SourceReference> sources = mapSources(relevantChunks);
 
     long durationMs = System.currentTimeMillis() - startTime;
@@ -61,6 +61,14 @@ public class QueryService {
               return new SourceReference(fileName, score, excerpt);
             })
         .toList();
+  }
+
+  private String extractAnswer(ChatResponse response) {
+    if (response.getResult() == null || response.getResult().getOutput() == null) {
+      return "";
+    }
+    String text = response.getResult().getOutput().getText();
+    return text != null ? text : "";
   }
 
   private String truncateExcerpt(String text, int maxLength) {
