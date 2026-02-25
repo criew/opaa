@@ -6,7 +6,6 @@ describe('indexingStore', () => {
     useIndexingStore.setState({
       status: 'IDLE',
       documentCount: 0,
-      chunkCount: 0,
       message: null,
       timestamp: null,
       isPolling: false,

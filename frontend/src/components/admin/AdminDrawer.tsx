@@ -16,7 +16,6 @@ export default function AdminDrawer() {
   const setDrawerOpen = useIndexingStore((s) => s.setDrawerOpen)
   const status = useIndexingStore((s) => s.status)
   const documentCount = useIndexingStore((s) => s.documentCount)
-  const chunkCount = useIndexingStore((s) => s.chunkCount)
   const message = useIndexingStore((s) => s.message)
   const timestamp = useIndexingStore((s) => s.timestamp)
   const trigger = useIndexingStore((s) => s.triggerIndexing)
@@ -80,7 +79,7 @@ export default function AdminDrawer() {
                 Last indexing: {status === 'COMPLETED' ? 'Completed' : 'Failed'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Documents: {documentCount} | Chunks: {chunkCount}
+                Documents: {documentCount}
               </Typography>
               {timestamp && (
                 <Typography variant="caption" color="text.secondary">
