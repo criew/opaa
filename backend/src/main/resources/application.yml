@@ -10,7 +10,7 @@ spring:
   ai:
     model:
       chat: ${OPAA_AI_CHAT_PROVIDER:openai}
-      embedding: openai
+      embedding: ${OPAA_AI_EMBEDDING_PROVIDER:openai}
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
       chat:
@@ -21,6 +21,13 @@ spring:
       embedding:
         options:
           model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+    ollama:
+      chat:
+        options:
+          model: ${OPAA_OLLAMA_CHAT_MODEL:phi3:mini}
+      embedding:
+        options:
+          model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         initialize-schema: true
