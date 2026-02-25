@@ -18,14 +18,12 @@ export function resetIndexingState() {
 
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
-const TOTAL_CHUNKS = 1337
 
 function getRunningStatus(step: number): IndexingStatusResponse {
   const progress = Math.min(step / INDEXING_POLL_STEPS, 1)
   return {
     status: 'RUNNING',
     documentCount: Math.round(TOTAL_DOCUMENTS * progress),
-    chunkCount: Math.round(TOTAL_CHUNKS * progress),
     message: `Indexing in progress... ${Math.round(TOTAL_DOCUMENTS * progress)} documents processed`,
     timestamp: new Date().toISOString(),
   }
