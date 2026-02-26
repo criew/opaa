@@ -36,8 +36,6 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
-  pgvector:
-    dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
   indexing:
     document-path: ${OPAA_INDEXING_DOCUMENT_PATH:./documents}
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
