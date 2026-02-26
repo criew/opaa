@@ -1,5 +1,5 @@
-# Ensure consistent line endings
-* text=auto
+# Ensure consistent line endings (LF everywhere, including Windows)
+* text=auto eol=lf
 
 # Shell scripts must use LF
 *.sh text eol=lf
