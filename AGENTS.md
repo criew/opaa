@@ -39,6 +39,12 @@ npm run format:check                    # Check Prettier formatting
 npm run format                          # Auto-format with Prettier
 ```
 
+## Dependency Management
+
+- **All** dependency versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
+- Use version catalogs (`libs.versions.*`, `libs.*`) for referencing versions and libraries
+- This applies to both `[libraries]` and `[plugins]` sections
+
 ## Code Conventions
 
 ### Commit Messages
