@@ -1,8 +1,11 @@
 package io.opaa.query;
 
+import static java.util.stream.Collectors.toMap;
+
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
+import java.util.LinkedHashMap;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +63,14 @@ public class QueryService {
               String excerpt = truncateExcerpt(chunk.getText(), 200);
               return new SourceReference(fileName, score, excerpt);
             })
+        .collect(
+            toMap(
+                SourceReference::fileName,
+                source -> source,
+                (a, b) -> a.relevanceScore() >= b.relevanceScore() ? a : b,
+                LinkedHashMap::new))
+        .values()
+        .stream()
         .toList();
   }
 
