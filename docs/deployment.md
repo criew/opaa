@@ -40,7 +40,25 @@ All configuration is done via environment variables in `.env`. See `.env.example
 | `OPAA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
 | `OPAA_DB_USERNAME` | `opaa` | PostgreSQL username |
 | `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL password |
+| `OPAA_SERVER_ADDRESS` | `localhost` | Bind address (`0.0.0.0` for network access) |
+| `OPAA_HTTP_FORCE_HTTP1` | `false` | Force HTTP/1.1 for vLLM compatibility |
 | `OPAA_DOCUMENTS_PATH_HOST` | `./documents` | Host path for documents (mounted into container) |
+
+### Network Access
+
+By default, the backend binds to `localhost`. To make OPAA accessible from other devices on the network, set:
+
+```env
+OPAA_SERVER_ADDRESS=0.0.0.0
+```
+
+For local development, also start the frontend with `npm run dev -- --host` and add the access origin to CORS:
+
+```env
+OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
+```
+
+> **Note:** In Docker Compose, `OPAA_SERVER_ADDRESS` defaults to `0.0.0.0` since the container must be reachable from outside.
 
 ### LLM Provider
 
@@ -52,6 +70,17 @@ To use Ollama (local LLM) instead, set:
 OPAA_AI_CHAT_PROVIDER=ollama
 OPAA_OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+### vLLM / OpenAI-compatible Servers
+
+When using vLLM or other OpenAI-compatible servers that don't support HTTP/2, enable HTTP/1.1 mode:
+
+```env
+OPAA_HTTP_FORCE_HTTP1=true
+OPAA_OPENAI_BASE_URL=http://your-vllm-server:8000/v1
+```
+
+This is required because Spring Boot's default HTTP client prefers HTTP/2, which causes connection failures with Uvicorn-based servers like vLLM.
 
 ### Documents
 
