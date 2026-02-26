@@ -60,7 +60,7 @@ public class FileProcessingService {
 
       // Chunk the parsed content
       List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(parsed);
+          chunkingService.chunkDocuments(fileName, parsed);
       log.debug("File {} produced {} chunks", fileName, chunks.size());
 
       // Enrich chunks with metadata and store via VectorStore

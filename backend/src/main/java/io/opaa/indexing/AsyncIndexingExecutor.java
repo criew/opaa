@@ -41,11 +41,14 @@ public class AsyncIndexingExecutor {
       indexingJobService.setTotalDocuments(jobId, files.size());
 
       for (Path file : files) {
+        String fileName = file.getFileName().toString();
         try {
+          log.info("Indexing started: {}", fileName);
           fileProcessingService.processFile(file);
           processed++;
+          log.info("Indexing completed: {}", fileName);
         } catch (Exception e) {
-          log.error("Failed to process file: {}", file, e);
+          log.error("Failed to process file: {}", fileName, e);
           failed++;
         }
         indexingJobService.updateProgress(jobId, processed, failed);
