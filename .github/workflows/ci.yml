@@ -42,7 +42,8 @@ jobs:
 
   backend-integration:
     runs-on: ubuntu-latest
-    if: ${{ vars.OPAA_OPENAI_API_KEY != '' || secrets.OPAA_OPENAI_API_KEY != '' }}
+    env:
+      OPAA_OPENAI_API_KEY: ${{ secrets.OPAA_OPENAI_API_KEY }}
     defaults:
       run:
         working-directory: backend/
@@ -64,8 +65,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: OpenAI Integration Tests
-        env:
-          OPAA_OPENAI_API_KEY: ${{ secrets.OPAA_OPENAI_API_KEY }}
+        if: env.OPAA_OPENAI_API_KEY != ''
         run: ./gradlew test --tests "io.opaa.integration.*"
 
       - name: Upload integration test reports
