@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.FakeEmbeddingModel;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -128,6 +130,30 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
+  void indexesPdfAndDocxDocuments() throws IOException {
+    copyTestResource("test-documents/test-document.pdf", "report.pdf");
+    copyTestResource("test-documents/test-document.docx", "notes.docx");
+
+    IndexingJob job = documentIndexingService.triggerIndexing();
+
+    assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(job.getDocumentsProcessed()).isEqualTo(2);
+    assertThat(job.getDocumentsFailed()).isZero();
+
+    List<Document> documents = documentRepository.findAll();
+    assertThat(documents).hasSize(2);
+    assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
+    assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+
+    // Verify chunks were stored in vector_store
+    List<org.springframework.ai.document.Document> results =
+        vectorStore.similaritySearch(
+            SearchRequest.builder().query("OPAA").topK(100).similarityThreshold(0.0).build());
+    assertThat(results).isNotEmpty();
+    assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
+  }
+
+  @Test
   void reindexingReplacesOldChunks() throws IOException {
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
 
@@ -164,5 +190,12 @@ class DocumentIndexingIntegrationTest {
             .map(org.springframework.ai.document.Document::getText)
             .reduce("", String::concat);
     assertThat(allChunkText).contains("Updated");
+  }
+
+  private void copyTestResource(String resourcePath, String targetFileName) throws IOException {
+    try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+      assertThat(in).as("Test resource %s must exist", resourcePath).isNotNull();
+      Files.copy(in, sharedTempDir.resolve(targetFileName), StandardCopyOption.REPLACE_EXISTING);
+    }
   }
 }

@@ -40,6 +40,42 @@ jobs:
           path: backend/build/reports/tests/
           retention-days: 14
 
+  backend-integration:
+    runs-on: ubuntu-latest
+    env:
+      OPAA_OPENAI_API_KEY: ${{ secrets.OPAA_OPENAI_API_KEY }}
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/**/*.gradle*', 'backend/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: OpenAI Integration Tests
+        if: env.OPAA_OPENAI_API_KEY != ''
+        run: ./gradlew test --tests "io.opaa.integration.*"
+
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-test-reports
+          path: backend/build/reports/tests/
+          retention-days: 14
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -55,6 +91,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run test
       - run: npm run build
