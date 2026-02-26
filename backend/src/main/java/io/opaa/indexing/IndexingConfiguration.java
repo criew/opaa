@@ -60,11 +60,12 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  TaskExecutor indexingTaskExecutor() {
+  TaskExecutor indexingTaskExecutor(IndexingProperties properties) {
+    IndexingProperties.ThreadPool pool = properties.threadPool();
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-    executor.setCorePoolSize(1);
-    executor.setMaxPoolSize(1);
-    executor.setQueueCapacity(0);
+    executor.setCorePoolSize(pool.coreSize());
+    executor.setMaxPoolSize(pool.maxSize());
+    executor.setQueueCapacity(pool.queueCapacity());
     executor.setThreadNamePrefix("indexing-");
     executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
     executor.initialize();
