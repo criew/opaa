@@ -9,7 +9,25 @@ spring:
     open-in-view: false
   ai:
     model:
-      embedding: openai
+      chat: ${OPAA_AI_CHAT_PROVIDER:openai}
+      embedding: ${OPAA_AI_EMBEDDING_PROVIDER:openai}
+    openai:
+      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
+      chat:
+        options:
+          model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
+          temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
+          maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
+      embedding:
+        options:
+          model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+    ollama:
+      chat:
+        options:
+          model: ${OPAA_OLLAMA_CHAT_MODEL:phi3:mini}
+      embedding:
+        options:
+          model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -18,13 +36,6 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
-  llm:
-    provider: ${OPAA_LLM_PROVIDER:openai}
-    api-key: ${OPAA_LLM_API_KEY:}
-    api-base: ${OPAA_LLM_API_BASE:https://api.openai.com}
-    model: ${OPAA_LLM_MODEL:gpt-4o}
-  embedding:
-    model: ${OPAA_EMBEDDING_MODEL:text-embedding-3-small}
   pgvector:
     dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
   indexing:
@@ -51,8 +62,6 @@ spring:
   liquibase:
     enabled: true
   ai:
-    openai:
-      api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://localhost:11434}
 
@@ -68,8 +77,6 @@ spring:
   liquibase:
     enabled: true
   ai:
-    openai:
-      api-key: ${OPAA_LLM_API_KEY:sk-placeholder}
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://ollama:11434}
 

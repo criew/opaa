@@ -5,7 +5,7 @@
 ```bash
 # 1. Configure environment
 cp .env.example .env
-# Edit .env and set your OPAA_LLM_API_KEY
+# Edit .env and set your OPAA_OPENAI_API_KEY
 
 # 2. Start all services
 docker compose up --build
@@ -27,11 +27,31 @@ docker compose up --build
 
 All configuration is done via environment variables in `.env`. See `.env.example` for available options.
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPAA_AI_CHAT_PROVIDER` | `openai` | Chat model provider (`openai` or `ollama`) |
+| `OPAA_OPENAI_API_KEY` | — | OpenAI API key (required when using OpenAI) |
+| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI chat model name |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | Chat response temperature (0.0–2.0) |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximum tokens in chat response |
+| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model name |
+| `OPAA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
+| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL username |
+| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL password |
+| `OPAA_DOCUMENTS_PATH_HOST` | `./documents` | Host path for documents (mounted into container) |
+
 ### LLM Provider
 
-By default, OPAA uses OpenAI. Set `OPAA_LLM_API_KEY` to your API key.
+By default, OPAA uses OpenAI. Set `OPAA_OPENAI_API_KEY` to your API key.
 
-For Ollama (local LLM), set `OPAA_OLLAMA_BASE_URL` to point to your Ollama instance.
+To use Ollama (local LLM) instead, set:
+
+```env
+OPAA_AI_CHAT_PROVIDER=ollama
+OPAA_OLLAMA_BASE_URL=http://localhost:11434
+```
 
 ### Documents
 
