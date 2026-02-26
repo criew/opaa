@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import type { ChatMessage } from '../types/chat'
 import { sendQuery } from '../services/api'
 
+function generateId(): string {
+  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
+
 interface ChatState {
   messages: ChatMessage[]
   isLoading: boolean
@@ -17,7 +21,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   sendMessage: async (question: string) => {
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'user',
       content: question,
       timestamp: new Date(),
@@ -32,7 +36,7 @@ export const useChatStore = create<ChatState>((set) => ({
     try {
       const response = await sendQuery(question)
       const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         role: 'assistant',
         content: response.answer,
         sources: response.sources,

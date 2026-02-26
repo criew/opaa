@@ -1,3 +1,6 @@
+server:
+  address: ${OPAA_SERVER_ADDRESS:localhost}
+
 spring:
   application:
     name: opaa
