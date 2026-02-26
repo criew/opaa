@@ -62,6 +62,14 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByText(/Quelle:.*architecture-overview\.md/)).toBeInTheDocument()
   })
 
+  it('extracts source citation followed by a period', () => {
+    renderWithProviders(
+      <MarkdownRenderer content="Die Mehrwertsteuer beträgt 0,79€ (miles-rechnung-45163F60.pdf)." />,
+    )
+    expect(screen.getByText(/Mehrwertsteuer/)).toBeInTheDocument()
+    expect(screen.getByText(/Quelle:.*miles-rechnung-45163F60\.pdf/)).toBeInTheDocument()
+  })
+
   it('does not extract citation when no file reference at end', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
