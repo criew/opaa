@@ -38,13 +38,16 @@ export const handlers = [
   http.post('/api/v1/indexing/trigger', () => {
     indexingPollCount = 0
     indexingActive = true
-    return HttpResponse.json({
-      status: 'RUNNING',
-      documentCount: 0,
-      totalDocuments: 0,
-      message: 'Indexing started',
-      timestamp: new Date().toISOString(),
-    } satisfies IndexingStatusResponse)
+    return HttpResponse.json(
+      {
+        status: 'RUNNING',
+        documentCount: 0,
+        totalDocuments: 0,
+        message: 'Indexing started',
+        timestamp: new Date().toISOString(),
+      } satisfies IndexingStatusResponse,
+      { status: 202 },
+    )
   }),
 
   http.get('/api/v1/indexing/status', () => {

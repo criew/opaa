@@ -70,4 +70,9 @@ public class IndexingJobService {
   public Optional<IndexingJob> getLatestJob() {
     return indexingJobRepository.findTopByOrderByStartedAtDesc();
   }
+
+  @Transactional(readOnly = true)
+  public boolean isJobRunning() {
+    return indexingJobRepository.existsByStatus(JobStatus.RUNNING);
+  }
 }

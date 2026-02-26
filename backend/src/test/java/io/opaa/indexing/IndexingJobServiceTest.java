@@ -32,6 +32,7 @@ class IndexingJobServiceTest {
     IndexingJob result = service.startJob();
 
     assertThat(result.getStatus()).isEqualTo(JobStatus.RUNNING);
+    assertThat(result.getStartedAt()).isNotNull();
   }
 
   @Test

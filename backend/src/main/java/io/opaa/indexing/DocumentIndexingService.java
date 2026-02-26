@@ -12,6 +12,9 @@ public class DocumentIndexingService {
   }
 
   public IndexingJob triggerIndexing() {
+    if (indexingJobService.isJobRunning()) {
+      throw new IndexingAlreadyRunningException("An indexing job is already running");
+    }
     var job = indexingJobService.startJob();
     asyncIndexingExecutor.execute(job.getId());
     return job;

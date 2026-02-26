@@ -28,7 +28,7 @@ public class IndexingJob {
   @Column(name = "documents_total")
   private int documentsTotal;
 
-  @Column(name = "started_at", nullable = false, insertable = false, updatable = false)
+  @Column(name = "started_at", nullable = false, updatable = false)
   private Instant startedAt;
 
   @Column(name = "completed_at")
@@ -42,6 +42,7 @@ public class IndexingJob {
   public IndexingJob(JobStatus status) {
     this.id = UUID.randomUUID();
     this.status = status;
+    this.startedAt = Instant.now();
   }
 
   public UUID getId() {
