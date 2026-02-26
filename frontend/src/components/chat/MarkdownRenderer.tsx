@@ -110,14 +110,30 @@ const components: Components = {
   td: ({ children }) => <TableCell>{children}</TableCell>,
 }
 
+const SOURCE_CITATION_RE = /\s*\(([^):/]+\.\w{1,5})\)\s*$/
+
+function splitSourceCitation(content: string): { body: string; citation: string | null } {
+  const match = content.match(SOURCE_CITATION_RE)
+  if (!match) return { body: content, citation: null }
+  return { body: content.slice(0, match.index).trimEnd(), citation: match[1] }
+}
+
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const { body, citation } = splitSourceCitation(content)
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeHighlight]}
-      components={components}
-    >
-      {content}
-    </ReactMarkdown>
+    <>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={components}
+      >
+        {body}
+      </ReactMarkdown>
+      {citation && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+          Quelle: {citation}
+        </Typography>
+      )}
+    </>
   )
 }

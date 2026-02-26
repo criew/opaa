@@ -55,4 +55,16 @@ describe('MarkdownRenderer', () => {
     expect(cells.length).toBeGreaterThanOrEqual(4)
     expect(cells[0].textContent).toBe('Name')
   })
+
+  it('extracts source citation from end of content', () => {
+    renderWithProviders(<MarkdownRenderer content="The answer is 42 (architecture-overview.md)" />)
+    expect(screen.getByText('The answer is 42')).toBeInTheDocument()
+    expect(screen.getByText(/Quelle:.*architecture-overview\.md/)).toBeInTheDocument()
+  })
+
+  it('does not extract citation when no file reference at end', () => {
+    renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
+    expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
+    expect(screen.queryByText(/Quelle:/)).not.toBeInTheDocument()
+  })
 })
