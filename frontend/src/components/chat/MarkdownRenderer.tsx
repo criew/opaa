@@ -110,7 +110,7 @@ const components: Components = {
   td: ({ children }) => <TableCell>{children}</TableCell>,
 }
 
-const SOURCE_CITATION_RE = /\s*\(([^):/]+\.\w{1,5})\)[.!]?\s*$/
+const SOURCE_CITATION_RE = /\s*\((?:Quelle:\s*|Source:\s*)?([^):/]+\.\w{1,5})\)[.!]?\s*$/
 
 function splitSourceCitation(content: string): { body: string; citation: string | null } {
   const match = content.match(SOURCE_CITATION_RE)

@@ -70,6 +70,14 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByText(/Quelle:.*miles-rechnung-45163F60\.pdf/)).toBeInTheDocument()
   })
 
+  it('extracts source citation with "Quelle:" prefix', () => {
+    renderWithProviders(
+      <MarkdownRenderer content="Hier ist die Antwort (Quelle: Modulhandbuch-FHDO.pdf)" />,
+    )
+    expect(screen.getByText('Hier ist die Antwort')).toBeInTheDocument()
+    expect(screen.getByText(/Quelle:.*Modulhandbuch-FHDO\.pdf/)).toBeInTheDocument()
+  })
+
   it('does not extract citation when no file reference at end', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
