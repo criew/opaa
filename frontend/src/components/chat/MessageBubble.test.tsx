@@ -28,6 +28,31 @@ describe('MessageBubble', () => {
     expect(screen.getByLabelText('thumbs up')).toBeInTheDocument()
   })
 
+  it('renders assistant message with markdown', () => {
+    const msg: ChatMessage = {
+      id: '4',
+      role: 'assistant',
+      content: 'This is **bold** text',
+      sources: [],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    const bold = screen.getByText('bold')
+    expect(bold.tagName).toBe('STRONG')
+  })
+
+  it('renders user message as plain text without markdown parsing', () => {
+    const msg: ChatMessage = {
+      id: '5',
+      role: 'user',
+      content: 'This is **not bold**',
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.getByText('This is **not bold**')).toBeInTheDocument()
+    expect(screen.queryByText('not bold')?.tagName).not.toBe('STRONG')
+  })
+
   it('renders source cards for assistant messages', () => {
     const msg: ChatMessage = {
       id: '3',
