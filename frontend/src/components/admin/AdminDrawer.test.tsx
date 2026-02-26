@@ -10,6 +10,7 @@ describe('AdminDrawer', () => {
     useIndexingStore.setState({
       status: 'IDLE',
       documentCount: 0,
+      totalDocuments: 0,
       message: null,
       timestamp: null,
       isPolling: false,
@@ -46,21 +47,37 @@ describe('AdminDrawer', () => {
     expect(screen.getByRole('button', { name: /indexing/i })).toBeDisabled()
   })
 
-  it('shows progress when indexing is running', () => {
+  it('shows indeterminate progress when total is unknown', () => {
     useIndexingStore.setState({
       status: 'RUNNING',
-      message: 'Indexing in progress... 10 documents processed',
+      totalDocuments: 0,
+      documentCount: 0,
     })
     renderWithProviders(<AdminDrawer />)
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.getByText(/10 documents processed/)).toBeInTheDocument()
+    expect(screen.getByText(/discovering documents/i)).toBeInTheDocument()
+  })
+
+  it('shows determinate progress with document counts', () => {
+    useIndexingStore.setState({
+      status: 'RUNNING',
+      totalDocuments: 42,
+      documentCount: 10,
+    })
+    renderWithProviders(<AdminDrawer />)
+
+    const progressbar = screen.getByRole('progressbar')
+    expect(progressbar).toBeInTheDocument()
+    expect(progressbar).toHaveAttribute('aria-valuenow', '24')
+    expect(screen.getByText(/10 of 42 documents indexed/i)).toBeInTheDocument()
   })
 
   it('shows last indexing info when completed', () => {
     useIndexingStore.setState({
       status: 'COMPLETED',
       documentCount: 42,
+      totalDocuments: 42,
       timestamp: '2025-01-15T10:30:00Z',
     })
     renderWithProviders(<AdminDrawer />)

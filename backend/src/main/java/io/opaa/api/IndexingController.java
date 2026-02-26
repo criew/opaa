@@ -40,7 +40,7 @@ public class IndexingController {
         .map(this::toResponse)
         .orElse(
             new IndexingStatusResponse(
-                IndexingStatus.IDLE, 0, "No indexing job found", Instant.now()));
+                IndexingStatus.IDLE, 0, 0, "No indexing job found", Instant.now()));
   }
 
   private IndexingStatusResponse toResponse(IndexingJob job) {
@@ -59,6 +59,7 @@ public class IndexingController {
     return new IndexingStatusResponse(
         status,
         job.getDocumentsProcessed(),
+        job.getDocumentsTotal(),
         message,
         job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt());
   }

@@ -24,6 +24,7 @@ function getRunningStatus(step: number): IndexingStatusResponse {
   return {
     status: 'RUNNING',
     documentCount: Math.round(TOTAL_DOCUMENTS * progress),
+    totalDocuments: TOTAL_DOCUMENTS,
     message: `Indexing in progress... ${Math.round(TOTAL_DOCUMENTS * progress)} documents processed`,
     timestamp: new Date().toISOString(),
   }
@@ -37,7 +38,13 @@ export const handlers = [
   http.post('/api/v1/indexing/trigger', () => {
     indexingPollCount = 0
     indexingActive = true
-    return HttpResponse.json(getRunningStatus(0))
+    return HttpResponse.json({
+      status: 'RUNNING',
+      documentCount: 0,
+      totalDocuments: 0,
+      message: 'Indexing started',
+      timestamp: new Date().toISOString(),
+    } satisfies IndexingStatusResponse)
   }),
 
   http.get('/api/v1/indexing/status', () => {

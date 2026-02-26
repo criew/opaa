@@ -73,6 +73,33 @@ class IndexingJobServiceTest {
   }
 
   @Test
+  void setTotalDocumentsSetsCount() {
+    UUID jobId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+
+    service.setTotalDocuments(jobId, 15);
+
+    assertThat(job.getDocumentsTotal()).isEqualTo(15);
+  }
+
+  @Test
+  void updateProgressSetsCountsWithoutCompletingJob() {
+    UUID jobId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+
+    service.updateProgress(jobId, 5, 1);
+
+    assertThat(job.getDocumentsProcessed()).isEqualTo(5);
+    assertThat(job.getDocumentsFailed()).isEqualTo(1);
+    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
+    assertThat(job.getCompletedAt()).isNull();
+  }
+
+  @Test
   void getLatestJobReturnsEmptyWhenNoJobs() {
     when(indexingJobRepository.findTopByOrderByStartedAtDesc()).thenReturn(Optional.empty());
 

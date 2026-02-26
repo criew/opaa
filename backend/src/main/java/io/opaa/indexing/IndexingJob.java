@@ -25,6 +25,9 @@ public class IndexingJob {
   @Column(name = "documents_failed")
   private int documentsFailed;
 
+  @Column(name = "documents_total")
+  private int documentsTotal;
+
   @Column(name = "started_at", nullable = false, insertable = false, updatable = false)
   private Instant startedAt;
 
@@ -67,6 +70,14 @@ public class IndexingJob {
 
   public void setDocumentsFailed(int documentsFailed) {
     this.documentsFailed = documentsFailed;
+  }
+
+  public int getDocumentsTotal() {
+    return documentsTotal;
+  }
+
+  public void setDocumentsTotal(int documentsTotal) {
+    this.documentsTotal = documentsTotal;
   }
 
   public Instant getStartedAt() {

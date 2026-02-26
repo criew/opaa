@@ -27,17 +27,16 @@ class IndexingControllerTest {
   @MockitoBean private IndexingJobService indexingJobService;
 
   @Test
-  void triggerIndexingReturnsJobStatus() throws Exception {
-    var job = new IndexingJob(JobStatus.COMPLETED);
-    job.setDocumentsProcessed(5);
-    job.setDocumentsFailed(1);
+  void triggerIndexingReturnsRunningJobStatus() throws Exception {
+    var job = new IndexingJob(JobStatus.RUNNING);
     when(documentIndexingService.triggerIndexing()).thenReturn(job);
 
     mockMvc
         .perform(post("/api/v1/indexing/trigger"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("COMPLETED"))
-        .andExpect(jsonPath("$.documentCount").value(5));
+        .andExpect(jsonPath("$.status").value("RUNNING"))
+        .andExpect(jsonPath("$.documentCount").value(0))
+        .andExpect(jsonPath("$.totalDocuments").value(0));
   }
 
   @Test
@@ -48,6 +47,7 @@ class IndexingControllerTest {
         .perform(get("/api/v1/indexing/status"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("IDLE"))
+        .andExpect(jsonPath("$.totalDocuments").value(0))
         .andExpect(jsonPath("$.message").value("No indexing job found"));
   }
 

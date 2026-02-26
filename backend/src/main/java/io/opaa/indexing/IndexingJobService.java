@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 public class IndexingJobService {
@@ -19,7 +20,7 @@ public class IndexingJobService {
     return indexingJobRepository.save(job);
   }
 
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(UUID jobId, int documentsProcessed, int documentsFailed) {
     var job =
         indexingJobRepository
@@ -32,7 +33,7 @@ public class IndexingJobService {
     indexingJobRepository.save(job);
   }
 
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage) {
     var job =
         indexingJobRepository
@@ -41,6 +42,27 @@ public class IndexingJobService {
     job.setStatus(JobStatus.FAILED);
     job.setErrorMessage(errorMessage);
     job.setCompletedAt(Instant.now());
+    indexingJobRepository.save(job);
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void setTotalDocuments(UUID jobId, int totalDocuments) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    job.setDocumentsTotal(totalDocuments);
+    indexingJobRepository.save(job);
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void updateProgress(UUID jobId, int documentsProcessed, int documentsFailed) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    job.setDocumentsProcessed(documentsProcessed);
+    job.setDocumentsFailed(documentsFailed);
     indexingJobRepository.save(job);
   }
 
