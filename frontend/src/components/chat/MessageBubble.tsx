@@ -5,6 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import type { ChatMessage } from '../../types/chat'
+import MarkdownRenderer from './MarkdownRenderer'
 import SourceCard from './SourceCard'
 import FeedbackButtons from './FeedbackButtons'
 
@@ -50,9 +51,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               borderTopLeftRadius: isUser ? undefined : '4px',
             }}
           >
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-              {message.content}
-            </Typography>
+            {isUser ? (
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                {message.content}
+              </Typography>
+            ) : (
+              <MarkdownRenderer content={message.content} />
+            )}
           </Paper>
 
           {!isUser && message.sources && message.sources.length > 0 && (
