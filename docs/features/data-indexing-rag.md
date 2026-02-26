@@ -317,7 +317,8 @@ When a user asks a question:
 2. **Vector Search:** Find top-K similar chunks (typically 20-50)
 3. **Permission Filtering:** Remove chunks user doesn't have access to
 4. **Deduplication:** Remove duplicate information from same document
-5. **Re-ranking:** Score results by relevance
+5. **Source Deduplication:** When multiple chunks originate from the same file, only the chunk with the highest relevance score is kept as source reference (implemented in `QueryService.mapSources()`)
+6. **Re-ranking:** Score results by relevance
 
 ### Retrieval Configuration
 
@@ -504,7 +505,7 @@ System scales to:
 - Should we support real-time indexing (as documents change) vs. scheduled batch?
 - Should re-ranking use a learned model or simple scoring?
 - Should we support document clustering (for discovering related docs automatically)?
-- Should we offer semantic deduplication (remove redundant documents automatically)?
+- Should we offer semantic deduplication (remove redundant documents automatically)? *(Note: basic source-reference deduplication by file name is already implemented — see Issue #42)*
 - How to handle very large documents (100K+ pages)?
 - Should we support hybrid retrieval (vector + keyword search together)?
 - Should there be storage quotas per user or per workspace for uploaded documents?
