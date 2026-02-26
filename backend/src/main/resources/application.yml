@@ -7,18 +7,29 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
+  datasource:
+    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
+    username: ${OPAA_DB_USERNAME:opaa}
+    password: ${OPAA_DB_PASSWORD:opaa}
+  liquibase:
+    enabled: true
   ai:
     model:
       chat: ${OPAA_AI_CHAT_PROVIDER:openai}
       embedding: ${OPAA_AI_EMBEDDING_PROVIDER:openai}
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
+      base-url: ${OPAA_OPENAI_BASE_URL:https://api.openai.com}
       chat:
+        api-key: ${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
+        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
         options:
           model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
           temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
           maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
       embedding:
+        api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
+        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
         options:
           model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     ollama:
@@ -36,8 +47,6 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
-  pgvector:
-    dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
   indexing:
     document-path: ${OPAA_INDEXING_DOCUMENT_PATH:./documents}
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
@@ -55,12 +64,6 @@ spring:
   config:
     activate:
       on-profile: local
-  datasource:
-    url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
-    username: ${OPAA_DB_USERNAME:opaa}
-    password: ${OPAA_DB_PASSWORD:opaa}
-  liquibase:
-    enabled: true
   ai:
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://localhost:11434}
@@ -72,10 +75,6 @@ spring:
       on-profile: docker
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0}
-    username: ${OPAA_DB_USERNAME:opaa}
-    password: ${OPAA_DB_PASSWORD:opaa}
-  liquibase:
-    enabled: true
   ai:
     ollama:
       base-url: ${OPAA_OLLAMA_BASE_URL:http://ollama:11434}
