@@ -50,6 +50,8 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
+  http:
+    force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   indexing:
     document-path: ${OPAA_INDEXING_DOCUMENT_PATH:./documents}
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
