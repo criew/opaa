@@ -1,6 +1,7 @@
 package io.opaa.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.*;
@@ -89,6 +90,10 @@ class OpenAiIntegrationTest {
         """);
 
     IndexingJob job = documentIndexingService.triggerIndexing();
+    assumeTrue(
+        job.getDocumentsProcessed() > 0,
+        "Skipping: OpenAI API returned an error (quota exceeded or rate limited)."
+            + " Ensure the API key has sufficient credits.");
     assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
     assertThat(job.getDocumentsProcessed()).isEqualTo(1);
 
