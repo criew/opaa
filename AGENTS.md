@@ -87,6 +87,12 @@ Every branch ties back to a GitHub Issue via its ID.
 - `frontend/` — React frontend (Vite project)
 - `frontend/src/test/test-utils.tsx` — Shared test render helpers
 
+## Testing
+
+- Backend integration tests use **Testcontainers** — Docker must be running
+- OpenAI integration tests require `OPAA_OPENAI_API_KEY` environment variable (skipped otherwise)
+- See `docs/MVP-VERIFICATION.md` for the full verification matrix
+
 ## Agent Behavior
 
 - Do not refactor code unless explicitly asked

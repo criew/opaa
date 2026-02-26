@@ -1,0 +1,19 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+indent_style = space
+
+[*.java]
+indent_size = 2
+
+[*.{ts,tsx,js,jsx,json,css,html,md,yml,yaml}]
+indent_size = 2
+
+[*.{gradle.kts,kt}]
+indent_size = 4
+
+[*.{bat,cmd}]
+end_of_line = crlf
