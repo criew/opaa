@@ -7,6 +7,7 @@ export type IndexingStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 export interface IndexingStatusResponse {
   status: IndexingStatus
   documentCount: number
+  totalDocuments: number
   message: string | null
   timestamp: string
 }

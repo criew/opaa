@@ -37,6 +37,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:ollama")
     testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.awaitility:awaitility:4.3.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
