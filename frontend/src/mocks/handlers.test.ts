@@ -17,7 +17,7 @@ describe('MSW Handlers', () => {
       const response = await fetch('/api/v1/indexing/trigger', { method: 'POST' })
       const data = await response.json()
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(202)
       expect(data.status).toBe('RUNNING')
       expect(data.documentCount).toBe(0)
     })

@@ -3,11 +3,15 @@ package io.opaa.api;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import java.time.Instant;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,9 +32,18 @@ public class IndexingController {
   }
 
   @PostMapping("/trigger")
-  public IndexingStatusResponse triggerIndexing() {
+  public ResponseEntity<IndexingStatusResponse> triggerIndexing() {
     IndexingJob job = documentIndexingService.triggerIndexing();
-    return toResponse(job);
+    return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(job));
+  }
+
+  @ExceptionHandler(IndexingAlreadyRunningException.class)
+  public ResponseEntity<IndexingStatusResponse> handleAlreadyRunning(
+      IndexingAlreadyRunningException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            new IndexingStatusResponse(
+                IndexingStatus.RUNNING, 0, 0, ex.getMessage(), Instant.now()));
   }
 
   @GetMapping("/status")

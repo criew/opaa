@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
@@ -27,16 +28,28 @@ class IndexingControllerTest {
   @MockitoBean private IndexingJobService indexingJobService;
 
   @Test
-  void triggerIndexingReturnsRunningJobStatus() throws Exception {
+  void triggerIndexingReturnsAcceptedWithRunningStatus() throws Exception {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(documentIndexingService.triggerIndexing()).thenReturn(job);
 
     mockMvc
         .perform(post("/api/v1/indexing/trigger"))
-        .andExpect(status().isOk())
+        .andExpect(status().isAccepted())
         .andExpect(jsonPath("$.status").value("RUNNING"))
         .andExpect(jsonPath("$.documentCount").value(0))
         .andExpect(jsonPath("$.totalDocuments").value(0));
+  }
+
+  @Test
+  void triggerIndexingReturnsConflictWhenAlreadyRunning() throws Exception {
+    when(documentIndexingService.triggerIndexing())
+        .thenThrow(new IndexingAlreadyRunningException("An indexing job is already running"));
+
+    mockMvc
+        .perform(post("/api/v1/indexing/trigger"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.status").value("RUNNING"))
+        .andExpect(jsonPath("$.message").value("An indexing job is already running"));
   }
 
   @Test
