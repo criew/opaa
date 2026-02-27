@@ -15,6 +15,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -29,34 +32,45 @@ public class QueryService {
 
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
+  private final ChatMemory chatMemory;
   private final CitationParser citationParser;
   private final DocumentRepository documentRepository;
 
   public QueryService(
       VectorStore vectorStore,
       AnswerGenerationService answerGenerationService,
+      ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
+    this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.documentRepository = documentRepository;
   }
 
-  public QueryResponse query(String question) {
+  public QueryResponse query(String question, String conversationId) {
     long startTime = System.currentTimeMillis();
+
+    String effectiveConversationId =
+        conversationId != null && !conversationId.isBlank()
+            ? conversationId
+            : UUID.randomUUID().toString();
+
+    String searchQuery = buildSearchQuery(question, effectiveConversationId);
 
     List<Document> relevantChunks =
         vectorStore.similaritySearch(
             SearchRequest.builder()
-                .query(question)
+                .query(searchQuery)
                 .topK(DEFAULT_TOP_K)
                 .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
                 .build());
 
     log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
-    ChatResponse chatResponse = answerGenerationService.generateAnswer(question, relevantChunks);
+    ChatResponse chatResponse =
+        answerGenerationService.generateAnswer(question, relevantChunks, effectiveConversationId);
 
     String answer = extractAnswer(chatResponse);
     Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
@@ -72,7 +86,8 @@ public class QueryService {
     String model = extractModel(chatResponse);
     int tokenCount = extractTokenCount(chatResponse);
 
-    return new QueryResponse(answer, sources, new QueryMetadata(model, tokenCount, durationMs));
+    return new QueryResponse(
+        answer, sources, new QueryMetadata(model, tokenCount, durationMs), effectiveConversationId);
   }
 
   private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {
@@ -162,5 +177,31 @@ public class QueryService {
       return response.getMetadata().getUsage().getTotalTokens();
     }
     return 0;
+  }
+
+  String buildSearchQuery(String question, String conversationId) {
+    List<Message> history = chatMemory.get(conversationId);
+    if (history.isEmpty()) {
+      return question;
+    }
+
+    String firstUserMessage = null;
+    for (Message message : history) {
+      if (message.getMessageType() == MessageType.USER) {
+        firstUserMessage = message.getText();
+        break;
+      }
+    }
+
+    if (firstUserMessage == null) {
+      return question;
+    }
+
+    log.debug(
+        "Enriching search query with conversation context: '{}' -> '{} {}'",
+        question,
+        firstUserMessage,
+        question);
+    return firstUserMessage + " " + question;
   }
 }

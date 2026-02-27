@@ -1,9 +1,15 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import Sidebar from './Sidebar'
+import { useChatStore } from '../stores/chatStore'
 
 describe('Sidebar', () => {
+  beforeEach(() => {
+    useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
+  })
+
   it('renders navigation items', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
     expect(screen.getByText('Chat')).toBeInTheDocument()
@@ -15,5 +21,25 @@ describe('Sidebar', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
     expect(screen.getByText('OPAA')).toBeInTheDocument()
     expect(screen.getByText('AI Project Assistant')).toBeInTheDocument()
+  })
+
+  it('renders New Chat button', () => {
+    renderWithProviders(<Sidebar />, { withRouter: true })
+    expect(screen.getByRole('button', { name: /new chat/i })).toBeInTheDocument()
+  })
+
+  it('clears messages when New Chat button is clicked', async () => {
+    useChatStore.setState({
+      messages: [{ id: '1', role: 'user', content: 'Hello', timestamp: new Date() }],
+      conversationId: 'conv-123',
+    })
+
+    renderWithProviders(<Sidebar />, { withRouter: true })
+
+    await userEvent.click(screen.getByRole('button', { name: /new chat/i }))
+
+    const state = useChatStore.getState()
+    expect(state.messages).toHaveLength(0)
+    expect(state.conversationId).toBeNull()
   })
 })
