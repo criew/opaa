@@ -16,7 +16,7 @@ public class AnswerGenerationService {
 
   private static final Logger log = LoggerFactory.getLogger(AnswerGenerationService.class);
 
-  static final String CITATION_FORMAT = "【source: %s | %s】";
+  static final String CITATION_FORMAT = "【source: %s#%s | %s】";
 
   private static final String SYSTEM_PROMPT =
       """
@@ -26,9 +26,9 @@ public class AnswerGenerationService {
 
       CITATION RULES (mandatory):
       - You MUST cite every source you use by placing the citation inline in your answer.
-      - Use exactly this format: 【source: <document_id> | <file_name>】
-      - Copy the document_id and file_name exactly from the [Source] header of each context chunk.
-      - Example: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6 | readme.md】
+      - Use exactly this format: 【source: <document_id>#<chunk_index> | <file_name>】
+      - Copy the values exactly from the [Source] header of each context chunk.
+      - Example: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | readme.md】
       - Do NOT invent citations. Only cite documents listed below.
       - Place citations at the end of the sentence or paragraph that uses the information.
 
@@ -61,13 +61,16 @@ public class AnswerGenerationService {
             chunk -> {
               String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
               String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
+              String chunkIndex = chunk.getMetadata().getOrDefault("chunk_index", "0").toString();
               String header =
                   "[Source: "
                       + fileName
                       + ", document_id: "
                       + documentId
+                      + ", chunk_index: "
+                      + chunkIndex
                       + ", cite as: "
-                      + String.format(CITATION_FORMAT, documentId, fileName)
+                      + String.format(CITATION_FORMAT, documentId, chunkIndex, fileName)
                       + "]\n";
               return header + chunk.getText();
             })

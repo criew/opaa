@@ -1,9 +1,11 @@
+import { Fragment } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import Box from '@mui/material/Box'
+import Chip from '@mui/material/Chip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -14,6 +16,37 @@ import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
   content: string
+}
+
+const CITATION_RE = /【source:\s*[a-zA-Z0-9-]+#\d+\s*\|\s*(.+?)】/
+
+function renderWithCitations(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  const regex = new RegExp(CITATION_RE.source, 'g')
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const fileName = match[1].trim()
+    parts.push(
+      <Chip
+        key={`citation-${match.index}`}
+        label={fileName}
+        size="small"
+        variant="outlined"
+        color="primary"
+        sx={{ height: 20, fontSize: '0.7rem', mx: 0.25, verticalAlign: 'text-bottom' }}
+      />,
+    )
+    lastIndex = regex.lastIndex
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+  return parts
 }
 
 const components: Components = {
@@ -110,30 +143,49 @@ const components: Components = {
   td: ({ children }) => <TableCell>{children}</TableCell>,
 }
 
-const SOURCE_CITATION_RE = /\s*\((?:Quelle:\s*|Source:\s*)?([^):/]+\.\w{1,5})\)[.!]?\s*$/
-
-function splitSourceCitation(content: string): { body: string; citation: string | null } {
-  const match = content.match(SOURCE_CITATION_RE)
-  if (!match) return { body: content, citation: null }
-  return { body: content.slice(0, match.index).trimEnd(), citation: match[1] }
-}
-
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const { body, citation } = splitSourceCitation(content)
-  return (
-    <>
+  const hasCitations = CITATION_RE.test(content)
+
+  if (!hasCitations) {
+    return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={components}
       >
-        {body}
+        {content}
       </ReactMarkdown>
-      {citation && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-          Quelle: {citation}
-        </Typography>
-      )}
+    )
+  }
+
+  const lines = content.split('\n')
+  return (
+    <>
+      {lines.map((line, i) => {
+        if (CITATION_RE.test(line)) {
+          return (
+            <Typography
+              key={i}
+              variant="body1"
+              sx={{ mb: 1, '&:last-child': { mb: 0 } }}
+              component="div"
+            >
+              {renderWithCitations(line)}
+            </Typography>
+          )
+        }
+        return (
+          <Fragment key={i}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={components}
+            >
+              {line}
+            </ReactMarkdown>
+          </Fragment>
+        )
+      })}
     </>
   )
 }
