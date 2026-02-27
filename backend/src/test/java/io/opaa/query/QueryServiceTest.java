@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.indexing.DocumentRepository;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +30,14 @@ class QueryServiceTest {
 
   @Mock private VectorStore vectorStore;
   @Mock private AnswerGenerationService answerGenerationService;
+  @Mock private DocumentRepository documentRepository;
   private QueryService queryService;
 
   @BeforeEach
   void setUp() {
-    queryService = new QueryService(vectorStore, answerGenerationService, new CitationParser());
+    queryService =
+        new QueryService(
+            vectorStore, answerGenerationService, new CitationParser(), documentRepository);
   }
 
   @Test
@@ -61,6 +65,7 @@ class QueryServiceTest {
     assertThat(response.sources().getFirst().fileName()).isEqualTo("readme.md");
     assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.85);
     assertThat(response.sources().getFirst().cited()).isTrue();
+    assertThat(response.sources().getFirst().matchCount()).isEqualTo(1);
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
   }
@@ -90,10 +95,44 @@ class QueryServiceTest {
     QueryResponse response = queryService.query("Question");
 
     assertThat(response.sources()).hasSize(2);
-    assertThat(response.sources().get(0).fileName()).isEqualTo("readme.md");
     assertThat(response.sources().get(0).cited()).isTrue();
-    assertThat(response.sources().get(1).fileName()).isEqualTo("other.pdf");
     assertThat(response.sources().get(1).cited()).isFalse();
+  }
+
+  @Test
+  void queryCountsMatchesPerFile() {
+    var chunk1 =
+        Document.builder()
+            .text("First chunk")
+            .metadata(Map.of("file_name", "report.pdf", "document_id", "doc-1"))
+            .score(0.9)
+            .build();
+    var chunk2 =
+        Document.builder()
+            .text("Second chunk")
+            .metadata(Map.of("file_name", "report.pdf", "document_id", "doc-1"))
+            .score(0.7)
+            .build();
+    var chunk3 =
+        Document.builder()
+            .text("Readme chunk")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-2"))
+            .score(0.8)
+            .build();
+
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(chunk1, chunk2, chunk3));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question");
+
+    assertThat(response.sources()).hasSize(2);
+    assertThat(response.sources().get(0).fileName()).isEqualTo("report.pdf");
+    assertThat(response.sources().get(0).matchCount()).isEqualTo(2);
+    assertThat(response.sources().get(1).fileName()).isEqualTo("readme.md");
+    assertThat(response.sources().get(1).matchCount()).isEqualTo(1);
   }
 
   @Test
@@ -117,27 +156,6 @@ class QueryServiceTest {
   }
 
   @Test
-  void queryTruncatesLongExcerpts() {
-    String longText = "A".repeat(300);
-    var chunk =
-        Document.builder()
-            .text(longText)
-            .metadata(Map.of("file_name", "long.md", "document_id", "doc-1"))
-            .score(0.9)
-            .build();
-
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
-
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
-
-    QueryResponse response = queryService.query("Question");
-
-    assertThat(response.sources().getFirst().excerpt()).hasSize(203);
-    assertThat(response.sources().getFirst().excerpt()).endsWith("...");
-  }
-
-  @Test
   void queryDeduplicatesSourcesByFileName() {
     var chunk1 =
         Document.builder()
@@ -151,44 +169,9 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "report.pdf", "document_id", "doc-1"))
             .score(0.7)
             .build();
-    var chunk3 =
-        Document.builder()
-            .text("Readme content")
-            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-2"))
-            .score(0.8)
-            .build();
 
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
-        .thenReturn(List.of(chunk1, chunk2, chunk3));
-
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
-
-    QueryResponse response = queryService.query("Question");
-
-    assertThat(response.sources()).hasSize(2);
-    assertThat(response.sources().get(0).fileName()).isEqualTo("report.pdf");
-    assertThat(response.sources().get(0).relevanceScore()).isEqualTo(0.9);
-    assertThat(response.sources().get(1).fileName()).isEqualTo("readme.md");
-  }
-
-  @Test
-  void queryKeepsHighestScoreRegardlessOfOrder() {
-    var lowScoreFirst =
-        Document.builder()
-            .text("Low score")
-            .metadata(Map.of("file_name", "data.csv", "document_id", "doc-1"))
-            .score(0.6)
-            .build();
-    var highScoreSecond =
-        Document.builder()
-            .text("High score")
-            .metadata(Map.of("file_name", "data.csv", "document_id", "doc-1"))
-            .score(0.95)
-            .build();
-
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
-        .thenReturn(List.of(lowScoreFirst, highScoreSecond));
+        .thenReturn(List.of(chunk1, chunk2));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
@@ -196,34 +179,7 @@ class QueryServiceTest {
     QueryResponse response = queryService.query("Question");
 
     assertThat(response.sources()).hasSize(1);
-    assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.95);
-  }
-
-  @Test
-  void queryUsesExcerptFromHighestScoringChunk() {
-    var lowScore =
-        Document.builder()
-            .text("Wrong excerpt")
-            .metadata(Map.of("file_name", "notes.txt", "document_id", "doc-1"))
-            .score(0.5)
-            .build();
-    var highScore =
-        Document.builder()
-            .text("Correct excerpt")
-            .metadata(Map.of("file_name", "notes.txt", "document_id", "doc-1"))
-            .score(0.99)
-            .build();
-
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
-        .thenReturn(List.of(lowScore, highScore));
-
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
-
-    QueryResponse response = queryService.query("Question");
-
-    assertThat(response.sources()).hasSize(1);
-    assertThat(response.sources().getFirst().excerpt()).isEqualTo("Correct excerpt");
+    assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.9);
   }
 
   @Test

@@ -17,6 +17,12 @@ interface SourceCardProps {
   source: SourceReference
 }
 
+function formatIndexedAt(indexedAt: string | null): string {
+  if (!indexedAt) return '-'
+  const date = new Date(indexedAt)
+  return date.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 export default function SourceCard({ source }: SourceCardProps) {
   const accessLevel = deriveAccessLevel(source.fileName)
   const relevancePercent = Math.round(source.relevanceScore * 100)
@@ -27,14 +33,17 @@ export default function SourceCard({ source }: SourceCardProps) {
       sx={{
         p: 1.5,
         bgcolor: 'background.default',
-        maxWidth: 360,
-        opacity: source.cited ? 1 : 0.5,
+        width: 220,
+        minWidth: 220,
+        opacity: source.cited ? 1 : 0.6,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-        <Typography variant="body2" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
-          {source.fileName}
-        </Typography>
+        <Tooltip title={source.fileName}>
+          <Typography variant="body2" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
+            {source.fileName}
+          </Typography>
+        </Tooltip>
         <Tooltip title="Access levels coming in a future release">
           <Chip
             label={accessLevel}
@@ -44,25 +53,17 @@ export default function SourceCard({ source }: SourceCardProps) {
           />
         </Tooltip>
       </Box>
-      <Typography variant="caption" color="text.secondary">
-        {relevancePercent}% relevant
-      </Typography>
-      {source.excerpt && (
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mt: 0.5,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {source.excerpt}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+        <Typography variant="caption" color="text.secondary">
+          {relevancePercent}% relevant
         </Typography>
-      )}
+        <Typography variant="caption" color="text.secondary">
+          {source.matchCount} {source.matchCount === 1 ? 'Treffer' : 'Treffer'}
+        </Typography>
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+        Indexiert: {formatIndexedAt(source.indexedAt)}
+      </Typography>
     </Paper>
   )
 }
