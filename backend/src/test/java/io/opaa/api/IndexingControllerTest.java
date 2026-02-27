@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +12,7 @@ import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +39,8 @@ class IndexingControllerTest {
         .andExpect(status().isAccepted())
         .andExpect(jsonPath("$.status").value("RUNNING"))
         .andExpect(jsonPath("$.documentCount").value(0))
-        .andExpect(jsonPath("$.totalDocuments").value(0));
+        .andExpect(jsonPath("$.totalDocuments").value(0))
+        .andExpect(jsonPath("$.documentsSkipped").value(0));
   }
 
   @Test
@@ -49,6 +52,7 @@ class IndexingControllerTest {
         .perform(post("/api/v1/indexing/trigger"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value("RUNNING"))
+        .andExpect(jsonPath("$.documentsSkipped").value(0))
         .andExpect(jsonPath("$.message").value("An indexing job is already running"));
   }
 
@@ -61,6 +65,7 @@ class IndexingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("IDLE"))
         .andExpect(jsonPath("$.totalDocuments").value(0))
+        .andExpect(jsonPath("$.documentsSkipped").value(0))
         .andExpect(jsonPath("$.message").value("No indexing job found"));
   }
 
@@ -72,6 +77,27 @@ class IndexingControllerTest {
     mockMvc
         .perform(get("/api/v1/indexing/status"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("RUNNING"));
+        .andExpect(jsonPath("$.status").value("RUNNING"))
+        .andExpect(jsonPath("$.documentsSkipped").value(0));
+  }
+
+  @Test
+  void getStatusReturnsCompletedJobWithSkippedCount() throws Exception {
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.COMPLETED);
+    job.setDocumentsProcessed(10);
+    job.setDocumentsFailed(1);
+    job.setDocumentsSkipped(5);
+    job.setDocumentsTotal(16);
+    job.setCompletedAt(Instant.now());
+    when(indexingJobService.getLatestJob()).thenReturn(Optional.of(job));
+
+    mockMvc
+        .perform(get("/api/v1/indexing/status"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("COMPLETED"))
+        .andExpect(jsonPath("$.documentCount").value(10))
+        .andExpect(jsonPath("$.documentsSkipped").value(5))
+        .andExpect(jsonPath("$.message").value(containsString("5 skipped")));
   }
 }

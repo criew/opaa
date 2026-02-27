@@ -8,6 +8,7 @@ export interface IndexingStatusResponse {
   status: IndexingStatus
   documentCount: number
   totalDocuments: number
+  documentsSkipped: number
   message: string | null
   timestamp: string
 }

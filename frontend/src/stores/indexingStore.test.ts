@@ -7,6 +7,7 @@ describe('indexingStore', () => {
       status: 'IDLE',
       documentCount: 0,
       totalDocuments: 0,
+      documentsSkipped: 0,
       message: null,
       timestamp: null,
       isPolling: false,
@@ -23,6 +24,7 @@ describe('indexingStore', () => {
     const state = useIndexingStore.getState()
     expect(state.status).toBe('IDLE')
     expect(state.totalDocuments).toBe(0)
+    expect(state.documentsSkipped).toBe(0)
     expect(state.isPolling).toBe(false)
     expect(state.drawerOpen).toBe(false)
   })

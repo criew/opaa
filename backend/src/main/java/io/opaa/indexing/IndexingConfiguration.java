@@ -29,6 +29,11 @@ public class IndexingConfiguration {
   }
 
   @Bean
+  ChecksumService checksumService() {
+    return new ChecksumService();
+  }
+
+  @Bean
   IndexingJobService indexingJobService(IndexingJobRepository indexingJobRepository) {
     return new IndexingJobService(indexingJobRepository);
   }
@@ -38,9 +43,10 @@ public class IndexingConfiguration {
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
-      VectorStore vectorStore) {
+      VectorStore vectorStore,
+      ChecksumService checksumService) {
     return new FileProcessingService(
-        documentService, chunkingService, documentRepository, vectorStore);
+        documentService, chunkingService, documentRepository, vectorStore, checksumService);
   }
 
   @Bean
