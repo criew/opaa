@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -64,6 +63,24 @@ function renderWithCitations(text: string): React.ReactNode[] {
   return parts
 }
 
+function processChildren(children: React.ReactNode): React.ReactNode {
+  if (typeof children === 'string') {
+    if (CITATION_RE.test(children)) {
+      return renderWithCitations(children)
+    }
+    return children
+  }
+  if (Array.isArray(children)) {
+    return children.map((child, i) => {
+      if (typeof child === 'string' && CITATION_RE.test(child)) {
+        return <span key={i}>{renderWithCitations(child)}</span>
+      }
+      return child
+    })
+  }
+  return children
+}
+
 const components: Components = {
   h1: ({ children }) => (
     <Typography variant="h5" gutterBottom>
@@ -82,7 +99,7 @@ const components: Components = {
   ),
   p: ({ children }) => (
     <Typography variant="body1" sx={{ mb: 1, '&:last-child': { mb: 0 } }}>
-      {children}
+      {processChildren(children)}
     </Typography>
   ),
   a: ({ href, children }) => (
@@ -143,7 +160,7 @@ const components: Components = {
   ),
   li: ({ children }) => (
     <Typography component="li" variant="body1">
-      {children}
+      {processChildren(children)}
     </Typography>
   ),
   table: ({ children }) => (
@@ -155,52 +172,17 @@ const components: Components = {
   tbody: ({ children }) => <TableBody>{children}</TableBody>,
   tr: ({ children }) => <TableRow>{children}</TableRow>,
   th: ({ children }) => <TableCell sx={{ fontWeight: 'bold' }}>{children}</TableCell>,
-  td: ({ children }) => <TableCell>{children}</TableCell>,
+  td: ({ children }) => <TableCell>{processChildren(children)}</TableCell>,
 }
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const hasCitations = CITATION_RE.test(content)
-
-  if (!hasCitations) {
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
-    )
-  }
-
-  const lines = content.split('\n')
   return (
-    <>
-      {lines.map((line, i) => {
-        if (CITATION_RE.test(line)) {
-          return (
-            <Typography
-              key={i}
-              variant="body1"
-              sx={{ mb: 1, '&:last-child': { mb: 0 } }}
-              component="div"
-            >
-              {renderWithCitations(line)}
-            </Typography>
-          )
-        }
-        return (
-          <Fragment key={i}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
-              components={components}
-            >
-              {line}
-            </ReactMarkdown>
-          </Fragment>
-        )
-      })}
-    </>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight]}
+      components={components}
+    >
+      {content}
+    </ReactMarkdown>
   )
 }
