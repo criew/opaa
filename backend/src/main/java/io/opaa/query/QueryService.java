@@ -5,9 +5,14 @@ import static java.util.stream.Collectors.toMap;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.indexing.DocumentRepository;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -25,14 +30,17 @@ public class QueryService {
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
   private final CitationParser citationParser;
+  private final DocumentRepository documentRepository;
 
   public QueryService(
       VectorStore vectorStore,
       AnswerGenerationService answerGenerationService,
-      CitationParser citationParser) {
+      CitationParser citationParser,
+      DocumentRepository documentRepository) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.citationParser = citationParser;
+    this.documentRepository = documentRepository;
   }
 
   public QueryResponse query(String question) {
@@ -52,7 +60,10 @@ public class QueryService {
 
     String answer = extractAnswer(chatResponse);
     Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
-    List<SourceReference> sources = mapSources(relevantChunks, citedDocumentIds);
+    Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
+    Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
+    List<SourceReference> sources =
+        mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
 
     log.debug(
         "Citations found: {} cited, {} total sources", citedDocumentIds.size(), sources.size());
@@ -64,16 +75,49 @@ public class QueryService {
     return new QueryResponse(answer, sources, new QueryMetadata(model, tokenCount, durationMs));
   }
 
-  private List<SourceReference> mapSources(List<Document> chunks, Set<String> citedDocumentIds) {
+  private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {
+    return chunks.stream()
+        .collect(
+            Collectors.groupingBy(
+                chunk -> chunk.getMetadata().getOrDefault("file_name", "unknown").toString(),
+                Collectors.summingInt(e -> 1)));
+  }
+
+  private Map<String, Instant> lookupIndexedAt(List<Document> chunks) {
+    Set<String> documentIds =
+        chunks.stream()
+            .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
+            .filter(id -> !id.isEmpty())
+            .collect(Collectors.toSet());
+
+    Map<String, Instant> result = new LinkedHashMap<>();
+    for (String docId : documentIds) {
+      try {
+        documentRepository
+            .findById(UUID.fromString(docId))
+            .ifPresent(doc -> result.put(docId, doc.getIndexedAt()));
+      } catch (IllegalArgumentException e) {
+        log.debug("Invalid document ID format: {}", docId);
+      }
+    }
+    return result;
+  }
+
+  private List<SourceReference> mapSources(
+      List<Document> chunks,
+      Set<String> citedDocumentIds,
+      Map<String, Integer> matchCounts,
+      Map<String, Instant> indexedAtByDocId) {
     return chunks.stream()
         .map(
             chunk -> {
               String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
               String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
               double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
-              String excerpt = truncateExcerpt(chunk.getText(), 200);
               boolean cited = citedDocumentIds.contains(documentId);
-              return new SourceReference(fileName, score, excerpt, cited);
+              int matches = matchCounts.getOrDefault(fileName, 1);
+              Instant indexedAt = indexedAtByDocId.get(documentId);
+              return new SourceReference(fileName, score, matches, indexedAt, cited);
             })
         .collect(
             toMap(
@@ -84,7 +128,11 @@ public class QueryService {
                   SourceReference winner = a.relevanceScore() >= b.relevanceScore() ? a : b;
                   if (eitherCited && !winner.cited()) {
                     return new SourceReference(
-                        winner.fileName(), winner.relevanceScore(), winner.excerpt(), true);
+                        winner.fileName(),
+                        winner.relevanceScore(),
+                        winner.matchCount(),
+                        winner.indexedAt(),
+                        true);
                   }
                   return winner;
                 },
@@ -100,13 +148,6 @@ public class QueryService {
     }
     String text = response.getResult().getOutput().getText();
     return text != null ? text : "";
-  }
-
-  private String truncateExcerpt(String text, int maxLength) {
-    if (text == null || text.length() <= maxLength) {
-      return text;
-    }
-    return text.substring(0, maxLength) + "...";
   }
 
   private String extractModel(ChatResponse response) {

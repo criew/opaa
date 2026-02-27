@@ -10,6 +10,7 @@ import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.query.QueryService;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -33,7 +34,8 @@ class QueryControllerTest {
     var response =
         new QueryResponse(
             "The answer",
-            List.of(new SourceReference("doc.md", 0.9, "excerpt text", true)),
+            List.of(
+                new SourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryMetadata("gpt-4o", 500, 1200));
     when(queryService.query(anyString())).thenReturn(response);
 
@@ -46,7 +48,9 @@ class QueryControllerTest {
         .andExpect(jsonPath("$.answer").value("The answer"))
         .andExpect(jsonPath("$.sources[0].fileName").value("doc.md"))
         .andExpect(jsonPath("$.sources[0].relevanceScore").value(0.9))
-        .andExpect(jsonPath("$.sources[0].excerpt").value("excerpt text"))
+        .andExpect(jsonPath("$.sources[0].matchCount").value(2))
+        .andExpect(jsonPath("$.sources[0].indexedAt").exists())
+        .andExpect(jsonPath("$.sources[0].cited").value(true))
         .andExpect(jsonPath("$.metadata.model").value("gpt-4o"))
         .andExpect(jsonPath("$.metadata.tokenCount").value(500))
         .andExpect(jsonPath("$.metadata.durationMs").value(1200));
