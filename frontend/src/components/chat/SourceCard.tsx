@@ -22,7 +22,15 @@ export default function SourceCard({ source }: SourceCardProps) {
   const relevancePercent = Math.round(source.relevanceScore * 100)
 
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default', maxWidth: 360 }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.5,
+        bgcolor: 'background.default',
+        maxWidth: 360,
+        opacity: source.cited ? 1 : 0.5,
+      }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Typography variant="body2" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
           {source.fileName}

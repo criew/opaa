@@ -16,13 +16,21 @@ public class AnswerGenerationService {
 
   private static final Logger log = LoggerFactory.getLogger(AnswerGenerationService.class);
 
+  static final String CITATION_FORMAT = "【source: %s | %s】";
+
   private static final String SYSTEM_PROMPT =
       """
       You are a helpful project assistant. Answer the user's question based solely on the \
       provided context documents. If the context does not contain enough information to answer \
       the question, say so honestly.
 
-      When referencing information, cite the source file name in parentheses, e.g. (filename.md).
+      CITATION RULES (mandatory):
+      - You MUST cite every source you use by placing the citation inline in your answer.
+      - Use exactly this format: 【source: <document_id> | <file_name>】
+      - Copy the document_id and file_name exactly from the [Source] header of each context chunk.
+      - Example: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6 | readme.md】
+      - Do NOT invent citations. Only cite documents listed below.
+      - Place citations at the end of the sentence or paragraph that uses the information.
 
       Context documents:
       {context}
@@ -53,11 +61,14 @@ public class AnswerGenerationService {
             chunk -> {
               String fileName = chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
               String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
-              var header = new StringBuilder("[Source: " + fileName);
-              if (!documentId.isEmpty()) {
-                header.append(", ID: ").append(documentId);
-              }
-              header.append("]\n");
+              String header =
+                  "[Source: "
+                      + fileName
+                      + ", document_id: "
+                      + documentId
+                      + ", cite as: "
+                      + String.format(CITATION_FORMAT, documentId, fileName)
+                      + "]\n";
               return header + chunk.getText();
             })
         .collect(Collectors.joining("\n\n---\n\n"));

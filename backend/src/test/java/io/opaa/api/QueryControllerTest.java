@@ -33,7 +33,7 @@ class QueryControllerTest {
     var response =
         new QueryResponse(
             "The answer",
-            List.of(new SourceReference("doc.md", 0.9, "excerpt text")),
+            List.of(new SourceReference("doc.md", 0.9, "excerpt text", true)),
             new QueryMetadata("gpt-4o", 500, 1200));
     when(queryService.query(anyString())).thenReturn(response);
 
