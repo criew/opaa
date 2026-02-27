@@ -16,8 +16,15 @@ public class QueryConfiguration {
   }
 
   @Bean
+  CitationParser citationParser() {
+    return new CitationParser();
+  }
+
+  @Bean
   QueryService queryService(
-      VectorStore vectorStore, AnswerGenerationService answerGenerationService) {
-    return new QueryService(vectorStore, answerGenerationService);
+      VectorStore vectorStore,
+      AnswerGenerationService answerGenerationService,
+      CitationParser citationParser) {
+    return new QueryService(vectorStore, answerGenerationService, citationParser);
   }
 }

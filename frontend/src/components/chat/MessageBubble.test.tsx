@@ -58,7 +58,7 @@ describe('MessageBubble', () => {
       id: '3',
       role: 'assistant',
       content: 'Answer',
-      sources: [{ fileName: 'test.md', relevanceScore: 0.9, excerpt: 'Excerpt' }],
+      sources: [{ fileName: 'test.md', relevanceScore: 0.9, excerpt: 'Excerpt', cited: true }],
       timestamp: new Date(),
     }
     render(<MessageBubble message={msg} />)

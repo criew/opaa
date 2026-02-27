@@ -29,8 +29,10 @@ class AnswerGenerationServiceTest {
 
   @Test
   void generateAnswerBuildsCorrectPromptAndReturnsResponse() {
-    var chunk1 = new Document("Chunk one text", Map.of("file_name", "doc1.md"));
-    var chunk2 = new Document("Chunk two text", Map.of("file_name", "doc2.pdf"));
+    var chunk1 =
+        new Document("Chunk one text", Map.of("file_name", "doc1.md", "document_id", "id-1"));
+    var chunk2 =
+        new Document("Chunk two text", Map.of("file_name", "doc2.pdf", "document_id", "id-2"));
 
     var assistantMessage = new AssistantMessage("Generated answer");
     var generation = new Generation(assistantMessage);
@@ -48,7 +50,6 @@ class AnswerGenerationServiceTest {
     Prompt capturedPrompt = promptCaptor.getValue();
     assertThat(capturedPrompt.getInstructions()).hasSize(2);
 
-    // System message contains context
     var systemMessage = capturedPrompt.getInstructions().get(0);
     assertThat(systemMessage.getMessageType()).isEqualTo(MessageType.SYSTEM);
     assertThat(systemMessage.getText()).contains("doc1.md");
@@ -56,10 +57,27 @@ class AnswerGenerationServiceTest {
     assertThat(systemMessage.getText()).contains("Chunk one text");
     assertThat(systemMessage.getText()).contains("Chunk two text");
 
-    // User message contains the question
     var userMessage = capturedPrompt.getInstructions().get(1);
     assertThat(userMessage.getMessageType()).isEqualTo(MessageType.USER);
     assertThat(userMessage.getText()).isEqualTo("What is OPAA?");
+  }
+
+  @Test
+  void generateAnswerIncludesCitationInstructionsInSystemPrompt() {
+    var chunk = new Document("Content", Map.of("file_name", "readme.md", "document_id", "uuid-1"));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    answerGenerationService.generateAnswer("Question?", List.of(chunk));
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel).call(promptCaptor.capture());
+
+    String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
+    assertThat(systemText).contains("【source:");
+    assertThat(systemText).contains("CITATION RULES");
+    assertThat(systemText).contains("cite as: 【source: uuid-1 | readme.md】");
   }
 
   @Test

@@ -26,6 +26,7 @@ export interface SourceReference {
   fileName: string
   relevanceScore: number
   excerpt: string
+  cited: boolean
 }
 
 export interface QueryMetadata {
