@@ -5,7 +5,7 @@ import rehypeHighlight from 'rehype-highlight'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
+import Tooltip from '@mui/material/Tooltip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -32,14 +32,29 @@ function renderWithCitations(text: string): React.ReactNode[] {
     }
     const fileName = match[1].trim()
     parts.push(
-      <Chip
-        key={`citation-${match.index}`}
-        label={fileName}
-        size="small"
-        variant="outlined"
-        color="primary"
-        sx={{ height: 20, fontSize: '0.7rem', mx: 0.25, verticalAlign: 'text-bottom' }}
-      />,
+      <Tooltip key={`citation-${match.index}`} title={fileName} arrow>
+        <Box
+          component="span"
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            mx: 0.25,
+            verticalAlign: 'text-bottom',
+            cursor: 'default',
+          }}
+          aria-label={fileName}
+        >
+          ↗
+        </Box>
+      </Tooltip>,
     )
     lastIndex = regex.lastIndex
   }
