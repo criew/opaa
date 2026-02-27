@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -24,10 +27,15 @@ public class QueryService {
 
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
+  private final ChatMemory chatMemory;
 
-  public QueryService(VectorStore vectorStore, AnswerGenerationService answerGenerationService) {
+  public QueryService(
+      VectorStore vectorStore,
+      AnswerGenerationService answerGenerationService,
+      ChatMemory chatMemory) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
+    this.chatMemory = chatMemory;
   }
 
   public QueryResponse query(String question, String conversationId) {
@@ -38,10 +46,12 @@ public class QueryService {
             ? conversationId
             : UUID.randomUUID().toString();
 
+    String searchQuery = buildSearchQuery(question, effectiveConversationId);
+
     List<Document> relevantChunks =
         vectorStore.similaritySearch(
             SearchRequest.builder()
-                .query(question)
+                .query(searchQuery)
                 .topK(DEFAULT_TOP_K)
                 .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
                 .build());
@@ -109,5 +119,31 @@ public class QueryService {
       return response.getMetadata().getUsage().getTotalTokens();
     }
     return 0;
+  }
+
+  String buildSearchQuery(String question, String conversationId) {
+    List<Message> history = chatMemory.get(conversationId);
+    if (history.isEmpty()) {
+      return question;
+    }
+
+    String lastUserMessage = null;
+    for (int i = history.size() - 1; i >= 0; i--) {
+      if (history.get(i).getMessageType() == MessageType.USER) {
+        lastUserMessage = history.get(i).getText();
+        break;
+      }
+    }
+
+    if (lastUserMessage == null) {
+      return question;
+    }
+
+    log.debug(
+        "Enriching search query with conversation context: '{}' -> '{} {}'",
+        question,
+        lastUserMessage,
+        question);
+    return lastUserMessage + " " + question;
   }
 }
