@@ -50,9 +50,8 @@ public class QueryService {
 
     ChatResponse chatResponse = answerGenerationService.generateAnswer(question, relevantChunks);
 
-    String rawAnswer = extractAnswer(chatResponse);
-    Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(rawAnswer);
-    String cleanAnswer = citationParser.removeCitations(rawAnswer);
+    String answer = extractAnswer(chatResponse);
+    Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
     List<SourceReference> sources = mapSources(relevantChunks, citedDocumentIds);
 
     log.debug(
@@ -62,8 +61,7 @@ public class QueryService {
     String model = extractModel(chatResponse);
     int tokenCount = extractTokenCount(chatResponse);
 
-    return new QueryResponse(
-        cleanAnswer, sources, new QueryMetadata(model, tokenCount, durationMs));
+    return new QueryResponse(answer, sources, new QueryMetadata(model, tokenCount, durationMs));
   }
 
   private List<SourceReference> mapSources(List<Document> chunks, Set<String> citedDocumentIds) {
@@ -82,9 +80,9 @@ public class QueryService {
                 SourceReference::fileName,
                 source -> source,
                 (a, b) -> {
-                  boolean eithCited = a.cited() || b.cited();
+                  boolean eitherCited = a.cited() || b.cited();
                   SourceReference winner = a.relevanceScore() >= b.relevanceScore() ? a : b;
-                  if (eithCited && !winner.cited()) {
+                  if (eitherCited && !winner.cited()) {
                     return new SourceReference(
                         winner.fileName(), winner.relevanceScore(), winner.excerpt(), true);
                   }

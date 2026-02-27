@@ -64,7 +64,9 @@ class AnswerGenerationServiceTest {
 
   @Test
   void generateAnswerIncludesCitationInstructionsInSystemPrompt() {
-    var chunk = new Document("Content", Map.of("file_name", "readme.md", "document_id", "uuid-1"));
+    var chunk =
+        new Document(
+            "Content", Map.of("file_name", "readme.md", "document_id", "uuid-1", "chunk_index", 0));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
@@ -77,7 +79,7 @@ class AnswerGenerationServiceTest {
     String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
     assertThat(systemText).contains("【source:");
     assertThat(systemText).contains("CITATION RULES");
-    assertThat(systemText).contains("cite as: 【source: uuid-1 | readme.md】");
+    assertThat(systemText).contains("cite as: 【source: uuid-1#0 | readme.md】");
   }
 
   @Test

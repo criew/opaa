@@ -56,31 +56,24 @@ describe('MarkdownRenderer', () => {
     expect(cells[0].textContent).toBe('Name')
   })
 
-  it('extracts source citation from end of content', () => {
-    renderWithProviders(<MarkdownRenderer content="The answer is 42 (architecture-overview.md)" />)
-    expect(screen.getByText('The answer is 42')).toBeInTheDocument()
-    expect(screen.getByText(/Quelle:.*architecture-overview\.md/)).toBeInTheDocument()
-  })
-
-  it('extracts source citation followed by a period', () => {
+  it('renders citation markers as inline chips', () => {
     renderWithProviders(
-      <MarkdownRenderer content="Die Mehrwertsteuer beträgt 0,79€ (miles-rechnung-45163F60.pdf)." />,
+      <MarkdownRenderer content="The answer is 42 【source: doc-1#0 | readme.md】." />,
     )
-    expect(screen.getByText(/Mehrwertsteuer/)).toBeInTheDocument()
-    expect(screen.getByText(/Quelle:.*miles-rechnung-45163F60\.pdf/)).toBeInTheDocument()
+    expect(screen.getByText('readme.md')).toBeInTheDocument()
+    expect(screen.getByText(/The answer is 42/)).toBeInTheDocument()
   })
 
-  it('extracts source citation with "Quelle:" prefix', () => {
+  it('renders multiple citations as separate chips', () => {
     renderWithProviders(
-      <MarkdownRenderer content="Hier ist die Antwort (Quelle: Modulhandbuch-FHDO.pdf)" />,
+      <MarkdownRenderer content="Info 【source: id-1#0 | arch.md】 and 【source: id-2#3 | deploy.pdf】." />,
     )
-    expect(screen.getByText('Hier ist die Antwort')).toBeInTheDocument()
-    expect(screen.getByText(/Quelle:.*Modulhandbuch-FHDO\.pdf/)).toBeInTheDocument()
+    expect(screen.getByText('arch.md')).toBeInTheDocument()
+    expect(screen.getByText('deploy.pdf')).toBeInTheDocument()
   })
 
-  it('does not extract citation when no file reference at end', () => {
+  it('does not render citation chips when no citations present', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
-    expect(screen.queryByText(/Quelle:/)).not.toBeInTheDocument()
   })
 })

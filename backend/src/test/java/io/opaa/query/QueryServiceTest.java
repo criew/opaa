@@ -9,12 +9,11 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.dto.QueryResponse;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -30,8 +29,12 @@ class QueryServiceTest {
 
   @Mock private VectorStore vectorStore;
   @Mock private AnswerGenerationService answerGenerationService;
-  @Spy private CitationParser citationParser = new CitationParser();
-  @InjectMocks private QueryService queryService;
+  private QueryService queryService;
+
+  @BeforeEach
+  void setUp() {
+    queryService = new QueryService(vectorStore, answerGenerationService, new CitationParser());
+  }
 
   @Test
   void queryMarksCitedSourcesCorrectly() {
@@ -46,14 +49,14 @@ class QueryServiceTest {
 
     var usage = createUsage(100, 200);
     var metadata = ChatResponseMetadata.builder().model("gpt-4o").usage(usage).build();
-    var answer = "The answer is 42 【source: doc-123 | readme.md】";
+    var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage(answer))), metadata);
     when(answerGenerationService.generateAnswer(eq("What?"), any())).thenReturn(chatResponse);
 
     QueryResponse response = queryService.query("What?");
 
-    assertThat(response.answer()).doesNotContain("【source:");
+    assertThat(response.answer()).contains("【source:");
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().fileName()).isEqualTo("readme.md");
     assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.85);
@@ -80,7 +83,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(citedChunk, uncitedChunk));
 
-    var answer = "Info from readme 【source: doc-1 | readme.md】.";
+    var answer = "Info from readme 【source: doc-1#0 | readme.md】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
 
@@ -91,6 +94,26 @@ class QueryServiceTest {
     assertThat(response.sources().get(0).cited()).isTrue();
     assertThat(response.sources().get(1).fileName()).isEqualTo("other.pdf");
     assertThat(response.sources().get(1).cited()).isFalse();
+  }
+
+  @Test
+  void queryRetainsCitationMarkersInAnswer() {
+    var chunk =
+        Document.builder()
+            .text("Content")
+            .metadata(Map.of("file_name", "readme.md", "document_id", "doc-1"))
+            .score(0.9)
+            .build();
+
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer = "The answer 【source: doc-1#0 | readme.md】 is here.";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question");
+
+    assertThat(response.answer()).isEqualTo(answer);
   }
 
   @Test
@@ -239,7 +262,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(citedChunk, higherScoreUncitedChunk));
 
-    var answer = "Info 【source: doc-1 | report.pdf】.";
+    var answer = "Info 【source: doc-1#0 | report.pdf】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
 

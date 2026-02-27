@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 public class CitationParser {
 
   static final Pattern CITATION_PATTERN =
-      Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)\\s*\\|\\s*(.+?)】");
+      Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)#(\\d+)\\s*\\|\\s*(.+?)】");
 
   public Set<String> extractCitedDocumentIds(String answer) {
     Set<String> documentIds = new LinkedHashSet<>();
@@ -20,12 +20,5 @@ public class CitationParser {
       documentIds.add(matcher.group(1).trim());
     }
     return documentIds;
-  }
-
-  public String removeCitations(String answer) {
-    if (answer == null || answer.isEmpty()) {
-      return answer;
-    }
-    return CITATION_PATTERN.matcher(answer).replaceAll("").trim();
   }
 }
