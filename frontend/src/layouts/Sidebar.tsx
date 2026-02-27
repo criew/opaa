@@ -1,14 +1,17 @@
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
 import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
 import SettingsIcon from '@mui/icons-material/Settings'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useChatStore } from '../stores/chatStore'
 
 const SIDEBAR_WIDTH = 280
 
@@ -22,6 +25,13 @@ export { SIDEBAR_WIDTH }
 
 export default function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const clearMessages = useChatStore((state) => state.clearMessages)
+
+  function handleNewChat() {
+    clearMessages()
+    navigate('/chat')
+  }
 
   return (
     <Box
@@ -45,6 +55,18 @@ export default function Sidebar() {
       </Box>
 
       <Divider />
+
+      <Box sx={{ px: 1, pt: 1.5 }}>
+        <Button
+          variant="outlined"
+          startIcon={<AddIcon />}
+          fullWidth
+          onClick={handleNewChat}
+          sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }}
+        >
+          New Chat
+        </Button>
+      </Box>
 
       <List sx={{ px: 1, py: 1.5 }}>
         {navItems.map((item) => (

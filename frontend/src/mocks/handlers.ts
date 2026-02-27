@@ -73,6 +73,10 @@ export const handlers = [
         { status: 400 },
       )
     }
-    return HttpResponse.json(getRandomMockResponse())
+    const mockResponse = getRandomMockResponse()
+    return HttpResponse.json({
+      ...mockResponse,
+      conversationId: body.conversationId ?? crypto.randomUUID(),
+    })
   }),
 ]

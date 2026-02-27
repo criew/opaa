@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,8 +35,9 @@ class QueryControllerTest {
         new QueryResponse(
             "The answer",
             List.of(new SourceReference("doc.md", 0.9, "excerpt text")),
-            new QueryMetadata("gpt-4o", 500, 1200));
-    when(queryService.query(anyString())).thenReturn(response);
+            new QueryMetadata("gpt-4o", 500, 1200),
+            "conv-123");
+    when(queryService.query(anyString(), any())).thenReturn(response);
 
     mockMvc
         .perform(
@@ -49,7 +51,24 @@ class QueryControllerTest {
         .andExpect(jsonPath("$.sources[0].excerpt").value("excerpt text"))
         .andExpect(jsonPath("$.metadata.model").value("gpt-4o"))
         .andExpect(jsonPath("$.metadata.tokenCount").value(500))
-        .andExpect(jsonPath("$.metadata.durationMs").value(1200));
+        .andExpect(jsonPath("$.metadata.durationMs").value(1200))
+        .andExpect(jsonPath("$.conversationId").value("conv-123"));
+  }
+
+  @Test
+  void queryWithConversationIdPassesItThrough() throws Exception {
+    var response =
+        new QueryResponse(
+            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500), "existing-conv");
+    when(queryService.query(anyString(), any())).thenReturn(response);
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \"Follow-up?\", \"conversationId\": \"existing-conv\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.conversationId").value("existing-conv"));
   }
 
   @Test
@@ -72,7 +91,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
-    when(queryService.query(anyString()))
+    when(queryService.query(anyString(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -87,7 +106,8 @@ class QueryControllerTest {
 
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
-    when(queryService.query(anyString())).thenThrow(new NonTransientAiException("Invalid API key"));
+    when(queryService.query(anyString(), any()))
+        .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
         .perform(

@@ -63,9 +63,10 @@ class QueryServiceTest {
     var assistantMessage = new AssistantMessage("The answer is 42");
     var generation = new Generation(assistantMessage);
     var chatResponse = new ChatResponse(List.of(generation), metadata);
-    when(answerGenerationService.generateAnswer(eq("What?"), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(eq("What?"), any(), any()))
+        .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?");
+    QueryResponse response = queryService.query("What?", null);
 
     assertThat(response.answer()).isEqualTo("The answer is 42");
     assertThat(response.sources()).hasSize(1);
@@ -75,6 +76,32 @@ class QueryServiceTest {
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
     assertThat(response.metadata().durationMs()).isGreaterThanOrEqualTo(0);
+    assertThat(response.conversationId()).isNotNull().isNotBlank();
+  }
+
+  @Test
+  void queryGeneratesConversationIdWhenNull() {
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null);
+
+    assertThat(response.conversationId()).isNotNull().isNotBlank();
+  }
+
+  @Test
+  void queryUsesProvidedConversationId() {
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), eq("existing-conv-id")))
+        .thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", "existing-conv-id");
+
+    assertThat(response.conversationId()).isEqualTo("existing-conv-id");
   }
 
   @Test
@@ -91,9 +118,9 @@ class QueryServiceTest {
 
     var assistantMessage = new AssistantMessage("Answer");
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources().getFirst().excerpt()).hasSize(203); // 200 + "..."
     assertThat(response.sources().getFirst().excerpt()).endsWith("...");
@@ -124,9 +151,9 @@ class QueryServiceTest {
         .thenReturn(List.of(chunk1, chunk2, chunk3));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(2);
     assertThat(response.sources().get(0).fileName()).isEqualTo("report.pdf");
@@ -153,9 +180,9 @@ class QueryServiceTest {
         .thenReturn(List.of(lowScoreFirst, highScoreSecond));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.95);
@@ -180,9 +207,9 @@ class QueryServiceTest {
         .thenReturn(List.of(lowScore, highScore));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().excerpt()).isEqualTo("Correct excerpt");
@@ -194,9 +221,9 @@ class QueryServiceTest {
 
     var assistantMessage = new AssistantMessage("No results");
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Test query");
+    queryService.query("Test query", null);
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());

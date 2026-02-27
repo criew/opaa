@@ -10,14 +10,16 @@ interface ChatState {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
+  conversationId: string | null
   sendMessage: (question: string) => Promise<void>
   clearMessages: () => void
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isLoading: false,
   error: null,
+  conversationId: null,
 
   sendMessage: async (question: string) => {
     const userMessage: ChatMessage = {
@@ -34,7 +36,7 @@ export const useChatStore = create<ChatState>((set) => ({
     }))
 
     try {
-      const response = await sendQuery(question)
+      const response = await sendQuery(question, get().conversationId ?? undefined)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -42,7 +44,11 @@ export const useChatStore = create<ChatState>((set) => ({
         sources: response.sources,
         timestamp: new Date(),
       }
-      set((state) => ({ messages: [...state.messages, assistantMessage], isLoading: false }))
+      set((state) => ({
+        messages: [...state.messages, assistantMessage],
+        isLoading: false,
+        conversationId: response.conversationId,
+      }))
     } catch (err) {
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'An unexpected error occurred'
@@ -50,5 +56,5 @@ export const useChatStore = create<ChatState>((set) => ({
     }
   },
 
-  clearMessages: () => set({ messages: [], error: null }),
+  clearMessages: () => set({ messages: [], error: null, conversationId: null }),
 }))
