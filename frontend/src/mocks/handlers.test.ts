@@ -42,7 +42,8 @@ describe('MSW Handlers', () => {
       }
 
       expect(data.status).toBe('COMPLETED')
-      expect(data.documentCount).toBe(42)
+      expect(data.documentCount).toBe(37)
+      expect(data.documentsSkipped).toBe(5)
     })
   })
 

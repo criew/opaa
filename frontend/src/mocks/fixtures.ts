@@ -8,15 +8,17 @@ export const mockIndexingIdle: IndexingStatusResponse = {
   status: 'IDLE',
   documentCount: 0,
   totalDocuments: 0,
+  documentsSkipped: 0,
   message: null,
   timestamp: '2025-01-15T10:00:00Z',
 }
 
 export const mockIndexingCompleted: IndexingStatusResponse = {
   status: 'COMPLETED',
-  documentCount: 42,
+  documentCount: 37,
   totalDocuments: 42,
-  message: 'Indexing completed successfully',
+  documentsSkipped: 5,
+  message: 'Indexing completed: 37 processed, 5 skipped, 0 failed',
   timestamp: '2025-01-15T10:30:00Z',
 }
 

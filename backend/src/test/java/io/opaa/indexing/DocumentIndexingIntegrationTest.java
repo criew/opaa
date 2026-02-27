@@ -101,12 +101,14 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
     assertThat(completedJob.getDocumentsTotal()).isEqualTo(2);
     assertThat(completedJob.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsSkipped()).isZero();
 
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(2);
     assertThat(documents).allMatch(d -> d.getStatus() == DocumentStatus.INDEXED);
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
+    assertThat(documents).allMatch(d -> d.getChecksum() != null && d.getChecksum().length() == 64);
 
     // Verify chunks with embeddings were stored in vector_store
     List<org.springframework.ai.document.Document> results =
@@ -177,6 +179,7 @@ class DocumentIndexingIntegrationTest {
 
     var completedFirstJob = indexingJobRepository.findById(firstJob.getId()).orElseThrow();
     assertThat(completedFirstJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedFirstJob.getDocumentsSkipped()).isZero();
 
     // Remember initial state
     List<org.springframework.ai.document.Document> initialResults =
@@ -185,6 +188,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(initialResults).isNotEmpty();
     Document initialDoc = documentRepository.findAll().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(initialDoc.getChecksum()).isNotNull();
 
     // Update file and re-index
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
@@ -193,12 +197,14 @@ class DocumentIndexingIntegrationTest {
 
     var completedSecondJob = indexingJobRepository.findById(secondJob.getId()).orElseThrow();
     assertThat(completedSecondJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedSecondJob.getDocumentsSkipped()).isZero();
     assertThat(documentRepository.count()).isEqualTo(1);
 
     // Verify the document content was actually re-indexed
     Document reindexedDoc = documentRepository.findAll().getFirst();
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
+    assertThat(reindexedDoc.getChecksum()).isNotEqualTo(initialDoc.getChecksum());
 
     // Verify chunk text was updated via similarity search
     List<org.springframework.ai.document.Document> newResults =
@@ -210,6 +216,33 @@ class DocumentIndexingIntegrationTest {
             .map(org.springframework.ai.document.Document::getText)
             .reduce("", String::concat);
     assertThat(allChunkText).contains("Updated");
+  }
+
+  @Test
+  void skipsUnchangedDocumentsOnReindex() throws IOException {
+    Files.writeString(sharedTempDir.resolve("doc.txt"), "Same content.");
+
+    IndexingJob firstJob = documentIndexingService.triggerIndexing();
+    awaitJobCompletion(firstJob);
+
+    var completedFirstJob = indexingJobRepository.findById(firstJob.getId()).orElseThrow();
+    assertThat(completedFirstJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedFirstJob.getDocumentsSkipped()).isZero();
+
+    // Re-index without changing the file
+    IndexingJob secondJob = documentIndexingService.triggerIndexing();
+    awaitJobCompletion(secondJob);
+
+    var completedSecondJob = indexingJobRepository.findById(secondJob.getId()).orElseThrow();
+    assertThat(completedSecondJob.getDocumentsProcessed()).isZero();
+    assertThat(completedSecondJob.getDocumentsSkipped()).isEqualTo(1);
+
+    // Document record should still be there, unchanged
+    assertThat(documentRepository.count()).isEqualTo(1);
+    Document doc = documentRepository.findAll().getFirst();
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(doc.getChecksum()).isNotNull();
+    assertThat(doc.getChecksum()).hasSize(64);
   }
 
   private void awaitJobCompletion(IndexingJob job) {

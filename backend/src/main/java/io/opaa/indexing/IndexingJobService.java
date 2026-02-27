@@ -21,7 +21,8 @@ public class IndexingJobService {
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void completeJob(UUID jobId, int documentsProcessed, int documentsFailed) {
+  public void completeJob(
+      UUID jobId, int documentsProcessed, int documentsFailed, int documentsSkipped) {
     var job =
         indexingJobRepository
             .findById(jobId)
@@ -29,6 +30,7 @@ public class IndexingJobService {
     job.setStatus(JobStatus.COMPLETED);
     job.setDocumentsProcessed(documentsProcessed);
     job.setDocumentsFailed(documentsFailed);
+    job.setDocumentsSkipped(documentsSkipped);
     job.setCompletedAt(Instant.now());
     indexingJobRepository.save(job);
   }
@@ -56,13 +58,15 @@ public class IndexingJobService {
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void updateProgress(UUID jobId, int documentsProcessed, int documentsFailed) {
+  public void updateProgress(
+      UUID jobId, int documentsProcessed, int documentsFailed, int documentsSkipped) {
     var job =
         indexingJobRepository
             .findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
     job.setDocumentsProcessed(documentsProcessed);
     job.setDocumentsFailed(documentsFailed);
+    job.setDocumentsSkipped(documentsSkipped);
     indexingJobRepository.save(job);
   }
 

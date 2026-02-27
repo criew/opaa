@@ -16,6 +16,7 @@ interface IndexingState {
   status: IndexingStatus
   documentCount: number
   totalDocuments: number
+  documentsSkipped: number
   message: string | null
   timestamp: string | null
   isPolling: boolean
@@ -36,6 +37,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   status: 'IDLE',
   documentCount: 0,
   totalDocuments: 0,
+  documentsSkipped: 0,
   message: null,
   timestamp: null,
   isPolling: false,
@@ -49,6 +51,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
         status: response.status,
         documentCount: response.documentCount,
         totalDocuments: response.totalDocuments,
+        documentsSkipped: response.documentsSkipped,
         message: response.message,
         timestamp: response.timestamp,
       })
@@ -78,6 +81,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           status: response.status,
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
+          documentsSkipped: response.documentsSkipped,
           message: response.message,
           timestamp: response.timestamp,
         })
@@ -89,7 +93,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
               open: true,
               message:
                 response.status === 'COMPLETED'
-                  ? `Indexing completed: ${response.documentCount} documents processed`
+                  ? `Indexing completed: ${response.documentCount} processed, ${response.documentsSkipped} skipped`
                   : (response.message ?? 'Indexing failed'),
               severity: response.status === 'COMPLETED' ? 'success' : 'error',
             },
