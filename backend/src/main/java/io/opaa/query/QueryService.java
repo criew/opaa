@@ -127,23 +127,23 @@ public class QueryService {
       return question;
     }
 
-    String lastUserMessage = null;
-    for (int i = history.size() - 1; i >= 0; i--) {
-      if (history.get(i).getMessageType() == MessageType.USER) {
-        lastUserMessage = history.get(i).getText();
+    String firstUserMessage = null;
+    for (Message message : history) {
+      if (message.getMessageType() == MessageType.USER) {
+        firstUserMessage = message.getText();
         break;
       }
     }
 
-    if (lastUserMessage == null) {
+    if (firstUserMessage == null) {
       return question;
     }
 
     log.debug(
         "Enriching search query with conversation context: '{}' -> '{} {}'",
         question,
-        lastUserMessage,
+        firstUserMessage,
         question);
-    return lastUserMessage + " " + question;
+    return firstUserMessage + " " + question;
   }
 }
