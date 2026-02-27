@@ -1,3 +1,6 @@
 package io.opaa.api.dto;
 
-public record SourceReference(String fileName, double relevanceScore, String excerpt) {}
+import java.time.Instant;
+
+public record SourceReference(
+    String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {}

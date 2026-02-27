@@ -4,6 +4,7 @@ import rehypeHighlight from 'rehype-highlight'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import Box from '@mui/material/Box'
+import Tooltip from '@mui/material/Tooltip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -14,6 +15,70 @@ import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
   content: string
+}
+
+const CITATION_RE = /【source:\s*[a-zA-Z0-9-]+#\d+\s*\|\s*(.+?)】/
+
+function renderWithCitations(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  const regex = new RegExp(CITATION_RE.source, 'g')
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const fileName = match[1].trim()
+    parts.push(
+      <Tooltip key={`citation-${match.index}`} title={fileName} arrow>
+        <Box
+          component="span"
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            mx: 0.25,
+            verticalAlign: 'text-bottom',
+            cursor: 'default',
+          }}
+          aria-label={fileName}
+        >
+          ↗
+        </Box>
+      </Tooltip>,
+    )
+    lastIndex = regex.lastIndex
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+  return parts
+}
+
+function processChildren(children: React.ReactNode): React.ReactNode {
+  if (typeof children === 'string') {
+    if (CITATION_RE.test(children)) {
+      return renderWithCitations(children)
+    }
+    return children
+  }
+  if (Array.isArray(children)) {
+    return children.map((child, i) => {
+      if (typeof child === 'string' && CITATION_RE.test(child)) {
+        return <span key={i}>{renderWithCitations(child)}</span>
+      }
+      return child
+    })
+  }
+  return children
 }
 
 const components: Components = {
@@ -34,7 +99,7 @@ const components: Components = {
   ),
   p: ({ children }) => (
     <Typography variant="body1" sx={{ mb: 1, '&:last-child': { mb: 0 } }}>
-      {children}
+      {processChildren(children)}
     </Typography>
   ),
   a: ({ href, children }) => (
@@ -95,7 +160,7 @@ const components: Components = {
   ),
   li: ({ children }) => (
     <Typography component="li" variant="body1">
-      {children}
+      {processChildren(children)}
     </Typography>
   ),
   table: ({ children }) => (
@@ -107,33 +172,17 @@ const components: Components = {
   tbody: ({ children }) => <TableBody>{children}</TableBody>,
   tr: ({ children }) => <TableRow>{children}</TableRow>,
   th: ({ children }) => <TableCell sx={{ fontWeight: 'bold' }}>{children}</TableCell>,
-  td: ({ children }) => <TableCell>{children}</TableCell>,
-}
-
-const SOURCE_CITATION_RE = /\s*\((?:Quelle:\s*|Source:\s*)?([^):/]+\.\w{1,5})\)[.!]?\s*$/
-
-function splitSourceCitation(content: string): { body: string; citation: string | null } {
-  const match = content.match(SOURCE_CITATION_RE)
-  if (!match) return { body: content, citation: null }
-  return { body: content.slice(0, match.index).trimEnd(), citation: match[1] }
+  td: ({ children }) => <TableCell>{processChildren(children)}</TableCell>,
 }
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const { body, citation } = splitSourceCitation(content)
   return (
-    <>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
-        components={components}
-      >
-        {body}
-      </ReactMarkdown>
-      {citation && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-          Quelle: {citation}
-        </Typography>
-      )}
-    </>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight]}
+      components={components}
+    >
+      {content}
+    </ReactMarkdown>
   )
 }
