@@ -28,6 +28,9 @@ public class IndexingJob {
   @Column(name = "documents_total")
   private int documentsTotal;
 
+  @Column(name = "documents_skipped")
+  private int documentsSkipped;
+
   @Column(name = "started_at", nullable = false, updatable = false)
   private Instant startedAt;
 
@@ -79,6 +82,14 @@ public class IndexingJob {
 
   public void setDocumentsTotal(int documentsTotal) {
     this.documentsTotal = documentsTotal;
+  }
+
+  public int getDocumentsSkipped() {
+    return documentsSkipped;
+  }
+
+  public void setDocumentsSkipped(int documentsSkipped) {
+    this.documentsSkipped = documentsSkipped;
   }
 
   public Instant getStartedAt() {

@@ -33,6 +33,9 @@ public class Document {
   @Column(name = "indexed_at")
   private Instant indexedAt;
 
+  @Column(name = "checksum", length = 64)
+  private String checksum;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
   private DocumentStatus status = DocumentStatus.PENDING;
@@ -90,5 +93,13 @@ public class Document {
 
   public void setStatus(DocumentStatus status) {
     this.status = status;
+  }
+
+  public String getChecksum() {
+    return checksum;
+  }
+
+  public void setChecksum(String checksum) {
+    this.checksum = checksum;
   }
 }

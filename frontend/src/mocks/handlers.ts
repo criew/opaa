@@ -25,6 +25,7 @@ function getRunningStatus(step: number): IndexingStatusResponse {
     status: 'RUNNING',
     documentCount: Math.round(TOTAL_DOCUMENTS * progress),
     totalDocuments: TOTAL_DOCUMENTS,
+    documentsSkipped: 0,
     message: `Indexing in progress... ${Math.round(TOTAL_DOCUMENTS * progress)} documents processed`,
     timestamp: new Date().toISOString(),
   }
@@ -43,6 +44,7 @@ export const handlers = [
         status: 'RUNNING',
         documentCount: 0,
         totalDocuments: 0,
+        documentsSkipped: 0,
         message: 'Indexing started',
         timestamp: new Date().toISOString(),
       } satisfies IndexingStatusResponse,

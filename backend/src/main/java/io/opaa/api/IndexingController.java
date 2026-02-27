@@ -43,7 +43,7 @@ public class IndexingController {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
             new IndexingStatusResponse(
-                IndexingStatus.RUNNING, 0, 0, ex.getMessage(), Instant.now()));
+                IndexingStatus.RUNNING, 0, 0, 0, ex.getMessage(), Instant.now()));
   }
 
   @GetMapping("/status")
@@ -53,7 +53,7 @@ public class IndexingController {
         .map(this::toResponse)
         .orElse(
             new IndexingStatusResponse(
-                IndexingStatus.IDLE, 0, 0, "No indexing job found", Instant.now()));
+                IndexingStatus.IDLE, 0, 0, 0, "No indexing job found", Instant.now()));
   }
 
   private IndexingStatusResponse toResponse(IndexingJob job) {
@@ -65,6 +65,8 @@ public class IndexingController {
               "Indexing completed: "
                   + job.getDocumentsProcessed()
                   + " processed, "
+                  + job.getDocumentsSkipped()
+                  + " skipped, "
                   + job.getDocumentsFailed()
                   + " failed";
           case FAILED -> "Indexing failed: " + job.getErrorMessage();
@@ -73,6 +75,7 @@ public class IndexingController {
         status,
         job.getDocumentsProcessed(),
         job.getDocumentsTotal(),
+        job.getDocumentsSkipped(),
         message,
         job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt());
   }

@@ -42,11 +42,12 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
     when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
 
-    service.completeJob(jobId, 10, 2);
+    service.completeJob(jobId, 10, 2, 5);
 
     assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
     assertThat(job.getDocumentsProcessed()).isEqualTo(10);
     assertThat(job.getDocumentsFailed()).isEqualTo(2);
+    assertThat(job.getDocumentsSkipped()).isEqualTo(5);
     assertThat(job.getCompletedAt()).isNotNull();
   }
 
@@ -69,7 +70,7 @@ class IndexingJobServiceTest {
     UUID jobId = UUID.randomUUID();
     when(indexingJobRepository.findById(jobId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.completeJob(jobId, 0, 0))
+    assertThatThrownBy(() -> service.completeJob(jobId, 0, 0, 0))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -92,10 +93,11 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
     when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
 
-    service.updateProgress(jobId, 5, 1);
+    service.updateProgress(jobId, 5, 1, 3);
 
     assertThat(job.getDocumentsProcessed()).isEqualTo(5);
     assertThat(job.getDocumentsFailed()).isEqualTo(1);
+    assertThat(job.getDocumentsSkipped()).isEqualTo(3);
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(job.getCompletedAt()).isNull();
   }

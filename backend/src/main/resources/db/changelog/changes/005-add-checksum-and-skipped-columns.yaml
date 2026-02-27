@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-add-checksum-to-documents
+      author: opaa
+      comment: "Add SHA-256 checksum column to documents for skip-unchanged detection"
+      changes:
+        - addColumn:
+            tableName: documents
+            columns:
+              - column:
+                  name: checksum
+                  type: varchar(64)
+      rollback:
+        - dropColumn:
+            tableName: documents
+            columnName: checksum
+
+  - changeSet:
+      id: 007-add-documents-skipped-to-indexing-jobs
+      author: opaa
+      comment: "Add documents_skipped column to indexing_jobs for tracking skipped unchanged documents"
+      changes:
+        - addColumn:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: documents_skipped
+                  type: int
+                  defaultValueNumeric: 0
+      rollback:
+        - dropColumn:
+            tableName: indexing_jobs
+            columnName: documents_skipped

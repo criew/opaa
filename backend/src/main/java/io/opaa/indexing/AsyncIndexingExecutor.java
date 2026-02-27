@@ -32,6 +32,7 @@ public class AsyncIndexingExecutor {
   public void execute(UUID jobId) {
     int processed = 0;
     int failed = 0;
+    int skipped = 0;
 
     try {
       Path documentDir = Path.of(properties.documentPath());
@@ -43,18 +44,22 @@ public class AsyncIndexingExecutor {
       for (Path file : files) {
         String fileName = file.getFileName().toString();
         try {
-          log.info("Indexing started: {}", fileName);
-          fileProcessingService.processFile(file);
-          processed++;
-          log.info("Indexing completed: {}", fileName);
+          log.info("Processing: {}", fileName);
+          FileProcessingResult result = fileProcessingService.processFile(file);
+          if (result == FileProcessingResult.SKIPPED) {
+            skipped++;
+          } else {
+            processed++;
+            log.info("Indexing completed: {}", fileName);
+          }
         } catch (Exception e) {
           log.error("Failed to process file: {}", fileName, e);
           failed++;
         }
-        indexingJobService.updateProgress(jobId, processed, failed);
+        indexingJobService.updateProgress(jobId, processed, failed, skipped);
       }
 
-      indexingJobService.completeJob(jobId, processed, failed);
+      indexingJobService.completeJob(jobId, processed, failed, skipped);
     } catch (IOException e) {
       log.error("Failed to discover files", e);
       indexingJobService.failJob(jobId, e.getMessage());
