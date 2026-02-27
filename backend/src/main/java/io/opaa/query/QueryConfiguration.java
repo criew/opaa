@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.indexing.DocumentRepository;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -16,8 +17,17 @@ public class QueryConfiguration {
   }
 
   @Bean
+  CitationParser citationParser() {
+    return new CitationParser();
+  }
+
+  @Bean
   QueryService queryService(
-      VectorStore vectorStore, AnswerGenerationService answerGenerationService) {
-    return new QueryService(vectorStore, answerGenerationService);
+      VectorStore vectorStore,
+      AnswerGenerationService answerGenerationService,
+      CitationParser citationParser,
+      DocumentRepository documentRepository) {
+    return new QueryService(
+        vectorStore, answerGenerationService, citationParser, documentRepository);
   }
 }

@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
+import Collapse from '@mui/material/Collapse'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { ChatMessage } from '../../types/chat'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceCard from './SourceCard'
@@ -15,6 +19,10 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
+  const [uncitedOpen, setUncitedOpen] = useState(false)
+
+  const citedSources = message.sources?.filter((s) => s.cited) ?? []
+  const uncitedSources = message.sources?.filter((s) => !s.cited) ?? []
 
   return (
     <Box
@@ -60,12 +68,49 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             )}
           </Paper>
 
-          {!isUser && message.sources && message.sources.length > 0 && (
+          {!isUser && citedSources.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ mt: 1, overflowX: 'auto', pb: 0.5 }}>
-              {message.sources.map((source) => (
+              {citedSources.map((source) => (
                 <SourceCard key={source.fileName} source={source} />
               ))}
             </Stack>
+          )}
+
+          {!isUser && uncitedSources.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+                onClick={() => setUncitedOpen((prev) => !prev)}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  {uncitedSources.length} weitere{' '}
+                  {uncitedSources.length === 1 ? 'Quelle' : 'Quellen'}
+                </Typography>
+                <IconButton
+                  size="small"
+                  aria-label={uncitedOpen ? 'collapse uncited sources' : 'expand uncited sources'}
+                  sx={{
+                    ml: 0.5,
+                    transform: uncitedOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s',
+                  }}
+                >
+                  <ExpandMoreIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              <Collapse in={uncitedOpen}>
+                <Stack direction="row" spacing={1} sx={{ mt: 0.5, overflowX: 'auto', pb: 0.5 }}>
+                  {uncitedSources.map((source) => (
+                    <SourceCard key={source.fileName} source={source} />
+                  ))}
+                </Stack>
+              </Collapse>
+            </Box>
           )}
 
           {!isUser && (
