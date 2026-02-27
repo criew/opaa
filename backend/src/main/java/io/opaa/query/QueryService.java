@@ -7,6 +7,7 @@ import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -29,8 +30,13 @@ public class QueryService {
     this.answerGenerationService = answerGenerationService;
   }
 
-  public QueryResponse query(String question) {
+  public QueryResponse query(String question, String conversationId) {
     long startTime = System.currentTimeMillis();
+
+    String effectiveConversationId =
+        conversationId != null && !conversationId.isBlank()
+            ? conversationId
+            : UUID.randomUUID().toString();
 
     List<Document> relevantChunks =
         vectorStore.similaritySearch(
@@ -42,7 +48,8 @@ public class QueryService {
 
     log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
-    ChatResponse chatResponse = answerGenerationService.generateAnswer(question, relevantChunks);
+    ChatResponse chatResponse =
+        answerGenerationService.generateAnswer(question, relevantChunks, effectiveConversationId);
 
     String answer = extractAnswer(chatResponse);
     List<SourceReference> sources = mapSources(relevantChunks);
@@ -51,7 +58,8 @@ public class QueryService {
     String model = extractModel(chatResponse);
     int tokenCount = extractTokenCount(chatResponse);
 
-    return new QueryResponse(answer, sources, new QueryMetadata(model, tokenCount, durationMs));
+    return new QueryResponse(
+        answer, sources, new QueryMetadata(model, tokenCount, durationMs), effectiveConversationId);
   }
 
   private List<SourceReference> mapSources(List<Document> chunks) {

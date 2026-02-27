@@ -52,6 +52,7 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 847,
       durationMs: 1523,
     },
+    conversationId: 'mock-conv-1',
   },
   {
     answer:
@@ -71,6 +72,7 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 312,
       durationMs: 890,
     },
+    conversationId: 'mock-conv-2',
   },
   {
     answer:
@@ -135,6 +137,7 @@ export const mockQueryResponses: QueryResponse[] = [
       tokenCount: 1584,
       durationMs: 2341,
     },
+    conversationId: 'mock-conv-3',
   },
 ]
 

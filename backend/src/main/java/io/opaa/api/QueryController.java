@@ -23,6 +23,6 @@ public class QueryController {
 
   @PostMapping("/query")
   public QueryResponse query(@Valid @RequestBody QueryRequest request) {
-    return queryService.query(request.question());
+    return queryService.query(request.question(), request.conversationId());
   }
 }

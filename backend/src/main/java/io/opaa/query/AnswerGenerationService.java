@@ -1,15 +1,16 @@
 package io.opaa.query;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
 
 public class AnswerGenerationService {
@@ -18,33 +19,51 @@ public class AnswerGenerationService {
 
   private static final String SYSTEM_PROMPT =
       """
-      You are a helpful project assistant. Answer the user's question based solely on the \
-      provided context documents. If the context does not contain enough information to answer \
-      the question, say so honestly.
+      You are a helpful project assistant. Use the conversation history and the provided \
+      context documents to answer the user's question. The conversation history gives you \
+      the context of the ongoing discussion. The context documents provide relevant \
+      project information retrieved for the current question.
 
-      When referencing information, cite the source file name in parentheses, e.g. (filename.md).
+      If the context documents and conversation history do not contain enough information \
+      to answer the question, say so honestly.
+
+      When referencing information from documents, cite the source file name in parentheses, \
+      e.g. (filename.md).
 
       Context documents:
-      {context}
-      """;
+      {context}""";
 
-  private final ChatModel chatModel;
+  private final ChatClient chatClient;
+  private final ChatMemory chatMemory;
 
-  public AnswerGenerationService(ChatModel chatModel) {
-    this.chatModel = chatModel;
+  public AnswerGenerationService(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
+    this.chatMemory = chatMemory;
+    this.chatClient = chatClientBuilder.build();
   }
 
-  public ChatResponse generateAnswer(String question, List<Document> relevantChunks) {
+  public ChatResponse generateAnswer(
+      String question, List<Document> relevantChunks, String conversationId) {
     String context = formatChunks(relevantChunks);
+    String systemText = SYSTEM_PROMPT.replace("{context}", context);
 
-    var systemMessage =
-        new SystemPromptTemplate(SYSTEM_PROMPT).createMessage(Map.of("context", context));
-    var userMessage = new UserMessage(question);
-
-    var prompt = new Prompt(List.of(systemMessage, userMessage));
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());
 
-    return chatModel.call(prompt);
+    List<Message> history = chatMemory.get(conversationId);
+    List<Message> messages = new ArrayList<>(history);
+    messages.add(new UserMessage(question));
+
+    ChatResponse response =
+        chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
+
+    chatMemory.add(conversationId, new UserMessage(question));
+    if (response.getResult() != null && response.getResult().getOutput() != null) {
+      String assistantText = response.getResult().getOutput().getText();
+      if (assistantText != null) {
+        chatMemory.add(conversationId, new AssistantMessage(assistantText));
+      }
+    }
+
+    return response;
   }
 
   private String formatChunks(List<Document> chunks) {

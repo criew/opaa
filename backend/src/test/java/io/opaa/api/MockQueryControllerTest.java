@@ -18,7 +18,7 @@ class MockQueryControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @Test
-  void queryReturnsAnswerWithSources() throws Exception {
+  void queryReturnsAnswerWithSourcesAndConversationId() throws Exception {
     mockMvc
         .perform(
             post("/api/v1/query")
@@ -31,7 +31,19 @@ class MockQueryControllerTest {
             jsonPath("$.sources.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
         .andExpect(jsonPath("$.sources[0].fileName").isNotEmpty())
         .andExpect(jsonPath("$.sources[0].relevanceScore").isNumber())
-        .andExpect(jsonPath("$.metadata.model").value("gpt-4o"));
+        .andExpect(jsonPath("$.metadata.model").value("gpt-4o"))
+        .andExpect(jsonPath("$.conversationId").isNotEmpty());
+  }
+
+  @Test
+  void queryWithConversationIdEchoesIt() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \"Follow-up?\", \"conversationId\": \"my-conv-id\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.conversationId").value("my-conv-id"));
   }
 
   @Test

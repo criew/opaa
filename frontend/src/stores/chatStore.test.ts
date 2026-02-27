@@ -3,7 +3,7 @@ import { useChatStore } from './chatStore'
 
 describe('chatStore', () => {
   beforeEach(() => {
-    useChatStore.setState({ messages: [], isLoading: false, error: null })
+    useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
   })
 
   it('starts with empty state', () => {
@@ -11,9 +11,10 @@ describe('chatStore', () => {
     expect(state.messages).toHaveLength(0)
     expect(state.isLoading).toBe(false)
     expect(state.error).toBeNull()
+    expect(state.conversationId).toBeNull()
   })
 
-  it('sends a message and receives a response', async () => {
+  it('sends a message and receives a response with conversationId', async () => {
     await useChatStore.getState().sendMessage('What is the architecture?')
 
     const state = useChatStore.getState()
@@ -23,14 +24,31 @@ describe('chatStore', () => {
     expect(state.messages[1].role).toBe('assistant')
     expect(state.messages[1].sources!.length).toBeGreaterThanOrEqual(1)
     expect(state.isLoading).toBe(false)
+    expect(state.conversationId).toBeTruthy()
   })
 
-  it('clears messages', async () => {
+  it('preserves conversationId across messages', async () => {
+    await useChatStore.getState().sendMessage('First question')
+    const firstConvId = useChatStore.getState().conversationId
+
+    await useChatStore.getState().sendMessage('Follow-up question')
+    const secondConvId = useChatStore.getState().conversationId
+
+    expect(firstConvId).toBeTruthy()
+    expect(secondConvId).toBeTruthy()
+    // The mock echoes back the conversationId we send, so it should be the same
+    expect(secondConvId).toBe(firstConvId)
+  })
+
+  it('clears messages and resets conversationId', async () => {
     await useChatStore.getState().sendMessage('Hello')
+    expect(useChatStore.getState().conversationId).toBeTruthy()
+
     useChatStore.getState().clearMessages()
 
     const state = useChatStore.getState()
     expect(state.messages).toHaveLength(0)
     expect(state.error).toBeNull()
+    expect(state.conversationId).toBeNull()
   })
 })

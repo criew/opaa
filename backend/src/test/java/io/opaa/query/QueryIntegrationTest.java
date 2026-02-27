@@ -107,7 +107,7 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     // Execute the query
-    QueryResponse response = queryService.query("What is OPAA?");
+    QueryResponse response = queryService.query("What is OPAA?", null);
 
     // Verify the response
     assertThat(response.answer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
@@ -126,7 +126,7 @@ class QueryIntegrationTest {
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Something completely unrelated");
+    QueryResponse response = queryService.query("Something completely unrelated", null);
 
     assertThat(response.answer()).contains("don't have enough context");
     assertThat(response.sources()).isEmpty();

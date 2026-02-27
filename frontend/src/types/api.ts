@@ -14,12 +14,14 @@ export interface IndexingStatusResponse {
 
 export interface QueryRequest {
   question: string
+  conversationId?: string
 }
 
 export interface QueryResponse {
   answer: string
   sources: SourceReference[]
   metadata: QueryMetadata
+  conversationId: string
 }
 
 export interface SourceReference {
