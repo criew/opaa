@@ -7,6 +7,7 @@ export const mockHealthResponse: HealthResponse = {
 export const mockIndexingIdle: IndexingStatusResponse = {
   status: 'IDLE',
   documentCount: 0,
+  totalDocuments: 0,
   message: null,
   timestamp: '2025-01-15T10:00:00Z',
 }
@@ -14,6 +15,7 @@ export const mockIndexingIdle: IndexingStatusResponse = {
 export const mockIndexingCompleted: IndexingStatusResponse = {
   status: 'COMPLETED',
   documentCount: 42,
+  totalDocuments: 42,
   message: 'Indexing completed successfully',
   timestamp: '2025-01-15T10:30:00Z',
 }

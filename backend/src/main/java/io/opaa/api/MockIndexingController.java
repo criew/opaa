@@ -17,12 +17,12 @@ public class MockIndexingController {
   @PostMapping("/trigger")
   public IndexingStatusResponse triggerIndexing() {
     return new IndexingStatusResponse(
-        IndexingStatus.COMPLETED, 42, "Indexing completed successfully", Instant.now());
+        IndexingStatus.COMPLETED, 42, 42, "Indexing completed successfully", Instant.now());
   }
 
   @GetMapping("/status")
   public IndexingStatusResponse getIndexingStatus() {
     return new IndexingStatusResponse(
-        IndexingStatus.COMPLETED, 42, "Indexing completed successfully", Instant.now());
+        IndexingStatus.COMPLETED, 42, 42, "Indexing completed successfully", Instant.now());
   }
 }

@@ -16,11 +16,13 @@ export default function AdminDrawer() {
   const setDrawerOpen = useIndexingStore((s) => s.setDrawerOpen)
   const status = useIndexingStore((s) => s.status)
   const documentCount = useIndexingStore((s) => s.documentCount)
-  const message = useIndexingStore((s) => s.message)
+  const totalDocuments = useIndexingStore((s) => s.totalDocuments)
   const timestamp = useIndexingStore((s) => s.timestamp)
   const trigger = useIndexingStore((s) => s.triggerIndexing)
 
   const isRunning = status === 'RUNNING'
+  const progressPercent =
+    totalDocuments > 0 ? Math.round((documentCount / totalDocuments) * 100) : 0
 
   return (
     <Drawer
@@ -66,9 +68,15 @@ export default function AdminDrawer() {
 
           {isRunning && (
             <Box sx={{ mb: 2 }}>
-              <LinearProgress sx={{ mb: 1 }} />
+              <LinearProgress
+                variant={totalDocuments > 0 ? 'determinate' : 'indeterminate'}
+                value={progressPercent}
+                sx={{ mb: 1 }}
+              />
               <Typography variant="body2" color="text.secondary">
-                {message ?? `Indexing... ${documentCount} documents processed`}
+                {totalDocuments > 0
+                  ? `${documentCount} of ${totalDocuments} documents indexed`
+                  : 'Discovering documents...'}
               </Typography>
             </Box>
           )}
