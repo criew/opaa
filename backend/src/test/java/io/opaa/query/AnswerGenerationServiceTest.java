@@ -41,8 +41,10 @@ class AnswerGenerationServiceTest {
 
   @Test
   void generateAnswerBuildsCorrectPromptAndReturnsResponse() {
-    var chunk1 = new Document("Chunk one text", Map.of("file_name", "doc1.md"));
-    var chunk2 = new Document("Chunk two text", Map.of("file_name", "doc2.pdf"));
+    var chunk1 =
+        new Document("Chunk one text", Map.of("file_name", "doc1.md", "document_id", "id-1"));
+    var chunk2 =
+        new Document("Chunk two text", Map.of("file_name", "doc2.pdf", "document_id", "id-2"));
 
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Generated answer"))));
@@ -69,6 +71,26 @@ class AnswerGenerationServiceTest {
     var userMessage = capturedPrompt.getInstructions().get(1);
     assertThat(userMessage.getMessageType()).isEqualTo(MessageType.USER);
     assertThat(userMessage.getText()).isEqualTo("What is OPAA?");
+  }
+
+  @Test
+  void generateAnswerIncludesCitationInstructionsInSystemPrompt() {
+    var chunk =
+        new Document(
+            "Content", Map.of("file_name", "readme.md", "document_id", "uuid-1", "chunk_index", 0));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    answerGenerationService.generateAnswer("Question?", List.of(chunk), "conv-citation");
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    verify(chatModel).call(promptCaptor.capture());
+
+    String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
+    assertThat(systemText).contains("【source:");
+    assertThat(systemText).contains("CITATION RULES");
+    assertThat(systemText).contains("cite as: 【source: uuid-1#0 | readme.md】");
   }
 
   @Test

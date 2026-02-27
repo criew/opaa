@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.indexing.DocumentRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -24,10 +25,18 @@ public class QueryConfiguration {
   }
 
   @Bean
+  CitationParser citationParser() {
+    return new CitationParser();
+  }
+
+  @Bean
   QueryService queryService(
       VectorStore vectorStore,
       AnswerGenerationService answerGenerationService,
-      ChatMemory chatMemory) {
-    return new QueryService(vectorStore, answerGenerationService, chatMemory);
+      ChatMemory chatMemory,
+      CitationParser citationParser,
+      DocumentRepository documentRepository) {
+    return new QueryService(
+        vectorStore, answerGenerationService, chatMemory, citationParser, documentRepository);
   }
 }

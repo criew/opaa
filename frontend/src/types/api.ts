@@ -27,7 +27,9 @@ export interface QueryResponse {
 export interface SourceReference {
   fileName: string
   relevanceScore: number
-  excerpt: string
+  matchCount: number
+  indexedAt: string | null
+  cited: boolean
 }
 
 export interface QueryMetadata {
