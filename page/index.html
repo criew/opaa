@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPAA — Open Project AI Assistant</title>
+<meta name="description" content="OPAA verbindet Wikis, E-Mails, SharePoint und mehr zu einem intelligenten KI-Assistenten. Self-hosted, Open Source, Apache 2.0.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+  }
+
+  /* === NAV === */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #21262d;
+  }
+
+  .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 17px;
+    color: white;
+  }
+
+  .logo-text {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-link {
+    color: #8b949e;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .nav-link:hover {
+    color: #e6edf3;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .nav-link svg {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  .lang-toggle {
+    display: flex;
+    background: #21262d;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-left: 8px;
+  }
+
+  .lang-btn {
+    background: none;
+    border: none;
+    color: #8b949e;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .lang-btn.active {
+    background: #137fec;
+    color: white;
+  }
+
+  .lang-btn:hover:not(.active) {
+    color: #e6edf3;
+  }
+
+  /* === MOBILE NAV === */
+  .nav-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    padding: 8px;
+  }
+
+  .nav-hamburger svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* === SECTIONS === */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* === HERO === */
+  .hero {
+    padding-top: 120px;
+    padding-bottom: 64px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(19, 127, 236, 0.15);
+    border: 1px solid rgba(19, 127, 236, 0.3);
+    color: #58a6ff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 .accent {
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 18px;
+    color: #8b949e;
+    max-width: 640px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(19, 127, 236, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(19, 127, 236, 0.4);
+  }
+
+  .btn-secondary {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+  }
+
+  .btn-secondary:hover {
+    background: #30363d;
+    color: #e6edf3;
+  }
+
+  .btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* === SCREENSHOTS === */
+  .screenshots {
+    padding: 48px 0 64px;
+  }
+
+  .screenshots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .screenshot-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .screenshot-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .screenshot-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .screenshot-info {
+    padding: 16px 20px;
+  }
+
+  .screenshot-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .dot-blue { background: #137fec; }
+  .dot-green { background: #2ea043; }
+
+  .screenshot-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #c9d1d9;
+    display: inline;
+    vertical-align: middle;
+  }
+
+  .screenshot-info p {
+    font-size: 13px;
+    color: #6e7681;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* === FEATURES === */
+  .features {
+    padding: 64px 0;
+  }
+
+  .section-title {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .section-title h2 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .section-title p {
+    color: #8b949e;
+    font-size: 16px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+
+  .feature-card {
+    background: linear-gradient(135deg, rgba(19, 127, 236, 0.06) 0%, rgba(14, 165, 233, 0.03) 100%);
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    padding: 24px 16px;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(19, 127, 236, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    background: rgba(19, 127, 236, 0.12);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+
+  .feature-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .feature-card p {
+    font-size: 12px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+
+  /* === COMPARISON === */
+  .comparison {
+    padding: 64px 0;
+  }
+
+  .comp-wrapper {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    padding: 32px;
+    overflow-x: auto;
+  }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .comp-table th, .comp-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    text-align: left;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .comp-table th {
+    font-weight: 700;
+    color: #c9d1d9;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .comp-table th:first-child { width: 25%; }
+  .comp-table th:nth-child(2) { color: #58a6ff; }
+
+  .comp-table td { color: #8b949e; }
+  .comp-table td:nth-child(2) { color: #c9d1d9; font-weight: 500; }
+
+  .comp-table tr:last-child td { border-bottom: none; }
+
+  .check { color: #2ea043; font-weight: 700; }
+  .cross { color: #6e7681; }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 1px solid #21262d;
+    padding: 32px 0;
+    margin-top: 48px;
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .tech-stack {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tech-tag {
+    background: #21262d;
+    color: #8b949e;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+  }
+
+  .footer-right {
+    text-align: right;
+  }
+
+  .footer-right a {
+    color: #58a6ff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .footer-right a:hover { text-decoration: underline; }
+
+  .footer-license {
+    font-size: 12px;
+    color: #6e7681;
+    margin-top: 4px;
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 900px) {
+    .features-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .nav-links .nav-link {
+      display: none;
+    }
+
+    .nav-hamburger {
+      display: block;
+    }
+
+    .nav-links.open .nav-link {
+      display: block;
+    }
+
+    .nav-links.open {
+      position: absolute;
+      top: 64px;
+      left: 0;
+      right: 0;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #21262d;
+      padding: 16px 24px;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .screenshots-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .comp-wrapper {
+      padding: 16px;
+    }
+
+    .footer-inner {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .footer-right {
+      text-align: center;
+    }
+
+    .tech-stack {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero h1 {
+      font-size: 28px;
+    }
+
+    .hero p {
+      font-size: 15px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo-area">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">OPAA</div>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a class="nav-link" href="https://opaa.ewerlin.com" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span data-de="Demo" data-en="Demo">Demo</span>
+      </a>
+      <a class="nav-link" href="https://github.com/criew/opaa" target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="langDe" onclick="setLang('de')">DE</button>
+        <button class="lang-btn" id="langEn" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+    <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero section">
+  <div class="hero-badge">Open Source &bull; Self-Hosted &bull; Apache 2.0</div>
+  <h1>
+    <span data-de="Dein Firmenwissen." data-en="Your Company Knowledge.">Dein Firmenwissen.</span><br>
+    <span class="accent" data-de="Eine Frage entfernt." data-en="One Question Away.">Eine Frage entfernt.</span>
+  </h1>
+  <p data-de="OPAA verbindet Wikis, E-Mails, SharePoint, Ticketsysteme und File Shares zu einem intelligenten Assistenten. Frag in natürlicher Sprache — erhalte Antworten mit Quellenangabe. Selbst gehostet, keine Daten verlassen dein Netzwerk."
+     data-en="OPAA connects wikis, emails, SharePoint, issue trackers and file shares into one intelligent assistant. Ask in natural language — get answers with source references. Self-hosted, no data ever leaves your network.">
+    OPAA verbindet Wikis, E-Mails, SharePoint, Ticketsysteme und File Shares zu einem intelligenten Assistenten. Frag in natürlicher Sprache — erhalte Antworten mit Quellenangabe. Selbst gehostet, keine Daten verlassen dein Netzwerk.
+  </p>
+  <div class="hero-buttons">
+    <a class="btn btn-primary" href="https://opaa.ewerlin.com" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <span data-de="Demo ansehen" data-en="View Demo">Demo ansehen</span>
+    </a>
+    <a class="btn btn-secondary" href="https://github.com/criew/opaa" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<section class="screenshots section">
+  <div class="screenshots-grid">
+    <div class="screenshot-card">
+      <img src="img/chat-interface.png" alt="Chat Interface">
+      <div class="screenshot-info">
+        <span class="screenshot-dot dot-blue"></span>
+        <h3 data-de="KI-Chat mit Quellen" data-en="AI Chat with Sources">KI-Chat mit Quellen</h3>
+        <p data-de="Frage stellen, Antwort mit Originaldokumenten und Vertraulichkeitsstufe erhalten"
+           data-en="Ask a question, get answers with original documents and confidentiality levels">
+          Frage stellen, Antwort mit Originaldokumenten und Vertraulichkeitsstufe erhalten
+        </p>
+      </div>
+    </div>
+    <div class="screenshot-card">
+      <img src="img/document-browser.png" alt="Document Browser">
+      <div class="screenshot-info">
+        <span class="screenshot-dot dot-green"></span>
+        <h3 data-de="Dokumenten-Browser" data-en="Document Browser">Dokumenten-Browser</h3>
+        <p data-de="Alle Quellen durchsuchbar an einem Ort — mit KI-extrahierten Insights"
+           data-en="All sources searchable in one place — with AI-extracted insights">
+          Alle Quellen durchsuchbar an einem Ort — mit KI-extrahierten Insights
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features section">
+  <div class="section-title">
+    <h2 data-de="Warum OPAA?" data-en="Why OPAA?">Warum OPAA?</h2>
+    <p data-de="Dein Wissen. Deine Infrastruktur. Deine Regeln." data-en="Your knowledge. Your infrastructure. Your rules.">Dein Wissen. Deine Infrastruktur. Deine Regeln.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f512;</div>
+      <h3 data-de="Digitale Souveränität" data-en="Digital Sovereignty">Digitale Souveränität</h3>
+      <p data-de="Alle Daten bleiben in deiner Infrastruktur. Kein Cloud-Zwang."
+         data-en="All data stays in your infrastructure. No cloud dependency.">
+        Alle Daten bleiben in deiner Infrastruktur. Kein Cloud-Zwang.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f50c;</div>
+      <h3 data-de="Kein Vendor Lock-in" data-en="No Vendor Lock-in">Kein Vendor Lock-in</h3>
+      <p data-de="Jede Komponente austauschbar — LLM, Datenbank, Quellen."
+         data-en="Every component is swappable — LLM, database, data sources.">
+        Jede Komponente austauschbar — LLM, Datenbank, Quellen.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f4d6;</div>
+      <h3 data-de="Immer mit Quelle" data-en="Always with Sources">Immer mit Quelle</h3>
+      <p data-de="Jede Antwort zeigt das Originaldokument. Kein Halluzinieren."
+         data-en="Every answer links to the original document. No guessing, no hallucinations.">
+        Jede Antwort zeigt das Originaldokument. Kein Halluzinieren.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f3a8;</div>
+      <h3 data-de="Dein Branding" data-en="Your Branding">Dein Branding</h3>
+      <p data-de="Logo, Farben, Theme und KI-Modell frei konfigurierbar."
+         data-en="Logo, colors, theme and AI model fully configurable.">
+        Logo, Farben, Theme und KI-Modell frei konfigurierbar.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x26a1;</div>
+      <h3>Open Source</h3>
+      <p data-de="Apache 2.0 Lizenz. Keine Lizenzkosten. Community-driven."
+         data-en="Apache 2.0 license. No license fees. Community-driven.">
+        Apache 2.0 Lizenz. Keine Lizenzkosten. Community-driven.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="comparison section">
+  <div class="section-title">
+    <h2 data-de="OPAA vs. typische SaaS-Lösungen" data-en="OPAA vs. Typical SaaS Solutions">OPAA vs. typische SaaS-Lösungen</h2>
+  </div>
+  <div class="comp-wrapper">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>OPAA</th>
+          <th data-de="SaaS-Alternativen" data-en="SaaS Alternatives">SaaS-Alternativen</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-de="Datenhoheit" data-en="Data Ownership">Datenhoheit</td>
+          <td><span class="check">&#x2713;</span> <span data-de="Alles bleibt bei dir" data-en="Everything stays with you">Alles bleibt bei dir</span></td>
+          <td><span class="cross">&#x2717;</span> <span data-de="Daten in fremder Cloud" data-en="Data in third-party cloud">Daten in fremder Cloud</span></td>
+        </tr>
+        <tr>
+          <td data-de="KI-Modell" data-en="AI Model">KI-Modell</td>
+          <td><span class="check">&#x2713;</span> <span data-de="Frei wählbar (OpenAI, Ollama, lokal)" data-en="Your choice (OpenAI, Ollama, local)">Frei wählbar (OpenAI, Ollama, lokal)</span></td>
+          <td><span class="cross">&#x2717;</span> <span data-de="Vorgegeben, nicht änderbar" data-en="Predetermined, not changeable">Vorgegeben, nicht änderbar</span></td>
+        </tr>
+        <tr>
+          <td data-de="Datenquellen" data-en="Data Sources">Datenquellen</td>
+          <td><span class="check">&#x2713;</span> <span data-de="Wikis, Mail, Ticketsysteme, S3, SharePoint ..." data-en="Wikis, email, issue trackers, S3, SharePoint ...">Wikis, Mail, Ticketsysteme, S3, SharePoint ...</span></td>
+          <td><span class="cross">&#x2717;</span> <span data-de="Meist nur eigene Plattform" data-en="Usually own platform only">Meist nur eigene Plattform</span></td>
+        </tr>
+        <tr>
+          <td data-de="Quellenangaben" data-en="Source References">Quellenangaben</td>
+          <td><span class="check">&#x2713;</span> <span data-de="Jede Antwort mit Originaldokument" data-en="Every answer with original document">Jede Antwort mit Originaldokument</span></td>
+          <td><span class="cross">&#x2717;</span> <span data-de="Oft Blackbox" data-en="Often a black box">Oft Blackbox</span></td>
+        </tr>
+        <tr>
+          <td data-de="Kosten" data-en="Cost">Kosten</td>
+          <td><span class="check">&#x2713;</span> <span data-de="Open Source — keine Lizenzgebühren" data-en="Open Source — no license fees">Open Source — keine Lizenzgebühren</span></td>
+          <td><span class="cross">&#x2717;</span> <span data-de="Per-User-Lizenz" data-en="Per-user licensing">Per-User-Lizenz</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="section footer-inner">
+    <div class="tech-stack">
+      <span class="tech-tag">React 19</span>
+      <span class="tech-tag">TypeScript</span>
+      <span class="tech-tag">Java 21</span>
+      <span class="tech-tag">Spring Boot</span>
+      <span class="tech-tag">Spring AI</span>
+      <span class="tech-tag">PostgreSQL + pgvector</span>
+      <span class="tech-tag">Docker</span>
+    </div>
+    <div class="footer-right">
+      <a href="https://github.com/criew/opaa" target="_blank">github.com/criew/opaa</a>
+      <div class="footer-license">Apache 2.0 License &bull; Open Source</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function setLang(lang) {
+    document.documentElement.lang = lang;
+    localStorage.setItem('opaa-lang', lang);
+
+    document.getElementById('langDe').classList.toggle('active', lang === 'de');
+    document.getElementById('langEn').classList.toggle('active', lang === 'en');
+
+    document.querySelectorAll('[data-de][data-en]').forEach(function(el) {
+      el.textContent = el.getAttribute('data-' + lang);
+    });
+  }
+
+  // Init: detect language
+  (function() {
+    var saved = localStorage.getItem('opaa-lang');
+    if (saved) {
+      setLang(saved);
+    } else {
+      var browserLang = (navigator.language || '').substring(0, 2);
+      setLang(browserLang === 'de' ? 'de' : 'en');
+    }
+  })();
+</script>
+
+</body>
+</html>
