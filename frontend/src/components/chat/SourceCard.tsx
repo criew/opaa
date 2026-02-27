@@ -19,8 +19,9 @@ interface SourceCardProps {
 
 function formatIndexedAt(indexedAt: string | null): string {
   if (!indexedAt) return '-'
-  const date = new Date(indexedAt)
-  return date.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const d = new Date(indexedAt)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 export default function SourceCard({ source }: SourceCardProps) {
