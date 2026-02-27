@@ -15,7 +15,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -29,10 +31,12 @@ class QueryServiceTest {
 
   @Mock private VectorStore vectorStore;
   @Mock private AnswerGenerationService answerGenerationService;
+  @Mock private ChatMemory chatMemory;
   @InjectMocks private QueryService queryService;
 
   @Test
   void queryPerformsSimilaritySearchAndReturnsResponse() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
             .text("Relevant content")
@@ -81,6 +85,7 @@ class QueryServiceTest {
 
   @Test
   void queryGeneratesConversationIdWhenNull() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -93,6 +98,7 @@ class QueryServiceTest {
 
   @Test
   void queryUsesProvidedConversationId() {
+    when(chatMemory.get("existing-conv-id")).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -106,6 +112,7 @@ class QueryServiceTest {
 
   @Test
   void queryTruncatesLongExcerpts() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     String longText = "A".repeat(300);
     var chunk =
         Document.builder()
@@ -128,6 +135,7 @@ class QueryServiceTest {
 
   @Test
   void queryDeduplicatesSourcesByFileName() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk1 =
         Document.builder()
             .text("High relevance chunk")
@@ -163,6 +171,7 @@ class QueryServiceTest {
 
   @Test
   void queryKeepsHighestScoreRegardlessOfOrder() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var lowScoreFirst =
         Document.builder()
             .text("Low score")
@@ -190,6 +199,7 @@ class QueryServiceTest {
 
   @Test
   void queryUsesExcerptFromHighestScoringChunk() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var lowScore =
         Document.builder()
             .text("Wrong excerpt")
@@ -217,6 +227,7 @@ class QueryServiceTest {
 
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var assistantMessage = new AssistantMessage("No results");
@@ -231,5 +242,40 @@ class QueryServiceTest {
     assertThat(request.getQuery()).isEqualTo("Test query");
     assertThat(request.getTopK()).isEqualTo(5);
     assertThat(request.getSimilarityThreshold()).isEqualTo(0.3);
+  }
+
+  @Test
+  void queryEnrichesSearchWithConversationHistory() {
+    when(chatMemory.get("conv-enrich"))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was sind meine Ausgaben bei Apple?"),
+                new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR.")));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Mach daraus eine tabellarische Auflistung", "conv-enrich");
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
+  }
+
+  @Test
+  void queryUsesPlainQuestionWhenNoHistory() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("First question", null);
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery()).isEqualTo("First question");
   }
 }

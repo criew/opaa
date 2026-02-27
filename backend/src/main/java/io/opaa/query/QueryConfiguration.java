@@ -25,7 +25,9 @@ public class QueryConfiguration {
 
   @Bean
   QueryService queryService(
-      VectorStore vectorStore, AnswerGenerationService answerGenerationService) {
-    return new QueryService(vectorStore, answerGenerationService);
+      VectorStore vectorStore,
+      AnswerGenerationService answerGenerationService,
+      ChatMemory chatMemory) {
+    return new QueryService(vectorStore, answerGenerationService, chatMemory);
   }
 }
