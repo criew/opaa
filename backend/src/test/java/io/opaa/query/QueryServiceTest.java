@@ -265,6 +265,28 @@ class QueryServiceTest {
   }
 
   @Test
+  void queryEnrichesThirdMessageWithFirstUserQuestion() {
+    when(chatMemory.get("conv-third"))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was sind meine Ausgaben bei Apple?"),
+                new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."),
+                new UserMessage("Mach daraus eine Tabelle"),
+                new AssistantMessage("Hier ist die Tabelle...")));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Sortiere nach Datum", "conv-third");
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Was sind meine Ausgaben bei Apple? Sortiere nach Datum");
+  }
+
+  @Test
   void queryUsesPlainQuestionWhenNoHistory() {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
