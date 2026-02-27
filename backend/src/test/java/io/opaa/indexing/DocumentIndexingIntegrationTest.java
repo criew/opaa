@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -90,10 +92,15 @@ class DocumentIndexingIntegrationTest {
     Files.writeString(sharedTempDir.resolve("notes.txt"), "Some plain text notes for testing.");
 
     IndexingJob job = documentIndexingService.triggerIndexing();
+    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
 
-    assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    assertThat(job.getDocumentsProcessed()).isEqualTo(2);
-    assertThat(job.getDocumentsFailed()).isZero();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsTotal()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
 
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(2);
@@ -116,11 +123,15 @@ class DocumentIndexingIntegrationTest {
     Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
 
     IndexingJob job = documentIndexingService.triggerIndexing();
+    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
 
-    assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
     // Only .txt is a supported format, .csv is filtered out by DocumentService
-    assertThat(job.getDocumentsProcessed()).isEqualTo(1);
-    assertThat(job.getDocumentsFailed()).isZero();
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
 
     // Verify only the supported file was indexed
     List<Document> documents = documentRepository.findAll();
@@ -135,10 +146,14 @@ class DocumentIndexingIntegrationTest {
     copyTestResource("test-documents/test-document.docx", "notes.docx");
 
     IndexingJob job = documentIndexingService.triggerIndexing();
+    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
 
-    assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    assertThat(job.getDocumentsProcessed()).isEqualTo(2);
-    assertThat(job.getDocumentsFailed()).isZero();
+    awaitJobCompletion(job);
+
+    var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(completedJob.getDocumentsProcessed()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsFailed()).isZero();
 
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(2);
@@ -158,7 +173,10 @@ class DocumentIndexingIntegrationTest {
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Original content.");
 
     IndexingJob firstJob = documentIndexingService.triggerIndexing();
-    assertThat(firstJob.getDocumentsProcessed()).isEqualTo(1);
+    awaitJobCompletion(firstJob);
+
+    var completedFirstJob = indexingJobRepository.findById(firstJob.getId()).orElseThrow();
+    assertThat(completedFirstJob.getDocumentsProcessed()).isEqualTo(1);
 
     // Remember initial state
     List<org.springframework.ai.document.Document> initialResults =
@@ -171,8 +189,10 @@ class DocumentIndexingIntegrationTest {
     // Update file and re-index
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
     IndexingJob secondJob = documentIndexingService.triggerIndexing();
+    awaitJobCompletion(secondJob);
 
-    assertThat(secondJob.getDocumentsProcessed()).isEqualTo(1);
+    var completedSecondJob = indexingJobRepository.findById(secondJob.getId()).orElseThrow();
+    assertThat(completedSecondJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(documentRepository.count()).isEqualTo(1);
 
     // Verify the document content was actually re-indexed
@@ -190,6 +210,16 @@ class DocumentIndexingIntegrationTest {
             .map(org.springframework.ai.document.Document::getText)
             .reduce("", String::concat);
     assertThat(allChunkText).contains("Updated");
+  }
+
+  private void awaitJobCompletion(IndexingJob job) {
+    await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              var latestJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+              return latestJob.getStatus() != JobStatus.RUNNING;
+            });
   }
 
   private void copyTestResource(String resourcePath, String targetFileName) throws IOException {

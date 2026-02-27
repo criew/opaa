@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> {
 
   Optional<IndexingJob> findTopByOrderByStartedAtDesc();
+
+  boolean existsByStatus(JobStatus status);
 }

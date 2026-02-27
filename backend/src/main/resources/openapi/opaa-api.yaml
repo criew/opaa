@@ -86,13 +86,16 @@ components:
 
     IndexingStatusResponse:
       type: object
-      required: [status, documentCount, timestamp]
+      required: [status, documentCount, totalDocuments, timestamp]
       properties:
         status:
           type: string
           enum: [IDLE, RUNNING, COMPLETED, FAILED]
           example: COMPLETED
         documentCount:
+          type: integer
+          example: 42
+        totalDocuments:
           type: integer
           example: 42
         message:
