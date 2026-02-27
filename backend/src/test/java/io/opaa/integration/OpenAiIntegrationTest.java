@@ -98,7 +98,7 @@ class OpenAiIntegrationTest {
     assertThat(job.getDocumentsProcessed()).isEqualTo(1);
 
     // Query with a question about the indexed document
-    QueryResponse response = queryService.query("What does OPAA stand for?");
+    QueryResponse response = queryService.query("What does OPAA stand for?", null);
 
     assertThat(response.answer()).isNotBlank();
     assertThat(response.answer().toLowerCase()).contains("open project ai assistant");

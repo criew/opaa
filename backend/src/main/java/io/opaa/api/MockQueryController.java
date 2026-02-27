@@ -7,6 +7,7 @@ import io.opaa.api.dto.SourceReference;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,9 +22,11 @@ public class MockQueryController {
 
   private static final Instant MOCK_INDEXED_AT = Instant.parse("2025-01-15T10:30:00Z");
 
-  private static final List<QueryResponse> MOCK_RESPONSES =
+  private record MockAnswer(String answer, List<SourceReference> sources, QueryMetadata metadata) {}
+
+  private static final List<MockAnswer> MOCK_ANSWERS =
       List.of(
-          new QueryResponse(
+          new MockAnswer(
               "The project uses a modular monolith architecture with three main modules: "
                   + "api, indexing, and query.",
               List.of(
@@ -32,11 +35,11 @@ public class MockQueryController {
                   new SourceReference(
                       "adr-0002-technology-stack.md", 0.78, 2, MOCK_INDEXED_AT, false)),
               new QueryMetadata("gpt-4o", 847, 1523)),
-          new QueryResponse(
+          new MockAnswer(
               "To add a new REST endpoint, create a controller class in the api module.",
               List.of(new SourceReference("contributing-guide.md", 0.95, 1, MOCK_INDEXED_AT, true)),
               new QueryMetadata("gpt-4o", 312, 890)),
-          new QueryResponse(
+          new MockAnswer(
               "The deployment pipeline uses Docker Compose to orchestrate all services.",
               List.of(
                   new SourceReference("docker-compose.yml", 0.97, 2, MOCK_INDEXED_AT, true),
@@ -54,6 +57,11 @@ public class MockQueryController {
 
   @PostMapping("/query")
   public QueryResponse query(@Valid @RequestBody QueryRequest request) {
-    return MOCK_RESPONSES.get(ThreadLocalRandom.current().nextInt(MOCK_RESPONSES.size()));
+    MockAnswer mock = MOCK_ANSWERS.get(ThreadLocalRandom.current().nextInt(MOCK_ANSWERS.size()));
+    String conversationId =
+        request.conversationId() != null && !request.conversationId().isBlank()
+            ? request.conversationId()
+            : UUID.randomUUID().toString();
+    return new QueryResponse(mock.answer(), mock.sources(), mock.metadata(), conversationId);
   }
 }

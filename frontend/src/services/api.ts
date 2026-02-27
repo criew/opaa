@@ -28,9 +28,9 @@ export async function getHealth(): Promise<HealthResponse> {
   }
 }
 
-export async function sendQuery(question: string): Promise<QueryResponse> {
+export async function sendQuery(question: string, conversationId?: string): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question }
+    const request: QueryRequest = { question, conversationId }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
   } catch (err) {

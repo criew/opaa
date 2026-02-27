@@ -16,7 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -30,6 +32,7 @@ class QueryServiceTest {
 
   @Mock private VectorStore vectorStore;
   @Mock private AnswerGenerationService answerGenerationService;
+  @Mock private ChatMemory chatMemory;
   @Mock private DocumentRepository documentRepository;
   private QueryService queryService;
 
@@ -37,11 +40,16 @@ class QueryServiceTest {
   void setUp() {
     queryService =
         new QueryService(
-            vectorStore, answerGenerationService, new CitationParser(), documentRepository);
+            vectorStore,
+            answerGenerationService,
+            chatMemory,
+            new CitationParser(),
+            documentRepository);
   }
 
   @Test
   void queryMarksCitedSourcesCorrectly() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
             .text("Relevant content")
@@ -56,9 +64,10 @@ class QueryServiceTest {
     var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage(answer))), metadata);
-    when(answerGenerationService.generateAnswer(eq("What?"), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(eq("What?"), any(), any()))
+        .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?");
+    QueryResponse response = queryService.query("What?", null);
 
     assertThat(response.answer()).contains("【source:");
     assertThat(response.sources()).hasSize(1);
@@ -68,10 +77,39 @@ class QueryServiceTest {
     assertThat(response.sources().getFirst().matchCount()).isEqualTo(1);
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
+    assertThat(response.conversationId()).isNotNull().isNotBlank();
+  }
+
+  @Test
+  void queryGeneratesConversationIdWhenNull() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null);
+
+    assertThat(response.conversationId()).isNotNull().isNotBlank();
+  }
+
+  @Test
+  void queryUsesProvidedConversationId() {
+    when(chatMemory.get("existing-conv-id")).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), eq("existing-conv-id")))
+        .thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", "existing-conv-id");
+
+    assertThat(response.conversationId()).isEqualTo("existing-conv-id");
   }
 
   @Test
   void queryMarksUncitedSourcesCorrectly() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var citedChunk =
         Document.builder()
             .text("Cited content")
@@ -90,9 +128,9 @@ class QueryServiceTest {
 
     var answer = "Info from readme 【source: doc-1#0 | readme.md】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(2);
     assertThat(response.sources().get(0).cited()).isTrue();
@@ -101,6 +139,7 @@ class QueryServiceTest {
 
   @Test
   void queryCountsMatchesPerFile() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk1 =
         Document.builder()
             .text("First chunk")
@@ -124,9 +163,9 @@ class QueryServiceTest {
         .thenReturn(List.of(chunk1, chunk2, chunk3));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(2);
     assertThat(response.sources().get(0).fileName()).isEqualTo("report.pdf");
@@ -137,6 +176,7 @@ class QueryServiceTest {
 
   @Test
   void queryRetainsCitationMarkersInAnswer() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk =
         Document.builder()
             .text("Content")
@@ -148,15 +188,16 @@ class QueryServiceTest {
 
     var answer = "The answer 【source: doc-1#0 | readme.md】 is here.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.answer()).isEqualTo(answer);
   }
 
   @Test
   void queryDeduplicatesSourcesByFileName() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var chunk1 =
         Document.builder()
             .text("High relevance chunk")
@@ -174,9 +215,9 @@ class QueryServiceTest {
         .thenReturn(List.of(chunk1, chunk2));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.9);
@@ -184,13 +225,14 @@ class QueryServiceTest {
 
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("No results"))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Test query");
+    queryService.query("Test query", null);
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -202,6 +244,7 @@ class QueryServiceTest {
 
   @Test
   void queryPreservesCitedFlagWhenDeduplicatingChunksFromSameFile() {
+    when(chatMemory.get(any())).thenReturn(List.of());
     var citedChunk =
         Document.builder()
             .text("Cited chunk")
@@ -220,13 +263,70 @@ class QueryServiceTest {
 
     var answer = "Info 【source: doc-1#0 | report.pdf】.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
-    when(answerGenerationService.generateAnswer(any(), any())).thenReturn(chatResponse);
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question");
+    QueryResponse response = queryService.query("Question", null);
 
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().cited()).isTrue();
     assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.95);
+  }
+
+  @Test
+  void queryEnrichesSearchWithConversationHistory() {
+    when(chatMemory.get("conv-enrich"))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was sind meine Ausgaben bei Apple?"),
+                new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR.")));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Mach daraus eine tabellarische Auflistung", "conv-enrich");
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
+  }
+
+  @Test
+  void queryEnrichesThirdMessageWithFirstUserQuestion() {
+    when(chatMemory.get("conv-third"))
+        .thenReturn(
+            List.of(
+                new UserMessage("Was sind meine Ausgaben bei Apple?"),
+                new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."),
+                new UserMessage("Mach daraus eine Tabelle"),
+                new AssistantMessage("Hier ist die Tabelle...")));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Sortiere nach Datum", "conv-third");
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Was sind meine Ausgaben bei Apple? Sortiere nach Datum");
+  }
+
+  @Test
+  void queryUsesPlainQuestionWhenNoHistory() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("First question", null);
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery()).isEqualTo("First question");
   }
 
   private Usage createUsage(int promptTokens, int completionTokens) {
