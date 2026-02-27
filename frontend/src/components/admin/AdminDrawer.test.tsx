@@ -11,6 +11,7 @@ describe('AdminDrawer', () => {
       status: 'IDLE',
       documentCount: 0,
       totalDocuments: 0,
+      documentsSkipped: 0,
       message: null,
       timestamp: null,
       isPolling: false,
@@ -64,13 +65,14 @@ describe('AdminDrawer', () => {
       status: 'RUNNING',
       totalDocuments: 42,
       documentCount: 10,
+      documentsSkipped: 0,
     })
     renderWithProviders(<AdminDrawer />)
 
     const progressbar = screen.getByRole('progressbar')
     expect(progressbar).toBeInTheDocument()
     expect(progressbar).toHaveAttribute('aria-valuenow', '24')
-    expect(screen.getByText(/10 of 42 documents indexed/i)).toBeInTheDocument()
+    expect(screen.getByText(/10 of 42 documents processed/i)).toBeInTheDocument()
   })
 
   it('shows last indexing info when completed', () => {
@@ -78,12 +80,39 @@ describe('AdminDrawer', () => {
       status: 'COMPLETED',
       documentCount: 42,
       totalDocuments: 42,
+      documentsSkipped: 0,
       timestamp: '2025-01-15T10:30:00Z',
     })
     renderWithProviders(<AdminDrawer />)
 
     expect(screen.getByText(/completed/i)).toBeInTheDocument()
-    expect(screen.getByText(/documents: 42/i)).toBeInTheDocument()
+    expect(screen.getByText(/documents: 42 processed/i)).toBeInTheDocument()
+  })
+
+  it('shows skipped count when documents were skipped', () => {
+    useIndexingStore.setState({
+      status: 'COMPLETED',
+      documentCount: 32,
+      totalDocuments: 42,
+      documentsSkipped: 10,
+      timestamp: '2025-01-15T10:30:00Z',
+    })
+    renderWithProviders(<AdminDrawer />)
+
+    expect(screen.getByText(/10 skipped/i)).toBeInTheDocument()
+  })
+
+  it('does not show skipped text when zero skipped', () => {
+    useIndexingStore.setState({
+      status: 'COMPLETED',
+      documentCount: 42,
+      totalDocuments: 42,
+      documentsSkipped: 0,
+      timestamp: '2025-01-15T10:30:00Z',
+    })
+    renderWithProviders(<AdminDrawer />)
+
+    expect(screen.queryByText(/skipped/i)).not.toBeInTheDocument()
   })
 
   it('does not render content when drawer is closed', () => {

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-indexing-jobs-table.yaml
   - include:
       file: db/changelog/changes/004-add-documents-total-column.yaml
+  - include:
+      file: db/changelog/changes/005-add-checksum-and-skipped-columns.yaml

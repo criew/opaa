@@ -17,12 +17,13 @@ export default function AdminDrawer() {
   const status = useIndexingStore((s) => s.status)
   const documentCount = useIndexingStore((s) => s.documentCount)
   const totalDocuments = useIndexingStore((s) => s.totalDocuments)
+  const documentsSkipped = useIndexingStore((s) => s.documentsSkipped)
   const timestamp = useIndexingStore((s) => s.timestamp)
   const trigger = useIndexingStore((s) => s.triggerIndexing)
 
   const isRunning = status === 'RUNNING'
   const progressPercent =
-    totalDocuments > 0 ? Math.round((documentCount / totalDocuments) * 100) : 0
+    totalDocuments > 0 ? Math.round(((documentCount + documentsSkipped) / totalDocuments) * 100) : 0
 
   return (
     <Drawer
@@ -75,7 +76,7 @@ export default function AdminDrawer() {
               />
               <Typography variant="body2" color="text.secondary">
                 {totalDocuments > 0
-                  ? `${documentCount} of ${totalDocuments} documents indexed`
+                  ? `${documentCount + documentsSkipped} of ${totalDocuments} documents processed`
                   : 'Discovering documents...'}
               </Typography>
             </Box>
@@ -87,7 +88,8 @@ export default function AdminDrawer() {
                 Last indexing: {status === 'COMPLETED' ? 'Completed' : 'Failed'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Documents: {documentCount}
+                Documents: {documentCount} processed
+                {documentsSkipped > 0 && ` (${documentsSkipped} skipped)`}
               </Typography>
               {timestamp && (
                 <Typography variant="caption" color="text.secondary">
