@@ -122,7 +122,9 @@ services:
 - Return the generated answer with **source references**:
   - File name and path
   - Relevance score (similarity distance)
-  - Text excerpt from the matched chunk
+  - Match count (number of matching chunks per file)
+  - Indexing timestamp
+  - Citation flag (whether the LLM actually cited the source in its answer)
 
 #### Web UI
 - Chat-style Q&A interface
@@ -160,7 +162,7 @@ The MVP is considered complete when:
 
 1. **Indexing works**: Documents placed in a folder can be indexed via an API call
 2. **Q&A works end-to-end**: A user can ask a question in the Web UI and receive a relevant answer
-3. **Sources are shown**: Every answer displays source file name, relevance score, and text excerpt
+3. **Sources are shown**: Every answer displays source file name, relevance score, match count, and citation status
 4. **Dual LLM support**: The system works with both OpenAI API and Ollama (local)
 5. **Separate configs**: LLM and embedding model are independently configurable
 6. **Docker Compose runs**: `docker compose up` starts the full stack
