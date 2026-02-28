@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -338,6 +339,40 @@ class QueryServiceTest {
 
     assertThat(transactional).isNotNull();
     assertThat(transactional.readOnly()).isTrue();
+  }
+
+  @Test
+  void validateConversationIdRejectsToolLongId() {
+    String tooLong = "a".repeat(51);
+    assertThatThrownBy(() -> queryService.validateConversationId(tooLong))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid conversationId format");
+  }
+
+  @Test
+  void validateConversationIdRejectsSpecialCharacters() {
+    assertThatThrownBy(() -> queryService.validateConversationId("id with spaces"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> queryService.validateConversationId("id;DROP TABLE"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> queryService.validateConversationId("<script>alert(1)</script>"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> queryService.validateConversationId("id/path/../traversal"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void validateConversationIdAcceptsValidFormats() {
+    assertThat(queryService.validateConversationId("abc-123")).isEqualTo("abc-123");
+    assertThat(queryService.validateConversationId("A")).isEqualTo("A");
+    assertThat(queryService.validateConversationId("a".repeat(50))).hasSize(50);
+  }
+
+  @Test
+  void validateConversationIdGeneratesUuidForNullOrBlank() {
+    assertThat(queryService.validateConversationId(null)).isNotBlank();
+    assertThat(queryService.validateConversationId("")).isNotBlank();
+    assertThat(queryService.validateConversationId("   ")).isNotBlank();
   }
 
   private Usage createUsage(int promptTokens, int completionTokens) {

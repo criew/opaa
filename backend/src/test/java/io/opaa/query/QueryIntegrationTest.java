@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -130,5 +131,12 @@ class QueryIntegrationTest {
 
     assertThat(response.answer()).contains("don't have enough context");
     assertThat(response.sources()).isEmpty();
+  }
+
+  @Test
+  void queryRejectsInvalidConversationId() {
+    assertThatThrownBy(() -> queryService.query("Test question", "<script>alert(1)</script>"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid conversationId format");
   }
 }
