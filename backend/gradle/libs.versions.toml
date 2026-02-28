@@ -2,9 +2,11 @@
 spring-ai = "1.1.2"
 spotless = "8.2.1"
 awaitility = "4.3.0"
+caffeine = "3.2.0"
 
 [libraries]
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
