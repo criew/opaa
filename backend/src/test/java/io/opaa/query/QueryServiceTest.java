@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.DocumentRepository;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.transaction.annotation.Transactional;
 
 @ExtendWith(MockitoExtension.class)
 class QueryServiceTest {
@@ -328,6 +330,15 @@ class QueryServiceTest {
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery()).isEqualTo("First question");
+  }
+
+  @Test
+  void queryMethodIsAnnotatedWithTransactionalReadOnly() throws NoSuchMethodException {
+    Method queryMethod = QueryService.class.getMethod("query", String.class, String.class);
+    Transactional transactional = queryMethod.getAnnotation(Transactional.class);
+
+    assertThat(transactional).isNotNull();
+    assertThat(transactional.readOnly()).isTrue();
   }
 
   @Test
