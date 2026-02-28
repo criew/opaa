@@ -22,6 +22,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.transaction.annotation.Transactional;
 
 public class QueryService {
 
@@ -49,6 +50,7 @@ public class QueryService {
     this.documentRepository = documentRepository;
   }
 
+  @Transactional(readOnly = true)
   public QueryResponse query(String question, String conversationId) {
     long startTime = System.currentTimeMillis();
 
