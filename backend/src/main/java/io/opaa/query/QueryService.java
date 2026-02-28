@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class QueryService {
 
   private static final int DEFAULT_TOP_K = 5;
   private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
+  private static final Pattern VALID_CONVERSATION_ID = Pattern.compile("^[a-zA-Z0-9-]{1,50}$");
 
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
@@ -52,10 +54,7 @@ public class QueryService {
   public QueryResponse query(String question, String conversationId) {
     long startTime = System.currentTimeMillis();
 
-    String effectiveConversationId =
-        conversationId != null && !conversationId.isBlank()
-            ? conversationId
-            : UUID.randomUUID().toString();
+    String effectiveConversationId = validateConversationId(conversationId);
 
     String searchQuery = buildSearchQuery(question, effectiveConversationId);
 
@@ -177,6 +176,16 @@ public class QueryService {
       return response.getMetadata().getUsage().getTotalTokens();
     }
     return 0;
+  }
+
+  String validateConversationId(String conversationId) {
+    if (conversationId == null || conversationId.isBlank()) {
+      return UUID.randomUUID().toString();
+    }
+    if (!VALID_CONVERSATION_ID.matcher(conversationId).matches()) {
+      throw new IllegalArgumentException("Invalid conversationId format");
+    }
+    return conversationId;
   }
 
   String buildSearchQuery(String question, String conversationId) {
