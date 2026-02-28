@@ -41,6 +41,12 @@ public class GlobalExceptionHandler {
                 Instant.now()));
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+    return ResponseEntity.badRequest()
+        .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+  }
+
   @ExceptionHandler(TransientAiException.class)
   public ResponseEntity<ErrorResponse> handleTransientAiException(TransientAiException ex) {
     log.warn("Transient AI service error: {}", ex.getMessage());
