@@ -161,23 +161,33 @@ public class QueryService {
             toMap(
                 SourceReference::fileName,
                 source -> source,
-                (a, b) -> {
-                  boolean eitherCited = a.cited() || b.cited();
-                  SourceReference winner = a.relevanceScore() >= b.relevanceScore() ? a : b;
-                  if (eitherCited && !winner.cited()) {
-                    return new SourceReference(
-                        winner.fileName(),
-                        winner.relevanceScore(),
-                        winner.matchCount(),
-                        winner.indexedAt(),
-                        true);
-                  }
-                  return winner;
-                },
+                QueryService::mergeSourceReferences,
                 LinkedHashMap::new))
         .values()
         .stream()
         .toList();
+  }
+
+  /**
+   * Merges duplicate source references for the same file, keeping the one with the highest
+   * relevance score while preserving citation status. If either reference was cited in the answer,
+   * the merged result is marked as cited — because any chunk from that document being cited means
+   * the document as a whole contributed to the answer.
+   */
+  static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
+    SourceReference preferred = a.relevanceScore() >= b.relevanceScore() ? a : b;
+    boolean shouldBeCited = a.cited() || b.cited();
+
+    if (shouldBeCited && !preferred.cited()) {
+      return new SourceReference(
+          preferred.fileName(),
+          preferred.relevanceScore(),
+          preferred.matchCount(),
+          preferred.indexedAt(),
+          true);
+    }
+
+    return preferred;
   }
 
   private String extractAnswer(ChatResponse response) {
