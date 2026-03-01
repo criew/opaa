@@ -9,12 +9,15 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.api.dto.SourceReference;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -376,6 +379,89 @@ class QueryServiceTest {
     assertThat(queryService.validateConversationId(null)).isNotBlank();
     assertThat(queryService.validateConversationId("")).isNotBlank();
     assertThat(queryService.validateConversationId("   ")).isNotBlank();
+  }
+
+  @Nested
+  class MergeSourceReferences {
+
+    private static final Instant INDEXED_AT = Instant.parse("2025-01-01T00:00:00Z");
+
+    @Test
+    void keepsHigherRelevanceScore() {
+      var high = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
+      var low = new SourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(high, low);
+
+      assertThat(result.relevanceScore()).isEqualTo(0.9);
+    }
+
+    @Test
+    void keepsHigherScoreRegardlessOfOrder() {
+      var low = new SourceReference("file.pdf", 0.3, 1, INDEXED_AT, false);
+      var high = new SourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(low, high);
+
+      assertThat(result.relevanceScore()).isEqualTo(0.8);
+    }
+
+    @Test
+    void prefersFirstWhenScoresAreEqual() {
+      var first = new SourceReference("file.pdf", 0.7, 2, INDEXED_AT, true);
+      var second = new SourceReference("file.pdf", 0.7, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(first, second);
+
+      assertThat(result).isEqualTo(first);
+    }
+
+    @Test
+    void preservesCitedWhenHigherScoreIsCited() {
+      var cited = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, true);
+      var uncited = new SourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(cited, uncited);
+
+      assertThat(result.cited()).isTrue();
+      assertThat(result.relevanceScore()).isEqualTo(0.9);
+    }
+
+    @Test
+    void forcesCitedWhenLowerScoreIsCitedButHigherWins() {
+      var citedLow = new SourceReference("file.pdf", 0.3, 1, INDEXED_AT, true);
+      var uncitedHigh = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
+
+      assertThat(result.cited()).isTrue();
+      assertThat(result.relevanceScore()).isEqualTo(0.9);
+      assertThat(result.fileName()).isEqualTo("file.pdf");
+    }
+
+    @Test
+    void returnsFalseWhenNeitherIsCited() {
+      var a = new SourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
+      var b = new SourceReference("file.pdf", 0.6, 1, INDEXED_AT, false);
+
+      var result = QueryService.mergeSourceReferences(a, b);
+
+      assertThat(result.cited()).isFalse();
+    }
+
+    @Test
+    void preservesMetadataFromPreferredSource() {
+      var indexedEarly = Instant.parse("2024-01-01T00:00:00Z");
+      var indexedLate = Instant.parse("2025-06-01T00:00:00Z");
+      var high = new SourceReference("report.pdf", 0.95, 3, indexedLate, false);
+      var low = new SourceReference("report.pdf", 0.4, 1, indexedEarly, true);
+
+      var result = QueryService.mergeSourceReferences(high, low);
+
+      assertThat(result.matchCount()).isEqualTo(3);
+      assertThat(result.indexedAt()).isEqualTo(indexedLate);
+      assertThat(result.cited()).isTrue();
+    }
   }
 
   private Usage createUsage(int promptTokens, int completionTokens) {
