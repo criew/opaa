@@ -38,6 +38,9 @@ databaseChangeLog:
                   name: indexed_at
                   type: timestamp with time zone
               - column:
+                  name: checksum
+                  type: varchar(64)
+              - column:
                   name: status
                   type: varchar(20)
                   defaultValue: PENDING
