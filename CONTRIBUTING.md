@@ -41,6 +41,7 @@ docs: update architecture decision records
 
 ## Issues
 
+- **Issues must be written in English**
 - Use the provided issue templates for bug reports and feature requests
 - For larger features, create a feature spec in `docs/features/` and link it from the issue
 
