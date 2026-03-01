@@ -21,11 +21,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: documents_total
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
                   name: documents_processed
                   type: int
                   defaultValueNumeric: 0
               - column:
                   name: documents_failed
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: documents_skipped
                   type: int
                   defaultValueNumeric: 0
               - column:
