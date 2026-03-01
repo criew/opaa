@@ -60,6 +60,9 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Documents (user PDFs)
+documents/
+
 # Claude
 /.claude/settings.local.json
 **/.claude/agent-memory/
