@@ -1,4 +1,6 @@
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
+import { server } from '../mocks/server'
 import { useChatStore } from './chatStore'
 
 describe('chatStore', () => {
@@ -38,6 +40,29 @@ describe('chatStore', () => {
     expect(secondConvId).toBeTruthy()
     // The mock echoes back the conversationId we send, so it should be the same
     expect(secondConvId).toBe(firstConvId)
+  })
+
+  it('shows rate limit error when server returns 429', async () => {
+    server.use(
+      http.post('/api/v1/query', () => {
+        return HttpResponse.json(
+          {
+            error: 'Rate limit exceeded. Please try again later.',
+            status: 429,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 429 },
+        )
+      }),
+    )
+
+    await useChatStore.getState().sendMessage('Hello')
+
+    const state = useChatStore.getState()
+    expect(state.error).toBe('Rate limit exceeded. Please try again later.')
+    expect(state.isLoading).toBe(false)
+    expect(state.messages).toHaveLength(1)
+    expect(state.messages[0].role).toBe('user')
   })
 
   it('clears messages and resets conversationId', async () => {
