@@ -1,5 +1,7 @@
 package io.opaa.indexing;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.observability.IndexingMetrics;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -39,14 +41,25 @@ public class IndexingConfiguration {
   }
 
   @Bean
+  IndexingMetrics indexingMetrics(MeterRegistry meterRegistry) {
+    return new IndexingMetrics(meterRegistry);
+  }
+
+  @Bean
   FileProcessingService fileProcessingService(
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
       VectorStore vectorStore,
-      ChecksumService checksumService) {
+      ChecksumService checksumService,
+      IndexingMetrics indexingMetrics) {
     return new FileProcessingService(
-        documentService, chunkingService, documentRepository, vectorStore, checksumService);
+        documentService,
+        chunkingService,
+        documentRepository,
+        vectorStore,
+        checksumService,
+        indexingMetrics);
   }
 
   @Bean

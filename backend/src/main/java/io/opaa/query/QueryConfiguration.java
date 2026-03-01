@@ -1,6 +1,9 @@
 package io.opaa.query;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
@@ -19,8 +22,13 @@ public class QueryConfiguration {
   static final int MAX_MESSAGES_PER_CONVERSATION = 20;
 
   @Bean
-  ChatMemoryRepository chatMemoryRepository() {
-    return new CaffeineChatMemoryRepository(MAX_CONVERSATIONS, TTL_MINUTES);
+  ChatMemoryRepository chatMemoryRepository(MeterRegistry meterRegistry) {
+    CaffeineChatMemoryRepository repository =
+        new CaffeineChatMemoryRepository(MAX_CONVERSATIONS, TTL_MINUTES);
+    Gauge.builder("opaa.conversations.active", repository, CaffeineChatMemoryRepository::size)
+        .description("Active conversations in memory")
+        .register(meterRegistry);
+    return repository;
   }
 
   @Bean
@@ -43,13 +51,24 @@ public class QueryConfiguration {
   }
 
   @Bean
+  QueryMetrics queryMetrics(MeterRegistry meterRegistry) {
+    return new QueryMetrics(meterRegistry);
+  }
+
+  @Bean
   QueryService queryService(
       VectorStore vectorStore,
       AnswerGenerationService answerGenerationService,
       ChatMemory chatMemory,
       CitationParser citationParser,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      QueryMetrics queryMetrics) {
     return new QueryService(
-        vectorStore, answerGenerationService, chatMemory, citationParser, documentRepository);
+        vectorStore,
+        answerGenerationService,
+        chatMemory,
+        citationParser,
+        documentRepository,
+        queryMetrics);
   }
 }
