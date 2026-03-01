@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +40,12 @@ class FileProcessingServiceTest {
   void setUp() {
     service =
         new FileProcessingService(
-            documentService, chunkingService, documentRepository, vectorStore, checksumService);
+            documentService,
+            chunkingService,
+            documentRepository,
+            vectorStore,
+            checksumService,
+            new SimpleMeterRegistry());
   }
 
   @Test

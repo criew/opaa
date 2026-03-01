@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.DocumentRepository;
 import java.lang.reflect.Method;
@@ -47,7 +48,8 @@ class QueryServiceTest {
             answerGenerationService,
             chatMemory,
             new CitationParser(),
-            documentRepository);
+            documentRepository,
+            new SimpleMeterRegistry());
   }
 
   @Test

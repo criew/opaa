@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -44,9 +45,15 @@ public class IndexingConfiguration {
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
       VectorStore vectorStore,
-      ChecksumService checksumService) {
+      ChecksumService checksumService,
+      MeterRegistry meterRegistry) {
     return new FileProcessingService(
-        documentService, chunkingService, documentRepository, vectorStore, checksumService);
+        documentService,
+        chunkingService,
+        documentRepository,
+        vectorStore,
+        checksumService,
+        meterRegistry);
   }
 
   @Bean
