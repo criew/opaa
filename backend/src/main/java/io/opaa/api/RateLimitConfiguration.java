@@ -21,16 +21,28 @@ public class RateLimitConfiguration {
   @Bean
   FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
       RateLimitProperties properties, ObjectMapper objectMapper) {
-    Map<String, RateLimitService> limiters = new LinkedHashMap<>();
-    limiters.put(
+    Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
+    perIpLimiters.put(
         "/api/v1/query",
         new RateLimitService(properties.query().maxRequests(), properties.query().windowSeconds()));
-    limiters.put(
+    perIpLimiters.put(
         "/api/v1/indexing/trigger",
         new RateLimitService(
             properties.indexing().maxRequests(), properties.indexing().windowSeconds()));
 
-    var registration = new FilterRegistrationBean<>(new RateLimitFilter(limiters, objectMapper));
+    Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
+    globalLimiters.put(
+        "/api/v1/query",
+        new RateLimitService(
+            properties.query().globalMaxRequests(), properties.query().windowSeconds()));
+    globalLimiters.put(
+        "/api/v1/indexing/trigger",
+        new RateLimitService(
+            properties.indexing().globalMaxRequests(), properties.indexing().windowSeconds()));
+
+    var registration =
+        new FilterRegistrationBean<>(
+            new RateLimitFilter(perIpLimiters, globalLimiters, objectMapper));
     registration.addUrlPatterns("/api/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
     return registration;
