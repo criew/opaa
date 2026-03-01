@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,7 +46,7 @@ class FileProcessingServiceTest {
             documentRepository,
             vectorStore,
             checksumService,
-            new SimpleMeterRegistry());
+            new IndexingMetrics(new SimpleMeterRegistry()));
   }
 
   @Test

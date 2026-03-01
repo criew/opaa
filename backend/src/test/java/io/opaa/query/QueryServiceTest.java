@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ class QueryServiceTest {
             chatMemory,
             new CitationParser(),
             documentRepository,
-            new SimpleMeterRegistry());
+            new QueryMetrics(new SimpleMeterRegistry()));
   }
 
   @Test
