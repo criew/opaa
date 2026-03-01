@@ -2,9 +2,8 @@ package io.opaa.api;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.springframework.stereotype.Component;
 
-@Component
+/** Stateless utility that strips sensitive data (API keys, file paths, URL params) from strings. */
 public class ErrorSanitizer {
 
   private static final Pattern API_KEY_PATTERN =

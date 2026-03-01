@@ -10,8 +10,7 @@ import org.springframework.ai.retry.TransientAiException;
 
 class GlobalExceptionHandlerTest {
 
-  private final ErrorSanitizer sanitizer = new ErrorSanitizer();
-  private final GlobalExceptionHandler handler = new GlobalExceptionHandler(sanitizer);
+  private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
   @Test
   void handleGenericExceptionReturnsInternalServerError() {
