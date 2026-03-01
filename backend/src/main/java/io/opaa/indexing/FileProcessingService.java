@@ -1,7 +1,6 @@
 package io.opaa.indexing;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,9 +21,7 @@ public class FileProcessingService {
   private final DocumentRepository documentRepository;
   private final VectorStore vectorStore;
   private final ChecksumService checksumService;
-  private final Counter processedCounter;
-  private final Counter skippedCounter;
-  private final Counter failedCounter;
+  private final IndexingMetrics metrics;
 
   public FileProcessingService(
       DocumentService documentService,
@@ -32,27 +29,13 @@ public class FileProcessingService {
       DocumentRepository documentRepository,
       VectorStore vectorStore,
       ChecksumService checksumService,
-      MeterRegistry meterRegistry) {
+      IndexingMetrics metrics) {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
     this.vectorStore = vectorStore;
     this.checksumService = checksumService;
-    this.processedCounter =
-        Counter.builder("opaa.indexing.documents")
-            .tag("result", "processed")
-            .description("Documents processed")
-            .register(meterRegistry);
-    this.skippedCounter =
-        Counter.builder("opaa.indexing.documents")
-            .tag("result", "skipped")
-            .description("Documents skipped (unchanged)")
-            .register(meterRegistry);
-    this.failedCounter =
-        Counter.builder("opaa.indexing.documents")
-            .tag("result", "failed")
-            .description("Documents failed")
-            .register(meterRegistry);
+    this.metrics = metrics;
   }
 
   public FileProcessingResult processFile(Path file) throws IOException {
@@ -69,7 +52,7 @@ public class FileProcessingService {
       if (checksum.equals(existingDoc.getChecksum())
           && existingDoc.getStatus() == DocumentStatus.INDEXED) {
         log.info("Skipping unchanged document: {}", fileName);
-        skippedCounter.increment();
+        metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
       // Document changed or was not successfully indexed — delete old data
@@ -109,11 +92,11 @@ public class FileProcessingService {
     } catch (Exception e) {
       doc.setStatus(DocumentStatus.FAILED);
       documentRepository.save(doc);
-      failedCounter.increment();
+      metrics.recordFailed();
       throw e;
     }
 
-    processedCounter.increment();
+    metrics.recordProcessed();
     return FileProcessingResult.PROCESSED;
   }
 

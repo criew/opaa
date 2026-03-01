@@ -2,13 +2,11 @@ package io.opaa.query;
 
 import static java.util.stream.Collectors.toMap;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,10 +39,7 @@ public class QueryService {
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
   private final DocumentRepository documentRepository;
-  private final Timer queryTimer;
-  private final Counter querySuccessCounter;
-  private final Counter queryErrorCounter;
-  private final Counter tokenCounter;
+  private final QueryMetrics metrics;
 
   public QueryService(
       VectorStore vectorStore,
@@ -52,84 +47,70 @@ public class QueryService {
       ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository,
-      MeterRegistry meterRegistry) {
+      QueryMetrics metrics) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.documentRepository = documentRepository;
-    this.queryTimer =
-        Timer.builder("opaa.query.duration").description("Query latency").register(meterRegistry);
-    this.querySuccessCounter =
-        Counter.builder("opaa.query.count")
-            .tag("status", "success")
-            .description("Successful queries")
-            .register(meterRegistry);
-    this.queryErrorCounter =
-        Counter.builder("opaa.query.count")
-            .tag("status", "error")
-            .description("Failed queries")
-            .register(meterRegistry);
-    this.tokenCounter =
-        Counter.builder("opaa.query.tokens")
-            .description("Total tokens consumed")
-            .register(meterRegistry);
+    this.metrics = metrics;
   }
 
   @Transactional(readOnly = true)
   public QueryResponse query(String question, String conversationId) {
-    return queryTimer.record(
-        () -> {
-          try {
-            String effectiveConversationId = validateConversationId(conversationId);
+    return metrics
+        .queryTimer()
+        .record(
+            () -> {
+              try {
+                String effectiveConversationId = validateConversationId(conversationId);
 
-            String searchQuery = buildSearchQuery(question, effectiveConversationId);
+                String searchQuery = buildSearchQuery(question, effectiveConversationId);
 
-            long startTime = System.currentTimeMillis();
+                long startTime = System.currentTimeMillis();
 
-            List<Document> relevantChunks =
-                vectorStore.similaritySearch(
-                    SearchRequest.builder()
-                        .query(searchQuery)
-                        .topK(DEFAULT_TOP_K)
-                        .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
-                        .build());
+                List<Document> relevantChunks =
+                    vectorStore.similaritySearch(
+                        SearchRequest.builder()
+                            .query(searchQuery)
+                            .topK(DEFAULT_TOP_K)
+                            .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
+                            .build());
 
-            log.debug("Found {} relevant chunks for query", relevantChunks.size());
+                log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
-            ChatResponse chatResponse =
-                answerGenerationService.generateAnswer(
-                    question, relevantChunks, effectiveConversationId);
+                ChatResponse chatResponse =
+                    answerGenerationService.generateAnswer(
+                        question, relevantChunks, effectiveConversationId);
 
-            String answer = extractAnswer(chatResponse);
-            Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
-            Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
-            Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
-            List<SourceReference> sources =
-                mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
+                String answer = extractAnswer(chatResponse);
+                Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
+                Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
+                Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
+                List<SourceReference> sources =
+                    mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
 
-            log.debug(
-                "Citations found: {} cited, {} total sources",
-                citedDocumentIds.size(),
-                sources.size());
+                log.debug(
+                    "Citations found: {} cited, {} total sources",
+                    citedDocumentIds.size(),
+                    sources.size());
 
-            long durationMs = System.currentTimeMillis() - startTime;
-            String model = extractModel(chatResponse);
-            int tokenCount = extractTokenCount(chatResponse);
+                long durationMs = System.currentTimeMillis() - startTime;
+                String model = extractModel(chatResponse);
+                int tokenCount = extractTokenCount(chatResponse);
 
-            tokenCounter.increment(tokenCount);
-            querySuccessCounter.increment();
+                metrics.recordSuccess(tokenCount);
 
-            return new QueryResponse(
-                answer,
-                sources,
-                new QueryMetadata(model, tokenCount, durationMs),
-                effectiveConversationId);
-          } catch (RuntimeException e) {
-            queryErrorCounter.increment();
-            throw e;
-          }
-        });
+                return new QueryResponse(
+                    answer,
+                    sources,
+                    new QueryMetadata(model, tokenCount, durationMs),
+                    effectiveConversationId);
+              } catch (RuntimeException e) {
+                metrics.recordError();
+                throw e;
+              }
+            });
   }
 
   private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {
