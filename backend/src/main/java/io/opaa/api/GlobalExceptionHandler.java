@@ -18,6 +18,12 @@ public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+  private final ErrorSanitizer errorSanitizer;
+
+  public GlobalExceptionHandler(ErrorSanitizer errorSanitizer) {
+    this.errorSanitizer = errorSanitizer;
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidationException(
       MethodArgumentNotValidException ex) {
@@ -49,7 +55,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(TransientAiException.class)
   public ResponseEntity<ErrorResponse> handleTransientAiException(TransientAiException ex) {
-    log.warn("Transient AI service error: {}", ex.getMessage());
+    log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
         .body(
             new ErrorResponse(
@@ -60,7 +66,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(NonTransientAiException.class)
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
-    log.error("Non-transient AI service error: {}", ex.getMessage());
+    log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
         .body(new ErrorResponse("AI service error", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
