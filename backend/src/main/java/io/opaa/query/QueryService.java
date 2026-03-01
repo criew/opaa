@@ -6,6 +6,7 @@ import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,57 +39,78 @@ public class QueryService {
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
   private final DocumentRepository documentRepository;
+  private final QueryMetrics metrics;
 
   public QueryService(
       VectorStore vectorStore,
       AnswerGenerationService answerGenerationService,
       ChatMemory chatMemory,
       CitationParser citationParser,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      QueryMetrics metrics) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.documentRepository = documentRepository;
+    this.metrics = metrics;
   }
 
   @Transactional(readOnly = true)
   public QueryResponse query(String question, String conversationId) {
-    long startTime = System.currentTimeMillis();
+    return metrics
+        .queryTimer()
+        .record(
+            () -> {
+              try {
+                String effectiveConversationId = validateConversationId(conversationId);
 
-    String effectiveConversationId = validateConversationId(conversationId);
+                String searchQuery = buildSearchQuery(question, effectiveConversationId);
 
-    String searchQuery = buildSearchQuery(question, effectiveConversationId);
+                long startTime = System.currentTimeMillis();
 
-    List<Document> relevantChunks =
-        vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query(searchQuery)
-                .topK(DEFAULT_TOP_K)
-                .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
-                .build());
+                List<Document> relevantChunks =
+                    vectorStore.similaritySearch(
+                        SearchRequest.builder()
+                            .query(searchQuery)
+                            .topK(DEFAULT_TOP_K)
+                            .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
+                            .build());
 
-    log.debug("Found {} relevant chunks for query", relevantChunks.size());
+                log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
-    ChatResponse chatResponse =
-        answerGenerationService.generateAnswer(question, relevantChunks, effectiveConversationId);
+                ChatResponse chatResponse =
+                    answerGenerationService.generateAnswer(
+                        question, relevantChunks, effectiveConversationId);
 
-    String answer = extractAnswer(chatResponse);
-    Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
-    Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
-    Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
-    List<SourceReference> sources =
-        mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
+                String answer = extractAnswer(chatResponse);
+                Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
+                Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
+                Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
+                List<SourceReference> sources =
+                    mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
 
-    log.debug(
-        "Citations found: {} cited, {} total sources", citedDocumentIds.size(), sources.size());
+                log.debug(
+                    "Citations found: {} cited, {} total sources",
+                    citedDocumentIds.size(),
+                    sources.size());
 
-    long durationMs = System.currentTimeMillis() - startTime;
-    String model = extractModel(chatResponse);
-    int tokenCount = extractTokenCount(chatResponse);
+                long durationMs = System.currentTimeMillis() - startTime;
+                String model = extractModel(chatResponse);
+                int tokenCount = extractTokenCount(chatResponse);
 
-    return new QueryResponse(
-        answer, sources, new QueryMetadata(model, tokenCount, durationMs), effectiveConversationId);
+                metrics.recordSuccess(tokenCount);
+
+                return new QueryResponse(
+                    answer,
+                    sources,
+                    new QueryMetadata(model, tokenCount, durationMs),
+                    effectiveConversationId);
+              } catch (RuntimeException e) {
+                metrics.recordError();
+                throw e;
+              }
+            });
   }
 
   private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {

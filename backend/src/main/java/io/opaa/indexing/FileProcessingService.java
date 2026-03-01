@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,18 +21,21 @@ public class FileProcessingService {
   private final DocumentRepository documentRepository;
   private final VectorStore vectorStore;
   private final ChecksumService checksumService;
+  private final IndexingMetrics metrics;
 
   public FileProcessingService(
       DocumentService documentService,
       ChunkingService chunkingService,
       DocumentRepository documentRepository,
       VectorStore vectorStore,
-      ChecksumService checksumService) {
+      ChecksumService checksumService,
+      IndexingMetrics metrics) {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
     this.vectorStore = vectorStore;
     this.checksumService = checksumService;
+    this.metrics = metrics;
   }
 
   public FileProcessingResult processFile(Path file) throws IOException {
@@ -48,6 +52,7 @@ public class FileProcessingService {
       if (checksum.equals(existingDoc.getChecksum())
           && existingDoc.getStatus() == DocumentStatus.INDEXED) {
         log.info("Skipping unchanged document: {}", fileName);
+        metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
       // Document changed or was not successfully indexed — delete old data
@@ -87,9 +92,11 @@ public class FileProcessingService {
     } catch (Exception e) {
       doc.setStatus(DocumentStatus.FAILED);
       documentRepository.save(doc);
+      metrics.recordFailed();
       throw e;
     }
 
+    metrics.recordProcessed();
     return FileProcessingResult.PROCESSED;
   }
 

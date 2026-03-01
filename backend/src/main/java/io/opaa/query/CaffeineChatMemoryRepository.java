@@ -73,6 +73,11 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
     cache.invalidate(conversationId);
   }
 
+  /** Returns the number of active conversations in the cache. */
+  long size() {
+    return cache.estimatedSize();
+  }
+
   /** Forces pending evictions to run synchronously. Intended for testing. */
   void cleanUp() {
     cache.cleanUp();
