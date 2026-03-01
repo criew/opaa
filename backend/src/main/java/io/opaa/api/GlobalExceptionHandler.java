@@ -18,11 +18,9 @@ public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-  private final ErrorSanitizer errorSanitizer;
-
-  public GlobalExceptionHandler(ErrorSanitizer errorSanitizer) {
-    this.errorSanitizer = errorSanitizer;
-  }
+  // Instantiated directly to keep it out of the Spring context and avoid
+  // forcing every @WebMvcTest to import the bean.
+  private final ErrorSanitizer errorSanitizer = new ErrorSanitizer();
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidationException(
