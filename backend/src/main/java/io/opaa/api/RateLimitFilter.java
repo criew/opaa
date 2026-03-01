@@ -16,14 +16,19 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class RateLimitFilter extends OncePerRequestFilter {
 
+  private static final String GLOBAL_KEY = "__global__";
   private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
-  private final Map<String, RateLimitService> endpointLimiters;
+  private final Map<String, RateLimitService> perIpLimiters;
+  private final Map<String, RateLimitService> globalLimiters;
   private final ObjectMapper objectMapper;
 
   public RateLimitFilter(
-      Map<String, RateLimitService> endpointLimiters, ObjectMapper objectMapper) {
-    this.endpointLimiters = endpointLimiters;
+      Map<String, RateLimitService> perIpLimiters,
+      Map<String, RateLimitService> globalLimiters,
+      ObjectMapper objectMapper) {
+    this.perIpLimiters = perIpLimiters;
+    this.globalLimiters = globalLimiters;
     this.objectMapper = objectMapper;
   }
 
@@ -34,7 +39,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
     String path = request.getRequestURI();
     String clientIp = resolveClientIp(request);
 
-    for (var entry : endpointLimiters.entrySet()) {
+    for (var entry : globalLimiters.entrySet()) {
+      if (path.startsWith(entry.getKey())) {
+        if (!entry.getValue().isAllowed(GLOBAL_KEY)) {
+          log.warn("Global rate limit exceeded on {} (request from {})", path, clientIp);
+          writeRateLimitResponse(response);
+          return;
+        }
+        break;
+      }
+    }
+
+    for (var entry : perIpLimiters.entrySet()) {
       if (path.startsWith(entry.getKey())) {
         if (!entry.getValue().isAllowed(clientIp)) {
           log.warn("Rate limit exceeded for {} on {}", clientIp, path);

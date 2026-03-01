@@ -19,19 +19,30 @@ class RateLimitFilterTest {
   private RateLimitFilter filter;
   private RateLimitService queryLimiter;
   private RateLimitService indexingLimiter;
+  private RateLimitService globalQueryLimiter;
+  private RateLimitService globalIndexingLimiter;
   private ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {
     queryLimiter = mock(RateLimitService.class);
     indexingLimiter = mock(RateLimitService.class);
+    globalQueryLimiter = mock(RateLimitService.class);
+    globalIndexingLimiter = mock(RateLimitService.class);
     objectMapper = new ObjectMapper();
 
-    Map<String, RateLimitService> limiters = new LinkedHashMap<>();
-    limiters.put("/api/v1/query", queryLimiter);
-    limiters.put("/api/v1/indexing/trigger", indexingLimiter);
+    Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
+    perIpLimiters.put("/api/v1/query", queryLimiter);
+    perIpLimiters.put("/api/v1/indexing/trigger", indexingLimiter);
 
-    filter = new RateLimitFilter(limiters, objectMapper);
+    Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
+    globalLimiters.put("/api/v1/query", globalQueryLimiter);
+    globalLimiters.put("/api/v1/indexing/trigger", globalIndexingLimiter);
+
+    when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
+    when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
+
+    filter = new RateLimitFilter(perIpLimiters, globalLimiters, objectMapper);
   }
 
   @Test
@@ -100,6 +111,22 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(200);
     assertThat(chain.getRequest()).isNotNull();
+  }
+
+  @Test
+  void returns429WhenGlobalQueryLimitExceeded() throws Exception {
+    when(queryLimiter.isAllowed(anyString())).thenReturn(true);
+    when(globalQueryLimiter.isAllowed(anyString())).thenReturn(false);
+
+    var request = new MockHttpServletRequest("POST", "/api/v1/query");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+
+    filter.doFilter(request, response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(429);
+    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(chain.getRequest()).isNull();
   }
 
   @Test
