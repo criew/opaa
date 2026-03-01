@@ -61,6 +61,16 @@ opaa:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
+  rate-limit:
+    enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
+    query:
+      max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
+      window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS:100}
+    indexing:
+      max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
+      window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS:5}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
