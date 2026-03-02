@@ -1,11 +1,11 @@
 import axios, { AxiosError } from 'axios'
 import type {
-  ErrorResponse,
   HealthResponse,
   IndexingStatusResponse,
   QueryRequest,
   QueryResponse,
 } from '../types/api'
+import { isErrorResponse } from '../types/api'
 
 const client = axios.create({
   baseURL: '/api',
@@ -13,8 +13,17 @@ const client = axios.create({
 
 function normalizeError(err: unknown): never {
   if (err instanceof AxiosError) {
-    const data = err.response?.data as ErrorResponse | undefined
-    throw new Error(data?.error ?? err.message)
+    const data = err.response?.data
+
+    if (isErrorResponse(data)) {
+      throw new Error(data.error)
+    }
+
+    if (err.response?.status) {
+      throw new Error(`HTTP ${err.response.status}: ${err.message}`)
+    }
+
+    throw new Error(err.message)
   }
   throw err
 }
