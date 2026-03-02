@@ -21,11 +21,13 @@ public class ChunkingService {
         "Splitting up document '{}' into chunks (chunkSize={})", fileName, properties.chunkSize());
     var splitter =
         new TokenTextSplitter(
-            properties.chunkSize(), /* defaultChunkSize */
-            350, /* minChunkSizeChars */
-            5, /* minChunkLengthToEmbed */
-            10000, /* maxNumChunks */
-            true /* keepSeparator */);
+            properties.chunkSize(),
+            350, // minChunkSizeChars — avoids tiny chunks that lack sufficient context for
+            // retrieval
+            5, // minChunkLengthToEmbed — chunks under 5 tokens carry no meaningful semantic signal
+            10000, // maxNumChunks — safety limit to prevent excessive chunks from oversized
+            // documents
+            true);
     return splitter.apply(documents);
   }
 }

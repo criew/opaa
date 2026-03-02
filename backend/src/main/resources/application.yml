@@ -52,6 +52,9 @@ spring:
 opaa:
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
+  query:
+    top-k: ${OPAA_QUERY_TOP_K:5}
+    similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}
   indexing:
     document-path: ${OPAA_INDEXING_DOCUMENT_PATH:./documents}
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}

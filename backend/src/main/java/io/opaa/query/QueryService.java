@@ -30,8 +30,6 @@ public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
 
-  private static final int DEFAULT_TOP_K = 5;
-  private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.3;
   private static final Pattern VALID_CONVERSATION_ID = Pattern.compile("^[a-zA-Z0-9-]{1,50}$");
 
   private final VectorStore vectorStore;
@@ -40,6 +38,7 @@ public class QueryService {
   private final CitationParser citationParser;
   private final DocumentRepository documentRepository;
   private final QueryMetrics metrics;
+  private final QueryProperties queryProperties;
 
   public QueryService(
       VectorStore vectorStore,
@@ -47,13 +46,15 @@ public class QueryService {
       ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository,
-      QueryMetrics metrics) {
+      QueryMetrics metrics,
+      QueryProperties queryProperties) {
     this.vectorStore = vectorStore;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.documentRepository = documentRepository;
     this.metrics = metrics;
+    this.queryProperties = queryProperties;
   }
 
   @Transactional(readOnly = true)
@@ -73,8 +74,8 @@ public class QueryService {
                     vectorStore.similaritySearch(
                         SearchRequest.builder()
                             .query(searchQuery)
-                            .topK(DEFAULT_TOP_K)
-                            .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
+                            .topK(queryProperties.topK())
+                            .similarityThreshold(queryProperties.similarityThreshold())
                             .build());
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());

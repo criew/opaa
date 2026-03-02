@@ -31,6 +31,14 @@ All configuration is done via environment variables in `.env`. See `.env.example
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| **General** | | |
+| `OPAA_SERVER_ADDRESS` | `localhost` | Bind address (`0.0.0.0` for network access) |
+| `OPAA_HTTP_FORCE_HTTP1` | `false` | Force HTTP/1.1 for vLLM compatibility |
+| `OPAA_DOCUMENTS_PATH_HOST` | `./documents` | Host path for documents (mounted into container) |
+| **Database** | | |
+| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL username |
+| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL password |
+| **LLM / Embedding** | | |
 | `OPAA_AI_CHAT_PROVIDER` | `openai` | Chat model provider (`openai` or `ollama`) |
 | `OPAA_OPENAI_API_KEY` | — | OpenAI API key (required when using OpenAI) |
 | `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI chat model name |
@@ -38,11 +46,25 @@ All configuration is done via environment variables in `.env`. See `.env.example
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximum tokens in chat response |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model name |
 | `OPAA_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
-| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL username |
-| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL password |
-| `OPAA_SERVER_ADDRESS` | `localhost` | Bind address (`0.0.0.0` for network access) |
-| `OPAA_HTTP_FORCE_HTTP1` | `false` | Force HTTP/1.1 for vLLM compatibility |
-| `OPAA_DOCUMENTS_PATH_HOST` | `./documents` | Host path for documents (mounted into container) |
+| **Query (RAG Retrieval)** | | |
+| `OPAA_QUERY_TOP_K` | `5` | Number of document chunks retrieved per query (1–100) |
+| `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | Minimum cosine similarity for chunk inclusion (0.0–1.0) |
+| **Indexing** | | |
+| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | Filesystem path for source documents |
+| `OPAA_INDEXING_CHUNK_SIZE` | `1000` | Target tokens per chunk (1–10 000) |
+| `OPAA_INDEXING_BATCH_SIZE` | `50` | Chunks per embedding API call (1–1 000) |
+| `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | Retry count for transient failures (0–10) |
+| `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | Core threads for async indexing |
+| `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | Maximum threads for async indexing |
+| `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task queue capacity for async indexing |
+| **Rate Limiting** | | |
+| `OPAA_RATE_LIMIT_ENABLED` | `true` | Enable/disable rate limiting |
+| `OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS` | `10` | Max query requests per IP per window |
+| `OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS` | `60` | Query rate limit window in seconds |
+| `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS` | `100` | Max query requests across all IPs per window |
+| `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `1` | Max indexing requests per IP per window |
+| `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | Indexing rate limit window in seconds |
+| `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | Max indexing requests across all IPs per window |
 
 ### Network Access
 

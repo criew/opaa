@@ -12,9 +12,16 @@ public class RateLimitService {
   private final int maxRequests;
   private final long windowMillis;
 
+  /**
+   * @param maxRequests maximum number of requests allowed within the time window
+   * @param windowSeconds sliding window duration in seconds
+   */
   public RateLimitService(int maxRequests, int windowSeconds) {
     this.maxRequests = maxRequests;
     this.windowMillis = Duration.ofSeconds(windowSeconds).toMillis();
+    // Cache entries live 2× the window duration so that timestamps from the current window
+    // are still available when checking requests near window boundaries. Without this margin,
+    // an entry could be evicted while its timestamps are still within the active window.
     this.requestLog =
         Caffeine.newBuilder().expireAfterAccess(Duration.ofSeconds(windowSeconds * 2L)).build();
   }
