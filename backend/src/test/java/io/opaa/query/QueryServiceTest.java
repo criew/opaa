@@ -53,7 +53,8 @@ class QueryServiceTest {
             chatMemory,
             new CitationParser(),
             documentRepository,
-            new QueryMetrics(new SimpleMeterRegistry()));
+            new QueryMetrics(new SimpleMeterRegistry()),
+            new QueryProperties(5, 0.3));
   }
 
   @Test

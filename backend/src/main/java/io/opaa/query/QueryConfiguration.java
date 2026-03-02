@@ -9,16 +9,34 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("!mock")
+@EnableConfigurationProperties(QueryProperties.class)
 public class QueryConfiguration {
 
+  /**
+   * Maximum number of concurrent conversation caches. Default 50: moderate memory usage suitable
+   * for typical team sizes — each conversation holds up to {@link #MAX_MESSAGES_PER_CONVERSATION}
+   * messages in a Caffeine cache entry.
+   */
   static final int MAX_CONVERSATIONS = 50;
+
+  /**
+   * Time-to-live in minutes for idle conversations. Default 60: one hour covers a typical user
+   * session; conversations are evicted after this period of inactivity to free memory.
+   */
   static final int TTL_MINUTES = 60;
+
+  /**
+   * Maximum messages retained per conversation. Default 20: this corresponds to roughly 10
+   * question/answer pairs, limiting the context window tokens sent to the LLM while preserving
+   * enough history for coherent multi-turn dialogues.
+   */
   static final int MAX_MESSAGES_PER_CONVERSATION = 20;
 
   @Bean
@@ -62,13 +80,15 @@ public class QueryConfiguration {
       ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository,
-      QueryMetrics queryMetrics) {
+      QueryMetrics queryMetrics,
+      QueryProperties queryProperties) {
     return new QueryService(
         vectorStore,
         answerGenerationService,
         chatMemory,
         citationParser,
         documentRepository,
-        queryMetrics);
+        queryMetrics,
+        queryProperties);
   }
 }
