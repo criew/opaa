@@ -1,13 +1,11 @@
-# OPAA - AI Agent Instructions
+# AI Agent Instructions
 
 ## Project Overview
 
 OPAA (Open Project AI Assistant) is an open-source project building an AI-powered project assistant.
-Licensed under Apache 2.0. Contributions from humans and AI agents are equally welcome.
+Contributions from humans and AI agents are equally welcome.
 
 ## Architecture
-
-> Architecture documentation lives in `docs/decisions/`. Read the ADRs there for context on major decisions.
 
 - **Backend:** Java 21 + Spring Boot 3.5.10 + Spring AI 1.1.2 (Gradle 9.3.1, Kotlin DSL)
 - **Database:** PostgreSQL 18 + pgvector, Liquibase
@@ -21,12 +19,12 @@ Licensed under Apache 2.0. Contributions from humans and AI agents are equally w
 
 ```bash
 # Backend (from backend/)
-cd backend && ./gradlew build
-cd backend && ./gradlew test
-cd backend && ./gradlew bootRun --args='--spring.profiles.active=mock'
-cd backend && ./gradlew bootRun
-cd backend && ./gradlew spotlessCheck
-cd backend && ./gradlew spotlessApply
+./gradlew build
+./gradlew test
+./gradlew bootRun --args='--spring.profiles.active=mock'
+./gradlew bootRun
+./gradlew spotlessCheck
+./gradlew spotlessApply
 
 # Frontend (from frontend/)
 npm ci                                  # Install dependencies
@@ -41,7 +39,7 @@ npm run format                          # Auto-format with Prettier
 
 ## Dependency Management
 
-- **All** dependency versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
+- Dependency versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
 - Use version catalogs (`libs.versions.*`, `libs.*`) for referencing versions and libraries
 - This applies to both `[libraries]` and `[plugins]` sections
 
@@ -67,18 +65,13 @@ AI agents must include a `Co-Authored-By` trailer in commits.
 
 Format: `feature/<issue-id>_<short-description>`
 
-Examples:
-- `feature/42_user-authentication`
-- `feature/15_fix-null-pointer`
-- `feature/7_add-contributing-guide`
-
 Every branch ties back to a GitHub Issue via its ID.
 
 ### Pull Requests
 
 - No direct pushes to `main` — all changes go through PRs
 - PRs must be reviewed before merge
-- Use the PR template (includes AI agent disclosure)
+- Use the PR template
 
 ## Important Paths
 
@@ -87,25 +80,19 @@ Every branch ties back to a GitHub Issue via its ID.
 - `.github/ISSUE_TEMPLATE/` — Issue templates
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR template
 - `CONTRIBUTING.md` — Contributor guide
-- `CLAUDE.md` — Claude-specific instructions
-- `AGENTS.md` — This file (universal AI agent instructions)
+- `AGENTS.md` — AI agent instructions
 - `backend/` — Spring Boot backend (Gradle project)
 - `frontend/` — React frontend (Vite project)
 - `frontend/src/test/test-utils.tsx` — Shared test render helpers
 
-## Testing
-
-- Backend integration tests use **Testcontainers** — Docker must be running
-- OpenAI integration tests require `OPAA_OPENAI_API_KEY` environment variable (skipped otherwise)
-- See `docs/MVP-VERIFICATION.md` for the full verification matrix
-
 ## Agent Behavior
 
+- Respond in the language the user writes in
 - Do not refactor code unless explicitly asked
 - Before creating new files, check if similar patterns or utilities already exist
 - Prefer small, focused commits over large ones
-- When fixing a bug, write a test that reproduces it first (when test framework is available)
-- Read `docs/decisions/` for Architecture Decision Records before making structural changes
+- When fixing a bug, write a test that reproduces it first
+- Read `docs/decisions/` for Architecture Decision Records before making major structural changes
 
 ## Security
 
