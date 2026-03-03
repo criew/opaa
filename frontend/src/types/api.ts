@@ -44,3 +44,12 @@ export interface ErrorResponse {
   status: number
   timestamp: string
 }
+
+export function isErrorResponse(data: unknown): data is ErrorResponse {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'error' in data &&
+    typeof (data as Record<string, unknown>).error === 'string'
+  )
+}
