@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios'
 import type {
   HealthResponse,
   IndexingStatusResponse,
+  IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
 } from '../types/api'
@@ -47,9 +48,11 @@ export async function sendQuery(question: string, conversationId?: string): Prom
   }
 }
 
-export async function triggerIndexing(): Promise<IndexingStatusResponse> {
+export async function triggerIndexing(
+  request?: IndexingTriggerRequest,
+): Promise<IndexingStatusResponse> {
   try {
-    const { data } = await client.post<IndexingStatusResponse>('/v1/indexing/trigger')
+    const { data } = await client.post<IndexingStatusResponse>('/v1/indexing/trigger', request)
     return data
   } catch (err) {
     normalizeError(err)

@@ -100,6 +100,69 @@ public class FileProcessingService {
     return FileProcessingResult.PROCESSED;
   }
 
+  /**
+   * Processes a file downloaded from a remote URL. Uses the lastModified date from the directory
+   * listing as the checksum (instead of SHA-256) to avoid re-downloading unchanged files.
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile, String remoteUrl, String lastModified, long remoteFileSize)
+      throws IOException {
+
+    String fileName = localFile.getFileName().toString();
+
+    // Check if document already exists by remote URL
+    Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
+    if (existing.isPresent()) {
+      Document existingDoc = existing.get();
+      if (lastModified.equals(existingDoc.getChecksum())
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+        log.info("Skipping unchanged URL document: {}", fileName);
+        metrics.recordSkipped();
+        return FileProcessingResult.SKIPPED;
+      }
+      // Document changed — delete old data
+      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      documentRepository.delete(existingDoc);
+    }
+
+    String contentType = Files.probeContentType(localFile);
+
+    var doc =
+        new Document(fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.URL);
+    doc = documentRepository.save(doc);
+
+    try {
+      List<org.springframework.ai.document.Document> parsed =
+          documentService.parseDocument(localFile);
+      if (parsed.isEmpty()) {
+        log.warn("No content extracted from URL document: {}", remoteUrl);
+        doc.setStatus(DocumentStatus.FAILED);
+        documentRepository.save(doc);
+        return FileProcessingResult.PROCESSED;
+      }
+
+      List<org.springframework.ai.document.Document> chunks =
+          chunkingService.chunkDocuments(fileName, parsed);
+      log.debug("URL file {} produced {} chunks", fileName, chunks.size());
+
+      storeChunks(doc, chunks);
+
+      doc.setChunkCount(chunks.size());
+      doc.setIndexedAt(Instant.now());
+      doc.setChecksum(lastModified);
+      doc.setStatus(DocumentStatus.INDEXED);
+      documentRepository.save(doc);
+    } catch (Exception e) {
+      doc.setStatus(DocumentStatus.FAILED);
+      documentRepository.save(doc);
+      metrics.recordFailed();
+      throw e;
+    }
+
+    metrics.recordProcessed();
+    return FileProcessingResult.PROCESSED;
+  }
+
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
     List<org.springframework.ai.document.Document> enriched =

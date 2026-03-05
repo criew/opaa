@@ -41,6 +41,7 @@ OPAA connects to multiple source types:
 
 #### 3. **File Systems & Cloud Storage**
 - **Local File Systems** — On-premises servers
+- **HTTP Directory Listings** — Apache mod_autoindex / nginx autoindex servers (see below)
 - **Cloud Storage** — S3, Azure Blob, Google Cloud Storage, Google Drive, Dropbox
 - **Network Drives** — SMB/CIFS shares
 - **Git Repositories** — Documentation in GitHub/GitLab
@@ -64,6 +65,44 @@ Automatically detected and processed:
 - **REST APIs** — Any system with documented API
 - **Webhooks** — Push updates to OPAA
 - **Custom Connectors** — Extensible plugin system
+
+### HTTP Directory Listings
+
+OPAA can crawl and index documents from HTTP servers that expose Apache mod_autoindex (or compatible) directory listings. This is useful for accessing document repositories hosted on internal web servers without requiring specialized connectors.
+
+**How it works:**
+
+1. OPAA crawls the HTML directory listing at the given URL recursively
+2. Discovers all files across subdirectories
+3. Downloads each file to a temporary location for processing
+4. Uses the `lastModified` timestamp from the directory listing as a change indicator (instead of computing SHA-256 checksums) to avoid re-downloading unchanged files
+5. Processes each file through the standard pipeline (extraction, chunking, embedding)
+6. Cleans up temporary files after processing
+
+**Supported features:**
+- Basic authentication (username:password)
+- HTTP proxy support (host:port)
+- Insecure SSL mode (skip certificate verification for self-signed certificates)
+- Recursive directory traversal
+- Robust HTML parser that handles various Apache/nginx autoindex output formats
+
+**Triggering URL-based indexing:**
+
+Via Admin UI: Open the Admin drawer, expand "URL Source (optional)", enter the URL and optional proxy/credentials, then click "Index Documents".
+
+Via API:
+```bash
+curl -X POST http://localhost:8080/api/v1/indexing/trigger \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://files.example.com/documents/",
+    "proxy": "proxy.example.com:8080",
+    "credentials": "user:password",
+    "insecureSsl": false
+  }'
+```
+
+When no URL is provided, the standard filesystem-based indexing is triggered instead.
 
 ### Source Configuration
 

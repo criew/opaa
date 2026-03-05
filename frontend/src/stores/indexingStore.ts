@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { IndexingStatus } from '../types/api'
+import type { IndexingStatus, IndexingTriggerRequest } from '../types/api'
 import { triggerIndexing, getIndexingStatus } from '../services/api'
 
 const POLL_INTERVAL_MS = 2000
@@ -22,6 +22,7 @@ interface IndexingState {
   isPolling: boolean
   drawerOpen: boolean
   snackbar: Snackbar
+  urlConfig: IndexingTriggerRequest | null
 
   triggerIndexing: () => Promise<void>
   pollStatus: () => void
@@ -29,6 +30,7 @@ interface IndexingState {
   toggleDrawer: () => void
   setDrawerOpen: (open: boolean) => void
   closeSnackbar: () => void
+  setUrlConfig: (config: IndexingTriggerRequest | null) => void
 }
 
 let pollIntervalId: ReturnType<typeof setInterval> | null = null
@@ -43,10 +45,13 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   isPolling: false,
   drawerOpen: false,
   snackbar: { open: false, message: '', severity: 'success' },
+  urlConfig: null,
 
   triggerIndexing: async () => {
     try {
-      const response = await triggerIndexing()
+      const urlConfig = get().urlConfig
+      const request = urlConfig?.url ? urlConfig : undefined
+      const response = await triggerIndexing(request)
       set({
         status: response.status,
         documentCount: response.documentCount,
@@ -125,4 +130,5 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   toggleDrawer: () => set((s) => ({ drawerOpen: !s.drawerOpen })),
   setDrawerOpen: (open) => set({ drawerOpen: open }),
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
+  setUrlConfig: (config) => set({ urlConfig: config }),
 }))
