@@ -78,6 +78,10 @@ Ebene 2: Workspace-Administration (unverändert aus Feature-Spec)
 |--------|--------|--------|-------|-------|-------------|
 | Dokumente suchen/lesen | Workspace | Workspace | Workspace | Workspace | Alle |
 | Dokumente hochladen (manuell) | - | Workspace | Workspace | Workspace | Alle |
+| Eigene Uploads löschen | - | Ja | Ja | Ja | Alle |
+| Beliebige Uploads löschen | - | - | Workspace | Workspace | Alle |
+| Connector-Dokumente excluden | - | - | Workspace | Workspace | Alle |
+| Eingehendes Sharing entfernen | - | - | Workspace | Workspace | Alle |
 | Dokumente teilen (Workspace→Workspace) | - | Wenn Editor in beiden | Wenn Editor in beiden | Wenn Editor in beiden | Alle |
 | Workspace-Mitglieder verwalten | - | - | Workspace | Workspace | Alle |
 | Workspace erstellen | - | - | - | - | Ja |
@@ -133,6 +137,31 @@ Szenario 3: Team → Projekt
 - **Dokument-Owner** kann Sharing jederzeit widerrufen
 - **Workspace-Admin des Ziels** kann ein geteiltes Dokument aus seinem Workspace entfernen
 - Beim Widerruf verlieren die Chunks die `workspace_id`-Tags des Ziel-Workspaces
+
+### Dokumente entfernen und löschen
+
+Die Möglichkeit, Dokumente zu entfernen oder zu löschen, hängt von der **Herkunft** des Dokuments ab:
+
+| Dokument-Herkunft | Editor | Admin | Aktion |
+|---|---|---|---|
+| **Manueller Upload** | Eigene Uploads löschen | Alle Uploads im Workspace löschen | Dokument + Chunks werden permanent entfernt |
+| **Connector-indiziert** | - | Dokument excluden | Dokument wird aus dem Index entfernt und beim nächsten Sync nicht erneut aufgenommen (siehe Exclude-Mechanismus) |
+| **Geteilt (eingehend)** | - | Sharing entfernen | Workspace-Tags werden entfernt, Originaldokument im Quell-Workspace bleibt unangetastet |
+
+#### Exclude-Mechanismus für Connector-Dokumente
+
+Connector-indizierte Dokumente können nicht einfach gelöscht werden, da sie beim nächsten Indexing-Lauf wieder auftauchen würden. Stattdessen können Workspace-Admins einzelne Dokumente **excluden**:
+
+1. Admin markiert ein Dokument als "excluded" im Workspace
+2. Das Dokument wird aus dem Index entfernt (Chunks gelöscht)
+3. Bei zukünftigen Indexing-Läufen wird das Dokument übersprungen
+4. Die Exclude-Liste wird pro Source-Mapping gespeichert
+5. System-Admins können Excludes einsehen und aufheben
+
+**Anwendungsfälle:**
+- Irrelevante Dokumente, die den Workspace "verrauschen"
+- Veraltete Dokumente, die noch im Quellsystem stehen, aber nicht mehr gefunden werden sollen
+- Dokumente, die fälschlicherweise über das Source-Mapping in den Workspace gelangt sind
 
 ---
 
@@ -257,6 +286,7 @@ DocumentChunk (im Vektor-Store)
 
 ## 7. Offene Fragen
 
+- **Owner vs. Admin:** Braucht man die Unterscheidung zwischen Workspace-Owner und Workspace-Admin? Der Unterschied ist gering (Owner kann Workspace löschen und Ownership übertragen). Alternative: Owner und Admin zusammenlegen, Workspace-Löschung dem System-Admin vorbehalten.
 - **Storage-Quotas:** Soll es Speicherlimits pro Workspace oder pro User geben?
 - **Dokument-Versionierung:** Soll eine neue Version eines bereits indizierten Dokuments erkannt werden?
 - **Bulk-Sharing:** Soll man mehrere Dokumente auf einmal teilen können?
