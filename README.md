@@ -97,7 +97,7 @@ Technology choices will be made during implementation. OPAA is intentionally **t
 
 ## License
 
-[Apache License 2.0](LICENSE) — Free and open source for commercial and personal use.
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) — Free and open source. Commercial licenses available for organizations that cannot comply with AGPL terms. See [CLA.md](CLA.md) for contributor requirements.
 
 ## Next Steps
 

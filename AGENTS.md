@@ -85,6 +85,16 @@ Every branch ties back to a GitHub Issue via its ID.
 - `frontend/` — React frontend (Vite project)
 - `frontend/src/test/test-utils.tsx` — Shared test render helpers
 
+## Contributor License Agreement
+
+OPAA requires all contributors to sign the [Contributor License Agreement](./CLA.md) before a Pull Request can be merged. The human operator of the AI agent is responsible for signing — not the AI itself.
+
+**How to sign:** Post the following comment on the first PR:
+
+> I have read the CLA Document and I hereby sign the CLA
+
+The signature is recorded automatically and only needs to be done once per GitHub account.
+
 ## Agent Behavior
 
 - Respond in the language the user writes in
