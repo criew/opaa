@@ -319,8 +319,13 @@ DocumentChunk (im Vektor-Store)
 
 ---
 
+Außerdem in Abschnitt 7 verschoben:
+
+- **Owner vs. Admin:** Beide Rollen bleiben bestehen. Owner (genau einer pro Workspace) kann zusätzlich zu Admin-Rechten den Workspace löschen und die Ownership übertragen.
+
+---
+
 ## 8. Offene Fragen
 
-- **Owner vs. Admin:** Braucht man die Unterscheidung zwischen Workspace-Owner und Workspace-Admin? Der Unterschied ist gering (Owner kann Workspace löschen und Ownership übertragen). Alternative: Owner und Admin zusammenlegen, Workspace-Löschung dem System-Admin vorbehalten.
 - **Konnektor-Permissions aus Quellsystem:** Sollen z.B. Confluence-Space-Permissions zusätzlich zu Workspace-Permissions berücksichtigt werden? Grundsätzlich ja, aber die Umsetzung ist komplex: Berechtigungsmodelle und User-IDs zwischen Quellsystem und OPAA stimmen nicht notwendigerweise überein. Wird in einer separaten Diskussion vertieft.
 - **User-to-User Sharing:** Im aktuellen Modell ist direktes Sharing zwischen Personal Workspaces nicht möglich, da Sharing Editor-Rechte in beiden Workspaces erfordert und Personal Workspaces keine fremden Mitglieder zulassen. Mögliche Lösungen: (a) Dokument in einen gemeinsamen Workspace teilen, (b) einen dedizierten Sharing-Mechanismus auf User-Ebene einführen (z.B. "Dokument für User X freigeben"), oder (c) den Umweg über einen gemeinsamen Workspace als bewusste Design-Entscheidung akzeptieren.
