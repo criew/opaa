@@ -36,7 +36,13 @@ export const handlers = [
     return HttpResponse.json(mockHealthResponse)
   }),
 
-  http.post('/api/v1/indexing/trigger', () => {
+  http.post('/api/v1/indexing/trigger', async ({ request }) => {
+    // Accept optional IndexingTriggerRequest body (ignored in mock)
+    const contentType = request.headers.get('content-type')
+    if (contentType?.includes('application/json')) {
+      await request.json().catch(() => null)
+    }
+
     indexingPollCount = 0
     indexingActive = true
     return HttpResponse.json(

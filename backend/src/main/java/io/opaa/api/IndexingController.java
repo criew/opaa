@@ -2,11 +2,13 @@ package io.opaa.api;
 
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
+import io.opaa.api.dto.UrlIndexingTriggerRequest;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.UrlIndexingRequest;
 import java.time.Instant;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +35,17 @@ public class IndexingController {
   }
 
   @PostMapping("/trigger")
-  public ResponseEntity<IndexingStatusResponse> triggerIndexing() {
-    IndexingJob job = documentIndexingService.triggerIndexing();
+  public ResponseEntity<IndexingStatusResponse> triggerIndexing(
+      @RequestBody(required = false) UrlIndexingTriggerRequest request) {
+    IndexingJob job;
+    if (request != null && request.url() != null && !request.url().isBlank()) {
+      job =
+          documentIndexingService.triggerUrlIndexing(
+              new UrlIndexingRequest(
+                  request.url(), request.proxy(), request.credentials(), request.insecureSsl()));
+    } else {
+      job = documentIndexingService.triggerIndexing();
+    }
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(job));
   }
 

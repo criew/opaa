@@ -183,4 +183,101 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
   }
+
+  @Test
+  void processUrlFileIndexesNewUrlDocument() throws IOException {
+    Path file = tempDir.resolve("remote-doc.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
+    when(documentRepository.findByFilePath("https://example.com/docs/remote-doc.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("remote-doc.pdf"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file, "https://example.com/docs/remote-doc.pdf", "2025-06-15 10:30", 1024);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(documentService).parseDocument(file);
+    verify(vectorStore).add(any());
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document lastSaved = docCaptor.getAllValues().getLast();
+    assertThat(lastSaved.getChecksum()).isEqualTo("sha256-of-pdf");
+    assertThat(lastSaved.getLastModifiedRemote()).isEqualTo("2025-06-15 10:30");
+    assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void processUrlFileSkipsUnchangedDocument() throws IOException {
+    Path file = tempDir.resolve("unchanged-url.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("same-sha256");
+
+    Document existingDoc =
+        new Document(
+            "unchanged-url.pdf",
+            "https://example.com/docs/unchanged-url.pdf",
+            null,
+            1024L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    existingDoc.setChecksum("same-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    when(documentRepository.findByFilePath("https://example.com/docs/unchanged-url.pdf"))
+        .thenReturn(Optional.of(existingDoc));
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file, "https://example.com/docs/unchanged-url.pdf", "2025-06-15 10:30", 1024);
+
+    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    verify(documentService, never()).parseDocument(any());
+  }
+
+  @Test
+  void processUrlFileReindexesChangedDocument() throws IOException {
+    Path file = tempDir.resolve("changed-url.pdf");
+    Files.writeString(file, "new pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("new-sha256");
+
+    Document existingDoc =
+        new Document(
+            "changed-url.pdf",
+            "https://example.com/docs/changed-url.pdf",
+            null,
+            1024L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    existingDoc.setChecksum("old-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    when(documentRepository.findByFilePath("https://example.com/docs/changed-url.pdf"))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("changed-url.pdf"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file, "https://example.com/docs/changed-url.pdf", "2025-06-15 10:30", 2048);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(documentRepository).delete(existingDoc);
+    verify(documentService).parseDocument(file);
+  }
 }

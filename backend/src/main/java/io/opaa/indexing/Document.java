@@ -40,6 +40,13 @@ public class Document {
   @Column(name = "status", nullable = false, length = 20)
   private DocumentStatus status = DocumentStatus.PENDING;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "source_type", nullable = false, length = 20)
+  private DocumentSourceType sourceType = DocumentSourceType.FILESYSTEM;
+
+  @Column(name = "last_modified_remote", length = 64)
+  private String lastModifiedRemote;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -49,6 +56,16 @@ public class Document {
     this.contentType = contentType;
     this.fileSize = fileSize;
     this.status = DocumentStatus.PENDING;
+  }
+
+  public Document(
+      String fileName,
+      String filePath,
+      String contentType,
+      Long fileSize,
+      DocumentSourceType sourceType) {
+    this(fileName, filePath, contentType, fileSize);
+    this.sourceType = sourceType;
   }
 
   public UUID getId() {
@@ -101,5 +118,21 @@ public class Document {
 
   public void setChecksum(String checksum) {
     this.checksum = checksum;
+  }
+
+  public DocumentSourceType getSourceType() {
+    return sourceType;
+  }
+
+  public void setSourceType(DocumentSourceType sourceType) {
+    this.sourceType = sourceType;
+  }
+
+  public String getLastModifiedRemote() {
+    return lastModifiedRemote;
+  }
+
+  public void setLastModifiedRemote(String lastModifiedRemote) {
+    this.lastModifiedRemote = lastModifiedRemote;
   }
 }

@@ -73,9 +73,37 @@ public class IndexingConfiguration {
   }
 
   @Bean
+  AutoindexCrawlerService autoindexCrawlerService() {
+    return new AutoindexCrawlerService();
+  }
+
+  @Bean
+  UrlFileDownloader urlFileDownloader() {
+    return new UrlFileDownloader();
+  }
+
+  @Bean
+  UrlIndexingExecutor urlIndexingExecutor(
+      AutoindexCrawlerService autoindexCrawlerService,
+      UrlFileDownloader urlFileDownloader,
+      FileProcessingService fileProcessingService,
+      IndexingJobService indexingJobService,
+      DocumentRepository documentRepository) {
+    return new UrlIndexingExecutor(
+        autoindexCrawlerService,
+        urlFileDownloader,
+        fileProcessingService,
+        indexingJobService,
+        documentRepository);
+  }
+
+  @Bean
   DocumentIndexingService documentIndexingService(
-      IndexingJobService indexingJobService, AsyncIndexingExecutor asyncIndexingExecutor) {
-    return new DocumentIndexingService(indexingJobService, asyncIndexingExecutor);
+      IndexingJobService indexingJobService,
+      AsyncIndexingExecutor asyncIndexingExecutor,
+      UrlIndexingExecutor urlIndexingExecutor) {
+    return new DocumentIndexingService(
+        indexingJobService, asyncIndexingExecutor, urlIndexingExecutor);
   }
 
   @Bean
