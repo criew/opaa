@@ -50,15 +50,15 @@ class ProviderConfigurationTest {
   @Autowired private Environment environment;
 
   @Test
-  void chatProviderDefaultsToOpenAi() {
-    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
-    assertThat(environment.getProperty("spring.ai.openai.chat.options.model")).isNotBlank();
+  void chatProviderDefaultsToOllama() {
+    assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("ollama");
+    assertThat(environment.getProperty("spring.ai.ollama.chat.options.model")).isNotBlank();
   }
 
   @Test
-  void embeddingProviderDefaultsToOpenAi() {
-    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
-    assertThat(environment.getProperty("spring.ai.openai.embedding.options.model")).isNotBlank();
+  void embeddingProviderDefaultsToOllama() {
+    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("ollama");
+    assertThat(environment.getProperty("spring.ai.ollama.embedding.options.model")).isNotBlank();
   }
 
   @Test

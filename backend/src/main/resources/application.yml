@@ -6,6 +6,12 @@ spring:
     name: opaa
   profiles:
     default: local
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   jpa:
     hibernate:
       ddl-auto: none
@@ -18,8 +24,8 @@ spring:
     enabled: true
   ai:
     model:
-      chat: ${OPAA_AI_CHAT_PROVIDER:openai}
-      embedding: ${OPAA_AI_EMBEDDING_PROVIDER:openai}
+      chat: ${OPAA_AI_CHAT_PROVIDER:ollama}
+      embedding: ${OPAA_AI_EMBEDDING_PROVIDER:ollama}
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
       base-url: ${OPAA_OPENAI_BASE_URL:https://api.openai.com}

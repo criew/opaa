@@ -1,0 +1,20 @@
+repository:
+  name: opaa
+  description: Open Project AI Assistant
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - CI / backend
+          - CI / backend-integration
+          - CI / frontend
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+      required_conversation_resolution: true
+      enforce_admins: false
+      restrict_pushes:
+        push_allowance: []  # Nobody can push directly to main
