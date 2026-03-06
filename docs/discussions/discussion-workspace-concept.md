@@ -81,8 +81,6 @@ Ebene 2: Workspace-Administration (unverändert aus Feature-Spec)
 | Eigene Uploads löschen | - | Ja | Ja | Ja | Alle |
 | Beliebige Uploads löschen | - | - | Workspace | Workspace | Alle |
 | Connector-Dokumente excluden | - | - | Workspace | Workspace | Alle |
-| Eingehendes Sharing entfernen | - | - | Workspace | Workspace | Alle |
-| Dokumente teilen (Workspace→Workspace) | - | Wenn Editor in beiden | Wenn Editor in beiden | Wenn Editor in beiden | Alle |
 | Workspace-Mitglieder verwalten | - | - | Workspace | Workspace | Alle |
 | Workspace erstellen | - | - | - | - | Ja |
 | Konnektoren konfigurieren | - | - | - | - | Ja |
@@ -96,47 +94,13 @@ Ebene 2: Workspace-Administration (unverändert aus Feature-Spec)
 
 ---
 
-## 3. Dokument-Sharing: Workspace-zu-Workspace
+## 3. Dokument-Sharing
 
 ### Entscheidung
 
-Das Sharing-Modell wird von "Personal → Team" auf **beliebige Workspace-Paare** generalisiert. Der Mechanismus bleibt identisch.
+Cross-Workspace Document Sharing wird als separates Feature in einer späteren Design-Phase behandelt. Das initiale Konzept (Editor-Rolle in beiden Workspaces reicht zum Teilen) hat ein fundamentales Sicherheitsproblem: Ein Editor könnte vertrauliche Dokumente in einen Workspace mit niedrigerem Vertraulichkeitsniveau teilen.
 
-### Voraussetzungen für Sharing
-
-Der teilende User muss **Editor-Rolle in beiden Workspaces** haben (Quelle UND Ziel). Das stellt sicher, dass:
-- Der User berechtigt ist, Inhalte des Quell-Workspaces weiterzugeben
-- Der User berechtigt ist, Inhalte zum Ziel-Workspace hinzuzufügen
-
-### Mechanismus (unverändert)
-
-1. User wählt ein Dokument im Quell-Workspace aus
-2. User wählt Ziel-Workspace (muss dort Editor sein)
-3. Die indizierten Chunks des Dokuments erhalten zusätzliche `workspace_id`-Tags für den Ziel-Workspace
-4. Mitglieder des Ziel-Workspaces finden das Dokument in Suchergebnissen
-5. Das Dokument bleibt im Home-Workspace (Single Source of Truth)
-
-### Sharing-Szenarien
-
-```
-Szenario 1: Personal → Team (wie bisher)
-  Alice teilt "Notizen.md" aus "My Documents" → "Frontend-Team"
-  Voraussetzung: Alice ist Editor in "Frontend-Team"
-
-Szenario 2: Team → Team
-  Alice teilt "API-Spec.md" aus "Backend-Team" → "Frontend-Team"
-  Voraussetzung: Alice ist Editor in BEIDEN Workspaces
-
-Szenario 3: Team → Projekt
-  Alice teilt "Sprint-Ergebnis.md" aus "Frontend-Team" → "Phoenix"
-  Voraussetzung: Alice ist Editor in BEIDEN Workspaces
-```
-
-### Rücknahme des Sharings
-
-- **Dokument-Owner** kann Sharing jederzeit widerrufen
-- **Workspace-Admin des Ziels** kann ein geteiltes Dokument aus seinem Workspace entfernen
-- Beim Widerruf verlieren die Chunks die `workspace_id`-Tags des Ziel-Workspaces
+Details, Konzept und offene Sicherheitsfragen sind dokumentiert in: `docs/features/document-sharing.md`
 
 ### Dokumente entfernen und löschen
 
@@ -146,7 +110,6 @@ Die Möglichkeit, Dokumente zu entfernen oder zu löschen, hängt von der **Herk
 |---|---|---|---|
 | **Manueller Upload** | Eigene Uploads löschen | Alle Uploads im Workspace löschen | Dokument + Chunks werden permanent entfernt |
 | **Connector-indiziert** | - | Dokument excluden | Dokument wird aus dem Index entfernt und beim nächsten Sync nicht erneut aufgenommen (siehe Exclude-Mechanismus) |
-| **Geteilt (eingehend)** | - | Sharing entfernen | Workspace-Tags werden entfernt, Originaldokument im Quell-Workspace bleibt unangetastet |
 
 #### Exclude-Mechanismus für Connector-Dokumente
 
@@ -169,7 +132,7 @@ Connector-indizierte Dokumente können nicht einfach gelöscht werden, da sie be
 
 ### Entscheidung
 
-Ein **Konnektor** definiert den Typ und gemeinsame Konfiguration (Credentials, Schedule). Ein Konnektor hat eine oder mehrere **Quellen (Sources)**, die jeweils genau **einem** Workspace zugeordnet werden. Je nach Konnektor-Typ sieht eine Quelle unterschiedlich aus.
+Ein **Konnektor** definiert den Typ und gemeinsame Konfiguration (Credentials, Schedule). Ein Konnektor hat eine oder mehrere **Quellen (Sources)**, die jeweils **einem oder mehreren** Workspaces zugeordnet werden. Konnektoren und Quellen werden unabhängig von Workspaces konfiguriert — Workspace-Admins können sehen, welche Quellen in ihren Workspace indizieren. Je nach Konnektor-Typ sieht eine Quelle unterschiedlich aus.
 
 ### Konnektor-Modell
 
@@ -183,41 +146,41 @@ Beispiel 1: Confluence (Instanz mit Untereinheiten)
     Credentials: service-account / API-token
     Schedule: Täglich 2:00 Uhr
     Quellen:
-      Space "ENG"  → Workspace "Engineering"
-      Space "MKT"  → Workspace "Marketing"
-      Space "PROJ" → Workspace "Phoenix"
-      Space "ALL"  → Workspace "Company"
+      Space "ENG"  → Workspaces: ["Engineering"]
+      Space "MKT"  → Workspaces: ["Marketing"]
+      Space "HR"   → Workspaces: ["HR", "Onboarding"]
+      Space "ALL"  → Workspaces: ["Company"]
 
 Beispiel 2: Dateisystem / Netzlaufwerk (je Pfad eine Quelle)
   Konnektor: "Netzlaufwerk Engineering"
     Typ: filesystem
     Schedule: Täglich 3:00 Uhr
     Quellen:
-      Pfad "//fileserver/engineering/docs" → Workspace "Engineering"
+      Pfad "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
 
   Konnektor: "Netzlaufwerk Marketing"
     Typ: filesystem
     Schedule: Wöchentlich
     Quellen:
-      Pfad "//fileserver/marketing/guidelines" → Workspace "Marketing"
+      Pfad "//fileserver/marketing/guidelines" → Workspaces: ["Marketing"]
 
 Beispiel 3: HTTP Directory (je URL eine Quelle)
   Konnektor: "Docs-Server Engineering"
     Typ: http
     Schedule: Täglich 4:00 Uhr
     Quellen:
-      URL "https://docs.internal/engineering/" → Workspace "Engineering"
+      URL "https://docs.internal/engineering/" → Workspaces: ["Engineering"]
 ```
 
 ### Mapping-Regeln
 
-- **1:1** — Jede Quelle mappt auf genau einen OPAA-Workspace
+- **1:N** — Jede Quelle kann auf einen oder mehrere OPAA-Workspaces gemappt werden. Dokumente aus dieser Quelle werden in alle zugeordneten Workspaces indiziert (ihre Chunks erhalten alle entsprechenden `workspace_ids`).
 - **Nicht gemappte Untereinheiten** werden ignoriert (z.B. Confluence Spaces ohne Mapping werden nicht indiziert)
 - **Mehrere Konnektoren** können in denselben Workspace indizieren (z.B. Confluence Space "ENG" + Netzlaufwerk-Pfad beide → "Engineering")
 
 ### Konnektor-Typen und ihre Quellen
 
-| Konnektor-Typ | Gemeinsame Config (Konnektor) | Quelle (je 1 pro Workspace) |
+| Konnektor-Typ | Gemeinsame Config (Konnektor) | Quelle (eine oder mehrere pro Konnektor) |
 |---|---|---|
 | Confluence | Server-URL, Credentials | Space-Key |
 | Jira | Server-URL, Credentials | Projekt-Key |
@@ -244,16 +207,15 @@ Wenn ein User eine Frage stellt:
 2. **Embedding** der Frage erzeugen
 3. **Vektor-Suche mit Workspace-Filter:** Die Workspace-IDs werden direkt als Metadaten-Filter in die Vektor-Suche übergeben — es werden nur Chunks durchsucht, deren `workspace_ids` mindestens eine der erlaubten Workspace-IDs enthalten
 4. **Re-Ranking und Deduplizierung**
-5. **Ergebnis:** User sieht Treffer aus allen seinen Workspaces, inkl. geteilter Dokumente
+5. **Ergebnis:** User sieht Treffer aus allen seinen Workspaces
 
 Der Berechtigungsfilter ist kein nachgelagerter Schritt, sondern **Teil der Vektor-Suche selbst**. Dadurch werden unberechtigte Chunks gar nicht erst geladen oder gerankt.
 
-### Geteilte Dokumente in Suchergebnissen
+### Dokumente in mehreren Workspaces
 
-Ein Dokument, das aus "Backend-Team" → "Phoenix" geteilt wurde:
-- Erscheint für Phoenix-Mitglieder als Treffer im Kontext von "Phoenix"
-- Erscheint für Backend-Team-Mitglieder als Treffer im Kontext von "Backend-Team"
-- Der Workspace-Name wird im Suchergebnis angezeigt
+Wenn eine Quelle in mehrere Workspaces gemappt ist (z.B. Confluence Space "HR" → Workspaces "HR" + "Onboarding"), erscheint das Dokument für Mitglieder beider Workspaces. Der Workspace-Name wird im Suchergebnis angezeigt, damit der Kontext klar ist.
+
+> **Hinweis:** Wenn Cross-Workspace Document Sharing in Zukunft implementiert wird, würde sich geteilte Dokumente analog verhalten — sie erscheinen im Kontext des jeweiligen Workspaces.
 
 ### Performance-Überlegung
 
@@ -286,8 +248,9 @@ Document
   ├── id, title, file_name, content_type, file_size
   ├── home_workspace: Workspace (wo das Dokument "lebt")
   ├── owner: User (wer es hochgeladen/erstellt hat)
-  ├── source_type: CONNECTOR | USER_UPLOAD
-  └── shared_to: [Workspace] (zusätzliche Workspaces)
+  └── source_type: CONNECTOR | USER_UPLOAD
+  # Zukünftig (wenn Document Sharing implementiert wird):
+  # └── shared_to: [Workspace] (zusätzliche Workspaces)
 
 Connector
   ├── id, name, type (confluence | filesystem | http | ...)
@@ -298,12 +261,12 @@ Connector
 SourceMapping
   ├── connector: Connector
   ├── source_unit: String (z.B. Confluence Space Key, Ordnerpfad)
-  └── target_workspace: Workspace
+  └── target_workspaces: [Workspace] (1:N — eine Quelle kann in mehrere Workspaces indizieren)
 
 DocumentChunk (im Vektor-Store)
   ├── chunk_id, document_id, chunk_index, chunk_text
   ├── embedding: vector
-  └── workspace_ids: [workspace_id] (Home + geteilte Workspaces)
+  └── workspace_ids: [workspace_id] (alle Workspaces, in die das Dokument gemappt ist)
 ```
 
 ---
@@ -312,10 +275,9 @@ DocumentChunk (im Vektor-Store)
 
 - **Storage-Quotas:** Ja, für manuelle Uploads. Upload-Limit wird als User-Einstellung mit globalem Default konfiguriert.
 - **Dokument-Versionierung:** Ja, idealerweise. Beim Hochladen sollen außerdem ähnliche Dokumente, die der User sehen kann, angezeigt werden, um Duplikate zu erkennen (z.B. "Dieses Protokoll wurde bereits von jemand anderem hochgeladen").
-- **Bulk-Sharing:** Ja, mehrere Dokumente sollen auf einmal geteilt werden können.
-- **Sharing-Benachrichtigungen:** Ja, idealerweise. Ziel-Workspace-Mitglieder sollen informiert werden, wenn ein Dokument geteilt wird.
 - **Workspace-Löschung:** Alle Dokumente und Chunks des Workspaces werden entfernt. Konnektoren, die in den gelöschten Workspace mappen, loggen eine Warnung beim nächsten Indexing-Lauf und überspringen die betroffenen Quellen, bis das Mapping korrigiert wird.
-- **Audit:** Ja, Sharing-Aktionen (Teilen, Widerruf) werden im Audit-Log erfasst.
+- **Audit:** Ja, relevante Aktionen werden im Audit-Log erfasst.
+- **Sharing-bezogene Fragen** (Bulk-Sharing, Benachrichtigungen): Sind im separaten Sharing-Konzept dokumentiert — siehe `docs/features/document-sharing.md`.
 
 ---
 

@@ -119,12 +119,13 @@ A self-contained area in OPAA where documents and users are isolated from other 
 - Control who can see what
 - Example: "Engineering" workspace only visible to engineering team
 
-**Workspace Hierarchy:**
-Workspaces can be organized in layers. When a user searches, OPAA retrieves results across all workspaces the user has access to, ranked by relevance:
+**Flat Model:**
+Workspaces are **flat** — there is no hierarchy or nesting. When a user searches, OPAA retrieves results across all workspaces the user is a member of, ranked by relevance. Common workspace types:
 
 1. **Organization-wide workspace** — Company policies, all-hands notes, public documentation (visible to everyone)
-2. **Team/Project workspaces** — Engineering docs, marketing plans, project-specific knowledge (visible to team members)
-3. **Personal workspace ("My Documents")** — Auto-created for each user. Stores documents uploaded by the user. Private by default, but documents can be shared into team workspaces.
+2. **Team workspaces** — Engineering docs, marketing plans (visible to team members)
+3. **Project workspaces** — Shared workspaces that multiple teams join to collaborate on a project (e.g., "Phoenix" with frontend, backend, and QA teams)
+4. **Personal workspace ("My Documents")** — Auto-created for each user. Stores documents uploaded by the user. Private by default. Cross-workspace sharing is planned as a future feature (see [Document Sharing](./features/document-sharing.md)).
 
 This means a search for "remote work policy" could return the company-wide HR policy (from the organization workspace) alongside your team's specific remote work guidelines (from your team workspace) and your personal notes on the topic.
 
@@ -132,7 +133,7 @@ This means a search for "remote work policy" could return the company-wide HR po
 - Automatically created when a user first logs in or uploads a document
 - One per user, cannot be deleted (deactivated on offboarding)
 - User is always the Owner with full control
-- Documents can be shared OUT into team workspaces (not the reverse)
+- Cross-workspace document sharing is a planned future feature — see [Document Sharing](./features/document-sharing.md)
 - See [Access Control & Workspaces — Personal Workspaces](./features/access-control-workspaces.md#personal-workspaces)
 
 **Analogy:**
@@ -145,10 +146,13 @@ This means a search for "remote work policy" could return the company-wide HR po
 
 A set of permissions assigned to users. Determines what actions they can take.
 
-**Built-in roles:**
+**System-level role:**
+- **System-Admin** — Organization-wide administration. Can create workspaces, configure connectors, define source mappings, manage user directory sync. Stored on the user entity (not per workspace).
+
+**Workspace-level roles (per workspace membership):**
 - **Viewer** — Can search documents, ask questions, download. Cannot modify.
-- **Editor** — Can add/modify documents. Cannot manage users or workspace settings.
-- **Admin** — Full control of workspace. Can manage users, settings, permissions.
+- **Editor** — Can add/modify documents, delete own uploads. Cannot manage users or workspace settings.
+- **Admin** — Full control of workspace. Can manage users, settings, permissions. Can exclude connector documents.
 - **Owner** — Only one per workspace. Can delete workspace, transfer ownership.
 
 ---
@@ -207,17 +211,18 @@ Semantic search finds:
 
 ### Query-Time Permission Enforcement
 
-Permissions are checked when a user performs a search (at query time), not when documents are indexed.
+Permissions are enforced as **part of the vector search itself** — the user's workspace IDs are passed as a metadata filter directly into the query. Unauthorized chunks are never loaded or ranked.
 
 **How it works:**
-1. User searches: "Salary policies"
-2. System finds 10 relevant documents
-3. System checks: "Which of these 10 can this user see?"
-4. System returns only the 3 documents the user has permission to access
+1. System loads the user's workspace IDs
+2. User searches: "Salary policies"
+3. Vector search only returns chunks whose `workspace_ids` match at least one of the user's workspaces
+4. User sees only documents they are authorized to access
 
 **Why this matters:**
 - Users don't know documents exist that they can't see
 - Results look complete even though filtered
+- No post-filtering needed — the search itself is permission-aware
 - Permissions change immediately (no re-indexing needed)
 
 ---
@@ -289,18 +294,11 @@ The pluggable file storage system where uploaded documents are persisted. This i
 
 ---
 
-### Cross-Workspace Document Sharing
+### Cross-Workspace Document Sharing (Future Feature)
 
-Making a document from one workspace (typically personal) visible and searchable in another workspace. The document is not duplicated — instead, its indexed data is tagged with multiple workspace IDs.
+Making a document from one workspace visible and searchable in another workspace. The document would not be duplicated — instead, its indexed data would be tagged with multiple workspace IDs.
 
-**How it works:**
-- User shares a document from "My Documents" into a team workspace
-- User must have Editor role (or higher) in the target workspace
-- The document's indexed chunks gain additional workspace tags
-- Members of the target workspace can now find the document in search results
-- Owner can revoke sharing at any time
-
-See [Access Control & Workspaces — Cross-Workspace Document Sharing](./features/access-control-workspaces.md#cross-workspace-document-sharing) for details.
+**Status:** Planned as a future feature. The sharing concept has significant open security questions (e.g., preventing unintended information disclosure across workspaces with different access levels). See [Document Sharing](./features/document-sharing.md) for the current concept and open questions.
 
 ---
 
@@ -575,12 +573,15 @@ Immediately updating OPAA when source documents change (within seconds).
 | **Chunk** | Piece of a document | Page 3 of a 50-page manual |
 | **Semantic** | Based on meaning, not keywords | "Remote work" ≈ "work from home" |
 | **LLM** | AI language model | GPT-4, Claude, Llama |
-| **Workspace** | Isolated knowledge base area | "Engineering" team docs |
+| **Workspace** | Isolated knowledge base area (flat, no hierarchy) | "Engineering" team docs |
 | **Personal Workspace** | Auto-created private workspace per user | "My Documents" for each user |
+| **Project Workspace** | Shared workspace for cross-team collaboration | "Phoenix" project with multiple teams |
 | **User Upload** | User pushes document into OPAA | Drag-and-drop in Web UI |
 | **Storage Backend** | Pluggable file storage for uploads | S3, network drive, local |
-| **Cross-Workspace Sharing** | Make document visible in another workspace | Share from "My Documents" to "Engineering" |
-| **Role** | Permission set | Admin, Editor, Viewer |
+| **Cross-Workspace Sharing** | Make document visible in another workspace (future feature) | Share from "Backend-Team" to "Frontend-Team" |
+| **System-Admin** | System-level role for org-wide administration | Connector config, workspace creation |
+| **Role** | Workspace-level permission set | Owner, Admin, Editor, Viewer |
+| **Connector** | Data source connection with workspace mapping | Confluence server with space→workspace mappings |
 | **Vector DB** | Database optimized for similarity | Elasticsearch, Milvus, pgvector |
 | **Latency** | Time to answer | < 4 seconds target |
 | **Hallucination** | LLM makes up facts | LLM: "Our policy is X" (not true) |
