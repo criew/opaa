@@ -50,7 +50,9 @@ A special type of workspace, the **Personal Workspace** ("My Documents"), is aut
 
 #### Creating Workspaces
 
-Admin workflow:
+**Only System-Admins can create workspaces.** (See [System Administration](#system-administration) below.)
+
+System-Admin workflow:
 
 ```
 1. Choose workspace name: "Engineering"
@@ -59,10 +61,11 @@ Admin workflow:
 4. Set description: "For engineering team documentation"
 5. Configure defaults:
    - Default role for new members: "viewer"
-   - Indexing schedule: Daily 2 AM
    - Retention policy: Keep 2 years
 6. Save
 ```
+
+Note: Indexing schedules are configured at the connector level, not the workspace level. See [Data Indexing & RAG — Connector Model](./data-indexing-rag.md#connector-model-and-workspace-mapping).
 
 #### Managing Workspace Members
 
@@ -111,7 +114,7 @@ Workspace: "My Documents"
 - One per user, cannot be duplicated
 - User is always Owner with full control
 - Cannot invite other members directly
-- Documents are shared OUT of the personal workspace into team workspaces (not the reverse)
+- Cross-workspace document sharing is a planned future feature — see [Document Sharing](./document-sharing.md)
 - Has its own indexing scope for RAG queries
 - Included in cross-workspace search results (for the owning user only)
 
@@ -123,51 +126,42 @@ Personal workspace documents are stored on the deployment's configured storage b
 
 ## Cross-Workspace Document Sharing
 
-### Concept
+Cross-workspace document sharing is planned as a future feature. The concept and its open security concerns are documented separately in [Document Sharing](./document-sharing.md).
 
-Users can share documents from their personal workspace into team workspaces where they have Editor (or higher) role. This makes personal documents discoverable and searchable by other workspace members.
+---
 
-### How Sharing Works
-
-1. User has a document in "My Documents"
-2. User selects "Share to workspace" and picks a target workspace (e.g., "Engineering")
-3. User must have at least Editor role in the target workspace
-4. The document's indexed chunks gain the target workspace ID
-5. Members of "Engineering" can now find the document in search results
-6. The original document remains in the user's personal workspace
-
-### Sharing Model
-
-```
-Document: "Q1 Design Review"
-  Owner: Sarah Chen
-  Home workspace: My Documents (Sarah)
-  Shared to: [Engineering, Architecture]
-
-  Visibility:
-    - Sarah: always (owner)
-    - Engineering members: yes (shared)
-    - Architecture members: yes (shared)
-    - Marketing members: no (not shared)
-```
-
-### Sharing vs. Moving
-
-- **Share:** Document visible in multiple workspaces. Single source of truth. Owner retains control.
-- **Move:** (Not supported) Documents always have a home workspace. If a user wants to permanently place a document in a team workspace, they upload directly to that workspace (requires Editor role).
-
-### Revoking Shared Access
-
-- Document owner can revoke sharing at any time
-- Workspace Admin can remove a shared document from their workspace
-- When sharing is revoked, the document's chunks lose the workspace tag and are no longer returned in that workspace's search results
-
-### Upload Directly to Team Workspace
+## Upload Directly to Team Workspace
 
 Users with Editor role in a team workspace can also upload documents directly to that workspace (bypassing the personal workspace). In this case:
 - The document's home workspace is the team workspace
 - The uploading user is the document owner
 - Standard workspace permissions apply
+
+---
+
+## Document Deletion and Removal
+
+The ability to delete or remove documents depends on their **origin**:
+
+| Document Origin | Editor | Admin | Effect |
+|---|---|---|---|
+| **Manual upload** | Can delete own uploads | Can delete any upload in workspace | Document + chunks permanently removed |
+| **Connector-indexed** | — | Can exclude document | Document removed from index and skipped on future syncs (see below) |
+
+#### Exclude Mechanism for Connector Documents
+
+Connector-indexed documents cannot simply be deleted because they would reappear on the next indexing run. Instead, Workspace Admins can **exclude** individual documents:
+
+1. Admin marks a document as "excluded" in the workspace
+2. The document is removed from the index (chunks deleted)
+3. Future indexing runs skip the excluded document
+4. The exclude list is stored per source mapping
+5. System-Admins can view and lift excludes
+
+**Use cases:**
+- Irrelevant documents that add noise to search results
+- Outdated documents still present in the source system
+- Documents that were indexed into the wrong workspace via source mapping
 
 ---
 
@@ -198,10 +192,12 @@ Can:
 - Upload new documents
 - Edit document metadata
 - Add/remove documents
+- Delete own uploaded documents
 - Change document permissions
-- Share personal documents into the workspace
 
 Cannot:
+- Delete other users' documents
+- Exclude connector-indexed documents
 - Manage users
 - Change workspace settings
 - Delete workspace
@@ -211,11 +207,14 @@ Full workspace control.
 
 Can:
 - Everything editors can do
+- Delete any document in the workspace
+- Exclude connector-indexed documents
 - Manage users and roles
 - Change workspace settings
-- Configure indexing
 - Manage integrations
 - View audit logs
+
+Note: Connector and indexing configuration is reserved for System-Admins. Workspace Admins can view which sources index into their workspace (read-only).
 
 #### Owner
 Only one per workspace.
@@ -246,20 +245,24 @@ CustomRole:
 
 ### Permission Matrix
 
-| Action | Viewer | Editor | Admin | Owner |
-|--------|--------|--------|-------|-------|
-| Search documents | ✅ | ✅ | ✅ | ✅ |
-| Download documents | ✅ | ✅ | ✅ | ✅ |
-| View sources | ✅ | ✅ | ✅ | ✅ |
-| Add documents | ❌ | ✅ | ✅ | ✅ |
-| Edit documents | ❌ | ✅* | ✅ | ✅ |
-| Upload documents | ❌ | ✅ | ✅ | ✅ |
-| Share documents into workspace | ❌ | ✅ | ✅ | ✅ |
-| Delete documents | ❌ | ❌ | ✅ | ✅ |
-| Change permissions | ❌ | ❌ | ✅ | ✅ |
-| Manage users | ❌ | ❌ | ✅ | ✅ |
-| Transfer ownership | ❌ | ❌ | ❌ | ✅ |
-| Delete workspace | ❌ | ❌ | ❌ | ✅ |
+| Action | Viewer | Editor | Admin | Owner | System-Admin |
+|--------|--------|--------|-------|-------|-------------|
+| Search documents | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
+| Download documents | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
+| View sources | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
+| Upload documents (manual) | ❌ | ✅ | ✅ | ✅ | ✅ (all) |
+| Edit documents | ❌ | ✅* | ✅ | ✅ | ✅ (all) |
+| Delete own uploads | ❌ | ✅ | ✅ | ✅ | ✅ (all) |
+| Delete any upload | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
+| Exclude connector documents | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
+| Change permissions | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
+| Manage users | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
+| Transfer ownership | ❌ | ❌ | ❌ | ✅ | ✅ (all) |
+| Delete workspace | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Create workspaces | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Configure connectors | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Define source mappings | ❌ | ❌ | ❌ | ❌ | ✅ |
+| User directory sync | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 *Editor can edit their own documents if permission set
 
@@ -305,49 +308,61 @@ Tag: "sensitive"      → Readers: [role:hr, role:compliance]
 Tag: "public_website" → Readers: [anonymous, authenticated]
 ```
 
-### Sharing Documents Externally
-
-Limited external access:
-
-```
-Create share link with:
-  - Expiry date (e.g., 7 days)
-  - Read-only access
-  - Optional password
-  - Tracking enabled (see who accessed)
-
-Link: https://opaa.company.com/share/abc123xyz
-  - Valid until Feb 23, 2024
-  - Can be revoked any time
-  - Access logged in audit trail
-```
-
 ---
 
 ## Query-Time Permission Enforcement
 
 ### How It Works
 
-When user searches:
+Permissions are enforced **as part of the vector search itself**, not as a post-filter. When a user searches:
 
-1. **Query:** "What's our HR policy?"
-2. **RAG Retrieval:** System finds 10 relevant documents
-3. **Permission Filter:** For each document:
-   - Check if user has "read" permission
-   - Check if document is in user's workspace
-   - Check document tags and access rules
-4. **Return:** Only documents user can access (e.g., 3 of 10)
+1. **Workspace-IDs:** System loads all workspace IDs the user is a member of
+2. **Query:** "What's our HR policy?"
+3. **Vector search with workspace filter:** The user's workspace IDs are passed as a metadata filter directly into the vector search — only chunks whose `workspace_ids` include at least one of the user's workspaces are searched
+4. **Re-ranking and deduplication**
 5. **Response:** "Based on HR policies you have access to..."
+
+Because the filter is integrated into the vector search, unauthorized chunks are never loaded or ranked. The Top-K result contains only authorized chunks, with no information leakage.
 
 **Key principle:** User never knows documents exist that they can't access. Results look complete but are filtered.
 
 ### Permission Caching
 
 For performance:
-- User permissions cached (10 minute TTL)
-- Document permissions cached (1 hour TTL)
+- User workspace memberships cached (10 minute TTL)
 - Permissions revocation flushes cache immediately
 - Admin actions clear cache
+
+---
+
+## System Administration
+
+### System-Admin Role
+
+Above workspace-level roles, OPAA has a **System-Admin** role for organization-wide administration. This is a system-level role (not a workspace role) and is stored on the user entity.
+
+System-Admins can:
+- Create and delete workspaces
+- Configure connectors (data source connections)
+- Define source mappings (which source sub-unit indexes into which workspace)
+- Configure user directory sync
+- Manage global settings
+- Access all workspaces
+
+### Document Flow: Connectors vs. User Uploads
+
+The two paths for documents to enter OPAA have different authorization requirements:
+
+- **Connectors (System-Admin):** System-Admins configure connectors and define which source sub-units (e.g., Confluence spaces, file paths) map to which workspaces. This is the primary path for bulk, automated document ingestion.
+- **Manual uploads (Editor):** Users with Editor role can upload individual documents — either to their personal workspace or to team workspaces where they have Editor access. This is intended for personal documents, notes, and ad-hoc content.
+
+### Workspace Deletion
+
+When a System-Admin or Owner deletes a shared workspace:
+
+1. All documents and chunks belonging to the workspace are permanently removed
+2. Connectors that map sources to the deleted workspace log a warning on the next indexing run and skip those sources until the mapping is corrected
+3. An audit log entry records the deletion
 
 ---
 
@@ -490,7 +505,10 @@ Multiple workspaces + cross-team searches:
 - **Personal Workspaces:** Every user has "My Documents" (private, auto-created)
 - **Public Workspace:** Everyone included (policies, all-hands notes)
 - **Team Workspaces:** Isolated by team (engineering, marketing, hr)
+- **Project Workspaces:** Shared workspaces that multiple teams join (e.g., "Phoenix" project with frontend, backend, and QA teams)
 - **Special Workspaces:** Cross-functional (executive, board)
+
+**Note:** The workspace model is **flat** — there is no hierarchy or nesting between workspaces. Projects spanning multiple teams are represented as shared workspaces that all relevant team members join. Project-wide knowledge lives in the project workspace, while team-specific knowledge stays in the team workspaces.
 
 User access example:
 ```
@@ -557,15 +575,11 @@ Restrictions:
 When a user leaves the organization, their personal workspace requires special handling:
 
 ```
-1. Personal workspace documents shared to team workspaces remain accessible
-   (ownership transfers to workspace admin)
-2. Unshared personal documents can be:
+1. Personal workspace documents can be:
    - Transferred to another user or workspace
    - Archived
    - Deleted (after retention period)
-3. Personal workspace is deactivated (not deleted, for audit purposes)
-4. All sharing relationships from the personal workspace are preserved
-   under the new owner
+2. Personal workspace is deactivated (not deleted, for audit purposes)
 ```
 
 ---
@@ -588,9 +602,8 @@ When a user leaves the organization, their personal workspace requires special h
 - Should we support approval workflows for sensitive documents?
 - Should we support delegation (user A delegates their permissions to B)?
 - Should we support document classification (public/internal/confidential)?
-- Should shared documents support read-only vs. editable sharing?
-- Should there be a limit on how many workspaces a document can be shared to?
-- Should workspace admins be able to "request" documents from users' personal workspaces?
+- **Connector permissions from source systems:** Should source system permissions (e.g., Confluence space permissions) be enforced in addition to workspace permissions? Desired but complex — user IDs and permission models may not align between source system and OPAA. To be discussed separately.
+- **Document sharing:** Cross-workspace sharing has significant open security questions — see [Document Sharing](./document-sharing.md).
 
 ---
 

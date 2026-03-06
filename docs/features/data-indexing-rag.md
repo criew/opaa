@@ -105,25 +105,66 @@ curl -X POST http://localhost:8080/api/v1/indexing/trigger \
 
 When no URL is provided, the standard filesystem-based indexing is triggered instead.
 
-### Source Configuration
+### Connector Model and Workspace Mapping
 
-Each source is configured with:
+A **connector** defines the type and shared configuration (credentials, schedule). Each connector has one or more **sources**, each of which can be mapped to one or more OPAA workspaces. Connectors and sources are configured independently of workspaces — Workspace-Admins then choose which available sources to include in their workspace. Only **System-Admins** can create connectors and define source mappings.
+
+Some connector types have a natural instance level with sub-units (e.g., Confluence server with spaces). Others have no shared instance — each source is standalone (e.g., individual file paths or URLs).
+
 ```
-Name: "Confluence Engineering Docs"
-Type: "confluence"
-Connection:
-  - URL: https://wiki.company.com
-  - Username/Auth Token
-  - Spaces: ["ENG", "DOCS"] (optional filter)
-Scheduling:
-  - Frequency: Daily, 2 AM
-  - Incremental: Only new/changed documents
+Example 1: Confluence (instance with sub-units)
+  Connector: "Confluence Production"
+    Type: confluence
+    URL: https://wiki.company.com
+    Credentials: service-account / API-token
+    Schedule: Daily 2 AM
+    Sources:
+      Space "ENG"  → Workspaces: ["Engineering"]
+      Space "MKT"  → Workspaces: ["Marketing"]
+      Space "HR"   → Workspaces: ["HR", "Onboarding"]
+      Space "ALL"  → Workspaces: ["Company"]
+
+Example 2: File System / Network Drive (one path per source)
+  Connector: "Network Drive Engineering"
+    Type: filesystem
+    Schedule: Daily 3 AM
+    Sources:
+      Path "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
+
+Example 3: HTTP Directory (one URL per source)
+  Connector: "Docs Server Engineering"
+    Type: http
+    Schedule: Daily 4 AM
+    Sources:
+      URL "https://docs.internal/engineering/" → Workspaces: ["Engineering", "Phoenix"]
+```
+
+#### Connector Types and Their Sources
+
+| Connector Type | Shared Config (Connector) | Source (one or more per connector) |
+|---|---|---|
+| Confluence | Server URL, Credentials | Space key |
+| Jira | Server URL, Credentials | Project key |
+| Email (IMAP) | Server URL, Credentials | Folder / Label |
+| File System / Network Drive | optionally Schedule | Path (local or UNC) |
+| HTTP Directory | optionally Proxy, Auth | URL |
+| Git | optionally Credentials | Repository URL + Branch |
+
+#### Mapping Rules
+
+- **1:N** — Each source can be mapped to one or more OPAA workspaces. Documents from that source are indexed into all mapped workspaces (their chunks receive all corresponding `workspace_ids`).
+- **Unmapped sub-units** are ignored (e.g., Confluence spaces without a mapping are not indexed)
+- **Multiple connectors** can index into the same workspace (e.g., Confluence space "ENG" + network drive path both → "Engineering")
+
+#### Source Filtering
+
+Each source can optionally define include/exclude patterns:
+```
+Source: Confluence Space "ENG" → Workspace "Engineering"
 Filtering:
   - Include patterns: ["public/*", "team/*"]
   - Exclude patterns: ["draft/*", "archive/*"]
-Permissions:
-  - Inherit source permissions: true
-  - Workspace mapping: "Engineering"
+Incremental: Only new/changed documents
 ```
 
 ---
@@ -211,8 +252,7 @@ Each uploaded document stores:
   "storage_path": "s3://opaa-uploads/user-123/design-review-q1.pdf",
   "file_size_bytes": 2048576,
   "content_type": "application/pdf",
-  "source_type": "user_upload",
-  "shared_to_workspaces": ["workspace-eng"]
+  "source_type": "user_upload"
 }
 ```
 
@@ -278,7 +318,7 @@ Processed chunks stored with:
 - Chunk text
 - Metadata (source, document ID, timestamp, chunk index)
 - Document URL (for retrieval)
-- Workspace ID (for multi-tenancy)
+- Workspace IDs (for multi-tenancy; will also support cross-workspace sharing in the future)
 
 **Metadata Stored:**
 ```json
@@ -286,17 +326,18 @@ Processed chunks stored with:
   "chunk_id": "doc-123-chunk-5",
   "document_id": "doc-123",
   "document_title": "Enterprise Architecture Guide",
-  "workspace_id": "workspace-eng",
+  "workspace_ids": ["workspace-eng"],
   "source": "confluence",
   "source_type": "connector",
   "source_url": "https://wiki.company.com/pages/view/123456",
   "chunk_index": 5,
   "chunk_text": "...",
   "embedding": [0.123, -0.456, ...],
-  "indexed_at": "2024-02-16T14:30:00Z",
-  "permissions": ["role:engineer", "group:architecture-team"]
+  "indexed_at": "2024-02-16T14:30:00Z"
 }
 ```
+
+Note: `workspace_ids` is an array. A document can appear in multiple workspaces (e.g., when a source is mapped to multiple workspaces, or in the future via cross-workspace sharing). Permission enforcement uses this field as a metadata filter in the vector search (see [Access Control — Query-Time Permission Enforcement](./access-control-workspaces.md#query-time-permission-enforcement)).
 
 ### Step 5: Index Updates
 
@@ -353,9 +394,9 @@ OPAA uses Spring AI's `VectorStore` abstraction for all indexing and retrieval o
 
 When a user asks a question:
 
-1. **Embedding Generation:** Question converted to embedding (same model as documents)
-2. **Vector Search:** Find top-K similar chunks (typically 20-50)
-3. **Permission Filtering:** Remove chunks user doesn't have access to
+1. **Workspace-IDs:** Load all workspace IDs the user is a member of
+2. **Embedding Generation:** Question converted to embedding (same model as documents)
+3. **Vector Search with Workspace Filter:** Find top-K similar chunks, filtering by `workspace_ids` — only chunks whose `workspace_ids` include at least one of the user's workspace IDs are searched. The permission filter is part of the vector search itself, not a post-processing step.
 4. **Deduplication:** Remove duplicate information from same document
 5. **Source Deduplication:** When multiple chunks originate from the same file, only the chunk with the highest relevance score is kept as source reference (implemented in `QueryService.mapSources()`)
 6. **Re-ranking:** Score results by relevance
@@ -474,35 +515,37 @@ Indexing can start:
 
 ## Permissions & Multi-Tenancy
 
-### Document-Level Permissions
+### Workspace-Based Permissions
 
-Documents inherit permissions from source:
-- **Confluence:** Respects space permissions
-- **Email:** Only original recipient + TO/CC can see
-- **Files:** Respects file system ACLs
-- **Custom:** Via metadata tags
+Every indexed document belongs to exactly one **home workspace** (determined by the connector's source mapping or the upload target). Permissions are enforced at the workspace level:
 
-At query time, system:
-- Retrieves all relevant chunks
-- Filters out chunks user cannot access
-- Returns only authorized results
+- Users can only find documents in workspaces they are members of
+- The workspace filter is integrated into the vector search (not a post-filter)
+- Search results never leak across workspaces
+
+### Cross-Workspace Sharing (Future Feature)
+
+Cross-workspace document sharing is planned as a future feature. When implemented, shared documents' chunks would gain additional `workspace_ids` entries, making them searchable in multiple workspaces without duplication. See [Document Sharing](./document-sharing.md) for the current concept and open questions.
 
 ### User-Uploaded Document Permissions
 
 Documents uploaded by users follow a specific permission model:
 - **Default:** Private to the uploading user (in their personal workspace)
-- **Shared:** When shared to a team workspace, inherits that workspace's visibility rules
+- **Direct upload to team workspace:** Users with Editor role can upload directly to a team workspace — the document's home workspace is then the team workspace (see [Access Control — Upload to Team Workspace](./access-control-workspaces.md#upload-directly-to-team-workspace))
 - **Owner:** The uploading user is always the document owner
-- Document owner can revoke sharing at any time
+- **Upload quotas:** Configurable per user with a global default
+- **Cross-workspace sharing:** Planned as a future feature — see [Document Sharing](./document-sharing.md)
 
-Cross-workspace sharing does NOT duplicate the document. The same indexed chunks gain additional workspace_id tags, making them visible in multiple workspace contexts while maintaining a single source of truth.
+### Connector Document Permissions
 
-### Workspace Isolation
+Connector-indexed documents inherit their workspace(s) from the source mapping:
+- Each source sub-unit (e.g., Confluence space) can be mapped to one or more workspaces
+- All documents from that source are indexed into all mapped workspaces
+- Workspace Admins can exclude individual documents from the index (see [Access Control — Exclude Mechanism](./access-control-workspaces.md#exclude-mechanism-for-connector-documents))
 
-Documents organized in workspaces:
-- Documents in "Engineering" workspace only visible to engineering team
-- Search results don't leak across workspaces
-- Separate embeddings optional (for extra isolation)
+### Duplicate Detection
+
+When a user uploads a document, OPAA performs a similarity check against existing documents the user has access to. If similar documents are found, the user is notified before the upload completes — helping prevent duplicate indexing (e.g., two users uploading the same meeting notes).
 
 ---
 
@@ -516,10 +559,11 @@ Documents organized in workspaces:
 
 ### Query Performance
 
-- **Vector search:** < 500ms for typical queries
-- **Permission filtering:** + 50-100ms
+- **Vector search (incl. workspace filter):** < 500ms for typical queries
 - **Re-ranking:** + 50-100ms
 - **Total retrieval time:** < 1 second
+
+Note: Permission filtering is integrated into the vector search via metadata filter on `workspace_ids` and does not add a separate processing step.
 
 ### Scalability
 
@@ -540,6 +584,13 @@ System scales to:
 
 ---
 
+## Resolved Questions
+
+- **Storage quotas:** Yes, for manual uploads. Upload limit is configurable per user with a global default.
+- **Document versioning:** Yes, ideally. Additionally, similar documents visible to the user are shown during upload to detect duplicates (see [Duplicate Detection](#duplicate-detection) above).
+
+---
+
 ## Open Questions / Future Enhancements
 
 - Should we support real-time indexing (as documents change) vs. scheduled batch?
@@ -548,8 +599,6 @@ System scales to:
 - Should we offer semantic deduplication (remove redundant documents automatically)? *(Note: basic source-reference deduplication by file name is already implemented — see Issue #42)*
 - How to handle very large documents (100K+ pages)?
 - Should we support hybrid retrieval (vector + keyword search together)?
-- Should there be storage quotas per user or per workspace for uploaded documents?
-- Should uploaded documents support versioning (upload new version of same document)?
 - Should we support bulk import from a user's local drive?
 
 ---
