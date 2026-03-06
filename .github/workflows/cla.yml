@@ -24,7 +24,7 @@ jobs:
         with:
           path-to-signatures: signatures/cla.json
           path-to-document: https://github.com/criew/opaa/blob/main/CLA.md
-          branch: main
+          branch: cla-signatures
           allowlist: criew,*[bot]
           create-file-commit-message: "chore: initialize CLA signatures file"
           signed-commit-message: "chore: add $contributorName to CLA signatories"
