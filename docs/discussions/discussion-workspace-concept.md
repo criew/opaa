@@ -169,41 +169,62 @@ Connector-indizierte Dokumente können nicht einfach gelöscht werden, da sie be
 
 ### Entscheidung
 
-Konnektoren werden auf **Instanz-Ebene** konfiguriert. Innerhalb eines Konnektors werden **Quell-Untereinheiten** jeweils genau **einem** Workspace zugeordnet.
+Ein **Konnektor** definiert den Typ und gemeinsame Konfiguration (Credentials, Schedule). Ein Konnektor hat eine oder mehrere **Quellen (Sources)**, die jeweils genau **einem** Workspace zugeordnet werden. Je nach Konnektor-Typ sieht eine Quelle unterschiedlich aus.
 
-### Zwei-Ebenen-Konfiguration
+### Konnektor-Modell
+
+Manche Konnektor-Typen haben eine natürliche Instanz-Ebene mit Untereinheiten (z.B. Confluence-Server mit Spaces). Andere haben keine gemeinsame Instanz — jede Quelle ist eigenständig (z.B. individuelle Dateisystem-Pfade oder URLs).
 
 ```
-Ebene 1: Konnektor (Instanz)
-  Name: "Confluence Produktion"
-  Typ: confluence
-  URL: https://wiki.company.com
-  Credentials: service-account / API-token
-  Schedule: Täglich 2:00 Uhr
+Beispiel 1: Confluence (Instanz mit Untereinheiten)
+  Konnektor: "Confluence Produktion"
+    Typ: confluence
+    URL: https://wiki.company.com
+    Credentials: service-account / API-token
+    Schedule: Täglich 2:00 Uhr
+    Quellen:
+      Space "ENG"  → Workspace "Engineering"
+      Space "MKT"  → Workspace "Marketing"
+      Space "PROJ" → Workspace "Phoenix"
+      Space "ALL"  → Workspace "Company"
 
-Ebene 2: Source-Mappings (pro Quell-Untereinheit)
-  Confluence Space "ENG"  → Workspace "Engineering"
-  Confluence Space "MKT"  → Workspace "Marketing"
-  Confluence Space "PROJ" → Workspace "Phoenix"
-  Confluence Space "ALL"  → Workspace "Company"
+Beispiel 2: Dateisystem / Netzlaufwerk (je Pfad eine Quelle)
+  Konnektor: "Netzlaufwerk Engineering"
+    Typ: filesystem
+    Schedule: Täglich 3:00 Uhr
+    Quellen:
+      Pfad "//fileserver/engineering/docs" → Workspace "Engineering"
+
+  Konnektor: "Netzlaufwerk Marketing"
+    Typ: filesystem
+    Schedule: Wöchentlich
+    Quellen:
+      Pfad "//fileserver/marketing/guidelines" → Workspace "Marketing"
+
+Beispiel 3: HTTP Directory (je URL eine Quelle)
+  Konnektor: "Docs-Server Engineering"
+    Typ: http
+    Schedule: Täglich 4:00 Uhr
+    Quellen:
+      URL "https://docs.internal/engineering/" → Workspace "Engineering"
 ```
 
 ### Mapping-Regeln
 
-- **1:1** — Jede Quell-Untereinheit mappt auf genau einen OPAA-Workspace
-- **Nicht gemappte Untereinheiten** werden ignoriert (nicht indiziert)
-- **Mehrere Konnektoren** können in denselben Workspace indizieren (z.B. Confluence Space "ENG" + Dateisystem-Ordner `/docs/engineering/` beide → "Engineering")
+- **1:1** — Jede Quelle mappt auf genau einen OPAA-Workspace
+- **Nicht gemappte Untereinheiten** werden ignoriert (z.B. Confluence Spaces ohne Mapping werden nicht indiziert)
+- **Mehrere Konnektoren** können in denselben Workspace indizieren (z.B. Confluence Space "ENG" + Netzlaufwerk-Pfad beide → "Engineering")
 
-### Konnektor-Typen und ihre Untereinheiten
+### Konnektor-Typen und ihre Quellen
 
-| Konnektor-Typ | Instanz-Ebene | Quell-Untereinheit | Mapping-Ziel |
-|---------------|---------------|-------------------|-------------|
-| Confluence | Server-URL | Space | Workspace |
-| Dateisystem | Basis-Pfad | Unterordner (1. Ebene) | Workspace |
-| HTTP Directory | Basis-URL | Unterverzeichnis (1. Ebene) | Workspace |
-| Jira | Server-URL | Projekt | Workspace |
-| Git | Repository-URL | Repository / Branch | Workspace |
-| E-Mail (IMAP) | Server-URL | Ordner / Label | Workspace |
+| Konnektor-Typ | Gemeinsame Config (Konnektor) | Quelle (je 1 pro Workspace) |
+|---|---|---|
+| Confluence | Server-URL, Credentials | Space-Key |
+| Jira | Server-URL, Credentials | Projekt-Key |
+| E-Mail (IMAP) | Server-URL, Credentials | Ordner / Label |
+| Dateisystem / Netzlaufwerk | ggf. Schedule | Pfad (lokal oder UNC) |
+| HTTP Directory | ggf. Proxy, Auth | URL |
+| Git | ggf. Credentials | Repository-URL + Branch |
 
 ### Wer konfiguriert was?
 
@@ -219,11 +240,13 @@ Ebene 2: Source-Mappings (pro Quell-Untereinheit)
 
 Wenn ein User eine Frage stellt:
 
-1. **Embedding** der Frage erzeugen
-2. **Vektor-Suche** über alle Chunks (workspace-übergreifend)
-3. **Permission-Filter:** Nur Chunks behalten, deren `workspace_id` einem Workspace des Users entspricht
+1. **Workspace-IDs ermitteln:** Alle Workspace-IDs des Users laden (aus Memberships)
+2. **Embedding** der Frage erzeugen
+3. **Vektor-Suche mit Workspace-Filter:** Die Workspace-IDs werden direkt als Metadaten-Filter in die Vektor-Suche übergeben — es werden nur Chunks durchsucht, deren `workspace_ids` mindestens eine der erlaubten Workspace-IDs enthalten
 4. **Re-Ranking und Deduplizierung**
 5. **Ergebnis:** User sieht Treffer aus allen seinen Workspaces, inkl. geteilter Dokumente
+
+Der Berechtigungsfilter ist kein nachgelagerter Schritt, sondern **Teil der Vektor-Suche selbst**. Dadurch werden unberechtigte Chunks gar nicht erst geladen oder gerankt.
 
 ### Geteilte Dokumente in Suchergebnissen
 
@@ -234,9 +257,10 @@ Ein Dokument, das aus "Backend-Team" → "Phoenix" geteilt wurde:
 
 ### Performance-Überlegung
 
-Der Permission-Filter arbeitet auf `workspace_id`-Ebene. Bei der Suche wird die Menge der Workspace-IDs des Users als Filter in die Vektor-Suche übergeben (Metadaten-Filter in pgvector). Das ist effizient, weil:
+Der Workspace-Filter wird direkt in die Vektor-Suche integriert (Metadaten-Filter in pgvector). Das ist effizient, weil:
 - Die Anzahl der Workspaces pro User typischerweise klein ist (< 20)
 - pgvector Metadaten-Filter auf indexierten Spalten unterstützt
+- Kein nachgelagertes Filtern nötig — das Top-K-Ergebnis enthält nur berechtigte Chunks
 
 ---
 
@@ -284,13 +308,19 @@ DocumentChunk (im Vektor-Store)
 
 ---
 
-## 7. Offene Fragen
+## 7. Geklärte Fragen
+
+- **Storage-Quotas:** Ja, für manuelle Uploads. Upload-Limit wird als User-Einstellung mit globalem Default konfiguriert.
+- **Dokument-Versionierung:** Ja, idealerweise. Beim Hochladen sollen außerdem ähnliche Dokumente, die der User sehen kann, angezeigt werden, um Duplikate zu erkennen (z.B. "Dieses Protokoll wurde bereits von jemand anderem hochgeladen").
+- **Bulk-Sharing:** Ja, mehrere Dokumente sollen auf einmal geteilt werden können.
+- **Sharing-Benachrichtigungen:** Ja, idealerweise. Ziel-Workspace-Mitglieder sollen informiert werden, wenn ein Dokument geteilt wird.
+- **Workspace-Löschung:** Alle Dokumente und Chunks des Workspaces werden entfernt. Konnektoren, die in den gelöschten Workspace mappen, loggen eine Warnung beim nächsten Indexing-Lauf und überspringen die betroffenen Quellen, bis das Mapping korrigiert wird.
+- **Audit:** Ja, Sharing-Aktionen (Teilen, Widerruf) werden im Audit-Log erfasst.
+
+---
+
+## 8. Offene Fragen
 
 - **Owner vs. Admin:** Braucht man die Unterscheidung zwischen Workspace-Owner und Workspace-Admin? Der Unterschied ist gering (Owner kann Workspace löschen und Ownership übertragen). Alternative: Owner und Admin zusammenlegen, Workspace-Löschung dem System-Admin vorbehalten.
-- **Storage-Quotas:** Soll es Speicherlimits pro Workspace oder pro User geben?
-- **Dokument-Versionierung:** Soll eine neue Version eines bereits indizierten Dokuments erkannt werden?
-- **Bulk-Sharing:** Soll man mehrere Dokumente auf einmal teilen können?
-- **Sharing-Benachrichtigungen:** Soll der Ziel-Workspace benachrichtigt werden, wenn ein Dokument geteilt wird?
-- **Konnektor-Permissions aus Quellsystem:** Sollen z.B. Confluence-Space-Permissions zusätzlich zu Workspace-Permissions berücksichtigt werden?
-- **Workspace-Löschung:** Was passiert mit Dokumenten und Chunks, wenn ein Shared Workspace gelöscht wird?
-- **Audit:** Sollen Sharing-Aktionen im Audit-Log erfasst werden?
+- **Konnektor-Permissions aus Quellsystem:** Sollen z.B. Confluence-Space-Permissions zusätzlich zu Workspace-Permissions berücksichtigt werden? Grundsätzlich ja, aber die Umsetzung ist komplex: Berechtigungsmodelle und User-IDs zwischen Quellsystem und OPAA stimmen nicht notwendigerweise überein. Wird in einer separaten Diskussion vertieft.
+- **User-to-User Sharing:** Im aktuellen Modell ist direktes Sharing zwischen Personal Workspaces nicht möglich, da Sharing Editor-Rechte in beiden Workspaces erfordert und Personal Workspaces keine fremden Mitglieder zulassen. Mögliche Lösungen: (a) Dokument in einen gemeinsamen Workspace teilen, (b) einen dedizierten Sharing-Mechanismus auf User-Ebene einführen (z.B. "Dokument für User X freigeben"), oder (c) den Umweg über einen gemeinsamen Workspace als bewusste Design-Entscheidung akzeptieren.
