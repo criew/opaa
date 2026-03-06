@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - opaa-postgres-data:/var/lib/postgresql/data
+      - opaa-postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
       interval: 5s
@@ -40,7 +40,7 @@ services:
       OPAA_SERVER_ADDRESS: ${OPAA_SERVER_ADDRESS:-0.0.0.0}
       OPAA_DOCUMENTS_PATH: ${OPAA_DOCUMENTS_PATH:-/app/documents}
     ports:
-      - "8080:8080"
+      - "${OPAA_BACKEND_PORT:-8081}:8080"
     volumes:
       - ${OPAA_DOCUMENTS_PATH_HOST:-./documents}:/app/documents
     depends_on:
@@ -51,7 +51,7 @@ services:
     build: ./frontend
     container_name: opaa-frontend
     ports:
-      - "80:80"
+      - "${OPAA_FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
 
