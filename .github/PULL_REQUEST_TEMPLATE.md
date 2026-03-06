@@ -20,6 +20,7 @@ Closes #
 - [ ] Documentation updated (if applicable)
 - [ ] No secrets or credentials committed
 - [ ] Commit messages follow Conventional Commits
+- [ ] CLA signed (first-time contributors: post the sign comment below, or it has already been signed)
 
 ## AI Agent Disclosure
 
