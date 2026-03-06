@@ -4,8 +4,8 @@ info:
   description: Open Project AI Assistant REST API
   version: 0.1.0
   license:
-    name: Apache-2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
 
 paths:
   /api/health:
@@ -26,6 +26,17 @@ paths:
       operationId: triggerIndexing
       tags: [indexing]
       summary: Trigger document indexing
+      description: |
+        Triggers document indexing. Without a request body, indexes documents
+        from the configured local filesystem path. With a request body containing
+        a URL, crawls an Apache mod_autoindex HTTP directory listing and indexes
+        all discovered documents.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndexingTriggerRequest"
       responses:
         "200":
           description: Indexing triggered successfully
@@ -161,6 +172,28 @@ components:
           type: integer
           format: int64
           example: 1523
+
+    IndexingTriggerRequest:
+      type: object
+      description: Optional request body for URL-based indexing
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL of an Apache mod_autoindex directory listing to crawl
+          example: https://files.example.com/documents/
+        proxy:
+          type: string
+          description: Proxy server in host:port format
+          example: proxy.example.com:8080
+        credentials:
+          type: string
+          description: Basic auth credentials in user:password format
+          example: admin:secret
+        insecureSsl:
+          type: boolean
+          description: Skip SSL certificate verification
+          default: false
 
     ErrorResponse:
       type: object

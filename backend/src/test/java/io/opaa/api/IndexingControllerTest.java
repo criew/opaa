@@ -1,6 +1,8 @@
 package io.opaa.api;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,11 +14,14 @@ import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.UrlIndexingRequest;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -99,5 +104,46 @@ class IndexingControllerTest {
         .andExpect(jsonPath("$.documentCount").value(10))
         .andExpect(jsonPath("$.documentsSkipped").value(5))
         .andExpect(jsonPath("$.message").value(containsString("5 skipped")));
+  }
+
+  @Test
+  void triggerUrlIndexingWithBodyRoutesToUrlIndexing() throws Exception {
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(documentIndexingService.triggerUrlIndexing(any(UrlIndexingRequest.class))).thenReturn(job);
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"url":"https://example.com/files/","proxy":"proxy:8080",\
+                    "credentials":"user:pass","insecureSsl":true}
+                    """))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.status").value("RUNNING"));
+
+    ArgumentCaptor<UrlIndexingRequest> captor = ArgumentCaptor.forClass(UrlIndexingRequest.class);
+    verify(documentIndexingService).triggerUrlIndexing(captor.capture());
+    UrlIndexingRequest captured = captor.getValue();
+    org.assertj.core.api.Assertions.assertThat(captured.url())
+        .isEqualTo("https://example.com/files/");
+    org.assertj.core.api.Assertions.assertThat(captured.proxy()).isEqualTo("proxy:8080");
+    org.assertj.core.api.Assertions.assertThat(captured.credentials()).isEqualTo("user:pass");
+    org.assertj.core.api.Assertions.assertThat(captured.insecureSsl()).isTrue();
+  }
+
+  @Test
+  void triggerWithEmptyBodyFallsBackToFilesystemIndexing() throws Exception {
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(documentIndexingService.triggerIndexing()).thenReturn(job);
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.status").value("RUNNING"));
+
+    verify(documentIndexingService).triggerIndexing();
   }
 }

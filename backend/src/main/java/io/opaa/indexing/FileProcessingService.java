@@ -100,6 +100,75 @@ public class FileProcessingService {
     return FileProcessingResult.PROCESSED;
   }
 
+  /**
+   * Processes a file downloaded from a remote URL. Uses SHA-256 checksum on the downloaded file for
+   * content-based change detection and deduplication. The lastModified date from the directory
+   * listing is used upstream (in UrlIndexingExecutor) to skip downloads entirely when unchanged.
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile, String remoteUrl, String lastModified, long remoteFileSize)
+      throws IOException {
+
+    String fileName = localFile.getFileName().toString();
+
+    // Compute SHA-256 on the downloaded file for content-based deduplication
+    String checksum = checksumService.computeSha256(localFile);
+
+    // Check if document already exists by remote URL
+    Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
+    if (existing.isPresent()) {
+      Document existingDoc = existing.get();
+      if (checksum.equals(existingDoc.getChecksum())
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+        log.info("Skipping unchanged URL document (same checksum): {}", fileName);
+        metrics.recordSkipped();
+        return FileProcessingResult.SKIPPED;
+      }
+      // Document changed — delete old data
+      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      documentRepository.delete(existingDoc);
+    }
+
+    String contentType = Files.probeContentType(localFile);
+
+    var doc =
+        new Document(
+            fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.HTTP_DIRECTORY);
+    doc = documentRepository.save(doc);
+
+    try {
+      List<org.springframework.ai.document.Document> parsed =
+          documentService.parseDocument(localFile);
+      if (parsed.isEmpty()) {
+        log.warn("No content extracted from URL document: {}", remoteUrl);
+        doc.setStatus(DocumentStatus.FAILED);
+        documentRepository.save(doc);
+        return FileProcessingResult.PROCESSED;
+      }
+
+      List<org.springframework.ai.document.Document> chunks =
+          chunkingService.chunkDocuments(fileName, parsed);
+      log.debug("URL file {} produced {} chunks", fileName, chunks.size());
+
+      storeChunks(doc, chunks);
+
+      doc.setChunkCount(chunks.size());
+      doc.setIndexedAt(Instant.now());
+      doc.setChecksum(checksum);
+      doc.setLastModifiedRemote(lastModified);
+      doc.setStatus(DocumentStatus.INDEXED);
+      documentRepository.save(doc);
+    } catch (Exception e) {
+      doc.setStatus(DocumentStatus.FAILED);
+      documentRepository.save(doc);
+      metrics.recordFailed();
+      throw e;
+    }
+
+    metrics.recordProcessed();
+    return FileProcessingResult.PROCESSED;
+  }
+
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
     List<org.springframework.ai.document.Document> enriched =
