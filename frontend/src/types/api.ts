@@ -45,6 +45,13 @@ export interface ErrorResponse {
   timestamp: string
 }
 
+export interface IndexingTriggerRequest {
+  url?: string
+  proxy?: string
+  credentials?: string
+  insecureSsl?: boolean
+}
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&
