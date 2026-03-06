@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - opaa-postgres-data:/var/lib/postgresql/data
+      - opaa-postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
       interval: 5s
