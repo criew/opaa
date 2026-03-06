@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - opaa-postgres-data:/var/lib/postgresql/data
+      - opaa-postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
       interval: 5s
@@ -36,11 +36,17 @@ services:
       OPAA_OPENAI_EMBEDDING_BASE_URL: ${OPAA_OPENAI_EMBEDDING_BASE_URL:-}
       OPAA_OPENAI_EMBEDDING_MODEL: ${OPAA_OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       OPAA_OLLAMA_BASE_URL: ${OPAA_OLLAMA_BASE_URL:-http://ollama:11434}
+      OPAA_OLLAMA_CHAT_MODEL: ${OPAA_OLLAMA_CHAT_MODEL:-phi3:mini}
+      OPAA_OLLAMA_EMBEDDING_MODEL: ${OPAA_OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
       OPAA_HTTP_FORCE_HTTP1: ${OPAA_HTTP_FORCE_HTTP1:-false}
       OPAA_SERVER_ADDRESS: ${OPAA_SERVER_ADDRESS:-0.0.0.0}
       OPAA_DOCUMENTS_PATH: ${OPAA_DOCUMENTS_PATH:-/app/documents}
+      OPAA_CORS_ALLOWED_ORIGINS: ${OPAA_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      OPAA_PGVECTOR_DIMENSIONS: ${OPAA_PGVECTOR_DIMENSIONS:-1536}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "8080:8080"
+      - "${OPAA_BACKEND_PORT:-8081}:8080"
     volumes:
       - ${OPAA_DOCUMENTS_PATH_HOST:-./documents}:/app/documents
     depends_on:
@@ -51,7 +57,7 @@ services:
     build: ./frontend
     container_name: opaa-frontend
     ports:
-      - "80:80"
+      - "${OPAA_FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
 
