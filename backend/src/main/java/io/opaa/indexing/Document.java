@@ -44,6 +44,9 @@ public class Document {
   @Column(name = "source_type", nullable = false, length = 20)
   private DocumentSourceType sourceType = DocumentSourceType.FILESYSTEM;
 
+  @Column(name = "last_modified_remote", length = 64)
+  private String lastModifiedRemote;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -123,5 +126,13 @@ public class Document {
 
   public void setSourceType(DocumentSourceType sourceType) {
     this.sourceType = sourceType;
+  }
+
+  public String getLastModifiedRemote() {
+    return lastModifiedRemote;
+  }
+
+  public void setLastModifiedRemote(String lastModifiedRemote) {
+    this.lastModifiedRemote = lastModifiedRemote;
   }
 }

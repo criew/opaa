@@ -2,5 +2,5 @@ package io.opaa.indexing;
 
 public enum DocumentSourceType {
   FILESYSTEM,
-  URL
+  HTTP_DIRECTORY
 }

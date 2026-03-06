@@ -189,6 +189,7 @@ class FileProcessingServiceTest {
     Path file = tempDir.resolve("remote-doc.pdf");
     Files.writeString(file, "pdf content");
 
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
     when(documentRepository.findByFilePath("https://example.com/docs/remote-doc.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -210,7 +211,8 @@ class FileProcessingServiceTest {
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
     Document lastSaved = docCaptor.getAllValues().getLast();
-    assertThat(lastSaved.getChecksum()).isEqualTo("2025-06-15 10:30");
+    assertThat(lastSaved.getChecksum()).isEqualTo("sha256-of-pdf");
+    assertThat(lastSaved.getLastModifiedRemote()).isEqualTo("2025-06-15 10:30");
     assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
   }
 
@@ -219,14 +221,16 @@ class FileProcessingServiceTest {
     Path file = tempDir.resolve("unchanged-url.pdf");
     Files.writeString(file, "pdf content");
 
+    when(checksumService.computeSha256(file)).thenReturn("same-sha256");
+
     Document existingDoc =
         new Document(
             "unchanged-url.pdf",
             "https://example.com/docs/unchanged-url.pdf",
             null,
             1024L,
-            DocumentSourceType.URL);
-    existingDoc.setChecksum("2025-06-15 10:30");
+            DocumentSourceType.HTTP_DIRECTORY);
+    existingDoc.setChecksum("same-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
 
     when(documentRepository.findByFilePath("https://example.com/docs/unchanged-url.pdf"))
@@ -245,14 +249,16 @@ class FileProcessingServiceTest {
     Path file = tempDir.resolve("changed-url.pdf");
     Files.writeString(file, "new pdf content");
 
+    when(checksumService.computeSha256(file)).thenReturn("new-sha256");
+
     Document existingDoc =
         new Document(
             "changed-url.pdf",
             "https://example.com/docs/changed-url.pdf",
             null,
             1024L,
-            DocumentSourceType.URL);
-    existingDoc.setChecksum("2025-06-01 08:00");
+            DocumentSourceType.HTTP_DIRECTORY);
+    existingDoc.setChecksum("old-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
 
     when(documentRepository.findByFilePath("https://example.com/docs/changed-url.pdf"))

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -20,6 +19,9 @@ import java.util.List;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,43 +106,43 @@ public class AutoindexCrawlerService {
     return response.body();
   }
 
-  /**
-   * Robust HTML table parser for Apache mod_autoindex directory listings. Uses manual indexOf-based
-   * extraction instead of regex to handle variations in HTML structure (extra columns, different
-   * Apache/nginx variants, HTML entities).
-   */
+  /** Parses an Apache mod_autoindex HTML directory listing using JSoup. */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
+    if (html == null) {
+      return List.of();
+    }
+
     List<CrawledFileEntry> entries = new ArrayList<>();
-    int pos = 0;
+    org.jsoup.nodes.Document doc = Jsoup.parse(html);
+    Elements rows = doc.select("tr");
 
-    while (true) {
-      int trStart = html.indexOf("<tr", pos);
-      if (trStart < 0) break;
-
-      trStart = html.indexOf(">", trStart);
-      if (trStart < 0) break;
-
-      int trEnd = html.indexOf("</tr>", trStart);
-      if (trEnd < 0) break;
-
-      String row = html.substring(trStart + 1, trEnd);
-      pos = trEnd + 5;
-
-      List<String> cells = extractTdCells(row);
+    for (Element row : rows) {
+      Elements cells = row.select("td");
       if (cells.size() < 4) {
         continue;
       }
 
-      String iconCell = cells.get(0);
-      String linkCell = cells.get(1);
-      String date = stripTags(cells.get(2));
-      String size = stripTags(cells.get(3));
+      Element iconCell = cells.get(0);
+      Element linkCell = cells.get(1);
+      String date = cells.get(2).text().trim();
+      String size = cells.get(3).text().trim();
 
-      String altText = extractAlt(iconCell);
-      String href = extractHref(linkCell);
-      String name = extractLinkText(linkCell);
+      // Extract alt text from icon image
+      Element img = iconCell.selectFirst("img");
+      String altText = img != null ? img.attr("alt") : "";
+      if (altText.startsWith("[") && altText.endsWith("]")) {
+        altText = altText.substring(1, altText.length() - 1);
+      }
 
-      if (href == null || name == null) {
+      // Extract href and link text
+      Element link = linkCell.selectFirst("a");
+      if (link == null) {
+        continue;
+      }
+      String href = link.attr("href");
+      String name = link.text();
+
+      if (href.isEmpty() || name.isEmpty()) {
         continue;
       }
 
@@ -152,8 +154,6 @@ public class AutoindexCrawlerService {
         continue;
       }
 
-      href = decodeUrl(href);
-
       String fullUrl;
       if (href.startsWith("http://") || href.startsWith("https://")) {
         fullUrl = href;
@@ -162,96 +162,10 @@ public class AutoindexCrawlerService {
       }
 
       String type = "DIR".equalsIgnoreCase(altText) ? "DIR" : altText;
-      entries.add(
-          new CrawledFileEntry(name.trim(), fullUrl, date.trim(), size.trim(), type, depth));
+      entries.add(new CrawledFileEntry(name.trim(), fullUrl, date, size, type, depth));
     }
 
     return entries;
-  }
-
-  private List<String> extractTdCells(String row) {
-    List<String> cells = new ArrayList<>();
-    int pos = 0;
-
-    while (true) {
-      int tdStart = row.indexOf("<td", pos);
-      if (tdStart < 0) break;
-
-      tdStart = row.indexOf(">", tdStart);
-      if (tdStart < 0) break;
-
-      int tdEnd = row.indexOf("</td>", tdStart);
-      if (tdEnd < 0) break;
-
-      cells.add(row.substring(tdStart + 1, tdEnd));
-      pos = tdEnd + 5;
-    }
-
-    return cells;
-  }
-
-  private String extractAlt(String html) {
-    String lower = html.toLowerCase();
-    int alt = lower.indexOf("alt=");
-    if (alt < 0) return "";
-
-    int start = html.indexOf('"', alt);
-    int end = html.indexOf('"', start + 1);
-    if (start < 0 || end < 0) return "";
-
-    String value = html.substring(start + 1, end);
-    if (value.startsWith("[") && value.endsWith("]")) {
-      value = value.substring(1, value.length() - 1);
-    }
-    return value;
-  }
-
-  private String extractHref(String html) {
-    String lower = html.toLowerCase();
-    int href = lower.indexOf("href=");
-    if (href < 0) return null;
-
-    int start = html.indexOf('"', href);
-    int end = html.indexOf('"', start + 1);
-    if (start < 0 || end < 0) return null;
-
-    return html.substring(start + 1, end);
-  }
-
-  private String extractLinkText(String html) {
-    int start = html.indexOf(">");
-    int end = html.indexOf("</a>");
-    if (start < 0 || end < 0) return null;
-
-    return html.substring(start + 1, end);
-  }
-
-  private String stripTags(String html) {
-    StringBuilder sb = new StringBuilder();
-    boolean inside = false;
-
-    for (char c : html.toCharArray()) {
-      if (c == '<') {
-        inside = true;
-      } else if (c == '>') {
-        inside = false;
-      } else if (!inside) {
-        sb.append(c);
-      }
-    }
-
-    String text = sb.toString();
-    text = text.replace("&nbsp;", " ");
-    text = text.replace("\u00A0", " ");
-    return text.trim();
-  }
-
-  private String decodeUrl(String url) {
-    try {
-      return URLDecoder.decode(url, StandardCharsets.UTF_8);
-    } catch (Exception e) {
-      return url;
-    }
   }
 
   static String resolveUrl(String baseUrl, String relative) {

@@ -75,9 +75,10 @@ OPAA can crawl and index documents from HTTP servers that expose Apache mod_auto
 1. OPAA crawls the HTML directory listing at the given URL recursively
 2. Discovers all files across subdirectories
 3. Downloads each file to a temporary location for processing
-4. Uses the `lastModified` timestamp from the directory listing as a change indicator (instead of computing SHA-256 checksums) to avoid re-downloading unchanged files
-5. Processes each file through the standard pipeline (extraction, chunking, embedding)
-6. Cleans up temporary files after processing
+4. Uses the `lastModified` timestamp from the directory listing to skip downloads of unchanged files (bandwidth optimization)
+5. After download, computes a SHA-256 checksum on the file for content-based deduplication (detects renames, ensures content integrity)
+6. Processes each file through the standard pipeline (extraction, chunking, embedding)
+7. Cleans up temporary files after processing
 
 **Supported features:**
 - Basic authentication (username:password)

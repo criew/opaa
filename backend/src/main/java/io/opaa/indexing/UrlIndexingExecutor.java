@@ -151,13 +151,14 @@ public class UrlIndexingExecutor {
   }
 
   /**
-   * Checks if a URL document exists and is unchanged based on the lastModified date. This avoids
-   * downloading the file when it hasn't changed.
+   * Checks if a URL document exists and is unchanged based on the lastModified date from the
+   * directory listing. This avoids downloading the file when it hasn't changed. After download, the
+   * SHA-256 checksum provides an additional content-based verification layer.
    */
   private boolean isUnchanged(String remoteUrl, String lastModified) {
     Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
     return existing.isPresent()
-        && lastModified.equals(existing.get().getChecksum())
+        && lastModified.equals(existing.get().getLastModifiedRemote())
         && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 

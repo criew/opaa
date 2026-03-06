@@ -101,8 +101,9 @@ public class FileProcessingService {
   }
 
   /**
-   * Processes a file downloaded from a remote URL. Uses the lastModified date from the directory
-   * listing as the checksum (instead of SHA-256) to avoid re-downloading unchanged files.
+   * Processes a file downloaded from a remote URL. Uses SHA-256 checksum on the downloaded file for
+   * content-based change detection and deduplication. The lastModified date from the directory
+   * listing is used upstream (in UrlIndexingExecutor) to skip downloads entirely when unchanged.
    */
   public FileProcessingResult processUrlFile(
       Path localFile, String remoteUrl, String lastModified, long remoteFileSize)
@@ -110,13 +111,16 @@ public class FileProcessingService {
 
     String fileName = localFile.getFileName().toString();
 
+    // Compute SHA-256 on the downloaded file for content-based deduplication
+    String checksum = checksumService.computeSha256(localFile);
+
     // Check if document already exists by remote URL
     Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
-      if (lastModified.equals(existingDoc.getChecksum())
+      if (checksum.equals(existingDoc.getChecksum())
           && existingDoc.getStatus() == DocumentStatus.INDEXED) {
-        log.info("Skipping unchanged URL document: {}", fileName);
+        log.info("Skipping unchanged URL document (same checksum): {}", fileName);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
@@ -128,7 +132,8 @@ public class FileProcessingService {
     String contentType = Files.probeContentType(localFile);
 
     var doc =
-        new Document(fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.URL);
+        new Document(
+            fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.HTTP_DIRECTORY);
     doc = documentRepository.save(doc);
 
     try {
@@ -149,7 +154,8 @@ public class FileProcessingService {
 
       doc.setChunkCount(chunks.size());
       doc.setIndexedAt(Instant.now());
-      doc.setChecksum(lastModified);
+      doc.setChecksum(checksum);
+      doc.setLastModifiedRemote(lastModified);
       doc.setStatus(DocumentStatus.INDEXED);
       documentRepository.save(doc);
     } catch (Exception e) {

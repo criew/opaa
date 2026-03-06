@@ -189,6 +189,14 @@ class AutoindexCrawlerServiceTest {
   }
 
   @Test
+  void returnsEmptyListForNullHtml() {
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(null, "https://host/", 0);
+
+    assertThat(entries).isEmpty();
+  }
+
+  @Test
   void returnsEmptyListForInvalidHtml() {
     List<AutoindexCrawlerService.CrawledFileEntry> entries =
         service.parseDirectory("<html><body>No table here</body></html>", "https://host/", 0);

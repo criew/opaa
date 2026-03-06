@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: 004-add-source-type-to-documents
       author: opaa
-      comment: "Add source_type column to track document origin (FILESYSTEM vs URL)"
+      comment: "Add source_type column to track document origin (FILESYSTEM vs HTTP_DIRECTORY)"
       changes:
         - addColumn:
             tableName: documents
@@ -13,12 +13,17 @@ databaseChangeLog:
                   defaultValue: FILESYSTEM
                   constraints:
                     nullable: false
+              - column:
+                  name: last_modified_remote
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
         - sql:
             comment: "Add check constraint for source_type values"
             sql: >
               ALTER TABLE documents
               ADD CONSTRAINT chk_documents_source_type
-              CHECK (source_type IN ('FILESYSTEM', 'URL'));
+              CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY'));
       rollback:
         - dropColumn:
             tableName: documents
