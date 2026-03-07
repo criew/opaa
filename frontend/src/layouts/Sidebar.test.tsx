@@ -4,16 +4,33 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import Sidebar from './Sidebar'
 import { useChatStore } from '../stores/chatStore'
+import { useWorkspaceStore } from '../stores/workspaceStore'
 
 describe('Sidebar', () => {
   beforeEach(() => {
     useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
+    useWorkspaceStore.setState({
+      workspaces: [
+        {
+          id: 'ws-personal',
+          name: 'My Documents',
+          description: 'Private',
+          type: 'PERSONAL',
+          memberCount: 1,
+          userRole: 'OWNER',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+      isLoadingList: false,
+    })
   })
 
   it('renders navigation items', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
-    expect(screen.getByText('Chat')).toBeInTheDocument()
-    expect(screen.getByText('Documents')).toBeInTheDocument()
+    expect(screen.getByText('Workspaces')).toBeInTheDocument()
+    expect(screen.getByText('Chats')).toBeInTheDocument()
+    expect(screen.getByText('My Documents')).toBeInTheDocument()
     expect(screen.getByText('Settings')).toBeInTheDocument()
   })
 

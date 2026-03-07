@@ -8,6 +8,9 @@ import {
   mockAuthConfig,
   mockLoginResponse,
   mockUser,
+  mockWorkspaces,
+  mockWorkspaceDetails,
+  mockWorkspaceDocuments,
 } from './fixtures'
 import type { IndexingStatusResponse, QueryRequest } from '../types/api'
 import type { LoginRequest } from '../types/auth'
@@ -86,10 +89,39 @@ export const handlers = [
       )
     }
     const mockResponse = getRandomMockResponse()
+    const requestedWorkspaceIds = body.workspaceIds ?? []
+    const filteredSources =
+      requestedWorkspaceIds.length > 0
+        ? mockResponse.sources.filter((source) =>
+            requestedWorkspaceIds.some((workspaceId) => {
+              const workspace = mockWorkspaces.find((item) => item.id === workspaceId)
+              return workspace?.name === source.workspaceName
+            }),
+          )
+        : mockResponse.sources
     return HttpResponse.json({
       ...mockResponse,
+      sources: filteredSources,
       conversationId: body.conversationId ?? crypto.randomUUID(),
     })
+  }),
+
+  http.get('/api/v1/workspaces', () => {
+    return HttpResponse.json(mockWorkspaces)
+  }),
+
+  http.get('/api/v1/workspaces/:workspaceId', ({ params }) => {
+    const workspaceId = String(params.workspaceId)
+    const workspace = mockWorkspaceDetails[workspaceId]
+    if (!workspace) {
+      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+    }
+    return HttpResponse.json(workspace)
+  }),
+
+  http.get('/api/v1/workspaces/:workspaceId/documents', ({ params }) => {
+    const workspaceId = String(params.workspaceId)
+    return HttpResponse.json(mockWorkspaceDocuments[workspaceId] ?? [])
   }),
 
   http.get('/api/v1/auth/config', () => {

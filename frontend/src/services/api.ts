@@ -5,6 +5,9 @@ import type {
   IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
+  WorkspaceDocumentResponse,
+  WorkspaceListResponse,
+  WorkspaceResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -46,10 +49,45 @@ export async function getHealth(): Promise<HealthResponse> {
   }
 }
 
-export async function sendQuery(question: string, conversationId?: string): Promise<QueryResponse> {
+export async function sendQuery(
+  question: string,
+  conversationId?: string,
+  workspaceIds?: string[],
+): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question, conversationId }
+    const request: QueryRequest = { question, conversationId, workspaceIds }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspaces(): Promise<WorkspaceListResponse[]> {
+  try {
+    const { data } = await client.get<WorkspaceListResponse[]>('/v1/workspaces')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspace(workspaceId: string): Promise<WorkspaceResponse> {
+  try {
+    const { data } = await client.get<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspaceDocuments(
+  workspaceId: string,
+): Promise<WorkspaceDocumentResponse[]> {
+  try {
+    const { data } = await client.get<WorkspaceDocumentResponse[]>(
+      `/v1/workspaces/${workspaceId}/documents`,
+    )
     return data
   } catch (err) {
     normalizeError(err)

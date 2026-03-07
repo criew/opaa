@@ -1,18 +1,32 @@
 import type { KeyboardEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
+import FormControl from '@mui/material/FormControl'
 import IconButton from '@mui/material/IconButton'
+import InputLabel from '@mui/material/InputLabel'
+import MenuItem from '@mui/material/MenuItem'
+import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
+import type { WorkspaceListResponse } from '../../types/api'
 
 interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
+  workspaces?: WorkspaceListResponse[]
+  selectedWorkspaceId?: string | null
+  onWorkspaceFilterChange?: (workspaceId: string | null) => void
 }
 
-export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+export default function ChatInput({
+  onSend,
+  disabled = false,
+  workspaces = [],
+  selectedWorkspaceId = null,
+  onWorkspaceFilterChange,
+}: ChatInputProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const wasDisabled = useRef(false)
@@ -43,8 +57,8 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'flex-end',
-          gap: 1,
+          alignItems: 'center',
+          gap: 1.5,
           maxWidth: CHAT_MAX_WIDTH,
           mx: 'auto',
           bgcolor: 'background.paper',
@@ -54,32 +68,54 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           p: 1,
         }}
       >
-        <TextField
-          fullWidth
-          multiline
-          maxRows={6}
-          placeholder="Ask a question..."
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          inputRef={inputRef}
-          variant="standard"
-          sx={{
-            '& .MuiInputBase-root': {
-              borderRadius: 0,
-              background: 'none',
-              px: 1.5,
-              py: 1,
-              alignItems: 'flex-start',
-              '&::before, &::after': { display: 'none' },
-            },
-            '& textarea': {
-              overflowY: 'auto !important',
-              resize: 'none',
-            },
-          }}
-        />
+        <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, gap: 1 }}>
+          <FormControl size="small" sx={{ width: 280 }}>
+            <InputLabel id="workspace-filter-label">Search in</InputLabel>
+            <Select
+              labelId="workspace-filter-label"
+              value={selectedWorkspaceId ?? 'all'}
+              label="Search in"
+              disabled={disabled}
+              onChange={(event) => {
+                const next = event.target.value
+                onWorkspaceFilterChange?.(next === 'all' ? null : next)
+              }}
+            >
+              <MenuItem value="all">All Workspaces</MenuItem>
+              {workspaces.map((workspace) => (
+                <MenuItem key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            fullWidth
+            multiline
+            maxRows={6}
+            placeholder="Ask a question..."
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            inputRef={inputRef}
+            variant="standard"
+            sx={{
+              '& .MuiInputBase-root': {
+                borderRadius: 0,
+                background: 'none',
+                px: 1.5,
+                py: 1,
+                alignItems: 'flex-start',
+                '&::before, &::after': { display: 'none' },
+              },
+              '& textarea': {
+                overflowY: 'auto !important',
+                resize: 'none',
+              },
+            }}
+          />
+        </Box>
         <IconButton
           color="primary"
           onClick={handleSend}
