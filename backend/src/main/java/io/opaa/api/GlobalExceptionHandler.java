@@ -9,6 +9,7 @@ import org.springframework.ai.retry.TransientAiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -67,6 +68,12 @@ public class GlobalExceptionHandler {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
         .body(new ErrorResponse("AI service error", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(new ErrorResponse("Access denied", HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
   @ExceptionHandler(Exception.class)

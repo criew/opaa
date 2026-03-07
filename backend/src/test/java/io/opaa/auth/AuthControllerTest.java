@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,7 +32,11 @@ class AuthControllerTest {
   void loginWithValidCredentialsReturnsToken() throws Exception {
     when(authProperties.basic())
         .thenReturn(
-            new AuthProperties.BasicAuth("admin", "admin", "dummy-secret", 3600, "opaa-basic"));
+            new AuthProperties.BasicAuth(
+                List.of(new AuthProperties.BasicUser("admin", "admin")),
+                "dummy-secret",
+                3600,
+                "opaa-basic"));
     when(jwtTokenService.generateToken(anyString(), anyString(), anyString()))
         .thenReturn("test-jwt-token");
     when(jwtTokenService.getExpirationSeconds()).thenReturn(3600L);
@@ -52,7 +57,11 @@ class AuthControllerTest {
   void loginWithInvalidCredentialsReturns401() throws Exception {
     when(authProperties.basic())
         .thenReturn(
-            new AuthProperties.BasicAuth("admin", "admin", "dummy-secret", 3600, "opaa-basic"));
+            new AuthProperties.BasicAuth(
+                List.of(new AuthProperties.BasicUser("admin", "admin")),
+                "dummy-secret",
+                3600,
+                "opaa-basic"));
 
     mockMvc
         .perform(
@@ -63,6 +72,32 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.error").value("Invalid credentials"))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.timestamp").isNotEmpty());
+  }
+
+  @Test
+  void loginSucceedsForSecondConfiguredUser() throws Exception {
+    when(authProperties.basic())
+        .thenReturn(
+            new AuthProperties.BasicAuth(
+                List.of(
+                    new AuthProperties.BasicUser("admin", "admin"),
+                    new AuthProperties.BasicUser("alice", "secret")),
+                "dummy-secret",
+                3600,
+                "opaa-basic"));
+    when(jwtTokenService.generateToken(anyString(), anyString(), anyString()))
+        .thenReturn("alice-token");
+    when(jwtTokenService.getExpirationSeconds()).thenReturn(3600L);
+    when(userService.findOrCreateUser(anyString(), anyString(), anyString(), anyString()))
+        .thenReturn(new User("alice", "opaa-basic", "alice@opaa.local", "alice"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\": \"alice\", \"password\": \"secret\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").value("alice-token"));
   }
 
   @Test

@@ -1,9 +1,11 @@
 package io.opaa.auth;
 
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "opaa.auth")
-public record AuthProperties(String mode, OidcAuth oidc, BasicAuth basic) {
+public record AuthProperties(
+    String mode, OidcAuth oidc, BasicAuth basic, String initialAdminEmail) {
 
   public AuthProperties {
     if (mode == null || mode.isBlank()) {
@@ -13,16 +15,19 @@ public record AuthProperties(String mode, OidcAuth oidc, BasicAuth basic) {
       oidc = new OidcAuth(null, null);
     }
     if (basic == null) {
-      basic = new BasicAuth(null, null, null, 0, null);
+      basic = new BasicAuth(null, null, 0, null);
     }
   }
 
   public record OidcAuth(String authority, String clientId) {}
 
   public record BasicAuth(
-      String username, String password, String secret, long tokenExpirationSeconds, String issuer) {
+      List<BasicUser> users, String secret, long tokenExpirationSeconds, String issuer) {
 
     public BasicAuth {
+      if (users == null) {
+        users = List.of();
+      }
       if (tokenExpirationSeconds <= 0) {
         tokenExpirationSeconds = 3600;
       }
@@ -31,4 +36,6 @@ public record AuthProperties(String mode, OidcAuth oidc, BasicAuth basic) {
       }
     }
   }
+
+  public record BasicUser(String username, String password) {}
 }
