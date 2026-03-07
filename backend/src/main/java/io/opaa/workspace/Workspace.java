@@ -12,6 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -113,6 +114,6 @@ public class Workspace {
   }
 
   public List<WorkspaceMembership> getMemberships() {
-    return memberships;
+    return Collections.unmodifiableList(memberships);
   }
 }
