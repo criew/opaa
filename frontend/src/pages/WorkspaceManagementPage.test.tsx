@@ -32,7 +32,7 @@ describe('WorkspaceManagementPage', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
       selectedWorkspaceDocuments: [],
-      chatFilterWorkspaceId: null,
+      chatFilterWorkspaceIds: [],
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,

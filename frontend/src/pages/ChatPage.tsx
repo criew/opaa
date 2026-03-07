@@ -12,8 +12,8 @@ export default function ChatPage() {
   const error = useChatStore((s) => s.error)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const workspaces = useWorkspaceStore((s) => s.workspaces)
-  const chatFilterWorkspaceId = useWorkspaceStore((s) => s.chatFilterWorkspaceId)
-  const setChatFilterWorkspaceId = useWorkspaceStore((s) => s.setChatFilterWorkspaceId)
+  const chatFilterWorkspaceIds = useWorkspaceStore((s) => s.chatFilterWorkspaceIds)
+  const setChatFilterWorkspaceIds = useWorkspaceStore((s) => s.setChatFilterWorkspaceIds)
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces)
 
   useEffect(() => {
@@ -31,13 +31,11 @@ export default function ChatPage() {
       )}
       <MessageList messages={messages} isLoading={isLoading} />
       <ChatInput
-        onSend={(message) =>
-          sendMessage(message, chatFilterWorkspaceId ? [chatFilterWorkspaceId] : undefined)
-        }
+        onSend={(message) => sendMessage(message, chatFilterWorkspaceIds)}
         disabled={isLoading}
         workspaces={workspaces}
-        selectedWorkspaceId={chatFilterWorkspaceId}
-        onWorkspaceFilterChange={setChatFilterWorkspaceId}
+        selectedWorkspaceIds={chatFilterWorkspaceIds}
+        onWorkspaceFilterChange={setChatFilterWorkspaceIds}
       />
     </Box>
   )

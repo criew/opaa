@@ -47,7 +47,7 @@ describe('workspaceStore', () => {
       selectedWorkspaceId: null,
       selectedWorkspace: null,
       selectedWorkspaceDocuments: [],
-      chatFilterWorkspaceId: null,
+      chatFilterWorkspaceIds: [],
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
@@ -61,7 +61,10 @@ describe('workspaceStore', () => {
   })
 
   it('updates chat filter selection', () => {
-    useWorkspaceStore.getState().setChatFilterWorkspaceId('ws-personal')
-    expect(useWorkspaceStore.getState().chatFilterWorkspaceId).toBe('ws-personal')
+    useWorkspaceStore.getState().setChatFilterWorkspaceIds(['ws-personal', 'ws-shared'])
+    expect(useWorkspaceStore.getState().chatFilterWorkspaceIds).toEqual([
+      'ws-personal',
+      'ws-shared',
+    ])
   })
 })

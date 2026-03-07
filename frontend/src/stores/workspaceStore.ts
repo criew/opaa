@@ -22,13 +22,13 @@ interface WorkspaceState {
   selectedWorkspaceId: string | null
   selectedWorkspace: WorkspaceResponse | null
   selectedWorkspaceDocuments: WorkspaceDocumentResponse[]
-  chatFilterWorkspaceId: string | null
+  chatFilterWorkspaceIds: string[]
   isLoadingList: boolean
   isLoadingDetails: boolean
   error: string | null
   loadWorkspaces: () => Promise<void>
   selectWorkspace: (workspaceId: string) => Promise<void>
-  setChatFilterWorkspaceId: (workspaceId: string | null) => void
+  setChatFilterWorkspaceIds: (workspaceIds: string[]) => void
   addMember: (workspaceId: string, userId: string, role?: WorkspaceRole) => Promise<void>
   updateMemberRole: (workspaceId: string, userId: string, role: WorkspaceRole) => Promise<void>
   removeMember: (workspaceId: string, userId: string) => Promise<void>
@@ -50,7 +50,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectedWorkspaceId: null,
   selectedWorkspace: null,
   selectedWorkspaceDocuments: [],
-  chatFilterWorkspaceId: null,
+  chatFilterWorkspaceIds: [],
   isLoadingList: false,
   isLoadingDetails: false,
   error: null,
@@ -98,8 +98,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  setChatFilterWorkspaceId: (workspaceId: string | null) =>
-    set({ chatFilterWorkspaceId: workspaceId }),
+  setChatFilterWorkspaceIds: (workspaceIds: string[]) =>
+    set({ chatFilterWorkspaceIds: workspaceIds }),
 
   addMember: async (workspaceId, userId, role) => {
     await addWorkspaceMember(workspaceId, userId, role)

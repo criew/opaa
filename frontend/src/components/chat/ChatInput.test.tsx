@@ -7,7 +7,7 @@ describe('ChatInput', () => {
     render(<ChatInput onSend={vi.fn()} />)
     expect(screen.getByPlaceholderText('Ask a question...')).toBeInTheDocument()
     expect(screen.getByLabelText('send message')).toBeInTheDocument()
-    expect(screen.getByLabelText('Search in')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /search scope/i })).toBeInTheDocument()
   })
 
   it('calls onSend with trimmed text on button click', () => {
