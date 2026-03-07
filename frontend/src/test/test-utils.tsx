@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import theme from '../theme/theme'
+import { useAuthStore } from '../stores/authStore'
 
 interface AppRenderOptions extends RenderOptions {
   initialRoute?: string
@@ -30,4 +31,16 @@ export function renderWithProviders(
   }
 
   return render(ui, { wrapper: Wrapper, ...renderOptions })
+}
+
+export function setMockAuthState() {
+  useAuthStore.setState({
+    mode: 'mock',
+    isAuthenticated: true,
+    isLoading: false,
+    user: null,
+    token: null,
+    error: null,
+    userManager: null,
+  })
 }

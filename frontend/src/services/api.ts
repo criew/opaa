@@ -7,10 +7,18 @@ import type {
   QueryResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
+import { setupAuthInterceptors } from './apiInterceptors'
+import { useAuthStore } from '../stores/authStore'
 
 const client = axios.create({
   baseURL: '/api',
 })
+
+setupAuthInterceptors(
+  client,
+  () => useAuthStore.getState().getAccessToken(),
+  () => useAuthStore.getState().logout(),
+)
 
 function normalizeError(err: unknown): never {
   if (err instanceof AxiosError) {
