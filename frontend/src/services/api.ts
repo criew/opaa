@@ -7,6 +7,8 @@ import type {
   QueryResponse,
   WorkspaceDocumentResponse,
   WorkspaceListResponse,
+  WorkspaceMemberResponse,
+  WorkspaceRole,
   WorkspaceResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
@@ -89,6 +91,86 @@ export async function getWorkspaceDocuments(
       `/v1/workspaces/${workspaceId}/documents`,
     )
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function addWorkspaceMember(
+  workspaceId: string,
+  userId: string,
+  role?: WorkspaceRole,
+): Promise<WorkspaceMemberResponse> {
+  try {
+    const { data } = await client.post<WorkspaceMemberResponse>(
+      `/v1/workspaces/${workspaceId}/members`,
+      {
+        userId,
+        role,
+      },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/workspaces/${workspaceId}/members/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  userId: string,
+  role: WorkspaceRole,
+): Promise<WorkspaceMemberResponse> {
+  try {
+    const { data } = await client.put<WorkspaceMemberResponse>(
+      `/v1/workspaces/${workspaceId}/members/${userId}/role`,
+      { role },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function transferWorkspaceOwnership(
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  try {
+    await client.post(`/v1/workspaces/${workspaceId}/transfer-ownership`, { userId })
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateWorkspaceDetails(
+  workspaceId: string,
+  name: string,
+  description: string,
+): Promise<WorkspaceResponse> {
+  try {
+    const { data } = await client.put<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`, {
+      name,
+      description,
+      ownerId: null,
+      initialMembers: [],
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/workspaces/${workspaceId}`)
   } catch (err) {
     normalizeError(err)
   }

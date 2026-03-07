@@ -2,9 +2,20 @@ import { create } from 'zustand'
 import type {
   WorkspaceDocumentResponse,
   WorkspaceListResponse,
+  WorkspaceRole,
   WorkspaceResponse,
 } from '../types/api'
-import { getWorkspace, getWorkspaceDocuments, getWorkspaces } from '../services/api'
+import {
+  addWorkspaceMember,
+  deleteWorkspace,
+  getWorkspace,
+  getWorkspaceDocuments,
+  getWorkspaces,
+  removeWorkspaceMember,
+  transferWorkspaceOwnership,
+  updateWorkspaceDetails,
+  updateWorkspaceMemberRole,
+} from '../services/api'
 
 interface WorkspaceState {
   workspaces: WorkspaceListResponse[]
@@ -18,6 +29,12 @@ interface WorkspaceState {
   loadWorkspaces: () => Promise<void>
   selectWorkspace: (workspaceId: string) => Promise<void>
   setChatFilterWorkspaceId: (workspaceId: string | null) => void
+  addMember: (workspaceId: string, userId: string, role?: WorkspaceRole) => Promise<void>
+  updateMemberRole: (workspaceId: string, userId: string, role: WorkspaceRole) => Promise<void>
+  removeMember: (workspaceId: string, userId: string) => Promise<void>
+  transferOwnership: (workspaceId: string, userId: string) => Promise<void>
+  updateDetails: (workspaceId: string, name: string, description: string) => Promise<void>
+  deleteSelectedWorkspace: (workspaceId: string) => Promise<void>
 }
 
 function sortWorkspaces(list: WorkspaceListResponse[]): WorkspaceListResponse[] {
@@ -83,4 +100,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setChatFilterWorkspaceId: (workspaceId: string | null) =>
     set({ chatFilterWorkspaceId: workspaceId }),
+
+  addMember: async (workspaceId, userId, role) => {
+    await addWorkspaceMember(workspaceId, userId, role)
+    await get().selectWorkspace(workspaceId)
+  },
+
+  updateMemberRole: async (workspaceId, userId, role) => {
+    await updateWorkspaceMemberRole(workspaceId, userId, role)
+    await get().selectWorkspace(workspaceId)
+  },
+
+  removeMember: async (workspaceId, userId) => {
+    await removeWorkspaceMember(workspaceId, userId)
+    await get().selectWorkspace(workspaceId)
+  },
+
+  transferOwnership: async (workspaceId, userId) => {
+    await transferWorkspaceOwnership(workspaceId, userId)
+    await get().selectWorkspace(workspaceId)
+  },
+
+  updateDetails: async (workspaceId, name, description) => {
+    await updateWorkspaceDetails(workspaceId, name, description)
+    await Promise.all([get().loadWorkspaces(), get().selectWorkspace(workspaceId)])
+  },
+
+  deleteSelectedWorkspace: async (workspaceId) => {
+    await deleteWorkspace(workspaceId)
+    await get().loadWorkspaces()
+    const fallbackWorkspaceId = get().workspaces[0]?.id
+    if (fallbackWorkspaceId) {
+      await get().selectWorkspace(fallbackWorkspaceId)
+    } else {
+      set({ selectedWorkspace: null, selectedWorkspaceDocuments: [], selectedWorkspaceId: null })
+    }
+  },
 }))

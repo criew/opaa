@@ -11,6 +11,7 @@ import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import WorkspacePage from './pages/WorkspacePage'
+import WorkspaceManagementPage from './pages/WorkspaceManagementPage'
 import { useAuthStore } from './stores/authStore'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="workspaces/:workspaceId" element={<WorkspacePage />} />
+              <Route path="workspaces/:workspaceId/manage" element={<WorkspaceManagementPage />} />
               <Route path="workspaces" element={<WorkspacePage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="settings" element={<SettingsPage />} />

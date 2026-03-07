@@ -90,13 +90,21 @@ export default function WorkspacePage() {
                 </Button>
               )}
               {canManage(workspace.userRole) && (
-                <Button variant="outlined" startIcon={<ManageAccountsIcon />}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ManageAccountsIcon />}
+                  onClick={() => navigate(`/workspaces/${workspace.id}/manage`)}
+                >
                   Manage Workspace
                 </Button>
               )}
             </Stack>
           </Stack>
         </Paper>
+
+        {workspace.type === 'PERSONAL' && (
+          <Alert severity="info">This is your personal workspace.</Alert>
+        )}
 
         <Paper variant="outlined" sx={{ p: 2.5 }}>
           <Typography variant="h6" gutterBottom>
