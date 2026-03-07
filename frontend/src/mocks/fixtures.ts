@@ -1,4 +1,5 @@
 import type { HealthResponse, IndexingStatusResponse, QueryResponse } from '../types/api'
+import type { AuthConfig, AuthUser, LoginResponse } from '../types/auth'
 
 export const mockHealthResponse: HealthResponse = {
   status: 'UP',
@@ -179,4 +180,17 @@ export const mockErrorResponse = {
   error: 'question: Question must not be blank',
   status: 400,
   timestamp: '2025-01-15T10:30:00Z',
+}
+
+export const mockAuthConfig: AuthConfig = { mode: 'mock' }
+
+export const mockLoginResponse: LoginResponse = {
+  accessToken: 'mock-jwt-token',
+  expiresIn: 3600,
+}
+
+export const mockUser: AuthUser = {
+  id: 'mock-user-id',
+  email: 'admin@opaa.local',
+  displayName: 'Admin',
 }

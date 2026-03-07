@@ -1,22 +1,41 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
+import { useAuthStore } from './stores/authStore'
 
 describe('App', () => {
-  it('renders the OPAA branding', () => {
-    render(<App />)
-    expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
+  beforeEach(() => {
+    useAuthStore.setState({
+      mode: 'mock',
+      isAuthenticated: true,
+      isLoading: false,
+      user: null,
+      token: null,
+      error: null,
+      userManager: null,
+    })
   })
 
-  it('redirects to chat page by default', () => {
+  it('renders the OPAA branding', async () => {
     render(<App />)
-    expect(screen.getByText('How can I help you today?')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
+    })
   })
 
-  it('renders navigation links', () => {
+  it('redirects to chat page by default', async () => {
     render(<App />)
-    expect(screen.getByText('Chat')).toBeInTheDocument()
-    expect(screen.getByText('Documents')).toBeInTheDocument()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('How can I help you today?')).toBeInTheDocument()
+    })
+  })
+
+  it('renders navigation links', async () => {
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('Chat')).toBeInTheDocument()
+      expect(screen.getByText('Documents')).toBeInTheDocument()
+      expect(screen.getByText('Settings')).toBeInTheDocument()
+    })
   })
 })
