@@ -58,6 +58,7 @@ spring:
 opaa:
   auth:
     mode: ${OPAA_AUTH_MODE:mock}
+    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:
@@ -174,8 +175,9 @@ opaa:
   auth:
     mode: basic
     basic:
-      username: ${OPAA_AUTH_BASIC_USERNAME:admin}
-      password: ${OPAA_AUTH_BASIC_PASSWORD:admin}
+      users:
+        - username: ${OPAA_AUTH_BASIC_USERNAME:admin}
+          password: ${OPAA_AUTH_BASIC_PASSWORD:admin}
       secret: ${OPAA_AUTH_BASIC_SECRET:}
       token-expiration-seconds: ${OPAA_AUTH_BASIC_TOKEN_EXPIRATION:3600}
       issuer: ${OPAA_AUTH_BASIC_ISSUER:opaa-basic}

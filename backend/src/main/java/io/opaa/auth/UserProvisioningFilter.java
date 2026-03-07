@@ -5,9 +5,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class UserProvisioningFilter extends OncePerRequestFilter {
@@ -28,7 +33,12 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
       String issuer = JwtUserClaims.issuer(jwt);
       String email = jwt.getClaimAsString("email");
       String displayName = JwtUserClaims.displayName(jwt);
-      userService.findOrCreateUser(subject, issuer, email, displayName);
+      User user = userService.findOrCreateUser(subject, issuer, email, displayName);
+
+      Collection<GrantedAuthority> authorities = new ArrayList<>(authentication.getAuthorities());
+      authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getSystemRole().name()));
+      JwtAuthenticationToken enriched = new JwtAuthenticationToken(jwt, authorities);
+      SecurityContextHolder.getContext().setAuthentication(enriched);
     }
     filterChain.doFilter(request, response);
   }

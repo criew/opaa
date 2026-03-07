@@ -6,10 +6,13 @@ export interface AuthConfig {
   clientId?: string
 }
 
+export type SystemRole = 'USER' | 'SYSTEM_ADMIN'
+
 export interface AuthUser {
   id: string
   email: string | null
   displayName: string | null
+  systemRole: SystemRole
 }
 
 export interface LoginRequest {
