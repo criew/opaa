@@ -92,7 +92,10 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 
     globalProperties.set(
         mapOf(
-            "models" to "",
+            // Only generate models that do not have handwritten counterparts in src/main/java.
+            // Workspace DTOs are handwritten Java records and must be excluded to avoid
+            // duplicate class errors. Add new model names here when adding non-workspace schemas.
+            "models" to "ErrorResponse,HealthResponse,IndexingStatus,IndexingStatusResponse,IndexingTriggerRequest,QueryMetadata,QueryRequest,QueryResponse,SourceReference",
             "apis" to "false",
             "supportingFiles" to "false",
             "modelDocs" to "false",
