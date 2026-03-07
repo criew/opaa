@@ -56,6 +56,8 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
+  auth:
+    mode: ${OPAA_AUTH_MODE:mock}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:
@@ -142,3 +144,38 @@ management:
       enabled: false
     vectorstore:
       enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: oidc
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${OPAA_OIDC_JWK_SET_URI:http://localhost:8180/realms/opaa/protocol/openid-connect/certs}
+          issuer-uri: ${OPAA_OIDC_ISSUER_URI:http://localhost:8180/realms/opaa}
+
+opaa:
+  auth:
+    mode: oidc
+    oidc:
+      authority: ${OPAA_OIDC_AUTHORITY:http://localhost:8180/realms/opaa}
+      client-id: ${OPAA_OIDC_CLIENT_ID:opaa-frontend}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: basic
+
+opaa:
+  auth:
+    mode: basic
+    basic:
+      username: ${OPAA_AUTH_BASIC_USERNAME:admin}
+      password: ${OPAA_AUTH_BASIC_PASSWORD:admin}
+      secret: ${OPAA_AUTH_BASIC_SECRET:}
+      token-expiration-seconds: ${OPAA_AUTH_BASIC_TOKEN_EXPIRATION:3600}
+      issuer: ${OPAA_AUTH_BASIC_ISSUER:opaa-basic}

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.TestSecurityConfig;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -28,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(IndexingController.class)
 @ActiveProfiles("test")
+@Import(TestSecurityConfig.class)
 class IndexingControllerTest {
 
   @Autowired private MockMvc mockMvc;
