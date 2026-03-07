@@ -22,4 +22,6 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
   Optional<Workspace> findByIdWithMemberships(@Param("workspaceId") UUID workspaceId);
 
   boolean existsByNameIgnoreCase(String name);
+
+  boolean existsByOwnerIdAndType(UUID ownerId, WorkspaceType type);
 }
