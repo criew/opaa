@@ -1,8 +1,9 @@
 package io.opaa.auth;
 
-import java.util.List;
+import jakarta.annotation.PostConstruct;
 import javax.crypto.spec.SecretKeySpec;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,12 +12,14 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @Profile("basic")
@@ -24,8 +27,9 @@ import org.springframework.web.cors.CorsConfiguration;
 @EnableMethodSecurity
 public class BasicSecurityConfig {
 
-  @Value("${opaa.cors.allowed-origins}")
-  private String allowedOrigins;
+  private static final Logger log = LoggerFactory.getLogger(BasicSecurityConfig.class);
+  private static final String INSECURE_DEFAULT_SECRET =
+      "change-me-to-a-256-bit-secret-key-in-production!!";
 
   private final AuthProperties authProperties;
   private final UserService userService;
@@ -35,26 +39,36 @@ public class BasicSecurityConfig {
     this.userService = userService;
   }
 
+  @PostConstruct
+  void validateBasicAuthConfiguration() {
+    AuthProperties.BasicAuth basic = authProperties.basic();
+    if (basic.secret() == null
+        || basic.secret().isBlank()
+        || INSECURE_DEFAULT_SECRET.equals(basic.secret())) {
+      throw new IllegalStateException(
+          "OPAA_AUTH_BASIC_SECRET must be set to a strong value when the basic profile is active");
+    }
+
+    if (basic.password() != null && !basic.password().startsWith("{")) {
+      log.warn("Basic auth password is configured as plaintext; prefer an encoded password value");
+    }
+  }
+
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
-        .cors(
-            cors ->
-                cors.configurationSource(
-                    request -> {
-                      var config = new CorsConfiguration();
-                      config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
-                      config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                      config.setAllowedHeaders(
-                          List.of("Content-Type", "Authorization", "X-Requested-With"));
-                      return config;
-                    }))
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/health")
                     .permitAll()
-                    .requestMatchers("/actuator/**")
+                    .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/actuator/metrics",
+                        "/actuator/prometheus")
                     .permitAll()
                     .requestMatchers("/api/v1/auth/login")
                     .permitAll()
@@ -82,5 +96,10 @@ public class BasicSecurityConfig {
   JwtTokenService jwtTokenService() {
     AuthProperties.BasicAuth basic = authProperties.basic();
     return new JwtTokenService(basic.secret(), basic.tokenExpirationSeconds(), basic.issuer());
+  }
+
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
   }
 }

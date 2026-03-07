@@ -1,7 +1,5 @@
 package io.opaa.auth;
 
-import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -11,15 +9,12 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @Profile("oidc")
 @EnableMethodSecurity
 public class OidcSecurityConfig {
-
-  @Value("${opaa.cors.allowed-origins}")
-  private String allowedOrigins;
 
   private final UserService userService;
 
@@ -28,25 +23,20 @@ public class OidcSecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
-        .cors(
-            cors ->
-                cors.configurationSource(
-                    request -> {
-                      var config = new CorsConfiguration();
-                      config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
-                      config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                      config.setAllowedHeaders(
-                          List.of("Content-Type", "Authorization", "X-Requested-With"));
-                      return config;
-                    }))
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/health")
                     .permitAll()
-                    .requestMatchers("/actuator/**")
+                    .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/actuator/metrics",
+                        "/actuator/prometheus")
                     .permitAll()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
