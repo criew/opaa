@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-create-users-table.yaml
   - include:
       file: db/changelog/changes/006-add-system-role-to-users.yaml
+  - include:
+      file: db/changelog/changes/007-create-workspaces-and-memberships.yaml
