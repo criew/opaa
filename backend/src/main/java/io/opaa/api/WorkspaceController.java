@@ -72,7 +72,11 @@ public class WorkspaceController {
       @Valid @RequestBody WorkspaceRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return workspaceService.updateWorkspace(workspaceId, request, currentUser.getId());
+    return workspaceService.updateWorkspace(
+        workspaceId,
+        request,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @DeleteMapping("/{workspaceId}")

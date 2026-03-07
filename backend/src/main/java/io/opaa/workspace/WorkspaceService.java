@@ -21,13 +21,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class WorkspaceService {
 
   private final WorkspaceRepository workspaceRepository;
-  private final WorkspaceMembershipRepository workspaceMembershipRepository;
 
-  public WorkspaceService(
-      WorkspaceRepository workspaceRepository,
-      WorkspaceMembershipRepository workspaceMembershipRepository) {
+  public WorkspaceService(WorkspaceRepository workspaceRepository) {
     this.workspaceRepository = workspaceRepository;
-    this.workspaceMembershipRepository = workspaceMembershipRepository;
   }
 
   @Transactional
@@ -81,7 +77,7 @@ public class WorkspaceService {
 
   @Transactional
   public WorkspaceResponse updateWorkspace(
-      UUID workspaceId, WorkspaceRequest request, UUID currentUserId) {
+      UUID workspaceId, WorkspaceRequest request, UUID currentUserId, boolean systemAdmin) {
     Workspace workspace =
         workspaceRepository
             .findByIdWithMemberships(workspaceId)
@@ -89,9 +85,11 @@ public class WorkspaceService {
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
 
     WorkspaceMembership membership = userMembership(workspace, currentUserId);
-    if (membership == null
-        || (membership.getRole() != WorkspaceRole.ADMIN
-            && membership.getRole() != WorkspaceRole.OWNER)) {
+    boolean adminOrOwner =
+        membership != null
+            && (membership.getRole() == WorkspaceRole.ADMIN
+                || membership.getRole() == WorkspaceRole.OWNER);
+    if (!systemAdmin && !adminOrOwner) {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "Only admins or owners can update a workspace");
     }
@@ -175,7 +173,7 @@ public class WorkspaceService {
     workspace.getMemberships().forEach(m -> roleCounts.merge(m.getRole(), 1L, Long::sum));
 
     List<WorkspaceMemberResponse> members =
-        workspaceMembershipRepository.findByWorkspaceId(workspace.getId()).stream()
+        workspace.getMemberships().stream()
             .map(m -> new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt()))
             .toList();
 
