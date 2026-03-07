@@ -38,8 +38,14 @@ paths:
             schema:
               $ref: "#/components/schemas/IndexingTriggerRequest"
       responses:
-        "200":
+        "202":
           description: Indexing triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "409":
+          description: Indexing already running
           content:
             application/json:
               schema:
@@ -97,18 +103,19 @@ components:
 
     IndexingStatusResponse:
       type: object
-      required: [status, documentCount, totalDocuments, timestamp]
+      required: [status, documentCount, totalDocuments, documentsSkipped, timestamp]
       properties:
         status:
-          type: string
-          enum: [IDLE, RUNNING, COMPLETED, FAILED]
-          example: COMPLETED
+          $ref: "#/components/schemas/IndexingStatus"
         documentCount:
           type: integer
           example: 42
         totalDocuments:
           type: integer
           example: 42
+        documentsSkipped:
+          type: integer
+          example: 0
         message:
           type: string
           nullable: true
@@ -116,6 +123,11 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    IndexingStatus:
+      type: string
+      enum: [IDLE, RUNNING, COMPLETED, FAILED]
+      example: COMPLETED
 
     QueryRequest:
       type: object
@@ -125,11 +137,16 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: ".*\\S.*"
           example: What is the project architecture?
+        conversationId:
+          type: string
+          pattern: "^[a-zA-Z0-9-]{1,50}$"
+          example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
 
     QueryResponse:
       type: object
-      required: [answer, sources, metadata]
+      required: [answer, sources, metadata, conversationId]
       properties:
         answer:
           type: string
@@ -140,10 +157,13 @@ components:
             $ref: "#/components/schemas/SourceReference"
         metadata:
           $ref: "#/components/schemas/QueryMetadata"
+        conversationId:
+          type: string
+          example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
 
     SourceReference:
       type: object
-      required: [fileName, relevanceScore, excerpt]
+      required: [fileName, relevanceScore, matchCount, cited]
       properties:
         fileName:
           type: string
@@ -154,9 +174,16 @@ components:
           minimum: 0
           maximum: 1
           example: 0.92
-        excerpt:
+        matchCount:
+          type: integer
+          example: 3
+        indexedAt:
           type: string
-          example: The system is structured as a modular monolith...
+          format: date-time
+          nullable: true
+        cited:
+          type: boolean
+          example: true
 
     QueryMetadata:
       type: object

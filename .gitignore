@@ -15,6 +15,7 @@ node_modules
 dist
 dist-ssr
 *.local
+frontend/src/types/generated/
 
 # Logs
 logs

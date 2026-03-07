@@ -18,9 +18,9 @@ class GlobalExceptionHandlerTest {
     assertEquals(500, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals(500, body.status());
-    assertEquals("Internal server error", body.error());
-    assertNotNull(body.timestamp());
+    assertEquals(500, body.getStatus());
+    assertEquals("Internal server error", body.getError());
+    assertNotNull(body.getTimestamp());
   }
 
   @Test
@@ -29,7 +29,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(503, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service temporarily unavailable", body.error());
+    assertEquals("AI service temporarily unavailable", body.getError());
   }
 
   @Test
@@ -39,7 +39,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(502, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service error", body.error());
+    assertEquals("AI service error", body.getError());
   }
 
   @Test
@@ -51,7 +51,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(502, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service error", body.error());
+    assertEquals("AI service error", body.getError());
   }
 
   @Test
@@ -61,6 +61,6 @@ class GlobalExceptionHandlerTest {
     assertEquals(400, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("bad input", body.error());
+    assertEquals("bad input", body.getError());
   }
 }
