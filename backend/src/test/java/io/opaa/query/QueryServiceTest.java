@@ -79,15 +79,15 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("What?", null);
 
-    assertThat(response.answer()).contains("【source:");
-    assertThat(response.sources()).hasSize(1);
-    assertThat(response.sources().getFirst().fileName()).isEqualTo("readme.md");
-    assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.85);
-    assertThat(response.sources().getFirst().cited()).isTrue();
-    assertThat(response.sources().getFirst().matchCount()).isEqualTo(1);
-    assertThat(response.metadata().model()).isEqualTo("gpt-4o");
-    assertThat(response.metadata().tokenCount()).isEqualTo(300);
-    assertThat(response.conversationId()).isNotNull().isNotBlank();
+    assertThat(response.getAnswer()).contains("【source:");
+    assertThat(response.getSources()).hasSize(1);
+    assertThat(response.getSources().getFirst().getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.85);
+    assertThat(response.getSources().getFirst().getCited()).isTrue();
+    assertThat(response.getSources().getFirst().getMatchCount()).isEqualTo(1);
+    assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
+    assertThat(response.getMetadata().getTokenCount()).isEqualTo(300);
+    assertThat(response.getConversationId()).isNotNull().isNotBlank();
   }
 
   @Test
@@ -100,7 +100,7 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.conversationId()).isNotNull().isNotBlank();
+    assertThat(response.getConversationId()).isNotNull().isNotBlank();
   }
 
   @Test
@@ -114,7 +114,7 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", "existing-conv-id");
 
-    assertThat(response.conversationId()).isEqualTo("existing-conv-id");
+    assertThat(response.getConversationId()).isEqualTo("existing-conv-id");
   }
 
   @Test
@@ -142,9 +142,9 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.sources()).hasSize(2);
-    assertThat(response.sources().get(0).cited()).isTrue();
-    assertThat(response.sources().get(1).cited()).isFalse();
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources().get(0).getCited()).isTrue();
+    assertThat(response.getSources().get(1).getCited()).isFalse();
   }
 
   @Test
@@ -177,11 +177,11 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.sources()).hasSize(2);
-    assertThat(response.sources().get(0).fileName()).isEqualTo("report.pdf");
-    assertThat(response.sources().get(0).matchCount()).isEqualTo(2);
-    assertThat(response.sources().get(1).fileName()).isEqualTo("readme.md");
-    assertThat(response.sources().get(1).matchCount()).isEqualTo(1);
+    assertThat(response.getSources()).hasSize(2);
+    assertThat(response.getSources().get(0).getFileName()).isEqualTo("report.pdf");
+    assertThat(response.getSources().get(0).getMatchCount()).isEqualTo(2);
+    assertThat(response.getSources().get(1).getFileName()).isEqualTo("readme.md");
+    assertThat(response.getSources().get(1).getMatchCount()).isEqualTo(1);
   }
 
   @Test
@@ -202,7 +202,7 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.answer()).isEqualTo(answer);
+    assertThat(response.getAnswer()).isEqualTo(answer);
   }
 
   @Test
@@ -229,8 +229,8 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.sources()).hasSize(1);
-    assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.9);
+    assertThat(response.getSources()).hasSize(1);
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
   }
 
   @Test
@@ -277,9 +277,9 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null);
 
-    assertThat(response.sources()).hasSize(1);
-    assertThat(response.sources().getFirst().cited()).isTrue();
-    assertThat(response.sources().getFirst().relevanceScore()).isEqualTo(0.95);
+    assertThat(response.getSources()).hasSize(1);
+    assertThat(response.getSources().getFirst().getCited()).isTrue();
+    assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.95);
   }
 
   @Test
@@ -389,28 +389,28 @@ class QueryServiceTest {
 
     @Test
     void keepsHigherRelevanceScore() {
-      var high = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
-      var low = new SourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
+      var high = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
+      var low = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(high, low);
 
-      assertThat(result.relevanceScore()).isEqualTo(0.9);
+      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
     }
 
     @Test
     void keepsHigherScoreRegardlessOfOrder() {
-      var low = new SourceReference("file.pdf", 0.3, 1, INDEXED_AT, false);
-      var high = new SourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
+      var low = sourceReference("file.pdf", 0.3, 1, INDEXED_AT, false);
+      var high = sourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(low, high);
 
-      assertThat(result.relevanceScore()).isEqualTo(0.8);
+      assertThat(result.getRelevanceScore()).isEqualTo(0.8);
     }
 
     @Test
     void prefersFirstWhenScoresAreEqual() {
-      var first = new SourceReference("file.pdf", 0.7, 2, INDEXED_AT, true);
-      var second = new SourceReference("file.pdf", 0.7, 1, INDEXED_AT, false);
+      var first = sourceReference("file.pdf", 0.7, 2, INDEXED_AT, true);
+      var second = sourceReference("file.pdf", 0.7, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(first, second);
 
@@ -419,50 +419,58 @@ class QueryServiceTest {
 
     @Test
     void preservesCitedWhenHigherScoreIsCited() {
-      var cited = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, true);
-      var uncited = new SourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
+      var cited = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, true);
+      var uncited = sourceReference("file.pdf", 0.5, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(cited, uncited);
 
-      assertThat(result.cited()).isTrue();
-      assertThat(result.relevanceScore()).isEqualTo(0.9);
+      assertThat(result.getCited()).isTrue();
+      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
     }
 
     @Test
     void forcesCitedWhenLowerScoreIsCitedButHigherWins() {
-      var citedLow = new SourceReference("file.pdf", 0.3, 1, INDEXED_AT, true);
-      var uncitedHigh = new SourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
+      var citedLow = sourceReference("file.pdf", 0.3, 1, INDEXED_AT, true);
+      var uncitedHigh = sourceReference("file.pdf", 0.9, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
 
-      assertThat(result.cited()).isTrue();
-      assertThat(result.relevanceScore()).isEqualTo(0.9);
-      assertThat(result.fileName()).isEqualTo("file.pdf");
+      assertThat(result.getCited()).isTrue();
+      assertThat(result.getRelevanceScore()).isEqualTo(0.9);
+      assertThat(result.getFileName()).isEqualTo("file.pdf");
     }
 
     @Test
     void returnsFalseWhenNeitherIsCited() {
-      var a = new SourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
-      var b = new SourceReference("file.pdf", 0.6, 1, INDEXED_AT, false);
+      var a = sourceReference("file.pdf", 0.8, 1, INDEXED_AT, false);
+      var b = sourceReference("file.pdf", 0.6, 1, INDEXED_AT, false);
 
       var result = QueryService.mergeSourceReferences(a, b);
 
-      assertThat(result.cited()).isFalse();
+      assertThat(result.getCited()).isFalse();
     }
 
     @Test
     void preservesMetadataFromPreferredSource() {
       var indexedEarly = Instant.parse("2024-01-01T00:00:00Z");
       var indexedLate = Instant.parse("2025-06-01T00:00:00Z");
-      var high = new SourceReference("report.pdf", 0.95, 3, indexedLate, false);
-      var low = new SourceReference("report.pdf", 0.4, 1, indexedEarly, true);
+      var high = sourceReference("report.pdf", 0.95, 3, indexedLate, false);
+      var low = sourceReference("report.pdf", 0.4, 1, indexedEarly, true);
 
       var result = QueryService.mergeSourceReferences(high, low);
 
-      assertThat(result.matchCount()).isEqualTo(3);
-      assertThat(result.indexedAt()).isEqualTo(indexedLate);
-      assertThat(result.cited()).isTrue();
+      assertThat(result.getMatchCount()).isEqualTo(3);
+      assertThat(result.getIndexedAt()).isEqualTo(indexedLate);
+      assertThat(result.getCited()).isTrue();
     }
+  }
+
+  private static SourceReference sourceReference(
+      String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
+    SourceReference sourceReference =
+        new SourceReference(fileName, relevanceScore, matchCount, cited);
+    sourceReference.setIndexedAt(indexedAt);
+    return sourceReference;
   }
 
   private Usage createUsage(int promptTokens, int completionTokens) {

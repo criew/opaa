@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
-import io.opaa.api.dto.UrlIndexingTriggerRequest;
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
@@ -36,13 +36,16 @@ public class IndexingController {
 
   @PostMapping("/trigger")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @RequestBody(required = false) UrlIndexingTriggerRequest request) {
+      @RequestBody(required = false) IndexingTriggerRequest request) {
     IndexingJob job;
-    if (request != null && request.url() != null && !request.url().isBlank()) {
+    if (request != null && request.getUrl() != null && !request.getUrl().toString().isBlank()) {
       job =
           documentIndexingService.triggerUrlIndexing(
               new UrlIndexingRequest(
-                  request.url(), request.proxy(), request.credentials(), request.insecureSsl()));
+                  request.getUrl().toString(),
+                  request.getProxy(),
+                  request.getCredentials(),
+                  Boolean.TRUE.equals(request.getInsecureSsl())));
     } else {
       job = documentIndexingService.triggerIndexing();
     }
@@ -54,7 +57,7 @@ public class IndexingController {
       IndexingAlreadyRunningException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
-            new IndexingStatusResponse(
+            indexingStatusResponse(
                 IndexingStatus.RUNNING, 0, 0, 0, ex.getMessage(), Instant.now()));
   }
 
@@ -64,7 +67,7 @@ public class IndexingController {
         .getLatestJob()
         .map(this::toResponse)
         .orElse(
-            new IndexingStatusResponse(
+            indexingStatusResponse(
                 IndexingStatus.IDLE, 0, 0, 0, "No indexing job found", Instant.now()));
   }
 
@@ -83,7 +86,7 @@ public class IndexingController {
                   + " failed";
           case FAILED -> "Indexing failed: " + job.getErrorMessage();
         };
-    return new IndexingStatusResponse(
+    return indexingStatusResponse(
         status,
         job.getDocumentsProcessed(),
         job.getDocumentsTotal(),
@@ -98,5 +101,19 @@ public class IndexingController {
       case COMPLETED -> IndexingStatus.COMPLETED;
       case FAILED -> IndexingStatus.FAILED;
     };
+  }
+
+  private IndexingStatusResponse indexingStatusResponse(
+      IndexingStatus status,
+      int documentCount,
+      int totalDocuments,
+      int documentsSkipped,
+      String message,
+      Instant timestamp) {
+    IndexingStatusResponse response =
+        new IndexingStatusResponse(
+            status, documentCount, totalDocuments, documentsSkipped, timestamp);
+    response.setMessage(message);
+    return response;
   }
 }
