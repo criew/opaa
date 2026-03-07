@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from '../mocks/server'
 import { useAuthStore } from './authStore'
 
 describe('authStore', () => {
   beforeEach(() => {
+    sessionStorage.clear()
     useAuthStore.setState({
       mode: null,
       user: null,
@@ -44,6 +47,7 @@ describe('authStore', () => {
       displayName: 'Admin',
       systemRole: 'USER',
     })
+    expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeTruthy()
   })
 
   it('shows error on invalid basic login', async () => {
@@ -71,10 +75,44 @@ describe('authStore', () => {
     expect(state.isAuthenticated).toBe(false)
     expect(state.token).toBeNull()
     expect(state.user).toBeNull()
+    expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeNull()
   })
 
   it('returns access token via getAccessToken', () => {
     useAuthStore.setState({ token: 'test-token' })
     expect(useAuthStore.getState().getAccessToken()).toBe('test-token')
+  })
+
+  it('restores basic session on initialize', async () => {
+    server.use(
+      http.get('/api/v1/auth/config', () => HttpResponse.json({ mode: 'basic' })),
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: 'persisted-user-id',
+          email: 'persisted@opaa.local',
+          displayName: 'Persisted User',
+        }),
+      ),
+    )
+
+    sessionStorage.setItem(
+      'opaa.basicAuth.session',
+      JSON.stringify({
+        token: 'persisted-token',
+        user: { id: 'stale', email: 'stale@opaa.local', displayName: 'Stale' },
+      }),
+    )
+
+    await useAuthStore.getState().initialize()
+
+    const state = useAuthStore.getState()
+    expect(state.mode).toBe('basic')
+    expect(state.isAuthenticated).toBe(true)
+    expect(state.token).toBe('persisted-token')
+    expect(state.user).toEqual({
+      id: 'persisted-user-id',
+      email: 'persisted@opaa.local',
+      displayName: 'Persisted User',
+    })
   })
 })

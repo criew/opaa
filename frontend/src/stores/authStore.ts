@@ -3,6 +3,50 @@ import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { AuthMode, AuthUser } from '../types/auth'
 import { getAuthConfig, login as apiLogin, getMe } from '../services/authApi'
 
+// Basic auth keeps token/user only in this app session storage entry.
+// OIDC persistence is handled separately by oidc-client-ts userStore.
+const BASIC_AUTH_SESSION_KEY = 'opaa.basicAuth.session'
+
+interface BasicAuthSession {
+  token: string
+  user: AuthUser
+}
+
+function saveBasicSession(session: BasicAuthSession): void {
+  sessionStorage.setItem(BASIC_AUTH_SESSION_KEY, JSON.stringify(session))
+}
+
+function loadBasicSession(): BasicAuthSession | null {
+  const raw = sessionStorage.getItem(BASIC_AUTH_SESSION_KEY)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<BasicAuthSession>
+    if (
+      typeof parsed.token === 'string' &&
+      parsed.user !== null &&
+      typeof parsed.user === 'object' &&
+      typeof (parsed.user as AuthUser).id === 'string'
+    ) {
+      return {
+        token: parsed.token,
+        user: parsed.user as AuthUser,
+      }
+    }
+  } catch {
+    // Ignore malformed session data and proceed unauthenticated.
+  }
+
+  sessionStorage.removeItem(BASIC_AUTH_SESSION_KEY)
+  return null
+}
+
+function clearBasicSession(): void {
+  sessionStorage.removeItem(BASIC_AUTH_SESSION_KEY)
+}
+
 interface AuthState {
   mode: AuthMode | null
   user: AuthUser | null
@@ -39,6 +83,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return
       }
 
+      if (config.mode === 'basic') {
+        const session = loadBasicSession()
+        if (!session) {
+          set({ isLoading: false })
+          return
+        }
+
+        try {
+          const me = await getMe(session.token)
+          saveBasicSession({ token: session.token, user: me })
+          set({
+            token: session.token,
+            user: me,
+            isAuthenticated: true,
+            isLoading: false,
+          })
+        } catch {
+          clearBasicSession()
+          set({
+            token: null,
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          })
+        }
+        return
+      }
+
       if (config.mode === 'oidc' && config.authority && config.clientId) {
         const userManager = new UserManager({
           authority: config.authority,
@@ -68,6 +140,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ isLoading: false })
     } catch {
+      clearBasicSession()
       set({ mode: 'mock', isAuthenticated: true, isLoading: false })
     }
   },
@@ -77,6 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await apiLogin({ username, password })
       const me = await getMe(response.accessToken)
+      saveBasicSession({ token: response.accessToken, user: me })
       set({
         token: response.accessToken,
         user: me,
@@ -84,6 +158,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       })
     } catch (err) {
+      clearBasicSession()
       set({
         error: err instanceof Error ? err.message : 'Login failed',
         isLoading: false,
@@ -123,6 +198,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (mode === 'oidc' && userManager) {
       await userManager.signoutRedirect()
     }
+    clearBasicSession()
     set({
       token: null,
       user: null,
