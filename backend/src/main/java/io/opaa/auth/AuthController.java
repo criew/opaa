@@ -5,6 +5,7 @@ import io.opaa.auth.dto.LoginRequest;
 import io.opaa.auth.dto.LoginResponse;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.util.Optional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,17 +60,24 @@ public class AuthController {
   }
 
   private boolean isValidCredentials(AuthProperties.BasicAuth basic, LoginRequest request) {
-    if (basic == null
-        || basic.username() == null
-        || basic.password() == null
-        || !basic.username().equals(request.username())) {
+    if (basic == null || basic.users().isEmpty()) {
       return false;
     }
 
-    if (basic.password().startsWith("{")) {
-      return passwordEncoder.matches(request.password(), basic.password());
+    Optional<AuthProperties.BasicUser> matchingUser =
+        basic.users().stream()
+            .filter(u -> u != null && request.username().equals(u.username()))
+            .findFirst();
+
+    if (matchingUser.isEmpty() || matchingUser.get().password() == null) {
+      return false;
     }
 
-    return basic.password().equals(request.password());
+    String configuredPassword = matchingUser.get().password();
+    if (configuredPassword.startsWith("{")) {
+      return passwordEncoder.matches(request.password(), configuredPassword);
+    }
+
+    return configuredPassword.equals(request.password());
   }
 }

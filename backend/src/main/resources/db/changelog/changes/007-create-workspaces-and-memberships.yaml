@@ -1,0 +1,136 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-workspaces
+      author: opaa
+      comment: "Create workspaces table for workspace ownership and type"
+      changes:
+        - createTable:
+            tableName: workspaces
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: workspaces
+            baseColumnNames: owner_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_workspaces_owner
+            onDelete: RESTRICT
+        - sql:
+            comment: "Add check constraint for workspace type values"
+            sql: >
+              ALTER TABLE workspaces
+              ADD CONSTRAINT chk_workspaces_type
+              CHECK (type IN ('PERSONAL', 'SHARED'));
+      rollback:
+        - sql:
+            comment: "Drop check constraint for workspace type values"
+            sql: >
+              ALTER TABLE workspaces
+              DROP CONSTRAINT IF EXISTS chk_workspaces_type;
+        - dropTable:
+            tableName: workspaces
+
+  - changeSet:
+      id: 007-create-workspace-memberships
+      author: opaa
+      comment: "Create workspace_memberships table for role-based workspace membership"
+      changes:
+        - createTable:
+            tableName: workspace_memberships
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: workspace_memberships
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_workspace_memberships_user
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_memberships
+            baseColumnNames: workspace_id
+            referencedTableName: workspaces
+            referencedColumnNames: id
+            constraintName: fk_workspace_memberships_workspace
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: workspace_memberships
+            columnNames: user_id, workspace_id
+            constraintName: uk_workspace_memberships_user_workspace
+        - sql:
+            comment: "Add check constraint for workspace membership role values"
+            sql: >
+              ALTER TABLE workspace_memberships
+              ADD CONSTRAINT chk_workspace_memberships_role
+              CHECK (role IN ('VIEWER', 'EDITOR', 'ADMIN', 'OWNER'));
+      rollback:
+        - sql:
+            comment: "Drop check constraint for workspace membership role values"
+            sql: >
+              ALTER TABLE workspace_memberships
+              DROP CONSTRAINT IF EXISTS chk_workspace_memberships_role;
+        - dropTable:
+            tableName: workspace_memberships

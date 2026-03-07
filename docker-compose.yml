@@ -54,6 +54,7 @@ services:
       OPAA_AUTH_BASIC_USERNAME: ${OPAA_AUTH_BASIC_USERNAME:-admin}
       OPAA_AUTH_BASIC_PASSWORD: ${OPAA_AUTH_BASIC_PASSWORD:-admin}
       OPAA_AUTH_BASIC_SECRET: ${OPAA_AUTH_BASIC_SECRET:-change-me-to-a-256-bit-secret-key-in-production!!}
+      OPAA_INITIAL_ADMIN_EMAIL: ${OPAA_INITIAL_ADMIN_EMAIL:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
