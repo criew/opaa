@@ -91,6 +91,262 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspace]
+      summary: List workspaces the current user is a member of
+      responses:
+        "200":
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createWorkspace
+      tags: [workspace]
+      summary: Create a new shared workspace (system admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceRequest"
+      responses:
+        "201":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/workspaces/{workspaceId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getWorkspace
+      tags: [workspace]
+      summary: Get workspace details
+      responses:
+        "200":
+          description: Workspace details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateWorkspace
+      tags: [workspace]
+      summary: Update workspace name and description (admin/owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceRequest"
+      responses:
+        "200":
+          description: Workspace updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteWorkspace
+      tags: [workspace]
+      summary: Delete a workspace (owner or system admin only)
+      responses:
+        "204":
+          description: Workspace deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/workspaces/{workspaceId}/members:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listWorkspaceMembers
+      tags: [workspace]
+      summary: List workspace members
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceMemberResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: addWorkspaceMember
+      tags: [workspace]
+      summary: Add a member to a workspace (admin/owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceAddMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMemberResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/workspaces/{workspaceId}/members/{userId}:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: removeWorkspaceMember
+      tags: [workspace]
+      summary: Remove a member from a workspace (admin/owner only)
+      responses:
+        "204":
+          description: Member removed
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/workspaces/{workspaceId}/members/{userId}/role:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateWorkspaceMemberRole
+      tags: [workspace]
+      summary: Update a member's role (admin/owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceRoleUpdateRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMemberResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/workspaces/{workspaceId}/transfer-ownership:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: transferWorkspaceOwnership
+      tags: [workspace]
+      summary: Transfer workspace ownership to another member (owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceTransferOwnershipRequest"
+      responses:
+        "204":
+          description: Ownership transferred
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -234,6 +490,160 @@ components:
           type: string
           format: date-time
 
+    WorkspaceRole:
+      type: string
+      enum: [VIEWER, EDITOR, ADMIN, OWNER]
+      example: EDITOR
+
+    WorkspaceType:
+      type: string
+      enum: [PERSONAL, SHARED]
+      example: SHARED
+
+    WorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Engineering
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Engineering team workspace
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Required when creating a workspace
+        initialMembers:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/WorkspaceMemberRequest"
+
+    WorkspaceMemberRequest:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/WorkspaceRole"
+
+    WorkspaceListResponse:
+      type: object
+      required: [id, name, type, memberCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Engineering
+        description:
+          type: string
+          nullable: true
+        type:
+          $ref: "#/components/schemas/WorkspaceType"
+        memberCount:
+          type: integer
+          example: 5
+        userRole:
+          $ref: "#/components/schemas/WorkspaceRole"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkspaceMemberResponse:
+      type: object
+      required: [userId, role, createdAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/WorkspaceRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    WorkspaceResponse:
+      type: object
+      required: [id, name, type, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Engineering
+        description:
+          type: string
+          nullable: true
+        type:
+          $ref: "#/components/schemas/WorkspaceType"
+        ownerId:
+          type: string
+          format: uuid
+        memberCount:
+          type: integer
+          example: 5
+        userRole:
+          $ref: "#/components/schemas/WorkspaceRole"
+        roleCounts:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          example:
+            VIEWER: 2
+            EDITOR: 1
+            ADMIN: 1
+            OWNER: 1
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceMemberResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkspaceAddMemberRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/WorkspaceRole"
+
+    WorkspaceRoleUpdateRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/WorkspaceRole"
+
+    WorkspaceTransferOwnershipRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+
   responses:
     ValidationError:
       description: Validation error
@@ -243,6 +653,30 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     InternalError:
       description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
       content:
         application/json:
           schema:

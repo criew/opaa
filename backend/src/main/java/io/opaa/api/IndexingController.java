@@ -13,6 +13,7 @@ import java.time.Instant;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ public class IndexingController {
     this.indexingJobService = indexingJobService;
   }
 
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/trigger")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
       @RequestBody(required = false) IndexingTriggerRequest request) {

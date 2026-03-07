@@ -61,17 +61,38 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `build
 
 AI agents must include a `Co-Authored-By` trailer in commits.
 
+### Git Workflow
+
+- Always create a feature branch; never commit directly to `main`
+- Keep PRs focused: one logical change per PR
+- When fixing an issue, reference it with `Closes #N` in the PR body
+
 ### Branch Naming
 
 Format: `feature/<issue-id>_<short-description>`
 
 Every branch ties back to a GitHub Issue via its ID.
 
+**Branch rule (mandatory):**
+- Always create branches with `feature/`.
+- Always include the GitHub issue ID in the branch name.
+- Do not use generic names like `feature/workspace` without an issue ID.
+
 ### Pull Requests
 
 - No direct pushes to `main` — all changes go through PRs
 - PRs must be reviewed before merge
-- Use the PR template
+- ALWAYS use the PR template (Summary, Related Issues, Type of Change, Checklist, AI Agent Disclosure) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) when creating new pull requests
+
+### Pre-Push Checklist
+
+Skip if only updating docs. Before every push, all of the following must pass locally:
+
+- Backend formatting
+- Backend build + test
+- Frontend formatting
+- Frontend lint
+- Frontend build + test
 
 ## Important Paths
 

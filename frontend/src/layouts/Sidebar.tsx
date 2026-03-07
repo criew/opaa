@@ -1,6 +1,8 @@
+import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
+import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -9,9 +11,11 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
+import LogoutIcon from '@mui/icons-material/Logout'
 import SettingsIcon from '@mui/icons-material/Settings'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useChatStore } from '../stores/chatStore'
+import { useAuthStore } from '../stores/authStore'
 
 const SIDEBAR_WIDTH = 280
 
@@ -27,6 +31,9 @@ export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const clearMessages = useChatStore((state) => state.clearMessages)
+  const user = useAuthStore((s) => s.user)
+  const mode = useAuthStore((s) => s.mode)
+  const logout = useAuthStore((s) => s.logout)
 
   function handleNewChat() {
     clearMessages()
@@ -95,6 +102,25 @@ export default function Sidebar() {
       </Box>
 
       <Box sx={{ flexGrow: 1 }} />
+
+      {mode !== 'mock' && user && (
+        <>
+          <Divider />
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}>
+              {(user.displayName ?? user.email ?? '?')[0].toUpperCase()}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" noWrap>
+                {user.displayName ?? user.email ?? 'User'}
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={logout} aria-label="sign out">
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </>
+      )}
 
       <Divider />
       <Box sx={{ p: 2.5 }}>

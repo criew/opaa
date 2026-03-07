@@ -7,6 +7,18 @@ export type QueryRequest = components['schemas']['QueryRequest']
 export type QueryMetadata = components['schemas']['QueryMetadata']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
+export type WorkspaceRole = components['schemas']['WorkspaceRole']
+export type WorkspaceType = components['schemas']['WorkspaceType']
+export type WorkspaceRequest = components['schemas']['WorkspaceRequest']
+export type WorkspaceMemberRequest = components['schemas']['WorkspaceMemberRequest']
+export type WorkspaceListResponse = components['schemas']['WorkspaceListResponse']
+export type WorkspaceMemberResponse = components['schemas']['WorkspaceMemberResponse']
+export type WorkspaceResponse = components['schemas']['WorkspaceResponse']
+export type WorkspaceAddMemberRequest = components['schemas']['WorkspaceAddMemberRequest']
+export type WorkspaceRoleUpdateRequest = components['schemas']['WorkspaceRoleUpdateRequest']
+export type WorkspaceTransferOwnershipRequest =
+  components['schemas']['WorkspaceTransferOwnershipRequest']
+
 type GeneratedSourceReference = components['schemas']['SourceReference']
 export type SourceReference = Omit<GeneratedSourceReference, 'indexedAt'> & {
   indexedAt: string | null

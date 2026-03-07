@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.auth.TestSecurityConfig;
 import io.opaa.query.QueryService;
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(QueryController.class)
 @ActiveProfiles("test")
+@Import(TestSecurityConfig.class)
 class QueryControllerTest {
 
   @Autowired private MockMvc mockMvc;
