@@ -79,7 +79,7 @@ public class WorkspaceService {
     Workspace workspace = loadWorkspace(workspaceId);
     requireMembership(workspace, currentUserId);
 
-    return workspaceMembershipRepository.findByWorkspaceId(workspaceId).stream()
+    return workspace.getMemberships().stream()
         .map(m -> new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt()))
         .toList();
   }
