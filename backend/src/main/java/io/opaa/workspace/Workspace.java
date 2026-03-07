@@ -75,6 +75,15 @@ public class Workspace {
     membership.assignWorkspace(null);
   }
 
+  public void updateDetails(String name, String description) {
+    this.name = name;
+    this.description = description;
+  }
+
+  public boolean isPersonal() {
+    return this.type == WorkspaceType.PERSONAL;
+  }
+
   public UUID getId() {
     return id;
   }

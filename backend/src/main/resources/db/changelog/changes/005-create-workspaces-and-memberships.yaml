@@ -4,8 +4,8 @@ databaseChangeLog:
       author: opaa
       comment: "Create workspaces table for workspace ownership and type"
       preConditions:
-        onFail: MARK_RAN
-        onError: HALT
+        - onFail: MARK_RAN
+        - onError: HALT
         - tableExists:
             tableName: users
       changes:
@@ -70,8 +70,8 @@ databaseChangeLog:
       author: opaa
       comment: "Create workspace_memberships table for role-based workspace membership"
       preConditions:
-        onFail: MARK_RAN
-        onError: HALT
+        - onFail: MARK_RAN
+        - onError: HALT
         - tableExists:
             tableName: users
         - tableExists:
