@@ -66,6 +66,10 @@ public class WorkspaceMembership {
     return role;
   }
 
+  public void setRole(WorkspaceRole role) {
+    this.role = role;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
