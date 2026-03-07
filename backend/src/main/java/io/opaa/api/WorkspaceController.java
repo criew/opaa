@@ -1,8 +1,12 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.WorkspaceAddMemberRequest;
 import io.opaa.api.dto.WorkspaceListResponse;
+import io.opaa.api.dto.WorkspaceMemberResponse;
 import io.opaa.api.dto.WorkspaceRequest;
 import io.opaa.api.dto.WorkspaceResponse;
+import io.opaa.api.dto.WorkspaceRoleUpdateRequest;
+import io.opaa.api.dto.WorkspaceTransferOwnershipRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -81,6 +85,54 @@ public class WorkspaceController {
     User currentUser = currentUser(jwt);
     workspaceService.deleteWorkspace(
         workspaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/{workspaceId}/members")
+  public List<WorkspaceMemberResponse> listMembers(
+      @PathVariable UUID workspaceId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return workspaceService.listMembers(workspaceId, currentUser.getId());
+  }
+
+  @PostMapping("/{workspaceId}/members")
+  public ResponseEntity<WorkspaceMemberResponse> addMember(
+      @PathVariable UUID workspaceId,
+      @Valid @RequestBody WorkspaceAddMemberRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    WorkspaceMemberResponse response =
+        workspaceService.addMember(
+            workspaceId, request.userId(), request.role(), currentUser.getId());
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @DeleteMapping("/{workspaceId}/members/{userId}")
+  public ResponseEntity<Void> removeMember(
+      @PathVariable UUID workspaceId, @PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    workspaceService.removeMember(workspaceId, userId, currentUser.getId());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PutMapping("/{workspaceId}/members/{userId}/role")
+  public WorkspaceMemberResponse updateMemberRole(
+      @PathVariable UUID workspaceId,
+      @PathVariable UUID userId,
+      @Valid @RequestBody WorkspaceRoleUpdateRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return workspaceService.updateMemberRole(
+        workspaceId, userId, request.role(), currentUser.getId());
+  }
+
+  @PostMapping("/{workspaceId}/transfer-ownership")
+  public ResponseEntity<Void> transferOwnership(
+      @PathVariable UUID workspaceId,
+      @Valid @RequestBody WorkspaceTransferOwnershipRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    workspaceService.transferOwnership(workspaceId, request.userId(), currentUser.getId());
     return ResponseEntity.noContent().build();
   }
 
