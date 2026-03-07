@@ -49,8 +49,14 @@ public class BasicSecurityConfig {
           "OPAA_AUTH_BASIC_SECRET must be set to a strong value when the basic profile is active");
     }
 
-    if (basic.password() != null && !basic.password().startsWith("{")) {
-      log.warn("Basic auth password is configured as plaintext; prefer an encoded password value");
+    if (basic.users() == null || basic.users().isEmpty()) {
+      throw new IllegalStateException(
+          "At least one opaa.auth.basic.users entry must be configured in the basic profile");
+    }
+
+    if (basic.users().stream()
+        .anyMatch(u -> u != null && u.password() != null && !u.password().startsWith("{"))) {
+      log.warn("Basic auth passwords are configured as plaintext; prefer encoded password values");
     }
   }
 

@@ -37,7 +37,8 @@ class UserServiceTest {
   @Test
   void findOrCreateUserUpdatesExistingUser() {
     User existing = new User("sub1", "issuer1", "old@example.com", "Old Name");
-    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.of(existing));
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
+        .thenReturn(Optional.of(existing));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "new@example.com", "New Name");
