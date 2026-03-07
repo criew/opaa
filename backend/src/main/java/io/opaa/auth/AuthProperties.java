@@ -3,7 +3,7 @@ package io.opaa.auth;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "opaa.auth")
-public record AuthProperties(BasicAuth basic) {
+public record AuthProperties(BasicAuth basic, String initialAdminEmail) {
 
   public AuthProperties {
     if (basic == null) {

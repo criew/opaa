@@ -58,6 +58,7 @@ spring:
 opaa:
   auth:
     mode: ${OPAA_AUTH_MODE:mock}
+    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   query:

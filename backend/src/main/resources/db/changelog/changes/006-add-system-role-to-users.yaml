@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-add-system-role-to-users
+      author: opaa
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: system_role
+                  type: varchar(20)
+                  defaultValue: "USER"
+                  constraints:
+                    nullable: false

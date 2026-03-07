@@ -26,6 +26,7 @@ public class UserInfoController {
     User user =
         userService.findOrCreateUser(
             subject, issuer, jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
-    return new UserInfoResponse(user.getId(), user.getEmail(), user.getDisplayName());
+    return new UserInfoResponse(
+        user.getId(), user.getEmail(), user.getDisplayName(), user.getSystemRole().name());
   }
 }

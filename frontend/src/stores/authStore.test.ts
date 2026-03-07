@@ -42,6 +42,7 @@ describe('authStore', () => {
       id: 'mock-user-id',
       email: 'admin@opaa.local',
       displayName: 'Admin',
+      systemRole: 'USER',
     })
   })
 
@@ -59,7 +60,7 @@ describe('authStore', () => {
     useAuthStore.setState({
       mode: 'basic',
       token: 'some-token',
-      user: { id: '1', email: 'test@test.com', displayName: 'Test' },
+      user: { id: '1', email: 'test@test.com', displayName: 'Test', systemRole: 'USER' as const },
       isAuthenticated: true,
       isLoading: false,
     })

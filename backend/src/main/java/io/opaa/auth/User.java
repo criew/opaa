@@ -2,6 +2,8 @@ package io.opaa.auth;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -28,6 +30,10 @@ public class User {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "system_role", nullable = false, length = 20)
+  private SystemRole systemRole = SystemRole.USER;
+
   @Column(name = "last_login_at")
   private Instant lastLoginAt;
 
@@ -39,6 +45,7 @@ public class User {
     this.issuer = issuer;
     this.email = email;
     this.displayName = displayName;
+    this.systemRole = SystemRole.USER;
     this.createdAt = Instant.now();
     this.lastLoginAt = Instant.now();
   }
@@ -81,5 +88,13 @@ public class User {
 
   public void setLastLoginAt(Instant lastLoginAt) {
     this.lastLoginAt = lastLoginAt;
+  }
+
+  public SystemRole getSystemRole() {
+    return systemRole;
+  }
+
+  public void setSystemRole(SystemRole systemRole) {
+    this.systemRole = systemRole;
   }
 }
