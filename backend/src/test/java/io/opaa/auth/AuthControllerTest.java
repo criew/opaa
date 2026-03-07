@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +25,7 @@ class AuthControllerTest {
   @MockitoBean private AuthProperties authProperties;
   @MockitoBean private JwtTokenService jwtTokenService;
   @MockitoBean private UserService userService;
+  @MockitoBean private PasswordEncoder passwordEncoder;
 
   @Test
   void loginWithValidCredentialsReturnsToken() throws Exception {
@@ -58,7 +60,9 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\": \"admin\", \"password\": \"wrong\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error").value("Invalid credentials"));
+        .andExpect(jsonPath("$.error").value("Invalid credentials"))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.timestamp").isNotEmpty());
   }
 
   @Test

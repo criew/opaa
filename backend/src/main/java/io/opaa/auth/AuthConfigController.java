@@ -1,8 +1,6 @@
 package io.opaa.auth;
 
-import java.util.HashMap;
-import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
+import io.opaa.auth.dto.AuthConfigResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,23 +9,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthConfigController {
 
-  @Value("${opaa.auth.mode:mock}")
-  private String authMode;
+  private final AuthProperties authProperties;
 
-  @Value("${opaa.auth.oidc.authority:}")
-  private String oidcAuthority;
-
-  @Value("${opaa.auth.oidc.client-id:}")
-  private String oidcClientId;
+  public AuthConfigController(AuthProperties authProperties) {
+    this.authProperties = authProperties;
+  }
 
   @GetMapping("/config")
-  public Map<String, Object> getAuthConfig() {
-    Map<String, Object> config = new HashMap<>();
-    config.put("mode", authMode);
-    if ("oidc".equals(authMode)) {
-      config.put("authority", oidcAuthority);
-      config.put("clientId", oidcClientId);
+  public AuthConfigResponse getAuthConfig() {
+    String mode = authProperties.mode();
+    if ("oidc".equals(mode)) {
+      AuthProperties.OidcAuth oidc = authProperties.oidc();
+      return new AuthConfigResponse(
+          mode, oidc != null ? oidc.authority() : null, oidc != null ? oidc.clientId() : null);
     }
-    return config;
+    return new AuthConfigResponse(mode, null, null);
   }
 }

@@ -176,6 +176,6 @@ opaa:
     basic:
       username: ${OPAA_AUTH_BASIC_USERNAME:admin}
       password: ${OPAA_AUTH_BASIC_PASSWORD:admin}
-      secret: ${OPAA_AUTH_BASIC_SECRET:change-me-to-a-256-bit-secret-key-in-production!!}
+      secret: ${OPAA_AUTH_BASIC_SECRET:}
       token-expiration-seconds: ${OPAA_AUTH_BASIC_TOKEN_EXPIRATION:3600}
       issuer: ${OPAA_AUTH_BASIC_ISSUER:opaa-basic}

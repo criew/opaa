@@ -1,3 +1,6 @@
+# WARNING: Development-only compose setup.
+# It contains insecure defaults (e.g., admin/admin and placeholder secrets)
+# and must not be used as-is for production deployments.
 services:
   postgres:
     image: pgvector/pgvector:pg18
