@@ -71,7 +71,7 @@ Every branch ties back to a GitHub Issue via its ID.
 
 - No direct pushes to `main` — all changes go through PRs
 - PRs must be reviewed before merge
-- Use the PR template
+- ALWAYS use the PR template (Summary, Related Issues, Type of Change, Checklist, AI Agent Disclosure) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) when creating new pull requests
 
 ## Important Paths
 
