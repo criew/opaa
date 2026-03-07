@@ -30,7 +30,10 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
       String subject = jwt.getSubject();
-      String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : "unknown";
+      String issuer = jwt.getClaimAsString("iss");
+      if (issuer == null || issuer.isBlank()) {
+        issuer = "unknown";
+      }
       String email = jwt.getClaimAsString("email");
       String displayName = jwt.getClaimAsString("name");
       if (displayName == null) {
