@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-users-table
+      author: opaa
+      comment: "Create users table for auto-provisioned authentication"
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: issuer
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(320)
+              - column:
+                  name: display_name
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_login_at
+                  type: timestamp with time zone
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: subject, issuer
+            constraintName: uq_users_subject_issuer
+      rollback:
+        - dropTable:
+            tableName: users

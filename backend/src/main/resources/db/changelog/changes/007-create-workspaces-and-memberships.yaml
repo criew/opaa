@@ -1,13 +1,8 @@
 databaseChangeLog:
   - changeSet:
-      id: 005-create-workspaces
+      id: 007-create-workspaces
       author: opaa
       comment: "Create workspaces table for workspace ownership and type"
-      preConditions:
-        onFail: MARK_RAN
-        onError: HALT
-        - tableExists:
-            tableName: users
       changes:
         - createTable:
             tableName: workspaces
@@ -66,16 +61,9 @@ databaseChangeLog:
             tableName: workspaces
 
   - changeSet:
-      id: 005-create-workspace-memberships
+      id: 007-create-workspace-memberships
       author: opaa
       comment: "Create workspace_memberships table for role-based workspace membership"
-      preConditions:
-        onFail: MARK_RAN
-        onError: HALT
-        - tableExists:
-            tableName: users
-        - tableExists:
-            tableName: workspaces
       changes:
         - createTable:
             tableName: workspace_memberships
