@@ -3,6 +3,7 @@ package io.opaa.auth;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -37,6 +38,8 @@ class UserProvisioningFilterTest {
             .claim("preferred_username", "admin")
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    when(userService.findOrCreateUser("admin", "opaa-basic", null, "admin"))
+        .thenReturn(new User("admin", "opaa-basic", null, "admin"));
 
     UserProvisioningFilter filter = new UserProvisioningFilter(userService);
     filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), filterChain);
