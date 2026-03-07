@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
+import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import ProtectedRoute from './ProtectedRoute'
@@ -54,11 +55,20 @@ describe('ProtectedRoute', () => {
   it('redirects to login when not authenticated', () => {
     useAuthStore.setState({ mode: 'basic', isAuthenticated: false, isLoading: false })
     renderWithProviders(
-      <ProtectedRoute>
-        <div>Protected Content</div>
-      </ProtectedRoute>,
-      { withRouter: true },
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <div>Protected Content</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<div>Login Screen</div>} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/' },
     )
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
+    expect(screen.getByText('Login Screen')).toBeInTheDocument()
   })
 })

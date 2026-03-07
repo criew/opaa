@@ -20,13 +20,13 @@ describe('LoginPage', () => {
 
   it('renders OPAA title', () => {
     useAuthStore.setState({ mode: 'basic' })
-    renderWithProviders(<LoginPage />)
+    renderWithProviders(<LoginPage />, { withRouter: true })
     expect(screen.getByText('OPAA')).toBeInTheDocument()
   })
 
   it('renders login form for basic mode', () => {
     useAuthStore.setState({ mode: 'basic' })
-    renderWithProviders(<LoginPage />)
+    renderWithProviders(<LoginPage />, { withRouter: true })
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
@@ -34,19 +34,19 @@ describe('LoginPage', () => {
 
   it('renders SSO button for oidc mode', () => {
     useAuthStore.setState({ mode: 'oidc' })
-    renderWithProviders(<LoginPage />)
+    renderWithProviders(<LoginPage />, { withRouter: true })
     expect(screen.getByRole('button', { name: /sign in with sso/i })).toBeInTheDocument()
   })
 
   it('displays error message', () => {
     useAuthStore.setState({ mode: 'basic', error: 'Invalid credentials' })
-    renderWithProviders(<LoginPage />)
+    renderWithProviders(<LoginPage />, { withRouter: true })
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
   })
 
   it('submits basic login form', async () => {
     useAuthStore.setState({ mode: 'basic' })
-    renderWithProviders(<LoginPage />)
+    renderWithProviders(<LoginPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText(/username/i), 'admin')
@@ -56,5 +56,11 @@ describe('LoginPage', () => {
     // After successful login via MSW, user should be authenticated
     const state = useAuthStore.getState()
     expect(state.isAuthenticated).toBe(true)
+  })
+
+  it('redirects away from login when already authenticated', () => {
+    useAuthStore.setState({ mode: 'basic', isAuthenticated: true })
+    renderWithProviders(<LoginPage />, { withRouter: true, initialRoute: '/login' })
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument()
   })
 })
