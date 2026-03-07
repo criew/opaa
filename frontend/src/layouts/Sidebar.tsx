@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
@@ -11,19 +14,19 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
+import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
+import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
+import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useState } from 'react'
 
-const SIDEBAR_WIDTH = 280
-
-const navItems = [
-  { label: 'Chat', icon: <ChatIcon />, path: '/chat' },
-  { label: 'Documents', icon: <DescriptionIcon />, path: '/documents' },
-  { label: 'Settings', icon: <SettingsIcon />, path: '/settings' },
-]
+const SIDEBAR_WIDTH = 300
 
 export { SIDEBAR_WIDTH }
 
@@ -34,6 +37,17 @@ export default function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const mode = useAuthStore((s) => s.mode)
   const logout = useAuthStore((s) => s.logout)
+  const workspaces = useWorkspaceStore((s) => s.workspaces)
+  const isLoadingWorkspaces = useWorkspaceStore((s) => s.isLoadingList)
+  const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces)
+  const [workspacesOpen, setWorkspacesOpen] = useState(true)
+  const [chatsOpen, setChatsOpen] = useState(true)
+
+  useEffect(() => {
+    if (workspaces.length === 0) {
+      void loadWorkspaces()
+    }
+  }, [loadWorkspaces, workspaces.length])
 
   function handleNewChat() {
     clearMessages()
@@ -63,43 +77,126 @@ export default function Sidebar() {
 
       <Divider />
 
-      <Box sx={{ px: 1, pt: 1.5 }}>
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          fullWidth
-          onClick={handleNewChat}
-          sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }}
-        >
-          New Chat
-        </Button>
-      </Box>
-
-      <List sx={{ px: 1, py: 1.5 }}>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            component={NavLink}
-            to={item.path}
-            selected={location.pathname === item.path}
-            sx={{ borderRadius: 2, mb: 0.5 }}
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
+            Workspaces
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => setWorkspacesOpen((open) => !open)}
+            aria-label="toggle workspaces"
           >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
-      </List>
+            {workspacesOpen ? (
+              <ExpandLessIcon fontSize="small" />
+            ) : (
+              <ExpandMoreIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Box>
+        {workspacesOpen &&
+          (isLoadingWorkspaces ? (
+            <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress size={20} />
+            </Box>
+          ) : (
+            <List sx={{ px: 0, py: 1 }}>
+              {workspaces.map((workspace) => {
+                const active = location.pathname === `/workspaces/${workspace.id}`
+                return (
+                  <ListItemButton
+                    key={workspace.id}
+                    onClick={() => navigate(`/workspaces/${workspace.id}`)}
+                    selected={active}
+                    sx={{ borderRadius: 2, mb: 0.5 }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      {workspace.type === 'PERSONAL' ? (
+                        <PersonIcon color="primary" fontSize="small" />
+                      ) : (
+                        <WorkspacesIcon fontSize="small" />
+                      )}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={workspace.name}
+                      secondary={`${workspace.memberCount} member${workspace.memberCount === 1 ? '' : 's'}`}
+                      primaryTypographyProps={{ noWrap: true }}
+                    />
+                    <Chip label={workspace.userRole} size="small" variant="outlined" />
+                  </ListItemButton>
+                )
+              })}
+            </List>
+          ))}
+      </Box>
 
       <Divider />
 
-      <Box sx={{ px: 2.5, py: 2 }}>
-        <Typography variant="overline" color="text.secondary">
-          Recent Chats
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          No recent chats
-        </Typography>
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
+            Chats
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => setChatsOpen((open) => !open)}
+            aria-label="toggle chats"
+          >
+            {chatsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+          </IconButton>
+        </Box>
+        {chatsOpen && (
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              fullWidth
+              onClick={handleNewChat}
+              sx={{ mt: 1, borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }}
+            >
+              New Chat
+            </Button>
+            <List sx={{ px: 0, pt: 1 }}>
+              <ListItemButton
+                onClick={() => navigate('/chat')}
+                selected={location.pathname === '/chat'}
+                sx={{ borderRadius: 2 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <ChatIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Current Chat" />
+              </ListItemButton>
+            </List>
+          </>
+        )}
       </Box>
+
+      <Divider />
+      <List sx={{ px: 1.5, py: 1 }}>
+        <ListItemButton
+          component={NavLink}
+          to="/settings"
+          selected={location.pathname === '/settings'}
+          sx={{ borderRadius: 2 }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <SettingsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Settings" />
+        </ListItemButton>
+        <ListItemButton
+          component={NavLink}
+          to="/documents"
+          selected={location.pathname === '/documents'}
+          sx={{ borderRadius: 2 }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <DescriptionIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Documents" />
+        </ListItemButton>
+      </List>
 
       <Box sx={{ flexGrow: 1 }} />
 

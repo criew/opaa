@@ -5,6 +5,11 @@ import type {
   IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
+  WorkspaceDocumentResponse,
+  WorkspaceListResponse,
+  WorkspaceMemberResponse,
+  WorkspaceRole,
+  WorkspaceResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -46,11 +51,126 @@ export async function getHealth(): Promise<HealthResponse> {
   }
 }
 
-export async function sendQuery(question: string, conversationId?: string): Promise<QueryResponse> {
+export async function sendQuery(
+  question: string,
+  conversationId?: string,
+  workspaceIds?: string[],
+): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question, conversationId }
+    const request: QueryRequest = { question, conversationId, workspaceIds }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspaces(): Promise<WorkspaceListResponse[]> {
+  try {
+    const { data } = await client.get<WorkspaceListResponse[]>('/v1/workspaces')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspace(workspaceId: string): Promise<WorkspaceResponse> {
+  try {
+    const { data } = await client.get<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getWorkspaceDocuments(
+  workspaceId: string,
+): Promise<WorkspaceDocumentResponse[]> {
+  try {
+    const { data } = await client.get<WorkspaceDocumentResponse[]>(
+      `/v1/workspaces/${workspaceId}/documents`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function addWorkspaceMember(
+  workspaceId: string,
+  userId: string,
+  role?: WorkspaceRole,
+): Promise<WorkspaceMemberResponse> {
+  try {
+    const { data } = await client.post<WorkspaceMemberResponse>(
+      `/v1/workspaces/${workspaceId}/members`,
+      {
+        userId,
+        role,
+      },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/workspaces/${workspaceId}/members/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  userId: string,
+  role: WorkspaceRole,
+): Promise<WorkspaceMemberResponse> {
+  try {
+    const { data } = await client.put<WorkspaceMemberResponse>(
+      `/v1/workspaces/${workspaceId}/members/${userId}/role`,
+      { role },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function transferWorkspaceOwnership(
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  try {
+    await client.post(`/v1/workspaces/${workspaceId}/transfer-ownership`, { userId })
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateWorkspaceDetails(
+  workspaceId: string,
+  name: string,
+  description: string,
+): Promise<WorkspaceResponse> {
+  try {
+    const { data } = await client.put<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`, {
+      name,
+      description,
+      ownerId: null,
+      initialMembers: [],
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/workspaces/${workspaceId}`)
   } catch (err) {
     normalizeError(err)
   }
