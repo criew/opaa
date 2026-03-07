@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-indexing-jobs-table.yaml
   - include:
       file: db/changelog/changes/004-add-source-type-to-documents.yaml
+  - include:
+      file: db/changelog/changes/005-create-workspaces-and-memberships.yaml
