@@ -25,15 +25,9 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
       String subject = jwt.getSubject();
-      String issuer = jwt.getClaimAsString("iss");
-      if (issuer == null || issuer.isBlank()) {
-        issuer = "unknown";
-      }
+      String issuer = JwtUserClaims.issuer(jwt);
       String email = jwt.getClaimAsString("email");
-      String displayName = jwt.getClaimAsString("name");
-      if (displayName == null) {
-        displayName = jwt.getClaimAsString("preferred_username");
-      }
+      String displayName = JwtUserClaims.displayName(jwt);
       userService.findOrCreateUser(subject, issuer, email, displayName);
     }
     filterChain.doFilter(request, response);

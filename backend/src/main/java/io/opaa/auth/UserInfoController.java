@@ -22,13 +22,10 @@ public class UserInfoController {
   @GetMapping("/me")
   public UserInfoResponse me(@AuthenticationPrincipal Jwt jwt) {
     String subject = jwt.getSubject();
-    String issuer = jwt.getClaimAsString("iss");
-    if (issuer == null || issuer.isBlank()) {
-      issuer = "unknown";
-    }
+    String issuer = JwtUserClaims.issuer(jwt);
     User user =
         userService.findOrCreateUser(
-            subject, issuer, jwt.getClaimAsString("email"), jwt.getClaimAsString("name"));
+            subject, issuer, jwt.getClaimAsString("email"), JwtUserClaims.displayName(jwt));
     return new UserInfoResponse(user.getId(), user.getEmail(), user.getDisplayName());
   }
 }
