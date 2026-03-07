@@ -97,6 +97,19 @@ export interface WorkspaceDocumentResponse {
   ownerDisplayName: string
 }
 
+export interface WorkspaceAddMemberRequest {
+  userId: string
+  role?: WorkspaceRole
+}
+
+export interface WorkspaceRoleUpdateRequest {
+  role: WorkspaceRole
+}
+
+export interface WorkspaceTransferOwnershipRequest {
+  userId: string
+}
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&
