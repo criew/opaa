@@ -52,11 +52,18 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspaces_owner
             onDelete: RESTRICT
-        - addCheckConstraint:
-            tableName: workspaces
-            constraintName: chk_workspaces_type
-            condition: type IN ('PERSONAL', 'SHARED')
+        - sql:
+            comment: "Add check constraint for workspace type values"
+            sql: >
+              ALTER TABLE workspaces
+              ADD CONSTRAINT chk_workspaces_type
+              CHECK (type IN ('PERSONAL', 'SHARED'));
       rollback:
+        - sql:
+            comment: "Drop check constraint for workspace type values"
+            sql: >
+              ALTER TABLE workspaces
+              DROP CONSTRAINT IF EXISTS chk_workspaces_type;
         - dropTable:
             tableName: workspaces
 
@@ -113,10 +120,17 @@ databaseChangeLog:
             tableName: workspace_memberships
             columnNames: user_id, workspace_id
             constraintName: uk_workspace_memberships_user_workspace
-        - addCheckConstraint:
-            tableName: workspace_memberships
-            constraintName: chk_workspace_memberships_role
-            condition: role IN ('VIEWER', 'EDITOR', 'ADMIN', 'OWNER')
+        - sql:
+            comment: "Add check constraint for workspace membership role values"
+            sql: >
+              ALTER TABLE workspace_memberships
+              ADD CONSTRAINT chk_workspace_memberships_role
+              CHECK (role IN ('VIEWER', 'EDITOR', 'ADMIN', 'OWNER'));
       rollback:
+        - sql:
+            comment: "Drop check constraint for workspace membership role values"
+            sql: >
+              ALTER TABLE workspace_memberships
+              DROP CONSTRAINT IF EXISTS chk_workspace_memberships_role;
         - dropTable:
             tableName: workspace_memberships
