@@ -156,10 +156,7 @@ public class QueryService {
               boolean cited = citedDocumentIds.contains(documentId);
               int matches = matchCounts.getOrDefault(fileName, 1);
               Instant indexedAt = indexedAtByDocId.get(documentId);
-              SourceReference sourceReference =
-                  new SourceReference(fileName, score, matches, cited);
-              sourceReference.setIndexedAt(indexedAt);
-              return sourceReference;
+              return new SourceReference(fileName, score, matches, cited).indexedAt(indexedAt);
             })
         .collect(
             toMap(
@@ -183,14 +180,12 @@ public class QueryService {
     boolean shouldBeCited = a.getCited() || b.getCited();
 
     if (shouldBeCited && !preferred.getCited()) {
-      SourceReference merged =
-          new SourceReference(
+      return new SourceReference(
               preferred.getFileName(),
               preferred.getRelevanceScore(),
               preferred.getMatchCount(),
-              true);
-      merged.setIndexedAt(preferred.getIndexedAt());
-      return merged;
+              true)
+          .indexedAt(preferred.getIndexedAt());
     }
 
     return preferred;

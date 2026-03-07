@@ -19,27 +19,13 @@ public class MockIndexingController {
   @PostMapping("/trigger")
   public IndexingStatusResponse triggerIndexing(
       @RequestBody(required = false) IndexingTriggerRequest request) {
-    return response(
-        IndexingStatus.COMPLETED, 42, 42, 0, "Indexing completed successfully", Instant.now());
+    return new IndexingStatusResponse(IndexingStatus.COMPLETED, 42, 42, 0, Instant.now())
+        .message("Indexing completed successfully");
   }
 
   @GetMapping("/status")
   public IndexingStatusResponse getIndexingStatus() {
-    return response(
-        IndexingStatus.COMPLETED, 42, 42, 0, "Indexing completed successfully", Instant.now());
-  }
-
-  private IndexingStatusResponse response(
-      IndexingStatus status,
-      int documentCount,
-      int totalDocuments,
-      int documentsSkipped,
-      String message,
-      Instant timestamp) {
-    IndexingStatusResponse response =
-        new IndexingStatusResponse(
-            status, documentCount, totalDocuments, documentsSkipped, timestamp);
-    response.setMessage(message);
-    return response;
+    return new IndexingStatusResponse(IndexingStatus.COMPLETED, 42, 42, 0, Instant.now())
+        .message("Indexing completed successfully");
   }
 }

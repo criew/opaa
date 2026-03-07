@@ -74,9 +74,6 @@ public class MockQueryController {
 
   private static SourceReference sourceReference(
       String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
-    SourceReference sourceReference =
-        new SourceReference(fileName, relevanceScore, matchCount, cited);
-    sourceReference.setIndexedAt(indexedAt);
-    return sourceReference;
+    return new SourceReference(fileName, relevanceScore, matchCount, cited).indexedAt(indexedAt);
   }
 }

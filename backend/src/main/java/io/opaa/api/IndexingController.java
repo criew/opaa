@@ -57,8 +57,8 @@ public class IndexingController {
       IndexingAlreadyRunningException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
-            indexingStatusResponse(
-                IndexingStatus.RUNNING, 0, 0, 0, ex.getMessage(), Instant.now()));
+            new IndexingStatusResponse(IndexingStatus.RUNNING, 0, 0, 0, Instant.now())
+                .message(ex.getMessage()));
   }
 
   @GetMapping("/status")
@@ -67,8 +67,8 @@ public class IndexingController {
         .getLatestJob()
         .map(this::toResponse)
         .orElse(
-            indexingStatusResponse(
-                IndexingStatus.IDLE, 0, 0, 0, "No indexing job found", Instant.now()));
+            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, Instant.now())
+                .message("No indexing job found"));
   }
 
   private IndexingStatusResponse toResponse(IndexingJob job) {
@@ -86,13 +86,13 @@ public class IndexingController {
                   + " failed";
           case FAILED -> "Indexing failed: " + job.getErrorMessage();
         };
-    return indexingStatusResponse(
-        status,
-        job.getDocumentsProcessed(),
-        job.getDocumentsTotal(),
-        job.getDocumentsSkipped(),
-        message,
-        job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt());
+    return new IndexingStatusResponse(
+            status,
+            job.getDocumentsProcessed(),
+            job.getDocumentsTotal(),
+            job.getDocumentsSkipped(),
+            job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
+        .message(message);
   }
 
   private IndexingStatus mapStatus(JobStatus jobStatus) {
@@ -101,19 +101,5 @@ public class IndexingController {
       case COMPLETED -> IndexingStatus.COMPLETED;
       case FAILED -> IndexingStatus.FAILED;
     };
-  }
-
-  private IndexingStatusResponse indexingStatusResponse(
-      IndexingStatus status,
-      int documentCount,
-      int totalDocuments,
-      int documentsSkipped,
-      String message,
-      Instant timestamp) {
-    IndexingStatusResponse response =
-        new IndexingStatusResponse(
-            status, documentCount, totalDocuments, documentsSkipped, timestamp);
-    response.setMessage(message);
-    return response;
   }
 }
