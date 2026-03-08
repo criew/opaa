@@ -1,4 +1,8 @@
+import type { components } from './generated/api'
+
 export type AuthMode = 'mock' | 'oidc' | 'basic'
+
+export type AuthConfigResponse = components['schemas']['AuthConfigResponse']
 
 export interface AuthConfig {
   mode: AuthMode
@@ -6,7 +10,7 @@ export interface AuthConfig {
   clientId?: string
 }
 
-export type SystemRole = 'USER' | 'SYSTEM_ADMIN'
+export type SystemRole = components['schemas']['SystemRole']
 
 export interface AuthUser {
   id: string
@@ -15,12 +19,7 @@ export interface AuthUser {
   systemRole: SystemRole
 }
 
-export interface LoginRequest {
-  username: string
-  password: string
-}
-
-export interface LoginResponse {
-  accessToken: string
-  expiresIn: number
-}
+export type LoginRequest = components['schemas']['LoginRequest']
+export type LoginResponse = components['schemas']['LoginResponse']
+export type UserInfoResponse = components['schemas']['UserInfoResponse']
+export type RoleChangeRequest = components['schemas']['RoleChangeRequest']
