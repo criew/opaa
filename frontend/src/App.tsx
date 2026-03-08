@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
-import { CssBaseline, ThemeProvider } from '@mui/material'
+import { useEffect, useMemo } from 'react'
+import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
-import theme from './theme/theme'
+import { createAppTheme } from './theme/theme'
 import AppShell from './layouts/AppShell'
 import ChatPage from './pages/ChatPage'
 import DocumentsPage from './pages/DocumentsPage'
@@ -13,9 +13,15 @@ import AuthCallbackPage from './pages/AuthCallbackPage'
 import WorkspacePage from './pages/WorkspacePage'
 import WorkspaceManagementPage from './pages/WorkspaceManagementPage'
 import { useAuthStore } from './stores/authStore'
+import { useUiStore } from './stores/uiStore'
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
+  const themeMode = useUiStore((s) => s.themeMode)
+  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)')
+
+  const effectiveMode = themeMode === 'system' ? (prefersDark ? 'dark' : 'light') : themeMode
+  const theme = useMemo(() => createAppTheme(effectiveMode), [effectiveMode])
 
   useEffect(() => {
     initialize()
