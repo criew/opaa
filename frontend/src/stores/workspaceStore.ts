@@ -7,6 +7,7 @@ import type {
 } from '../types/api'
 import {
   addWorkspaceMember,
+  createWorkspace,
   deleteWorkspace,
   getWorkspace,
   getWorkspaceDocuments,
@@ -35,6 +36,7 @@ interface WorkspaceState {
   transferOwnership: (workspaceId: string, userId: string) => Promise<void>
   updateDetails: (workspaceId: string, name: string, description: string) => Promise<void>
   deleteSelectedWorkspace: (workspaceId: string) => Promise<void>
+  createNewWorkspace: (name: string, description: string) => Promise<string>
 }
 
 function sortWorkspaces(list: WorkspaceListResponse[]): WorkspaceListResponse[] {
@@ -135,5 +137,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } else {
       set({ selectedWorkspace: null, selectedWorkspaceDocuments: [], selectedWorkspaceId: null })
     }
+  },
+
+  createNewWorkspace: async (name, description) => {
+    const workspace = await createWorkspace(name, description)
+    await get().loadWorkspaces()
+    await get().selectWorkspace(workspace.id)
+    return workspace.id
   },
 }))

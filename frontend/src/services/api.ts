@@ -168,6 +168,23 @@ export async function updateWorkspaceDetails(
   }
 }
 
+export async function createWorkspace(
+  name: string,
+  description: string,
+): Promise<WorkspaceResponse> {
+  try {
+    const { data } = await client.post<WorkspaceResponse>('/v1/workspaces', {
+      name,
+      description,
+      ownerId: null,
+      initialMembers: [],
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function deleteWorkspace(workspaceId: string): Promise<void> {
   try {
     await client.delete(`/v1/workspaces/${workspaceId}`)

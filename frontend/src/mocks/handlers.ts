@@ -117,6 +117,38 @@ export const handlers = [
     })
   }),
 
+  http.post('/api/v1/workspaces', async ({ request }) => {
+    const body = (await request.json()) as { name: string; description?: string }
+    if (!body.name || body.name.trim() === '') {
+      return HttpResponse.json({ error: 'Workspace name is required' }, { status: 400 })
+    }
+    if (mockWorkspaces.some((ws) => ws.name.toLowerCase() === body.name.trim().toLowerCase())) {
+      return HttpResponse.json({ error: 'Workspace name already exists' }, { status: 409 })
+    }
+    const id = `ws-${crypto.randomUUID().slice(0, 8)}`
+    const now = new Date().toISOString()
+    const listEntry: (typeof mockWorkspaces)[number] = {
+      id,
+      name: body.name.trim(),
+      description: body.description?.trim() ?? null,
+      type: 'SHARED',
+      memberCount: 1,
+      userRole: 'OWNER',
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockWorkspaces.push(listEntry)
+    const detail = {
+      ...listEntry,
+      ownerId: 'mock-user-id',
+      roleCounts: { VIEWER: 0, EDITOR: 0, ADMIN: 0, OWNER: 1 },
+      members: [{ userId: 'mock-user-id', role: 'OWNER' as const, createdAt: now }],
+    }
+    mockWorkspaceDetails[id] = detail
+    mockWorkspaceDocuments[id] = []
+    return HttpResponse.json(detail, { status: 201 })
+  }),
+
   http.get('/api/v1/workspaces', () => {
     return HttpResponse.json(mockWorkspaces)
   }),

@@ -45,7 +45,7 @@ describe('authStore', () => {
       id: 'mock-user-id',
       email: 'admin@opaa.local',
       displayName: 'Admin',
-      systemRole: 'USER',
+      systemRole: 'SYSTEM_ADMIN',
     })
     expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeTruthy()
   })

@@ -21,6 +21,7 @@ import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import CreateWorkspaceDialog from '../components/CreateWorkspaceDialog'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -42,6 +43,8 @@ export default function Sidebar() {
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces)
   const [workspacesOpen, setWorkspacesOpen] = useState(true)
   const [chatsOpen, setChatsOpen] = useState(true)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
 
   useEffect(() => {
     if (workspaces.length === 0) {
@@ -82,17 +85,28 @@ export default function Sidebar() {
           <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
             Workspaces
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => setWorkspacesOpen((open) => !open)}
-            aria-label="toggle workspaces"
-          >
-            {workspacesOpen ? (
-              <ExpandLessIcon fontSize="small" />
-            ) : (
-              <ExpandMoreIcon fontSize="small" />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {isSystemAdmin && (
+              <IconButton
+                size="small"
+                onClick={() => setCreateDialogOpen(true)}
+                aria-label="create workspace"
+              >
+                <AddIcon fontSize="small" />
+              </IconButton>
             )}
-          </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setWorkspacesOpen((open) => !open)}
+              aria-label="toggle workspaces"
+            >
+              {workspacesOpen ? (
+                <ExpandLessIcon fontSize="small" />
+              ) : (
+                <ExpandMoreIcon fontSize="small" />
+              )}
+            </IconButton>
+          </Box>
         </Box>
         {workspacesOpen &&
           (isLoadingWorkspaces ? (
@@ -225,6 +239,15 @@ export default function Sidebar() {
           OPAA v0.1.0
         </Typography>
       </Box>
+
+      <CreateWorkspaceDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onCreated={(workspaceId) => {
+          setCreateDialogOpen(false)
+          navigate(`/workspaces/${workspaceId}`)
+        }}
+      />
     </Box>
   )
 }
