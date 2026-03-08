@@ -34,6 +34,13 @@ export type IndexingTriggerRequest = Omit<GeneratedIndexingTriggerRequest, 'inse
   insecureSsl?: boolean
 }
 
+export interface UserInfo {
+  id: string
+  email: string | null
+  displayName: string | null
+  systemRole: string
+}
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

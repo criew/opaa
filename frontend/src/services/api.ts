@@ -5,6 +5,7 @@ import type {
   IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
+  UserInfo,
   WorkspaceDocumentResponse,
   WorkspaceListResponse,
   WorkspaceMemberResponse,
@@ -208,6 +209,15 @@ export async function triggerIndexing(
 export async function getIndexingStatus(): Promise<IndexingStatusResponse> {
   try {
     const { data } = await client.get<IndexingStatusResponse>('/v1/indexing/status')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getUsers(): Promise<UserInfo[]> {
+  try {
+    const { data } = await client.get<UserInfo[]>('/v1/admin/users')
     return data
   } catch (err) {
     normalizeError(err)

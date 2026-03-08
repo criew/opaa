@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -11,7 +12,8 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router-dom'
-import type { WorkspaceRole } from '../types/api'
+import type { UserInfo, WorkspaceRole } from '../types/api'
+import { getUsers } from '../services/api'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 const editableRoles: WorkspaceRole[] = ['VIEWER', 'EDITOR', 'ADMIN']
@@ -42,10 +44,11 @@ export default function WorkspaceManagementPage() {
     name: '',
     description: '',
   })
-  const [newMemberId, setNewMemberId] = useState('')
+  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [newMemberRole, setNewMemberRole] = useState<WorkspaceRole>('VIEWER')
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [allUsers, setAllUsers] = useState<UserInfo[]>([])
 
   useEffect(() => {
     if (workspaceId) {
@@ -54,7 +57,17 @@ export default function WorkspaceManagementPage() {
     }
   }, [loadWorkspaces, selectWorkspace, workspaceId])
 
+  useEffect(() => {
+    void getUsers()
+      .then(setAllUsers)
+      .catch(() => setAllUsers([]))
+  }, [])
+
   const canManage = useMemo(() => canManageMembers(workspace?.userRole), [workspace?.userRole])
+  const availableUsers = useMemo(() => {
+    const memberIds = new Set(workspace?.members.map((m) => m.userId) ?? [])
+    return allUsers.filter((u) => !memberIds.has(u.id))
+  }, [allUsers, workspace?.members])
   const isOwner = workspace?.userRole === 'OWNER'
   const activeWorkspaceId = workspace?.id ?? null
   const name = draft.workspaceId === activeWorkspaceId ? draft.name : (workspace?.name ?? '')
@@ -257,10 +270,19 @@ export default function WorkspaceManagementPage() {
 
               {canManage && (
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
-                  <TextField
-                    label="User ID"
-                    value={newMemberId}
-                    onChange={(event) => setNewMemberId(event.target.value)}
+                  <Autocomplete
+                    options={availableUsers}
+                    getOptionLabel={(option) =>
+                      option.displayName
+                        ? `${option.displayName} (${option.email ?? option.id})`
+                        : (option.email ?? option.id)
+                    }
+                    value={selectedUser}
+                    onChange={(_event, value) => setSelectedUser(value)}
+                    renderInput={(params) => (
+                      <TextField {...params} label="User" placeholder="Search users..." />
+                    )}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
                     sx={{ minWidth: 280 }}
                   />
                   <Select
@@ -277,15 +299,13 @@ export default function WorkspaceManagementPage() {
                   </Select>
                   <Button
                     variant="contained"
+                    disabled={!selectedUser}
                     onClick={async () => {
-                      if (!newMemberId.trim()) {
-                        setLocalError('User ID is required')
-                        return
-                      }
+                      if (!selectedUser) return
                       setLocalError(null)
                       try {
-                        await addMember(workspaceId, newMemberId.trim(), newMemberRole)
-                        setNewMemberId('')
+                        await addMember(workspaceId, selectedUser.id, newMemberRole)
+                        setSelectedUser(null)
                         setSuccessMessage('Member added')
                       } catch (err) {
                         setLocalError(err instanceof Error ? err.message : 'Failed to add member')

@@ -8,6 +8,7 @@ import {
   mockAuthConfig,
   mockLoginResponse,
   mockUser,
+  mockUsers,
   mockWorkspaces,
   mockWorkspaceDetails,
   mockWorkspaceDocuments,
@@ -260,6 +261,10 @@ export const handlers = [
       mockWorkspaces.splice(idx, 1)
     }
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/admin/users', () => {
+    return HttpResponse.json(mockUsers)
   }),
 
   http.get('/api/v1/auth/config', () => {
