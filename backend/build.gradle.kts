@@ -92,10 +92,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 
     globalProperties.set(
         mapOf(
-            // Only generate models that do not have handwritten counterparts in src/main/java.
-            // Workspace DTOs are handwritten Java records and must be excluded to avoid
-            // duplicate class errors. Add new model names here when adding non-workspace schemas.
-            "models" to "ErrorResponse,HealthResponse,IndexingStatus,IndexingStatusResponse,IndexingTriggerRequest,QueryMetadata,QueryRequest,QueryResponse,SourceReference",
+            "models" to "",
             "apis" to "false",
             "supportingFiles" to "false",
             "modelDocs" to "false",
@@ -117,8 +114,27 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         )
     )
 
-    typeMappings.set(mapOf("DateTime" to "Instant"))
-    importMappings.set(mapOf("Instant" to "java.time.Instant"))
+    typeMappings.set(mapOf(
+        "DateTime" to "Instant",
+        "WorkspaceRole" to "WorkspaceRole",
+        "WorkspaceType" to "WorkspaceType",
+    ))
+    importMappings.set(mapOf(
+        "Instant" to "java.time.Instant",
+        "WorkspaceRole" to "io.opaa.workspace.WorkspaceRole",
+        "WorkspaceType" to "io.opaa.workspace.WorkspaceType",
+    ))
+}
+
+tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
+    doLast {
+        // Remove generated enum files that are mapped to existing domain enums via typeMappings.
+        // The generator still creates these files even with typeMappings configured.
+        val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
+        listOf("WorkspaceRole.java", "WorkspaceType.java").forEach { fileName ->
+            file("$generatedDir/$fileName").delete()
+        }
+    }
 }
 
 tasks.named("compileJava") {

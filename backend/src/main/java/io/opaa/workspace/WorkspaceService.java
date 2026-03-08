@@ -7,7 +7,6 @@ import io.opaa.api.dto.WorkspaceRequest;
 import io.opaa.api.dto.WorkspaceResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +38,19 @@ public class WorkspaceService {
           HttpStatus.FORBIDDEN, "Only system admins can create workspaces");
     }
 
-    UUID ownerId = request.ownerId();
+    UUID ownerId = request.getOwnerId();
     if (ownerId == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ownerId is required");
     }
 
-    String normalizedName = request.name().trim();
+    String normalizedName = request.getName().trim();
     if (workspaceRepository.existsByNameIgnoreCase(normalizedName)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Workspace name already exists");
     }
 
     Workspace workspace =
-        new Workspace(normalizedName, request.description(), WorkspaceType.SHARED, ownerId);
-    appendInitialMemberships(workspace, ownerId, request.initialMembers());
+        new Workspace(normalizedName, request.getDescription(), WorkspaceType.SHARED, ownerId);
+    appendInitialMemberships(workspace, ownerId, request.getInitialMembers());
 
     Workspace saved = workspaceRepository.save(workspace);
     return toWorkspaceResponse(saved, currentUserId);
@@ -91,8 +90,8 @@ public class WorkspaceService {
     return workspace.getMemberships().stream()
         .map(
             m ->
-                new WorkspaceMemberResponse(
-                    m.getUserId(), displayNames.get(m.getUserId()), m.getRole(), m.getCreatedAt()))
+                new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt())
+                    .displayName(displayNames.get(m.getUserId())))
         .toList();
   }
 
@@ -119,10 +118,8 @@ public class WorkspaceService {
     workspaceRepository.save(workspace);
 
     return new WorkspaceMemberResponse(
-        membership.getUserId(),
-        resolveDisplayName(membership.getUserId()),
-        membership.getRole(),
-        membership.getCreatedAt());
+            membership.getUserId(), membership.getRole(), membership.getCreatedAt())
+        .displayName(resolveDisplayName(membership.getUserId()));
   }
 
   @Transactional
@@ -155,21 +152,16 @@ public class WorkspaceService {
       target.setRole(WorkspaceRole.OWNER);
       workspaceRepository.save(workspace);
       return new WorkspaceMemberResponse(
-          target.getUserId(),
-          resolveDisplayName(target.getUserId()),
-          target.getRole(),
-          target.getCreatedAt());
+              target.getUserId(), target.getRole(), target.getCreatedAt())
+          .displayName(resolveDisplayName(target.getUserId()));
     }
 
     ensureCanManageRole(actor.getRole(), target.getRole());
     ensureCanManageRole(actor.getRole(), newRole);
     target.setRole(newRole);
     workspaceRepository.save(workspace);
-    return new WorkspaceMemberResponse(
-        target.getUserId(),
-        resolveDisplayName(target.getUserId()),
-        target.getRole(),
-        target.getCreatedAt());
+    return new WorkspaceMemberResponse(target.getUserId(), target.getRole(), target.getCreatedAt())
+        .displayName(resolveDisplayName(target.getUserId()));
   }
 
   @Transactional
@@ -233,13 +225,13 @@ public class WorkspaceService {
           HttpStatus.FORBIDDEN, "Only admins or owners can update a workspace");
     }
 
-    String normalizedName = request.name().trim();
+    String normalizedName = request.getName().trim();
     if (!workspace.getName().equalsIgnoreCase(normalizedName)
         && workspaceRepository.existsByNameIgnoreCase(normalizedName)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Workspace name already exists");
     }
 
-    workspace.updateDetails(normalizedName, request.description());
+    workspace.updateDetails(normalizedName, request.getDescription());
     Workspace updated = workspaceRepository.save(workspace);
     return toWorkspaceResponse(updated, currentUserId);
   }
@@ -341,7 +333,7 @@ public class WorkspaceService {
         if (member == null) {
           continue;
         }
-        resolvedRoles.put(member.userId(), member.role());
+        resolvedRoles.put(member.getUserId(), member.getRole());
       }
     }
     resolvedRoles.put(ownerId, WorkspaceRole.OWNER);
@@ -359,23 +351,23 @@ public class WorkspaceService {
   private WorkspaceListResponse toWorkspaceListResponse(Workspace workspace, UUID currentUserId) {
     WorkspaceMembership membership = userMembership(workspace, currentUserId);
     return new WorkspaceListResponse(
-        workspace.getId(),
-        workspace.getName(),
-        workspace.getDescription(),
-        workspace.getType(),
-        workspace.getMemberships().size(),
-        membership == null ? null : membership.getRole(),
-        workspace.getCreatedAt(),
-        workspace.getUpdatedAt());
+            workspace.getId(),
+            workspace.getName(),
+            workspace.getType(),
+            workspace.getMemberships().size(),
+            workspace.getCreatedAt(),
+            workspace.getUpdatedAt())
+        .description(workspace.getDescription())
+        .userRole(membership == null ? null : membership.getRole());
   }
 
   private WorkspaceResponse toWorkspaceResponse(Workspace workspace, UUID currentUserId) {
     WorkspaceMembership membership = userMembership(workspace, currentUserId);
-    Map<WorkspaceRole, Long> roleCounts = new EnumMap<>(WorkspaceRole.class);
+    Map<String, Long> roleCounts = new HashMap<>();
     for (WorkspaceRole role : WorkspaceRole.values()) {
-      roleCounts.put(role, 0L);
+      roleCounts.put(role.name(), 0L);
     }
-    workspace.getMemberships().forEach(m -> roleCounts.merge(m.getRole(), 1L, Long::sum));
+    workspace.getMemberships().forEach(m -> roleCounts.merge(m.getRole().name(), 1L, Long::sum));
 
     List<UUID> memberIds =
         workspace.getMemberships().stream().map(WorkspaceMembership::getUserId).toList();
@@ -385,24 +377,21 @@ public class WorkspaceService {
         workspace.getMemberships().stream()
             .map(
                 m ->
-                    new WorkspaceMemberResponse(
-                        m.getUserId(),
-                        displayNames.get(m.getUserId()),
-                        m.getRole(),
-                        m.getCreatedAt()))
+                    new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt())
+                        .displayName(displayNames.get(m.getUserId())))
             .toList();
 
     return new WorkspaceResponse(
-        workspace.getId(),
-        workspace.getName(),
-        workspace.getDescription(),
-        workspace.getType(),
-        workspace.getOwnerId(),
-        members.size(),
-        membership == null ? null : membership.getRole(),
-        roleCounts,
-        members,
-        workspace.getCreatedAt(),
-        workspace.getUpdatedAt());
+            workspace.getId(),
+            workspace.getName(),
+            workspace.getType(),
+            workspace.getOwnerId(),
+            members.size(),
+            roleCounts,
+            members,
+            workspace.getCreatedAt(),
+            workspace.getUpdatedAt())
+        .description(workspace.getDescription())
+        .userRole(membership == null ? null : membership.getRole());
   }
 }
