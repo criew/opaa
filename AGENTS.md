@@ -43,6 +43,16 @@ npm run format                          # Auto-format with Prettier
 - Use version catalogs (`libs.versions.*`, `libs.*`) for referencing versions and libraries
 - This applies to both `[libraries]` and `[plugins]` sections
 
+## API & DTO Convention
+
+- **All API DTOs MUST be generated from the OpenAPI spec** (`backend/src/main/resources/openapi/opaa-api.yaml`) — never write DTO classes in `io.opaa.api.dto` by hand
+- Changes to request/response schemas start with a spec change, then use the generated DTOs
+- Domain enums used in DTOs (e.g., `WorkspaceRole`, `WorkspaceType`) are mapped via `typeMappings`/`importMappings` in `build.gradle.kts`
+- When adding new domain enums to the API, update `typeMappings`, `importMappings`, and the `doLast` cleanup block in `build.gradle.kts`
+- Frontend types are also generated from the same spec via `openapi-typescript`
+
+> See [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) for full rationale.
+
 ## Code Conventions
 
 ### Commit Messages
