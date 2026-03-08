@@ -56,12 +56,12 @@ This document tracks the MVP implementation status for each major feature area. 
 - ✅ Provider configuration via environment variables
 - ✅ Separate LLM provider for chat and embeddings
 - ✅ Streaming responses to frontend
-- ✅ Graceful fallback to mock responses (for dev/testing)
+- ✅ Graceful fallback via Ollama for local development
 
 **Implemented Providers:**
 - ✅ OpenAI (requires `OPAA_OPENAI_API_KEY`)
 - ✅ Ollama (can run locally)
-- ✅ Mock provider (no API key needed for development)
+- ✅ Ollama provider (no API key needed for local development)
 
 **Not in MVP (Planned):**
 - ⏳ Claude / Anthropic API

@@ -4,13 +4,11 @@ import io.opaa.api.dto.QueryRequest;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.query.QueryService;
 import jakarta.validation.Valid;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Profile("!mock")
 @RestController
 @RequestMapping("/api/v1")
 public class QueryController {

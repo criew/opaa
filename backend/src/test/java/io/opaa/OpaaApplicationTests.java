@@ -2,10 +2,12 @@ package io.opaa;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.annotation.Import;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("mock")
+@Import(TestcontainersConfiguration.class)
+@Testcontainers(disabledWithoutDocker = true)
 class OpaaApplicationTests {
 
   @Test

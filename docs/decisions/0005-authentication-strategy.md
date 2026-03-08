@@ -11,7 +11,7 @@ OPAA has no authentication. All API endpoints are publicly accessible. Before im
 - Stateless architecture (no server-side sessions)
 - OIDC support for enterprise SSO (Keycloak as reference implementation)
 - Simple auth option for PoCs and local development
-- Mock profile must continue working without auth
+- Mock auth mode must continue working without auth
 - User auto-provisioning on first login
 - No role management at this stage
 
@@ -21,11 +21,11 @@ OPAA has no authentication. All API endpoints are publicly accessible. Before im
 
 Authentication mode is selected through Spring profiles and the `opaa.auth.mode` property:
 
-| Profile | Mode | Mechanism |
-|---------|------|-----------|
-| `mock` | No auth | All requests permitted, no login required |
-| `oidc` | OIDC Resource Server | Backend validates JWTs from external OIDC provider (Keycloak, Auth0, etc.) using JWK Set |
-| `basic` | Static credentials | Backend validates username/password against config, issues HMAC-signed JWTs |
+| Auth Mode | Mechanism |
+|-----------|-----------|
+| `mock` | No auth — all requests permitted, no login required |
+| `oidc` | OIDC Resource Server — backend validates JWTs from external OIDC provider (Keycloak, Auth0, etc.) using JWK Set |
+| `basic` | Static credentials — backend validates username/password against config, issues HMAC-signed JWTs |
 
 ### Stateless JWT Validation
 

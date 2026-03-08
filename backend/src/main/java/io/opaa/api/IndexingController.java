@@ -10,7 +10,6 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.UrlIndexingRequest;
 import java.time.Instant;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Profile("!mock")
 @RestController
 @RequestMapping("/api/v1/indexing")
 public class IndexingController {

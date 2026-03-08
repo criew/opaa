@@ -70,7 +70,7 @@ OPAA needs a technology stack to implement the MVP defined in [docs/MVP.md](../M
 - **LLM flexibility**: OpenAI-compatible interface means switching between cloud and local models requires only configuration changes.
 - **Vector store portability**: Spring AI's `VectorStore` abstraction allows switching the vector database backend (pgvector, Milvus, Qdrant, etc.) through configuration alone — no code changes required.
 - **Document format support**: Apache Tika handles format diversity without per-format implementation effort.
-- **Parallel development**: MSW and backend mock profiles allow frontend and backend to be developed independently against a shared API contract.
+- **Parallel development**: MSW allows frontend and backend to be developed independently against a shared API contract.
 - **Reliable testing**: Testcontainers ensures integration tests run against real PostgreSQL + pgvector, both locally and in CI.
 
 ### What becomes more difficult
