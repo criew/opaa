@@ -27,6 +27,7 @@ interface WorkspaceState {
   isLoadingList: boolean
   isLoadingDetails: boolean
   error: string | null
+  reset: () => void
   loadWorkspaces: () => Promise<void>
   selectWorkspace: (workspaceId: string) => Promise<void>
   setChatFilterWorkspaceIds: (workspaceIds: string[]) => void
@@ -56,6 +57,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   isLoadingList: false,
   isLoadingDetails: false,
   error: null,
+
+  reset: () =>
+    set({
+      workspaces: [],
+      selectedWorkspaceId: null,
+      selectedWorkspace: null,
+      selectedWorkspaceDocuments: [],
+      chatFilterWorkspaceIds: [],
+      isLoadingList: false,
+      isLoadingDetails: false,
+      error: null,
+    }),
 
   loadWorkspaces: async () => {
     set({ isLoadingList: true, error: null })

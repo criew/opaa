@@ -5,7 +5,10 @@ import io.opaa.api.dto.WorkspaceMemberRequest;
 import io.opaa.api.dto.WorkspaceMemberResponse;
 import io.opaa.api.dto.WorkspaceRequest;
 import io.opaa.api.dto.WorkspaceResponse;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,9 +24,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class WorkspaceService {
 
   private final WorkspaceRepository workspaceRepository;
+  private final UserRepository userRepository;
 
-  public WorkspaceService(WorkspaceRepository workspaceRepository) {
+  public WorkspaceService(WorkspaceRepository workspaceRepository, UserRepository userRepository) {
     this.workspaceRepository = workspaceRepository;
+    this.userRepository = userRepository;
   }
 
   @Transactional
@@ -79,8 +84,15 @@ public class WorkspaceService {
     Workspace workspace = loadWorkspace(workspaceId);
     requireMembership(workspace, currentUserId);
 
+    List<UUID> userIds =
+        workspace.getMemberships().stream().map(WorkspaceMembership::getUserId).toList();
+    Map<UUID, String> displayNames = resolveDisplayNames(userIds);
+
     return workspace.getMemberships().stream()
-        .map(m -> new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt()))
+        .map(
+            m ->
+                new WorkspaceMemberResponse(
+                    m.getUserId(), displayNames.get(m.getUserId()), m.getRole(), m.getCreatedAt()))
         .toList();
   }
 
@@ -107,7 +119,10 @@ public class WorkspaceService {
     workspaceRepository.save(workspace);
 
     return new WorkspaceMemberResponse(
-        membership.getUserId(), membership.getRole(), membership.getCreatedAt());
+        membership.getUserId(),
+        resolveDisplayName(membership.getUserId()),
+        membership.getRole(),
+        membership.getCreatedAt());
   }
 
   @Transactional
@@ -140,14 +155,21 @@ public class WorkspaceService {
       target.setRole(WorkspaceRole.OWNER);
       workspaceRepository.save(workspace);
       return new WorkspaceMemberResponse(
-          target.getUserId(), target.getRole(), target.getCreatedAt());
+          target.getUserId(),
+          resolveDisplayName(target.getUserId()),
+          target.getRole(),
+          target.getCreatedAt());
     }
 
     ensureCanManageRole(actor.getRole(), target.getRole());
     ensureCanManageRole(actor.getRole(), newRole);
     target.setRole(newRole);
     workspaceRepository.save(workspace);
-    return new WorkspaceMemberResponse(target.getUserId(), target.getRole(), target.getCreatedAt());
+    return new WorkspaceMemberResponse(
+        target.getUserId(),
+        resolveDisplayName(target.getUserId()),
+        target.getRole(),
+        target.getCreatedAt());
   }
 
   @Transactional
@@ -295,6 +317,22 @@ public class WorkspaceService {
     };
   }
 
+  private String resolveDisplayName(UUID userId) {
+    return userRepository
+        .findById(userId)
+        .map(u -> u.getDisplayName() != null ? u.getDisplayName() : u.getEmail())
+        .orElse(null);
+  }
+
+  private Map<UUID, String> resolveDisplayNames(List<UUID> userIds) {
+    Map<UUID, String> result = new HashMap<>();
+    for (User user : userRepository.findAllById(userIds)) {
+      result.put(
+          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
+    }
+    return result;
+  }
+
   private void appendInitialMemberships(
       Workspace workspace, UUID ownerId, List<WorkspaceMemberRequest> initialMembers) {
     Map<UUID, WorkspaceRole> resolvedRoles = new java.util.LinkedHashMap<>();
@@ -339,9 +377,19 @@ public class WorkspaceService {
     }
     workspace.getMemberships().forEach(m -> roleCounts.merge(m.getRole(), 1L, Long::sum));
 
+    List<UUID> memberIds =
+        workspace.getMemberships().stream().map(WorkspaceMembership::getUserId).toList();
+    Map<UUID, String> displayNames = resolveDisplayNames(memberIds);
+
     List<WorkspaceMemberResponse> members =
         workspace.getMemberships().stream()
-            .map(m -> new WorkspaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt()))
+            .map(
+                m ->
+                    new WorkspaceMemberResponse(
+                        m.getUserId(),
+                        displayNames.get(m.getUserId()),
+                        m.getRole(),
+                        m.getCreatedAt()))
             .toList();
 
     return new WorkspaceResponse(

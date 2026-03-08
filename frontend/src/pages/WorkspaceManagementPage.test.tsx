@@ -13,6 +13,14 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+vi.mock('../services/api', async () => {
+  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+  return {
+    ...actual,
+    getUsers: vi.fn(async () => []),
+  }
+})
+
 describe('WorkspaceManagementPage', () => {
   beforeEach(() => {
     useWorkspaceStore.setState({

@@ -2,6 +2,7 @@ import type {
   HealthResponse,
   IndexingStatusResponse,
   QueryResponse,
+  UserInfo,
   WorkspaceDocumentResponse,
   WorkspaceListResponse,
   WorkspaceResponse,
@@ -260,7 +261,14 @@ export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
     memberCount: 1,
     userRole: 'OWNER',
     roleCounts: { VIEWER: 0, EDITOR: 0, ADMIN: 0, OWNER: 1 },
-    members: [{ userId: 'mock-user-id', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' }],
+    members: [
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        role: 'OWNER',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -274,9 +282,14 @@ export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
     userRole: 'ADMIN',
     roleCounts: { VIEWER: 1, EDITOR: 1, ADMIN: 1, OWNER: 0 },
     members: [
-      { userId: 'owner-1', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
-      { userId: 'mock-user-id', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
-      { userId: 'editor-1', role: 'EDITOR', createdAt: '2026-03-01T10:00:00Z' },
+      { userId: 'owner-1', displayName: 'Alice', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      { userId: 'editor-1', displayName: 'Bob', role: 'EDITOR', createdAt: '2026-03-01T10:00:00Z' },
     ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -291,8 +304,13 @@ export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
     userRole: 'EDITOR',
     roleCounts: { VIEWER: 0, EDITOR: 1, ADMIN: 0, OWNER: 1 },
     members: [
-      { userId: 'owner-2', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
-      { userId: 'mock-user-id', role: 'EDITOR', createdAt: '2026-03-01T10:00:00Z' },
+      { userId: 'owner-2', displayName: 'Chris', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        role: 'EDITOR',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
     ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -335,3 +353,16 @@ export const mockWorkspaceDocuments: Record<string, WorkspaceDocumentResponse[]>
     },
   ],
 }
+
+export const mockUsers: UserInfo[] = [
+  {
+    id: 'mock-user-id',
+    email: 'admin@opaa.local',
+    displayName: 'Admin',
+    systemRole: 'SYSTEM_ADMIN',
+  },
+  { id: 'owner-1', email: 'alice@opaa.local', displayName: 'Alice', systemRole: 'USER' },
+  { id: 'owner-2', email: 'chris@opaa.local', displayName: 'Chris', systemRole: 'USER' },
+  { id: 'editor-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
+  { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo User', systemRole: 'USER' },
+]
