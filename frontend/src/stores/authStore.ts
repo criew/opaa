@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { AuthMode, AuthUser } from '../types/auth'
 import { getAuthConfig, login as apiLogin, getMe } from '../services/authApi'
+import { useWorkspaceStore } from './workspaceStore'
 
 // Basic auth keeps token/user only in this app session storage entry.
 // OIDC persistence is handled separately by oidc-client-ts userStore.
@@ -199,6 +200,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await userManager.signoutRedirect()
     }
     clearBasicSession()
+    useWorkspaceStore.getState().reset()
     set({
       token: null,
       user: null,

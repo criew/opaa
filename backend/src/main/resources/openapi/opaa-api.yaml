@@ -606,6 +606,9 @@ components:
         userId:
           type: string
           format: uuid
+        displayName:
+          type: string
+          nullable: true
         role:
           $ref: "#/components/schemas/WorkspaceRole"
         createdAt:

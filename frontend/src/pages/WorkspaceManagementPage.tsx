@@ -176,7 +176,9 @@ export default function WorkspaceManagementPage() {
                     flexWrap: 'wrap',
                   }}
                 >
-                  <Typography sx={{ fontFamily: 'monospace' }}>{member.userId}</Typography>
+                  <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
+                    {member.displayName ?? member.userId}
+                  </Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {canManage ? (
                       <Select

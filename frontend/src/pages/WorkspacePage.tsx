@@ -1,4 +1,7 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import Accordion from '@mui/material/Accordion'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -8,6 +11,7 @@ import Divider from '@mui/material/Divider'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import UploadIcon from '@mui/icons-material/Upload'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -31,6 +35,9 @@ export default function WorkspacePage() {
   const documents = useWorkspaceStore((s) => s.selectedWorkspaceDocuments)
   const isLoadingDetails = useWorkspaceStore((s) => s.isLoadingDetails)
   const error = useWorkspaceStore((s) => s.error)
+
+  const [docsExpanded, setDocsExpanded] = useState(true)
+  const [membersExpanded, setMembersExpanded] = useState(true)
 
   useEffect(() => {
     if (workspaces.length === 0) {
@@ -102,58 +109,73 @@ export default function WorkspacePage() {
           </Stack>
         </Paper>
 
-        {workspace.type === 'PERSONAL' && (
-          <Alert severity="info">This is your personal workspace.</Alert>
-        )}
+        <Accordion
+          expanded={docsExpanded}
+          onChange={(_, expanded) => setDocsExpanded(expanded)}
+          variant="outlined"
+          disableGutters
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+            <Typography variant="h6">Documents</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            {documents.length === 0 ? (
+              <Typography color="text.secondary">No documents in this workspace yet.</Typography>
+            ) : (
+              <Stack spacing={1.25}>
+                {documents.map((document) => (
+                  <Box
+                    key={document.id}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Typography>{document.name}</Typography>
+                    <Typography color="text.secondary">
+                      {document.type} · {document.ownerDisplayName} ·{' '}
+                      {new Date(document.uploadedAt).toLocaleDateString()}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </AccordionDetails>
+        </Accordion>
 
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="h6" gutterBottom>
-            Documents
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          {documents.length === 0 ? (
-            <Typography color="text.secondary">No documents in this workspace yet.</Typography>
-          ) : (
-            <Stack spacing={1.25}>
-              {documents.map((document) => (
-                <Box
-                  key={document.id}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 2,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <Typography>{document.name}</Typography>
-                  <Typography color="text.secondary">
-                    {document.type} · {document.ownerDisplayName} ·{' '}
-                    {new Date(document.uploadedAt).toLocaleDateString()}
-                  </Typography>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </Paper>
-
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="h6" gutterBottom>
-            Members
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          {workspace.members.length === 0 ? (
-            <Typography color="text.secondary">No members found.</Typography>
-          ) : (
-            <Stack spacing={1}>
-              {workspace.members.map((member) => (
-                <Box key={member.userId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography sx={{ fontFamily: 'monospace' }}>{member.userId}</Typography>
-                  <Chip label={member.role} size="small" />
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </Paper>
+        <Accordion
+          expanded={membersExpanded}
+          onChange={(_, expanded) => setMembersExpanded(expanded)}
+          variant="outlined"
+          disableGutters
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+            <Typography variant="h6">Members</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            {workspace.members.length === 0 ? (
+              <Typography color="text.secondary">No members found.</Typography>
+            ) : (
+              <Stack spacing={1}>
+                {workspace.members.map((member) => (
+                  <Box
+                    key={member.userId}
+                    sx={{ display: 'flex', justifyContent: 'space-between' }}
+                  >
+                    <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
+                      {member.displayName ?? member.userId}
+                    </Typography>
+                    <Chip label={member.role} size="small" />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </AccordionDetails>
+        </Accordion>
       </Stack>
     </Box>
   )
