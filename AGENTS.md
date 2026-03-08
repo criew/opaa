@@ -21,7 +21,6 @@ Contributions from humans and AI agents are equally welcome.
 # Backend (from backend/)
 ./gradlew build
 ./gradlew test
-./gradlew bootRun --args='--spring.profiles.active=mock'
 ./gradlew bootRun
 ./gradlew spotlessCheck
 ./gradlew spotlessApply

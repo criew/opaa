@@ -6,17 +6,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-/**
- * Activates all indexing-related beans only when NOT running in mock profile. This consolidates the
- * profile condition in a single place instead of scattering @Profile("!mock") on every service.
- */
 @Configuration
-@Profile("!mock")
 @EnableAsync
 public class IndexingConfiguration {
 

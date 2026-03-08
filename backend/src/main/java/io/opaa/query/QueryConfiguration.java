@@ -12,10 +12,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("!mock")
 @EnableConfigurationProperties(QueryProperties.class)
 public class QueryConfiguration {
 

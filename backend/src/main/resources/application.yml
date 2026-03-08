@@ -123,33 +123,6 @@ spring:
 spring:
   config:
     activate:
-      on-profile: mock
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
-      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
-      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiAutoConfiguration
-      - org.springframework.ai.model.ollama.autoconfigure.OllamaAutoConfiguration
-  ai:
-    openai:
-      api-key: mock-key
-management:
-  health:
-    chat:
-      enabled: false
-    embeddings:
-      enabled: false
-    vectorstore:
-      enabled: false
-
----
-spring:
-  config:
-    activate:
       on-profile: oidc
   security:
     oauth2:

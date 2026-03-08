@@ -142,7 +142,7 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and 
 - Java 21 (e.g., Eclipse Temurin)
 - Node.js 20+
 - Docker (for PostgreSQL via Testcontainers or standalone container)
-- OpenAI API key (optional — use mock profile for development without it)
+- OpenAI API key (optional — use Ollama for local development without it)
 
 ### Setup
 
@@ -162,10 +162,10 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and 
    ```bash
    cd backend
 
-   # With mock data (no LLM needed):
-   ./gradlew bootRun --args='--spring.profiles.active=mock'
+   # With Ollama (local, no API key needed):
+   ./gradlew bootRun
 
-   # With real LLM (requires OpenAI key or running Ollama):
+   # With OpenAI (requires API key):
    OPAA_OPENAI_API_KEY=sk-... ./gradlew bootRun
    ```
 
