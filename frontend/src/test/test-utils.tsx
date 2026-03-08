@@ -4,9 +4,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { createAppTheme } from '../theme/theme'
+import { useAuthStore } from '../stores/authStore'
 
 const theme = createAppTheme('dark')
-import { useAuthStore } from '../stores/authStore'
 
 interface AppRenderOptions extends RenderOptions {
   initialRoute?: string
