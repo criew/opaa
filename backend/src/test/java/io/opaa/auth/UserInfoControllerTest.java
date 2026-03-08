@@ -36,9 +36,9 @@ class UserInfoControllerTest {
     var response = userInfoController.me(jwt);
 
     verify(userService).findOrCreateUser("admin", "opaa-basic", "admin@opaa.local", "admin");
-    assertThat(response.email()).isEqualTo("admin@opaa.local");
-    assertThat(response.displayName()).isEqualTo("admin");
-    assertThat(response.id()).isEqualTo(user.getId());
+    assertThat(response.getEmail()).isEqualTo("admin@opaa.local");
+    assertThat(response.getDisplayName()).isEqualTo("admin");
+    assertThat(response.getId()).isEqualTo(user.getId());
   }
 
   @Test
@@ -58,8 +58,8 @@ class UserInfoControllerTest {
     var response = userInfoController.me(jwt);
 
     verify(userService).findOrCreateUser("admin", "unknown", "admin@opaa.local", "admin");
-    assertThat(response.id()).isEqualTo(user.getId());
-    assertThat(response.email()).isEqualTo("admin@opaa.local");
-    assertThat(response.displayName()).isEqualTo("admin");
+    assertThat(response.getId()).isEqualTo(user.getId());
+    assertThat(response.getEmail()).isEqualTo("admin@opaa.local");
+    assertThat(response.getDisplayName()).isEqualTo("admin");
   }
 }
