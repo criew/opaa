@@ -3,8 +3,10 @@ import { render, type RenderOptions } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import theme from '../theme/theme'
+import { createAppTheme } from '../theme/theme'
 import { useAuthStore } from '../stores/authStore'
+
+const theme = createAppTheme('dark')
 
 interface AppRenderOptions extends RenderOptions {
   initialRoute?: string

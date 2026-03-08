@@ -111,12 +111,12 @@ class QueryIntegrationTest {
     QueryResponse response = queryService.query("What is OPAA?", null);
 
     // Verify the response
-    assertThat(response.answer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
-    assertThat(response.sources()).isNotEmpty();
-    assertThat(response.sources()).allMatch(s -> s.fileName() != null);
-    assertThat(response.metadata().model()).isEqualTo("gpt-4o");
-    assertThat(response.metadata().tokenCount()).isEqualTo(250);
-    assertThat(response.metadata().durationMs()).isGreaterThan(0);
+    assertThat(response.getAnswer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
+    assertThat(response.getSources()).isNotEmpty();
+    assertThat(response.getSources()).allMatch(s -> s.getFileName() != null);
+    assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
+    assertThat(response.getMetadata().getTokenCount()).isEqualTo(250);
+    assertThat(response.getMetadata().getDurationMs()).isGreaterThan(0);
   }
 
   @Test
@@ -129,8 +129,8 @@ class QueryIntegrationTest {
 
     QueryResponse response = queryService.query("Something completely unrelated", null);
 
-    assertThat(response.answer()).contains("don't have enough context");
-    assertThat(response.sources()).isEmpty();
+    assertThat(response.getAnswer()).contains("don't have enough context");
+    assertThat(response.getSources()).isEmpty();
   }
 
   @Test

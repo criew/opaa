@@ -38,9 +38,8 @@ class QueryControllerTest {
     var response =
         new QueryResponse(
             "The answer",
-            List.of(
-                new SourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
-            new QueryMetadata("gpt-4o", 500, 1200),
+            List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
+            new QueryMetadata("gpt-4o", 500, 1200L),
             "conv-123");
     when(queryService.query(anyString(), any())).thenReturn(response);
 
@@ -66,7 +65,7 @@ class QueryControllerTest {
   void queryWithConversationIdPassesItThrough() throws Exception {
     var response =
         new QueryResponse(
-            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500), "existing-conv");
+            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "existing-conv");
     when(queryService.query(anyString(), any())).thenReturn(response);
 
     mockMvc
@@ -124,5 +123,13 @@ class QueryControllerTest {
         .andExpect(status().isBadGateway())
         .andExpect(jsonPath("$.error").value("AI service error"))
         .andExpect(jsonPath("$.status").value(502));
+  }
+
+  private static SourceReference sourceReference(
+      String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
+    SourceReference sourceReference =
+        new SourceReference(fileName, relevanceScore, matchCount, cited);
+    sourceReference.setIndexedAt(indexedAt);
+    return sourceReference;
   }
 }

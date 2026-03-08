@@ -32,30 +32,28 @@ public class MockQueryController {
               "The project uses a modular monolith architecture with three main modules: "
                   + "api, indexing, and query.",
               List.of(
-                  new SourceReference("architecture-overview.md", 0.92, 3, MOCK_INDEXED_AT, true),
-                  new SourceReference("getting-started.pdf", 0.85, 1, MOCK_INDEXED_AT, true),
-                  new SourceReference(
-                      "adr-0002-technology-stack.md", 0.78, 2, MOCK_INDEXED_AT, false)),
-              new QueryMetadata("gpt-4o", 847, 1523)),
+                  sourceReference("architecture-overview.md", 0.92, 3, MOCK_INDEXED_AT, true),
+                  sourceReference("getting-started.pdf", 0.85, 1, MOCK_INDEXED_AT, true),
+                  sourceReference("adr-0002-technology-stack.md", 0.78, 2, MOCK_INDEXED_AT, false)),
+              new QueryMetadata("gpt-4o", 847, 1523L)),
           new MockAnswer(
               "To add a new REST endpoint, create a controller class in the api module.",
-              List.of(new SourceReference("contributing-guide.md", 0.95, 1, MOCK_INDEXED_AT, true)),
-              new QueryMetadata("gpt-4o", 312, 890)),
+              List.of(sourceReference("contributing-guide.md", 0.95, 1, MOCK_INDEXED_AT, true)),
+              new QueryMetadata("gpt-4o", 312, 890L)),
           new MockAnswer(
               "The deployment pipeline uses Docker Compose to orchestrate all services.",
               List.of(
-                  new SourceReference("docker-compose.yml", 0.97, 2, MOCK_INDEXED_AT, true),
-                  new SourceReference("deployment-guide.pdf", 0.91, 1, MOCK_INDEXED_AT, true),
-                  new SourceReference(
-                      "adr-0002-technology-stack.md", 0.88, 3, MOCK_INDEXED_AT, true),
-                  new SourceReference("ci-pipeline.md", 0.85, 1, MOCK_INDEXED_AT, true),
-                  new SourceReference("liquibase-changelog.xml", 0.82, 1, MOCK_INDEXED_AT, false),
-                  new SourceReference("postgres-setup.md", 0.79, 1, MOCK_INDEXED_AT, false),
-                  new SourceReference("environment-config.md", 0.76, 1, MOCK_INDEXED_AT, false),
-                  new SourceReference("monitoring-guide.md", 0.72, 1, MOCK_INDEXED_AT, false),
-                  new SourceReference("backup-strategy.pdf", 0.68, 1, MOCK_INDEXED_AT, false),
-                  new SourceReference("security-checklist.md", 0.65, 1, MOCK_INDEXED_AT, false)),
-              new QueryMetadata("gpt-4o", 1584, 2341)));
+                  sourceReference("docker-compose.yml", 0.97, 2, MOCK_INDEXED_AT, true),
+                  sourceReference("deployment-guide.pdf", 0.91, 1, MOCK_INDEXED_AT, true),
+                  sourceReference("adr-0002-technology-stack.md", 0.88, 3, MOCK_INDEXED_AT, true),
+                  sourceReference("ci-pipeline.md", 0.85, 1, MOCK_INDEXED_AT, true),
+                  sourceReference("liquibase-changelog.xml", 0.82, 1, MOCK_INDEXED_AT, false),
+                  sourceReference("postgres-setup.md", 0.79, 1, MOCK_INDEXED_AT, false),
+                  sourceReference("environment-config.md", 0.76, 1, MOCK_INDEXED_AT, false),
+                  sourceReference("monitoring-guide.md", 0.72, 1, MOCK_INDEXED_AT, false),
+                  sourceReference("backup-strategy.pdf", 0.68, 1, MOCK_INDEXED_AT, false),
+                  sourceReference("security-checklist.md", 0.65, 1, MOCK_INDEXED_AT, false)),
+              new QueryMetadata("gpt-4o", 1584, 2341L)));
 
   private static String validateConversationId(String conversationId) {
     if (conversationId == null || conversationId.isBlank()) {
@@ -70,7 +68,12 @@ public class MockQueryController {
   @PostMapping("/query")
   public QueryResponse query(@Valid @RequestBody QueryRequest request) {
     MockAnswer mock = MOCK_ANSWERS.get(ThreadLocalRandom.current().nextInt(MOCK_ANSWERS.size()));
-    String conversationId = validateConversationId(request.conversationId());
+    String conversationId = validateConversationId(request.getConversationId());
     return new QueryResponse(mock.answer(), mock.sources(), mock.metadata(), conversationId);
+  }
+
+  private static SourceReference sourceReference(
+      String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
+    return new SourceReference(fileName, relevanceScore, matchCount, cited).indexedAt(indexedAt);
   }
 }

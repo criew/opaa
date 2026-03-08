@@ -1,113 +1,37 @@
-export interface HealthResponse {
-  status: string
-}
+import type { components } from './generated/api'
 
-export type IndexingStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+export type HealthResponse = components['schemas']['HealthResponse']
+export type IndexingStatus = components['schemas']['IndexingStatus']
+export type IndexingStatusResponse = components['schemas']['IndexingStatusResponse']
+export type QueryRequest = components['schemas']['QueryRequest']
+export type QueryMetadata = components['schemas']['QueryMetadata']
+export type ErrorResponse = components['schemas']['ErrorResponse']
 
-export interface IndexingStatusResponse {
-  status: IndexingStatus
-  documentCount: number
-  totalDocuments: number
-  documentsSkipped: number
-  message: string | null
-  timestamp: string
-}
+export type WorkspaceRole = components['schemas']['WorkspaceRole']
+export type WorkspaceType = components['schemas']['WorkspaceType']
+export type WorkspaceRequest = components['schemas']['WorkspaceRequest']
+export type WorkspaceMemberRequest = components['schemas']['WorkspaceMemberRequest']
+export type WorkspaceListResponse = components['schemas']['WorkspaceListResponse']
+export type WorkspaceMemberResponse = components['schemas']['WorkspaceMemberResponse']
+export type WorkspaceResponse = components['schemas']['WorkspaceResponse']
+export type WorkspaceAddMemberRequest = components['schemas']['WorkspaceAddMemberRequest']
+export type WorkspaceRoleUpdateRequest = components['schemas']['WorkspaceRoleUpdateRequest']
+export type WorkspaceTransferOwnershipRequest =
+  components['schemas']['WorkspaceTransferOwnershipRequest']
+export type WorkspaceDocumentResponse = components['schemas']['WorkspaceDocumentResponse']
 
-export interface QueryRequest {
-  question: string
-  conversationId?: string
-  workspaceIds?: string[]
-}
-
-export interface QueryResponse {
-  answer: string
-  sources: SourceReference[]
-  metadata: QueryMetadata
-  conversationId: string
-}
-
-export interface SourceReference {
-  fileName: string
-  workspaceName?: string
-  relevanceScore: number
-  matchCount: number
+type GeneratedSourceReference = components['schemas']['SourceReference']
+export type SourceReference = Omit<GeneratedSourceReference, 'indexedAt'> & {
   indexedAt: string | null
-  cited: boolean
+}
+type GeneratedQueryResponse = components['schemas']['QueryResponse']
+export type QueryResponse = Omit<GeneratedQueryResponse, 'sources'> & {
+  sources: SourceReference[]
 }
 
-export interface QueryMetadata {
-  model: string
-  tokenCount: number
-  durationMs: number
-}
-
-export interface ErrorResponse {
-  error: string
-  status: number
-  timestamp: string
-}
-
-export interface IndexingTriggerRequest {
-  url?: string
-  proxy?: string
-  credentials?: string
+type GeneratedIndexingTriggerRequest = components['schemas']['IndexingTriggerRequest']
+export type IndexingTriggerRequest = Omit<GeneratedIndexingTriggerRequest, 'insecureSsl'> & {
   insecureSsl?: boolean
-}
-
-export type WorkspaceType = 'PERSONAL' | 'SHARED'
-
-export type WorkspaceRole = 'VIEWER' | 'EDITOR' | 'ADMIN' | 'OWNER'
-
-export interface WorkspaceListResponse {
-  id: string
-  name: string
-  description: string | null
-  type: WorkspaceType
-  memberCount: number
-  userRole: WorkspaceRole
-  createdAt: string
-  updatedAt: string
-}
-
-export interface WorkspaceMemberResponse {
-  userId: string
-  role: WorkspaceRole
-  createdAt: string
-}
-
-export interface WorkspaceResponse {
-  id: string
-  name: string
-  description: string | null
-  type: WorkspaceType
-  ownerId: string
-  memberCount: number
-  userRole: WorkspaceRole
-  roleCounts: Record<WorkspaceRole, number>
-  members: WorkspaceMemberResponse[]
-  createdAt: string
-  updatedAt: string
-}
-
-export interface WorkspaceDocumentResponse {
-  id: string
-  name: string
-  type: string
-  uploadedAt: string
-  ownerDisplayName: string
-}
-
-export interface WorkspaceAddMemberRequest {
-  userId: string
-  role?: WorkspaceRole
-}
-
-export interface WorkspaceRoleUpdateRequest {
-  role: WorkspaceRole
-}
-
-export interface WorkspaceTransferOwnershipRequest {
-  userId: string
 }
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {

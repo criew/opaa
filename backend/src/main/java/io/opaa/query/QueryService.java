@@ -156,11 +156,11 @@ public class QueryService {
               boolean cited = citedDocumentIds.contains(documentId);
               int matches = matchCounts.getOrDefault(fileName, 1);
               Instant indexedAt = indexedAtByDocId.get(documentId);
-              return new SourceReference(fileName, score, matches, indexedAt, cited);
+              return new SourceReference(fileName, score, matches, cited).indexedAt(indexedAt);
             })
         .collect(
             toMap(
-                SourceReference::fileName,
+                SourceReference::getFileName,
                 source -> source,
                 QueryService::mergeSourceReferences,
                 LinkedHashMap::new))
@@ -176,16 +176,16 @@ public class QueryService {
    * the document as a whole contributed to the answer.
    */
   static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
-    SourceReference preferred = a.relevanceScore() >= b.relevanceScore() ? a : b;
-    boolean shouldBeCited = a.cited() || b.cited();
+    SourceReference preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
+    boolean shouldBeCited = a.getCited() || b.getCited();
 
-    if (shouldBeCited && !preferred.cited()) {
+    if (shouldBeCited && !preferred.getCited()) {
       return new SourceReference(
-          preferred.fileName(),
-          preferred.relevanceScore(),
-          preferred.matchCount(),
-          preferred.indexedAt(),
-          true);
+              preferred.getFileName(),
+              preferred.getRelevanceScore(),
+              preferred.getMatchCount(),
+              true)
+          .indexedAt(preferred.getIndexedAt());
     }
 
     return preferred;

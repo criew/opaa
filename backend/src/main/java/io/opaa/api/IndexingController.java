@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
-import io.opaa.api.dto.UrlIndexingTriggerRequest;
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
@@ -38,13 +38,16 @@ public class IndexingController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/trigger")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @RequestBody(required = false) UrlIndexingTriggerRequest request) {
+      @RequestBody(required = false) IndexingTriggerRequest request) {
     IndexingJob job;
-    if (request != null && request.url() != null && !request.url().isBlank()) {
+    if (request != null && request.getUrl() != null && !request.getUrl().toString().isBlank()) {
       job =
           documentIndexingService.triggerUrlIndexing(
               new UrlIndexingRequest(
-                  request.url(), request.proxy(), request.credentials(), request.insecureSsl()));
+                  request.getUrl().toString(),
+                  request.getProxy(),
+                  request.getCredentials(),
+                  Boolean.TRUE.equals(request.getInsecureSsl())));
     } else {
       job = documentIndexingService.triggerIndexing();
     }
@@ -56,8 +59,8 @@ public class IndexingController {
       IndexingAlreadyRunningException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(
-            new IndexingStatusResponse(
-                IndexingStatus.RUNNING, 0, 0, 0, ex.getMessage(), Instant.now()));
+            new IndexingStatusResponse(IndexingStatus.RUNNING, 0, 0, 0, Instant.now())
+                .message(ex.getMessage()));
   }
 
   @GetMapping("/status")
@@ -66,8 +69,8 @@ public class IndexingController {
         .getLatestJob()
         .map(this::toResponse)
         .orElse(
-            new IndexingStatusResponse(
-                IndexingStatus.IDLE, 0, 0, 0, "No indexing job found", Instant.now()));
+            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, Instant.now())
+                .message("No indexing job found"));
   }
 
   private IndexingStatusResponse toResponse(IndexingJob job) {
@@ -86,12 +89,12 @@ public class IndexingController {
           case FAILED -> "Indexing failed: " + job.getErrorMessage();
         };
     return new IndexingStatusResponse(
-        status,
-        job.getDocumentsProcessed(),
-        job.getDocumentsTotal(),
-        job.getDocumentsSkipped(),
-        message,
-        job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt());
+            status,
+            job.getDocumentsProcessed(),
+            job.getDocumentsTotal(),
+            job.getDocumentsSkipped(),
+            job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
+        .message(message);
   }
 
   private IndexingStatus mapStatus(JobStatus jobStatus) {

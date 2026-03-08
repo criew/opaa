@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.5.10"
     id("io.spring.dependency-management") version "1.1.7"
+    alias(libs.plugins.openapi.generator)
     alias(libs.plugins.spotless)
 }
 
@@ -17,6 +18,12 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+sourceSets {
+    main {
+        java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
+    }
 }
 
 dependencies {
@@ -58,6 +65,7 @@ dependencyManagement {
 
 spotless {
     java {
+        target("src/*/java/**/*.java")
         googleJavaFormat()
         removeUnusedImports()
         trimTrailingWhitespace()
@@ -74,4 +82,45 @@ spotless {
 tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("-XX:+EnableDynamicAgentLoading")
+}
+
+tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
+    generatorName.set("spring")
+    inputSpec.set(layout.projectDirectory.file("src/main/resources/openapi/opaa-api.yaml").asFile.absolutePath)
+    outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
+    modelPackage.set("io.opaa.api.dto")
+
+    globalProperties.set(
+        mapOf(
+            // Only generate models that do not have handwritten counterparts in src/main/java.
+            // Workspace DTOs are handwritten Java records and must be excluded to avoid
+            // duplicate class errors. Add new model names here when adding non-workspace schemas.
+            "models" to "ErrorResponse,HealthResponse,IndexingStatus,IndexingStatusResponse,IndexingTriggerRequest,QueryMetadata,QueryRequest,QueryResponse,SourceReference",
+            "apis" to "false",
+            "supportingFiles" to "false",
+            "modelDocs" to "false",
+            "modelTests" to "false",
+            "apiDocs" to "false",
+            "apiTests" to "false",
+        )
+    )
+
+    configOptions.set(
+        mapOf(
+            "useSpringBoot3" to "true",
+            "useJakartaEe" to "true",
+            "useBeanValidation" to "true",
+            "openApiNullable" to "false",
+            "documentationProvider" to "none",
+            "annotationLibrary" to "none",
+            "dateLibrary" to "custom",
+        )
+    )
+
+    typeMappings.set(mapOf("DateTime" to "Instant"))
+    importMappings.set(mapOf("Instant" to "java.time.Instant"))
+}
+
+tasks.named("compileJava") {
+    dependsOn("openApiGenerate")
 }
