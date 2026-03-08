@@ -8,12 +8,16 @@ import { useAuthStore } from '../stores/authStore'
 export default function AuthCallbackPage() {
   const handleOidcCallback = useAuthStore((s) => s.handleOidcCallback)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isLoading = useAuthStore((s) => s.isLoading)
+  const userManager = useAuthStore((s) => s.userManager)
   const error = useAuthStore((s) => s.error)
   const navigate = useNavigate()
 
   useEffect(() => {
-    handleOidcCallback()
-  }, [handleOidcCallback])
+    if (!isLoading && userManager) {
+      handleOidcCallback()
+    }
+  }, [isLoading, userManager, handleOidcCallback])
 
   useEffect(() => {
     if (isAuthenticated) {
