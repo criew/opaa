@@ -91,6 +91,103 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/auth/config:
+    get:
+      operationId: getAuthConfig
+      tags: [auth]
+      summary: Get authentication configuration
+      responses:
+        "200":
+          description: Authentication configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthConfigResponse"
+
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password (basic auth mode only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user info
+      responses:
+        "200":
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/admin/users:
+    get:
+      operationId: listUsers
+      tags: [admin]
+      summary: List all users (system admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserInfoResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/users/{id}/role:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: changeUserRole
+      tags: [admin]
+      summary: Change a user's system role (system admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleChangeRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/workspaces:
     get:
       operationId: listWorkspaces
@@ -383,6 +480,69 @@ components:
         status:
           type: string
           example: UP
+
+    AuthConfigResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+          example: basic
+        authority:
+          type: string
+          nullable: true
+        clientId:
+          type: string
+          nullable: true
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+
+    LoginResponse:
+      type: object
+      required: [accessToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+
+    UserInfoResponse:
+      type: object
+      required: [id, email, displayName, systemRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+        systemRole:
+          type: string
+          example: USER
+
+    RoleChangeRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/SystemRole"
+
+    SystemRole:
+      type: string
+      enum: [USER, SYSTEM_ADMIN]
+      example: USER
 
     IndexingStatusResponse:
       type: object

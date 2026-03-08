@@ -34,12 +34,10 @@ export type IndexingTriggerRequest = Omit<GeneratedIndexingTriggerRequest, 'inse
   insecureSsl?: boolean
 }
 
-export interface UserInfo {
-  id: string
-  email: string | null
-  displayName: string | null
-  systemRole: string
-}
+export type UserInfoResponse = components['schemas']['UserInfoResponse']
+export type UserInfo = UserInfoResponse
+export type RoleChangeRequest = components['schemas']['RoleChangeRequest']
+export type SystemRole = components['schemas']['SystemRole']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
