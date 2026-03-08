@@ -107,7 +107,7 @@ public class WorkspaceController {
     User currentUser = currentUser(jwt);
     WorkspaceMemberResponse response =
         workspaceService.addMember(
-            workspaceId, request.userId(), request.role(), currentUser.getId());
+            workspaceId, request.getUserId(), request.getRole(), currentUser.getId());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -127,7 +127,7 @@ public class WorkspaceController {
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     return workspaceService.updateMemberRole(
-        workspaceId, userId, request.role(), currentUser.getId());
+        workspaceId, userId, request.getRole(), currentUser.getId());
   }
 
   @PostMapping("/{workspaceId}/transfer-ownership")
@@ -136,7 +136,7 @@ public class WorkspaceController {
       @Valid @RequestBody WorkspaceTransferOwnershipRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    workspaceService.transferOwnership(workspaceId, request.userId(), currentUser.getId());
+    workspaceService.transferOwnership(workspaceId, request.getUserId(), currentUser.getId());
     return ResponseEntity.noContent().build();
   }
 

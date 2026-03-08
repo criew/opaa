@@ -58,25 +58,27 @@ class WorkspaceServiceIntegrationTest {
     UUID ownerId = UUID.randomUUID();
     UUID editorId = UUID.randomUUID();
     WorkspaceRequest request =
-        new WorkspaceRequest(
-            "Engineering",
-            "Engineering docs",
-            ownerId,
-            List.of(new WorkspaceMemberRequest(editorId, WorkspaceRole.EDITOR)));
+        new WorkspaceRequest("Engineering")
+            .description("Engineering docs")
+            .ownerId(ownerId)
+            .initialMembers(List.of(new WorkspaceMemberRequest(editorId, WorkspaceRole.EDITOR)));
 
     WorkspaceResponse created = workspaceService.createWorkspace(request, adminUserId, true);
 
-    assertThat(created.type()).isEqualTo(WorkspaceType.SHARED);
-    assertThat(created.name()).isEqualTo("Engineering");
-    assertThat(created.memberCount()).isEqualTo(2);
-    assertThat(created.roleCounts().get(WorkspaceRole.OWNER)).isEqualTo(1);
-    assertThat(created.roleCounts().get(WorkspaceRole.EDITOR)).isEqualTo(1);
+    assertThat(created.getType()).isEqualTo(WorkspaceType.SHARED);
+    assertThat(created.getName()).isEqualTo("Engineering");
+    assertThat(created.getMemberCount()).isEqualTo(2);
+    assertThat(created.getRoleCounts().get("OWNER")).isEqualTo(1);
+    assertThat(created.getRoleCounts().get("EDITOR")).isEqualTo(1);
   }
 
   @Test
   void nonSystemAdminCannotCreateWorkspace() {
     WorkspaceRequest request =
-        new WorkspaceRequest("Engineering", "Engineering docs", UUID.randomUUID(), List.of());
+        new WorkspaceRequest("Engineering")
+            .description("Engineering docs")
+            .ownerId(UUID.randomUUID())
+            .initialMembers(List.of());
 
     assertThatThrownBy(() -> workspaceService.createWorkspace(request, UUID.randomUUID(), false))
         .isInstanceOf(ResponseStatusException.class)
@@ -100,8 +102,8 @@ class WorkspaceServiceIntegrationTest {
     List<WorkspaceListResponse> userAWorkspaces = workspaceService.listWorkspaces(userA);
 
     assertThat(userAWorkspaces).hasSize(1);
-    assertThat(userAWorkspaces.getFirst().name()).isEqualTo("Engineering");
-    assertThat(userAWorkspaces.getFirst().userRole()).isEqualTo(WorkspaceRole.OWNER);
+    assertThat(userAWorkspaces.getFirst().getName()).isEqualTo("Engineering");
+    assertThat(userAWorkspaces.getFirst().getUserRole()).isEqualTo(WorkspaceRole.OWNER);
   }
 
   @Test
@@ -115,10 +117,10 @@ class WorkspaceServiceIntegrationTest {
 
     WorkspaceResponse response = workspaceService.getWorkspace(saved.getId(), viewer, false);
 
-    assertThat(response.memberCount()).isEqualTo(2);
-    assertThat(response.userRole()).isEqualTo(WorkspaceRole.VIEWER);
-    assertThat(response.roleCounts().get(WorkspaceRole.OWNER)).isEqualTo(1);
-    assertThat(response.roleCounts().get(WorkspaceRole.VIEWER)).isEqualTo(1);
+    assertThat(response.getMemberCount()).isEqualTo(2);
+    assertThat(response.getUserRole()).isEqualTo(WorkspaceRole.VIEWER);
+    assertThat(response.getRoleCounts().get("OWNER")).isEqualTo(1);
+    assertThat(response.getRoleCounts().get("VIEWER")).isEqualTo(1);
   }
 
   @Test
@@ -158,12 +160,22 @@ class WorkspaceServiceIntegrationTest {
     UUID ownerA = UUID.randomUUID();
     UUID ownerB = UUID.randomUUID();
     workspaceService.createWorkspace(
-        new WorkspaceRequest("Engineering", "A", ownerA, List.of()), admin, true);
+        new WorkspaceRequest("Engineering")
+            .description("A")
+            .ownerId(ownerA)
+            .initialMembers(List.of()),
+        admin,
+        true);
 
     assertThatThrownBy(
             () ->
                 workspaceService.createWorkspace(
-                    new WorkspaceRequest("engineering", "B", ownerB, List.of()), admin, true))
+                    new WorkspaceRequest("engineering")
+                        .description("B")
+                        .ownerId(ownerB)
+                        .initialMembers(List.of()),
+                    admin,
+                    true))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -288,7 +300,7 @@ class WorkspaceServiceIntegrationTest {
     workspaceService.updateMemberRole(saved.getId(), editor, WorkspaceRole.VIEWER, admin);
     WorkspaceResponse details = workspaceService.getWorkspace(saved.getId(), editor, false);
 
-    assertThat(details.userRole()).isEqualTo(WorkspaceRole.VIEWER);
+    assertThat(details.getUserRole()).isEqualTo(WorkspaceRole.VIEWER);
   }
 
   @Test
