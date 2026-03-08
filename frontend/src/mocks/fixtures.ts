@@ -214,7 +214,7 @@ export const mockUser: AuthUser = {
   id: 'mock-user-id',
   email: 'admin@opaa.local',
   displayName: 'Admin',
-  systemRole: 'USER',
+  systemRole: 'SYSTEM_ADMIN',
 }
 
 export const mockWorkspaces: WorkspaceListResponse[] = [
