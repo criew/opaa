@@ -5,6 +5,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg18
     container_name: opaa-postgres
+    env_file: .env.docker
     environment:
       POSTGRES_DB: opaa
       POSTGRES_USER: ${OPAA_DB_USERNAME:-opaa}
@@ -14,7 +15,7 @@ services:
     volumes:
       - opaa-postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opaa -d opaa"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opaa} -d ${POSTGRES_DB:-opaa}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,51 +23,21 @@ services:
   backend:
     build: ./backend
     container_name: opaa-backend
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      OPAA_DB_USERNAME: ${OPAA_DB_USERNAME:-opaa}
-      OPAA_DB_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}
-      OPAA_AI_CHAT_PROVIDER: ${OPAA_AI_CHAT_PROVIDER:-openai}
-      OPAA_AI_EMBEDDING_PROVIDER: ${OPAA_AI_EMBEDDING_PROVIDER:-openai}
-      OPAA_OPENAI_API_KEY: ${OPAA_OPENAI_API_KEY:-}
-      OPAA_OPENAI_BASE_URL: ${OPAA_OPENAI_BASE_URL:-https://api.openai.com}
-      OPAA_OPENAI_CHAT_API_KEY: ${OPAA_OPENAI_CHAT_API_KEY:-}
-      OPAA_OPENAI_CHAT_BASE_URL: ${OPAA_OPENAI_CHAT_BASE_URL:-}
-      OPAA_OPENAI_CHAT_MODEL: ${OPAA_OPENAI_CHAT_MODEL:-gpt-4o}
-      OPAA_OPENAI_CHAT_TEMPERATURE: ${OPAA_OPENAI_CHAT_TEMPERATURE:-0.7}
-      OPAA_OPENAI_CHAT_MAX_TOKENS: ${OPAA_OPENAI_CHAT_MAX_TOKENS:-2000}
-      OPAA_OPENAI_EMBEDDING_API_KEY: ${OPAA_OPENAI_EMBEDDING_API_KEY:-}
-      OPAA_OPENAI_EMBEDDING_BASE_URL: ${OPAA_OPENAI_EMBEDDING_BASE_URL:-}
-      OPAA_OPENAI_EMBEDDING_MODEL: ${OPAA_OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
-      OPAA_OLLAMA_BASE_URL: ${OPAA_OLLAMA_BASE_URL:-http://ollama:11434}
-      OPAA_OLLAMA_CHAT_MODEL: ${OPAA_OLLAMA_CHAT_MODEL:-phi3:mini}
-      OPAA_OLLAMA_EMBEDDING_MODEL: ${OPAA_OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
-      OPAA_HTTP_FORCE_HTTP1: ${OPAA_HTTP_FORCE_HTTP1:-false}
-      OPAA_SERVER_ADDRESS: ${OPAA_SERVER_ADDRESS:-0.0.0.0}
-      OPAA_DOCUMENTS_PATH: ${OPAA_DOCUMENTS_PATH:-/app/documents}
-      OPAA_CORS_ALLOWED_ORIGINS: ${OPAA_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
-      OPAA_PGVECTOR_DIMENSIONS: ${OPAA_PGVECTOR_DIMENSIONS:-1536}
-      OPAA_AUTH_MODE: ${OPAA_AUTH_MODE:-mock}
-      OPAA_OIDC_JWK_SET_URI: ${OPAA_OIDC_JWK_SET_URI:-http://keycloak:8180/realms/opaa/protocol/openid-connect/certs}
-      OPAA_OIDC_ISSUER_URI: ${OPAA_OIDC_ISSUER_URI:-http://localhost:8180/realms/opaa}
-      OPAA_OIDC_AUTHORITY: ${OPAA_OIDC_AUTHORITY:-http://localhost:8180/realms/opaa}
-      OPAA_OIDC_CLIENT_ID: ${OPAA_OIDC_CLIENT_ID:-opaa-frontend}
-      OPAA_AUTH_BASIC_USERNAME: ${OPAA_AUTH_BASIC_USERNAME:-admin}
-      OPAA_AUTH_BASIC_PASSWORD: ${OPAA_AUTH_BASIC_PASSWORD:-admin}
-      OPAA_AUTH_BASIC_SECRET: ${OPAA_AUTH_BASIC_SECRET:-change-me-to-a-256-bit-secret-key-in-production!!}
-      OPAA_INITIAL_ADMIN_EMAIL: ${OPAA_INITIAL_ADMIN_EMAIL:-}
+    env_file: .env.docker
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "${OPAA_BACKEND_PORT:-8081}:8080"
     volumes:
-      - ${OPAA_DOCUMENTS_PATH_HOST:-./documents}:/app/documents
+      - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
     depends_on:
       postgres:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: opaa-frontend
     ports:
       - "${OPAA_FRONTEND_PORT:-3000}:80"
