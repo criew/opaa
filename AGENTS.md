@@ -38,9 +38,11 @@ npm run format                          # Auto-format with Prettier
 
 ## Dependency Management
 
-- Dependency versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
-- Use version catalogs (`libs.versions.*`, `libs.*`) for referencing versions and libraries
-- This applies to both `[libraries]` and `[plugins]` sections
+- All library and plugin versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
+- All dependencies MUST be defined as libraries in the `[libraries]` section and referenced via `libs.*` in `build.gradle.kts`
+- Group related libraries into `[bundles]` where possible (e.g., `spring-boot`, `spring-ai`, `test-deps`)
+- Use version catalogs (`libs.versions.*`, `libs.*`, `libs.bundles.*`) for referencing versions, libraries, and bundles
+- This applies to `[versions]`, `[libraries]`, `[bundles]`, and `[plugins]` sections
 
 ## API & DTO Convention
 
@@ -87,10 +89,18 @@ Every branch ties back to a GitHub Issue via its ID.
 - Always include the GitHub issue ID in the branch name.
 - Do not use generic names like `feature/workspace` without an issue ID.
 
+### GitHub Issues
+
+- When creating a GitHub Issue, ALWAYS assign appropriate labels based on the issue content
+- Use existing labels (e.g., `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, etc.)
+- Issue titles and descriptions MUST be written in English
+
 ### Pull Requests
 
 - No direct pushes to `main` — all changes go through PRs
 - PRs must be reviewed before merge
+- When creating a PR, ALWAYS assign appropriate labels based on the PR content
+- PR titles and descriptions MUST be written in English
 - ALWAYS use the PR template (Summary, Related Issues, Type of Change, Checklist, AI Agent Disclosure) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) when creating new pull requests
 
 ### Pre-Push Checklist
