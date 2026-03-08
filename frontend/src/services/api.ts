@@ -173,10 +173,11 @@ export async function createWorkspace(
   description: string,
 ): Promise<WorkspaceResponse> {
   try {
+    const currentUserId = useAuthStore.getState().user?.id ?? null
     const { data } = await client.post<WorkspaceResponse>('/v1/workspaces', {
       name,
       description,
-      ownerId: null,
+      ownerId: currentUserId,
       initialMembers: [],
     })
     return data
