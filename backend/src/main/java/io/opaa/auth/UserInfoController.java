@@ -1,6 +1,6 @@
 package io.opaa.auth;
 
-import io.opaa.auth.dto.UserInfoResponse;
+import io.opaa.api.dto.UserInfoResponse;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;

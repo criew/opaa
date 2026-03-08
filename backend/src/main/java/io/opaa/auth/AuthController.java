@@ -1,8 +1,8 @@
 package io.opaa.auth;
 
 import io.opaa.api.dto.ErrorResponse;
-import io.opaa.auth.dto.LoginRequest;
-import io.opaa.auth.dto.LoginResponse;
+import io.opaa.api.dto.LoginRequest;
+import io.opaa.api.dto.LoginResponse;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.Optional;
@@ -48,13 +48,13 @@ public class AuthController {
 
     String token =
         jwtTokenService.generateToken(
-            request.username(), request.username() + "@opaa.local", request.username());
+            request.getUsername(), request.getUsername() + "@opaa.local", request.getUsername());
 
     userService.findOrCreateUser(
-        request.username(),
+        request.getUsername(),
         jwtTokenService.getIssuer(),
-        request.username() + "@opaa.local",
-        request.username());
+        request.getUsername() + "@opaa.local",
+        request.getUsername());
 
     return ResponseEntity.ok(new LoginResponse(token, jwtTokenService.getExpirationSeconds()));
   }
@@ -66,7 +66,7 @@ public class AuthController {
 
     Optional<AuthProperties.BasicUser> matchingUser =
         basic.users().stream()
-            .filter(u -> u != null && request.username().equals(u.username()))
+            .filter(u -> u != null && request.getUsername().equals(u.username()))
             .findFirst();
 
     if (matchingUser.isEmpty() || matchingUser.get().password() == null) {
@@ -75,9 +75,9 @@ public class AuthController {
 
     String configuredPassword = matchingUser.get().password();
     if (configuredPassword.startsWith("{")) {
-      return passwordEncoder.matches(request.password(), configuredPassword);
+      return passwordEncoder.matches(request.getPassword(), configuredPassword);
     }
 
-    return configuredPassword.equals(request.password());
+    return configuredPassword.equals(request.getPassword());
   }
 }

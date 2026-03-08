@@ -1,6 +1,6 @@
 package io.opaa.auth;
 
-import io.opaa.auth.dto.AuthConfigResponse;
+import io.opaa.api.dto.AuthConfigResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,11 +18,13 @@ public class AuthConfigController {
   @GetMapping("/config")
   public AuthConfigResponse getAuthConfig() {
     String mode = authProperties.mode();
+    AuthConfigResponse response = new AuthConfigResponse().mode(mode);
     if ("oidc".equals(mode)) {
       AuthProperties.OidcAuth oidc = authProperties.oidc();
-      return new AuthConfigResponse(
-          mode, oidc != null ? oidc.authority() : null, oidc != null ? oidc.clientId() : null);
+      if (oidc != null) {
+        response.authority(oidc.authority()).clientId(oidc.clientId());
+      }
     }
-    return new AuthConfigResponse(mode, null, null);
+    return response;
   }
 }

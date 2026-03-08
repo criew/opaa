@@ -1,7 +1,7 @@
 package io.opaa.auth;
 
-import io.opaa.auth.dto.RoleChangeRequest;
-import io.opaa.auth.dto.UserInfoResponse;
+import io.opaa.api.dto.RoleChangeRequest;
+import io.opaa.api.dto.UserInfoResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class AdminController {
   @PostMapping("/users/{id}/role")
   public ResponseEntity<UserInfoResponse> changeRole(
       @PathVariable UUID id, @Valid @RequestBody RoleChangeRequest request) {
-    User user = userService.updateRole(id, request.role());
+    User user = userService.updateRole(id, request.getRole());
     return ResponseEntity.ok(toResponse(user));
   }
 
