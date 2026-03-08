@@ -54,6 +54,14 @@ export default function SourceCard({ source }: SourceCardProps) {
           />
         </Tooltip>
       </Box>
+      {source.workspaceName && (
+        <Chip
+          label={source.workspaceName}
+          size="small"
+          variant="outlined"
+          sx={{ mb: 0.75, height: 20, fontSize: '0.7rem' }}
+        />
+      )}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
         <Typography variant="caption" color="text.secondary">
           {relevancePercent}% relevant

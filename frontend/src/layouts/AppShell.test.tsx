@@ -6,8 +6,8 @@ import AppShell from './AppShell'
 describe('AppShell', () => {
   it('renders sidebar navigation links', () => {
     renderWithProviders(<AppShell />, { withRouter: true, initialRoute: '/chat' })
-    expect(screen.getByText('Chat')).toBeInTheDocument()
-    expect(screen.getByText('Documents')).toBeInTheDocument()
+    expect(screen.getByText('Workspaces')).toBeInTheDocument()
+    expect(screen.getByText('Chats')).toBeInTheDocument()
     expect(screen.getByText('Settings')).toBeInTheDocument()
   })
 

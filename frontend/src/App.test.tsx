@@ -33,8 +33,8 @@ describe('App', () => {
   it('renders navigation links', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText('Chat')).toBeInTheDocument()
-      expect(screen.getByText('Documents')).toBeInTheDocument()
+      expect(screen.getByText('Workspaces')).toBeInTheDocument()
+      expect(screen.getByText('Chats')).toBeInTheDocument()
       expect(screen.getByText('Settings')).toBeInTheDocument()
     })
   })
