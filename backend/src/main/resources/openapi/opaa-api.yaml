@@ -197,6 +197,33 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/workspaces/{workspaceId}/documents:
+    parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listWorkspaceDocuments
+      tags: [workspace]
+      summary: List documents in a workspace
+      responses:
+        "200":
+          description: List of workspace documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceDocumentResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/workspaces/{workspaceId}/members:
     parameters:
       - name: workspaceId
@@ -399,6 +426,12 @@ components:
           type: string
           pattern: "^[a-zA-Z0-9-]{1,50}$"
           example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
+        workspaceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Optional list of workspace IDs to restrict the query to
 
     QueryResponse:
       type: object
@@ -424,6 +457,10 @@ components:
         fileName:
           type: string
           example: architecture-overview.md
+        workspaceName:
+          type: string
+          nullable: true
+          example: Engineering
         relevanceScore:
           type: number
           format: double
@@ -643,6 +680,26 @@ components:
         userId:
           type: string
           format: uuid
+
+    WorkspaceDocumentResponse:
+      type: object
+      required: [id, name, type, uploadedAt, ownerDisplayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: architecture-overview.md
+        type:
+          type: string
+          example: MARKDOWN
+        uploadedAt:
+          type: string
+          format: date-time
+        ownerDisplayName:
+          type: string
+          example: Alice
 
   responses:
     ValidationError:

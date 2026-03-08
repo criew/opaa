@@ -18,6 +18,7 @@ export type WorkspaceAddMemberRequest = components['schemas']['WorkspaceAddMembe
 export type WorkspaceRoleUpdateRequest = components['schemas']['WorkspaceRoleUpdateRequest']
 export type WorkspaceTransferOwnershipRequest =
   components['schemas']['WorkspaceTransferOwnershipRequest']
+export type WorkspaceDocumentResponse = components['schemas']['WorkspaceDocumentResponse']
 
 type GeneratedSourceReference = components['schemas']['SourceReference']
 export type SourceReference = Omit<GeneratedSourceReference, 'indexedAt'> & {
