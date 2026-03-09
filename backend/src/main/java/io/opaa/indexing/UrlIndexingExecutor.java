@@ -109,6 +109,7 @@ public class UrlIndexingExecutor {
 
         Path tempFile = null;
         try {
+          log.info("Processing URL document: {} ({})", entry.name(), entry.url());
           tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
 
           long fileSize = Files.size(tempFile);
@@ -123,7 +124,11 @@ public class UrlIndexingExecutor {
             log.info("Indexed URL document: {}", entry.name());
           }
         } catch (Exception e) {
-          log.error("Failed to process URL document: {}", entry.name(), e);
+          log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
+          failed++;
+        } catch (Error e) {
+          log.error(
+              "Fatal error while processing URL document: {} ({})", entry.name(), entry.url(), e);
           failed++;
         } finally {
           if (tempFile != null) {
