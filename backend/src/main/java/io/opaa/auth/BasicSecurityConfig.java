@@ -1,7 +1,6 @@
 package io.opaa.auth;
 
 import jakarta.annotation.PostConstruct;
-import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -92,8 +91,7 @@ public class BasicSecurityConfig {
 
   @Bean
   JwtDecoder jwtDecoder() {
-    byte[] secret = authProperties.basic().secret().getBytes();
-    return NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secret, "HmacSHA256"))
+    return NimbusJwtDecoder.withSecretKey(JwtTokenService.buildKey(authProperties.basic().secret()))
         .macAlgorithm(MacAlgorithm.HS256)
         .build();
   }
