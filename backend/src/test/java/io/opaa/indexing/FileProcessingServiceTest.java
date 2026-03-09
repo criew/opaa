@@ -202,7 +202,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/remote-doc.pdf", "2025-06-15 10:30", 1024);
+            file,
+            "remote-doc.pdf",
+            "https://example.com/docs/remote-doc.pdf",
+            "2025-06-15 10:30",
+            1024);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
@@ -214,6 +218,43 @@ class FileProcessingServiceTest {
     assertThat(lastSaved.getChecksum()).isEqualTo("sha256-of-pdf");
     assertThat(lastSaved.getLastModifiedRemote()).isEqualTo("2025-06-15 10:30");
     assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void processUrlFileUsesOriginalFilenameNotTempFilename() throws IOException {
+    // Reproduces: URL indexer stores temp filename (opaa-xxx.pdf) instead of original filename
+    Path tempFile = Files.createTempFile(tempDir, "opaa-", ".pdf");
+    Files.writeString(tempFile, "pdf content");
+    String originalFileName = "my-report.pdf";
+
+    when(checksumService.computeSha256(tempFile)).thenReturn("sha256-of-pdf");
+    when(documentRepository.findByFilePath("https://example.com/docs/my-report.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(tempFile)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq(originalFileName), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            tempFile,
+            originalFileName,
+            "https://example.com/docs/my-report.pdf",
+            "2025-06-15 10:30",
+            1024);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document firstSaved = docCaptor.getAllValues().getFirst();
+    assertThat(firstSaved.getFileName())
+        .as("Document must store original filename, not temp filename")
+        .isEqualTo(originalFileName);
+    assertThat(firstSaved.getFileName()).doesNotStartWith("opaa-");
   }
 
   @Test
@@ -238,7 +279,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/unchanged-url.pdf", "2025-06-15 10:30", 1024);
+            file,
+            "unchanged-url.pdf",
+            "https://example.com/docs/unchanged-url.pdf",
+            "2025-06-15 10:30",
+            1024);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
@@ -273,7 +318,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/changed-url.pdf", "2025-06-15 10:30", 2048);
+            file,
+            "changed-url.pdf",
+            "https://example.com/docs/changed-url.pdf",
+            "2025-06-15 10:30",
+            2048);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");

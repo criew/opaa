@@ -114,7 +114,7 @@ public class UrlIndexingExecutor {
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(
-                  tempFile, entry.url(), entry.lastModified(), fileSize);
+                  tempFile, entry.name(), entry.url(), entry.lastModified(), fileSize);
 
           if (result == FileProcessingResult.SKIPPED) {
             skipped++;
