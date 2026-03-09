@@ -70,7 +70,7 @@ public class UrlIndexingExecutor {
 
       // Normalize URL
       String url = request.url();
-      if (!url.endsWith("/") && !url.matches(".*\\.[a-zA-Z0-9]+$")) {
+      if (!url.endsWith("/") && !hasFileExtension(url)) {
         url = url + "/";
       }
 
@@ -148,6 +148,23 @@ public class UrlIndexingExecutor {
       log.error("URL indexing failed unexpectedly", e);
       indexingJobService.failJob(jobId, e.getMessage());
     }
+  }
+
+  /**
+   * Returns true if the URL's last path segment contains a dot (i.e. looks like a file with an
+   * extension). Query strings and fragments are stripped before checking. Avoids regex to prevent
+   * StackOverflowError on long URLs.
+   */
+  static boolean hasFileExtension(String url) {
+    int queryStart = url.indexOf('?');
+    String path = queryStart >= 0 ? url.substring(0, queryStart) : url;
+    int fragmentStart = path.indexOf('#');
+    if (fragmentStart >= 0) {
+      path = path.substring(0, fragmentStart);
+    }
+    int lastSlash = path.lastIndexOf('/');
+    String lastSegment = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+    return lastSegment.contains(".");
   }
 
   /**
