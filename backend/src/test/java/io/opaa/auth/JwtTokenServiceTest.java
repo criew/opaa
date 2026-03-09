@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class JwtTokenServiceTest {
@@ -21,7 +19,7 @@ class JwtTokenServiceTest {
 
     Claims claims =
         Jwts.parser()
-            .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
+            .verifyWith(JwtTokenService.buildKey(SECRET))
             .build()
             .parseSignedClaims(token)
             .getPayload();
