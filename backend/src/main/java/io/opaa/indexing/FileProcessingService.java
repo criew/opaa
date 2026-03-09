@@ -106,10 +106,14 @@ public class FileProcessingService {
    * listing is used upstream (in UrlIndexingExecutor) to skip downloads entirely when unchanged.
    */
   public FileProcessingResult processUrlFile(
-      Path localFile, String remoteUrl, String lastModified, long remoteFileSize)
+      Path localFile,
+      String originalFileName,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize)
       throws IOException {
 
-    String fileName = localFile.getFileName().toString();
+    String fileName = originalFileName;
 
     // Compute SHA-256 on the downloaded file for content-based deduplication
     String checksum = checksumService.computeSha256(localFile);
