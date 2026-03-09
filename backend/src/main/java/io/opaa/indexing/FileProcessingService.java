@@ -1,13 +1,17 @@
 package io.opaa.indexing;
 
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.workspace.WorkspaceProperties;
+import io.opaa.workspace.WorkspaceRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -22,6 +26,8 @@ public class FileProcessingService {
   private final VectorStore vectorStore;
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
+  private final WorkspaceRepository workspaceRepository;
+  private final WorkspaceProperties workspaceProperties;
 
   public FileProcessingService(
       DocumentService documentService,
@@ -29,13 +35,17 @@ public class FileProcessingService {
       DocumentRepository documentRepository,
       VectorStore vectorStore,
       ChecksumService checksumService,
-      IndexingMetrics metrics) {
+      IndexingMetrics metrics,
+      WorkspaceRepository workspaceRepository,
+      WorkspaceProperties workspaceProperties) {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
     this.vectorStore = vectorStore;
     this.checksumService = checksumService;
     this.metrics = metrics;
+    this.workspaceRepository = workspaceRepository;
+    this.workspaceProperties = workspaceProperties;
   }
 
   public FileProcessingResult processFile(Path file) throws IOException {
@@ -106,10 +116,14 @@ public class FileProcessingService {
    * listing is used upstream (in UrlIndexingExecutor) to skip downloads entirely when unchanged.
    */
   public FileProcessingResult processUrlFile(
-      Path localFile, String remoteUrl, String lastModified, long remoteFileSize)
+      Path localFile,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize,
+      String originalFileName)
       throws IOException {
 
-    String fileName = localFile.getFileName().toString();
+    String fileName = originalFileName;
 
     // Compute SHA-256 on the downloaded file for content-based deduplication
     String checksum = checksumService.computeSha256(localFile);
@@ -171,20 +185,39 @@ public class FileProcessingService {
 
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
+    Optional<UUID> defaultWorkspaceId = resolveDefaultWorkspaceId();
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
             .map(
                 chunk -> {
                   int index = chunks.indexOf(chunk);
-                  return new org.springframework.ai.document.Document(
-                      chunk.getText(),
-                      Map.of(
-                          "document_id", document.getId().toString(),
-                          "chunk_index", index,
-                          "file_name", document.getFileName()));
+                  Map<String, Object> metadata = new HashMap<>();
+                  metadata.put("document_id", document.getId().toString());
+                  metadata.put("chunk_index", index);
+                  metadata.put("file_name", document.getFileName());
+                  defaultWorkspaceId.ifPresent(id -> metadata.put("workspace_id", id.toString()));
+                  return new org.springframework.ai.document.Document(chunk.getText(), metadata);
                 })
             .toList();
 
     vectorStore.add(enriched);
+  }
+
+  private Optional<UUID> resolveDefaultWorkspaceId() {
+    String defaultName = workspaceProperties.defaultWorkspace().name();
+    return workspaceRepository
+        .findByNameIgnoreCase(defaultName)
+        .map(
+            workspace -> {
+              log.debug("Assigning default workspace '{}' to chunks", workspace.getName());
+              return workspace.getId();
+            })
+        .or(
+            () -> {
+              log.warn(
+                  "Default workspace '{}' not found — chunks will be stored without workspace_id",
+                  defaultName);
+              return Optional.empty();
+            });
   }
 }

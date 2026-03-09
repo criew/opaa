@@ -10,11 +10,16 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.workspace.Workspace;
+import io.opaa.workspace.WorkspaceProperties;
+import io.opaa.workspace.WorkspaceRepository;
+import io.opaa.workspace.WorkspaceType;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +37,13 @@ class FileProcessingServiceTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private VectorStore vectorStore;
   @Mock private ChecksumService checksumService;
+  @Mock private WorkspaceRepository workspaceRepository;
+
+  static final UUID DEFAULT_WORKSPACE_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+  private final WorkspaceProperties workspaceProperties =
+      new WorkspaceProperties(
+          new WorkspaceProperties.DefaultWorkspace("Default", "Default shared workspace"));
 
   @TempDir Path tempDir;
 
@@ -46,7 +58,16 @@ class FileProcessingServiceTest {
             documentRepository,
             vectorStore,
             checksumService,
-            new IndexingMetrics(new SimpleMeterRegistry()));
+            new IndexingMetrics(new SimpleMeterRegistry()),
+            workspaceRepository,
+            workspaceProperties);
+  }
+
+  private Workspace defaultWorkspace() {
+    Workspace ws =
+        new Workspace(
+            "Default", "Default shared workspace", WorkspaceType.SHARED, DEFAULT_WORKSPACE_ID);
+    return ws;
   }
 
   @Test
@@ -58,6 +79,8 @@ class FileProcessingServiceTest {
     when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    Workspace defaultWs = defaultWorkspace();
+    when(workspaceRepository.findByNameIgnoreCase("Default")).thenReturn(Optional.of(defaultWs));
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
@@ -70,7 +93,15 @@ class FileProcessingServiceTest {
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
     verify(chunkingService).chunkDocuments(eq("new-doc.txt"), eq(parsed));
-    verify(vectorStore).add(any());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunksCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunksCaptor.capture());
+    List<org.springframework.ai.document.Document> stored = chunksCaptor.getValue();
+    assertThat(stored).hasSize(1);
+    assertThat(stored.getFirst().getMetadata())
+        .containsEntry("workspace_id", defaultWs.getId().toString());
 
     // Verify checksum was saved (save is called twice: initial PENDING + final INDEXED)
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
@@ -78,6 +109,31 @@ class FileProcessingServiceTest {
     Document lastSaved = docCaptor.getAllValues().getLast();
     assertThat(lastSaved.getChecksum()).isEqualTo("abc123");
     assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void chunksStoredWithoutWorkspaceIdWhenDefaultWorkspaceNotFound() throws IOException {
+    Path file = tempDir.resolve("no-workspace.txt");
+    Files.writeString(file, "content");
+
+    when(checksumService.computeSha256(file)).thenReturn("csum");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(workspaceRepository.findByNameIgnoreCase("Default")).thenReturn(Optional.empty());
+
+    var parsed = List.of(new org.springframework.ai.document.Document("text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk"));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks);
+
+    service.processFile(file);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunksCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunksCaptor.capture());
+    assertThat(chunksCaptor.getValue().getFirst().getMetadata()).doesNotContainKey("workspace_id");
   }
 
   @Test
@@ -185,6 +241,35 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void processUrlFileUsesOriginalFilenameNotTempFilename() throws IOException {
+    // Simulates the bug: local temp file has a random name, but stored document should use
+    // the original filename from the remote server
+    Path tempFile = tempDir.resolve("opaa-1234567890.pdf");
+    Files.writeString(tempFile, "pdf content");
+
+    String originalFileName = "my-document.pdf";
+    String remoteUrl = "https://example.com/docs/my-document.pdf";
+
+    when(checksumService.computeSha256(tempFile)).thenReturn("sha256");
+    when(documentRepository.findByFilePath(remoteUrl)).thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(tempFile)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq(originalFileName), eq(parsed))).thenReturn(chunks);
+
+    service.processUrlFile(tempFile, remoteUrl, "2025-06-15 10:30", 1024, originalFileName);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document firstSaved = docCaptor.getAllValues().getFirst();
+    assertThat(firstSaved.getFileName()).isEqualTo(originalFileName);
+    assertThat(firstSaved.getFileName()).doesNotContain("opaa-1234567890");
+  }
+
+  @Test
   void processUrlFileIndexesNewUrlDocument() throws IOException {
     Path file = tempDir.resolve("remote-doc.pdf");
     Files.writeString(file, "pdf content");
@@ -202,7 +287,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/remote-doc.pdf", "2025-06-15 10:30", 1024);
+            file,
+            "https://example.com/docs/remote-doc.pdf",
+            "2025-06-15 10:30",
+            1024,
+            "remote-doc.pdf");
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
@@ -238,7 +327,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/unchanged-url.pdf", "2025-06-15 10:30", 1024);
+            file,
+            "https://example.com/docs/unchanged-url.pdf",
+            "2025-06-15 10:30",
+            1024,
+            "unchanged-url.pdf");
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
@@ -273,7 +366,11 @@ class FileProcessingServiceTest {
 
     FileProcessingResult result =
         service.processUrlFile(
-            file, "https://example.com/docs/changed-url.pdf", "2025-06-15 10:30", 2048);
+            file,
+            "https://example.com/docs/changed-url.pdf",
+            "2025-06-15 10:30",
+            2048,
+            "changed-url.pdf");
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
