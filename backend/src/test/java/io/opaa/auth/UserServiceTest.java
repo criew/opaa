@@ -3,18 +3,21 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.workspace.Workspace;
+import io.opaa.workspace.WorkspaceProperties;
 import io.opaa.workspace.WorkspaceRepository;
 import io.opaa.workspace.WorkspaceType;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,7 +30,17 @@ class UserServiceTest {
 
   @Mock private AuthProperties authProperties;
 
-  @InjectMocks private UserService userService;
+  private final WorkspaceProperties workspaceProperties =
+      new WorkspaceProperties(
+          new WorkspaceProperties.DefaultWorkspace("Default", "Default shared workspace"));
+
+  private UserService userService;
+
+  @BeforeEach
+  void setUp() {
+    userService =
+        new UserService(userRepository, workspaceRepository, authProperties, workspaceProperties);
+  }
 
   @Test
   void findOrCreateUserCreatesNewUser() {
@@ -67,6 +80,7 @@ class UserServiceTest {
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(workspaceRepository.existsByOwnerIdAndType(any(UUID.class), any(WorkspaceType.class)))
         .thenReturn(false);
+    when(workspaceRepository.existsByNameIgnoreCase(anyString())).thenReturn(false);
     when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.initialAdminEmail()).thenReturn("admin@example.com");
 
@@ -122,5 +136,53 @@ class UserServiceTest {
     userService.findOrCreateUser("sub1", "issuer1", "old@example.com", "Old Name");
 
     verify(workspaceRepository, never()).save(any(Workspace.class));
+  }
+
+  @Test
+  void firstLoginOfSystemAdminCreatesDefaultWorkspace() {
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(workspaceRepository.existsByOwnerIdAndType(any(UUID.class), any(WorkspaceType.class)))
+        .thenReturn(false);
+    when(workspaceRepository.existsByNameIgnoreCase("Default")).thenReturn(false);
+    when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(authProperties.initialAdminEmail()).thenReturn("admin@example.com");
+
+    userService.findOrCreateUser("sub1", "issuer1", "admin@example.com", "Admin");
+
+    // Saves both personal workspace and default workspace
+    verify(workspaceRepository, times(2)).save(any(Workspace.class));
+  }
+
+  @Test
+  void defaultWorkspaceNotCreatedIfAlreadyExists() {
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(workspaceRepository.existsByOwnerIdAndType(any(UUID.class), any(WorkspaceType.class)))
+        .thenReturn(false);
+    when(workspaceRepository.existsByNameIgnoreCase("Default")).thenReturn(true);
+    when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(authProperties.initialAdminEmail()).thenReturn("admin@example.com");
+
+    userService.findOrCreateUser("sub1", "issuer1", "admin@example.com", "Admin");
+
+    // Only personal workspace is saved; default already exists
+    verify(workspaceRepository, times(1)).save(any(Workspace.class));
+  }
+
+  @Test
+  void regularUserLoginDoesNotCreateDefaultWorkspace() {
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(workspaceRepository.existsByOwnerIdAndType(any(UUID.class), any(WorkspaceType.class)))
+        .thenReturn(false);
+    when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(authProperties.initialAdminEmail()).thenReturn("admin@example.com");
+
+    userService.findOrCreateUser("sub1", "issuer1", "user@example.com", "User");
+
+    // Only personal workspace is saved; no default workspace for regular users
+    verify(workspaceRepository, times(1)).save(any(Workspace.class));
+    verify(workspaceRepository, never()).existsByNameIgnoreCase(anyString());
   }
 }

@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import io.opaa.workspace.Workspace;
 import io.opaa.workspace.WorkspaceMembership;
+import io.opaa.workspace.WorkspaceProperties;
 import io.opaa.workspace.WorkspaceRepository;
 import io.opaa.workspace.WorkspaceRole;
 import io.opaa.workspace.WorkspaceType;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Profile({"oidc", "basic"})
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, WorkspaceProperties.class})
 public class UserService {
 
   private static final String PERSONAL_WORKSPACE_NAME = "My Documents";
@@ -25,14 +26,17 @@ public class UserService {
   private final UserRepository userRepository;
   private final WorkspaceRepository workspaceRepository;
   private final AuthProperties authProperties;
+  private final WorkspaceProperties workspaceProperties;
 
   public UserService(
       UserRepository userRepository,
       WorkspaceRepository workspaceRepository,
-      AuthProperties authProperties) {
+      AuthProperties authProperties,
+      WorkspaceProperties workspaceProperties) {
     this.userRepository = userRepository;
     this.workspaceRepository = workspaceRepository;
     this.authProperties = authProperties;
+    this.workspaceProperties = workspaceProperties;
   }
 
   @Transactional
@@ -61,6 +65,7 @@ public class UserService {
                 });
 
     ensurePersonalWorkspace(user);
+    ensureDefaultWorkspace(user);
     return user;
   }
 
@@ -91,6 +96,24 @@ public class UserService {
     return initialAdminEmail != null
         && !initialAdminEmail.isBlank()
         && initialAdminEmail.equalsIgnoreCase(email);
+  }
+
+  private void ensureDefaultWorkspace(User user) {
+    if (user.getSystemRole() != SystemRole.SYSTEM_ADMIN) {
+      return;
+    }
+    String defaultName = workspaceProperties.defaultWorkspace().name();
+    if (workspaceRepository.existsByNameIgnoreCase(defaultName)) {
+      return;
+    }
+    Workspace defaultWorkspace =
+        new Workspace(
+            defaultName,
+            workspaceProperties.defaultWorkspace().description(),
+            WorkspaceType.SHARED,
+            user.getId());
+    defaultWorkspace.addMembership(new WorkspaceMembership(user.getId(), WorkspaceRole.OWNER));
+    workspaceRepository.save(defaultWorkspace);
   }
 
   private void ensurePersonalWorkspace(User user) {
