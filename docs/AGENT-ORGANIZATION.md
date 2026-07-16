@@ -36,6 +36,8 @@ flowchart TD
     E --> F[Code Reviewer + CI]
     F -- findings --> E
     F -- approved --> G[Maintainer merges]
+    G -.-> H[QA Engineer: scheduled runs on main\nE2E, RAG evaluation, coverage]
+    H -. findings become new issues .-> C
 ```
 
 1. **Goal** — The maintainer gives the orchestrator a goal ("add a Confluence connector").
@@ -44,6 +46,16 @@ flowchart TD
 4. **Implementation** — For each approved issue, a developer agent works in an isolated worktree on a `feature/<issue-id>_<desc>` branch and opens a PR using the PR template (including AI agent disclosure).
 5. **Review** — The code reviewer and CI act as gates. Findings go back to the developer; the PR is only ready when both pass.
 6. **Merge** — **Only humans merge.** No agent merges a PR, ever. (This policy may be relaxed gradually as trust is established — any change to it must be recorded here.)
+
+### Where QA fits: two quality loops
+
+The QA engineer is deliberately **not** part of the per-PR gate — that is the code reviewer's and CI's job, and doubling it would blur both scopes. QA operates in a second, slower loop around the merge:
+
+- **Issue-driven, like a developer, in its own lane.** QA infrastructure is regular backlog work (E2E test suite, coverage reporting, RAG answer-quality evaluation). The orchestrator dispatches such issues to the QA agent instead of a developer; the resulting work goes through the same PR → review → merge path.
+- **Recurring guardian after the merge.** On a schedule (scheduled routine or CI job on `main`), the QA agent exercises the current product state — E2E runs, RAG evaluation, coverage trends. **Its findings become new issues** (bug reports with reproduction steps) that re-enter the workflow at step 3.
+- **Optionally at definition time** for larger epics: QA contributes a test plan artifact that feeds the acceptance criteria of the issues.
+
+So there are two loops: the fast **PR loop** (code reviewer + CI, before merge) and the slow **product loop** (QA engineer, after merge, producing new issues).
 
 ## Rules
 
