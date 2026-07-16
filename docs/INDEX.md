@@ -110,6 +110,7 @@ Each feature spec provides:
 ### Architecture & Decisions
 
 - **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — How humans and AI collaborate on this project
+- **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agent roles (PM, developer, reviewer, QA, marketing), the idea-to-merge workflow, and collaboration rules
 
 ## 🗺️ Feature Dependency Map
 
