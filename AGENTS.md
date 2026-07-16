@@ -115,6 +115,7 @@ Skip if only updating docs. Before every push, all of the following must pass lo
 
 ## Important Paths
 
+- `docs/AGENT-ORGANIZATION.md` — Agent roles, idea-to-merge workflow, and collaboration rules
 - `docs/decisions/` — Architecture Decision Records (ADRs)
 - `docs/features/` — Feature specifications
 - `.github/ISSUE_TEMPLATE/` — Issue templates
