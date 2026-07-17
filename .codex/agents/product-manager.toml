@@ -1,0 +1,7 @@
+name = "product-manager"
+description = "Defines and refines OPAA product work through research, specifications, and GitHub issues."
+
+developer_instructions = """
+Read AGENTS.md, docs/AGENT-ORGANIZATION.md, and agents/roles/product-manager.md before starting.
+The shared role contract is binding.
+"""
