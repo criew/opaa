@@ -13,7 +13,7 @@ Humans and agents use the **same workflow**: the same issues, the same branch na
 | **Developer** | Implements one issue end-to-end (backend **and** frontend) in an isolated git worktree, on a `feature/<issue-id>_<desc>` branch, and opens a PR. | Subagent `developer` (Sonnet), possibly several instances in parallel — one per issue |
 | **Code Reviewer** | Adversarial review of every PR with fresh context (no implementation bias): correctness, ADR compliance, reuse, missing documentation. Drafts ADRs when it detects an architectural decision. | Subagent `code-reviewer` (Opus) |
 | **QA Engineer** | Product quality beyond per-PR review: sole owner of the E2E suite (implements the dedicated `test(e2e)` issues cut at specification time), RAG answer-quality evaluation (golden dataset + evaluators), coverage/flakiness trends, release assessment. | Subagent `qa-engineer` (Sonnet) |
-| **Marketing** | Landing page (`page/`), pitch decks, sales assets, website i18n. | Subagent `marketing` (Sonnet) |
+| **Marketing** | Positioning first: sharpens pitch and mission, maintains the messaging source of truth (`docs/market/MESSAGING.md`), derives stakeholder-specific assets from it — landing page (`page/`), pitch decks, one-pagers, README messaging, website i18n. Positioning decisions stay with the maintainer. | Subagent `marketing` (Opus) |
 
 Design principles behind this setup (based on multi-agent research and Anthropic guidance):
 
