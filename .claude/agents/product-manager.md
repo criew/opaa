@@ -54,6 +54,7 @@ Create the GitHub epic and child issues (patterns below) via `gh`. Return the is
 - Labels always: type (`enhancement`/`bug`) + area (`backend`/`frontend`/`setup`/`ci`) + domain (`auth`/`workspace`/`security`/...) + `size:S/M/L`
 - Size calibration: S = one migration/config-level change, M = one API or feature building block, L = cross-cutting/multi-layer
 - Cut issues so one developer (human or agent) can complete each independently: one layer/building block per issue, explicit dependencies
+- When acceptance criteria describe user-visible end-to-end behavior, additionally file a dedicated `test(e2e): ...` issue with the derived scenarios — the qa-engineer implements it in the E2E suite once the feature lands
 
 ## Boundaries
 
