@@ -12,7 +12,7 @@ Humans and agents use the **same workflow**: the same issues, the same branch na
 | **Product Manager** | Owns the functional definition: keeps vision and reality in sync (`docs/VISION.md`, `docs/MVP-STATUS.md`), writes feature specs in `docs/features/`, cuts and prioritizes GitHub issues. | Subagent `product-manager` (Sonnet) |
 | **Developer** | Implements one issue end-to-end (backend **and** frontend) in an isolated git worktree, on a `feature/<issue-id>_<desc>` branch, and opens a PR. | Subagent `developer` (Sonnet), possibly several instances in parallel — one per issue |
 | **Code Reviewer** | Adversarial review of every PR with fresh context (no implementation bias): correctness, ADR compliance, reuse, missing documentation. Drafts ADRs when it detects an architectural decision. | Subagent `code-reviewer` (Opus) |
-| **QA Engineer** | Product quality beyond per-PR review: E2E tests, coverage reporting, RAG answer-quality evaluation. Writes test plans and implements the automated tests for them. | Subagent `qa-engineer` (Sonnet) |
+| **QA Engineer** | Product quality beyond per-PR review: sole owner of the E2E suite (implements the dedicated `test(e2e)` issues cut at specification time), RAG answer-quality evaluation (golden dataset + evaluators), coverage/flakiness trends, release assessment. | Subagent `qa-engineer` (Sonnet) |
 | **Marketing** | Positioning first: sharpens pitch and mission, maintains the messaging source of truth (`docs/market/MESSAGING.md`), derives stakeholder-specific assets from it — landing page (`page/`), pitch decks, one-pagers, README messaging, website i18n. Positioning decisions stay with the maintainer. | Subagent `marketing` (Opus) |
 
 Design principles behind this setup (based on multi-agent research and Anthropic guidance):
@@ -53,7 +53,7 @@ The QA engineer is deliberately **not** part of the per-PR gate — that is the 
 
 - **Issue-driven, like a developer, in its own lane.** QA infrastructure is regular backlog work (E2E test suite, coverage reporting, RAG answer-quality evaluation). The orchestrator dispatches such issues to the QA agent instead of a developer; the resulting work goes through the same PR → review → merge path.
 - **Recurring guardian after the merge.** On a schedule (scheduled routine or CI job on `main`), the QA agent exercises the current product state — E2E runs, RAG evaluation, coverage trends. **Its findings become new issues** (bug reports with reproduction steps) that re-enter the workflow at step 3.
-- **Optionally at definition time** for larger epics: QA contributes a test plan artifact that feeds the acceptance criteria of the issues.
+- **At definition time**, the product manager derives E2E-relevant scenarios from the acceptance criteria and files dedicated `test(e2e)` issues; the QA engineer implements them in the suite once the feature lands.
 
 So there are two loops: the fast **PR loop** (code reviewer + CI, before merge) and the slow **product loop** (QA engineer, after merge, producing new issues).
 
