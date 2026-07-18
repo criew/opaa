@@ -22,7 +22,19 @@ Design principles behind this setup (based on multi-agent research and Anthropic
 - **Writes are single-threaded** — parallelism comes from multiple developers on *different* issues, not from splitting one feature across agents.
 - **Reviewer is always separate from implementer** — the best-documented quality lever in multi-agent development.
 
-Agent definitions live in `.claude/agents/` and are versioned with the code.
+## Agent definitions and client adapters
+
+The table above describes the organization's roles. The shared role contracts in `agents/roles/` are the source of truth for the concrete agent behavior. They intentionally contain no provider-specific model, tool, permission, memory, or worktree configuration.
+
+Each supported client has a thin project-local adapter that points to the matching shared contract:
+
+| Client | Adapter path | Notes |
+|---|---|---|
+| Claude Code | `.claude/agents/` | YAML frontmatter supplies Claude Code tools, model selection, visual settings, memory, and worktree isolation. |
+| Codex | `.codex/agents/` | TOML files define Codex custom agents. The reviewer uses a read-only sandbox. |
+| OpenCode | `.opencode/agents/` | Markdown frontmatter defines OpenCode subagents and their permissions. The reviewer denies edits. |
+
+All adapters instruct their agent to read `AGENTS.md`, this organization document, and its shared role contract before working. A role must be added to `agents/roles/` before it receives provider adapters. The five concrete role definitions are Product Manager, Developer, Code Reviewer, QA Engineer, and Marketing.
 
 ## Workflow: from idea to merge
 

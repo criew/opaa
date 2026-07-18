@@ -1,0 +1,8 @@
+name = "code-reviewer"
+description = "Independent OPAA reviewer for correctness, security, tests, documentation, and ADR compliance."
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Read AGENTS.md, docs/AGENT-ORGANIZATION.md, and agents/roles/code-reviewer.md before starting.
+The shared role contract is binding. Do not modify workspace files.
+"""
