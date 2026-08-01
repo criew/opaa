@@ -1,6 +1,5 @@
 package io.opaa.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -9,6 +8,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 @EnableConfigurationProperties(RateLimitProperties.class)
@@ -20,7 +20,7 @@ public class RateLimitConfiguration {
 
   @Bean
   FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
-      RateLimitProperties properties, ObjectMapper objectMapper) {
+      RateLimitProperties properties, JsonMapper jsonMapper) {
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
         "/api/v1/query",
@@ -42,7 +42,7 @@ public class RateLimitConfiguration {
 
     var registration =
         new FilterRegistrationBean<>(
-            new RateLimitFilter(perIpLimiters, globalLimiters, objectMapper));
+            new RateLimitFilter(perIpLimiters, globalLimiters, jsonMapper));
     registration.addUrlPatterns("/api/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
     return registration;

@@ -25,9 +25,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
@@ -35,8 +35,8 @@ import org.testcontainers.utility.DockerImageName;
 class DocumentIndexingIntegrationTest {
 
   @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg18"));
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @TempDir static Path sharedTempDir;
 

@@ -16,11 +16,11 @@ OPAA benötigt einen Technologie-Stack, um das in [docs/MVP.md](../MVP.md) defin
 
 ## Entscheidung
 
-### Backend: Java 21 mit Spring Boot 3.x + Spring AI 1.1.2
+### Backend: Java 21 mit Spring Boot 4.x + Spring AI 2.0.0
 
-- **Spring Boot 3.x** bietet ein ausgereiftes, enterprise-taugliches Framework mit umfangreicher Ökosystem-Unterstützung.
-- **Spring AI 1.1.2** bietet eingebaute Abstraktionen für LLM-Clients (OpenAI-kompatibel), Embedding-Modelle, Vektorspeicher (einschließlich pgvector) und Dokument-Reader (einschließlich Apache Tika).
-- **Gradle 9.3.1** (Kotlin DSL) wird als Build-System verwendet und bietet schnelle inkrementelle Builds und eine prägnante Build-Konfiguration.
+- **Spring Boot 4.x** bietet ein ausgereiftes, enterprise-taugliches Framework mit umfangreicher Ökosystem-Unterstützung. Der MVP startete auf Spring Boot 3.5.x; die Migration auf 4.1 (Spring Framework 7, Jakarta EE 11, Jackson 3) erfolgte mit Issue #188.
+- **Spring AI 2.0.0** bietet eingebaute Abstraktionen für LLM-Clients (OpenAI-kompatibel), Embedding-Modelle, Vektorspeicher (einschließlich pgvector) und Dokument-Reader (einschließlich Apache Tika). Spring AI 2.0 setzt Spring Boot 4 voraus, beide Bumps gehören daher zusammen.
+- **Gradle 9.6.1** (Kotlin DSL) wird als Build-System verwendet und bietet schnelle inkrementelle Builds und eine prägnante Build-Konfiguration.
 - Das Backend ist als **modularer Monolith** mit separaten Packages unter `io.opaa` für `indexing`, `query` und `api` strukturiert, was eine spätere Zerlegung in Microservices ermöglicht.
 
 ### Frontend: React + TypeScript + Material UI 7.3.8

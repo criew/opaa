@@ -29,7 +29,7 @@ sourceSets {
 dependencies {
     implementation(libs.bundles.spring.boot)
     implementation(libs.bundles.spring.ai)
-    implementation(libs.liquibase.core)
+    implementation(libs.spring.boot.starter.liquibase)
     implementation(libs.caffeine)
     implementation(libs.jjwt.api)
     runtimeOnly(libs.bundles.jjwt.runtime)

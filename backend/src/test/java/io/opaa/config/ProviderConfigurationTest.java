@@ -15,9 +15,9 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
@@ -25,8 +25,8 @@ import org.testcontainers.utility.DockerImageName;
 class ProviderConfigurationTest {
 
   @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg18"));
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -52,13 +52,13 @@ class ProviderConfigurationTest {
   @Test
   void chatProviderDefaultsToOllama() {
     assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("ollama");
-    assertThat(environment.getProperty("spring.ai.ollama.chat.options.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isNotBlank();
   }
 
   @Test
   void embeddingProviderDefaultsToOllama() {
     assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("ollama");
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.options.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.ollama.embedding.model")).isNotBlank();
   }
 
   @Test
@@ -70,17 +70,16 @@ class ProviderConfigurationTest {
     assertThat(embeddingProvider).isNotNull();
 
     // Both OpenAI and Ollama model configs coexist — switching is config-only
-    assertThat(environment.getProperty("spring.ai.openai.chat.options.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.ollama.chat.options.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.openai.embedding.options.model")).isNotBlank();
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.options.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.openai.chat.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isNotBlank();
+    assertThat(environment.getProperty("spring.ai.ollama.embedding.model")).isNotBlank();
   }
 
   @Test
   void ollamaConfigurationIsAvailableForSwitching() {
-    assertThat(environment.getProperty("spring.ai.ollama.chat.options.model"))
-        .isEqualTo("phi3:mini");
-    assertThat(environment.getProperty("spring.ai.ollama.embedding.options.model"))
+    assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isEqualTo("phi3:mini");
+    assertThat(environment.getProperty("spring.ai.ollama.embedding.model"))
         .isEqualTo("nomic-embed-text");
   }
 }

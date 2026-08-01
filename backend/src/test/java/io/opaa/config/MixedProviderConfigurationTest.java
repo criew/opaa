@@ -15,9 +15,9 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -29,8 +29,8 @@ import org.testcontainers.utility.DockerImageName;
 class MixedProviderConfigurationTest {
 
   @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg18"));
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {

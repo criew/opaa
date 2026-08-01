@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import tools.jackson.databind.json.JsonMapper;
 
 class RateLimitFilterTest {
 
@@ -21,7 +21,7 @@ class RateLimitFilterTest {
   private RateLimitService indexingLimiter;
   private RateLimitService globalQueryLimiter;
   private RateLimitService globalIndexingLimiter;
-  private ObjectMapper objectMapper;
+  private JsonMapper jsonMapper;
 
   @BeforeEach
   void setUp() {
@@ -29,7 +29,7 @@ class RateLimitFilterTest {
     indexingLimiter = mock(RateLimitService.class);
     globalQueryLimiter = mock(RateLimitService.class);
     globalIndexingLimiter = mock(RateLimitService.class);
-    objectMapper = new ObjectMapper();
+    jsonMapper = JsonMapper.builder().build();
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put("/api/v1/query", queryLimiter);
@@ -42,7 +42,7 @@ class RateLimitFilterTest {
     when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
     when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
 
-    filter = new RateLimitFilter(perIpLimiters, globalLimiters, objectMapper);
+    filter = new RateLimitFilter(perIpLimiters, globalLimiters, jsonMapper);
   }
 
   @Test
