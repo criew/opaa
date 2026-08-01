@@ -1,20 +1,20 @@
-# Git Workflow Rules
+# Git-Workflow-Regeln
 
-- Always create a feature branch; never commit directly to main
-- Use Conventional Commits format for all commit messages
-- Use the PR template
-- Keep PRs focused: one logical change per PR
-- When fixing an issue, reference it with "Closes #N" in the PR body
+- Immer einen Feature-Branch erstellen; niemals direkt auf main committen
+- Conventional-Commits-Format für alle Commit-Nachrichten verwenden
+- Das PR-Template verwenden
+- PRs fokussiert halten: eine logische Änderung pro PR
+- Bei der Behebung eines Issues im PR-Body mit „Closes #N" referenzieren
 
-# Pre-Push Checklist
+# Pre-Push-Checkliste
 
-Skip if only updating docs.
-Before every push, ALL of the following must pass locally.
+Bei reinen Dokumentationsänderungen überspringen.
+Vor jedem Push müssen ALLE folgenden Punkte lokal bestehen.
 
-- Backend formatting
-- Backend build + test
-- Frontend formatting
-- Frontend lint
-- Frontend build + test
+- Backend-Formatierung
+- Backend-Build + Test
+- Frontend-Formatierung
+- Frontend-Lint
+- Frontend-Build + Test
 
-If any step fails, fix the issue before pushing.
+Schlägt ein Schritt fehl, das Problem vor dem Push beheben.

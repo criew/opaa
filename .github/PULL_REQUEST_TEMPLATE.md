@@ -1,29 +1,29 @@
-## Summary
+## Zusammenfassung
 
-Brief description of changes.
+Kurze Beschreibung der Änderungen.
 
-## Related Issues
+## Zugehörige Issues
 
 Closes #
 
-## Type of Change
+## Art der Änderung
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation
+- [ ] Bugfix
+- [ ] Neues Feature
+- [ ] Dokumentation
 - [ ] Refactoring
 - [ ] CI/Build
 
-## Checklist
+## Checkliste
 
-- [ ] Tests pass locally
-- [ ] Documentation updated (if applicable)
-- [ ] No secrets or credentials committed
-- [ ] Commit messages follow Conventional Commits
-- [ ] CLA signed (first-time contributors: post the sign comment below, or it has already been signed)
+- [ ] Tests bestehen lokal
+- [ ] Dokumentation aktualisiert (falls zutreffend)
+- [ ] Keine Secrets oder Anmeldeinformationen committet
+- [ ] Commit-Nachrichten folgen Conventional Commits
+- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)
 
-## AI Agent Disclosure
+## KI-Agenten-Offenlegung
 
-- [ ] This PR was authored by a human
-- [ ] This PR was authored by an AI agent (specify: _______)
-- [ ] This PR was co-authored by human + AI agent
+- [ ] Dieser PR wurde von einem Menschen verfasst
+- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)
+- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst

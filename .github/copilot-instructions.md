@@ -1,3 +1,3 @@
-Read AGENTS.md in the repository root for project instructions and conventions.
-Follow Conventional Commits for all commit messages.
-Follow the branch naming convention: feature/<issue-id>_<short-description>.
+AGENTS.md im Repository-Stammverzeichnis für Projektanweisungen und -konventionen lesen.
+Conventional Commits für alle Commit-Nachrichten verwenden.
+Die Branch-Namenskonvention einhalten: feature/<issue-id>_<kurze-beschreibung>.

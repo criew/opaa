@@ -1,56 +1,56 @@
 # Deployment
 
-## Quick Start
+## Schnellstart
 
 ```bash
-# 1. Configure environment
+# 1. Umgebung konfigurieren
 cp .env.example .env.docker
-# Edit .env.docker and set your OPAA_OPENAI_API_KEY
+# .env.docker bearbeiten und OPAA_OPENAI_API_KEY setzen
 
-# 2. Start all services
+# 2. Alle Services starten
 docker compose up --build
 
-# 3. Open the application
+# 3. Anwendung öffnen
 # Frontend: http://localhost:3000
-# Backend API: http://localhost:8081/api
+# Backend-API: http://localhost:8081/api
 ```
 
 ## Services
 
-| Service    | Host Port | Container Port | Description                        |
-|------------|-----------|----------------|------------------------------------|
-| frontend   | 3000      | 80             | React app served via Nginx         |
-| backend    | 8081      | 8080           | Spring Boot API                    |
-| postgres   | 5432      | 5432           | PostgreSQL 18 with pgvector        |
-| keycloak   | 8180      | 8180           | Keycloak (OIDC profile only)       |
+| Service    | Host-Port | Container-Port | Beschreibung                          |
+|------------|-----------|----------------|---------------------------------------|
+| frontend   | 3000      | 80             | React-App über Nginx bereitgestellt   |
+| backend    | 8081      | 8080           | Spring Boot API                       |
+| postgres   | 5432      | 5432           | PostgreSQL 18 mit pgvector            |
+| keycloak   | 8180      | 8180           | Keycloak (nur OIDC-Profil)            |
 
-## Configuration
+## Konfiguration
 
-All configuration is done via environment variables in `.env.docker`. Docker Compose loads this file via the `env_file` directive. See `.env.example` for all available options with descriptions.
+Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker Compose lädt diese Datei über die `env_file`-Direktive. Alle verfügbaren Optionen mit Beschreibungen finden Sie in `.env.example`.
 
-> **Important:** Docker Compose automatically loads a `.env` file (if present) for variable interpolation in `docker-compose.yml` itself. To avoid conflicts with local development settings, Docker Compose services use `.env.docker` as their `env_file`. If you have a `.env` file for local development, make sure the Docker-relevant variables (ports, DB credentials) don't conflict.
+> **Wichtig:** Docker Compose lädt automatisch eine `.env`-Datei (falls vorhanden) für die Variablen-Interpolation in `docker-compose.yml` selbst. Um Konflikte mit lokalen Entwicklungseinstellungen zu vermeiden, verwenden Docker-Compose-Services `.env.docker` als ihre `env_file`. Wenn Sie eine `.env`-Datei für die lokale Entwicklung haben, stellen Sie sicher, dass die Docker-relevanten Variablen (Ports, DB-Anmeldeinformationen) nicht kollidieren.
 
-### Required Variables
+### Erforderliche Variablen
 
-The only variable you must set before starting is:
+Die einzige Variable, die vor dem Start gesetzt werden muss:
 
 ```env
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-### Docker-Specific Variables
+### Docker-spezifische Variablen
 
-These variables are important when running with Docker Compose and should be set in `.env.docker`:
+Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und sollten in `.env.docker` gesetzt werden:
 
-| Variable | Required Value | Why |
-|----------|---------------|-----|
-| `SPRING_PROFILES_ACTIVE` | `docker` (or `docker,oidc`) | Activates Docker-specific config (DB URL, Ollama URL) |
-| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend must bind to all interfaces to be reachable from other containers |
-| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Must match the frontend's host port |
-| `OPAA_DB_USERNAME` | `opaa` | Must match between backend and postgres services |
-| `OPAA_DB_PASSWORD` | `opaa` | Must match between backend and postgres services |
+| Variable | Erforderlicher Wert | Warum |
+|----------|---------------------|-------|
+| `SPRING_PROFILES_ACTIVE` | `docker` (oder `docker,oidc`) | Aktiviert Docker-spezifische Konfiguration (DB-URL, Ollama-URL) |
+| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein |
+| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
+| `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
+| `OPAA_DB_PASSWORD` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
 
-### Minimal `.env.docker`
+### Minimale `.env.docker`
 
 ```env
 SPRING_PROFILES_ACTIVE=docker
@@ -63,91 +63,91 @@ OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
 
-### All Environment Variables
+### Alle Umgebungsvariablen
 
-| Variable | Default | Description |
+| Variable | Standard | Beschreibung |
 |----------|---------|-------------|
-| **General** | | |
-| `OPAA_SERVER_ADDRESS` | `localhost` | Bind address (`0.0.0.0` for network access) |
-| `OPAA_HTTP_FORCE_HTTP1` | `false` | Force HTTP/1.1 for vLLM compatibility |
-| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Allowed CORS origins (comma-separated) |
-| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | `./documents` | Host path for documents (mounted into container) |
-| **Database** | | |
-| `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa` | JDBC connection URL |
-| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL username |
-| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL password |
+| **Allgemein** | | |
+| `OPAA_SERVER_ADDRESS` | `localhost` | Bind-Adresse (`0.0.0.0` für Netzwerkzugang) |
+| `OPAA_HTTP_FORCE_HTTP1` | `false` | HTTP/1.1 für vLLM-Kompatibilität erzwingen |
+| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Erlaubte CORS-Origins (kommagetrennt) |
+| `OPAA_INDEXING_DOCUMENT_PATH_HOST` | `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
+| **Datenbank** | | |
+| `OPAA_DB_URL` | `jdbc:postgresql://localhost:5432/opaa` | JDBC-Verbindungs-URL |
+| `OPAA_DB_USERNAME` | `opaa` | PostgreSQL-Benutzername |
+| `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL-Passwort |
 | **LLM / Embedding** | | |
-| `OPAA_AI_CHAT_PROVIDER` | `openai` | Chat model provider (`openai` or `ollama`) |
-| `OPAA_AI_EMBEDDING_PROVIDER` | `openai` | Embedding model provider (`openai` or `ollama`) |
-| `OPAA_OPENAI_API_KEY` | — | OpenAI API key (required when using OpenAI) |
-| `OPAA_OPENAI_BASE_URL` | `https://api.openai.com` | OpenAI-compatible API base URL |
-| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI chat model name |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | Chat response temperature (0.0–2.0) |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximum tokens in chat response |
-| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model name |
-| `OPAA_OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama API base URL |
-| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | Ollama chat model name |
-| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Ollama embedding model name |
-| **Query (RAG Retrieval)** | | |
-| `OPAA_QUERY_TOP_K` | `5` | Number of document chunks retrieved per query (1–100) |
-| `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | Minimum cosine similarity for chunk inclusion (0.0–1.0) |
-| **Indexing** | | |
-| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | Filesystem path for source documents |
-| `OPAA_INDEXING_CHUNK_SIZE` | `1000` | Target tokens per chunk (1–10 000) |
-| `OPAA_INDEXING_BATCH_SIZE` | `50` | Chunks per embedding API call (1–1 000) |
-| `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | Retry count for transient failures (0–10) |
-| `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | Core threads for async indexing |
-| `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | Maximum threads for async indexing |
-| `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task queue capacity for async indexing |
+| `OPAA_AI_CHAT_PROVIDER` | `openai` | Chat-Modell-Anbieter (`openai` oder `ollama`) |
+| `OPAA_AI_EMBEDDING_PROVIDER` | `openai` | Embedding-Modell-Anbieter (`openai` oder `ollama`) |
+| `OPAA_OPENAI_API_KEY` | — | OpenAI-API-Schlüssel (erforderlich bei Verwendung von OpenAI) |
+| `OPAA_OPENAI_BASE_URL` | `https://api.openai.com` | OpenAI-kompatible API-Basis-URL |
+| `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI-Chat-Modellname |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0) |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximale Tokens in Chat-Antwort |
+| `OPAA_OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI-Embedding-Modellname |
+| `OPAA_OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama-API-Basis-URL |
+| `OPAA_OLLAMA_CHAT_MODEL` | `phi3:mini` | Ollama-Chat-Modellname |
+| `OPAA_OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` | Ollama-Embedding-Modellname |
+| **Abfrage (RAG-Retrieval)** | | |
+| `OPAA_QUERY_TOP_K` | `5` | Anzahl der pro Abfrage abgerufenen Dokument-Chunks (1–100) |
+| `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
+| **Indizierung** | | |
+| `OPAA_INDEXING_DOCUMENT_PATH` | `./documents` | Dateisystempfad für Quelldokumente |
+| `OPAA_INDEXING_CHUNK_SIZE` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
+| `OPAA_INDEXING_BATCH_SIZE` | `50` | Chunks pro Embedding-API-Aufruf (1–1.000) |
+| `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | Wiederholungsanzahl bei vorübergehenden Fehlern (0–10) |
+| `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | Kern-Threads für asynchrone Indizierung |
+| `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | Maximale Threads für asynchrone Indizierung |
+| `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task-Queue-Kapazität für asynchrone Indizierung |
 | **pgvector** | | |
-| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | Vector dimensions (must match embedding model) |
-| `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | Distance function for similarity search |
+| `OPAA_PGVECTOR_DIMENSIONS` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
+| `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |
 | **Rate Limiting** | | |
-| `OPAA_RATE_LIMIT_ENABLED` | `true` | Enable/disable rate limiting |
-| `OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS` | `10` | Max query requests per IP per window |
-| `OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS` | `60` | Query rate limit window in seconds |
-| `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS` | `100` | Max query requests across all IPs per window |
-| `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `1` | Max indexing requests per IP per window |
-| `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | Indexing rate limit window in seconds |
-| `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | Max indexing requests across all IPs per window |
-| **Authentication** | | |
-| `OPAA_AUTH_MODE` | `mock` | Auth mode: `mock`, `basic`, or `oidc` |
-| `OPAA_AUTH_BASIC_USERNAME` | `admin` | Username for basic auth |
-| `OPAA_AUTH_BASIC_PASSWORD` | `admin` | Password for basic auth |
-| `OPAA_AUTH_BASIC_SECRET` | — | JWT signing secret (min 256 bit) |
-| `OPAA_AUTH_BASIC_TOKEN_EXPIRATION` | `3600` | JWT token expiration in seconds |
-| `OPAA_AUTH_BASIC_ISSUER` | `opaa-basic` | JWT issuer claim |
-| `OPAA_INITIAL_ADMIN_EMAIL` | — | Email for auto-created initial admin user |
+| `OPAA_RATE_LIMIT_ENABLED` | `true` | Rate Limiting aktivieren/deaktivieren |
+| `OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS` | `10` | Max. Abfrageanfragen pro IP pro Fenster |
+| `OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS` | `60` | Abfrage-Rate-Limit-Fenster in Sekunden |
+| `OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS` | `100` | Max. Abfrageanfragen über alle IPs pro Fenster |
+| `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `1` | Max. Indizierungsanfragen pro IP pro Fenster |
+| `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | Indizierungs-Rate-Limit-Fenster in Sekunden |
+| `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | Max. Indizierungsanfragen über alle IPs pro Fenster |
+| **Authentifizierung** | | |
+| `OPAA_AUTH_MODE` | `mock` | Auth-Modus: `mock`, `basic` oder `oidc` |
+| `OPAA_AUTH_BASIC_USERNAME` | `admin` | Benutzername für Basic Auth |
+| `OPAA_AUTH_BASIC_PASSWORD` | `admin` | Passwort für Basic Auth |
+| `OPAA_AUTH_BASIC_SECRET` | — | JWT-Signing-Secret (min. 256 Bit) |
+| `OPAA_AUTH_BASIC_TOKEN_EXPIRATION` | `3600` | JWT-Token-Ablauf in Sekunden |
+| `OPAA_AUTH_BASIC_ISSUER` | `opaa-basic` | JWT-Issuer-Claim |
+| `OPAA_INITIAL_ADMIN_EMAIL` | — | E-Mail für automatisch erstellten initialen Admin-Benutzer |
 | **OIDC** | | |
-| `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK Set URI for token verification |
-| `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC issuer URI for token validation |
-| `OPAA_OIDC_AUTHORITY` | `http://localhost:8180/realms/opaa` | OIDC authority URL (used by frontend) |
-| `OPAA_OIDC_CLIENT_ID` | `opaa-frontend` | OIDC client ID |
-| **Docker Compose Ports** | | |
-| `OPAA_BACKEND_PORT` | `8081` | Backend host port |
-| `OPAA_FRONTEND_PORT` | `3000` | Frontend host port |
+| `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK-Set-URI für Token-Verifizierung |
+| `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung |
+| `OPAA_OIDC_AUTHORITY` | `http://localhost:8180/realms/opaa` | OIDC-Authority-URL (vom Frontend verwendet) |
+| `OPAA_OIDC_CLIENT_ID` | `opaa-frontend` | OIDC-Client-ID |
+| **Docker-Compose-Ports** | | |
+| `OPAA_BACKEND_PORT` | `8081` | Backend-Host-Port |
+| `OPAA_FRONTEND_PORT` | `3000` | Frontend-Host-Port |
 
-### Network Access
+### Netzwerkzugang
 
-By default, the backend binds to `localhost`. To make OPAA accessible from other devices on the network, set:
+Standardmäßig bindet das Backend an `localhost`. Um OPAA von anderen Geräten im Netzwerk zugänglich zu machen, setzen Sie:
 
 ```env
 OPAA_SERVER_ADDRESS=0.0.0.0
 ```
 
-> **Note:** In Docker Compose, `OPAA_SERVER_ADDRESS` **must** be set to `0.0.0.0` so the backend is reachable from the frontend container's Nginx reverse proxy.
+> **Hinweis:** In Docker Compose **muss** `OPAA_SERVER_ADDRESS` auf `0.0.0.0` gesetzt werden, damit das Backend vom Nginx-Reverse-Proxy des Frontend-Containers erreichbar ist.
 
-For local development, also start the frontend with `npm run dev -- --host` and add the access origin to CORS:
+Für die lokale Entwicklung auch das Frontend mit `npm run dev -- --host` starten und den Zugriffsursprung zu CORS hinzufügen:
 
 ```env
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
 ```
 
-### LLM Provider
+### LLM-Anbieter
 
-By default, OPAA uses OpenAI. Set `OPAA_OPENAI_API_KEY` to your API key.
+Standardmäßig verwendet OPAA OpenAI. `OPAA_OPENAI_API_KEY` auf Ihren API-Schlüssel setzen.
 
-To use Ollama (local LLM) instead, set:
+Um stattdessen Ollama (lokales LLM) zu verwenden:
 
 ```env
 OPAA_AI_CHAT_PROVIDER=ollama
@@ -155,22 +155,22 @@ OPAA_AI_EMBEDDING_PROVIDER=ollama
 OPAA_OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-### vLLM / OpenAI-compatible Servers
+### vLLM / OpenAI-kompatible Server
 
-When using vLLM or other OpenAI-compatible servers that don't support HTTP/2, enable HTTP/1.1 mode:
+Bei Verwendung von vLLM oder anderen OpenAI-kompatiblen Servern, die HTTP/2 nicht unterstützen, HTTP/1.1-Modus aktivieren:
 
 ```env
 OPAA_HTTP_FORCE_HTTP1=true
 OPAA_OPENAI_BASE_URL=http://your-vllm-server:8000/v1
 ```
 
-This is required because Spring Boot's default HTTP client prefers HTTP/2, which causes connection failures with Uvicorn-based servers like vLLM.
+Dies ist erforderlich, weil Spring Boots Standard-HTTP-Client HTTP/2 bevorzugt, was bei Uvicorn-basierten Servern wie vLLM zu Verbindungsfehlern führt.
 
-## Authentication
+## Authentifizierung
 
-### Mock Mode (Default)
+### Mock-Modus (Standard)
 
-No authentication — all requests are allowed. Suitable for local development only.
+Keine Authentifizierung — alle Anfragen sind erlaubt. Nur für lokale Entwicklung geeignet.
 
 ### Basic Auth
 
@@ -184,13 +184,13 @@ OPAA_AUTH_BASIC_SECRET=change-me-to-a-256-bit-secret-key-in-production!!
 
 ### OIDC (Keycloak)
 
-To enable OIDC authentication with the bundled Keycloak:
+Um OIDC-Authentifizierung mit dem gebündelten Keycloak zu aktivieren:
 
 ```bash
 docker compose --profile oidc up --build
 ```
 
-Required variables in `.env.docker`:
+Erforderliche Variablen in `.env.docker`:
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
@@ -198,55 +198,55 @@ OPAA_AUTH_MODE=oidc
 OPAA_OIDC_JWK_SET_URI=http://keycloak:8180/realms/opaa/protocol/openid-connect/certs
 ```
 
-> **Important:** `OPAA_OIDC_JWK_SET_URI` must use the Docker-internal hostname `keycloak` (not `localhost`), because the backend container validates JWT tokens by fetching keys from Keycloak. `OPAA_OIDC_ISSUER_URI` and `OPAA_OIDC_AUTHORITY` should remain `http://localhost:8180/...` since the browser uses these URLs.
+> **Wichtig:** `OPAA_OIDC_JWK_SET_URI` muss den Docker-internen Hostnamen `keycloak` (nicht `localhost`) verwenden, weil der Backend-Container JWT-Tokens verifiziert, indem er Schlüssel von Keycloak abruft. `OPAA_OIDC_ISSUER_URI` und `OPAA_OIDC_AUTHORITY` sollten `http://localhost:8180/...` bleiben, da der Browser diese URLs verwendet.
 
-A test user is pre-configured in the Keycloak realm:
-- **Username:** `testuser`
-- **Password:** `testpass`
+Ein Testbenutzer ist im Keycloak-Realm vorkonfiguriert:
+- **Benutzername:** `testuser`
+- **Passwort:** `testpass`
 
-The Keycloak admin console is available at http://localhost:8180 (admin/admin).
+Die Keycloak-Admin-Konsole ist unter http://localhost:8180 verfügbar (admin/admin).
 
-## Documents
+## Dokumente
 
-Place documents in the `./documents` directory (or change `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker`). The directory is mounted into the backend container at `/app/documents`.
+Dokumente im `./documents`-Verzeichnis ablegen (oder `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker` ändern). Das Verzeichnis wird in den Backend-Container unter `/app/documents` gemountet.
 
-## Database
+## Datenbank
 
-PostgreSQL data is persisted in a Docker volume (`opaa-postgres-data`). Data survives `docker compose down` and `docker compose up` cycles.
+PostgreSQL-Daten werden in einem Docker-Volume (`opaa-postgres-data`) gespeichert. Daten überleben `docker compose down`- und `docker compose up`-Zyklen.
 
-To reset the database:
+Datenbank zurücksetzen:
 
 ```bash
 docker compose down -v
 ```
 
-> **Note:** You must run `docker compose down -v` when changing `OPAA_DB_USERNAME` or `OPAA_DB_PASSWORD`, because PostgreSQL only creates the initial user on first startup. Without removing the volume, credential changes are ignored.
+> **Hinweis:** `docker compose down -v` muss ausgeführt werden, wenn `OPAA_DB_USERNAME` oder `OPAA_DB_PASSWORD` geändert wird, weil PostgreSQL den initialen Benutzer nur beim ersten Start erstellt. Ohne Volume-Entfernung werden Anmeldeinformationsänderungen ignoriert.
 
-## Troubleshooting
+## Fehlerbehebung
 
-### Backend returns empty responses or connection refused
+### Backend gibt leere Antworten oder "Connection refused" zurück
 
-The backend binds to `localhost` by default, which is only reachable from inside the container. Set `OPAA_SERVER_ADDRESS=0.0.0.0` in `.env.docker`.
+Das Backend bindet standardmäßig an `localhost`, was nur von innerhalb des Containers erreichbar ist. `OPAA_SERVER_ADDRESS=0.0.0.0` in `.env.docker` setzen.
 
-### POST requests return 403 Forbidden
+### POST-Anfragen geben 403 Forbidden zurück
 
-CORS is likely misconfigured. Ensure `OPAA_CORS_ALLOWED_ORIGINS` matches the frontend URL (e.g., `http://localhost:3000`). GET requests may work because they don't trigger CORS preflight, while POST requests with `Content-Type: application/json` do.
+CORS ist wahrscheinlich falsch konfiguriert. Sicherstellen, dass `OPAA_CORS_ALLOWED_ORIGINS` mit der Frontend-URL übereinstimmt (z. B. `http://localhost:3000`). GET-Anfragen können funktionieren, weil sie keinen CORS-Preflight auslösen, während POST-Anfragen mit `Content-Type: application/json` dies tun.
 
-### Password authentication failed for user
+### Passwort-Authentifizierung für Benutzer fehlgeschlagen
 
-The PostgreSQL volume still contains data from a previous initialization with different credentials. Run `docker compose down -v` to remove the volume and restart.
+Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mit anderen Anmeldeinformationen. `docker compose down -v` ausführen, um das Volume zu entfernen und neu zu starten.
 
-### OIDC: "Completing sign in..." hangs or falls back to mock
+### OIDC: "Completing sign in..." hängt oder fällt auf Mock zurück
 
-- Ensure Keycloak is running (`docker compose --profile oidc ps`)
-- If Keycloak was restarted, the access token may have expired — reload the page and log in again
-- Check that `OPAA_OIDC_JWK_SET_URI` uses `keycloak:8180` (not `localhost:8180`)
+- Sicherstellen, dass Keycloak läuft (`docker compose --profile oidc ps`)
+- Wenn Keycloak neu gestartet wurde, ist das Access-Token möglicherweise abgelaufen — Seite neu laden und erneut anmelden
+- Prüfen, dass `OPAA_OIDC_JWK_SET_URI` `keycloak:8180` (nicht `localhost:8180`) verwendet
 
-### Environment variable changes not taking effect
+### Umgebungsvariablen-Änderungen treten nicht in Kraft
 
-After changing `.env.docker`, use `docker compose up -d <service>` (not `restart`) to recreate the container with the new environment. `restart` reuses the existing container and ignores `.env.docker` changes.
+Nach dem Ändern von `.env.docker` `docker compose up -d <service>` (nicht `restart`) verwenden, um den Container mit der neuen Umgebung neu zu erstellen. `restart` verwendet den vorhandenen Container erneut und ignoriert `.env.docker`-Änderungen.
 
-## Stopping
+## Stoppen
 
 ```bash
 docker compose down

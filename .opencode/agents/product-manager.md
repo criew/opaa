@@ -1,5 +1,5 @@
 ---
-description: Defines and refines OPAA product work through research, specifications, and GitHub issues.
+description: Definiert und verfeinert die OPAA-Produktarbeit durch Recherche, Spezifikationen und GitHub-Issues.
 mode: subagent
 permission:
   edit: allow
@@ -8,6 +8,6 @@ permission:
   webfetch: allow
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/product-manager.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/product-manager.md` vor dem Start lesen.
 
-The shared role contract is binding.
+Der gemeinsame Rollenvertrag ist bindend.

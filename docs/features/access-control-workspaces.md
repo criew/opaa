@@ -1,232 +1,232 @@
-# Access Control & Workspaces
+# Zugangskontrolle & Workspaces
 
 ## Motivation
 
-Not all organizational knowledge is meant for everyone. A company has:
-- Public policies everyone can access
-- Team-specific documentation only relevant to teams
-- Sensitive information (salary info, proprietary data) restricted to specific roles
-- Compliance documents only for auditors
+Nicht alles Organisationswissen ist für jeden bestimmt. Ein Unternehmen hat:
+- Öffentliche Richtlinien, auf die jeder zugreifen kann
+- Team-spezifische Dokumentation, die nur für Teams relevant ist
+- Sensible Informationen (Gehaltsinformationen, proprietäre Daten), die auf bestimmte Rollen beschränkt sind
+- Compliance-Dokumente nur für Prüfer
 
-This feature describes how OPAA controls who can see what, enabling multi-team, multi-role access with fine-grained permissions.
+Dieses Feature beschreibt, wie OPAA kontrolliert, wer was sehen kann, und ermöglicht Multi-Team-, Multi-Rollen-Zugang mit feinkörnigen Berechtigungen.
 
 ---
 
-## Overview
+## Überblick
 
-OPAA provides access control at multiple levels:
+OPAA bietet Zugangskontrolle auf mehreren Ebenen:
 
-1. **Workspaces** — Logical groupings of documents and users (teams, departments)
-2. **Personal Workspaces** — Auto-created private spaces for individual user documents
-3. **Roles** — Job functions with specific permissions
-4. **Document Permissions** — Fine-grained control over individual documents
-5. **Query-Time Enforcement** — Permissions checked when user searches
+1. **Workspaces** — Logische Gruppierungen von Dokumenten und Benutzern (Teams, Abteilungen)
+2. **Persönliche Workspaces** — Automatisch erstellte private Bereiche für individuelle Benutzerdokumente
+3. **Rollen** — Aufgabenfunktionen mit spezifischen Berechtigungen
+4. **Dokument-Berechtigungen** — Feinkörnige Kontrolle über einzelne Dokumente
+5. **Berechtigungsdurchsetzung zur Abfragezeit** — Berechtigungen werden beim Suchen des Benutzers geprüft
 
 ---
 
 ## Workspaces
 
-### Concept
+### Konzept
 
-A **workspace** is a self-contained area of OPAA:
-- Has its own documents, users, and roles
-- Has its own settings and configurations
-- Users in one workspace don't see documents from another
-- Each workspace can have its own indexing schedule
+Ein **Workspace** ist ein eigenständiger Bereich von OPAA:
+- Hat eigene Dokumente, Benutzer und Rollen
+- Hat eigene Einstellungen und Konfigurationen
+- Benutzer in einem Workspace sehen keine Dokumente aus einem anderen
+- Jeder Workspace kann seinen eigenen Indizierungszeitplan haben
 
-A special type of workspace, the **Personal Workspace** ("My Documents"), is automatically created for each user. It functions identically to a regular workspace but is owned and visible exclusively to a single user. Users cannot be added as members of another user's personal workspace. See [Personal Workspaces](#personal-workspaces) below.
+Ein spezieller Workspace-Typ, der **Persönliche Workspace** ("Meine Dokumente"), wird automatisch für jeden Benutzer erstellt. Er funktioniert identisch zu einem regulären Workspace, gehört aber ausschließlich einem einzelnen Benutzer und ist nur für diesen sichtbar. Benutzer können nicht als Mitglieder des persönlichen Workspaces eines anderen Benutzers hinzugefügt werden. Siehe [Persönliche Workspaces](#persönliche-workspaces) unten.
 
-### Workspace Examples
+### Workspace-Beispiele
 
-| Workspace | Members | Documents | Visibility |
-|-----------|---------|-----------|------------|
-| Engineering | Developers, Architects | Code docs, ADRs, Design docs | Only engineers |
-| Marketing | Marketing team | Brand guidelines, Campaign plans | Only marketing |
-| HR | HR staff | Policies, Handbooks | Only HR (sensitive) |
-| Company | All employees | Public policies, All-hands notes | Everyone |
-| My Documents (Sarah) | Sarah only | Uploaded research, notes, drafts | Only Sarah |
+| Workspace | Mitglieder | Dokumente | Sichtbarkeit |
+|-----------|------------|-----------|--------------|
+| Engineering | Entwickler, Architekten | Code-Docs, ADRs, Design-Docs | Nur Engineers |
+| Marketing | Marketing-Team | Markenrichtlinien, Kampagnenpläne | Nur Marketing |
+| HR | HR-Personal | Richtlinien, Handbücher | Nur HR (sensibel) |
+| Unternehmen | Alle Mitarbeiter | Öffentliche Richtlinien, All-Hands-Notizen | Alle |
+| Meine Dokumente (Sarah) | Nur Sarah | Hochgeladene Recherche, Notizen, Entwürfe | Nur Sarah |
 
-### Workspace Management
+### Workspace-Verwaltung
 
-#### Creating Workspaces
+#### Workspaces erstellen
 
-**Only System-Admins can create workspaces.** (See [System Administration](#system-administration) below.)
+**Nur System-Admins können Workspaces erstellen.** (Siehe [Systemverwaltung](#systemverwaltung) unten.)
 
-System-Admin workflow:
+System-Admin-Workflow:
 
 ```
-1. Choose workspace name: "Engineering"
-2. Set workspace owner: Sarah Chen
-3. Add initial members: Select from user directory
-4. Set description: "For engineering team documentation"
-5. Configure defaults:
-   - Default role for new members: "viewer"
-   - Retention policy: Keep 2 years
-6. Save
+1. Workspace-Namen wählen: "Engineering"
+2. Workspace-Owner setzen: Sarah Chen
+3. Anfangsmitglieder hinzufügen: Aus Benutzerverzeichnis auswählen
+4. Beschreibung setzen: "Für Engineering-Team-Dokumentation"
+5. Standards konfigurieren:
+   - Standardrolle für neue Mitglieder: "viewer"
+   - Aufbewahrungsrichtlinie: 2 Jahre aufbewahren
+6. Speichern
 ```
 
-Note: Indexing schedules are configured at the connector level, not the workspace level. See [Data Indexing & RAG — Connector Model](./data-indexing-rag.md#connector-model-and-workspace-mapping).
+Hinweis: Indizierungszeitpläne werden auf Konnektor-Ebene konfiguriert, nicht auf Workspace-Ebene. Siehe [Daten-Indizierung & RAG — Konnektor-Modell](./data-indexing-rag.md#connector-model-and-workspace-mapping).
 
-#### Managing Workspace Members
+#### Workspace-Mitglieder verwalten
 
-Add/remove users:
+Benutzer hinzufügen/entfernen:
 ```
 Workspace: Engineering
 
-Members:
-  Sarah Chen (owner)      → Can manage members, change settings
-  Alex Johnson (editor)   → Can add documents, change permissions
-  Jamie Lee (viewer)      → Can read, search, download
-  Pat Miller (denied)     → Cannot access
+Mitglieder:
+  Sarah Chen (owner)      → Kann Mitglieder verwalten, Einstellungen ändern
+  Alex Johnson (editor)   → Kann Dokumente hinzufügen, Berechtigungen ändern
+  Jamie Lee (viewer)      → Kann lesen, suchen, herunterladen
+  Pat Miller (denied)     → Kein Zugang
 ```
 
-#### Workspace Isolation
+#### Workspace-Isolierung
 
-Default behavior: **Complete isolation**
-- Users can only query documents in their workspaces
-- Cannot see other workspaces in UI
-- Search results only include their workspace's docs
-- API tokens inherit workspace access
+Standardverhalten: **Vollständige Isolierung**
+- Benutzer können nur Dokumente in ihren Workspaces abfragen
+- Können andere Workspaces in der UI nicht sehen
+- Suchergebnisse enthalten nur Dokumente ihres Workspaces
+- API-Tokens erben Workspace-Zugang
 
-Optional: **Shared workspaces** (for cross-team needs)
-- Multiple teams added to single workspace
-- Role-based permissions within shared workspace
-- Audit logging tracks who searched what
+Optional: **Gemeinsame Workspaces** (für teamübergreifende Bedürfnisse)
+- Mehrere Teams einem einzelnen Workspace hinzugefügt
+- Rollenbasierte Berechtigungen innerhalb des gemeinsamen Workspaces
+- Audit-Logging verfolgt, wer was gesucht hat
 
-### Personal Workspaces
+### Persönliche Workspaces
 
-#### Auto-Creation
+#### Automatische Erstellung
 
-When a user first logs in or uploads their first document, OPAA automatically creates a personal workspace:
+Wenn ein Benutzer sich zum ersten Mal anmeldet oder sein erstes Dokument hochlädt, erstellt OPAA automatisch einen persönlichen Workspace:
 
 ```
-Workspace: "My Documents"
-  Type: personal
-  Owner: [user]
-  Members: [user] (cannot be changed)
-  Visibility: private (only the owner)
-  Auto-created: true
-  Deletable: no (exists as long as user account exists)
+Workspace: "Meine Dokumente"
+  Typ: personal
+  Owner: [Benutzer]
+  Mitglieder: [Benutzer] (kann nicht geändert werden)
+  Sichtbarkeit: privat (nur der Owner)
+  Automatisch erstellt: true
+  Löschbar: nein (existiert, solange Benutzerkonto existiert)
 ```
 
-#### Characteristics
+#### Eigenschaften
 
-- One per user, cannot be duplicated
-- User is always Owner with full control
-- Cannot invite other members directly
-- Cross-workspace document sharing is a planned future feature — see [Document Sharing](./document-sharing.md)
-- Has its own indexing scope for RAG queries
-- Included in cross-workspace search results (for the owning user only)
+- Einer pro Benutzer, kann nicht dupliziert werden
+- Benutzer ist immer Owner mit voller Kontrolle
+- Kann andere Mitglieder nicht direkt einladen
+- Workspace-übergreifendes Dokument-Teilen ist ein geplantes zukünftiges Feature — siehe [Dokument-Teilen](./document-sharing.md)
+- Hat seinen eigenen Indizierungsumfang für RAG-Abfragen
+- In workspace-übergreifenden Suchergebnissen enthalten (nur für den besitzenden Benutzer)
 
-#### Storage
+#### Speicherung
 
-Personal workspace documents are stored on the deployment's configured storage backend (S3, network drive, or local filesystem). The storage location is transparent to the user. See [Data Indexing & RAG — User Document Upload](./data-indexing-rag.md#user-document-upload) for details.
+Persönliche Workspace-Dokumente werden auf dem konfigurierten Speicher-Backend des Deployments gespeichert (S3, Netzlaufwerk oder lokales Dateisystem). Der Speicherort ist für den Benutzer transparent. Siehe [Daten-Indizierung & RAG — Benutzer-Dokument-Upload](./data-indexing-rag.md#user-document-upload) für Details.
 
 ---
 
-## Cross-Workspace Document Sharing
+## Workspace-übergreifendes Dokument-Teilen
 
-Cross-workspace document sharing is planned as a future feature. The concept and its open security concerns are documented separately in [Document Sharing](./document-sharing.md).
-
----
-
-## Upload Directly to Team Workspace
-
-Users with Editor role in a team workspace can also upload documents directly to that workspace (bypassing the personal workspace). In this case:
-- The document's home workspace is the team workspace
-- The uploading user is the document owner
-- Standard workspace permissions apply
+Workspace-übergreifendes Dokument-Teilen ist als zukünftiges Feature geplant. Das Konzept und seine offenen Sicherheitsbedenken sind separat in [Dokument-Teilen](./document-sharing.md) dokumentiert.
 
 ---
 
-## Document Deletion and Removal
+## Direkt in Team-Workspace hochladen
 
-The ability to delete or remove documents depends on their **origin**:
+Benutzer mit Editor-Rolle in einem Team-Workspace können Dokumente auch direkt in diesen Workspace hochladen (unter Umgehung des persönlichen Workspaces). In diesem Fall:
+- Der Heimat-Workspace des Dokuments ist der Team-Workspace
+- Der hochladende Benutzer ist der Dokument-Owner
+- Standard-Workspace-Berechtigungen gelten
 
-| Document Origin | Editor | Admin | Effect |
+---
+
+## Dokumenten-Löschung und -Entfernung
+
+Die Möglichkeit, Dokumente zu löschen oder zu entfernen, hängt von ihrer **Herkunft** ab:
+
+| Dokument-Herkunft | Editor | Admin | Auswirkung |
 |---|---|---|---|
-| **Manual upload** | Can delete own uploads | Can delete any upload in workspace | Document + chunks permanently removed |
-| **Connector-indexed** | — | Can exclude document | Document removed from index and skipped on future syncs (see below) |
+| **Manueller Upload** | Kann eigene Uploads löschen | Kann jeden Upload im Workspace löschen | Dokument + Chunks dauerhaft entfernt |
+| **Konnektor-indiziert** | — | Kann Dokument ausschließen | Dokument aus Index entfernt und bei zukünftigen Syncs übersprungen (siehe unten) |
 
-#### Exclude Mechanism for Connector Documents
+#### Ausschluss-Mechanismus für Konnektor-Dokumente
 
-Connector-indexed documents cannot simply be deleted because they would reappear on the next indexing run. Instead, Workspace Admins can **exclude** individual documents:
+Konnektor-indizierte Dokumente können nicht einfach gelöscht werden, da sie beim nächsten Indizierungslauf wieder auftauchen würden. Stattdessen können Workspace-Admins einzelne Dokumente **ausschließen**:
 
-1. Admin marks a document as "excluded" in the workspace
-2. The document is removed from the index (chunks deleted)
-3. Future indexing runs skip the excluded document
-4. The exclude list is stored per source mapping
-5. System-Admins can view and lift excludes
+1. Admin markiert ein Dokument als "ausgeschlossen" im Workspace
+2. Das Dokument wird aus dem Index entfernt (Chunks gelöscht)
+3. Zukünftige Indizierungsläufe überspringen das ausgeschlossene Dokument
+4. Die Ausschlussliste wird pro Quell-Mapping gespeichert
+5. System-Admins können Ausschlüsse anzeigen und aufheben
 
-**Use cases:**
-- Irrelevant documents that add noise to search results
-- Outdated documents still present in the source system
-- Documents that were indexed into the wrong workspace via source mapping
+**Anwendungsfälle:**
+- Irrelevante Dokumente, die zu Lärm in Suchergebnissen führen
+- Veraltete Dokumente, die noch im Quellsystem vorhanden sind
+- Dokumente, die über Quell-Mapping in den falschen Workspace indiziert wurden
 
 ---
 
-## Roles & Permissions
+## Rollen & Berechtigungen
 
-### Built-in Roles
+### Eingebaute Rollen
 
 #### Viewer
-Read-only access.
+Nur-Lesen-Zugang.
 
-Can:
-- Ask questions (OPAA searches documents)
-- Download documents
-- View conversation history
-- Rate answers
+Kann:
+- Fragen stellen (OPAA durchsucht Dokumente)
+- Dokumente herunterladen
+- Gesprächshistorie anzeigen
+- Antworten bewerten
 
-Cannot:
-- Add/modify documents
-- Change permissions
-- Manage users
-- View other workspaces
+Kann nicht:
+- Dokumente hinzufügen/ändern
+- Berechtigungen ändern
+- Benutzer verwalten
+- Andere Workspaces anzeigen
 
 #### Editor
-Can modify documents.
+Kann Dokumente ändern.
 
-Can:
-- Everything viewers can do
-- Upload new documents
-- Edit document metadata
-- Add/remove documents
-- Delete own uploaded documents
-- Change document permissions
+Kann:
+- Alles, was Viewer können
+- Neue Dokumente hochladen
+- Dokument-Metadaten bearbeiten
+- Dokumente hinzufügen/entfernen
+- Eigene hochgeladene Dokumente löschen
+- Dokument-Berechtigungen ändern
 
-Cannot:
-- Delete other users' documents
-- Exclude connector-indexed documents
-- Manage users
-- Change workspace settings
-- Delete workspace
+Kann nicht:
+- Dokumente anderer Benutzer löschen
+- Konnektor-indizierte Dokumente ausschließen
+- Benutzer verwalten
+- Workspace-Einstellungen ändern
+- Workspace löschen
 
 #### Admin
-Full workspace control.
+Volle Workspace-Kontrolle.
 
-Can:
-- Everything editors can do
-- Delete any document in the workspace
-- Exclude connector-indexed documents
-- Manage users and roles
-- Change workspace settings
-- Manage integrations
-- View audit logs
+Kann:
+- Alles, was Editoren können
+- Jedes Dokument im Workspace löschen
+- Konnektor-indizierte Dokumente ausschließen
+- Benutzer und Rollen verwalten
+- Workspace-Einstellungen ändern
+- Integrationen verwalten
+- Audit-Logs anzeigen
 
-Note: Connector and indexing configuration is reserved for System-Admins. Workspace Admins can view which sources index into their workspace (read-only).
+Hinweis: Konnektor- und Indizierungskonfiguration ist System-Admins vorbehalten. Workspace-Admins können sehen, welche Quellen in ihren Workspace indizieren (nur lesend).
 
 #### Owner
-Only one per workspace.
+Nur einer pro Workspace.
 
-Can:
-- Transfer workspace ownership
-- Delete workspace
-- All admin permissions
+Kann:
+- Workspace-Ownership übertragen
+- Workspace löschen
+- Alle Admin-Berechtigungen
 
-### Custom Roles
+### Benutzerdefinierte Rollen
 
-Organizations can create custom roles:
+Organisationen können benutzerdefinierte Rollen erstellen:
 
 ```yaml
 CustomRole:
@@ -235,7 +235,7 @@ CustomRole:
   permissions:
     - read_documents
     - create_documents
-    - edit_documents_own  # Only their own
+    - edit_documents_own  # Nur eigene
     - manage_indexing
     - view_analytics
   restrictions:
@@ -243,195 +243,195 @@ CustomRole:
     - cannot_access_sensitive_tag
 ```
 
-### Permission Matrix
+### Berechtigungsmatrix
 
-| Action | Viewer | Editor | Admin | Owner | System-Admin |
+| Aktion | Viewer | Editor | Admin | Owner | System-Admin |
 |--------|--------|--------|-------|-------|-------------|
-| Search documents | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
-| Download documents | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
-| View sources | ✅ | ✅ | ✅ | ✅ | ✅ (all) |
-| Upload documents (manual) | ❌ | ✅ | ✅ | ✅ | ✅ (all) |
-| Edit documents | ❌ | ✅* | ✅ | ✅ | ✅ (all) |
-| Delete own uploads | ❌ | ✅ | ✅ | ✅ | ✅ (all) |
-| Delete any upload | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
-| Exclude connector documents | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
-| Change permissions | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
-| Manage users | ❌ | ❌ | ✅ | ✅ | ✅ (all) |
-| Transfer ownership | ❌ | ❌ | ❌ | ✅ | ✅ (all) |
-| Delete workspace | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Create workspaces | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Configure connectors | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Define source mappings | ❌ | ❌ | ❌ | ❌ | ✅ |
-| User directory sync | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Dokumente suchen | ✅ | ✅ | ✅ | ✅ | ✅ (alle) |
+| Dokumente herunterladen | ✅ | ✅ | ✅ | ✅ | ✅ (alle) |
+| Quellen anzeigen | ✅ | ✅ | ✅ | ✅ | ✅ (alle) |
+| Dokumente hochladen (manuell) | ❌ | ✅ | ✅ | ✅ | ✅ (alle) |
+| Dokumente bearbeiten | ❌ | ✅* | ✅ | ✅ | ✅ (alle) |
+| Eigene Uploads löschen | ❌ | ✅ | ✅ | ✅ | ✅ (alle) |
+| Jeden Upload löschen | ❌ | ❌ | ✅ | ✅ | ✅ (alle) |
+| Konnektor-Dokumente ausschließen | ❌ | ❌ | ✅ | ✅ | ✅ (alle) |
+| Berechtigungen ändern | ❌ | ❌ | ✅ | ✅ | ✅ (alle) |
+| Benutzer verwalten | ❌ | ❌ | ✅ | ✅ | ✅ (alle) |
+| Ownership übertragen | ❌ | ❌ | ❌ | ✅ | ✅ (alle) |
+| Workspace löschen | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Workspaces erstellen | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Konnektoren konfigurieren | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Quell-Mappings definieren | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Benutzerverzeichnis-Synchronisation | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-*Editor can edit their own documents if permission set
-
----
-
-## Document-Level Permissions
-
-### Permission Granularity
-
-Beyond roles, individual documents can have:
-- **Owner** — User who added/owns the document
-- **Readers** — Users/roles who can view
-- **Editors** — Users/roles who can modify
-- **Tags** — Metadata for grouping permissions
-
-### Permission Models
-
-#### Model 1: Inherit from Source
-Confluence documents inherit Confluence space permissions:
-- Only users with wiki access see wiki documents
-- Automatically updated as wiki permissions change
-- Transparent to OPAA users
-
-#### Model 2: Explicit OPAA Permissions
-Fine-grained control within OPAA:
-
-```
-Document: "Salary Review Process"
-  Owner: HR Manager
-  Readers: [role:hr_team, role:managers]
-  Editors: [HR Manager]
-  Tags: [sensitive, restricted]
-```
-
-#### Model 3: Tag-Based
-Bulk permissions via tags:
-
-```
-Tag: "public"         → Readers: all_authenticated_users
-Tag: "team_only"      → Readers: [current_workspace_members]
-Tag: "managers"       → Readers: [role:manager, role:director]
-Tag: "sensitive"      → Readers: [role:hr, role:compliance]
-Tag: "public_website" → Readers: [anonymous, authenticated]
-```
+*Editor kann eigene Dokumente bearbeiten, wenn Berechtigung gesetzt
 
 ---
 
-## Query-Time Permission Enforcement
+## Berechtigungen auf Dokumentenebene
 
-### How It Works
+### Berechtigungs-Granularität
 
-Permissions are enforced **as part of the vector search itself**, not as a post-filter. When a user searches:
+Über Rollen hinaus können einzelne Dokumente haben:
+- **Owner** — Benutzer, der das Dokument hinzugefügt/besitzt
+- **Reader** — Benutzer/Rollen, die anzeigen können
+- **Editor** — Benutzer/Rollen, die ändern können
+- **Tags** — Metadaten für die Gruppierung von Berechtigungen
 
-1. **Workspace-IDs:** System loads all workspace IDs the user is a member of
-2. **Query:** "What's our HR policy?"
-3. **Vector search with workspace filter:** The user's workspace IDs are passed as a metadata filter directly into the vector search — only chunks whose `workspace_ids` include at least one of the user's workspaces are searched
-4. **Re-ranking and deduplication**
-5. **Response:** "Based on HR policies you have access to..."
+### Berechtigungsmodelle
 
-Because the filter is integrated into the vector search, unauthorized chunks are never loaded or ranked. The Top-K result contains only authorized chunks, with no information leakage.
+#### Modell 1: Von Quelle erben
+Confluence-Dokumente erben Confluence-Space-Berechtigungen:
+- Nur Benutzer mit Wiki-Zugang sehen Wiki-Dokumente
+- Automatisch aktualisiert, wenn sich Wiki-Berechtigungen ändern
+- Für OPAA-Benutzer transparent
 
-**Key principle:** User never knows documents exist that they can't access. Results look complete but are filtered.
+#### Modell 2: Explizite OPAA-Berechtigungen
+Feinkörnige Kontrolle innerhalb von OPAA:
 
-### Permission Caching
+```
+Dokument: "Gehaltsüberprüfungsprozess"
+  Owner: HR-Manager
+  Reader: [role:hr_team, role:managers]
+  Editor: [HR-Manager]
+  Tags: [sensibel, eingeschränkt]
+```
 
-For performance:
-- User workspace memberships cached (10 minute TTL)
-- Permissions revocation flushes cache immediately
-- Admin actions clear cache
+#### Modell 3: Tag-basiert
+Massenberechtigungen über Tags:
+
+```
+Tag: "public"         → Reader: all_authenticated_users
+Tag: "team_only"      → Reader: [current_workspace_members]
+Tag: "managers"       → Reader: [role:manager, role:director]
+Tag: "sensitive"      → Reader: [role:hr, role:compliance]
+Tag: "public_website" → Reader: [anonymous, authenticated]
+```
 
 ---
 
-## System Administration
+## Berechtigungsdurchsetzung zur Abfragezeit
 
-### System-Admin Role
+### Wie es funktioniert
 
-Above workspace-level roles, OPAA has a **System-Admin** role for organization-wide administration. This is a system-level role (not a workspace role) and is stored on the user entity.
+Berechtigungen werden **als Teil der Vektorsuche selbst** durchgesetzt, nicht als Nachfilter. Wenn ein Benutzer sucht:
 
-System-Admins can:
-- Create and delete workspaces
-- Configure connectors (data source connections)
-- Define source mappings (which source sub-unit indexes into which workspace)
-- Configure user directory sync
-- Manage global settings
-- Access all workspaces
+1. **Workspace-IDs:** System lädt alle Workspace-IDs, in denen der Benutzer Mitglied ist
+2. **Abfrage:** "Was ist unsere HR-Richtlinie?"
+3. **Vektorsuche mit Workspace-Filter:** Die Workspace-IDs des Benutzers werden als Metadaten-Filter direkt in die Vektorsuche übergeben — nur Chunks, deren `workspace_ids` mindestens eine der Workspaces des Benutzers enthalten, werden durchsucht
+4. **Re-Ranking und Deduplizierung**
+5. **Antwort:** "Basierend auf HR-Richtlinien, auf die Sie Zugang haben..."
 
-### Document Flow: Connectors vs. User Uploads
+Da der Filter in die Vektorsuche integriert ist, werden nicht autorisierte Chunks niemals geladen oder gerankt. Das Top-K-Ergebnis enthält nur autorisierte Chunks ohne Informationsleck.
 
-The two paths for documents to enter OPAA have different authorization requirements:
+**Schlüsselprinzip:** Benutzer weiß nie, dass Dokumente existieren, auf die er nicht zugreifen kann. Ergebnisse wirken vollständig, sind aber gefiltert.
 
-- **Connectors (System-Admin):** System-Admins configure connectors and define which source sub-units (e.g., Confluence spaces, file paths) map to which workspaces. This is the primary path for bulk, automated document ingestion.
-- **Manual uploads (Editor):** Users with Editor role can upload individual documents — either to their personal workspace or to team workspaces where they have Editor access. This is intended for personal documents, notes, and ad-hoc content.
+### Berechtigungs-Caching
 
-### Workspace Deletion
-
-When a System-Admin or Owner deletes a shared workspace:
-
-1. All documents and chunks belonging to the workspace are permanently removed
-2. Connectors that map sources to the deleted workspace log a warning on the next indexing run and skip those sources until the mapping is corrected
-3. An audit log entry records the deletion
+Für Leistung:
+- Benutzer-Workspace-Mitgliedschaften gecacht (10 Minuten TTL)
+- Berechtigungs-Widerruf löscht Cache sofort
+- Admin-Aktionen löschen Cache
 
 ---
 
-## User Management
+## Systemverwaltung
 
-### User Identity
+### System-Admin-Rolle
 
-Users can authenticate via:
-- **Single Sign-On (SSO)** — OIDC, SAML (recommended)
-- **Local Accounts** — Username/password (fallback only)
-- **API Tokens** — For programmatic access
+Über workspace-ebenen Rollen hinaus hat OPAA eine **System-Admin**-Rolle für organisationsweite Administration. Dies ist eine systemweite Rolle (keine Workspace-Rolle) und wird auf der Benutzer-Entität gespeichert.
 
-**Recommended:** SSO integration with Active Directory/Okta
+System-Admins können:
+- Workspaces erstellen und löschen
+- Konnektoren konfigurieren (Datenquellen-Verbindungen)
+- Quell-Mappings definieren (welche Quell-Untereinheit in welchen Workspace indiziert)
+- Benutzerverzeichnis-Synchronisation konfigurieren
+- Globale Einstellungen verwalten
+- Auf alle Workspaces zugreifen
 
-### User Directory Sync
+### Dokumentenfluss: Konnektoren vs. Benutzer-Uploads
 
-OPAA can sync with directory:
+Die zwei Pfade, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Autorisierungsanforderungen:
+
+- **Konnektoren (System-Admin):** System-Admins konfigurieren Konnektoren und definieren, welche Quell-Untereinheiten (z. B. Confluence-Spaces, Dateipfade) in welche Workspaces gemappt werden. Dies ist der primäre Pfad für Massen-, automatisierte Dokumentenaufnahme.
+- **Manuelle Uploads (Editor):** Benutzer mit Editor-Rolle können einzelne Dokumente hochladen — entweder in ihren persönlichen Workspace oder in Team-Workspaces, in denen sie Editor-Zugang haben. Dies ist für persönliche Dokumente, Notizen und Ad-hoc-Inhalte gedacht.
+
+### Workspace-Löschung
+
+Wenn ein System-Admin oder Owner einen gemeinsamen Workspace löscht:
+
+1. Alle Dokumente und Chunks, die zum Workspace gehören, werden dauerhaft entfernt
+2. Konnektoren, die Quellen auf den gelöschten Workspace mappen, protokollieren beim nächsten Indizierungslauf eine Warnung und überspringen diese Quellen, bis das Mapping korrigiert ist
+3. Ein Audit-Log-Eintrag zeichnet die Löschung auf
+
+---
+
+## Benutzerverwaltung
+
+### Benutzeridentität
+
+Benutzer können sich authentifizieren über:
+- **Single Sign-On (SSO)** — OIDC, SAML (empfohlen)
+- **Lokale Konten** — Benutzername/Passwort (nur Fallback)
+- **API-Tokens** — Für programmatischen Zugang
+
+**Empfohlen:** SSO-Integration mit Active Directory/Okta
+
+### Benutzerverzeichnis-Synchronisation
+
+OPAA kann mit Verzeichnis synchronisieren:
 
 ```
-Sync Frequency: Every 6 hours
+Sync-Häufigkeit: Alle 6 Stunden
 
-From Active Directory:
-  - User names and emails
-  - Group memberships
-  - Department
-  - Job title
-  - Manager
+Von Active Directory:
+  - Benutzernamen und E-Mails
+  - Gruppenmitgliedschaften
+  - Abteilung
+  - Berufsbezeichnung
+  - Vorgesetzter
 
-Auto-mapping:
-  - AD Group "engineering" → opaa-workspace: Engineering
-  - AD Group "hr" → opaa-workspace: HR
-  - AD attribute "department" → workspace assignment
+Auto-Mapping:
+  - AD-Gruppe "engineering" → opaa-workspace: Engineering
+  - AD-Gruppe "hr" → opaa-workspace: HR
+  - AD-Attribut "department" → Workspace-Zuweisung
 ```
 
-When user leaves organization:
-- Directory sync removes them
-- Their documents remain (owned by them)
-- No longer can log in
-- Option to transfer document ownership
+Wenn Benutzer die Organisation verlässt:
+- Verzeichnis-Sync entfernt ihn
+- Seine Dokumente bleiben (ihm gehörend)
+- Kann sich nicht mehr anmelden
+- Option zur Übertragung der Dokument-Ownership
 
-### API Tokens & Service Accounts
+### API-Tokens & Service-Accounts
 
-For integrations:
+Für Integrationen:
 
 ```
-Create API Token:
+API-Token erstellen:
   Name: "Slack Bot"
   Workspace: Engineering
-  Scope: [read_documents, ask_questions]
-  Rotation: 90 days
-  IP whitelist: 10.0.1.0/24 (optional)
-  Rate limit: 1000 requests/day
+  Umfang: [read_documents, ask_questions]
+  Rotation: 90 Tage
+  IP-Whitelist: 10.0.1.0/24 (optional)
+  Rate-Limit: 1.000 Anfragen/Tag
 
 Token: opaa_token_abc123xyz_def456uvw
 ```
 
-Service accounts:
-- No interactive login
-- Pure API access
-- No user interface
-- Used for bots, integrations, scripts
+Service-Accounts:
+- Kein interaktiver Login
+- Reiner API-Zugang
+- Keine Benutzeroberfläche
+- Verwendet für Bots, Integrationen, Skripte
 
 ---
 
 ## Audit & Compliance
 
-### Audit Logging
+### Audit-Logging
 
-Every action logged:
+Jede Aktion geloggt:
 
 ```json
 {
@@ -439,7 +439,7 @@ Every action logged:
   "user_id": "user-123",
   "action": "search",
   "workspace": "engineering",
-  "query": "system architecture",  // Not logged by default
+  "query": "system architecture",  // Standardmäßig nicht geloggt
   "results_count": 5,
   "documents_accessed": ["doc-1", "doc-2", "doc-3"],
   "result": "success",
@@ -448,169 +448,169 @@ Every action logged:
 }
 ```
 
-Logs retained:
-- Minimum: 1 year (configurable)
-- Can be exported to SIEM (Splunk, ELK, etc.)
-- Cannot be deleted (immutable append-only)
+Logs aufbewahrt:
+- Minimum: 1 Jahr (konfigurierbar)
+- Kann an SIEM exportiert werden (Splunk, ELK, usw.)
+- Kann nicht gelöscht werden (unveränderliches Append-only)
 
-### Compliance Reports
+### Compliance-Berichte
 
-Generate reports:
-- **User Access Report:** Who accessed what and when
-- **Permission Changes:** Who changed permissions
-- **Sensitive Document Access:** Who viewed restricted docs
-- **Failed Access Attempts:** Permission denials
+Berichte erstellen:
+- **Benutzer-Zugangs-Bericht:** Wer hat was wann abgerufen
+- **Berechtigungsänderungen:** Wer hat Berechtigungen geändert
+- **Sensible Dokument-Zugang:** Wer hat eingeschränkte Dokumente angesehen
+- **Fehlgeschlagene Zugriffsversuche:** Berechtigungsverweigerungen
 
-Used for:
-- SOC 2 audit trail
-- HIPAA compliance
-- GDPR data access requests
-- Internal investigations
+Verwendet für:
+- SOC-2-Audit-Trail
+- HIPAA-Compliance
+- DSGVO-Datenzugriffsanfragen
+- Interne Untersuchungen
 
-### Data Deletion (GDPR Right to be Forgotten)
+### Datenlöschung (DSGVO-Recht auf Vergessenwerden)
 
-When user account deleted:
+Wenn Benutzerkonto gelöscht:
 
 ```
-1. Remove user from all workspaces
-2. Transfer ownership of their documents (optional)
-3. Delete user account and auth tokens
-4. Keep audit logs (for compliance) but redact user info
-5. Anonymize personal data
+1. Benutzer aus allen Workspaces entfernen
+2. Ownership seiner Dokumente übertragen (optional)
+3. Benutzerkonto und Auth-Tokens löschen
+4. Audit-Logs behalten (aus Compliance-Gründen), aber Benutzerinfo schwärzen
+5. Personenbezogene Daten anonymisieren
 ```
 
-Document deletion:
-- Can only be done by workspace admin
-- Creates audit entry (when, who, why)
-- Option for permanent deletion (after retention period)
+Dokumenten-Löschung:
+- Kann nur von Workspace-Admin durchgeführt werden
+- Erstellt Audit-Eintrag (wann, wer, warum)
+- Option für dauerhafte Löschung (nach Aufbewahrungsfrist)
 
 ---
 
-## Workspace Strategies
+## Workspace-Strategien
 
-### Strategy 1: One Workspace Per Team
-Each team has isolated workspace:
-- **Pros:** Simple, clear isolation, team ownership
-- **Cons:** No cross-team search, data duplication
-- **Best for:** Organizations with siloed teams
+### Strategie 1: Ein Workspace pro Team
+Jedes Team hat isolierten Workspace:
+- **Vorteile:** Einfach, klare Isolierung, Team-Ownership
+- **Nachteile:** Keine teamübergreifende Suche, Datenduplizierung
+- **Geeignet für:** Organisationen mit silomäßig organisierten Teams
 
-### Strategy 2: Single Company Workspace
-All documents in one workspace, role-based permissions:
-- **Pros:** Cross-team search, unified knowledge
-- **Cons:** Complex permission management, one admin for all
-- **Best for:** Smaller companies with good cross-team collaboration
+### Strategie 2: Einzelner Unternehmens-Workspace
+Alle Dokumente in einem Workspace, rollenbasierte Berechtigungen:
+- **Vorteile:** Teamübergreifende Suche, einheitliches Wissen
+- **Nachteile:** Komplexe Berechtigungsverwaltung, ein Admin für alle
+- **Geeignet für:** Kleinere Unternehmen mit guter teamübergreifender Zusammenarbeit
 
-### Strategy 3: Hybrid (Recommended)
-Multiple workspaces + cross-team searches:
-- **Personal Workspaces:** Every user has "My Documents" (private, auto-created)
-- **Public Workspace:** Everyone included (policies, all-hands notes)
-- **Team Workspaces:** Isolated by team (engineering, marketing, hr)
-- **Project Workspaces:** Shared workspaces that multiple teams join (e.g., "Phoenix" project with frontend, backend, and QA teams)
-- **Special Workspaces:** Cross-functional (executive, board)
+### Strategie 3: Hybrid (Empfohlen)
+Mehrere Workspaces + teamübergreifende Suchen:
+- **Persönliche Workspaces:** Jeder Benutzer hat "Meine Dokumente" (privat, automatisch erstellt)
+- **Öffentlicher Workspace:** Alle eingeschlossen (Richtlinien, All-Hands-Notizen)
+- **Team-Workspaces:** Isoliert nach Team (Engineering, Marketing, HR)
+- **Projekt-Workspaces:** Gemeinsame Workspaces, denen mehrere Teams beitreten (z. B. "Phoenix"-Projekt mit Frontend-, Backend- und QA-Teams)
+- **Spezielle Workspaces:** Funktionsübergreifend (Vorstand, Geschäftsführung)
 
-**Note:** The workspace model is **flat** — there is no hierarchy or nesting between workspaces. Projects spanning multiple teams are represented as shared workspaces that all relevant team members join. Project-wide knowledge lives in the project workspace, while team-specific knowledge stays in the team workspaces.
+**Hinweis:** Das Workspace-Modell ist **flach** — es gibt keine Hierarchie oder Verschachtelung zwischen Workspaces. Projekte, die mehrere Teams umspannen, werden als gemeinsame Workspaces dargestellt, denen alle relevanten Teammitglieder beitreten. Projektweites Wissen lebt im Projekt-Workspace, während teamspezifisches Wissen in den Team-Workspaces verbleibt.
 
-User access example:
+Benutzer-Zugangsbeispiel:
 ```
-Employee: Sarah Chen
-  Workspaces: [My Documents, Company, Engineering, Executive]
-  Roles: [owner in My Documents, viewer in Company, editor in Engineering, viewer in Executive]
+Mitarbeiter: Sarah Chen
+  Workspaces: [Meine Dokumente, Unternehmen, Engineering, Vorstand]
+  Rollen: [owner in Meine Dokumente, viewer in Unternehmen, editor in Engineering, viewer in Vorstand]
 ```
 
-Cross-team search:
-- Sarah can search all four workspaces simultaneously
-- Results filtered by her role in each workspace
-- Documents she uploaded privately appear alongside team and company documents
-- Workspace name shown in results
+Teamübergreifende Suche:
+- Sarah kann alle vier Workspaces gleichzeitig durchsuchen
+- Ergebnisse gefiltert nach ihrer Rolle in jedem Workspace
+- Privat hochgeladene Dokumente erscheinen neben Team- und Unternehmensdokumenten
+- Workspace-Name in Ergebnissen angezeigt
 
 ---
 
-## Special Cases
+## Sonderfälle
 
-### Executive Access
+### Führungskräfte-Zugang
 
-Executives need broad access:
-
-```
-Role: Executive
-Inherits: Admin
-Workspaces: [Company, All]
-Permissions:
-  - Search all workspaces simultaneously
-  - Generate cross-team reports
-  - View usage analytics for entire company
-```
-
-### Audit & Compliance Teams
-
-Compliance staff need access for audits:
+Führungskräfte benötigen breiten Zugang:
 
 ```
-Role: Auditor
-Workspaces: [All] (read-only)
-Permissions:
-  - Search all workspaces
-  - View audit logs
-  - Generate compliance reports
-  - Cannot modify anything
+Rolle: Führungskraft
+Erbt: Admin
+Workspaces: [Unternehmen, Alle]
+Berechtigungen:
+  - Alle Workspaces gleichzeitig durchsuchen
+  - Teamübergreifende Berichte erstellen
+  - Nutzungsanalysen für gesamtes Unternehmen anzeigen
 ```
 
-### External Consultants
+### Audit- & Compliance-Teams
 
-Limited time, limited access:
-
-```
-User: External Consultant
-Workspaces: [Project-X]
-Role: viewer (temporary)
-Expiry: 2024-03-31
-Restrictions:
-  - Can only view documents tagged "consultant-access"
-  - No API token access
-  - Downloads logged
-```
-
-### User Offboarding with Personal Workspace
-
-When a user leaves the organization, their personal workspace requires special handling:
+Compliance-Personal benötigt Zugang für Audits:
 
 ```
-1. Personal workspace documents can be:
-   - Transferred to another user or workspace
-   - Archived
-   - Deleted (after retention period)
-2. Personal workspace is deactivated (not deleted, for audit purposes)
+Rolle: Auditor
+Workspaces: [Alle] (nur lesend)
+Berechtigungen:
+  - Alle Workspaces durchsuchen
+  - Audit-Logs anzeigen
+  - Compliance-Berichte erstellen
+  - Kann nichts ändern
+```
+
+### Externe Berater
+
+Begrenzte Zeit, begrenzter Zugang:
+
+```
+Benutzer: Externer Berater
+Workspaces: [Projekt-X]
+Rolle: viewer (temporär)
+Ablauf: 2024-03-31
+Einschränkungen:
+  - Kann nur Dokumente mit Tag "consultant-access" anzeigen
+  - Kein API-Token-Zugang
+  - Downloads geloggt
+```
+
+### Benutzer-Offboarding mit persönlichem Workspace
+
+Wenn ein Benutzer die Organisation verlässt, erfordert sein persönlicher Workspace besondere Behandlung:
+
+```
+1. Persönliche Workspace-Dokumente können:
+   - Auf einen anderen Benutzer oder Workspace übertragen werden
+   - Archiviert werden
+   - Gelöscht werden (nach Aufbewahrungsfrist)
+2. Persönlicher Workspace wird deaktiviert (nicht gelöscht, aus Audit-Gründen)
 ```
 
 ---
 
-## Integration Points
+## Integrationspunkte
 
-- **Authentication:** Integrates with SSO provider
-- **User Frontends:** Enforce permissions at each interface
-- **Data Indexing:** Respect source permissions (Confluence, etc.)
-- **RAG Engine:** Filter results by user permissions
-- **Deployment Infrastructure:** User/group data from directory
-
----
-
-## Open Questions / Future Enhancements
-
-- Should we support attribute-based access control (ABAC)?
-- Should we support time-based permissions (access only 9-5)?
-- Should we support geo-fencing (IP restrictions)?
-- Should we support approval workflows for sensitive documents?
-- Should we support delegation (user A delegates their permissions to B)?
-- Should we support document classification (public/internal/confidential)?
-- **Connector permissions from source systems:** Should source system permissions (e.g., Confluence space permissions) be enforced in addition to workspace permissions? Desired but complex — user IDs and permission models may not align between source system and OPAA. To be discussed separately.
-- **Document sharing:** Cross-workspace sharing has significant open security questions — see [Document Sharing](./document-sharing.md).
+- **Authentifizierung:** Integriert mit SSO-Anbieter
+- **Benutzer-Frontends:** Berechtigungen an jeder Schnittstelle durchsetzen
+- **Daten-Indizierung:** Quell-Berechtigungen respektieren (Confluence, usw.)
+- **RAG-Engine:** Ergebnisse nach Benutzerberechtigungen filtern
+- **Deployment-Infrastruktur:** Benutzer-/Gruppendaten aus Verzeichnis
 
 ---
 
-## Success Metrics
+## Offene Fragen / Zukünftige Erweiterungen
 
-- **Adoption:** % of users without "owner" role (healthy distribution)
-- **Compliance:** 100% of audit logs retained and accessible
-- **Performance:** Permission check adds < 50ms to query time
-- **Accuracy:** 0 unintended access incidents
-- **Usability:** New users understand workspace/role model in < 5 minutes
+- Sollten wir attribut-basierte Zugangskontrolle (ABAC) unterstützen?
+- Sollten wir zeitbasierte Berechtigungen unterstützen (nur 9-17 Uhr Zugang)?
+- Sollten wir Geo-Fencing unterstützen (IP-Einschränkungen)?
+- Sollten wir Genehmigungsworkflows für sensible Dokumente unterstützen?
+- Sollten wir Delegation unterstützen (Benutzer A delegiert Berechtigungen an B)?
+- Sollten wir Dokumentenklassifizierung unterstützen (öffentlich/intern/vertraulich)?
+- **Konnektor-Berechtigungen aus Quellsystemen:** Sollten Quellsystem-Berechtigungen (z. B. Confluence-Space-Berechtigungen) zusätzlich zu Workspace-Berechtigungen durchgesetzt werden? Erwünscht aber komplex — Benutzer-IDs und Berechtigungsmodelle stimmen möglicherweise nicht zwischen Quellsystem und OPAA überein. Separat zu diskutieren.
+- **Dokument-Teilen:** Workspace-übergreifendes Teilen hat erhebliche offene Sicherheitsfragen — siehe [Dokument-Teilen](./document-sharing.md).
+
+---
+
+## Erfolgs-Metriken
+
+- **Akzeptanz:** % der Benutzer ohne "owner"-Rolle (gesunde Verteilung)
+- **Compliance:** 100% der Audit-Logs aufbewahrt und zugänglich
+- **Leistung:** Berechtigungsprüfung fügt < 50 ms zur Abfragezeit hinzu
+- **Genauigkeit:** 0 unbeabsichtigte Zugangsvorfälle
+- **Benutzerfreundlichkeit:** Neue Benutzer verstehen Workspace-/Rollenmodell in < 5 Minuten

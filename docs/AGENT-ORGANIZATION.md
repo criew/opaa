@@ -1,95 +1,95 @@
-# Agent Organization & Development Workflow
+# Agenten-Organisation & Entwicklungs-Workflow
 
-How OPAA is developed by a team of AI agents with humans in the loop. This document describes **who does what** (agent roles), **how work flows** from idea to merge, and **which rules apply** to both humans and agents. It complements [ADR-0001](./decisions/0001-collaboration-workflow.md) (branching, commits, PRs) — those conventions apply unchanged.
+Wie OPAA von einem Team aus KI-Agenten mit Menschen in der Schleife entwickelt wird. Dieses Dokument beschreibt **wer was tut** (Agenten-Rollen), **wie Arbeit fließt** von der Idee bis zum Merge, und **welche Regeln gelten** für Menschen und Agenten. Es ergänzt [ADR-0001](./decisions/0001-collaboration-workflow.md) (Branching, Commits, PRs) — diese Konventionen gelten unverändert.
 
-Humans and agents use the **same workflow**: the same issues, the same branch naming, the same PR template. A human picking up an issue follows exactly the steps described below for the developer agent.
+Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselbe Branch-Benennung, dasselbe PR-Template. Ein Mensch, der ein Issue aufgreift, folgt genau den nachfolgend für den Entwickler-Agenten beschriebenen Schritten.
 
-## Roles
+## Rollen
 
-| Role | Responsibility | Runs as |
+| Rolle | Verantwortung | Läuft als |
 |---|---|---|
-| **Orchestrator** | Single human-facing entry point. Takes goals from the maintainer, prioritizes the backlog (project manager role), delegates work to the agents below, monitors PRs, and escalates only decisions that need a human. | Claude Code main session (Opus/Fable) |
-| **Product Manager** | Owns the functional definition: keeps vision and reality in sync (`docs/VISION.md`, `docs/MVP-STATUS.md`), writes feature specs in `docs/features/`, cuts and prioritizes GitHub issues. | Subagent `product-manager` (Sonnet) |
-| **Developer** | Implements one issue end-to-end (backend **and** frontend) in an isolated git worktree, on a `feature/<issue-id>_<desc>` branch, and opens a PR. | Subagent `developer` (Sonnet), possibly several instances in parallel — one per issue |
-| **Code Reviewer** | Adversarial review of every PR with fresh context (no implementation bias): correctness, ADR compliance, reuse, missing documentation. Drafts ADRs when it detects an architectural decision. | Subagent `code-reviewer` (Opus) |
-| **QA Engineer** | Product quality beyond per-PR review: sole owner of the E2E suite (implements the dedicated `test(e2e)` issues cut at specification time), RAG answer-quality evaluation (golden dataset + evaluators), coverage/flakiness trends, release assessment. | Subagent `qa-engineer` (Sonnet) |
-| **Marketing** | Positioning first: sharpens pitch and mission, maintains the messaging source of truth (`docs/market/MESSAGING.md`), derives stakeholder-specific assets from it — landing page (`page/`), pitch decks, one-pagers, README messaging, website i18n. Positioning decisions stay with the maintainer. | Subagent `marketing` (Opus) |
+| **Orchestrator** | Einziger menschenzugewandter Einstiegspunkt. Nimmt Ziele vom Maintainer entgegen, priorisiert den Backlog (Projektmanager-Rolle), delegiert Arbeit an die nachfolgenden Agenten, überwacht PRs und eskaliert nur Entscheidungen, die einen Menschen erfordern. | Claude Code Hauptsitzung (Opus/Fable) |
+| **Product Manager** | Verantwortlich für die funktionale Definition: hält Vision und Realität synchron (`docs/VISION.md`, `docs/MVP-STATUS.md`), schreibt Feature-Spezifikationen in `docs/features/`, erstellt und priorisiert GitHub-Issues. | Subagent `product-manager` (Sonnet) |
+| **Developer** | Implementiert ein Issue vollständig (Backend **und** Frontend) in einem isolierten Git-Worktree, auf einem `feature/<issue-id>_<desc>`-Branch, und öffnet einen PR. | Subagent `developer` (Sonnet), möglicherweise mehrere Instanzen parallel — eine pro Issue |
+| **Code Reviewer** | Adversariales Review jedes PRs mit frischem Kontext (keine Implementierungs-Bias): Korrektheit, ADR-Compliance, Wiederverwendung, fehlende Dokumentation. Entwirft ADRs, wenn er eine Architekturentscheidung erkennt. | Subagent `code-reviewer` (Opus) |
+| **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` (Sonnet) |
+| **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` (Opus) |
 
-Design principles behind this setup (based on multi-agent research and Anthropic guidance):
+Designprinzipien hinter dieser Struktur (basierend auf Multi-Agenten-Forschung und Anthropic-Leitfäden):
 
-- **One agent, one lane** — narrow scopes keep context clean and results reliable.
-- **Artifacts over dialogue** — agents hand over work through specs, issues, and PRs, never through informal chat.
-- **Writes are single-threaded** — parallelism comes from multiple developers on *different* issues, not from splitting one feature across agents.
-- **Reviewer is always separate from implementer** — the best-documented quality lever in multi-agent development.
+- **Ein Agent, eine Spur** — enge Geltungsbereiche halten den Kontext sauber und Ergebnisse zuverlässig.
+- **Artefakte statt Dialog** — Agenten übergeben Arbeit durch Spezifikationen, Issues und PRs, niemals durch informelle Gespräche.
+- **Schreibvorgänge sind single-threaded** — Parallelismus entsteht durch mehrere Entwickler an *verschiedenen* Issues, nicht durch Aufteilung eines Features auf Agenten.
+- **Reviewer ist immer vom Implementierer getrennt** — der am besten dokumentierte Qualitätshebel in der Multi-Agenten-Entwicklung.
 
-## Agent definitions and client adapters
+## Agenten-Definitionen und Client-Adapter
 
-The table above describes the organization's roles. The shared role contracts in `agents/roles/` are the source of truth for the concrete agent behavior. They intentionally contain no provider-specific model, tool, permission, memory, or worktree configuration.
+Die obige Tabelle beschreibt die Rollen der Organisation. Die gemeinsamen Rollenverträge in `agents/roles/` sind die Quelle der Wahrheit für das konkrete Agenten-Verhalten. Sie enthalten absichtlich keine anbieterspezifische Modell-, Tool-, Berechtigungs-, Speicher- oder Worktree-Konfiguration.
 
-Each supported client has a thin project-local adapter that points to the matching shared contract:
+Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den entsprechenden gemeinsamen Vertrag verweist:
 
-| Client | Adapter path | Notes |
+| Client | Adapter-Pfad | Hinweise |
 |---|---|---|
-| Claude Code | `.claude/agents/` | YAML frontmatter supplies Claude Code tools, model selection, visual settings, memory, and worktree isolation. |
-| Codex | `.codex/agents/` | TOML files define Codex custom agents. The reviewer uses a read-only sandbox. |
-| OpenCode | `.opencode/agents/` | Markdown frontmatter defines OpenCode subagents and their permissions. The reviewer denies edits. |
+| Claude Code | `.claude/agents/` | YAML-Frontmatter liefert Claude Code-Tools, Modellauswahl, visuelle Einstellungen, Speicher und Worktree-Isolierung. |
+| Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
+| OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-All adapters instruct their agent to read `AGENTS.md`, this organization document, and its shared role contract before working. A role must be added to `agents/roles/` before it receives provider adapters. The five concrete role definitions are Product Manager, Developer, Code Reviewer, QA Engineer, and Marketing.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die fünf konkreten Rollendefinitionen sind Product Manager, Developer, Code Reviewer, QA Engineer und Marketing.
 
-## Workflow: from idea to merge
+## Workflow: von der Idee bis zum Merge
 
 ```mermaid
 flowchart TD
-    A[Maintainer states a goal] --> B[Product Manager:\nclarifying questions → feature spec → GitHub issues]
-    B --> C{Maintainer approves issues?}
-    C -- adjust --> B
-    C -- yes --> D[Orchestrator dispatches one\nDeveloper per issue]
-    D --> E[Developer: worktree + feature branch\n→ implementation + tests + docs → PR]
+    A[Maintainer nennt ein Ziel] --> B[Product Manager:\nKlärungsfragen → Feature-Spezifikation → GitHub-Issues]
+    B --> C{Maintainer genehmigt Issues?}
+    C -- anpassen --> B
+    C -- ja --> D[Orchestrator verteilt einen\nDeveloper pro Issue]
+    D --> E[Developer: Worktree + Feature-Branch\n→ Implementierung + Tests + Docs → PR]
     E --> F[Code Reviewer + CI]
-    F -- findings --> E
-    F -- approved --> G[Maintainer merges]
-    G -.-> H[QA Engineer: scheduled runs on main\nE2E, RAG evaluation, coverage]
-    H -. findings become new issues .-> C
+    F -- Befunde --> E
+    F -- genehmigt --> G[Maintainer merged]
+    G -.-> H[QA Engineer: geplante Läufe auf main\nE2E, RAG-Evaluierung, Coverage]
+    H -. Befunde werden neue Issues .-> C
 ```
 
-1. **Goal** — The maintainer gives the orchestrator a goal ("add a Confluence connector").
-2. **Definition** — The product manager researches repo context, asks its clarifying questions **once, bundled, up front** (relayed through the orchestrator), then writes/updates the feature spec in `docs/features/` and creates labeled GitHub issues.
-3. **Approval** — The maintainer reviews the issues before implementation starts.
-4. **Implementation** — For each approved issue, a developer agent works in an isolated worktree on a `feature/<issue-id>_<desc>` branch and opens a PR using the PR template (including AI agent disclosure).
-5. **Review** — The code reviewer and CI act as gates. Findings go back to the developer; the PR is only ready when both pass.
-6. **Merge** — **Only humans merge.** No agent merges a PR, ever. (This policy may be relaxed gradually as trust is established — any change to it must be recorded here.)
+1. **Ziel** — Der Maintainer gibt dem Orchestrator ein Ziel ("einen Confluence-Connector hinzufügen").
+2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Feature-Spezifikation in `docs/features/` und erstellt beschriftete GitHub-Issues.
+3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
+4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
+5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen.
+6. **Merge** — **Nur Menschen mergen.** Kein Agent mergt jemals einen PR. (Diese Richtlinie kann schrittweise gelockert werden, wenn Vertrauen aufgebaut ist — jede Änderung daran muss hier festgehalten werden.)
 
-### Where QA fits: two quality loops
+### Wo QA passt: zwei Qualitätsschleifen
 
-The QA engineer is deliberately **not** part of the per-PR gate — that is the code reviewer's and CI's job, and doubling it would blur both scopes. QA operates in a second, slower loop around the merge:
+Der QA Engineer ist bewusst **nicht** Teil des PR-Gates — das ist die Aufgabe des Code Reviewers und CI, und eine Verdoppelung würde beide Geltungsbereiche verwischen. QA arbeitet in einer zweiten, langsameren Schleife rund um den Merge:
 
-- **Issue-driven, like a developer, in its own lane.** QA infrastructure is regular backlog work (E2E test suite, coverage reporting, RAG answer-quality evaluation). The orchestrator dispatches such issues to the QA agent instead of a developer; the resulting work goes through the same PR → review → merge path.
-- **Recurring guardian after the merge.** On a schedule (scheduled routine or CI job on `main`), the QA agent exercises the current product state — E2E runs, RAG evaluation, coverage trends. **Its findings become new issues** (bug reports with reproduction steps) that re-enter the workflow at step 3.
-- **At definition time**, the product manager derives E2E-relevant scenarios from the acceptance criteria and files dedicated `test(e2e)` issues; the QA engineer implements them in the suite once the feature lands.
+- **Issue-getrieben, wie ein Entwickler, in einer eigenen Spur.** QA-Infrastruktur ist reguläre Backlog-Arbeit (E2E-Test-Suite, Coverage-Reporting, RAG-Antwortqualitäts-Evaluierung). Der Orchestrator verteilt solche Issues an den QA-Agenten statt an einen Entwickler; die resultierende Arbeit durchläuft denselben PR → Review → Merge-Pfad.
+- **Wiederkehrender Hüter nach dem Merge.** Nach einem Zeitplan (geplante Routine oder CI-Job auf `main`) übt der QA-Agent den aktuellen Produktstand — E2E-Läufe, RAG-Evaluierung, Coverage-Trends. **Seine Befunde werden neue Issues** (Bug-Reports mit Reproduktionsschritten), die den Workflow bei Schritt 3 wieder eintreten.
+- **Zum Definitionszeitpunkt** leitet der Product Manager E2E-relevante Szenarien aus den Abnahmekriterien ab und erstellt dedizierte `test(e2e)`-Issues; der QA Engineer implementiert sie in der Suite, sobald das Feature gelandet ist.
 
-So there are two loops: the fast **PR loop** (code reviewer + CI, before merge) and the slow **product loop** (QA engineer, after merge, producing new issues).
+Es gibt also zwei Schleifen: die schnelle **PR-Schleife** (Code Reviewer + CI, vor dem Merge) und die langsame **Produkt-Schleife** (QA Engineer, nach dem Merge, produziert neue Issues).
 
-## Rules
+## Regeln
 
 ### Issues
 
-Issues are the unit of work and must be self-contained enough that any developer — human or agent — can pick them up. Every issue contains:
+Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein, damit jeder Entwickler — Mensch oder Agent — sie aufgreifen kann. Jedes Issue enthält:
 
-- **Context / Why** — link to the vision, epic, or feature spec
-- **Goal / Outcome** — one sentence describing what is possible afterwards
-- **Acceptance criteria** — individually testable checkboxes; "documentation updated" is a standing criterion for user-facing or architectural changes
-- **Scope / Out of scope** — explicit boundaries
-- **Affected modules** — e.g. `io.opaa.indexing`, frontend, OpenAPI spec (spec changes are a coordination point — see [ADR-0006](./decisions/0006-openapi-dto-generation.md))
-- **Dependencies** — blocking issues
-- **Labels** — including `size:S/M/L`
+- **Kontext / Warum** — Link zur Vision, zum Epic oder zur Feature-Spezifikation
+- **Ziel / Ergebnis** — ein Satz, der beschreibt, was danach möglich ist
+- **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen
+- **Umfang / Außerhalb des Umfangs** — explizite Grenzen
+- **Betroffene Module** — z. B. `io.opaa.indexing`, Frontend, OpenAPI-Spezifikation (Spec-Änderungen sind ein Koordinationspunkt — siehe [ADR-0006](./decisions/0006-openapi-dto-generation.md))
+- **Abhängigkeiten** — blockierende Issues
+- **Labels** — einschließlich `size:S/M/L`
 
-### Documentation
+### Dokumentation
 
-- **Feature documentation is written by whoever builds the feature, in the same PR.** No separate documentation pass; this is enforced via the acceptance criteria and checked by the code reviewer.
-- **ADRs**: when the code reviewer or a developer identifies a genuine architectural decision, it writes an ADR draft in `docs/decisions/` with status `proposed` and attaches it to the PR. The maintainer decides: `accepted` (merged) or rejected. Nothing architectural is settled implicitly.
+- **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.
+- **ADRs**: Wenn der Code Reviewer oder ein Entwickler eine echte Architekturentscheidung identifiziert, schreibt er einen ADR-Entwurf in `docs/decisions/` mit dem Status `proposed` und hängt ihn an den PR. Der Maintainer entscheidet: `accepted` (gemergt) oder abgelehnt. Nichts Architektonisches wird implizit festgelegt.
 
-### Autonomy and escalation
+### Autonomie und Eskalation
 
-- Subagents never interact with the maintainer directly; questions are bundled and relayed by the orchestrator, preferably during the definition step rather than mid-implementation.
-- Quality gates are deterministic (CI, hooks), not promises in prompts: tests must pass before an agent may report an issue as done.
-- Agents operate under an allow/deny permission policy (`.claude/settings.json`); destructive commands and `gh pr merge` are denied for agents.
+- Subagenten interagieren nie direkt mit dem Maintainer; Fragen werden gebündelt und vom Orchestrator weitergeleitet, vorzugsweise während des Definitionsschritts statt mitten in der Implementierung.
+- Qualitätsgates sind deterministisch (CI, Hooks), keine Versprechen in Prompts: Tests müssen bestehen, bevor ein Agent ein Issue als erledigt melden darf.
+- Agenten arbeiten unter einer Allow/Deny-Berechtigungsrichtlinie (`.claude/settings.json`); destruktive Befehle und `gh pr merge` sind für Agenten verweigert.

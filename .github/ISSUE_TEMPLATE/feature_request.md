@@ -1,51 +1,51 @@
 ---
 name: Feature Request
-about: Propose a new feature or enhancement (one layer/building block per issue)
+about: Ein neues Feature oder eine Verbesserung vorschlagen (eine Schicht/ein Baustein pro Issue)
 title: 'feat(scope): '
 labels: ['enhancement']
 assignees: ''
 ---
 
 <!--
-Title: Conventional-Commit style, e.g. `feat(workspace): workspace CRUD API`.
-Labels: add area (backend/frontend/setup/ci), domain (auth/workspace/security/...),
-and size (size:S = config/migration-level, size:M = one feature building block,
-size:L = cross-cutting). Issues are written in English.
+Titel: Conventional-Commit-Stil, z. B. `feat(workspace): workspace CRUD API`.
+Labels: Bereich hinzufügen (backend/frontend/setup/ci), Domäne (auth/workspace/security/...),
+und Größe (size:S = Konfigurations-/Migrationsebene, size:M = ein Feature-Baustein,
+size:L = querschnittlich). Issues werden auf Englisch verfasst.
 -->
 
-## Summary
+## Zusammenfassung
 
-Brief description of the feature.
+Kurze Beschreibung des Features.
 
 ## Motivation
 
-Why is this feature needed? Link to the vision, epic, or feature spec in `docs/features/`.
+Warum wird dieses Feature benötigt? Link zur Vision, zum Epic oder zur Feature-Spezifikation in `docs/features/`.
 
-## Scope
+## Umfang
 
-What exactly is included. For APIs: endpoint by endpoint, including auth rules and error handling.
+Was genau enthalten ist. Für APIs: Endpunkt für Endpunkt, einschließlich Authentifizierungsregeln und Fehlerbehandlung.
 
-## Out of Scope
+## Außerhalb des Umfangs
 
-Explicit boundaries — what this issue deliberately does not cover.
+Explizite Grenzen — was dieses Issue bewusst nicht abdeckt.
 
-## Acceptance Criteria
+## Abnahmekriterien
 
-<!-- Each criterion individually testable. Include "documentation updated"
-     for user-facing or architectural changes. -->
+<!-- Jedes Kriterium einzeln testbar. „Dokumentation aktualisiert" für
+     benutzerseitige oder architektonische Änderungen einschließen. -->
 
 - [ ] ...
-- [ ] Documentation updated (if applicable)
+- [ ] Dokumentation aktualisiert (falls zutreffend)
 
-## Dependencies
+## Abhängigkeiten
 
-- #N (blocking issues, if any)
+- #N (blockierende Issues, falls vorhanden)
 
-## Part of Epic
+## Teil von Epic
 
-#N — Epic title (Phase X), or "None"
+#N — Epic-Titel (Phase X), oder „Keines"
 
-## Technical Notes (optional)
+## Technische Hinweise (optional)
 
-Implementation hints, design trade-offs, relevant ADRs. Frontend issues: add a
-`## UI Reference` section with a mockup or ASCII sketch.
+Implementierungshinweise, Design-Kompromisse, relevante ADRs. Bei Frontend-Issues einen
+`## UI-Referenz`-Abschnitt mit einem Mockup oder einer ASCII-Skizze hinzufügen.

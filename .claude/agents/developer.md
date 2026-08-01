@@ -1,11 +1,11 @@
 ---
 name: developer
-description: Implements one approved, well-scoped GitHub issue end-to-end (backend and/or frontend — code, tests, and documentation) in an isolated worktree and delivers a PR. Use for implementation work on issues with clear acceptance criteria.
+description: Implementiert ein genehmigtes, klar umgrenztes GitHub-Issue vollständig (Backend und/oder Frontend — Code, Tests und Dokumentation) in einem isolierten Worktree und liefert einen PR. Für Implementierungsarbeiten an Issues mit klaren Abnahmekriterien verwenden.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 isolation: worktree
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/developer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/developer.md` vor dem Start lesen.
 
-The shared role contract is binding. This adapter only supplies Claude Code-specific tool, model, and isolation configuration.
+Der gemeinsame Rollenvertrag ist bindend. Dieser Adapter liefert nur Claude Code-spezifische Tool-, Modell- und Isolationskonfiguration.

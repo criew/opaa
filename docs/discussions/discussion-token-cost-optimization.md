@@ -1,98 +1,98 @@
-# Token Cost Optimization for Issue Implementation
+# Token-Kosten-Optimierung bei der Issue-Implementierung
 
-**Objective:** Reduce token consumption when AI agents work on GitHub issues, thereby lowering development costs while maintaining code quality.
+**Ziel:** Token-Verbrauch reduzieren, wenn KI-Agenten an GitHub-Issues arbeiten, um Entwicklungskosten zu senken und gleichzeitig die Code-Qualität zu erhalten.
 
 ---
 
-## 🎯 Quick Wins (Immediate Implementation)
+## Schnelle Gewinne (Sofortige Umsetzung)
 
-### 1. **Compact ADR Summaries in Agent Memory** ⭐⭐⭐
+### 1. **Kompakte ADR-Zusammenfassungen im Agenten-Gedächtnis** ⭐⭐⭐
 
-**Current State:** Agents read full ADR files (~500-1000 tokens each) repeatedly.
+**Aktueller Zustand:** Agenten lesen vollständige ADR-Dateien (~500–1000 Token je Datei) wiederholt.
 
-**Solution:**
-- Create `.claude/agent-memory/adr-summary.md` with bullet-point summaries (200 tokens max)
-- Link to full ADRs only when needed for deep dives
-- Update summaries quarterly when new ADRs are added
+**Lösung:**
+- `.claude/agent-memory/adr-summary.md` mit Aufzählungs-Zusammenfassungen erstellen (max. 200 Token)
+- Nur bei Bedarf für Vertiefungen auf vollständige ADRs verlinken
+- Zusammenfassungen vierteljährlich aktualisieren, wenn neue ADRs hinzukommen
 
-**Example Format:**
+**Beispielformat:**
 ```markdown
-## ADR Quick Reference
+## ADR-Kurzreferenz
 
-**0001 - Collaboration Workflow**
-- PR-based flow, no direct main pushes
-- Conventional commits required
+**0001 - Kollaborations-Workflow**
+- PR-basierter Ablauf, kein direktes Pushen auf main
+- Conventional Commits erforderlich
 
-**0002 - MVP Technology Stack**
+**0002 - MVP-Technologie-Stack**
 - Backend: Spring Boot 21 + Gradle
 - Frontend: React 19 + Vite
 - DB: PostgreSQL 18 + pgvector
 
-**0003 - Code Formatting**
-- Spotless (backend), Prettier (frontend)
+**0003 - Code-Formatierung**
+- Spotless (Backend), Prettier (Frontend)
 ```
 
-**Savings:** ~400 tokens per issue × 20 issues/month = **8,000 tokens/month**
+**Einsparungen:** ~400 Token pro Issue × 20 Issues/Monat = **8.000 Token/Monat**
 
 ---
 
-### 2. **Smart Test Skipping (Already Updated!)** ⭐⭐⭐
+### 2. **Smartes Test-Überspringen (Bereits aktualisiert!)** ⭐⭐⭐
 
-You already implemented this in `workflow.md`, but ensure usage:
+Dies wurde bereits in `workflow.md` implementiert, aber die Nutzung sicherstellen:
 
-**Before (full stack):**
+**Vorher (vollständiger Stack):**
 ```bash
-# Runs 6 steps = ~60 seconds, even for doc changes
+# Führt 6 Schritte aus = ~60 Sekunden, sogar bei Dokumentänderungen
 ./gradlew build && npm test && npm run build
 ```
 
-**After (docs-only):**
+**Nachher (nur Dokumentation):**
 ```bash
-# Only formatting (2 steps) = ~10 seconds
+# Nur Formatierung (2 Schritte) = ~10 Sekunden
 ./gradlew spotlessApply && npm run format
 ```
 
-**Savings:** ~2 minutes per doc PR × 5 docs/month = **10 tokens avoided/month**
-*(Time = lower token usage for faster iteration)*
+**Einsparungen:** ~2 Minuten pro Dokumentations-PR × 5 Docs/Monat = **10 Token vermieden/Monat**
+*(Zeit = geringerer Token-Verbrauch durch schnellere Iteration)*
 
 ---
 
-### 3. **Pre-filtered Glob Patterns for Code Search** ⭐⭐
+### 3. **Vorgefilterte Glob-Muster für die Code-Suche** ⭐⭐
 
-**Current:** Agents often search broad patterns like `**/*.java` across whole backend (1000+ files).
+**Aktuell:** Agenten suchen oft mit breiten Mustern wie `**/*.java` im gesamten Backend (1000+ Dateien).
 
-**Solution:** Use `.claude/rules/search-patterns.md`
+**Lösung:** `.claude/rules/search-patterns.md` verwenden
 
 ```markdown
-## Common Search Patterns
+## Häufige Suchmuster
 
-### Backend Structure
-- Spring Boot config: `backend/src/main/resources/application*.yml`
-- API controllers: `backend/src/main/java/io/opaa/api/**/*Controller.java`
-- Integration tests: `backend/src/test/java/io/opaa/integration/**/*IntegrationTest.java`
-- Domain models: `backend/src/main/java/io/opaa/domain/**/*.java`
+### Backend-Struktur
+- Spring Boot Config: `backend/src/main/resources/application*.yml`
+- API-Controller: `backend/src/main/java/io/opaa/api/**/*Controller.java`
+- Integrationstests: `backend/src/test/java/io/opaa/integration/**/*IntegrationTest.java`
+- Domain-Modelle: `backend/src/main/java/io/opaa/domain/**/*.java`
 
-### Frontend Structure
-- Components: `frontend/src/components/**/*.tsx`
+### Frontend-Struktur
+- Komponenten: `frontend/src/components/**/*.tsx`
 - Hooks: `frontend/src/hooks/**/*.ts`
-- API client: `frontend/src/api/client.ts`
+- API-Client: `frontend/src/api/client.ts`
 - Tests: `frontend/src/**/*.test.tsx`
 ```
 
-**Benefit:** Agents find right files 40% faster, avoiding re-reading wrong files.
+**Vorteil:** Agenten finden die richtigen Dateien 40% schneller und vermeiden das erneute Lesen falscher Dateien.
 
-**Savings:** ~3-5 tokens per issue × 20 issues = **60-100 tokens/month**
+**Einsparungen:** ~3–5 Token pro Issue × 20 Issues = **60–100 Token/Monat**
 
 ---
 
-### 4. **Dependency Cache with Version Snapshot** ⭐⭐
+### 4. **Abhängigkeits-Cache mit Versions-Snapshot** ⭐⭐
 
-**Problem:** Every Gradle/npm rebuild takes tokens to parse dependency trees.
+**Problem:** Jeder Gradle/npm-Rebuild kostet Token für das Parsen von Abhängigkeitsbäumen.
 
-**Solution:** Create `docs/DEPENDENCY-SNAPSHOT.md`
+**Lösung:** `docs/DEPENDENCY-SNAPSHOT.md` erstellen
 
 ```markdown
-## Current Dependencies (as of 2026-03-01)
+## Aktuelle Abhängigkeiten (Stand: 2026-03-01)
 
 ### Backend (Gradle)
 - Spring Boot: 3.5.10
@@ -107,192 +107,192 @@ You already implemented this in `workflow.md`, but ensure usage:
 - MSW: 2.x.x
 ```
 
-**Usage:** When agent asks "what version of Spring Boot are we on?", no need to parse files.
+**Nutzung:** Wenn ein Agent fragt „Welche Spring-Boot-Version verwenden wir?", kein Parsen von Dateien notwendig.
 
-**Savings:** ~2-3 tokens per issue = **40-60 tokens/month**
+**Einsparungen:** ~2–3 Token pro Issue = **40–60 Token/Monat**
 
 ---
 
-## 🔧 Medium Effort Changes
+## Mittlerer Aufwand
 
-### 5. **Create Feature Checklists for Common Tasks** ⭐⭐
+### 5. **Feature-Checklisten für häufige Aufgaben erstellen** ⭐⭐
 
-Many issues are similar (add API endpoint, add React component, add test). Create reusable templates.
+Viele Issues sind ähnlich (API-Endpoint hinzufügen, React-Komponente hinzufügen, Test hinzufügen). Wiederverwendbare Templates erstellen.
 
-**File:** `.claude/issue-templates/api-endpoint.md`
+**Datei:** `.claude/issue-templates/api-endpoint.md`
 
 ```markdown
-# API Endpoint Implementation Checklist
+# Checkliste für API-Endpoint-Implementierung
 
-## 1. Controller Method
-- [ ] Create method in `backend/src/main/java/io/opaa/api/**/*Controller.java`
-- [ ] Use `@PostMapping("/api/v1/...")` annotation
-- [ ] Return `ResponseEntity<?>` with proper status codes
+## 1. Controller-Methode
+- [ ] Methode in `backend/src/main/java/io/opaa/api/**/*Controller.java` erstellen
+- [ ] `@PostMapping("/api/v1/...")` Annotation verwenden
+- [ ] `ResponseEntity<?>` mit korrekten Status-Codes zurückgeben
 
-## 2. Service/Domain Logic
-- [ ] Add logic to `backend/src/main/java/io/opaa/[feature]/` (not in controller!)
-- [ ] Write unit test in `backend/src/test/java/io/opaa/[feature]/`
+## 2. Service-/Domain-Logik
+- [ ] Logik in `backend/src/main/java/io/opaa/[feature]/` hinzufügen (nicht im Controller!)
+- [ ] Unit-Test in `backend/src/test/java/io/opaa/[feature]/` schreiben
 
-## 3. Integration Test
-- [ ] Add test in `backend/src/test/java/io/opaa/integration/`
-- [ ] Use `DocumentIndexingIntegrationTest` as template
-- [ ] Include Testcontainers setup if needed
+## 3. Integrationstest
+- [ ] Test in `backend/src/test/java/io/opaa/integration/` hinzufügen
+- [ ] `DocumentIndexingIntegrationTest` als Template verwenden
+- [ ] Testcontainers-Setup bei Bedarf einbeziehen
 
-## 4. Frontend Client
-- [ ] Add method to `frontend/src/api/client.ts`
-- [ ] Update TypeScript types in `frontend/src/types/`
-- [ ] Add React Query hook if needed
+## 4. Frontend-Client
+- [ ] Methode zu `frontend/src/api/client.ts` hinzufügen
+- [ ] TypeScript-Typen in `frontend/src/types/` aktualisieren
+- [ ] React-Query-Hook bei Bedarf hinzufügen
 
-## 5. Pre-Push Checklist
-- [ ] Run: `cd backend && ./gradlew spotlessApply`
-- [ ] Run: `cd backend && ./gradlew build`
-- [ ] Run: `cd frontend && npm run format && npm run lint`
+## 5. Pre-Push-Checkliste
+- [ ] Ausführen: `cd backend && ./gradlew spotlessApply`
+- [ ] Ausführen: `cd backend && ./gradlew build`
+- [ ] Ausführen: `cd frontend && npm run format && npm run lint`
 ```
 
-**Benefit:** No need to search/read files to understand the pattern. Agent uses template directly.
+**Vorteil:** Kein Suchen/Lesen von Dateien zum Verstehen des Musters notwendig. Agent verwendet Template direkt.
 
-**Savings:** ~10-15 tokens per API issue × 10 issues/year = **100-150 tokens/year**
+**Einsparungen:** ~10–15 Token pro API-Issue × 10 Issues/Jahr = **100–150 Token/Jahr**
 
 ---
 
-### 6. **Document Common Error Patterns** ⭐⭐
+### 6. **Häufige Fehlermuster dokumentieren** ⭐⭐
 
-Create `docs/COMMON-ERRORS.md`
+`docs/COMMON-ERRORS.md` erstellen
 
 ```markdown
-# Common Development Errors & Fixes
+# Häufige Entwicklungsfehler & Lösungen
 
-## 1. "Cannot find symbol" in Gradle build
-**Cause:** Missing import or typo in class name
-**Fix:** Check `libs.versions.toml` for correct artifact name
-**Example:** `io.opaa.api.QueryController` not `io.opaa.api.Query` (missing `Controller`)
+## 1. "Cannot find symbol" im Gradle-Build
+**Ursache:** Fehlender Import oder Tippfehler im Klassennamen
+**Lösung:** `libs.versions.toml` auf korrekten Artefaktnamen prüfen
+**Beispiel:** `io.opaa.api.QueryController` nicht `io.opaa.api.Query` (fehlende `Controller`-Endung)
 
-## 2. Prettier formatting fails
-**Cause:** Windows CRLF line endings vs Unix LF
-**Fix:** Run `npm run format` automatically fixes this
+## 2. Prettier-Formatierung schlägt fehl
+**Ursache:** Windows-CRLF-Zeilenenden vs. Unix-LF
+**Lösung:** `npm run format` ausführen — korrigiert automatisch
 
-## 3. Testcontainers tests fail
-**Cause:** Docker not running
-**Fix:** `docker ps` — if fails, start Docker Desktop
+## 3. Testcontainers-Tests schlagen fehl
+**Ursache:** Docker läuft nicht
+**Lösung:** `docker ps` — falls fehlschlägt, Docker Desktop starten
 
-## 4. TypeScript type mismatch in frontend
-**Cause:** Backend response changed but frontend types weren't updated
-**Fix:** Run `npx openapi-generator-cli` if using OpenAPI spec
+## 4. TypeScript-Typ-Fehler im Frontend
+**Ursache:** Backend-Response geändert, aber Frontend-Typen nicht aktualisiert
+**Lösung:** `npx openapi-generator-cli` ausführen, falls OpenAPI-Spec verwendet wird
 ```
 
-**Savings:** ~5-10 tokens per issue (avoiding debug exploration) × 15 issues = **75-150 tokens/month**
+**Einsparungen:** ~5–10 Token pro Issue (Debug-Erkundung vermeiden) × 15 Issues = **75–150 Token/Monat**
 
 ---
 
-## 🏗️ Architectural Improvements (Larger Effort)
+## Architekturverbesserungen (Größerer Aufwand)
 
-### 7. **Separate Test Suites by Speed** ⭐
+### 7. **Test-Suiten nach Geschwindigkeit trennen** ⭐
 
-**Problem:** Agents run full test suite (`./gradlew build`), including slow integration tests.
+**Problem:** Agenten führen die vollständige Test-Suite aus (`./gradlew build`), einschließlich langsamer Integrationstests.
 
-**Solution:** Separate test suites:
+**Lösung:** Test-Suiten trennen:
 
 ```bash
-# Fast unit tests only (~5 seconds)
+# Nur schnelle Unit-Tests (~5 Sekunden)
 ./gradlew testUnit
 
-# Slow integration tests (Testcontainers, ~30 seconds)
+# Langsame Integrationstests (Testcontainers, ~30 Sekunden)
 ./gradlew testIntegration
 
-# All tests
+# Alle Tests
 ./gradlew test
 ```
 
-**Impact:** Agents skip slow tests for non-backend issues, saving CI time = fewer token retries.
+**Auswirkung:** Agenten überspringen langsame Tests für Nicht-Backend-Issues, was CI-Zeit spart = weniger Token-Wiederholungen.
 
 ---
 
-### 8. **Reduce Boilerplate with Code Generators** ⭐⭐
+### 8. **Boilerplate mit Code-Generatoren reduzieren** ⭐⭐
 
-Create a code generation script for repetitive patterns:
+Ein Code-Generierungsskript für sich wiederholende Muster erstellen:
 
 ```bash
 #!/bin/bash
 # scripts/generate-api-endpoint.sh <feature-name>
-# Generates: Controller, Service, DTO, Test skeleton
+# Generiert: Controller, Service, DTO, Test-Skelett
 ```
 
-**Benefit:** Agents call script instead of manually coding → fewer iterations, fewer token writes.
+**Vorteil:** Agenten rufen das Skript auf, anstatt manuell zu coden → weniger Iterationen, weniger Token-Writes.
 
 ---
 
-## 📊 Monitoring & Measurement
+## Überwachung & Messung
 
-### Track Token Usage by Issue
+### Token-Verbrauch pro Issue verfolgen
 
-Create a `.claude/token-log.csv`:
+Eine `.claude/token-log.csv` erstellen:
 
 ```csv
-Date,Issue#,Feature,Tokens,Status,Notes
-2026-03-01,42,API endpoint,4200,✅,Used ADR summary, avoided full ADR read
-2026-03-01,43,UI component,3100,✅,Followed checklist template
-2026-03-01,44,Bug fix,5200,⚠️,Long debug exploration, could optimize
+Datum,Issue#,Feature,Token,Status,Anmerkungen
+2026-03-01,42,API-Endpoint,4200,✅,ADR-Zusammenfassung verwendet, vollständigen ADR-Read vermieden
+2026-03-01,43,UI-Komponente,3100,✅,Checklisten-Template befolgt
+2026-03-01,44,Bug-Fix,5200,⚠️,Lange Debug-Erkundung, könnte optimiert werden
 ```
 
-**Analysis:**
-- Average tokens/issue: Goal is < 3500 by 2026-06
-- Identify which features are "expensive" → create templates for them
+**Analyse:**
+- Durchschnittliche Token/Issue: Ziel ist < 3500 bis 2026-06
+- Identifizieren, welche Features „teuer" sind → dafür Templates erstellen
 
 ---
 
-## 🎯 Recommended Quick Implementation Order
+## Empfohlene schnelle Umsetzungsreihenfolge
 
-1. **Week 1:** Create `adr-summary.md` (30 min) → **Save 8,000 tokens/month**
-2. **Week 1:** Create `search-patterns.md` (30 min) → **Save 60-100 tokens/month**
-3. **Week 1:** Document `COMMON-ERRORS.md` (1 hour) → **Save 75-150 tokens/month**
-4. **Week 2:** Create API endpoint checklist (1 hour) → **Save 100+ tokens/month**
-5. **Ongoing:** Monitor token usage and optimize hot paths
-
----
-
-## 💡 Agent-Specific Tips
-
-### When Implementing Issues:
-
-**Use ADR Summary, Not Full Files:**
-```
-❌ "Let me read all ADRs to understand architecture..."
-✅ "Let me check adr-summary.md for quick context..."
-```
-
-**Leverage Checklists:**
-```
-❌ "I'll search for similar API endpoints to understand the pattern..."
-✅ "I'll follow the api-endpoint.md checklist I created..."
-```
-
-**Avoid Recomputation:**
-```
-❌ "Let me run full test suite to validate..."
-✅ "Let me run unit tests first, then integration tests if needed..."
-```
+1. **Woche 1:** `adr-summary.md` erstellen (30 Min) → **8.000 Token/Monat einsparen**
+2. **Woche 1:** `search-patterns.md` erstellen (30 Min) → **60–100 Token/Monat einsparen**
+3. **Woche 1:** `COMMON-ERRORS.md` dokumentieren (1 Stunde) → **75–150 Token/Monat einsparen**
+4. **Woche 2:** API-Endpoint-Checkliste erstellen (1 Stunde) → **100+ Token/Monat einsparen**
+5. **Laufend:** Token-Verbrauch überwachen und häufige Pfade optimieren
 
 ---
 
-## 📈 Projected Savings
+## Agenten-spezifische Tipps
 
-| Optimization | Tokens/Month | Implementation | Priority |
+### Bei der Implementierung von Issues:
+
+**ADR-Zusammenfassung verwenden, nicht vollständige Dateien:**
+```
+❌ "Ich lese alle ADRs, um die Architektur zu verstehen..."
+✅ "Ich prüfe adr-summary.md für schnellen Kontext..."
+```
+
+**Checklisten nutzen:**
+```
+❌ "Ich suche nach ähnlichen API-Endpoints, um das Muster zu verstehen..."
+✅ "Ich folge der api-endpoint.md-Checkliste, die ich erstellt habe..."
+```
+
+**Neuberechnungen vermeiden:**
+```
+❌ "Ich führe die vollständige Test-Suite zur Validierung aus..."
+✅ "Ich führe zuerst Unit-Tests aus, dann bei Bedarf Integrationstests..."
+```
+
+---
+
+## Projizierte Einsparungen
+
+| Optimierung | Token/Monat | Umsetzung | Priorität |
 |---|---|---|---|
-| ADR Summary | 8,000 | 30 min | 🔴 |
-| Search Patterns | 60-100 | 30 min | 🔴 |
-| Common Errors Doc | 75-150 | 1 hour | 🟠 |
-| API Endpoint Template | 100-150 | 1 hour | 🟠 |
-| Test Suite Splitting | 500-1,000 | 2 hours | 🟠 |
-| Error Pattern Doc | 100-200 | 1 hour | 🟡 |
-| **Total Potential** | **~8,900-9,700/month** | **~6.5 hours** | — |
+| ADR-Zusammenfassung | 8.000 | 30 Min | Hoch |
+| Suchmuster | 60–100 | 30 Min | Hoch |
+| Häufige-Fehler-Dok. | 75–150 | 1 Stunde | Mittel |
+| API-Endpoint-Template | 100–150 | 1 Stunde | Mittel |
+| Test-Suite-Trennung | 500–1.000 | 2 Stunden | Mittel |
+| Fehlermuster-Dok. | 100–200 | 1 Stunde | Niedrig |
+| **Gesamtpotenzial** | **~8.900–9.700/Monat** | **~6,5 Stunden** | — |
 
-**Conservative Estimate:** 20-25% token reduction with first 3 optimizations in Week 1.
+**Konservative Schätzung:** 20–25% Token-Reduktion mit den ersten 3 Optimierungen in Woche 1.
 
 ---
 
-## 🔗 See Also
+## Weitere Ressourcen
 
-- `AGENTS.md` — Agent behavior expectations
-- `CLAUDE.md` — Claude-specific instructions
-- `MVP-STATUS.md` — Current feature completeness
-- `.claude/agent-memory/` — Persistent knowledge base
+- `AGENTS.md` — Erwartungen an das Agentenverhalten
+- `CLAUDE.md` — Claude-spezifische Anweisungen
+- `MVP-STATUS.md` — Aktueller Feature-Reifegrad
+- `.claude/agent-memory/` — Persistente Wissensbasis

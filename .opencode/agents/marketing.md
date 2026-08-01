@@ -1,5 +1,5 @@
 ---
-description: Develops OPAA positioning and derives consistent messaging assets from it.
+description: Entwickelt die OPAA-Positionierung und leitet daraus konsistente Messaging-Assets ab.
 mode: subagent
 permission:
   edit: allow
@@ -8,6 +8,6 @@ permission:
   webfetch: allow
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/marketing.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/marketing.md` vor dem Start lesen.
 
-The shared role contract is binding.
+Der gemeinsame Rollenvertrag ist bindend.

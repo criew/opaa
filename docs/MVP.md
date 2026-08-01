@@ -1,46 +1,46 @@
-# OPAA MVP Definition
+# OPAA MVP-Definition
 
-## Overview
+## Überblick
 
-This document defines the Minimum Viable Product (MVP) for OPAA — the first implementable step towards the full product vision described in [VISION.md](./VISION.md).
+Dieses Dokument definiert das Minimum Viable Product (MVP) für OPAA — den ersten implementierbaren Schritt zur vollständigen Produktvision, die in [VISION.md](./VISION.md) beschrieben ist.
 
-The MVP focuses on a single, end-to-end use case: **A user asks a question via a web interface and receives an AI-generated answer based on indexed documents, including source references with relevance scores.**
-
----
-
-## Core Use Case
-
-> A user opens the OPAA web interface, types a natural language question, and receives an answer generated from indexed documents. Each answer includes the source documents (file name, relevance score, and a text excerpt) that informed the response.
-
-### User Flow
-
-```
-1. Admin places documents in a configured folder
-2. System indexes documents automatically (manual trigger in MVP)
-3. User opens Web UI
-4. User types a question
-5. Backend embeds the question, searches for relevant chunks
-6. Backend sends relevant chunks + question to LLM
-7. User receives an answer with source references
-   (file name, relevance score, text excerpt)
-```
+Das MVP konzentriert sich auf einen einzigen, durchgehenden Anwendungsfall: **Ein Benutzer stellt eine Frage über eine Web-Schnittstelle und erhält eine KI-generierte Antwort basierend auf indizierten Dokumenten, einschließlich Quellenreferenzen mit Relevanz-Scores.**
 
 ---
 
-## Architecture
+## Kern-Anwendungsfall
 
-### Principles
+> Ein Benutzer öffnet die OPAA-Web-Schnittstelle, gibt eine natürlichsprachige Frage ein und erhält eine Antwort, die aus indizierten Dokumenten generiert wurde. Jede Antwort enthält die Quelldokumente (Dateiname, Relevanz-Score und einen Textauszug), die die Antwort informiert haben.
 
-- **API-first**: The backend exposes a REST API. The Web UI is one of many possible clients.
-- **Modular monolith**: One Spring Boot application with clearly separated internal modules, designed for later decomposition into microservices.
-- **No vendor lock-in**: OpenAI-compatible API interface supports both cloud (OpenAI) and local (Ollama) providers.
-- **Separate concerns**: LLM configuration and embedding configuration are independent — different models/providers can be used for each.
+### Benutzerfluss
 
-### System Diagram
+```
+1. Admin legt Dokumente in einem konfigurierten Ordner ab
+2. System indiziert Dokumente automatisch (manueller Auslöser im MVP)
+3. Benutzer öffnet Web-UI
+4. Benutzer gibt eine Frage ein
+5. Backend bettet die Frage ein, sucht nach relevanten Chunks
+6. Backend sendet relevante Chunks + Frage an LLM
+7. Benutzer erhält eine Antwort mit Quellenreferenzen
+   (Dateiname, Relevanz-Score, Textauszug)
+```
+
+---
+
+## Architektur
+
+### Prinzipien
+
+- **API-first**: Das Backend stellt eine REST-API bereit. Die Web-UI ist einer von vielen möglichen Clients.
+- **Modularer Monolith**: Eine Spring Boot-Anwendung mit klar getrennten internen Modulen, konzipiert für spätere Zerlegung in Microservices.
+- **Kein Vendor-Lock-in**: OpenAI-kompatible API-Schnittstelle unterstützt sowohl Cloud-(OpenAI) als auch lokale (Ollama) Anbieter.
+- **Trennung von Anliegen**: LLM-Konfiguration und Embedding-Konfiguration sind unabhängig — für jede können verschiedene Modelle/Anbieter verwendet werden.
+
+### Systemdiagramm
 
 ```
 ┌──────────────────────────────┐
-│       Web UI (React)         │
+│       Web-UI (React)         │
 │   TypeScript + Material UI   │
 └─────────────┬────────────────┘
               │ REST API (JSON)
@@ -66,123 +66,123 @@ The MVP focuses on a single, end-to-end use case: **A user asks a question via a
               │
 ┌─────────────▼────────────────┐
 │   PostgreSQL + pgvector      │
-│  (Data + Vector Storage)     │
+│  (Daten + Vektor-Speicher)   │
 └──────────────────────────────┘
 ```
 
-### Backend Modules
+### Backend-Module
 
-| Module | Responsibility |
-|--------|---------------|
-| `api` | REST endpoints, request/response DTOs, error handling |
-| `indexing` | Document ingestion, Tika parsing, chunking, embedding, storage |
-| `query` | Question embedding, vector similarity search, LLM prompt construction, response generation |
+| Modul | Verantwortung |
+|-------|---------------|
+| `api` | REST-Endpunkte, Request-/Response-DTOs, Fehlerbehandlung |
+| `indexing` | Dokumentenaufnahme, Tika-Parsing, Chunking, Embedding, Speicherung |
+| `query` | Fragen-Embedding, Vektorsimilaritätssuche, LLM-Prompt-Konstruktion, Antwortgenerierung |
 
-### Container Layout (Docker Compose)
+### Container-Layout (Docker Compose)
 
 ```yaml
 services:
-  frontend:   # React app served via Nginx
-  backend:    # Spring Boot application
-  postgres:   # PostgreSQL with pgvector extension
+  frontend:   # React-App über Nginx bereitgestellt
+  backend:    # Spring Boot-Anwendung
+  postgres:   # PostgreSQL mit pgvector-Erweiterung
 ```
 
 ---
 
-## Technology Stack
+## Technologie-Stack
 
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| **Backend** | Java, Spring Boot, Spring AI | Enterprise-grade, Spring AI provides LLM/embedding/vector store abstractions |
-| **Frontend** | React, TypeScript, Material UI | Industry standard, rich component library, clean design system |
-| **Database** | PostgreSQL + pgvector | Single database for relational data and vector search |
-| **Document Parsing** | Apache Tika (via Spring AI) | Supports all common formats through one integration |
-| **LLM Interface** | OpenAI-compatible API | Works with OpenAI (cloud) and Ollama (local) via the same interface |
-| **Deployment** | Docker Compose | Simple `docker compose up` for the full stack |
-| **Local Dev** | Standard tooling | `mvn spring-boot:run` + `npm start` + local PostgreSQL |
+| Komponente | Technologie | Begründung |
+|------------|-------------|------------|
+| **Backend** | Java, Spring Boot, Spring AI | Enterprise-tauglich, Spring AI liefert LLM-/Embedding-/Vektorspeicher-Abstraktionen |
+| **Frontend** | React, TypeScript, Material UI | Industriestandard, reichhaltige Komponentenbibliothek, sauberes Design-System |
+| **Datenbank** | PostgreSQL + pgvector | Einzelne Datenbank für relationale Daten und Vektorsuche |
+| **Dokument-Parsing** | Apache Tika (über Spring AI) | Unterstützt alle gängigen Formate über eine Integration |
+| **LLM-Schnittstelle** | OpenAI-kompatible API | Funktioniert mit OpenAI (Cloud) und Ollama (lokal) über dieselbe Schnittstelle |
+| **Deployment** | Docker Compose | Einfaches `docker compose up` für den vollständigen Stack |
+| **Lokale Entwicklung** | Standard-Tooling | `mvn spring-boot:run` + `npm start` + lokales PostgreSQL |
 
 ---
 
 ## Features
 
-### Included in MVP
+### Im MVP enthalten
 
-#### Document Indexing
-- Index documents from a **local filesystem directory** (configurable path)
-- Parse documents via **Apache Tika** (Markdown, plain text, PDF, Word, PowerPoint, and more)
-- Split documents into chunks (configurable chunk size)
-- Generate embeddings and store in **pgvector**
-- Manual indexing trigger via API endpoint (automatic/scheduled indexing is out of scope)
+#### Dokumenten-Indizierung
+- Dokumente aus einem **lokalen Dateisystem-Verzeichnis** indizieren (konfigurierbarer Pfad)
+- Dokumente über **Apache Tika** parsen (Markdown, Klartext, PDF, Word, PowerPoint und mehr)
+- Dokumente in Chunks aufteilen (konfigurierbare Chunk-Größe)
+- Embeddings generieren und in **pgvector** speichern
+- Manueller Indizierungs-Auslöser über API-Endpunkt (automatische/geplante Indizierung liegt außerhalb des Rahmens)
 
-#### Question Answering (RAG)
-- Accept natural language questions via REST API
-- Embed the question using the configured embedding model
-- Retrieve **Top-K** most similar document chunks from pgvector
-- Construct a prompt with retrieved context and send to LLM
-- Return the generated answer with **source references**:
-  - File name and path
-  - Relevance score (similarity distance)
-  - Match count (number of matching chunks per file)
-  - Indexing timestamp
-  - Citation flag (whether the LLM actually cited the source in its answer)
+#### Frage-Antwort (RAG)
+- Natürlichsprachige Fragen über REST-API akzeptieren
+- Frage mit dem konfigurierten Embedding-Modell einbetten
+- **Top-K** ähnlichste Dokument-Chunks aus pgvector abrufen
+- Prompt mit abgerufenem Kontext konstruieren und an LLM senden
+- Generierte Antwort mit **Quellenreferenzen** zurückgeben:
+  - Dateiname und Pfad
+  - Relevanz-Score (Ähnlichkeitsabstand)
+  - Trefferanzahl (Anzahl übereinstimmender Chunks pro Datei)
+  - Indizierungs-Zeitstempel
+  - Zitations-Flag (ob das LLM die Quelle tatsächlich in seiner Antwort zitiert hat)
 
-#### Web UI
-- Chat-style Q&A interface
-- Display answers with formatted source references
-- Show relevance score per source
-- Responsive design (Material UI)
+#### Web-UI
+- Chat-artige Frage-Antwort-Schnittstelle
+- Antworten mit formatierten Quellenreferenzen anzeigen
+- Relevanz-Score pro Quelle anzeigen
+- Responsives Design (Material UI)
 
-#### UI Placeholders (non-functional, visible)
-- **Result feedback**: Thumbs-up / thumbs-down buttons on each answer (displayed but no backend logic)
-- **Access level badges**: Visual indicators on source documents suggesting permission levels (e.g., "Internal", "Confidential", "Public") — static mockup, no real access control behind it
+#### UI-Platzhalter (nicht funktional, sichtbar)
+- **Ergebnis-Feedback**: Daumen-hoch/Daumen-runter-Buttons für jede Antwort (angezeigt, aber keine Backend-Logik)
+- **Zugangsstufen-Abzeichen**: Visuelle Indikatoren auf Quelldokumenten, die Berechtigungsstufen vorschlagen (z. B. "Intern", "Vertraulich", "Öffentlich") — statisches Mockup, keine echte Zugangskontrolle dahinter
 
-#### Configuration
-- **LLM configuration**: Provider URL, model name, parameters (temperature, max tokens)
-- **Embedding configuration**: Separate provider URL and model name (independent from LLM config)
-- Both configurable via environment variables / application properties
+#### Konfiguration
+- **LLM-Konfiguration**: Anbieter-URL, Modellname, Parameter (Temperatur, maximale Tokens)
+- **Embedding-Konfiguration**: Separate Anbieter-URL und Modellname (unabhängig von LLM-Konfiguration)
+- Beides über Umgebungsvariablen / Anwendungseigenschaften konfigurierbar
 
-### Explicitly Out of Scope
+### Explizit außerhalb des Rahmens
 
-| Feature | Reason |
-|---------|--------|
-| Authentication / Authorization | Adds complexity; API designed to be auth-ready for later |
-| Multiple data sources (Confluence, Email, etc.) | MVP uses filesystem only; plugin architecture comes later |
-| Chat integrations (Slack, Mattermost, etc.) | REST API enables these later; Web UI is the MVP frontend |
-| Re-ranking / hybrid search | Simple Top-K similarity is sufficient for MVP |
-| Automatic / scheduled indexing | Manual trigger is enough; event-based indexing comes later |
-| Multi-tenancy / workspaces | No auth means no multi-tenancy; architecture supports it later |
-| Kubernetes deployment | Docker Compose covers MVP needs |
-| Audit logging | No auth context to log; structure will be prepared |
-
----
-
-## Success Criteria
-
-The MVP is considered complete when:
-
-1. **Indexing works**: Documents placed in a folder can be indexed via an API call
-2. **Q&A works end-to-end**: A user can ask a question in the Web UI and receive a relevant answer
-3. **Sources are shown**: Every answer displays source file name, relevance score, match count, and citation status
-4. **Dual LLM support**: The system works with both OpenAI API and Ollama (local)
-5. **Separate configs**: LLM and embedding model are independently configurable
-6. **Docker Compose runs**: `docker compose up` starts the full stack
-7. **Local dev works**: Developers can run frontend and backend locally without Docker
-8. **UI placeholders visible**: Feedback buttons and access level badges are displayed in the UI
+| Feature | Grund |
+|---------|-------|
+| Authentifizierung / Autorisierung | Erhöht Komplexität; API so konzipiert, dass Auth später einfach ergänzbar ist |
+| Mehrere Datenquellen (Confluence, E-Mail, usw.) | MVP nutzt nur Dateisystem; Plugin-Architektur kommt später |
+| Chat-Integrationen (Slack, Mattermost, usw.) | REST-API ermöglicht diese später; Web-UI ist das MVP-Frontend |
+| Re-Ranking / Hybridsuche | Einfache Top-K-Ähnlichkeit ist für MVP ausreichend |
+| Automatische / geplante Indizierung | Manueller Auslöser reicht aus; ereignisbasierte Indizierung kommt später |
+| Multi-Tenancy / Workspaces | Kein Auth bedeutet kein Multi-Tenancy; Architektur unterstützt es später |
+| Kubernetes-Deployment | Docker Compose deckt MVP-Anforderungen ab |
+| Audit-Logging | Kein Auth-Kontext zum Loggen; Struktur wird vorbereitet |
 
 ---
 
-## Relation to Product Vision
+## Erfolgs-Kriterien
 
-This table maps MVP decisions to the full vision, showing the upgrade path:
+Das MVP gilt als vollständig, wenn:
 
-| MVP | Full Vision | Upgrade Path |
-|-----|-------------|-------------|
-| Filesystem data source | Confluence, Email, SharePoint, etc. | Plugin/adapter system for data sources |
-| Web UI only | Mattermost, Slack, Telegram, etc. | Additional clients consuming the same REST API |
-| No auth | RBAC, SSO, workspaces | Spring Security + Keycloak integration |
-| Simple Top-K RAG | Re-ranking, hybrid search, confidence scores | Enhance query module, add re-ranking step |
-| Single backend | Separate indexer + query services | Extract modules into independent Spring Boot apps |
-| Docker Compose | Kubernetes, cloud deployment | Helm charts, cloud-native configuration |
-| Manual indexing | Event-based, scheduled re-indexing | File watchers, cron jobs, webhook integrations |
-| Feedback placeholders | Real feedback collection + model improvement | Backend endpoints, feedback storage, analytics |
-| Access level mockup | Document-level permissions | Integration with auth system, permission-aware retrieval |
+1. **Indizierung funktioniert**: Dokumente in einem Ordner können über einen API-Aufruf indiziert werden
+2. **Frage-Antwort funktioniert durchgehend**: Ein Benutzer kann eine Frage in der Web-UI stellen und eine relevante Antwort erhalten
+3. **Quellen werden angezeigt**: Jede Antwort zeigt Quelldateiname, Relevanz-Score, Trefferanzahl und Zitations-Status
+4. **Duale LLM-Unterstützung**: Das System funktioniert sowohl mit der OpenAI-API als auch mit Ollama (lokal)
+5. **Separate Konfigurationen**: LLM und Embedding-Modell sind unabhängig konfigurierbar
+6. **Docker Compose läuft**: `docker compose up` startet den vollständigen Stack
+7. **Lokale Entwicklung funktioniert**: Entwickler können Frontend und Backend lokal ohne Docker ausführen
+8. **UI-Platzhalter sichtbar**: Feedback-Buttons und Zugangsstufen-Abzeichen werden in der UI angezeigt
+
+---
+
+## Bezug zur Produktvision
+
+Diese Tabelle ordnet MVP-Entscheidungen der vollständigen Vision zu und zeigt den Upgrade-Pfad:
+
+| MVP | Vollständige Vision | Upgrade-Pfad |
+|-----|---------------------|--------------|
+| Dateisystem-Datenquelle | Confluence, E-Mail, SharePoint, usw. | Plugin-/Adapter-System für Datenquellen |
+| Nur Web-UI | Mattermost, Slack, Telegram, usw. | Zusätzliche Clients, die dieselbe REST-API nutzen |
+| Kein Auth | RBAC, SSO, Workspaces | Spring Security + Keycloak-Integration |
+| Einfaches Top-K-RAG | Re-Ranking, Hybridsuche, Konfidenz-Scores | Query-Modul verbessern, Re-Ranking-Schritt hinzufügen |
+| Einzelnes Backend | Separate Indexer + Query-Dienste | Module in unabhängige Spring Boot-Apps extrahieren |
+| Docker Compose | Kubernetes, Cloud-Deployment | Helm-Charts, cloud-native Konfiguration |
+| Manuelle Indizierung | Ereignisbasierte, geplante Neu-Indizierung | File-Watcher, Cron-Jobs, Webhook-Integrationen |
+| Feedback-Platzhalter | Echte Feedback-Sammlung + Modellverbesserung | Backend-Endpunkte, Feedback-Speicherung, Analytics |
+| Zugangsstufen-Mockup | Berechtigungen auf Dokumentenebene | Integration mit Auth-System, berechtigungsbewusstes Retrieval |

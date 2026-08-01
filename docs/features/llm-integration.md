@@ -1,147 +1,147 @@
-# LLM Integration
+# LLM-Integration
 
 ## Motivation
 
-The quality of OPAA's answers depends not just on finding the right documents, but on how those documents are used to generate responses. Different organizations have different requirements:
+Die Qualität von OPAAs Antworten hängt nicht nur davon ab, die richtigen Dokumente zu finden, sondern auch davon, wie diese Dokumente zur Antwortgenerierung verwendet werden. Verschiedene Organisationen haben unterschiedliche Anforderungen:
 
-- Some want to use OpenAI's latest models for maximum capability
-- Some need open-source models for privacy and cost
-- Some require specific model versions for compliance
-- Some want to switch providers without rewriting code
+- Einige möchten die neuesten Modelle von OpenAI für maximale Fähigkeit nutzen
+- Einige benötigen Open-Source-Modelle für Datenschutz und Kosten
+- Einige erfordern spezifische Modellversionen für Compliance
+- Einige möchten Anbieter wechseln, ohne Code neu zu schreiben
 
-This feature ensures OPAA is model-agnostic and fully configurable at deployment time.
-
----
-
-## Overview
-
-OPAA's LLM integration provides:
-
-1. **Model Flexibility** — Support for multiple LLM providers and models
-2. **Configuration at Deployment** — Choose models via environment variables, no code changes
-3. **Provider Abstraction** — Swap providers without application changes
-4. **Advanced Capabilities** — Streaming responses, function calling, embeddings
-5. **Cost & Performance Optimization** — Use different models for different tasks
+Dieses Feature stellt sicher, dass OPAA modell-agnostisch und zum Deployment-Zeitpunkt vollständig konfigurierbar ist.
 
 ---
 
-## Supported LLM Providers
+## Überblick
 
-### OpenAI-Compatible APIs
+OPAAs LLM-Integration bietet:
 
-Any provider implementing the OpenAI API standard is supported:
+1. **Modell-Flexibilität** — Unterstützung für mehrere LLM-Anbieter und -Modelle
+2. **Konfiguration beim Deployment** — Modelle über Umgebungsvariablen wählen, keine Code-Änderungen
+3. **Anbieter-Abstraktion** — Anbieter wechseln ohne Anwendungsänderungen
+4. **Erweiterte Fähigkeiten** — Streaming-Antworten, Function Calling, Embeddings
+5. **Kosten- & Leistungsoptimierung** — Verschiedene Modelle für verschiedene Aufgaben verwenden
 
-**Primary Providers:**
+---
+
+## Unterstützte LLM-Anbieter
+
+### OpenAI-kompatible APIs
+
+Jeder Anbieter, der den OpenAI-API-Standard implementiert, wird unterstützt:
+
+**Primäre Anbieter:**
 - **OpenAI** (GPT-4, GPT-3.5-turbo)
-- **Azure OpenAI** (managed OpenAI in Azure)
-- **Anthropic Claude** (via Claude API)
-- **Open-source via OpenAI-compatible servers:**
-  - Ollama (local)
-  - LM Studio (local)
-  - Text Generation WebUI (local)
-  - vLLM (self-hosted)
-  - LocalAI (local)
+- **Azure OpenAI** (verwaltetes OpenAI in Azure)
+- **Anthropic Claude** (über Claude API)
+- **Open-Source über OpenAI-kompatible Server:**
+  - Ollama (lokal)
+  - LM Studio (lokal)
+  - Text Generation WebUI (lokal)
+  - vLLM (selbst gehostet)
+  - LocalAI (lokal)
 
-**Why OpenAI-Compatible?**
-- De-facto standard for LLM APIs
-- Same interface across many providers
-- Minimal abstraction layer
-- Easy for developers to understand
+**Warum OpenAI-kompatibel?**
+- De-facto-Standard für LLM-APIs
+- Gleiche Schnittstelle über viele Anbieter
+- Minimale Abstraktionsschicht
+- Einfach für Entwickler zu verstehen
 
-### Configuration Pattern
+### Konfigurationsmuster
 
-All LLM providers configured identically:
+Alle LLM-Anbieter identisch konfiguriert:
 
 ```
-LLM_PROVIDER: "openai"           # or "anthropic", "azure", "custom"
+LLM_PROVIDER: "openai"           # oder "anthropic", "azure", "custom"
 LLM_API_KEY: "${OPENAI_API_KEY}"
-LLM_API_BASE: "https://api.openai.com/v1"  # can be any OpenAI-compatible endpoint
+LLM_API_BASE: "https://api.openai.com/v1"  # kann jeder OpenAI-kompatible Endpunkt sein
 LLM_MODEL: "gpt-4"
 ```
 
-### Model Selection Criteria
+### Modellauswahlkriterien
 
-Organizations should choose based on:
+Organisationen sollten basierend auf Folgendem wählen:
 
-| Factor | Consideration |
-|--------|---------------|
-| **Capability** | GPT-4 > GPT-3.5 > open-source models; choose based on answer quality needs |
-| **Cost** | Open-source/Llama cheaper; GPT-4 more expensive; embedding models cheapest |
-| **Privacy** | Local models best; on-premises vLLM good; cloud providers if data sharing OK |
-| **Speed** | GPT-3.5 < 2s; Ollama varies by hardware; must meet SLA |
-| **Compliance** | Some industries require specific models or on-premises only |
+| Faktor | Überlegung |
+|--------|------------|
+| **Fähigkeit** | GPT-4 > GPT-3.5 > Open-Source-Modelle; basierend auf Antwortqualitätsbedarf wählen |
+| **Kosten** | Open-Source/Llama günstiger; GPT-4 teurer; Embedding-Modelle günstigste |
+| **Datenschutz** | Lokale Modelle am besten; on-premises vLLM gut; Cloud-Anbieter wenn Datenweitergabe OK |
+| **Geschwindigkeit** | GPT-3.5 < 2 s; Ollama variiert je nach Hardware; muss SLA erfüllen |
+| **Compliance** | Manche Branchen erfordern spezifische Modelle oder nur on-premises |
 
 ---
 
-## Response Generation
+## Antwortgenerierung
 
-### Answer Generation Pipeline
+### Antwortgenerierungs-Pipeline
 
-When user asks a question:
+Wenn Benutzer eine Frage stellt:
 
-1. **Context Preparation:** Retrieved documents formatted with metadata
-2. **Prompt Construction:** User question + documents + system instructions
-3. **Model Invocation:** Call configured LLM
-4. **Streaming:** Stream response back to user (don't wait for complete generation)
-5. **Post-Processing:** Extract sources, format answer
+1. **Kontext-Vorbereitung:** Abgerufene Dokumente mit Metadaten formatiert
+2. **Prompt-Konstruktion:** Benutzerfrage + Dokumente + Systemanweisungen
+3. **Modell-Aufruf:** Konfiguriertes LLM aufrufen
+4. **Streaming:** Antwort zurück zum Benutzer streamen (nicht auf vollständige Generierung warten)
+5. **Nachverarbeitung:** Quellen extrahieren, Antwort formatieren
 
-### Prompt Structure
+### Prompt-Struktur
 
-System sends to LLM:
+System sendet an LLM:
 
 ```
-System Prompt:
-  "You are a helpful assistant for answering questions about our organization.
-   Use the provided documents to answer. Always cite sources.
-   If information is not in the documents, say so."
+System-Prompt:
+  "Sie sind ein hilfreicher Assistent zur Beantwortung von Fragen über unsere Organisation.
+   Verwenden Sie die bereitgestellten Dokumente für Antworten. Zitieren Sie immer Quellen.
+   Wenn Informationen nicht in den Dokumenten sind, sagen Sie dies."
 
-Context (Retrieved Documents):
-  Document 1 (title, excerpt)
-  Document 2 (title, excerpt)
+Kontext (abgerufene Dokumente):
+  Dokument 1 (Titel, Auszug)
+  Dokument 2 (Titel, Auszug)
   ...
 
-User Question:
-  "What's our policy on X?"
+Benutzerfrage:
+  "Was ist unsere Richtlinie zu X?"
 
-Task Instructions:
-  "Answer using only the provided documents.
-   Format answer as: [Direct Answer] Sources: [List sources]"
+Aufgabenanweisungen:
+  "Antworten Sie nur anhand der bereitgestellten Dokumente.
+   Antwort formatieren als: [Direkte Antwort] Quellen: [Quellen auflisten]"
 ```
 
-### Answer Format
+### Antwortformat
 
-LLM generates responses following the prompt:
+LLM generiert Antworten gemäß Prompt:
 
 ```
-Answer: "Based on our policy documents, X is allowed with the
-following conditions:
-1. Condition A
-2. Condition B
-3. Condition C
+Antwort: "Laut unseren Richtliniendokumenten ist X unter folgenden
+Bedingungen erlaubt:
+1. Bedingung A
+2. Bedingung B
+3. Bedingung C
 
-Additional context from recent updates..."
+Zusätzlicher Kontext aus neuesten Aktualisierungen..."
 
-Sources:
-- Company Policy on X (updated Jan 2024)
-- Manager Handbook section 3.2
+Quellen:
+- Unternehmensrichtlinie zu X (aktualisiert Jan 2024)
+- Manager-Handbuch Abschnitt 3.2
 ```
 
-OPAA then:
-- Parses the answer
-- Links sources to actual documents
-- Adds clickable document links
-- Displays to user
+OPAA dann:
+- Parst die Antwort
+- Verlinkt Quellen mit tatsächlichen Dokumenten
+- Fügt klickbare Dokument-Links hinzu
+- Zeigt dem Benutzer an
 
 ---
 
-## Model Configuration
+## Modellkonfiguration
 
-### Temperature & Parameters
+### Temperatur & Parameter
 
-Each model use case can have custom settings:
+Jeder Modell-Anwendungsfall kann benutzerdefinierte Einstellungen haben:
 
 ```
-GenerationSettings:
+GenerierungsEinstellungen:
   model: "gpt-4"
   temperature: 0.5
   top_p: 0.9
@@ -149,301 +149,301 @@ GenerationSettings:
   frequency_penalty: 0.0
 ```
 
-**Parameter Guidance:**
+**Parameter-Leitfaden:**
 - **temperature:**
-  - Low (0.1-0.3): More factual, less creative (good for QA)
-  - High (0.7-0.9): More creative, less focused (good for brainstorming)
-  - Recommended for OPAA: 0.3-0.5 (balance creativity and accuracy)
+  - Niedrig (0,1-0,3): Faktischer, weniger kreativ (gut für Frage-Antwort)
+  - Hoch (0,7-0,9): Kreativer, weniger fokussiert (gut für Brainstorming)
+  - Empfohlen für OPAA: 0,3-0,5 (Balance zwischen Kreativität und Genauigkeit)
 
 - **max_tokens:**
-  - Limits response length
-  - Recommended: 1024-2048 for detailed answers
-  - Use shorter (512) for chat platforms
+  - Begrenzt Antwortlänge
+  - Empfohlen: 1.024-2.048 für detaillierte Antworten
+  - Kürzer (512) für Chat-Plattformen verwenden
 
 - **top_p:**
-  - Controls diversity (0-1)
-  - 0.9 is good default
-  - Lower for more conservative responses
+  - Kontrolliert Vielfalt (0-1)
+  - 0,9 ist guter Standard
+  - Niedriger für konservativere Antworten
 
-### Multi-Model Strategy
+### Multi-Modell-Strategie
 
-OPAA supports using different models for different tasks:
-
-```
-Model Selection:
-  QA Generation: "gpt-4"           # Best quality
-  Embeddings: "text-embedding-3-small"  # Cheap, fast
-  Summarization: "gpt-3.5-turbo"   # Fast, good enough
-  Classification: "gpt-3.5-turbo"  # Cost-effective
-```
-
-Benefits:
-- Use expensive models only where needed
-- Optimize cost vs. quality per task
-- Faster responses where speed matters more
-
-### Fallback Strategy
-
-If primary model unavailable:
+OPAA unterstützt verschiedene Modelle für verschiedene Aufgaben:
 
 ```
-Primary: "gpt-4"
-Fallback: "gpt-3.5-turbo"  # Slightly lower quality, always available
-Fallback: "mistral-7b" (self-hosted)  # Last resort
+Modellauswahl:
+  QA-Generierung: "gpt-4"                   # Beste Qualität
+  Embeddings: "text-embedding-3-small"       # Günstig, schnell
+  Zusammenfassung: "gpt-3.5-turbo"           # Schnell, ausreichend gut
+  Klassifizierung: "gpt-3.5-turbo"           # Kosteneffektiv
 ```
 
-If all fail, system:
-- Returns retrieved documents without generation
-- Shows user: "I found relevant documents but couldn't generate summary. See sources below."
-- Logs failure for admin review
+Vorteile:
+- Teure Modelle nur dort verwenden, wo nötig
+- Kosten vs. Qualität pro Aufgabe optimieren
+- Schnellere Antworten wo Geschwindigkeit wichtiger ist
+
+### Fallback-Strategie
+
+Wenn primäres Modell nicht verfügbar:
+
+```
+Primär: "gpt-4"
+Fallback: "gpt-3.5-turbo"  # Etwas niedrigere Qualität, immer verfügbar
+Fallback: "mistral-7b" (selbst gehostet)  # Letzter Ausweg
+```
+
+Wenn alle fehlschlagen, System:
+- Gibt abgerufene Dokumente ohne Generierung zurück
+- Zeigt Benutzer: "Ich fand relevante Dokumente, konnte aber keine Zusammenfassung generieren. Quellen unten."
+- Protokolliert Fehler für Admin-Überprüfung
 
 ---
 
-## Embedding Models
+## Embedding-Modelle
 
-### Embedding Configuration
+### Embedding-Konfiguration
 
-Separate from generation model:
+Getrennt vom Generierungsmodell:
 
 ```
-Embedding Settings:
+EmbeddingEinstellungen:
   model: "text-embedding-3-small"  # OpenAI
   dimension: 1536
   batch_size: 100
 ```
 
-### Embedding Model Choices
+### Embedding-Modell-Auswahl
 
-Different organizations choose based on:
-- **OpenAI Embeddings:** Best quality, cloud-based
-- **Open-source:** All-MiniLM, ONNX models, local alternatives
-- **Specialized:** Domain-specific embeddings for technical docs
+Verschiedene Organisationen wählen basierend auf:
+- **OpenAI-Embeddings:** Beste Qualität, Cloud-basiert
+- **Open-Source:** All-MiniLM, ONNX-Modelle, lokale Alternativen
+- **Spezialisiert:** Domänenspezifische Embeddings für technische Dokumente
 
-**Important:** Embedding model choice affects search quality. Changing embedding model requires re-indexing all documents.
+**Wichtig:** Embedding-Modell-Wahl beeinflusst Suchqualität. Das Ändern des Embedding-Modells erfordert eine Neu-Indizierung aller Dokumente.
 
-### Cross-Model Search
+### Modell-übergreifende Suche
 
-Advanced: Use different embedding and generation models:
-- Embedding from Jina.ai (technical)
-- Generation from Claude (quality)
-- Better results for specialized documents
+Erweitert: Verschiedene Embedding- und Generierungsmodelle verwenden:
+- Embedding von Jina.ai (technisch)
+- Generierung von Claude (Qualität)
+- Bessere Ergebnisse für spezialisierte Dokumente
 
 ---
 
-## Advanced LLM Features
+## Erweiterte LLM-Features
 
-### Streaming Responses
+### Streaming-Antworten
 
-OPAA streams responses as they generate:
-- User sees answer appearing character-by-character
-- Better UX (feels faster, interactive)
-- Can stop generation if answer goes off-track
+OPAA streamt Antworten während der Generierung:
+- Benutzer sieht Antwort Zeichen-für-Zeichen erscheinen
+- Bessere UX (fühlt sich schneller an, interaktiv)
+- Kann Generierung stoppen, wenn Antwort abschweift
 
 ### Function Calling
 
-If LLM supports function calling (GPT-4, Claude):
+Wenn LLM Function Calling unterstützt (GPT-4, Claude):
 
 ```
-LLM can call functions:
-  get_document(id)     → retrieve full document
-  search_more(query)   → do another search
-  format_table(data)   → format data as table
+LLM kann Funktionen aufrufen:
+  get_document(id)     → vollständiges Dokument abrufen
+  search_more(query)   → eine weitere Suche durchführen
+  format_table(data)   → Daten als Tabelle formatieren
 ```
 
-OPAA can use this to:
-- Automatically fetch full documents if needed
-- Do multi-step reasoning
-- Format complex answers
+OPAA kann dies nutzen, um:
+- Automatisch vollständige Dokumente bei Bedarf abzurufen
+- Mehrstufiges Reasoning durchzuführen
+- Komplexe Antworten zu formatieren
 
-### Vision/Multimodal Support
+### Vision/Multimodal-Unterstützung
 
-If organization has visual documents:
-- GPT-4-vision can analyze images/PDFs
-- Can extract text from scanned documents
-- Can answer questions about diagrams
+Wenn Organisation visuelle Dokumente hat:
+- GPT-4-vision kann Bilder/PDFs analysieren
+- Kann Text aus gescannten Dokumenten extrahieren
+- Kann Fragen zu Diagrammen beantworten
 
 ---
 
-## Cost Optimization
+## Kostenoptimierung
 
-### Cost Drivers
+### Kostentreiber
 
-OPAA costs depend on:
-- **Embedding Model:** Cheapest (fractions of cent per 1000 tokens)
-- **Generation Model:** Most expensive (dollars per 1000 tokens)
-- **Query Volume:** More questions = higher cost
+OPAA-Kosten hängen ab von:
+- **Embedding-Modell:** Günstigste (Bruchteile von Cent pro 1.000 Token)
+- **Generierungsmodell:** Teuerste (Dollar pro 1.000 Token)
+- **Abfragevolumen:** Mehr Fragen = höhere Kosten
 
-### Cost Reduction Strategies
+### Kostensenkungsstrategien
 
-1. **Use Cheaper Models Where Possible:**
-   - Use GPT-3.5-turbo instead of GPT-4 (5x cheaper)
-   - Use embeddings-small instead of large
-   - Use local models (free after infrastructure cost)
+1. **Günstigere Modelle wo möglich verwenden:**
+   - GPT-3.5-turbo statt GPT-4 verwenden (5x günstiger)
+   - Embeddings-small statt large verwenden
+   - Lokale Modelle verwenden (kostenlos nach Infrastrukturkosten)
 
-2. **Implement Caching:**
-   - Cache frequent questions
-   - Cache document embeddings
-   - Don't re-embed unchanged documents
+2. **Caching implementieren:**
+   - Häufige Fragen cachen
+   - Dokument-Embeddings cachen
+   - Unveränderte Dokumente nicht neu einbetten
 
-3. **Hybrid Approach:**
-   - Use local models for 80% of questions
-   - Use GPT-4 only for complex queries
-   - Automatic routing based on question complexity
+3. **Hybridansatz:**
+   - Lokale Modelle für 80% der Fragen verwenden
+   - GPT-4 nur für komplexe Abfragen verwenden
+   - Automatisches Routing basierend auf Fragenkomplexität
 
 4. **Batching:**
-   - Batch embedding generation during off-hours
-   - Batch question answering for report generation
+   - Embedding-Generierung außerhalb der Stoßzeiten bündeln
+   - Fragenbeantwortung für Berichtserstellung bündeln
 
-**Typical Costs:**
-- Small organization (100 queries/day): $50-200/month
-- Large organization (10,000 queries/day): $5,000-20,000/month
-- With local models: Infrastructure cost + electricity
-
----
-
-## Safety & Responsible Use
-
-### Jailbreak Prevention
-
-The system is designed to prevent LLM jailbreaks:
-- Strict system prompts limit model behavior
-- Retrieved documents constrain answers to organizational knowledge
-- User cannot directly manipulate model instructions
-- System instructions locked (not changeable via chat)
-
-### Hallucination Mitigation
-
-OPAA inherently reduces hallucinations:
-- All answers grounded in retrieved documents
-- Model cannot invent facts not in sources
-- Confidence scores shown (0 confidence = no sources)
-- Users can verify claims in source documents
-
-### Content Filtering
-
-If organization requires:
-- Profanity filtering
-- PII redaction
-- Sensitive information masking
-
-These can be added as post-processing steps.
+**Typische Kosten:**
+- Kleine Organisation (100 Abfragen/Tag): 50-200 €/Monat
+- Große Organisation (10.000 Abfragen/Tag): 5.000-20.000 €/Monat
+- Mit lokalen Modellen: Infrastrukturkosten + Strom
 
 ---
 
-## Rate Limiting & Quotas
+## Sicherheit & verantwortungsvolle Nutzung
+
+### Jailbreak-Prävention
+
+Das System ist so konzipiert, LLM-Jailbreaks zu verhindern:
+- Strikte System-Prompts begrenzen Modellverhalten
+- Abgerufene Dokumente beschränken Antworten auf Organisationswissen
+- Benutzer kann Modellanweisungen nicht direkt manipulieren
+- Systemanweisungen gesperrt (nicht über Chat änderbar)
+
+### Halluzinations-Minderung
+
+OPAA reduziert inhärent Halluzinationen:
+- Alle Antworten in abgerufenen Dokumenten verankert
+- Modell kann keine Fakten erfinden, die nicht in Quellen sind
+- Konfidenz-Scores angezeigt (0 Konfidenz = keine Quellen)
+- Benutzer können Behauptungen in Quelldokumenten verifizieren
+
+### Inhaltsfilterung
+
+Wenn Organisation es erfordert:
+- Profanitäts-Filterung
+- PII-Schwärzung
+- Maskierung sensibler Informationen
+
+Diese können als Nachverarbeitungsschritte hinzugefügt werden.
+
+---
+
+## Rate Limiting & Kontingente
 
 ### Rate Limits
 
-Configurable per user/workspace:
+Konfigurierbar pro Benutzer/Workspace:
 
 ```
 RateLimits:
-  per_user: 100 queries/day
-  per_team: 1000 queries/day
-  global: 10000 queries/day
+  pro_benutzer: 100 Abfragen/Tag
+  pro_team: 1.000 Abfragen/Tag
+  global: 10.000 Abfragen/Tag
 ```
 
-### Token Quotas
+### Token-Kontingente
 
-Can also quota by tokens (more granular):
+Kann auch nach Token kontingentieren (granularer):
 
 ```
-TokenQuotas:
-  per_user: 50,000 tokens/day
-  per_team: 500,000 tokens/day
+TokenKontingente:
+  pro_benutzer: 50.000 Token/Tag
+  pro_team: 500.000 Token/Tag
 ```
 
-When exceeded:
-- User sees: "Daily quota exceeded. Try again tomorrow."
-- Admin notified
-- Query still logged for audit
+Bei Überschreitung:
+- Benutzer sieht: "Tageskontingent überschritten. Morgen erneut versuchen."
+- Admin benachrichtigt
+- Abfrage noch für Audit geloggt
 
 ---
 
 ## Monitoring & Observability
 
-### What Gets Logged
+### Was geloggt wird
 
-For each query, system logs:
-- User ID
+Für jede Abfrage loggt das System:
+- Benutzer-ID
 - Workspace
-- Question (optional, can be disabled for privacy)
-- Retrieved documents count
-- Model used
-- Generation tokens used
-- Response time
-- User feedback (if any)
+- Frage (optional, kann für Datenschutz deaktiviert werden)
+- Anzahl abgerufener Dokumente
+- Verwendetes Modell
+- Generierungs-Token verwendet
+- Antwortzeit
+- Benutzer-Feedback (falls vorhanden)
 
-### Metrics Dashboards
+### Metrik-Dashboards
 
-Admins can see:
-- Top questions asked
-- Model performance (answer quality)
-- Cost breakdown by user/workspace
-- API errors and failures
-- Model latency distribution
+Admins können sehen:
+- Häufigste gestellte Fragen
+- Modell-Leistung (Antwortqualität)
+- Kostenaufschlüsselung nach Benutzer/Workspace
+- API-Fehler und -Ausfälle
+- Modell-Latenzverteilung
 
-### Cost Tracking
+### Kosten-Tracking
 
-Detailed cost breakdown:
-- Cost per query
-- Cost per user
-- Cost per model
-- Trends over time
+Detaillierte Kostenaufschlüsselung:
+- Kosten pro Abfrage
+- Kosten pro Benutzer
+- Kosten pro Modell
+- Trends über Zeit
 
 ---
 
-## Switching LLM Providers
+## LLM-Anbieter wechseln
 
-### How to Switch
+### Wie man wechselt
 
-1. **Change Configuration:**
+1. **Konfiguration ändern:**
    ```
-   OLD: LLM_API_KEY=sk-openai-xxx
-   NEW: LLM_API_KEY=sk-claude-xxx
+   ALT: LLM_API_KEY=sk-openai-xxx
+   NEU: LLM_API_KEY=sk-claude-xxx
         LLM_MODEL="claude-3-sonnet"
    ```
 
-2. **Restart Service** (or hot-reload)
+2. **Dienst neu starten** (oder Hot-Reload)
 
-3. **Test:** Ask a question, verify response quality
+3. **Testen:** Frage stellen, Antwortqualität verifizieren
 
-**That's it.** No code changes, no data migration, no re-indexing.
+**Das ist alles.** Keine Code-Änderungen, keine Datenmigration, keine Neu-Indizierung.
 
-### Considerations
+### Überlegungen
 
-- Different models may have different output quality
-- Different models have different speed/cost
-- May want to test new model on subset of users first
-- Embedding model can be changed independently (requires re-indexing)
-
----
-
-## Integration Points
-
-- **Data Indexing:** Uses embedding model to create document embeddings
-- **User Frontends:** Receives generated answers, streams to users
-- **Access Control:** Respects document permissions before answering
-- **Deployment Infrastructure:** Manages API credentials, rate limiting
+- Verschiedene Modelle können unterschiedliche Ausgabequalität haben
+- Verschiedene Modelle haben unterschiedliche Geschwindigkeit/Kosten
+- Neues Modell möglicherweise zuerst mit Teilmenge der Benutzer testen
+- Embedding-Modell kann unabhängig geändert werden (erfordert Neu-Indizierung)
 
 ---
 
-## Open Questions / Future Enhancements
+## Integrationspunkte
 
-- Should OPAA support finetuned models specific to organization?
-- Should we implement automatic model selection based on question complexity?
-- Should we support prompt engineering best practices (chain-of-thought, etc.)?
-- Should we offer A/B testing (show different users different models)?
-- Should cost optimization be automatic (pick cheapest model that works)?
-- Should we support local model serving (CUDA, Apple Metal) natively?
+- **Daten-Indizierung:** Verwendet Embedding-Modell zur Erstellung von Dokument-Embeddings
+- **Benutzer-Frontends:** Empfängt generierte Antworten, streamt an Benutzer
+- **Zugangskontrolle:** Respektiert Dokument-Berechtigungen vor der Antwort
+- **Deployment-Infrastruktur:** Verwaltet API-Anmeldeinformationen, Rate Limiting
 
 ---
 
-## Success Metrics
+## Offene Fragen / Zukünftige Erweiterungen
 
-- **Answer Quality:** % of answers rated helpful by users
-- **Cost Efficiency:** Cost per query, cost per successful interaction
-- **Latency:** P95 response time to user
-- **Model Performance:** Error rates, hallucination rates
-- **API Uptime:** % of successful API calls to LLM provider
-- **User Adoption:** Growth in number of queries over time
+- Sollte OPAA feinabgestimmte Modelle spezifisch für die Organisation unterstützen?
+- Sollten wir automatische Modellauswahl basierend auf Fragenkomplexität implementieren?
+- Sollten wir Prompt-Engineering-Best-Practices unterstützen (Chain-of-Thought, usw.)?
+- Sollten wir A/B-Testing anbieten (verschiedenen Benutzern verschiedene Modelle zeigen)?
+- Sollte Kostenoptimierung automatisch sein (günstigstes funktionierendes Modell wählen)?
+- Sollten wir lokales Modell-Serving (CUDA, Apple Metal) nativ unterstützen?
+
+---
+
+## Erfolgs-Metriken
+
+- **Antwortqualität:** % der von Benutzern als hilfreich bewerteten Antworten
+- **Kosteneffizienz:** Kosten pro Abfrage, Kosten pro erfolgreicher Interaktion
+- **Latenz:** P95-Antwortzeit an Benutzer
+- **Modell-Leistung:** Fehlerraten, Halluzinationsraten
+- **API-Verfügbarkeit:** % erfolgreicher API-Aufrufe an LLM-Anbieter
+- **Benutzerakzeptanz:** Wachstum der Anzahl von Abfragen über Zeit

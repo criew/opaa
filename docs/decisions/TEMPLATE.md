@@ -1,17 +1,17 @@
-# ADR-NNNN: Title
+# ADR-NNNN: Titel
 
 ## Status
 
-Proposed | Accepted | Deprecated | Superseded by ADR-NNNN
+Vorgeschlagen | Akzeptiert | Veraltet | Ersetzt durch ADR-NNNN
 
-## Context
+## Kontext
 
-What is the issue that we're seeing that is motivating this decision?
+Was ist das Problem, das wir sehen und das diese Entscheidung motiviert?
 
-## Decision
+## Entscheidung
 
-What is the change that we're proposing and/or doing?
+Was ist die Änderung, die wir vorschlagen und/oder umsetzen?
 
-## Consequences
+## Konsequenzen
 
-What becomes easier or more difficult to do because of this change?
+Was wird durch diese Änderung einfacher oder schwieriger?

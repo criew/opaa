@@ -1,137 +1,137 @@
-# Cross-Workspace Document Sharing
+# Workspace-übergreifendes Dokument-Teilen
 
-> **Status: Early Draft — Significant open questions remain.**
-> This feature was extracted from the Access Control & Workspaces spec because it requires a separate, in-depth design phase. The current concepts are not final and have known security gaps that must be resolved before implementation.
+> **Status: Früher Entwurf — wesentliche offene Fragen verbleiben.**
+> Dieses Feature wurde aus der Spezifikation Zugangskontrolle & Workspaces extrahiert, weil es eine separate, eingehende Designphase erfordert. Die aktuellen Konzepte sind nicht abschließend und haben bekannte Sicherheitslücken, die vor der Implementierung behoben werden müssen.
 
 ## Motivation
 
-Users and teams need to make documents discoverable across workspace boundaries. For example, a team might want to share a design document with another team for review, or a user might want to make personal notes available to their team.
+Benutzer und Teams müssen Dokumente über Workspace-Grenzen hinaus auffindbar machen. Beispielsweise möchte ein Team ein Design-Dokument mit einem anderen Team zum Review teilen, oder ein Benutzer möchte persönliche Notizen für sein Team zugänglich machen.
 
 ---
 
-## Current Concept (Under Review)
+## Aktuelles Konzept (unter Überprüfung)
 
-### How Sharing Works
+### Wie Teilen funktioniert
 
-1. User selects a document in a workspace where they have Editor role
-2. User selects "Share to workspace" and picks a target workspace
-3. User must have at least Editor role in the target workspace
-4. The document's indexed chunks gain the target workspace ID
-5. Members of the target workspace can now find the document in search results
-6. The original document remains in its home workspace (single source of truth)
+1. Benutzer wählt ein Dokument in einem Workspace aus, in dem er Editor-Rolle hat
+2. Benutzer wählt "In Workspace teilen" und wählt einen Ziel-Workspace
+3. Benutzer muss mindestens Editor-Rolle im Ziel-Workspace haben
+4. Die indizierten Chunks des Dokuments erhalten die Ziel-Workspace-ID
+5. Mitglieder des Ziel-Workspaces können das Dokument jetzt in Suchergebnissen finden
+6. Das Originaldokument verbleibt in seinem Heimat-Workspace (Single Source of Truth)
 
-Bulk sharing is supported — users can share multiple documents at once.
+Massen-Teilen wird unterstützt — Benutzer können mehrere Dokumente auf einmal teilen.
 
-### Sharing Scenarios
-
-```
-Scenario 1: Personal → Team
-  Alice shares "Notes.md" from "My Documents" → "Frontend-Team"
-  Requirement: Alice is Editor in "Frontend-Team"
-
-Scenario 2: Team → Team
-  Alice shares "API-Spec.md" from "Backend-Team" → "Frontend-Team"
-  Requirement: Alice is Editor in BOTH workspaces
-
-Scenario 3: Team → Project
-  Alice shares "Sprint-Results.md" from "Frontend-Team" → "Phoenix"
-  Requirement: Alice is Editor in BOTH workspaces
-```
-
-### Sharing Model
+### Teilungs-Szenarien
 
 ```
-Document: "Q1 Design Review"
+Szenario 1: Persönlich → Team
+  Alice teilt "Notes.md" aus "Meine Dokumente" → "Frontend-Team"
+  Anforderung: Alice ist Editor in "Frontend-Team"
+
+Szenario 2: Team → Team
+  Alice teilt "API-Spec.md" aus "Backend-Team" → "Frontend-Team"
+  Anforderung: Alice ist Editor in BEIDEN Workspaces
+
+Szenario 3: Team → Projekt
+  Alice teilt "Sprint-Results.md" aus "Frontend-Team" → "Phoenix"
+  Anforderung: Alice ist Editor in BEIDEN Workspaces
+```
+
+### Teilungsmodell
+
+```
+Dokument: "Q1 Design Review"
   Owner: Sarah Chen
-  Home workspace: My Documents (Sarah)
-  Shared to: [Engineering, Architecture]
+  Heimat-Workspace: Meine Dokumente (Sarah)
+  Geteilt mit: [Engineering, Architecture]
 
-  Visibility:
-    - Sarah: always (owner)
-    - Engineering members: yes (shared)
-    - Architecture members: yes (shared)
-    - Marketing members: no (not shared)
+  Sichtbarkeit:
+    - Sarah: immer (Owner)
+    - Engineering-Mitglieder: ja (geteilt)
+    - Architecture-Mitglieder: ja (geteilt)
+    - Marketing-Mitglieder: nein (nicht geteilt)
 ```
 
-### Sharing vs. Moving
+### Teilen vs. Verschieben
 
-- **Share:** Document visible in multiple workspaces. Single source of truth. Owner retains control.
-- **Move:** (Not supported) Documents always have a home workspace. If a user wants to permanently place a document in a team workspace, they upload directly to that workspace (requires Editor role).
+- **Teilen:** Dokument in mehreren Workspaces sichtbar. Single Source of Truth. Owner behält Kontrolle.
+- **Verschieben:** (Nicht unterstützt) Dokumente haben immer einen Heimat-Workspace. Wenn ein Benutzer ein Dokument dauerhaft in einem Team-Workspace platzieren möchte, lädt er direkt in diesen Workspace hoch (erfordert Editor-Rolle).
 
-### Sharing Notifications
+### Teilungs-Benachrichtigungen
 
-When a document is shared to a workspace, members of the target workspace are notified.
+Wenn ein Dokument mit einem Workspace geteilt wird, werden Mitglieder des Ziel-Workspaces benachrichtigt.
 
-### Revoking Shared Access
+### Geteilten Zugang widerrufen
 
-- Document owner can revoke sharing at any time
-- Workspace Admin of the target can remove a shared document from their workspace
-- When sharing is revoked, the document's chunks lose the workspace tag and are no longer returned in that workspace's search results
-- Sharing actions (grant and revoke) are recorded in the audit log
+- Dokument-Owner kann Teilen jederzeit widerrufen
+- Workspace-Admin des Ziels kann ein geteiltes Dokument aus seinem Workspace entfernen
+- Wenn Teilen widerrufen wird, verlieren die Chunks des Dokuments das Workspace-Tag und werden nicht mehr in den Suchergebnissen dieses Workspaces zurückgegeben
+- Teilungsaktionen (Gewähren und Widerrufen) werden im Audit-Log aufgezeichnet
 
-### Shared Document Removal
+### Entfernung geteilter Dokumente
 
-Workspace Admins of the target workspace can remove incoming shared documents from their workspace. This removes the workspace tags from the document's chunks — the original document in the source workspace is unaffected.
+Workspace-Admins des Ziel-Workspaces können eingehende geteilte Dokumente aus ihrem Workspace entfernen. Dies entfernt die Workspace-Tags von den Chunks des Dokuments — das Originaldokument im Quell-Workspace ist nicht betroffen.
 
-### External Sharing (Share Links)
+### Externes Teilen (Freigabe-Links)
 
-Limited external access via share links:
+Begrenzter externer Zugang über Freigabe-Links:
 
 ```
-Create share link with:
-  - Expiry date (e.g., 7 days)
-  - Read-only access
-  - Optional password
-  - Tracking enabled (see who accessed)
+Freigabe-Link erstellen mit:
+  - Ablaufdatum (z. B. 7 Tage)
+  - Nur-Lesen-Zugang
+  - Optionales Passwort
+  - Tracking aktiviert (sehen, wer zugegriffen hat)
 
 Link: https://opaa.company.com/share/abc123xyz
-  - Valid until Feb 23, 2024
-  - Can be revoked any time
-  - Access logged in audit trail
+  - Gültig bis 23. Februar 2024
+  - Kann jederzeit widerrufen werden
+  - Zugang im Audit-Trail geloggt
 ```
 
 ---
 
-## Known Security Concerns
+## Bekannte Sicherheitsbedenken
 
-The current "Editor in both workspaces" model has a **fundamental security gap**:
+Das aktuelle "Editor in beiden Workspaces"-Modell hat eine **grundlegende Sicherheitslücke**:
 
-### Problem: Unintended Information Disclosure
+### Problem: Unbeabsichtigte Informationsoffenlegung
 
-Consider two workspaces:
-- **Workspace A:** "Confidential Manager Documents" (members: managers only)
-- **Workspace B:** "Employee FAQs" (members: all employees)
+Betrachten Sie zwei Workspaces:
+- **Workspace A:** "Vertrauliche Manager-Dokumente" (Mitglieder: nur Manager)
+- **Workspace B:** "Mitarbeiter-FAQs" (Mitglieder: alle Mitarbeiter)
 
-If a manager is Editor in both workspaces, they could share a confidential salary document from Workspace A to Workspace B. All employees in Workspace B would then see this document in their search results — a clear security violation.
+Wenn ein Manager Editor in beiden Workspaces ist, könnte er ein vertrauliches Gehaltsdokument aus Workspace A mit Workspace B teilen. Alle Mitarbeiter in Workspace B würden dieses Dokument dann in ihren Suchergebnissen sehen — eine klare Sicherheitsverletzung.
 
-The current model assumes that having Editor role in the source workspace implies the right to distribute its contents. This is not necessarily true. **Being allowed to edit documents does not mean being allowed to declassify them.**
+Das aktuelle Modell setzt voraus, dass Editor-Rolle im Quell-Workspace das Recht impliziert, seinen Inhalt zu verteilen. Dies ist nicht notwendigerweise wahr. **Das Erlaubt-sein, Dokumente zu bearbeiten, bedeutet nicht das Erlaubt-sein, sie zu deklassifizieren.**
 
-### What Needs to Be Resolved
+### Was geklärt werden muss
 
-Before implementing sharing, the following questions must be answered:
+Vor der Implementierung von Teilen müssen folgende Fragen beantwortet werden:
 
-1. **Permission check in target workspace:** Should there be a verification that the shared document's sensitivity level is compatible with the target workspace's audience? If so, how is sensitivity determined?
-2. **Approval workflow:** Should sharing require explicit approval by an Admin of the target workspace? This would prevent unilateral sharing but adds friction.
-3. **Role-based sharing restrictions:** Is "Editor in both" the right permission requirement? Perhaps sharing should require Admin role in the source workspace (higher authority to distribute), or a new "Share" permission separate from "Edit".
-4. **Visibility rules for shared documents:** When a document is shared into a workspace, does it become visible to ALL members of the target workspace, or only to members with a specific role?
-5. **Classification-based controls:** Should documents have a classification level (e.g., Public, Internal, Confidential, Restricted) that limits which workspaces they can be shared to?
-
----
-
-## Open Questions
-
-- **User-to-User sharing:** Direct sharing between personal workspaces is currently not possible (sharing requires Editor role in both workspaces, and personal workspaces don't allow other members). Possible solutions: (a) share via a common workspace, (b) introduce a user-level sharing mechanism (e.g., "Share document with User X"), or (c) accept the common-workspace workaround as a deliberate design choice.
-- Should shared documents support **read-only vs. editable** sharing?
-- Should there be a **limit** on how many workspaces a document can be shared to?
-- Should workspace admins be able to **"request"** documents from users' personal workspaces?
-- How does sharing interact with **connector permissions from source systems** (e.g., Confluence space permissions)?
-- Should there be a **sharing audit dashboard** showing all active shares across the organization?
+1. **Berechtigungsprüfung im Ziel-Workspace:** Sollte überprüft werden, ob das Sensitivitätsniveau des geteilten Dokuments mit dem Publikum des Ziel-Workspaces kompatibel ist? Falls ja, wie wird Sensitivität bestimmt?
+2. **Genehmigungsworkflow:** Sollte Teilen explizite Genehmigung durch einen Admin des Ziel-Workspaces erfordern? Dies würde unilaterales Teilen verhindern, fügt aber Reibung hinzu.
+3. **Rollenbasierte Teilungseinschränkungen:** Ist "Editor in beiden" die richtige Berechtigungsanforderung? Vielleicht sollte Teilen Admin-Rolle im Quell-Workspace erfordern (höhere Autorität zur Verteilung) oder eine neue "Teilen"-Berechtigung getrennt von "Bearbeiten".
+4. **Sichtbarkeitsregeln für geteilte Dokumente:** Wenn ein Dokument in einen Workspace geteilt wird, wird es für ALLE Mitglieder des Ziel-Workspaces sichtbar oder nur für Mitglieder mit einer bestimmten Rolle?
+5. **Klassifizierungsbasierte Kontrollen:** Sollten Dokumente ein Klassifizierungslevel haben (z. B. Öffentlich, Intern, Vertraulich, Eingeschränkt), das einschränkt, in welche Workspaces sie geteilt werden können?
 
 ---
 
-## Integration Points
+## Offene Fragen
 
-- **Access Control & Workspaces:** Sharing extends workspace-level permissions — see [Access Control & Workspaces](./access-control-workspaces.md)
-- **Data Indexing & RAG:** Shared documents gain additional `workspace_ids` tags on their chunks
-- **User Frontends:** Sharing UI, share management, notifications
-- **Audit & Compliance:** All sharing actions logged
+- **Benutzer-zu-Benutzer-Teilen:** Direktes Teilen zwischen persönlichen Workspaces ist derzeit nicht möglich (Teilen erfordert Editor-Rolle in beiden Workspaces, und persönliche Workspaces erlauben keine anderen Mitglieder). Mögliche Lösungen: (a) über einen gemeinsamen Workspace teilen, (b) einen Benutzerebenen-Teilmechanismus einführen (z. B. "Dokument mit Benutzer X teilen"), oder (c) den gemeinsamen Workspace-Workaround als bewusste Designentscheidung akzeptieren.
+- Sollten geteilte Dokumente **Nur-Lesen vs. bearbeitbares** Teilen unterstützen?
+- Sollte es eine **Begrenzung** geben, wie viele Workspaces ein Dokument geteilt werden kann?
+- Sollten Workspace-Admins in der Lage sein, Dokumente aus persönlichen Workspaces von Benutzern zu **"anfordern"**?
+- Wie interagiert Teilen mit **Konnektor-Berechtigungen aus Quellsystemen** (z. B. Confluence-Space-Berechtigungen)?
+- Sollte es ein **Teilungs-Audit-Dashboard** geben, das alle aktiven Teilungen in der Organisation zeigt?
+
+---
+
+## Integrationspunkte
+
+- **Zugangskontrolle & Workspaces:** Teilen erweitert workspace-ebenen Berechtigungen — siehe [Zugangskontrolle & Workspaces](./access-control-workspaces.md)
+- **Daten-Indizierung & RAG:** Geteilte Dokumente erhalten zusätzliche `workspace_ids`-Tags auf ihren Chunks
+- **Benutzer-Frontends:** Teilungs-UI, Teilungs-Verwaltung, Benachrichtigungen
+- **Audit & Compliance:** Alle Teilungsaktionen geloggt

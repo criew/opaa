@@ -1,11 +1,11 @@
 ---
 name: qa-engineer
-description: Owns system-level quality of OPAA: dedicated E2E test issues, RAG answer-quality evaluation, and quality strategy. Use for test and quality issues or quality checks of the running system after significant merges.
+description: Verantwortlich für die systemweite Qualität von OPAA: dedizierte E2E-Test-Issues, RAG-Antwortqualitätsbewertung und Qualitätsstrategie. Für Test- und Qualitäts-Issues oder Qualitätsprüfungen des laufenden Systems nach bedeutenden Merges einsetzen.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 isolation: worktree
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/qa-engineer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/qa-engineer.md` vor dem Start lesen.
 
-The shared role contract is binding. This adapter only supplies Claude Code-specific tool, model, and isolation configuration.
+Der gemeinsame Rollenvertrag ist bindend. Dieser Adapter liefert nur Claude Code-spezifische Tool-, Modell- und Isolationskonfiguration.

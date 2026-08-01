@@ -1,49 +1,49 @@
-# ADR-0003: Code Formatting
+# ADR-0003: Code-Formatierung
 
 ## Status
 
-Accepted
+Akzeptiert
 
-## Context
+## Kontext
 
-The project needs a consistent code formatting standard. Without automated enforcement, formatting inconsistencies (tabs vs. spaces, import ordering, line length) creep in across contributions from both human developers and AI agents.
+Das Projekt benötigt einen konsistenten Code-Formatierungsstandard. Ohne automatisierte Durchsetzung schleichen sich Formatierungsinkonsistenzen (Tabs vs. Leerzeichen, Import-Reihenfolge, Zeilenlänge) in Beiträgen sowohl von menschlichen Entwicklern als auch von KI-Agenten ein.
 
-Key considerations:
+Wesentliche Überlegungen:
 
-- The project uses Java (backend) and will add TypeScript (frontend) later
-- Both human and AI contributors work on the codebase
-- Formatting should be enforced automatically, not through manual review
+- Das Projekt verwendet Java (Backend) und wird später TypeScript (Frontend) hinzufügen
+- Sowohl menschliche als auch KI-Beitragende arbeiten an der Codebasis
+- Formatierung sollte automatisch durchgesetzt werden, nicht durch manuelles Review
 
-## Decision
+## Entscheidung
 
-### Standard: Google Java Format via Spotless
+### Standard: Google Java Format über Spotless
 
-- **Spotless** (Gradle plugin) enforces formatting as part of the build.
-- **Google Java Format** is the formatter for Java source files. It uses 2-space indentation, which is the Google Java Style standard.
-- **Gradle Kotlin DSL** files (`.gradle.kts`) use 4-space indentation, enforced by Spotless.
-- **Spaces over tabs** — all source files use spaces for indentation, never tabs.
+- **Spotless** (Gradle-Plugin) setzt Formatierung als Teil des Builds durch.
+- **Google Java Format** ist der Formatierer für Java-Quelldateien. Er verwendet 2-Leerzeichen-Einrückung, was der Google-Java-Style-Standard ist.
+- **Gradle-Kotlin-DSL**-Dateien (`.gradle.kts`) verwenden 4-Leerzeichen-Einrückung, durchgesetzt durch Spotless.
+- **Leerzeichen statt Tabs** — alle Quelldateien verwenden Leerzeichen für Einrückung, niemals Tabs.
 
-### Enforcement
+### Durchsetzung
 
-- `./gradlew spotlessCheck` verifies formatting (can be used in CI).
-- `./gradlew spotlessApply` auto-formats all files.
-- Spotless runs as part of the standard Gradle build lifecycle.
+- `./gradlew spotlessCheck` verifiziert Formatierung (kann in CI verwendet werden).
+- `./gradlew spotlessApply` formatiert alle Dateien automatisch.
+- Spotless läuft als Teil des Standard-Gradle-Build-Lebenszyklus.
 
-### Scope
+### Umfang
 
-- Java: Google Java Format (2 spaces, sorted imports, no unused imports)
-- Kotlin DSL: 4 spaces, trimmed trailing whitespace
-- Frontend (TypeScript/TSX): Prettier (no semicolons, single quotes, trailing commas, 100-char line width). Enforced via `npm run format:check` / `npm run format`.
+- Java: Google Java Format (2 Leerzeichen, sortierte Imports, keine ungenutzten Imports)
+- Kotlin DSL: 4 Leerzeichen, getrimmt, kein Trailing Whitespace
+- Frontend (TypeScript/TSX): Prettier (keine Semikolons, einfache Anführungszeichen, Trailing Commas, 100-Zeichen-Zeilenbreite). Durchgesetzt über `npm run format:check` / `npm run format`.
 
-## Consequences
+## Konsequenzen
 
-### What becomes easier
+### Was einfacher wird
 
-- **Consistent code style** across all contributions without manual review effort.
-- **No formatting debates** — the tool decides, contributors comply.
-- **AI agents** produce consistently formatted code by running `spotlessApply` after changes.
+- **Konsistenter Code-Stil** über alle Beiträge ohne manuellen Review-Aufwand.
+- **Keine Formatierungsdebatten** — das Tool entscheidet, Beitragende befolgen es.
+- **KI-Agenten** produzieren konsistent formatierten Code durch Ausführen von `spotlessApply` nach Änderungen.
 
-### What becomes more difficult
+### Was schwieriger wird
 
-- **Google Java Format is opinionated** — its 2-space indentation and line-breaking style may feel unfamiliar to developers used to 4-space Java conventions. This is intentional: a strict, non-configurable formatter eliminates bikeshedding.
-- **Initial friction** — existing code must be reformatted on adoption (one-time cost, already done).
+- **Google Java Format ist meinungsstark** — seine 2-Leerzeichen-Einrückung und Zeilenumbruch-Stil kann Entwicklern ungewohnt erscheinen, die an 4-Leerzeichen-Java-Konventionen gewöhnt sind. Dies ist beabsichtigt: ein strenger, nicht konfigurierbarer Formatierer eliminiert Bikeshedding.
+- **Initiale Reibung** — bestehender Code muss bei der Einführung neu formatiert werden (einmalige Kosten, bereits erledigt).

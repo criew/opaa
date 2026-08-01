@@ -1,48 +1,48 @@
-# Feature Title
+# Feature-Titel
 
-> **Status: Early Draft — significant open questions remain.**
-<!-- Keep the status blockquote while the spec is a draft; remove it once settled. -->
+> **Status: Früher Entwurf — wesentliche offene Fragen verbleiben.**
+<!-- Den Status-Blockquote beibehalten, solange die Spezifikation ein Entwurf ist; entfernen, sobald geklärt. -->
 
 ## Motivation
 
-Why this feature exists: the problem, who has it, and why OPAA should solve it.
+Warum dieses Feature existiert: das Problem, wer es hat und warum OPAA es lösen sollte.
 
 ---
 
-## Overview
+## Überblick
 
-The core points of the design, numbered:
+Die Kernpunkte des Designs, nummeriert:
 
 1. ...
 2. ...
 
 ---
 
-## <Domain Chapter>
+## <Domänen-Kapitel>
 
 <!--
-The body of the spec is domain-specific chapters (as many as needed), written
-product-conceptually: behavior, roles, flows, and options with trade-offs
-("Option 1/2/3" + recommendation) — not classes or file names. Use config
-snippets (YAML/env), tables (e.g. permission matrices), and ASCII diagrams
-(flows, UI mockups) wherever they clarify. Separate sections with `---`.
-See `access-control-workspaces.md` for the reference example.
+Der Hauptteil der Spezifikation sind domänenspezifische Kapitel (so viele wie nötig), auf
+Produkt-Konzeptebene geschrieben: Verhalten, Rollen, Abläufe und Optionen mit Abwägungen
+("Option 1/2/3" + Empfehlung) — keine Klassen oder Dateinamen. Konfigurationsausschnitte
+(YAML/env), Tabellen (z. B. Berechtigungsmatrizen) und ASCII-Diagramme (Abläufe, UI-Mockups)
+verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
+Siehe `access-control-workspaces.md` als Referenzbeispiel.
 -->
 
 ---
 
-## Integration Points
+## Integrationspunkte
 
-How this feature connects to other features/specs.
-
----
-
-## Open Questions / Future Enhancements
-
-- Question or deferred idea 1?
+Wie dieses Feature mit anderen Features/Spezifikationen verbunden ist.
 
 ---
 
-## Success Metrics (optional)
+## Offene Fragen / Zukünftige Erweiterungen
 
-How we would know the feature works for users.
+- Frage oder zurückgestellte Idee 1?
+
+---
+
+## Erfolgs-Metriken (optional)
+
+Wie wir wissen würden, dass das Feature für Benutzer funktioniert.

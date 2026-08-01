@@ -1,251 +1,251 @@
-# MVP Status by Feature Area
+# MVP-Status nach Feature-Bereich
 
-**Last Updated:** 2026-03-01
-**MVP Status:** ✅ COMPLETE
+**Zuletzt aktualisiert:** 2026-03-01
+**MVP-Status:** VOLLSTÄNDIG
 
-This document tracks the MVP implementation status for each major feature area. It serves as a reference for what's currently built and what's planned for future releases.
+Dieses Dokument verfolgt den MVP-Implementierungsstatus für jeden großen Feature-Bereich. Es dient als Referenz dafür, was aktuell gebaut ist und was für zukünftige Releases geplant ist.
 
 ---
 
-## 📊 Quick Summary
+## Kurzübersicht
 
-| Feature Area | MVP Status | Completeness | Next Phase |
+| Feature-Bereich | MVP-Status | Vollständigkeit | Nächste Phase |
 |---|---|---|---|
-| **Data Indexing & RAG** | ✅ Complete | 100% | Connector ecosystem |
-| **LLM Integration** | ✅ Complete | 100% | Advanced reasoning models |
-| **User Frontends** | ✅ Complete | 100% | Chat platform integrations |
-| **Access Control & Workspaces** | ✅ Complete | 100% | Fine-grained permissions |
-| **Deployment** | ✅ Complete | 100% | High-availability setup |
+| **Daten-Indizierung & RAG** | Vollständig | 100% | Konnektor-Ökosystem |
+| **LLM-Integration** | Vollständig | 100% | Erweiterte Reasoning-Modelle |
+| **Benutzer-Frontends** | Vollständig | 100% | Chat-Plattform-Integrationen |
+| **Zugangskontrolle & Workspaces** | Vollständig | 100% | Feinkörnige Berechtigungen |
+| **Deployment** | Vollständig | 100% | Hochverfügbarkeits-Setup |
 
 ---
 
-## 🎯 Feature Areas
+## Feature-Bereiche
 
-### 1. Data Indexing & RAG
+### 1. Daten-Indizierung & RAG
 
-**MVP Scope:**
-- ✅ Document upload via Web UI, REST API, and direct file system ingestion
-- ✅ Supported formats: Markdown, TXT, PDF, DOCX, XLSX, PPTX
-- ✅ Document chunking and semantic embedding (via LLM embeddings)
-- ✅ Retrieval pipeline with relevance ranking
-- ✅ Source attribution and metadata preservation
-- ✅ Document re-indexing and updates
+**MVP-Umfang:**
+- Dokument-Upload über Web-UI, REST-API und direkter Dateisystem-Aufnahme
+- Unterstützte Formate: Markdown, TXT, PDF, DOCX, XLSX, PPTX
+- Dokument-Chunking und semantisches Embedding (über LLM-Embeddings)
+- Retrieval-Pipeline mit Relevanz-Ranking
+- Quellenangabe und Metadaten-Erhaltung
+- Dokument-Neu-Indizierung und -Aktualisierungen
 
-**Not in MVP (Planned):**
-- ⏳ Connector ecosystem (Confluence, Notion, Jira, GitHub, Email)
-- ⏳ Scheduled/incremental ingestion from external sources
-- ⏳ OCR for scanned PDFs
-- ⏳ Advanced chunking strategies (semantic, hierarchical)
+**Nicht im MVP (Geplant):**
+- Konnektor-Ökosystem (Confluence, Notion, Jira, GitHub, E-Mail)
+- Geplante/inkrementelle Aufnahme aus externen Quellen
+- OCR für gescannte PDFs
+- Erweiterte Chunking-Strategien (semantisch, hierarchisch)
 
-**Testing Coverage:**
-- `DocumentIndexingIntegrationTest` — chunking, embedding, storage
-- `QueryIntegrationTest` — retrieval accuracy, source tracking
-- Frontend component tests for upload UI
+**Test-Coverage:**
+- `DocumentIndexingIntegrationTest` — Chunking, Embedding, Speicherung
+- `QueryIntegrationTest` — Retrieval-Genauigkeit, Quellen-Tracking
+- Frontend-Komponenten-Tests für Upload-UI
 
-**Key Files:**
+**Wichtige Dateien:**
 - Backend: `backend/src/main/java/io/opaa/indexing/`
 - Frontend: `frontend/src/components/DocumentUpload.tsx`
 
 ---
 
-### 2. LLM Integration
+### 2. LLM-Integration
 
-**MVP Scope:**
-- ✅ OpenAI API support (GPT-4, GPT-3.5-turbo)
-- ✅ Ollama support for local/open-source models
-- ✅ Provider configuration via environment variables
-- ✅ Separate LLM provider for chat and embeddings
-- ✅ Streaming responses to frontend
-- ✅ Graceful fallback via Ollama for local development
+**MVP-Umfang:**
+- OpenAI-API-Unterstützung (GPT-4, GPT-3.5-turbo)
+- Ollama-Unterstützung für lokale/Open-Source-Modelle
+- Anbieter-Konfiguration über Umgebungsvariablen
+- Separater LLM-Anbieter für Chat und Embeddings
+- Streaming-Antworten an Frontend
+- Eleganter Fallback über Ollama für lokale Entwicklung
 
-**Implemented Providers:**
-- ✅ OpenAI (requires `OPAA_OPENAI_API_KEY`)
-- ✅ Ollama (can run locally)
-- ✅ Ollama provider (no API key needed for local development)
+**Implementierte Anbieter:**
+- OpenAI (erfordert `OPAA_OPENAI_API_KEY`)
+- Ollama (kann lokal laufen)
+- Ollama-Anbieter (kein API-Schlüssel für lokale Entwicklung benötigt)
 
-**Not in MVP (Planned):**
-- ⏳ Claude / Anthropic API
-- ⏳ Azure OpenAI
-- ⏳ Anthropic/Google vertex AI
-- ⏳ Model-specific optimizations (function calling, vision models)
-- ⏳ Token usage tracking and cost prediction
+**Nicht im MVP (Geplant):**
+- Claude / Anthropic API
+- Azure OpenAI
+- Anthropic/Google Vertex AI
+- Modell-spezifische Optimierungen (Function Calling, Vision-Modelle)
+- Token-Nutzungs-Tracking und Kostenvorhersage
 
-**Testing Coverage:**
-- `ProviderConfigurationTest` — default and Ollama config
-- `OpenAiIntegrationTest` — real OpenAI calls (requires API key)
-- `MixedProviderConfigurationTest` — different chat/embedding providers
-- Frontend mocked tests via MSW
+**Test-Coverage:**
+- `ProviderConfigurationTest` — Standard- und Ollama-Konfiguration
+- `OpenAiIntegrationTest` — Echte OpenAI-Aufrufe (erfordert API-Schlüssel)
+- `MixedProviderConfigurationTest` — Verschiedene Chat-/Embedding-Anbieter
+- Frontend-Mock-Tests über MSW
 
-**Key Files:**
+**Wichtige Dateien:**
 - Backend: `backend/src/main/java/io/opaa/llm/`
-- Configuration: `backend/src/main/resources/application*.yml`
+- Konfiguration: `backend/src/main/resources/application*.yml`
 
 ---
 
-### 3. User Frontends
+### 3. Benutzer-Frontends
 
-**MVP Scope:**
+**MVP-Umfang:**
 
-#### Web UI
-- ✅ Chat interface (ask questions, view answers)
-- ✅ Source document attribution (clickable links)
-- ✅ Document browser (search, preview)
-- ✅ Personal workspace for uploads
-- ✅ Conversation history
-- ✅ Feedback buttons (thumbs up/down for responses)
-- ✅ User authentication (mock + real)
-- ✅ Settings page (API token management)
+#### Web-UI
+- Chat-Schnittstelle (Fragen stellen, Antworten anzeigen)
+- Quelldokument-Angabe (klickbare Links)
+- Dokument-Browser (suchen, Vorschau)
+- Persönlicher Workspace für Uploads
+- Gesprächshistorie
+- Feedback-Buttons (Daumen hoch/runter für Antworten)
+- Benutzer-Authentifizierung (Mock + Echt)
+- Einstellungsseite (API-Token-Verwaltung)
 
-#### REST API
-- ✅ `/api/v1/query` — ask questions
-- ✅ `/api/v1/indexing/trigger` — start indexing job
-- ✅ `/api/v1/indexing/status` — get indexing status
-- ✅ `/api/v1/documents/upload` — upload documents
+#### REST-API
+- `/api/v1/query` — Fragen stellen
+- `/api/v1/indexing/trigger` — Indizierungsjob starten
+- `/api/v1/indexing/status` — Indizierungsstatus abrufen
+- `/api/v1/documents/upload` — Dokumente hochladen
 
-**Not in MVP (Planned):**
-- ⏳ Chat platform integrations (Slack, Mattermost, RocketChat)
-- ⏳ IDE integrations (VS Code, IntelliJ)
-- ⏳ CLI tool
-- ⏳ Mobile apps (iOS/Android)
-- ⏳ Document export (PDF, Markdown)
-- ⏳ Conversation sharing with time-limited links
+**Nicht im MVP (Geplant):**
+- Chat-Plattform-Integrationen (Slack, Mattermost, RocketChat)
+- IDE-Integrationen (VS Code, IntelliJ)
+- CLI-Tool
+- Mobile-Apps (iOS/Android)
+- Dokument-Export (PDF, Markdown)
+- Gesprächs-Teilen mit zeitlich begrenzten Links
 
-**Testing Coverage:**
-- Frontend: Component tests (Vitest) with MSW mocks
-- Backend: Integration tests for API endpoints
-- E2E smoke tests via Docker Compose
+**Test-Coverage:**
+- Frontend: Komponenten-Tests (Vitest) mit MSW-Mocks
+- Backend: Integrationstests für API-Endpunkte
+- E2E-Smoke-Tests über Docker Compose
 
-**Key Files:**
+**Wichtige Dateien:**
 - Frontend: `frontend/src/pages/Chat.tsx`, `DocumentBrowser.tsx`
 - Backend: `backend/src/main/java/io/opaa/api/`
 
 ---
 
-### 4. Access Control & Workspaces
+### 4. Zugangskontrolle & Workspaces
 
-**MVP Scope:**
-- ✅ Single workspace per deployment
-- ✅ User role: Owner/User/Viewer (basic levels)
-- ✅ Authentication: Mock provider + SSO-ready architecture
-- ✅ Document access control (inherit permissions from source)
-- ✅ Basic authorization checks on API endpoints
+**MVP-Umfang:**
+- Einzelner Workspace pro Deployment
+- Benutzerrolle: Owner/User/Viewer (Grundstufen)
+- Authentifizierung: Mock-Anbieter + SSO-bereite Architektur
+- Dokument-Zugangskontrolle (Berechtigungen von Quelle erben)
+- Grundlegende Autorisierungs-Checks auf API-Endpunkten
 
-**Not in MVP (Planned):**
-- ⏳ Multi-workspace support per user
-- ⏳ Role-based access control (RBAC) with custom roles
-- ⏳ Attribute-based access control (ABAC)
-- ⏳ Fine-grained document-level permissions
-- ⏳ Audit logging (who accessed what, when)
-- ⏳ SSO integrations (OAuth2, SAML)
+**Nicht im MVP (Geplant):**
+- Multi-Workspace-Unterstützung pro Benutzer
+- Rollenbasierte Zugangskontrolle (RBAC) mit benutzerdefinierten Rollen
+- Attribut-basierte Zugangskontrolle (ABAC)
+- Feinkörnige Berechtigungen auf Dokumentenebene
+- Audit-Logging (wer hat was wann abgerufen)
+- SSO-Integrationen (OAuth2, SAML)
 
-**Testing Coverage:**
-- Authorization checks in integration tests
-- Frontend permission-based UI hiding (components)
+**Test-Coverage:**
+- Autorisierungs-Checks in Integrationstests
+- Frontend berechtigungsbasiertes UI-Ausblenden (Komponenten)
 
-**Key Files:**
+**Wichtige Dateien:**
 - Backend: `backend/src/main/java/io/opaa/access/`
 - Frontend: `frontend/src/utils/permissions.ts`
 
 ---
 
-### 5. Deployment & Infrastructure
+### 5. Deployment & Infrastruktur
 
-**MVP Scope:**
-- ✅ Docker Compose setup (backend, frontend, PostgreSQL)
-- ✅ PostgreSQL 18 with pgvector for embeddings
-- ✅ Liquibase for database migrations
-- ✅ Health check endpoints
-- ✅ Environment variable configuration
-- ✅ CI/CD pipeline (GitHub Actions)
+**MVP-Umfang:**
+- Docker-Compose-Setup (Backend, Frontend, PostgreSQL)
+- PostgreSQL 18 mit pgvector für Embeddings
+- Liquibase für Datenbankmigrationen
+- Health-Check-Endpunkte
+- Umgebungsvariablen-Konfiguration
+- CI/CD-Pipeline (GitHub Actions)
 
-**Included:**
-- ✅ Backend build + tests (Gradle)
-- ✅ Frontend build + lint + tests (npm/Vite)
-- ✅ Spotless code formatting checks
-- ✅ Docker image builds
+**Enthalten:**
+- Backend-Build + Tests (Gradle)
+- Frontend-Build + Lint + Tests (npm/Vite)
+- Spotless-Code-Formatierungs-Checks
+- Docker-Image-Builds
 
-**Not in MVP (Planned):**
-- ⏳ Kubernetes deployment templates
-- ⏳ Multi-region deployment
-- ⏳ Load balancing and horizontal scaling
-- ⏳ Monitoring dashboards (Prometheus, Grafana)
-- ⏳ Log aggregation (ELK, Loki)
-- ⏳ Backup and disaster recovery procedures
+**Nicht im MVP (Geplant):**
+- Kubernetes-Deployment-Templates
+- Multi-Region-Deployment
+- Load Balancing und horizontales Skalieren
+- Monitoring-Dashboards (Prometheus, Grafana)
+- Log-Aggregation (ELK, Loki)
+- Backup- und Disaster-Recovery-Prozeduren
 
-**Testing Coverage:**
-- CI pipeline verifies all build steps pass
-- Docker Compose smoke tests verify integration
+**Test-Coverage:**
+- CI-Pipeline verifiziert, dass alle Build-Schritte bestehen
+- Docker-Compose-Smoke-Tests verifizieren Integration
 
-**Key Files:**
-- `docker-compose.yml` — Full stack definition
-- `.github/workflows/ci.yml` — CI pipeline
-- `backend/gradle/libs.versions.toml` — Dependency management
-
----
-
-## 🔄 What's Working End-to-End
-
-**Verified Flow (MVP):**
-1. User uploads documents → stored and indexed
-2. Embeddings generated via configured LLM provider
-3. Documents chunked and stored in PostgreSQL with pgvector
-4. User asks question in Web UI
-5. Question embedded and semantically searched
-6. Top matching documents retrieved
-7. LLM generates answer with source attribution
-8. Answer streamed to frontend in real-time
-9. User sees sources as clickable links
-10. User can browse indexed documents
-11. User can provide feedback (thumbs up/down)
+**Wichtige Dateien:**
+- `docker-compose.yml` — Vollständige Stack-Definition
+- `.github/workflows/ci.yml` — CI-Pipeline
+- `backend/gradle/libs.versions.toml` — Abhängigkeitsverwaltung
 
 ---
 
-## 📈 Next Phases (Post-MVP)
+## Was durchgehend funktioniert
 
-### Phase 1: Connector Ecosystem
-- Confluence connector (wiki pages, spaces)
-- Email connector (IMAP, Gmail API, Office 365)
-- Jira connector (issues, comments)
-- GitHub connector (issues, discussions, READMEs)
-
-### Phase 2: Enhanced LLM Capabilities
-- Anthropic Claude support
-- Vision models (for OCR, image understanding)
-- Function calling for structured data extraction
-- Multi-model inference (ensemble methods)
-
-### Phase 3: Team Features
-- Multi-workspace support
-- Fine-grained RBAC
-- Conversation sharing
-- Audit logging
-
-### Phase 4: Scale & Operations
-- Kubernetes support
-- Horizontal scaling
-- Monitoring and alerting
-- High-availability architecture
+**Verifizierter Fluss (MVP):**
+1. Benutzer lädt Dokumente hoch → gespeichert und indiziert
+2. Embeddings über konfigurierten LLM-Anbieter generiert
+3. Dokumente gechunked und in PostgreSQL mit pgvector gespeichert
+4. Benutzer stellt Frage in Web-UI
+5. Frage eingebettet und semantisch gesucht
+6. Top-übereinstimmende Dokumente abgerufen
+7. LLM generiert Antwort mit Quellenangabe
+8. Antwort in Echtzeit an Frontend gestreamt
+9. Benutzer sieht Quellen als klickbare Links
+10. Benutzer kann indizierte Dokumente durchsuchen
+11. Benutzer kann Feedback geben (Daumen hoch/runter)
 
 ---
 
-## 📋 Verification Checklist
+## Nächste Phasen (Post-MVP)
 
-To confirm MVP readiness:
+### Phase 1: Konnektor-Ökosystem
+- Confluence-Konnektor (Wiki-Seiten, Spaces)
+- E-Mail-Konnektor (IMAP, Gmail API, Office 365)
+- Jira-Konnektor (Issues, Kommentare)
+- GitHub-Konnektor (Issues, Discussions, READMEs)
 
-- [ ] All backend tests pass: `cd backend && ./gradlew build`
-- [ ] All frontend tests pass: `cd frontend && npm run test -- --run`
-- [ ] Docker Compose smoke test passes (see `MVP-VERIFICATION.md`)
-- [ ] Local development works (see `AGENTS.md` Build & Test section)
-- [ ] Documentation is current (this file, feature specs in `docs/features/`)
+### Phase 2: Erweiterte LLM-Fähigkeiten
+- Anthropic Claude-Unterstützung
+- Vision-Modelle (für OCR, Bildverständnis)
+- Function Calling für strukturierte Datenextraktion
+- Multi-Modell-Inferenz (Ensemble-Methoden)
+
+### Phase 3: Team-Features
+- Multi-Workspace-Unterstützung
+- Feinkörniges RBAC
+- Gesprächs-Teilen
+- Audit-Logging
+
+### Phase 4: Skalierung & Betrieb
+- Kubernetes-Unterstützung
+- Horizontales Skalieren
+- Monitoring und Alerting
+- Hochverfügbarkeits-Architektur
 
 ---
 
-## 🤝 Contributing
+## Verifikations-Checkliste
 
-When implementing post-MVP features:
-1. Reference the relevant section above
-2. Update this document with completed features
-3. Keep feature specs in `docs/features/` aligned with implementation
-4. Ensure all tests pass before submitting PR
+MVP-Bereitschaft bestätigen:
 
-For more details, see `AGENTS.md`, `CONTRIBUTING.md`, and Architecture Decision Records in `docs/decisions/`.
+- [ ] Alle Backend-Tests bestehen: `cd backend && ./gradlew build`
+- [ ] Alle Frontend-Tests bestehen: `cd frontend && npm run test -- --run`
+- [ ] Docker-Compose-Smoke-Test besteht (siehe `MVP-VERIFICATION.md`)
+- [ ] Lokale Entwicklung funktioniert (siehe `AGENTS.md` Abschnitt Build & Test)
+- [ ] Dokumentation ist aktuell (diese Datei, Feature-Spezifikationen in `docs/features/`)
+
+---
+
+## Beitragen
+
+Beim Implementieren von Post-MVP-Features:
+1. Den relevanten Abschnitt oben referenzieren
+2. Dieses Dokument mit abgeschlossenen Features aktualisieren
+3. Feature-Spezifikationen in `docs/features/` mit Implementierung abgleichen
+4. Sicherstellen, dass alle Tests bestehen, bevor PR eingereicht wird
+
+Weitere Details finden Sie in `AGENTS.md`, `CONTRIBUTING.md` und Architecture Decision Records in `docs/decisions/`.
