@@ -32,22 +32,18 @@ spring:
       chat:
         api-key: ${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
         base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
-        options:
-          model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
-          temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
-          maxTokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
+        model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
+        temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
+        max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
       embedding:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
         base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
-        options:
-          model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+        model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     ollama:
       chat:
-        options:
-          model: ${OPAA_OLLAMA_CHAT_MODEL:phi3:mini}
+        model: ${OPAA_OLLAMA_CHAT_MODEL:phi3:mini}
       embedding:
-        options:
-          model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+        model: ${OPAA_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         initialize-schema: true

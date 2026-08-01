@@ -1,6 +1,5 @@
 package io.opaa.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.json.JsonMapper;
 
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -21,15 +21,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private final Map<String, RateLimitService> perIpLimiters;
   private final Map<String, RateLimitService> globalLimiters;
-  private final ObjectMapper objectMapper;
+  private final JsonMapper jsonMapper;
 
   public RateLimitFilter(
       Map<String, RateLimitService> perIpLimiters,
       Map<String, RateLimitService> globalLimiters,
-      ObjectMapper objectMapper) {
+      JsonMapper jsonMapper) {
     this.perIpLimiters = perIpLimiters;
     this.globalLimiters = globalLimiters;
-    this.objectMapper = objectMapper;
+    this.jsonMapper = jsonMapper;
   }
 
   @Override
@@ -85,6 +85,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "error", "Rate limit exceeded. Please try again later.",
             "status", HttpStatus.TOO_MANY_REQUESTS.value(),
             "timestamp", Instant.now().toString());
-    objectMapper.writeValue(response.getOutputStream(), body);
+    jsonMapper.writeValue(response.getOutputStream(), body);
   }
 }

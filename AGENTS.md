@@ -7,7 +7,7 @@ Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen.
 
 ## Architektur
 
-- **Backend:** Java 21 + Spring Boot 3.5.10 + Spring AI 1.1.2 (Gradle 9.3.1, Kotlin DSL)
+- **Backend:** Java 21 + Spring Boot 4.1.0 + Spring AI 2.0.0 (Gradle 9.6.1, Kotlin DSL)
 - **Datenbank:** PostgreSQL 18 + pgvector, Liquibase
 - **Frontend:** React 19 + TypeScript + Material UI 7 + React Router 7 + Zustand + Vitest + MSW
 - **CI:** GitHub Actions

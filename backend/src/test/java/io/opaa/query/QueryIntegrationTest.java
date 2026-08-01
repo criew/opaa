@@ -17,6 +17,7 @@ import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -30,9 +31,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
@@ -40,8 +41,8 @@ import org.testcontainers.utility.DockerImageName;
 class QueryIntegrationTest {
 
   @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg18"));
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -69,6 +70,8 @@ class QueryIntegrationTest {
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
+    // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
+    when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
   }
 
   @Test
