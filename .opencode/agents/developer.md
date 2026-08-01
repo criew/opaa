@@ -1,11 +1,11 @@
 ---
-description: Implements one approved OPAA issue end-to-end with tests, verification, and a pull request.
+description: Implementiert ein genehmigtes OPAA-Issue vollständig mit Tests, Verifikation und einem Pull Request.
 mode: subagent
 permission:
   edit: allow
   bash: ask
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/developer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/developer.md` vor dem Start lesen.
 
-The shared role contract is binding. Create and use an isolated Git worktree before changing implementation files.
+Der gemeinsame Rollenvertrag ist bindend. Einen isolierten Git-Worktree erstellen und verwenden, bevor Implementierungsdateien geändert werden.

@@ -1,10 +1,10 @@
 ---
 name: product-manager
-description: Use this agent for product definition work on OPAA — when a new feature or theme needs functional definition, when existing issues need refinement, or when product documentation drifts from reality. It interviews the maintainer with bundled questions, critically challenges requirements, researches comparable products, and only then writes specifications and creates issues.
+description: Diesen Agenten für Produktdefinitionsarbeit an OPAA einsetzen — wenn ein neues Feature oder Thema eine funktionale Definition benötigt, bestehende Issues verfeinert werden müssen oder die Produktdokumentation von der Realität abweicht. Er befragt den Maintainer mit gebündelten Fragen, hinterfragt Anforderungen kritisch, recherchiert vergleichbare Produkte und schreibt erst dann Spezifikationen und erstellt Issues.
 tools: Read, Glob, Grep, Write, Edit, Bash, WebSearch, WebFetch
 model: opus
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/product-manager.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/product-manager.md` vor dem Start lesen.
 
-The shared role contract is binding. This adapter only supplies Claude Code-specific tool and model configuration.
+Der gemeinsame Rollenvertrag ist bindend. Dieser Adapter liefert nur Claude Code-spezifische Tool- und Modellkonfiguration.

@@ -1,36 +1,36 @@
-# 4. Self-Hosted Frontend Resources
+# 4. Selbst gehostete Frontend-Ressourcen
 
-Date: 2026-02-19
+Datum: 2026-02-19
 
 ## Status
 
-Accepted
+Akzeptiert
 
-## Context
+## Kontext
 
-The OPAA frontend needs fonts (Inter), icons (Material Icons), and potentially other static
-assets. These can be loaded from external CDNs (e.g., Google Fonts, cdnjs) or bundled as
-npm packages and self-hosted.
+Das OPAA-Frontend benötigt Schriften (Inter), Icons (Material Icons) und möglicherweise andere
+statische Assets. Diese können von externen CDNs (z. B. Google Fonts, cdnjs) geladen oder als
+npm-Pakete gebündelt und selbst gehostet werden.
 
-Enterprise environments often restrict outbound network access. External CDN dependencies
-also raise privacy concerns (e.g., Google Fonts transmitting user IP addresses) and create
-a runtime dependency on third-party infrastructure.
+Enterprise-Umgebungen beschränken oft den ausgehenden Netzwerkzugang. Externe CDN-Abhängigkeiten
+werfen auch Datenschutzbedenken auf (z. B. Google Fonts überträgt Benutzer-IP-Adressen) und schaffen
+eine Laufzeitabhängigkeit von Drittanbieter-Infrastruktur.
 
-## Decision
+## Entscheidung
 
-All fonts, icons, and static assets will be installed as npm packages and bundled with the
-application. No external CDN links will be used at runtime.
+Alle Schriften, Icons und statische Assets werden als npm-Pakete installiert und mit der
+Anwendung gebündelt. Zur Laufzeit werden keine externen CDN-Links verwendet.
 
-Specifically:
-- **Fonts:** `@fontsource/inter` (npm package, self-hosted)
-- **Icons:** `@mui/icons-material` (npm package, bundled)
-- **No `<link>` tags** to external services in `index.html`
+Konkret:
+- **Schriften:** `@fontsource/inter` (npm-Paket, selbst gehostet)
+- **Icons:** `@mui/icons-material` (npm-Paket, gebündelt)
+- **Keine `<link>`-Tags** zu externen Diensten in `index.html`
 
-## Consequences
+## Konsequenzen
 
-- **Privacy:** No user data (IP addresses, referrer headers) is sent to third-party CDNs
-- **Offline:** The application works fully offline after initial load
-- **Enterprise:** Compatible with restrictive network policies and air-gapped environments
-- **Bundle size:** Slightly larger initial bundle (fonts included), mitigated by tree-shaking
-  for icons and subsetting for fonts
-- **Updates:** Font/icon updates require an npm package update rather than being automatic
+- **Datenschutz:** Keine Benutzerdaten (IP-Adressen, Referrer-Header) werden an externe CDNs gesendet
+- **Offline:** Die Anwendung funktioniert nach dem initialen Laden vollständig offline
+- **Enterprise:** Kompatibel mit restriktiven Netzwerkrichtlinien und Air-Gap-Umgebungen
+- **Bundle-Größe:** Etwas größeres initiales Bundle (Schriften enthalten), gemildert durch Tree-Shaking
+  für Icons und Subsetting für Schriften
+- **Updates:** Schrift-/Icon-Updates erfordern ein npm-Paket-Update statt automatisch zu sein

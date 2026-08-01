@@ -1,194 +1,193 @@
-# OPAA Documentation Index
+# OPAA Dokumentations-Index
 
-Welcome to OPAA (Open Project AI Assistant)! This index helps you navigate the complete documentation.
+Willkommen bei OPAA (Open Project AI Assistant)! Dieser Index hilft Ihnen, die vollständige Dokumentation zu navigieren.
 
-## 🚀 Getting Started (Start Here!)
+## Erste Schritte (Hier anfangen!)
 
-New to OPAA? Begin with these documents in order:
+Neu bei OPAA? Mit diesen Dokumenten in dieser Reihenfolge beginnen:
 
-1. **[README](../README.md)** — What is OPAA and why it matters (2 min read)
-2. **[GETTING STARTED](./GETTING-STARTED.md)** — Which document to read based on your role (5 min read)
-3. **[CONCEPTS](./CONCEPTS.md)** — Understand key concepts and terminology (10 min read)
-4. **[VISION](./VISION.md)** — Complete product vision and architecture (15 min read)
+1. **[README](../README.md)** — Was ist OPAA und warum ist es wichtig (2 Min. Lesezeit)
+2. **[GETTING STARTED](./GETTING-STARTED.md)** — Welches Dokument basierend auf Ihrer Rolle zu lesen ist (5 Min. Lesezeit)
+3. **[CONCEPTS](./CONCEPTS.md)** — Schlüsselkonzepte und Terminologie verstehen (10 Min. Lesezeit)
+4. **[VISION](./VISION.md)** — Vollständige Produktvision und Architektur (15 Min. Lesezeit)
 
-## 📚 Documentation Structure
+## Dokumentationsstruktur
 
-### Core Vision & Strategy
-- **[VISION.md](./VISION.md)** — Complete product vision, use cases, architecture, design principles
-- **[CONCEPTS.md](./CONCEPTS.md)** — Glossary and explanation of key concepts
-- **[GETTING-STARTED.md](./GETTING-STARTED.md)** — Guide on what to read based on your role
+### Kernvision & Strategie
+- **[VISION.md](./VISION.md)** — Vollständige Produktvision, Anwendungsfälle, Architektur, Designprinzipien
+- **[CONCEPTS.md](./CONCEPTS.md)** — Glossar und Erklärung der Schlüsselkonzepte
+- **[GETTING-STARTED.md](./GETTING-STARTED.md)** — Leitfaden, was basierend auf Ihrer Rolle zu lesen ist
 
-### Feature Specifications (Detailed)
+### Feature-Spezifikationen (Detailliert)
 
-Each feature spec provides:
-- **Motivation** — Why this feature exists
-- **Design** — How it works from user perspective
-- **Configuration** — What can be customized
-- **Integration Points** — How it connects to other features
-- **Open Questions** — Future considerations
+Jede Feature-Spezifikation enthält:
+- **Motivation** — Warum dieses Feature existiert
+- **Design** — Wie es aus Benutzerperspektive funktioniert
+- **Konfiguration** — Was angepasst werden kann
+- **Integrationspunkte** — Wie es sich mit anderen Features verbindet
+- **Offene Fragen** — Zukünftige Überlegungen
 
-#### 1. User Frontends
-**[`features/user-frontends.md`](./features/user-frontends.md)** — How users interact with OPAA
+#### 1. Benutzer-Frontends
+**[`features/user-frontends.md`](./features/user-frontends.md)** — Wie Benutzer mit OPAA interagieren
 
-- Web chat interface with document browsing
-- Chat platform integrations (Mattermost, RocketChat, Signal, Slack-compatible)
-- REST API for custom integrations
-- Unified authentication & permissions across all interfaces
+- Web-Chat-Schnittstelle mit Dokument-Browser
+- Chat-Plattform-Integrationen (Mattermost, RocketChat, Signal, Slack-kompatibel)
+- REST-API für benutzerdefinierte Integrationen
+- Einheitliche Authentifizierung & Berechtigungen über alle Schnittstellen
 
-**For:** Product managers, UX designers, frontend developers
-
----
-
-#### 2. Data Indexing & RAG
-**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** — How documents are indexed and retrieved
-
-- 5 data source categories (wikis, email, file systems, APIs, custom)
-- User document uploads (via Web UI, Chat, REST API)
-- Document processing pipeline (extraction → chunking → embedding → storage)
-- Storage backend abstraction (S3, network drive, local filesystem)
-- Multiple vector database backends (Elasticsearch, PostgreSQL, Milvus, cloud options)
-- Retrieval & ranking with confidence scoring
-- Advanced features (multi-language, caching, semantic deduplication)
-
-**For:** Data engineers, DevOps, backend developers
+**Für:** Product Manager, UX-Designer, Frontend-Entwickler
 
 ---
 
-#### 3. LLM Integration
-**[`features/llm-integration.md`](./features/llm-integration.md)** — Model configuration & intelligence
+#### 2. Daten-Indizierung & RAG
+**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** — Wie Dokumente indiziert und abgerufen werden
 
-- OpenAI-compatible API support (no vendor lock-in)
-- Answer generation pipeline with streaming
-- Multi-model strategy (different models for different tasks)
-- Embedding model configuration
-- Cost optimization techniques
-- Safety & responsible use
-- Easy provider switching
+- 5 Datenquellen-Kategorien (Wikis, E-Mail, Dateisysteme, APIs, benutzerdefiniert)
+- Benutzer-Dokument-Uploads (über Web-UI, Chat, REST-API)
+- Dokumentenverarbeitungs-Pipeline (Extraktion → Chunking → Embedding → Speicherung)
+- Speicher-Backend-Abstraktion (S3, Netzlaufwerk, lokales Dateisystem)
+- Mehrere Vektor-Datenbank-Backends (Elasticsearch, PostgreSQL, Milvus, Cloud-Optionen)
+- Retrieval & Ranking mit Konfidenz-Scoring
+- Erweiterte Features (mehrsprachig, Caching, semantische Deduplizierung)
 
-**For:** ML engineers, DevOps, cost-conscious organizations
-
----
-
-#### 4. Deployment & Infrastructure
-**[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** — Operations and deployment
-
-- On-premises deployments (Kubernetes, Docker Compose, bare metal)
-- Private cloud (AWS, Azure, GCP)
-- Configuration management (environment variables, YAML)
-- Scaling guidance (small → large organizations)
-- High availability & disaster recovery
-- Security, monitoring, backup strategies
-- Zero-downtime upgrades
-
-**For:** DevOps engineers, system administrators, platform teams
+**Für:** Data Engineers, DevOps, Backend-Entwickler
 
 ---
 
-#### 5. Access Control & Workspaces
-**[`features/access-control-workspaces.md`](./features/access-control-workspaces.md)** — Permissions and multi-tenancy
+#### 3. LLM-Integration
+**[`features/llm-integration.md`](./features/llm-integration.md)** — Modellkonfiguration & Intelligenz
 
-- Workspace isolation and management
-- Personal workspaces ("My Documents") auto-created per user
-- Cross-workspace document sharing
-- Role-based access control (Viewer, Editor, Admin, Owner)
-- Document-level permissions
-- Query-time permission enforcement
-- User directory sync (Active Directory, Okta, etc.)
-- Audit logging & compliance
-- Multi-workspace strategies
+- OpenAI-kompatible API-Unterstützung (kein Vendor-Lock-in)
+- Antwortgenerierungs-Pipeline mit Streaming
+- Multi-Modell-Strategie (verschiedene Modelle für verschiedene Aufgaben)
+- Embedding-Modell-Konfiguration
+- Kostenoptimierungstechniken
+- Sicherheit & verantwortungsvolle Nutzung
+- Einfaches Anbieter-Wechseln
 
-**For:** Security engineers, compliance officers, IT administrators
+**Für:** ML Engineers, DevOps, kostenorientierte Organisationen
 
 ---
 
-### UI Design Drafts
+#### 4. Deployment & Infrastruktur
+**[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** — Betrieb und Deployment
 
-- **[`design/README.md`](./design/README.md)** — UI design prototypes from Google Stitch (HTML + screenshots)
-  - Chat Interface, Document Browser, System Settings
-  - Design theme: Dark mode, `#137fec`, Inter font
+- On-Premises-Deployments (Kubernetes, Docker Compose, Bare Metal)
+- Private Cloud (AWS, Azure, GCP)
+- Konfigurationsmanagement (Umgebungsvariablen, YAML)
+- Skalierungsanleitung (kleine → große Organisationen)
+- Hochverfügbarkeit & Disaster Recovery
+- Sicherheits-, Monitoring-, Backup-Strategien
+- Zero-Downtime-Upgrades
 
-### Architecture & Decisions
+**Für:** DevOps Engineers, Systemadministratoren, Plattform-Teams
 
-- **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — How humans and AI collaborate on this project
-- **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agent roles (PM, developer, reviewer, QA, marketing), the idea-to-merge workflow, and collaboration rules
+---
 
-## 🗺️ Feature Dependency Map
+#### 5. Zugangskontrolle & Workspaces
+**[`features/access-control-workspaces.md`](./features/access-control-workspaces.md)** — Berechtigungen und Multi-Tenancy
 
-Understanding how features connect:
+- Workspace-Isolierung und -Verwaltung
+- Persönliche Workspaces ("Meine Dokumente") automatisch pro Benutzer erstellt
+- Workspace-übergreifendes Dokumenten-Teilen
+- Rollenbasierte Zugangskontrolle (Viewer, Editor, Admin, Owner)
+- Berechtigungen auf Dokumentenebene
+- Berechtigungsdurchsetzung zur Abfragezeit
+- Benutzerverzeichnis-Synchronisation (Active Directory, Okta, usw.)
+- Audit-Logging & Compliance
+- Multi-Workspace-Strategien
+
+**Für:** Sicherheits-Engineers, Compliance-Beauftragte, IT-Administratoren
+
+---
+
+### UI-Design-Entwürfe
+
+- **[`design/README.md`](./design/README.md)** — UI-Design-Prototypen aus Google Stitch (HTML + Screenshots)
+  - Chat-Schnittstelle, Dokument-Browser, Systemeinstellungen
+  - Design-Thema: Dunkelmodus, `#137fec`, Inter-Schrift
+
+### Architektur & Entscheidungen
+
+- **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — Wie Menschen und KI an diesem Projekt zusammenarbeiten
+- **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agenten-Rollen (PM, Entwickler, Reviewer, QA, Marketing), der Idee-bis-Merge-Workflow und Kollaborationsregeln
+
+## Feature-Abhängigkeitskarte
+
+Wie Features verbunden sind:
 
 ```
-User Frontends (Web, Chat, API)
+Benutzer-Frontends (Web, Chat, API)
     ↓
-Orchestration Layer
-    ├→ Access Control & Workspaces (Check permissions)
-    ├→ Data Indexing & RAG (Retrieve documents)
-    └→ LLM Integration (Generate response)
+Orchestrierungsschicht
+    ├→ Zugangskontrolle & Workspaces (Berechtigungen prüfen)
+    ├→ Daten-Indizierung & RAG (Dokumente abrufen)
+    └→ LLM-Integration (Antwort generieren)
 
-Data Indexing & RAG
-    ├→ Supported Data Sources (Connectors)
-    ├→ User Document Uploads (via Frontends)
-    └→ Document Storage Backends + Vector Databases
+Daten-Indizierung & RAG
+    ├→ Unterstützte Datenquellen (Konnektoren)
+    ├→ Benutzer-Dokument-Uploads (über Frontends)
+    └→ Dokumentenspeicher-Backends + Vektor-Datenbanken
 
-Deployment & Infrastructure
-    └→ All other features (Infrastructure for all)
+Deployment & Infrastruktur
+    └→ Alle anderen Features (Infrastruktur für alle)
 ```
 
-## 📖 Reading Paths by Role
+## Lesepfade nach Rolle
 
-### I'm a Product Manager
-→ Start with [VISION.md](./VISION.md) and skim all feature specs (30 min)
-→ Then dive into Use Cases, Design Principles, Open Questions in each spec
+### Ich bin Product Manager
+→ Mit [VISION.md](./VISION.md) beginnen und alle Feature-Spezifikationen überfliegen (30 Min.)
+→ Dann in Anwendungsfälle, Designprinzipien, Offene Fragen in jeder Spezifikation eintauchen
 
-### I'm a Backend/Full-Stack Developer
-→ Read [CONCEPTS.md](./CONCEPTS.md) first (10 min)
-→ Then [VISION.md](./VISION.md) System Architecture section (5 min)
-→ Then all feature specs in order: [User Frontends](./features/user-frontends.md) → [Data Indexing](./features/data-indexing-rag.md) → [LLM Integration](./features/llm-integration.md) → [Deployment](./features/deployment-infrastructure.md) → [Access Control](./features/access-control-workspaces.md)
+### Ich bin Backend-/Full-Stack-Entwickler
+→ Zuerst [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
+→ Dann [VISION.md](./VISION.md) Abschnitt Systemarchitektur (5 Min.)
+→ Dann alle Feature-Spezifikationen in der Reihenfolge: [Benutzer-Frontends](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) → [LLM-Integration](./features/llm-integration.md) → [Deployment](./features/deployment-infrastructure.md) → [Zugangskontrolle](./features/access-control-workspaces.md)
 
-### I'm a DevOps/Platform Engineer
-→ Read [CONCEPTS.md](./CONCEPTS.md) (10 min)
-→ Then [VISION.md](./VISION.md) System Architecture (5 min)
-→ Focus on: [Deployment & Infrastructure](./features/deployment-infrastructure.md) and [Access Control](./features/access-control-workspaces.md)
-→ Skim: Data Indexing, LLM Integration for integration points
+### Ich bin DevOps-/Plattform-Engineer
+→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
+→ Dann [VISION.md](./VISION.md) Systemarchitektur (5 Min.)
+→ Fokus auf: [Deployment & Infrastruktur](./features/deployment-infrastructure.md) und [Zugangskontrolle](./features/access-control-workspaces.md)
+→ Überfliegen: Daten-Indizierung, LLM-Integration für Integrationspunkte
 
-### I'm a Data/ML Engineer
-→ Read [CONCEPTS.md](./CONCEPTS.md) (10 min)
-→ Then focus on [Data Indexing & RAG](./features/data-indexing-rag.md) and [LLM Integration](./features/llm-integration.md)
-→ Understand: How embeddings work, vector database choices, model selection
+### Ich bin Data-/ML-Engineer
+→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
+→ Dann auf [Daten-Indizierung & RAG](./features/data-indexing-rag.md) und [LLM-Integration](./features/llm-integration.md) fokussieren
+→ Verstehen: Wie Embeddings funktionieren, Vektor-Datenbank-Auswahl, Modellauswahl
 
-### I'm a Security/Compliance Officer
-→ Read [CONCEPTS.md](./CONCEPTS.md) (10 min)
-→ Then focus on [Access Control & Workspaces](./features/access-control-workspaces.md)
-→ Also read: Security section in [Deployment & Infrastructure](./features/deployment-infrastructure.md)
-→ Check: Data handling in [Data Indexing & RAG](./features/data-indexing-rag.md)
+### Ich bin Sicherheits-/Compliance-Beauftragter
+→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
+→ Dann auf [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) fokussieren
+→ Auch lesen: Sicherheitsabschnitt in [Deployment & Infrastruktur](./features/deployment-infrastructure.md)
+→ Prüfen: Datenverarbeitung in [Daten-Indizierung & RAG](./features/data-indexing-rag.md)
 
-### I'm an AI/ML Researcher
-→ Read [CONCEPTS.md](./CONCEPTS.md) (10 min)
-→ Focus on [LLM Integration](./features/llm-integration.md) and [Data Indexing & RAG](./features/data-indexing-rag.md)
-→ Check: Open Questions in each spec for research opportunities
+### Ich bin KI-/ML-Forscher
+→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
+→ Auf [LLM-Integration](./features/llm-integration.md) und [Daten-Indizierung & RAG](./features/data-indexing-rag.md) fokussieren
+→ Prüfen: Offene Fragen in jeder Spezifikation für Forschungsmöglichkeiten
 
-## ❓ Common Questions
+## Häufige Fragen
 
-**Where do I start?**
-→ Read [GETTING-STARTED.md](./GETTING-STARTED.md)
+**Wo fange ich an?**
+→ [GETTING-STARTED.md](./GETTING-STARTED.md) lesen
 
-**What is RAG?**
-→ See [CONCEPTS.md](./CONCEPTS.md) — RAG section, then [Data Indexing & RAG](./features/data-indexing-rag.md)
+**Was ist RAG?**
+→ Siehe [CONCEPTS.md](./CONCEPTS.md) — RAG-Abschnitt, dann [Daten-Indizierung & RAG](./features/data-indexing-rag.md)
 
-**How do I deploy OPAA?**
-→ Read [Deployment & Infrastructure](./features/deployment-infrastructure.md)
+**Wie deployee ich OPAA?**
+→ [Deployment & Infrastruktur](./features/deployment-infrastructure.md) lesen
 
-**How do I control who sees what?**
-→ Read [Access Control & Workspaces](./features/access-control-workspaces.md)
+**Wie kontrolliere ich, wer was sieht?**
+→ [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) lesen
 
-**What LLM models are supported?**
-→ Read [LLM Integration](./features/llm-integration.md) — Supported LLM Providers section
+**Welche LLM-Modelle werden unterstützt?**
+→ [LLM-Integration](./features/llm-integration.md) lesen — Abschnitt Unterstützte LLM-Anbieter
 
-**How do I index my documents?**
-→ Read [Data Indexing & RAG](./features/data-indexing-rag.md) — Supported Data Sources section
+**Wie indiziere ich meine Dokumente?**
+→ [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Unterstützte Datenquellen
 
-**Can users upload their own documents?**
-→ Yes! Read [Data Indexing & RAG](./features/data-indexing-rag.md) — User Document Upload section and [Access Control](./features/access-control-workspaces.md) — Personal Workspaces section
+**Können Benutzer eigene Dokumente hochladen?**
+→ Ja! [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Benutzer-Dokument-Upload und [Zugangskontrolle](./features/access-control-workspaces.md) — Abschnitt Persönliche Workspaces
 
-**Can I use my own LLM?**
-→ Yes! See [LLM Integration](./features/llm-integration.md) — OpenAI-Compatible APIs section
-
+**Kann ich mein eigenes LLM verwenden?**
+→ Ja! Siehe [LLM-Integration](./features/llm-integration.md) — Abschnitt OpenAI-kompatible APIs

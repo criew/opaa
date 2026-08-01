@@ -1,595 +1,595 @@
-# OPAA Concepts & Glossary
+# OPAA Konzepte & Glossar
 
-This document explains the key concepts and terminology used throughout OPAA documentation.
+Dieses Dokument erläutert die wichtigsten Konzepte und die in der gesamten OPAA-Dokumentation verwendete Terminologie.
 
 ---
 
-## Core Concepts
+## Kernkonzepte
 
-### Knowledge Base / Organizational Knowledge
+### Wissensbasis / Organisationswissen
 
-The collective information, documents, and data stored across an organization's systems.
+Die gesammelten Informationen, Dokumente und Daten, die über die Systeme einer Organisation gespeichert sind.
 
-- **Example:** Company wiki pages, email archives, policy documents, team decision records
-- **Challenge:** Scattered across multiple systems (Confluence, Gmail, SharePoint, file servers)
-- **OPAA's Role:** Unify access through intelligent search
+- **Beispiel:** Unternehmens-Wiki-Seiten, E-Mail-Archive, Richtliniendokumente, Team-Entscheidungsaufzeichnungen
+- **Herausforderung:** Über mehrere Systeme verteilt (Confluence, Gmail, SharePoint, Dateiserver)
+- **OPAAs Rolle:** Einheitlicher Zugang durch intelligente Suche
 
 ### RAG (Retrieval-Augmented Generation)
 
-A technique that combines information retrieval with language generation. Instead of the LLM generating answers from only its training data, RAG retrieves relevant documents first, then uses those documents to generate accurate, grounded answers.
+Eine Technik, die Informationsabruf mit Sprachgenerierung kombiniert. Anstatt dass das LLM Antworten nur aus seinen Trainingsdaten generiert, ruft RAG zunächst relevante Dokumente ab und verwendet diese dann, um genaue, fundierte Antworten zu generieren.
 
-**How it works:**
-1. User asks a question
-2. System retrieves relevant documents from the knowledge base
-3. LLM reads those documents
-4. LLM generates an answer based on the retrieved documents
-5. Answer includes sources (attribution)
+**Wie es funktioniert:**
+1. Benutzer stellt eine Frage
+2. System ruft relevante Dokumente aus der Wissensbasis ab
+3. LLM liest diese Dokumente
+4. LLM generiert eine Antwort basierend auf den abgerufenen Dokumenten
+5. Antwort enthält Quellen (Attribution)
 
-**Why it matters:**
-- Answers are grounded in actual organizational documents
-- Reduces hallucinations (LLM won't make up facts)
-- Every answer is verifiable by checking the source
-- Keeps information up-to-date (new docs automatically used)
-
----
-
-### Embedding (Vector Embedding)
-
-A numerical representation of text that captures its meaning. An embedding is a list of numbers (a "vector") that encodes the semantic content of a document or question.
-
-**Simple explanation:**
-- A document about "remote work policy" might be represented as `[0.21, -0.18, 0.45, ..., 0.32]` (100s-1000s of numbers)
-- A question about "working from home" produces a similar vector `[0.20, -0.17, 0.46, ..., 0.31]`
-- Similar vectors = similar meaning
-- The system uses this similarity to find relevant documents
-
-**Why it matters:**
-- Enables **semantic search** (searching by meaning, not just keywords)
-- "Can I work remotely?" finds documents about "remote work" even if those exact words aren't in the question
-- More powerful than keyword matching
+**Warum es wichtig ist:**
+- Antworten basieren auf echten Organisationsdokumenten
+- Reduziert Halluzinationen (LLM erfindet keine Fakten)
+- Jede Antwort ist durch Prüfung der Quelle verifizierbar
+- Hält Informationen aktuell (neue Dokumente werden automatisch verwendet)
 
 ---
 
-### Vector Database
+### Embedding (Vektor-Embedding)
 
-A specialized database optimized for storing and searching embeddings (vectors).
+Eine numerische Darstellung von Text, die seine Bedeutung erfasst. Ein Embedding ist eine Liste von Zahlen (ein "Vektor"), der den semantischen Inhalt eines Dokuments oder einer Frage kodiert.
 
-**Common examples:**
-- **Elasticsearch** — General-purpose search engine with vector support
-- **PostgreSQL + pgvector** — Traditional SQL database with vector extension
-- **Milvus** — Open-source, designed for large-scale vector search
-- **Cloud options** — Pinecone, Weaviate, Qdrant
+**Einfache Erklärung:**
+- Ein Dokument über "Remote-Arbeit-Richtlinie" könnte als `[0.21, -0.18, 0.45, ..., 0.32]` (100s-1000s von Zahlen) dargestellt werden
+- Eine Frage über "von zu Hause arbeiten" erzeugt einen ähnlichen Vektor `[0.20, -0.17, 0.46, ..., 0.31]`
+- Ähnliche Vektoren = ähnliche Bedeutung
+- Das System verwendet diese Ähnlichkeit, um relevante Dokumente zu finden
 
-**Why separate from regular databases:**
-- Traditional SQL databases (MySQL, PostgreSQL) are optimized for exact matches
-- Vector databases are optimized for **similarity search** ("find the 10 most similar vectors")
-- Much faster and more efficient for semantic search
+**Warum es wichtig ist:**
+- Ermöglicht **semantische Suche** (Suche nach Bedeutung, nicht nur Schlüsselwörtern)
+- "Kann ich remote arbeiten?" findet Dokumente über "Fernarbeit" auch wenn diese genauen Wörter nicht in der Frage stehen
+- Mächtiger als Schlüsselwort-Matching
+
+---
+
+### Vektor-Datenbank
+
+Eine spezialisierte Datenbank, die für die Speicherung und Suche von Embeddings (Vektoren) optimiert ist.
+
+**Häufige Beispiele:**
+- **Elasticsearch** — Allzweck-Suchmaschine mit Vektor-Unterstützung
+- **PostgreSQL + pgvector** — Traditionelle SQL-Datenbank mit Vektor-Erweiterung
+- **Milvus** — Open-Source, konzipiert für groß angelegte Vektorsuche
+- **Cloud-Optionen** — Pinecone, Weaviate, Qdrant
+
+**Warum separat von regulären Datenbanken:**
+- Traditionelle SQL-Datenbanken (MySQL, PostgreSQL) sind für exakte Treffer optimiert
+- Vektor-Datenbanken sind für **Ähnlichkeitssuche** optimiert ("finde die 10 ähnlichsten Vektoren")
+- Viel schneller und effizienter für semantische Suche
 
 ---
 
 ### Chunk / Chunking
 
-Breaking large documents into smaller, manageable pieces.
+Große Dokumente in kleinere, handhabbare Teile aufteilen.
 
-**Why needed:**
-- A 50-page policy document would create one huge embedding
-- Instead, break it into 50 smaller chunks (paragraphs or sections)
-- Each chunk gets its own embedding
-- More granular search results
+**Warum nötig:**
+- Ein 50-seitiges Richtliniendokument würde ein riesiges Embedding erzeugen
+- Stattdessen in 50 kleinere Chunks aufteilen (Absätze oder Abschnitte)
+- Jeder Chunk erhält sein eigenes Embedding
+- Granularere Suchergebnisse
 
-**Example:**
+**Beispiel:**
 ```
-Document: "Company Policy Manual" (10,000 words)
+Dokument: "Unternehmens-Richtlinienhandbuch" (10.000 Wörter)
   ↓
 Chunks:
-  Chunk 1: "Hiring Process" (200 words)
-  Chunk 2: "Remote Work" (300 words)
-  Chunk 3: "Expense Policy" (250 words)
+  Chunk 1: "Einstellungsprozess" (200 Wörter)
+  Chunk 2: "Remote-Arbeit" (300 Wörter)
+  Chunk 3: "Ausgaben-Richtlinie" (250 Wörter)
   ...
 ```
 
-When user searches for "remote work", the system returns Chunk 2 specifically, not the entire 10,000-word manual.
+Wenn der Benutzer nach "Remote-Arbeit" sucht, gibt das System speziell Chunk 2 zurück, nicht das gesamte 10.000-Wort-Handbuch.
 
 ---
 
 ### LLM (Large Language Model)
 
-An AI model trained on large amounts of text data that can understand and generate human-like text.
+Ein KI-Modell, das auf großen Mengen von Textdaten trainiert wurde und menschenähnlichen Text verstehen und generieren kann.
 
-**Examples:**
+**Beispiele:**
 - GPT-4, GPT-3.5-turbo (OpenAI)
 - Claude (Anthropic)
-- Llama, Mistral (open-source)
-- Ollama (local, smaller models)
+- Llama, Mistral (Open-Source)
+- Ollama (lokal, kleinere Modelle)
 
-**In OPAA's context:**
-- LLM reads the retrieved documents
-- LLM generates the answer
-- Different LLMs can be swapped (OpenAI → local → Anthropic)
-- OPAA is **model-agnostic** — the LLM choice is configurable
+**Im OPAA-Kontext:**
+- LLM liest die abgerufenen Dokumente
+- LLM generiert die Antwort
+- Verschiedene LLMs können ausgetauscht werden (OpenAI → lokal → Anthropic)
+- OPAA ist **modell-agnostisch** — die LLM-Wahl ist konfigurierbar
 
 ---
 
 ### Workspace
 
-A self-contained area in OPAA where documents and users are isolated from other workspaces.
+Ein eigenständiger Bereich in OPAA, in dem Dokumente und Benutzer von anderen Workspaces isoliert sind.
 
-**Purpose:**
-- Separate knowledge bases for different teams/departments
-- Control who can see what
-- Example: "Engineering" workspace only visible to engineering team
+**Zweck:**
+- Separate Wissensbasen für verschiedene Teams/Abteilungen
+- Kontrolle, wer was sehen kann
+- Beispiel: "Engineering"-Workspace nur für Engineering-Team sichtbar
 
-**Flat Model:**
-Workspaces are **flat** — there is no hierarchy or nesting. When a user searches, OPAA retrieves results across all workspaces the user is a member of, ranked by relevance. Common workspace types:
+**Flaches Modell:**
+Workspaces sind **flach** — es gibt keine Hierarchie oder Verschachtelung. Wenn ein Benutzer sucht, ruft OPAA Ergebnisse aus allen Workspaces ab, in denen der Benutzer Mitglied ist, sortiert nach Relevanz. Häufige Workspace-Typen:
 
-1. **Organization-wide workspace** — Company policies, all-hands notes, public documentation (visible to everyone)
-2. **Team workspaces** — Engineering docs, marketing plans (visible to team members)
-3. **Project workspaces** — Shared workspaces that multiple teams join to collaborate on a project (e.g., "Phoenix" with frontend, backend, and QA teams)
-4. **Personal workspace ("My Documents")** — Auto-created for each user. Stores documents uploaded by the user. Private by default. Cross-workspace sharing is planned as a future feature (see [Document Sharing](./features/document-sharing.md)).
+1. **Organisationsweiter Workspace** — Unternehmensrichtlinien, All-Hands-Notizen, öffentliche Dokumentation (für alle sichtbar)
+2. **Team-Workspaces** — Engineering-Docs, Marketing-Pläne (für Teammitglieder sichtbar)
+3. **Projekt-Workspaces** — Gemeinsame Workspaces, denen mehrere Teams beitreten, um an einem Projekt zusammenzuarbeiten (z. B. "Phoenix" mit Frontend-, Backend- und QA-Teams)
+4. **Persönlicher Workspace ("Meine Dokumente")** — Automatisch für jeden Benutzer erstellt. Speichert vom Benutzer hochgeladene Dokumente. Standardmäßig privat. Workspace-übergreifendes Teilen ist als zukünftiges Feature geplant (siehe [Dokument-Teilen](./features/document-sharing.md)).
 
-This means a search for "remote work policy" could return the company-wide HR policy (from the organization workspace) alongside your team's specific remote work guidelines (from your team workspace) and your personal notes on the topic.
+Das bedeutet, eine Suche nach "Remote-Arbeit-Richtlinie" könnte die unternehmensweite HR-Richtlinie (aus dem Organisations-Workspace) neben den spezifischen Remote-Arbeit-Leitlinien Ihres Teams (aus Ihrem Team-Workspace) und Ihren persönlichen Notizen zu diesem Thema zurückgeben.
 
-**Personal Workspace Details:**
-- Automatically created when a user first logs in or uploads a document
-- One per user, cannot be deleted (deactivated on offboarding)
-- User is always the Owner with full control
-- Cross-workspace document sharing is a planned future feature — see [Document Sharing](./features/document-sharing.md)
-- See [Access Control & Workspaces — Personal Workspaces](./features/access-control-workspaces.md#personal-workspaces)
+**Details zum persönlichen Workspace:**
+- Automatisch erstellt, wenn ein Benutzer sich erstmals anmeldet oder ein Dokument hochlädt
+- Einer pro Benutzer, kann nicht gelöscht werden (bei Offboarding deaktiviert)
+- Benutzer ist immer Owner mit voller Kontrolle
+- Workspace-übergreifendes Dokument-Teilen ist ein geplantes zukünftiges Feature — siehe [Dokument-Teilen](./features/document-sharing.md)
+- Siehe [Zugangskontrolle & Workspaces — Persönliche Workspaces](./features/access-control-workspaces.md#personal-workspaces)
 
-**Analogy:**
-- Like separate Slack workspaces or Google Drive folders with permissions
-- User in "Engineering" workspace doesn't see documents from "Marketing" workspace, but both see documents from the "Company" workspace
-
----
-
-### Role (in Access Control)
-
-A set of permissions assigned to users. Determines what actions they can take.
-
-**System-level role:**
-- **System-Admin** — Organization-wide administration. Can create workspaces, configure connectors, define source mappings, manage user directory sync. Stored on the user entity (not per workspace).
-
-**Workspace-level roles (per workspace membership):**
-- **Viewer** — Can search documents, ask questions, download. Cannot modify.
-- **Editor** — Can add/modify documents, delete own uploads. Cannot manage users or workspace settings.
-- **Admin** — Full control of workspace. Can manage users, settings, permissions. Can exclude connector documents.
-- **Owner** — Only one per workspace. Can delete workspace, transfer ownership.
+**Analogie:**
+- Wie separate Slack-Workspaces oder Google-Drive-Ordner mit Berechtigungen
+- Benutzer im "Engineering"-Workspace sieht keine Dokumente aus dem "Marketing"-Workspace, aber beide sehen Dokumente aus dem "Unternehmen"-Workspace
 
 ---
 
-## Data Pipeline Concepts
+### Rolle (in der Zugangskontrolle)
 
-### Data Source
+Eine Reihe von Berechtigungen, die Benutzern zugewiesen werden. Bestimmt, welche Aktionen sie ausführen können.
 
-Any system where organizational knowledge is stored.
+**Systemweite Rolle:**
+- **System-Admin** — Organisationsweite Administration. Kann Workspaces erstellen, Konnektoren konfigurieren, Quellzuordnungen definieren, Benutzerverzeichnis-Synchronisation verwalten. Auf der Benutzer-Entität gespeichert (nicht pro Workspace).
 
-**Examples:**
-- Confluence (wiki platform)
-- Jira, GitHub Issues, GitLab (issue trackers)
-- Gmail (email)
-- S3, Google Drive, Dropbox (cloud file storage)
-- SharePoint (document management)
-- GitHub, GitLab (code documentation)
-
----
-
-### Document Processing Pipeline
-
-The automated steps OPAA takes to make documents searchable.
-
-**Steps:**
-1. **Discovery** — Find documents in data sources
-2. **Extraction** — Pull text content (handles PDF, Word, etc.)
-3. **Chunking** — Break into smaller pieces
-4. **Embedding** — Convert to numerical vectors
-5. **Storage** — Save embeddings in vector database
-6. **Indexing** — Make available for search
+**Workspace-Rollen (pro Workspace-Mitgliedschaft):**
+- **Viewer** — Kann Dokumente durchsuchen, Fragen stellen, herunterladen. Kann nicht ändern.
+- **Editor** — Kann Dokumente hinzufügen/ändern, eigene Uploads löschen. Kann Benutzer oder Workspace-Einstellungen nicht verwalten.
+- **Admin** — Volle Kontrolle über Workspace. Kann Benutzer, Einstellungen, Berechtigungen verwalten. Kann Konnektor-Dokumente ausschließen.
+- **Owner** — Nur einer pro Workspace. Kann Workspace löschen, Ownership übertragen.
 
 ---
 
-### Semantic Search
+## Datenpipeline-Konzepte
 
-Search based on **meaning** rather than exact keyword matching.
+### Datenquelle
 
-**Example:**
+Jedes System, in dem Organisationswissen gespeichert ist.
+
+**Beispiele:**
+- Confluence (Wiki-Plattform)
+- Jira, GitHub Issues, GitLab (Issue-Tracker)
+- Gmail (E-Mail)
+- S3, Google Drive, Dropbox (Cloud-Dateispeicher)
+- SharePoint (Dokumentenverwaltung)
+- GitHub, GitLab (Code-Dokumentation)
+
+---
+
+### Dokumentenverarbeitungs-Pipeline
+
+Die automatisierten Schritte, die OPAA unternimmt, um Dokumente durchsuchbar zu machen.
+
+**Schritte:**
+1. **Entdeckung** — Dokumente in Datenquellen finden
+2. **Extraktion** — Textinhalt extrahieren (verarbeitet PDF, Word, usw.)
+3. **Chunking** — In kleinere Teile aufteilen
+4. **Embedding** — In numerische Vektoren umwandeln
+5. **Speicherung** — Embeddings in Vektor-Datenbank speichern
+6. **Indizierung** — Für Suche verfügbar machen
+
+---
+
+### Semantische Suche
+
+Suche basierend auf **Bedeutung** statt exaktem Schlüsselwort-Matching.
+
+**Beispiel:**
 ```
-Question: "Can I work from home?"
+Frage: "Kann ich von zu Hause arbeiten?"
 
-Keyword search would find:
-  - "Working from home" ✓
-  - "Remote work" ✗ (no exact match)
-  - "Telecommuting" ✗ (no exact match)
+Schlüsselwort-Suche würde finden:
+  - "Von zu Hause arbeiten" ✓
+  - "Remote-Arbeit" ✗ (kein exakter Treffer)
+  - "Telearbeit" ✗ (kein exakter Treffer)
 
-Semantic search finds:
-  - "Working from home" ✓
-  - "Remote work" ✓
-  - "Telecommuting" ✓
-  - "Off-site work" ✓
+Semantische Suche findet:
+  - "Von zu Hause arbeiten" ✓
+  - "Remote-Arbeit" ✓
+  - "Telearbeit" ✓
+  - "Außerhalb des Büros arbeiten" ✓
 ```
 
 ---
 
-### Query-Time Permission Enforcement
+### Berechtigungsdurchsetzung zur Abfragezeit
 
-Permissions are enforced as **part of the vector search itself** — the user's workspace IDs are passed as a metadata filter directly into the query. Unauthorized chunks are never loaded or ranked.
+Berechtigungen werden **als Teil der Vektorsuche selbst** durchgesetzt — die Workspace-IDs des Benutzers werden als Metadaten-Filter direkt in die Abfrage übergeben. Nicht autorisierte Chunks werden niemals geladen oder gerankt.
 
-**How it works:**
-1. System loads the user's workspace IDs
-2. User searches: "Salary policies"
-3. Vector search only returns chunks whose `workspace_ids` match at least one of the user's workspaces
-4. User sees only documents they are authorized to access
+**Wie es funktioniert:**
+1. System lädt die Workspace-IDs des Benutzers
+2. Benutzer sucht: "Gehaltsrichtlinien"
+3. Vektorsuche gibt nur Chunks zurück, deren `workspace_ids` mindestens eine der Workspaces des Benutzers entsprechen
+4. Benutzer sieht nur Dokumente, auf die er autorisiert ist zuzugreifen
 
-**Why this matters:**
-- Users don't know documents exist that they can't see
-- Results look complete even though filtered
-- No post-filtering needed — the search itself is permission-aware
-- Permissions change immediately (no re-indexing needed)
+**Warum das wichtig ist:**
+- Benutzer wissen nicht, dass Dokumente existieren, die sie nicht sehen können
+- Ergebnisse wirken vollständig, auch wenn gefiltert
+- Keine Nachfilterung nötig — die Suche selbst ist berechtigungsbewusst
+- Berechtigungen ändern sich sofort (keine Neu-Indizierung nötig)
 
 ---
 
-## Architecture Concepts
+## Architektur-Konzepte
 
-### Orchestration Layer
+### Orchestrierungsschicht
 
-The central coordinator that handles user requests.
+Der zentrale Koordinator, der Benutzeranfragen verarbeitet.
 
-**Responsibilities:**
-- Receives request (question) from any frontend
-- Checks permissions
-- Calls RAG engine to retrieve documents
-- Calls LLM to generate response
-- Formats and returns result
+**Verantwortlichkeiten:**
+- Empfängt Anfrage (Frage) von jedem Frontend
+- Prüft Berechtigungen
+- Ruft RAG-Engine auf, um Dokumente abzurufen
+- Ruft LLM auf, um Antwort zu generieren
+- Formatiert und gibt Ergebnis zurück
 
-**Analogy:** Like a restaurant host — takes your order, coordinates with kitchen, delivers your food
+**Analogie:** Wie ein Restaurant-Host — nimmt Ihre Bestellung entgegen, koordiniert mit der Küche, liefert Ihr Essen
 
 ---
 
 ### Frontend
 
-The user interface where people interact with OPAA.
+Die Benutzeroberfläche, über die Menschen mit OPAA interagieren.
 
-**Types:**
-- **Web UI** — Browser-based chat interface
-- **Chat integrations** — Bots in Mattermost, Slack, etc.
-- **REST API** — For programmatic access
-- **Custom** — Any interface built on REST API
-
----
-
-### Data Source Connector
-
-Software that knows how to connect to a specific data source and extract documents.
-
-**Examples:**
-- Confluence connector — Knows how to authenticate with Confluence API, extract pages
-- Email connector — Knows how to connect to IMAP servers, parse emails
-- S3 connector — Knows how to authenticate with AWS, list and download files
-- Google Drive connector — Knows how to use Google APIs, download documents
-- Jira connector — Knows how to read issues, comments, and attachments
+**Typen:**
+- **Web-UI** — Browserbasierte Chat-Schnittstelle
+- **Chat-Integrationen** — Bots in Mattermost, Slack, usw.
+- **REST-API** — Für programmatischen Zugang
+- **Benutzerdefiniert** — Jede auf der REST-API aufgebaute Schnittstelle
 
 ---
 
-### User Document Upload
+### Datenquellen-Konnektor
 
-The act of a user pushing a document into OPAA through a frontend interface (Web UI, Chat, REST API), as opposed to OPAA pulling documents from configured data sources via connectors.
+Software, die weiß, wie man sich mit einer bestimmten Datenquelle verbindet und Dokumente extrahiert.
 
-**Key differences from connector-based ingestion:**
-- User actively pushes documents (vs. OPAA pulling from sources)
-- Triggered on-demand by user action (vs. scheduled or event-based)
-- Documents land in the user's personal workspace by default
-- Original files are stored on OPAA's configurable storage backend
-
-See [Data Indexing & RAG — User Document Upload](./features/data-indexing-rag.md#user-document-upload) for details.
-
----
-
-### Storage Backend
-
-The pluggable file storage system where uploaded documents are persisted. This is separate from the vector database — the storage backend holds original files (PDF, DOCX, etc.) for download and re-processing, while the vector database holds embeddings for search.
-
-**Supported backends (chosen at deployment time):**
-- **S3-Compatible Object Storage** — AWS S3, MinIO (cloud/hybrid)
-- **Network Drive (SMB/NFS)** — Shared file system mount (on-premises)
-- **Local Filesystem** — Direct disk storage (development/small deployments)
+**Beispiele:**
+- Confluence-Konnektor — Weiß, wie man sich mit der Confluence-API authentifiziert, Seiten extrahiert
+- E-Mail-Konnektor — Weiß, wie man sich mit IMAP-Servern verbindet, E-Mails parst
+- S3-Konnektor — Weiß, wie man sich mit AWS authentifiziert, Dateien listet und herunterlädt
+- Google-Drive-Konnektor — Weiß, wie man Google-APIs verwendet, Dokumente herunterlädt
+- Jira-Konnektor — Weiß, wie man Issues, Kommentare und Anhänge liest
 
 ---
 
-### Cross-Workspace Document Sharing (Future Feature)
+### Benutzer-Dokument-Upload
 
-Making a document from one workspace visible and searchable in another workspace. The document would not be duplicated — instead, its indexed data would be tagged with multiple workspace IDs.
+Das Hochladen eines Dokuments durch einen Benutzer in OPAA über eine Frontend-Schnittstelle (Web-UI, Chat, REST-API), im Gegensatz dazu, dass OPAA Dokumente über Konnektoren von konfigurierten Datenquellen abruft.
 
-**Status:** Planned as a future feature. The sharing concept has significant open security questions (e.g., preventing unintended information disclosure across workspaces with different access levels). See [Document Sharing](./features/document-sharing.md) for the current concept and open questions.
+**Wesentliche Unterschiede zur Konnektor-basierten Aufnahme:**
+- Benutzer schiebt aktiv Dokumente (vs. OPAA zieht aus Quellen)
+- Auf Anfrage durch Benutzeraktion ausgelöst (vs. geplant oder ereignisbasiert)
+- Dokumente landen standardmäßig im persönlichen Workspace des Benutzers
+- Originaldateien werden auf OPAAs konfigurierbarem Speicher-Backend gespeichert
 
----
-
-## Infrastructure Concepts
-
-### On-Premises Deployment
-
-OPAA runs on your own servers, in your own data center or office.
-
-**Benefits:**
-- Complete data sovereignty (data never leaves your infrastructure)
-- No external API dependencies
-- Works in air-gapped environments
-- Complies with strict data governance
-
-**Trade-off:**
-- You manage infrastructure, backups, security patches
+Siehe [Daten-Indizierung & RAG — Benutzer-Dokument-Upload](./features/data-indexing-rag.md#user-document-upload) für Details.
 
 ---
 
-### Cloud Deployment
+### Speicher-Backend
 
-OPAA runs on cloud infrastructure (AWS, Azure, GCP) that you own or control.
+Das pluggbare Dateispeichersystem, in dem hochgeladene Dokumente gespeichert werden. Dies ist getrennt von der Vektor-Datenbank — das Speicher-Backend hält Originaldateien (PDF, DOCX, usw.) zum Herunterladen und Neu-Verarbeiten, während die Vektor-Datenbank Embeddings für die Suche hält.
 
-**Benefits:**
-- Easy scaling
-- Managed backups and disaster recovery
-- No physical servers to maintain
-- Use cloud-managed vector databases
+**Unterstützte Backends (zum Deployment-Zeitpunkt gewählt):**
+- **S3-kompatibler Objektspeicher** — AWS S3, MinIO (Cloud/Hybrid)
+- **Netzlaufwerk (SMB/NFS)** — Gemeinsames Dateisystem-Mount (On-Premises)
+- **Lokales Dateisystem** — Direkte Disk-Speicherung (Entwicklung/kleine Deployments)
 
-**Trade-off:**
-- Data in third-party infrastructure
-- Cloud costs can grow with scale
+---
+
+### Workspace-übergreifendes Dokumenten-Teilen (Zukünftiges Feature)
+
+Ein Dokument aus einem Workspace in einem anderen Workspace sichtbar und durchsuchbar machen. Das Dokument würde nicht dupliziert — stattdessen würden seine indizierten Daten mit mehreren Workspace-IDs versehen.
+
+**Status:** Als zukünftiges Feature geplant. Das Teilkonzept hat erhebliche offene Sicherheitsfragen (z. B. Verhinderung unbeabsichtigter Informationsoffenlegung über Workspaces mit unterschiedlichen Zugangsstufen hinweg). Siehe [Dokument-Teilen](./features/document-sharing.md) für das aktuelle Konzept und offene Fragen.
+
+---
+
+## Infrastruktur-Konzepte
+
+### On-Premises-Deployment
+
+OPAA läuft auf Ihren eigenen Servern, in Ihrem eigenen Rechenzentrum oder Büro.
+
+**Vorteile:**
+- Vollständige Datensouveränität (Daten verlassen nie Ihre Infrastruktur)
+- Keine externen API-Abhängigkeiten
+- Funktioniert in Air-Gap-Umgebungen
+- Erfüllt strenge Datenschutzanforderungen
+
+**Kompromiss:**
+- Sie verwalten Infrastruktur, Backups, Sicherheits-Patches
+
+---
+
+### Cloud-Deployment
+
+OPAA läuft auf Cloud-Infrastruktur (AWS, Azure, GCP), die Sie besitzen oder kontrollieren.
+
+**Vorteile:**
+- Einfaches Skalieren
+- Verwaltete Backups und Disaster Recovery
+- Keine physischen Server zu warten
+- Cloud-verwaltete Vektor-Datenbanken nutzen
+
+**Kompromiss:**
+- Daten in Drittanbieter-Infrastruktur
+- Cloud-Kosten können mit der Skalierung wachsen
 
 ---
 
 ### Container / Docker
 
-A way to package OPAA and all its dependencies into a single unit that runs the same way everywhere.
+Eine Methode, OPAA und alle seine Abhängigkeiten in eine einzelne Einheit zu verpacken, die überall gleich läuft.
 
-**Why it matters:**
-- "It works on my machine" problem solved
-- Easy to deploy to different servers
-- Easy to update (just pull new container image)
+**Warum es wichtig ist:**
+- "Funktioniert auf meinem Rechner"-Problem gelöst
+- Einfach auf verschiedene Server zu deployen
+- Einfach zu aktualisieren (einfach neues Container-Image ziehen)
 
 ---
 
 ### Kubernetes (K8s)
 
-An orchestration system for managing containers at scale.
+Ein Orchestrierungssystem zur Verwaltung von Containern in großem Maßstab.
 
-**What it does:**
-- Runs multiple copies of OPAA for redundancy
-- Automatically restarts failed instances
-- Distributes traffic across instances
-- Easy scaling (run 3 instances → run 10 instances)
+**Was es tut:**
+- Führt mehrere Kopien von OPAA für Redundanz aus
+- Startet fehlgeschlagene Instanzen automatisch neu
+- Verteilt Traffic auf Instanzen
+- Einfaches Skalieren (3 Instanzen → 10 Instanzen)
 
-**For:** Organizations with 1000+ employees or high query volume
-
----
-
-### Configuration Management
-
-Ways to customize OPAA without changing code.
-
-**Methods:**
-- **Environment variables** — `LLM_PROVIDER=openai`
-- **Config files** — YAML files with settings
-- **Admin UI** — Web interface to change settings
-
-**Why it matters:**
-- Switch from OpenAI to local LLM with one config change
-- Change vector database without code changes
-- Organizations customize without touching code
+**Für:** Organisationen mit 1000+ Mitarbeitern oder hohem Abfragevolumen
 
 ---
 
-## Quality & Performance Concepts
+### Konfigurationsmanagement
 
-### Confidence Score
+Wege, OPAA ohne Code-Änderungen anzupassen.
 
-A numerical score (0-1) indicating how confident the system is that retrieved documents are relevant to the question.
+**Methoden:**
+- **Umgebungsvariablen** — `LLM_PROVIDER=openai`
+- **Konfigurationsdateien** — YAML-Dateien mit Einstellungen
+- **Admin-UI** — Web-Schnittstelle zum Ändern von Einstellungen
 
-**Scale:**
-- **0.9-1.0** — Very confident, definitely relevant
-- **0.7-0.9** — Confident, probably relevant
-- **0.5-0.7** — Uncertain, might be relevant
-- **< 0.5** — Not confident, probably not relevant
-
-**User benefit:** Can see at a glance whether to trust the answer
-
----
-
-### Latency
-
-How long a query takes from question to answer.
-
-**Targets:**
-- Vector search: < 500ms
-- LLM generation: 1-3 seconds
-- Total: < 4 seconds
-
-**Factors affecting it:**
-- Size of knowledge base
-- LLM model (GPT-4 slower than 3.5-turbo)
-- Infrastructure (local models faster than cloud APIs)
+**Warum es wichtig ist:**
+- Von OpenAI zu lokalem LLM mit einer Konfigurationsänderung wechseln
+- Vektor-Datenbank ohne Code-Änderungen wechseln
+- Organisationen passen an, ohne Code anzufassen
 
 ---
 
-### Hallucination
+## Qualitäts- & Leistungs-Konzepte
 
-When an LLM generates false information or makes up facts.
+### Konfidenz-Score
 
-**OPAA's protection:**
-- RAG forces LLM to cite sources
-- LLM can only claim things that appear in retrieved documents
-- If answer isn't in documents, system says "I don't know"
+Ein numerischer Score (0-1), der angibt, wie zuversichtlich das System ist, dass abgerufene Dokumente für die Frage relevant sind.
 
----
+**Skala:**
+- **0,9-1,0** — Sehr zuversichtlich, definitiv relevant
+- **0,7-0,9** — Zuversichtlich, wahrscheinlich relevant
+- **0,5-0,7** — Unsicher, könnte relevant sein
+- **< 0,5** — Nicht zuversichtlich, wahrscheinlich nicht relevant
 
-## Data & Security Concepts
-
-### Permission Inheritance
-
-Documents inherit permissions from their source system.
-
-**Example:**
-- Confluence page has permissions: "Engineering team only"
-- When indexed in OPAA, it keeps the same permissions
-- Only engineers can see it in OPAA searches
-
-**Identity Provider Integration:**
-OPAA needs to know who users are and what groups they belong to. This is typically handled by connecting to an organizational identity provider such as Keycloak, Active Directory, or Okta. The exact integration approach (direct LDAP, OIDC, SAML) is an open question that will be decided during implementation.
+**Benutzernutzen:** Auf einen Blick sehen, ob der Antwort vertraut werden soll
 
 ---
 
-### Audit Logging
+### Latenz
 
-Recording who did what, when, and what the result was.
+Wie lange eine Abfrage von Frage bis Antwort dauert.
 
-**Examples of logged actions:**
-- User searched for: [timestamp], [user], [query], [results_count]
-- User accessed document: [timestamp], [user], [document], [result]
-- Admin changed permission: [timestamp], [admin], [what changed], [reason]
+**Ziele:**
+- Vektorsuche: < 500 ms
+- LLM-Generierung: 1-3 Sekunden
+- Gesamt: < 4 Sekunden
 
-**Use cases:**
-- Compliance (prove who accessed sensitive data)
-- Debugging (understand what went wrong)
-- Usage analytics (what do people search for?)
-
----
-
-### Encryption
-
-Converting data to a coded form so only authorized users can read it.
-
-**Types:**
-- **In transit** — Data encrypted while traveling over networks (TLS/HTTPS)
-- **At rest** — Data encrypted while stored on disk
-- **End-to-end** — Data encrypted on user's device, never readable by server
+**Einflussfaktoren:**
+- Größe der Wissensbasis
+- LLM-Modell (GPT-4 langsamer als 3.5-turbo)
+- Infrastruktur (lokale Modelle schneller als Cloud-APIs)
 
 ---
 
-## Performance Optimization Concepts
+### Halluzination
+
+Wenn ein LLM falsche Informationen generiert oder Fakten erfindet.
+
+**OPAAs Schutz:**
+- RAG zwingt LLM, Quellen zu zitieren
+- LLM kann nur Dinge behaupten, die in abgerufenen Dokumenten erscheinen
+- Wenn Antwort nicht in Dokumenten ist, sagt das System "Ich weiß es nicht"
+
+---
+
+## Daten- & Sicherheits-Konzepte
+
+### Berechtigungs-Vererbung
+
+Dokumente erben Berechtigungen von ihrem Quellsystem.
+
+**Beispiel:**
+- Confluence-Seite hat Berechtigungen: "Nur Engineering-Team"
+- Wenn in OPAA indiziert, behält sie dieselben Berechtigungen
+- Nur Engineers können sie in OPAA-Suchen sehen
+
+**Identity-Provider-Integration:**
+OPAA muss wissen, wer Benutzer sind und welchen Gruppen sie angehören. Dies wird typischerweise durch Verbindung zu einem organisatorischen Identity-Provider wie Keycloak, Active Directory oder Okta gehandhabt. Der genaue Integrationsansatz (direktes LDAP, OIDC, SAML) ist eine offene Frage, die während der Implementierung entschieden wird.
+
+---
+
+### Audit-Logging
+
+Aufzeichnen, wer was wann getan hat und welches Ergebnis entstand.
+
+**Beispiele geloggter Aktionen:**
+- Benutzer hat gesucht: [Zeitstempel], [Benutzer], [Abfrage], [Ergebnisanzahl]
+- Benutzer hat auf Dokument zugegriffen: [Zeitstempel], [Benutzer], [Dokument], [Ergebnis]
+- Admin hat Berechtigung geändert: [Zeitstempel], [Admin], [was geändert], [Grund]
+
+**Anwendungsfälle:**
+- Compliance (beweisen, wer auf sensible Daten zugegriffen hat)
+- Debugging (verstehen, was schiefgelaufen ist)
+- Nutzungs-Analytics (wonach suchen Menschen?)
+
+---
+
+### Verschlüsselung
+
+Daten in eine kodierte Form umwandeln, sodass nur autorisierte Benutzer sie lesen können.
+
+**Typen:**
+- **Im Transit** — Daten verschlüsselt während der Übertragung über Netzwerke (TLS/HTTPS)
+- **Im Ruhezustand** — Daten verschlüsselt während der Speicherung auf Disk
+- **Ende-zu-Ende** — Daten auf dem Gerät des Benutzers verschlüsselt, niemals vom Server lesbar
+
+---
+
+## Leistungsoptimierungs-Konzepte
 
 ### Caching
 
-Storing previously computed results so they don't need to be recomputed.
+Zuvor berechnete Ergebnisse speichern, damit sie nicht neu berechnet werden müssen.
 
-**Examples in OPAA:**
-- Cache frequent questions (don't re-embed or re-generate)
-- Cache user permissions (don't re-check every request)
-- Cache document embeddings (don't re-embed unchanged docs)
+**Beispiele in OPAA:**
+- Häufige Fragen cachen (nicht neu einbetten oder neu generieren)
+- Benutzerberechtigungen cachen (nicht bei jeder Anfrage erneut prüfen)
+- Dokument-Embeddings cachen (unveränderte Dokumente nicht neu einbetten)
 
-**Trade-off:** Uses more memory but saves compute and money
-
----
-
-### Batch Processing
-
-Processing multiple items together instead of one at a time.
-
-**Example:**
-- Index 1,000 documents one-by-one: slow
-- Index 1,000 documents in batches of 100: faster (more efficient)
-
-**When used in OPAA:**
-- During indexing (batch embedding generation)
-- During report generation (batch queries)
+**Kompromiss:** Verbraucht mehr Speicher, aber spart Rechenleistung und Geld
 
 ---
 
-### Multi-Model Strategy
+### Batch-Verarbeitung
 
-Using different AI models for different tasks to optimize cost, speed, and quality.
+Mehrere Elemente zusammen statt einzeln verarbeiten.
 
-**Example:**
-- **Embedding model** (local, cheap): Converts documents and questions to vectors for search
-- **Reasoning model** (cloud, powerful): Generates the final answer from retrieved documents
-- **Summarization model** (mid-tier): Creates document summaries for previews
+**Beispiel:**
+- 1.000 Dokumente einzeln indizieren: langsam
+- 1.000 Dokumente in Batches von 100 indizieren: schneller (effizienter)
 
-This means an organization can run a local embedding model on-premises (free, fast) while using a cloud-based reasoning model (higher quality) only for generating answers — combining the best of both worlds.
-
----
-
-### Cost Optimization
-
-Strategies to reduce LLM API costs.
-
-**Techniques:**
-- Use multi-model strategy (cheap models for simple tasks, powerful models only when needed)
-- Cache answers to frequent questions
-- Use local models (free after infrastructure cost)
-- Batch requests during off-hours
+**Wenn in OPAA verwendet:**
+- Während der Indizierung (Batch-Embedding-Generierung)
+- Während der Berichtserstellung (Batch-Abfragen)
 
 ---
 
-## Related Concepts (Not Directly in OPAA)
+### Multi-Modell-Strategie
 
-### Knowledge Graph
+Verschiedene KI-Modelle für verschiedene Aufgaben verwenden, um Kosten, Geschwindigkeit und Qualität zu optimieren.
 
-A structured representation of information and how concepts relate to each other.
+**Beispiel:**
+- **Embedding-Modell** (lokal, günstig): Konvertiert Dokumente und Fragen in Vektoren für die Suche
+- **Reasoning-Modell** (Cloud, leistungsstark): Generiert die endgültige Antwort aus abgerufenen Dokumenten
+- **Zusammenfassungsmodell** (mittlere Stufe): Erstellt Dokumentzusammenfassungen für Vorschauen
 
-**Example:**
+Das bedeutet, eine Organisation kann ein lokales Embedding-Modell on-premises (kostenlos, schnell) betreiben, während sie ein Cloud-basiertes Reasoning-Modell (höhere Qualität) nur für die Antwortgenerierung verwendet — das Beste aus beiden Welten kombinierend.
+
+---
+
+### Kostenoptimierung
+
+Strategien zur Reduzierung von LLM-API-Kosten.
+
+**Techniken:**
+- Multi-Modell-Strategie verwenden (günstige Modelle für einfache Aufgaben, leistungsstarke Modelle nur wenn nötig)
+- Antworten auf häufige Fragen cachen
+- Lokale Modelle verwenden (kostenlos nach Infrastrukturkosten)
+- Anfragen außerhalb der Stoßzeiten bündeln
+
+---
+
+## Verwandte Konzepte (Nicht direkt in OPAA)
+
+### Wissensgraph
+
+Eine strukturierte Darstellung von Informationen und wie Konzepte miteinander in Beziehung stehen.
+
+**Beispiel:**
 ```
-Person: John Smith
-  ├── Works at: Acme Corp
-  ├── Department: Engineering
-  └── Manager: Jane Doe
+Person: Hans Müller
+  ├── Arbeitet bei: Beispiel GmbH
+  ├── Abteilung: Engineering
+  └── Vorgesetzter: Maria Schmidt
 
-Document: Remote Work Policy
-  └── Applies to: Engineering department
+Dokument: Remote-Arbeit-Richtlinie
+  └── Gilt für: Engineering-Abteilung
 ```
 
-**Status in OPAA:** Out of scope for MVP, possible future enhancement
+**Status in OPAA:** Außerhalb des MVP-Rahmens, mögliche zukünftige Erweiterung
 
 ---
 
-### Indexing Triggers: Scheduled vs. Event-Based
+### Indizierungs-Auslöser: Geplant vs. Ereignisbasiert
 
-There are two approaches to keeping the index up-to-date:
+Es gibt zwei Ansätze, um den Index aktuell zu halten:
 
-**Scheduled indexing (polling):**
-- OPAA checks data sources on a regular schedule (e.g. every hour, daily at 2 AM)
-- Simple to implement, works with any data source
-- Trade-off: Changes are only visible after the next scheduled run
+**Geplante Indizierung (Polling):**
+- OPAA prüft Datenquellen nach einem regulären Zeitplan (z. B. jede Stunde, täglich um 2 Uhr)
+- Einfach zu implementieren, funktioniert mit jeder Datenquelle
+- Kompromiss: Änderungen sind erst nach dem nächsten geplanten Lauf sichtbar
 
-**Event-based indexing (push):**
-- Data sources notify OPAA when documents change (via webhooks, events, or APIs)
-- Changes are indexed much faster (minutes instead of hours)
-- Requires data source to support event notifications
-- Example: Confluence sends a webhook when a page is updated → OPAA re-indexes that page immediately
+**Ereignisbasierte Indizierung (Push):**
+- Datenquellen benachrichtigen OPAA, wenn sich Dokumente ändern (über Webhooks, Ereignisse oder APIs)
+- Änderungen werden viel schneller indiziert (Minuten statt Stunden)
+- Erfordert, dass die Datenquelle Ereignisbenachrichtigungen unterstützt
+- Beispiel: Confluence sendet einen Webhook, wenn eine Seite aktualisiert wird → OPAA indiziert diese Seite sofort neu
 
-OPAA supports both models. The choice depends on the data source's capabilities and the organization's freshness requirements.
+OPAA unterstützt beide Modelle. Die Wahl hängt von den Fähigkeiten der Datenquelle und den Aktualitätsanforderungen der Organisation ab.
 
-### Real-Time Sync
+### Echtzeit-Synchronisation
 
-Immediately updating OPAA when source documents change (within seconds).
+OPAA sofort aktualisieren, wenn Quelldokumente sich ändern (innerhalb von Sekunden).
 
-**Example:** User edits Confluence page → OPAA automatically updates within seconds
+**Beispiel:** Benutzer bearbeitet Confluence-Seite → OPAA aktualisiert automatisch innerhalb von Sekunden
 
-**Status in OPAA:** Not a primary goal — event-based indexing provides near-real-time updates (minutes), which is sufficient for most use cases. True real-time sync (seconds) may be added later for specific data sources.
-
----
-
-## Quick Reference Table
-
-| Term | Definition | Example |
-|------|-----------|---------|
-| **RAG** | Retrieval + AI generation | Ask question → retrieve docs → LLM answers |
-| **Embedding** | Vector representing text meaning | [0.21, -0.18, 0.45, ...] |
-| **Chunk** | Piece of a document | Page 3 of a 50-page manual |
-| **Semantic** | Based on meaning, not keywords | "Remote work" ≈ "work from home" |
-| **LLM** | AI language model | GPT-4, Claude, Llama |
-| **Workspace** | Isolated knowledge base area (flat, no hierarchy) | "Engineering" team docs |
-| **Personal Workspace** | Auto-created private workspace per user | "My Documents" for each user |
-| **Project Workspace** | Shared workspace for cross-team collaboration | "Phoenix" project with multiple teams |
-| **User Upload** | User pushes document into OPAA | Drag-and-drop in Web UI |
-| **Storage Backend** | Pluggable file storage for uploads | S3, network drive, local |
-| **Cross-Workspace Sharing** | Make document visible in another workspace (future feature) | Share from "Backend-Team" to "Frontend-Team" |
-| **System-Admin** | System-level role for org-wide administration | Connector config, workspace creation |
-| **Role** | Workspace-level permission set | Owner, Admin, Editor, Viewer |
-| **Connector** | Data source connection with workspace mapping | Confluence server with space→workspace mappings |
-| **Vector DB** | Database optimized for similarity | Elasticsearch, Milvus, pgvector |
-| **Latency** | Time to answer | < 4 seconds target |
-| **Hallucination** | LLM makes up facts | LLM: "Our policy is X" (not true) |
+**Status in OPAA:** Kein primäres Ziel — ereignisbasierte Indizierung bietet nahezu-Echtzeit-Aktualisierungen (Minuten), was für die meisten Anwendungsfälle ausreicht. Echte Echtzeit-Synchronisation (Sekunden) kann später für bestimmte Datenquellen hinzugefügt werden.
 
 ---
 
-## Learn More
+## Schnellreferenz-Tabelle
 
-- Read [VISION.md](./VISION.md) for complete system design
-- Read specific feature specs in `features/` for detailed information
-- See [INDEX.md](./INDEX.md) for reading paths by role
+| Begriff | Definition | Beispiel |
+|---------|-----------|---------|
+| **RAG** | Retrieval + KI-Generierung | Frage stellen → Dokumente abrufen → LLM antwortet |
+| **Embedding** | Vektor, der Textbedeutung repräsentiert | [0,21, -0,18, 0,45, ...] |
+| **Chunk** | Teil eines Dokuments | Seite 3 eines 50-seitigen Handbuchs |
+| **Semantisch** | Basierend auf Bedeutung, nicht Schlüsselwörtern | "Remote-Arbeit" ≈ "von zu Hause arbeiten" |
+| **LLM** | KI-Sprachmodell | GPT-4, Claude, Llama |
+| **Workspace** | Isolierter Wissensbereich (flach, keine Hierarchie) | "Engineering"-Team-Dokumente |
+| **Persönlicher Workspace** | Automatisch erstellter privater Workspace pro Benutzer | "Meine Dokumente" für jeden Benutzer |
+| **Projekt-Workspace** | Gemeinsamer Workspace für teamübergreifende Zusammenarbeit | "Phoenix"-Projekt mit mehreren Teams |
+| **Benutzer-Upload** | Benutzer schiebt Dokument in OPAA | Drag-and-Drop in Web-UI |
+| **Speicher-Backend** | Pluggbarer Dateispeicher für Uploads | S3, Netzlaufwerk, lokal |
+| **Workspace-übergreifendes Teilen** | Dokument in einem anderen Workspace sichtbar machen (zukünftiges Feature) | Aus "Backend-Team" mit "Frontend-Team" teilen |
+| **System-Admin** | Systemweite Rolle für organisationsweite Administration | Konnektor-Konfiguration, Workspace-Erstellung |
+| **Rolle** | Workspace-Berechtigungsset | Owner, Admin, Editor, Viewer |
+| **Konnektor** | Datenquellen-Verbindung mit Workspace-Zuordnung | Confluence-Server mit Space→Workspace-Zuordnungen |
+| **Vektor-DB** | Für Ähnlichkeitssuche optimierte Datenbank | Elasticsearch, Milvus, pgvector |
+| **Latenz** | Zeit bis zur Antwort | < 4 Sekunden Ziel |
+| **Halluzination** | LLM erfindet Fakten | LLM: "Unsere Richtlinie ist X" (nicht wahr) |
+
+---
+
+## Mehr erfahren
+
+- [VISION.md](./VISION.md) für vollständiges Systemdesign lesen
+- Spezifische Feature-Spezifikationen in `features/` für detaillierte Informationen lesen
+- Siehe [INDEX.md](./INDEX.md) für Lesepfade nach Rolle

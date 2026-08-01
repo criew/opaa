@@ -1,371 +1,371 @@
-# OPAA Product Vision
+# OPAA Produktvision
 
-## Executive Summary
+## Zusammenfassung
 
-**OPAA** (Open Project AI Assistant) is an enterprise-grade, self-hosted AI assistant system that enables organizations to leverage their existing knowledge assets through intelligent search and question-answering interfaces.
+**OPAA** (Open Project AI Assistant) ist ein enterprise-taugliches, selbst gehostetes KI-Assistenz-System, das Organisationen ermöglicht, ihre vorhandenen Wissensressourcen durch intelligente Such- und Frage-Antwort-Schnittstellen zu nutzen.
 
-OPAA transforms scattered organizational knowledge — stored in wikis, emails, file systems, and document repositories — into a unified, accessible intelligence layer. Through configurable AI models and deployment options, organizations can deploy OPAA on-premises, in the cloud, or in hybrid setups while maintaining full control over data and infrastructure.
+OPAA verwandelt verteiltes Organisationswissen — gespeichert in Wikis, E-Mails, Dateisystemen und Dokumenten-Repositories — in eine einheitliche, zugängliche Intelligenzschicht. Durch konfigurierbare KI-Modelle und Deployment-Optionen können Organisationen OPAA on-premises, in der Cloud oder in hybriden Setups einsetzen und dabei volle Kontrolle über Daten und Infrastruktur behalten.
 
-OPAA is built on principles of **digital sovereignty**, **no vendor lock-in**, and **dual vendor strategy** — ensuring organizations remain in full control of their data, infrastructure, and technology choices at all times.
-
----
-
-## The Problem
-
-Modern organizations face a critical knowledge challenge:
-
-- **Knowledge Fragmentation:** Critical information scattered across Confluence, Slack, emails, SharePoint, and file servers
-- **Discovery Friction:** Employees spend hours searching for information rather than using it
-- **Context Loss:** Documents exist but are difficult to find, understand, and trust
-- **Dependency on People:** Key information often exists only in people's heads
-- **Individual Knowledge Silos:** Employees accumulate personal documents, notes, and research that are valuable to the organization but have no easy path into the shared knowledge base
-- **Tool Proliferation:** Each data source requires a different search interface
-
-OPAA solves this by creating a unified intelligence layer over disparate knowledge sources, making organizational knowledge instantly accessible, searchable, and actionable.
+OPAA basiert auf den Prinzipien **digitaler Souveränität**, **kein Vendor-Lock-in** und **Dual-Vendor-Strategie** — um sicherzustellen, dass Organisationen jederzeit die volle Kontrolle über ihre Daten, Infrastruktur und Technologieentscheidungen behalten.
 
 ---
 
-## Core Value Proposition
+## Das Problem
 
-| Benefit | For Whom |
-|---------|----------|
-| **Instant Answers** | Employees get answers to questions within seconds, pulling from all organizational knowledge sources |
-| **Authority & Trust** | Every answer includes source documents, ensuring users can verify information and trust recommendations |
-| **Cross-Silo Visibility** | Seamless search across Confluence, email archives, file systems, and other repositories as a single interface |
-| **Flexible Integration** | Deploy on your infrastructure with your choice of LLM provider (OpenAI, open-source models, private APIs) |
-| **Personal Knowledge Management** | Employees can upload their own documents into a private workspace, making personal knowledge searchable and shareable with teams on demand |
-| **Evolving Knowledge** | New and updated documents are automatically detected and re-indexed, keeping answers always up-to-date |
+Moderne Organisationen stehen vor einer kritischen Wissensherausforderung:
 
----
+- **Wissensfragmentierung:** Kritische Informationen sind über Confluence, Slack, E-Mails, SharePoint und Dateiserver verteilt
+- **Suchreibung:** Mitarbeiter verbringen Stunden damit, Informationen zu suchen, statt sie zu nutzen
+- **Kontextverlust:** Dokumente existieren, sind aber schwer zu finden, zu verstehen und zu vertrauen
+- **Abhängigkeit von Menschen:** Schlüsselinformationen existieren oft nur in den Köpfen von Personen
+- **Individuelle Wissenssilos:** Mitarbeiter häufen persönliche Dokumente, Notizen und Recherchen an, die wertvoll für die Organisation sind, aber keinen einfachen Weg in die gemeinsame Wissensbasis haben
+- **Tool-Proliferation:** Jede Datenquelle erfordert eine andere Suchoberfläche
 
-## Supported Use Cases
-
-### 1. **Enterprise Knowledge Hub** (Large Organizations)
-A Fortune 500 company with 5,000+ employees uses OPAA to make their internal wiki, documentation, and archived emails searchable. Employees ask questions like "What's our approval process for international hiring?" and receive instant, sourced answers. The system is deployed on-premises for data governance compliance.
-
-### 2. **Team Productivity Multiplier** (Mid-Size Teams)
-A 50-person SaaS company deploys OPAA with Mattermost integration. Team members can ask "@opaa-bot" questions in Slack-like interface. The system searches internal wikis, project documentation, and decision records. Every Friday, the team runs a weekly report by querying: "What decisions did we make this week?"
-
-### 3. **Customer Success Knowledge Base** (Support Teams)
-A support team uses OPAA's web interface to provide better customer answers. Instead of searching multiple documentation systems, they ask OPAA for product information, then share sourced answers with customers. The system improves first-contact resolution rates.
-
-### 4. **Compliance & Audit Trail** (Regulated Industries)
-A healthcare organization uses OPAA to index compliance policies, audit documents, and regulatory guidance. When questioned, the system provides exact source references, creating an auditable trail for compliance investigations.
-
-### 5. **Personal Knowledge Contributor** (Individual Users)
-A senior engineer uploads technical research papers, meeting notes, and design sketches into their personal "My Documents" workspace. The documents are immediately indexed and searchable in their private area. When a design document is finalized, they share it into the "Engineering" team workspace, making it discoverable by the entire engineering team. The original stays in their personal workspace for their own reference.
+OPAA löst dies, indem es eine einheitliche Intelligenzschicht über disparate Wissensquellen erstellt und Organisationswissen sofort zugänglich, durchsuchbar und handlungsrelevant macht.
 
 ---
 
-## System Architecture (High Level)
+## Kernnutzenversprechen
+
+| Nutzen | Für wen |
+|--------|---------|
+| **Sofortige Antworten** | Mitarbeiter erhalten innerhalb von Sekunden Antworten auf Fragen, die aus allen Organisationswissensquellen schöpfen |
+| **Autorität & Vertrauen** | Jede Antwort enthält Quelldokumente, sodass Benutzer Informationen verifizieren und Empfehlungen vertrauen können |
+| **Siloübergreifende Sichtbarkeit** | Nahtlose Suche über Confluence, E-Mail-Archive, Dateisysteme und andere Repositories als einzelne Schnittstelle |
+| **Flexible Integration** | Auf Ihrer Infrastruktur einsetzen mit Ihrer Wahl des LLM-Anbieters (OpenAI, Open-Source-Modelle, private APIs) |
+| **Persönliches Wissensmanagement** | Mitarbeiter können eigene Dokumente in einen privaten Workspace hochladen und persönliches Wissen durchsuchbar und auf Anfrage mit Teams teilbar machen |
+| **Evolvierendes Wissen** | Neue und aktualisierte Dokumente werden automatisch erkannt und neu indiziert, sodass Antworten immer aktuell sind |
+
+---
+
+## Unterstützte Anwendungsfälle
+
+### 1. **Enterprise-Wissens-Hub** (Große Organisationen)
+Ein Fortune-500-Unternehmen mit 5.000+ Mitarbeitern nutzt OPAA, um sein internes Wiki, Dokumentationen und archivierte E-Mails durchsuchbar zu machen. Mitarbeiter stellen Fragen wie "Was ist unser Genehmigungsverfahren für internationale Einstellungen?" und erhalten sofortige, quellenbasierte Antworten. Das System ist on-premises zur Datenschutz-Compliance eingesetzt.
+
+### 2. **Team-Produktivitätsmultiplikator** (Mittelgroße Teams)
+Ein 50-köpfiges SaaS-Unternehmen setzt OPAA mit Mattermost-Integration ein. Teammitglieder können "@opaa-bot" Fragen in einer Slack-ähnlichen Schnittstelle stellen. Das System durchsucht interne Wikis, Projektdokumentation und Entscheidungsaufzeichnungen. Jeden Freitag erstellt das Team einen Wochenbericht durch die Abfrage: "Welche Entscheidungen haben wir diese Woche getroffen?"
+
+### 3. **Kundenerfolgs-Wissensdatenbank** (Support-Teams)
+Ein Support-Team nutzt OPAAs Web-Schnittstelle, um bessere Kundenantworten zu liefern. Statt mehrere Dokumentationssysteme zu durchsuchen, fragen sie OPAA nach Produktinformationen und teilen quellenbasierte Antworten mit Kunden. Das System verbessert die Erstlösungsraten.
+
+### 4. **Compliance & Audit-Trail** (Regulierte Branchen)
+Eine Gesundheitsorganisation nutzt OPAA, um Compliance-Richtlinien, Audit-Dokumente und regulatorische Leitlinien zu indizieren. Auf Befragung liefert das System genaue Quellenreferenzen und schafft so einen prüfbaren Trail für Compliance-Untersuchungen.
+
+### 5. **Persönlicher Wissens-Beitragender** (Einzelne Benutzer)
+Ein leitender Ingenieur lädt technische Forschungsarbeiten, Besprechungsnotizen und Design-Skizzen in seinen persönlichen "Meine Dokumente"-Workspace hoch. Die Dokumente werden sofort indiziert und in seinem privaten Bereich durchsuchbar. Wenn ein Design-Dokument fertiggestellt ist, teilt er es in den "Engineering"-Team-Workspace, wo es vom gesamten Engineering-Team entdeckt werden kann. Das Original bleibt in seinem persönlichen Workspace für seine eigene Referenz.
+
+---
+
+## Systemarchitektur (Überblick)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    USER INTERFACES                      │
+│                   BENUTZEROBERFLÄCHEN                   │
 ├─────────────────────────────────────────────────────────┤
-│  Web │ Mattermost │ Slack │ Telegram │ Signal │ Custom  │
+│  Web │ Mattermost │ Slack │ Telegram │ Signal │ Eigene  │
 │                                                         │
-│  Questions & Answers          Document Upload           │
+│  Fragen & Antworten          Dokument-Upload            │
 └────────────┬──────────────────────┬─────────────────────┘
              │                      │
 ┌────────────▼──────────────────────▼─────────────────────┐
-│              OPAA ORCHESTRATION LAYER                   │
+│              OPAA ORCHESTRIERUNGSSCHICHT                 │
 ├─────────────────────────────────────────────────────────┤
-│  • Request Processing  • Permissions & Access Control  │
-│  • Response Generation  • Document Retrieval           │
-│  • Upload Processing    • Workspace Management         │
+│  • Anfrageverarbeitung  • Berechtigungen & Zugangskontrolle  │
+│  • Antwortgenerierung   • Dokumentenabruf               │
+│  • Upload-Verarbeitung  • Workspace-Management          │
 └────────────┬─────────────────────┬─────────────────────┘
              │                     │
     ┌────────▼──────┐    ┌─────────▼────────┐
-    │  RAG Engine   │    │ LLM Integration  │
+    │  RAG-Engine   │    │ LLM-Integration  │
     │               │    │                  │
     │ • Embeddings  │    │ • OpenAI API     │
-    │ • Retrieval   │    │ • Local Models   │
-    │ • Ranking     │    │ • Custom APIs    │
+    │ • Retrieval   │    │ • Lokale Modelle │
+    │ • Ranking     │    │ • Eigene APIs    │
     └────────┬──────┘    └──────────────────┘
              │
     ┌────────▼──────────────────┐
-    │   Vector Databases        │
+    │   Vektor-Datenbanken      │
     │ (Elasticsearch,           │
     │  PostgreSQL, Milvus, ...) │
     └────────┬──────────────────┘
              │
 ┌────────────▼──────────────────────────────────────────┐
-│            DATA INDEXING & INGESTION LAYER            │
+│            DATEN-INDIZIERUNGS- & AUFNAHMESCHICHT       │
 ├──────────────────────────────────────────────────────┤
-│  Connectors:                                          │
-│  • Confluence │ Email │ File Systems │ Custom Sources │
+│  Konnektoren:                                         │
+│  • Confluence │ E-Mail │ Dateisysteme │ Eigene Quellen │
 │                                                       │
-│  User Uploads:                                        │
-│  • Web UI │ Chat Attachments │ REST API               │
+│  Benutzer-Uploads:                                    │
+│  • Web-UI │ Chat-Anhänge │ REST-API                   │
 └──────────────────────┬───────────────────────────────┘
                        │
 ┌──────────────────────▼───────────────────────────────┐
-│            DOCUMENT STORAGE                           │
+│            DOKUMENTENSPEICHER                         │
 ├──────────────────────────────────────────────────────┤
-│  • S3 │ Network Drive (SMB/NFS) │ Local Filesystem   │
+│  • S3 │ Netzlaufwerk (SMB/NFS) │ Lokales Dateisystem  │
 └──────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Core System Components
+## Kernsystemkomponenten
 
-### 1. **User Frontends** (External Interface)
-Multiple interfaces for different usage patterns:
-- **Web Interface:** Browser-based chat UI with search and document browsing
-- **Chat Integrations:** Native plugins for Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, and other platforms
-- **REST API:** Programmatic access for custom integrations
-- **Document Upload:** Users can upload documents directly through the Web UI, chat integrations, or REST API. Uploaded documents are stored and indexed into the user's personal workspace.
+### 1. **Benutzer-Frontends** (Externe Schnittstelle)
+Mehrere Schnittstellen für verschiedene Nutzungsmuster:
+- **Web-Schnittstelle:** Browserbasierte Chat-UI mit Suche und Dokument-Browser
+- **Chat-Integrationen:** Native Plugins für Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp und andere Plattformen
+- **REST-API:** Programmatischer Zugang für benutzerdefinierte Integrationen
+- **Dokument-Upload:** Benutzer können Dokumente direkt über die Web-UI, Chat-Integrationen oder REST-API hochladen. Hochgeladene Dokumente werden gespeichert und in den persönlichen Workspace des Benutzers indiziert.
 
-### 2. **Orchestration Layer** (Request Processing)
-The central coordination system:
-- Receives user questions from any frontend
-- Checks permissions and workspace access
-- Routes to RAG engine and LLM services
-- Generates and formats responses
-- Returns source documents with answers
+### 2. **Orchestrierungsschicht** (Anfrageverarbeitung)
+Das zentrale Koordinierungssystem:
+- Empfängt Benutzerfragen von jedem Frontend
+- Prüft Berechtigungen und Workspace-Zugang
+- Leitet an RAG-Engine und LLM-Dienste weiter
+- Generiert und formatiert Antworten
+- Gibt Quelldokumente mit Antworten zurück
 
-### 3. **RAG Engine** (Knowledge Retrieval)
-Intelligent search and ranking:
-- Converts questions to semantic embeddings
-- Searches vector databases for relevant documents
-- Re-ranks results for quality and relevance
-- Returns sourced answers with confidence scores
+### 3. **RAG-Engine** (Wissensabruf)
+Intelligente Suche und Ranking:
+- Konvertiert Fragen in semantische Embeddings
+- Durchsucht Vektor-Datenbanken nach relevanten Dokumenten
+- Re-ranked Ergebnisse nach Qualität und Relevanz
+- Gibt quellenbasierte Antworten mit Konfidenz-Scores zurück
 
-### 4. **LLM Integration Layer** (Intelligence)
-Flexible model configuration:
-- Supports OpenAI-compatible APIs
-- Can use cloud providers (OpenAI, Anthropic) or local models
-- Completely configurable at deployment time
-- Enables response generation and summarization
+### 4. **LLM-Integrationsschicht** (Intelligenz)
+Flexible Modellkonfiguration:
+- Unterstützt OpenAI-kompatible APIs
+- Kann Cloud-Anbieter (OpenAI, Anthropic) oder lokale Modelle verwenden
+- Vollständig zum Deployment-Zeitpunkt konfigurierbar
+- Ermöglicht Antwortgenerierung und Zusammenfassung
 
-### 5. **Data Indexing Pipeline** (Knowledge Ingestion)
-Two ingestion modes feed the same processing pipeline:
-- **Connector-Based:** Monitors data sources (Confluence, email servers, file systems) and pulls documents automatically on schedule or via events
-- **User Upload:** Receives documents uploaded by users through frontends, stores them on a configurable storage backend (S3, network drive, local filesystem)
+### 5. **Daten-Indizierungs-Pipeline** (Wissensaufnahme)
+Zwei Aufnahmemodi speisen dieselbe Verarbeitungs-Pipeline:
+- **Konnektor-basiert:** Überwacht Datenquellen (Confluence, E-Mail-Server, Dateisysteme) und zieht Dokumente automatisch nach Zeitplan oder via Ereignisse
+- **Benutzer-Upload:** Empfängt von Benutzern über Frontends hochgeladene Dokumente, speichert sie in einem konfigurierbaren Speicher-Backend (S3, Netzlaufwerk, lokales Dateisystem)
 
-Both pathways share the same document processing pipeline:
-- Extracts, chunks, and embeds documents
-- Stores embeddings in vector databases
-- Updates indices incrementally as new documents arrive
-
----
-
-## Core Design Principles
-
-### 🔧 **Configurability First**
-Every component should be swappable and configurable. Organizations choose their:
-- LLM provider (OpenAI, open-source models, private APIs)
-- Vector database (Elasticsearch, PostgreSQL + pgvector, Milvus, etc.)
-- Data sources (Confluence, Jira, Gmail, SharePoint, Google Drive, Dropbox, S3, issue trackers, etc.)
-- Document storage backends (S3, network drives, local filesystem)
-- Chat platforms (Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, custom)
-
-### 🏢 **Digital Sovereignty & On-Premises by Default**
-Built for organizations that need full control over their data and technology:
-- All data stays in your infrastructure — no external dependencies required
-- No data sent to external services unless explicitly configured
-- Support for air-gapped deployments
-- Cloud deployment as an alternative, not a requirement
-- Dual vendor strategy: avoid lock-in by supporting multiple providers for every component
-
-### 🔌 **Extensible Architecture**
-Easy to add new integrations:
-- Plugin system for new data sources
-- Adapter pattern for LLM providers
-- Frontend SDK for custom interfaces
-- REST API for programmatic access
-
-### 🔐 **Security & Privacy Built In**
-- Workspace-based access control (multi-tenancy)
-- Document-level permissions
-- Audit trails for all queries and access
-- No logging of sensitive query content by default
-
-### 📖 **Source Attribution Always**
-Every answer includes:
-- The source document(s) that informed it
-- Links to the original document
-- Confidence scores for ranking
-- Ability to view full source context
+Beide Pfade teilen dieselbe Dokumentenverarbeitungs-Pipeline:
+- Extrahiert, chunked und embeds Dokumente
+- Speichert Embeddings in Vektor-Datenbanken
+- Aktualisiert Indizes inkrementell, wenn neue Dokumente ankommen
 
 ---
 
-## Feature Categories & Capabilities
+## Kern-Designprinzipien
 
-### **User Interactions**
-- Ask natural language questions in one-to-one conversations with the system
-- Organize group chats where multiple users interact with OPAA collaboratively
-- Browse indexed documents
-- Download source documents
-- Share answers and sources with colleagues
-- Provide feedback on answer quality
-- See what documents the system searched
+### Konfigurierbarkeit zuerst
+Jede Komponente soll austauschbar und konfigurierbar sein. Organisationen wählen ihren:
+- LLM-Anbieter (OpenAI, Open-Source-Modelle, private APIs)
+- Vektor-Datenbank (Elasticsearch, PostgreSQL + pgvector, Milvus, usw.)
+- Datenquellen (Confluence, Jira, Gmail, SharePoint, Google Drive, Dropbox, S3, Issue-Tracker, usw.)
+- Dokumentenspeicher-Backends (S3, Netzlaufwerke, lokales Dateisystem)
+- Chat-Plattformen (Mattermost, Slack, Telegram, RocketChat, Signal, WhatsApp, eigene)
 
-### **Data & Knowledge Management**
-- Index documents from multiple sources simultaneously
-- Upload personal documents through Web UI, chat clients, or REST API
-- Support for multiple file formats (Markdown, AsciiDoc, PDF, Word, PowerPoint)
-- Automatic change detection in data sources with event-based or scheduled re-indexing
-- Share documents from personal workspace into team workspaces
-- Manage document lifecycles (archive, delete, re-index)
-- Configure indexing schedules and priorities
+### Digitale Souveränität & On-Premises als Standard
+Gebaut für Organisationen, die volle Kontrolle über ihre Daten und Technologie benötigen:
+- Alle Daten bleiben in Ihrer Infrastruktur — keine externen Abhängigkeiten erforderlich
+- Keine Daten an externe Dienste gesendet, sofern nicht explizit konfiguriert
+- Unterstützung für Air-Gap-Deployments
+- Cloud-Deployment als Alternative, nicht als Anforderung
+- Dual-Vendor-Strategie: Lock-in vermeiden durch Unterstützung mehrerer Anbieter für jede Komponente
 
-### **LLM & Embedding Configuration**
-- Choose embedding model (OpenAI, open-source alternatives)
-- Configure LLM provider and model selection
-- Set temperature, context length, and other model parameters
-- Support for multi-model strategies (different models for different tasks)
+### Erweiterbare Architektur
+Einfach neue Integrationen hinzuzufügen:
+- Plugin-System für neue Datenquellen
+- Adapter-Muster für LLM-Anbieter
+- Frontend-SDK für benutzerdefinierte Schnittstellen
+- REST-API für programmatischen Zugang
 
-### **Deployment & Infrastructure**
-- On-premises Docker/Kubernetes deployment
-- Cloud deployment options (AWS, Azure, GCP)
-- Configuration management (environment variables, config files)
-- Monitoring and observability
-- Scaling for large organizations
+### Sicherheit & Datenschutz eingebaut
+- Workspace-basierte Zugangskontrolle (Multi-Tenancy)
+- Berechtigungen auf Dokumentenebene
+- Audit-Trails für alle Abfragen und Zugriffe
+- Standardmäßig kein Logging sensibler Abfrageinhalte
 
-### **Access Control & Workspaces**
-- Personal workspaces auto-created per user ("My Documents")
-- Multi-user workspaces
-- Cross-workspace document sharing
-- Role-based access control (RBAC)
-- Document-level permissions
-- Audit logging
-- Single Sign-On (SSO) support
+### Quellenangabe immer
+Jede Antwort enthält:
+- Die Quelldokument(e), die sie informiert haben
+- Links zum Originaldokument
+- Konfidenz-Scores für das Ranking
+- Möglichkeit, den vollständigen Quellkontext anzuzeigen
 
 ---
 
-## Information Architecture
+## Feature-Kategorien & Fähigkeiten
 
-The system is designed in layers from user-facing to infrastructure:
+### **Benutzerinteraktionen**
+- Natürlichsprachige Fragen in Eins-zu-eins-Gesprächen mit dem System stellen
+- Gruppen-Chats organisieren, in denen mehrere Benutzer kollaborativ mit OPAA interagieren
+- Indizierte Dokumente durchsuchen
+- Quelldokumente herunterladen
+- Antworten und Quellen mit Kollegen teilen
+- Feedback zur Antwortqualität geben
+- Sehen, welche Dokumente das System durchsucht hat
 
-1. **Presentation Layer:** Where users interact (Web, Chat, API)
-2. **Orchestration Layer:** Where requests are routed and processed
-3. **Intelligence Layer:** Where understanding and generation happen
-4. **Data Access Layer:** Where documents are searched and retrieved
-5. **Infrastructure Layer:** Where data is stored and indexed
+### **Daten- & Wissensmanagement**
+- Dokumente aus mehreren Quellen gleichzeitig indizieren
+- Persönliche Dokumente über Web-UI, Chat-Clients oder REST-API hochladen
+- Unterstützung für mehrere Dateiformate (Markdown, AsciiDoc, PDF, Word, PowerPoint)
+- Automatische Änderungserkennung in Datenquellen mit ereignisbasierter oder geplanter Neu-Indizierung
+- Dokumente aus persönlichem Workspace in Team-Workspaces teilen
+- Dokument-Lebenszyklen verwalten (archivieren, löschen, neu indizieren)
+- Indizierungszeitpläne und -prioritäten konfigurieren
 
-Each layer is independently configurable and replaceable.
+### **LLM- & Embedding-Konfiguration**
+- Embedding-Modell wählen (OpenAI, Open-Source-Alternativen)
+- LLM-Anbieter und Modellauswahl konfigurieren
+- Temperatur, Kontextlänge und andere Modellparameter setzen
+- Unterstützung für Multi-Modell-Strategien (verschiedene Modelle für verschiedene Aufgaben)
+
+### **Deployment & Infrastruktur**
+- On-premises Docker/Kubernetes-Deployment
+- Cloud-Deployment-Optionen (AWS, Azure, GCP)
+- Konfigurationsmanagement (Umgebungsvariablen, Konfigurationsdateien)
+- Monitoring und Observability
+- Skalierung für große Organisationen
+
+### **Zugangskontrolle & Workspaces**
+- Persönliche Workspaces werden automatisch pro Benutzer erstellt ("Meine Dokumente")
+- Multi-User-Workspaces
+- Workspace-übergreifendes Dokumenten-Teilen
+- Rollenbasierte Zugangskontrolle (RBAC)
+- Berechtigungen auf Dokumentenebene
+- Audit-Logging
+- Single Sign-On (SSO)-Unterstützung
 
 ---
 
-## What's Out of Scope (For Now)
+## Informationsarchitektur
 
-- Real-time document synchronization (eventual consistency model)
-- Voice/speech interfaces
-- Mobile-native apps
-- Automatic knowledge graph creation
-- Real-time collaboration (like Google Docs)
+Das System ist in Schichten von nutzerzugewandt bis Infrastruktur aufgebaut:
 
----
+1. **Präsentationsschicht:** Wo Benutzer interagieren (Web, Chat, API)
+2. **Orchestrierungsschicht:** Wo Anfragen geleitet und verarbeitet werden
+3. **Intelligenzschicht:** Wo Verstehen und Generieren stattfinden
+4. **Datenzugangsschicht:** Wo Dokumente gesucht und abgerufen werden
+5. **Infrastrukturschicht:** Wo Daten gespeichert und indiziert werden
 
-## Next Steps
-
-For detailed specifications of each component, see:
-
-1. **[User Frontends](./features/user-frontends.md)** — Web UI, Chat integrations, REST API
-2. **[Data Indexing & RAG](./features/data-indexing-rag.md)** — Document sources, embedding, retrieval
-3. **[LLM Integration](./features/llm-integration.md)** — Model configuration, provider support
-4. **[Deployment & Infrastructure](./features/deployment-infrastructure.md)** — On-premises, cloud, operations
-5. **[Access Control & Workspaces](./features/access-control-workspaces.md)** — Permissions, multi-tenancy
+Jede Schicht ist unabhängig konfigurierbar und ersetzbar.
 
 ---
 
-## Feature Dependency Map
+## Was außerhalb des Rahmens liegt (vorerst)
 
-Understanding how the five major feature areas connect and depend on each other:
+- Echtzeit-Dokumentensynchronisation (Eventual-Consistency-Modell)
+- Sprach-/Sprachschnittstellen
+- Native Mobile-Apps
+- Automatische Wissensgraph-Erstellung
+- Echtzeit-Kollaboration (wie Google Docs)
+
+---
+
+## Nächste Schritte
+
+Detaillierte Spezifikationen jeder Komponente finden Sie unter:
+
+1. **[Benutzer-Frontends](./features/user-frontends.md)** — Web-UI, Chat-Integrationen, REST-API
+2. **[Daten-Indizierung & RAG](./features/data-indexing-rag.md)** — Dokumentenquellen, Embedding, Retrieval
+3. **[LLM-Integration](./features/llm-integration.md)** — Modellkonfiguration, Anbieter-Unterstützung
+4. **[Deployment & Infrastruktur](./features/deployment-infrastructure.md)** — On-premises, Cloud, Betrieb
+5. **[Zugangskontrolle & Workspaces](./features/access-control-workspaces.md)** — Berechtigungen, Multi-Tenancy
+
+---
+
+## Feature-Abhängigkeitskarte
+
+Wie die fünf großen Feature-Bereiche verbunden sind und voneinander abhängen:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         USER FRONTENDS                          │
-│      (Web, Mattermost, Slack, Telegram, Signal, API)           │
+│                      BENUTZER-FRONTENDS                          │
+│      (Web, Mattermost, Slack, Telegram, Signal, API)            │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                    ┌───────────┴────────────┐
                    │                        │
        ┌───────────▼──────────┐    ┌───────▼────────────┐
-       │   ORCHESTRATION &    │    │                    │
-       │  REQUEST ROUTING     │    │                    │
+       │   ORCHESTRIERUNG &   │    │                    │
+       │  ANFRAGEN-ROUTING    │    │                    │
        │                      │    │                    │
-       │ ┌──────────────────┐ │    │  LLM INTEGRATION   │
-       │ │ Permission Check │ │    │                    │
-       │ │ (Access Control) │ │    │ - Model Selection  │
-       │ └──────────────────┘ │    │ - Generation       │
-       │                      │    │ - Embeddings       │
+       │ ┌──────────────────┐ │    │  LLM-INTEGRATION   │
+       │ │ Berechtigungs-   │ │    │                    │
+       │ │ prüfung          │ │    │ - Modellauswahl    │
+       │ │ (Zugangskontrolle)│ │    │ - Generierung      │
+       │ └──────────────────┘ │    │ - Embeddings       │
        └──────────┬───────────┘    └────────────────────┘
                   │
        ┌──────────▼────────────────────┐
-       │   DATA INDEXING & RAG          │
+       │   DATEN-INDIZIERUNG & RAG      │
        │                                │
-       │ - Document Retrieval           │
-       │ - Semantic Search              │
-       │ - Re-ranking                   │
-       │ - Confidence Scoring           │
+       │ - Dokumentenabruf              │
+       │ - Semantische Suche            │
+       │ - Re-Ranking                   │
+       │ - Konfidenz-Scoring            │
        └──────────┬─────────────────────┘
                   │
        ┌──────────▼──────────────────────┐
-       │   DATA SOURCES                  │
+       │   DATENQUELLEN                  │
        │                                 │
-       │ Connectors:                     │
+       │ Konnektoren:                    │
        │ - Confluence                    │
-       │ - Email Archives                │
-       │ - File Systems                  │
-       │ - Custom APIs                   │
+       │ - E-Mail-Archive                │
+       │ - Dateisysteme                  │
+       │ - Eigene APIs                   │
        │                                 │
-       │ User Uploads:                   │
-       │ - Web UI / Chat / REST API      │
+       │ Benutzer-Uploads:               │
+       │ - Web-UI / Chat / REST-API      │
        │                                 │
-       │ Document Storage:               │
-       │ - S3 / Network Drive / Local    │
+       │ Dokumentenspeicher:             │
+       │ - S3 / Netzlaufwerk / Lokal     │
        └─────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│   DEPLOYMENT & INFRASTRUCTURE                                 │
-│   (Supports all layers: On-Premises, Cloud, Kubernetes)      │
+│   DEPLOYMENT & INFRASTRUKTUR                                  │
+│   (Unterstützt alle Schichten: On-Premises, Cloud, Kubernetes)│
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│   ACCESS CONTROL & WORKSPACES                                 │
-│   (Permissions enforced in Orchestration & RAG layers)       │
+│   ZUGANGSKONTROLLE & WORKSPACES                               │
+│   (Berechtigungen durchgesetzt in Orchestrierungs- & RAG-Schichten) │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## Feature Interaction Matrix
+## Feature-Interaktionsmatrix
 
-How features depend on and interact with each other:
+Wie Features voneinander abhängen und miteinander interagieren:
 
-| Feature | Depends On | Used By | Key Integration Point |
-|---------|-----------|---------|----------------------|
-| **User Frontends** | Access Control | All users | Request entry point + document upload |
-| **Orchestration** | RAG, LLM, Access Control | All requests | Central coordinator |
-| **Data Indexing & RAG** | LLM (for embeddings) | Orchestration | Document retrieval |
-| **LLM Integration** | Deployment | Data Indexing, Orchestration | Answer generation & embeddings |
-| **Access Control** | Deployment | Orchestration, RAG | Permission enforcement |
-| **Deployment & Infrastructure** | — | All other features | Infrastructure for all |
+| Feature | Hängt ab von | Genutzt von | Wichtiger Integrationspunkt |
+|---------|--------------|-------------|------------------------------|
+| **Benutzer-Frontends** | Zugangskontrolle | Alle Benutzer | Anfrageeintrittspunkt + Dokument-Upload |
+| **Orchestrierung** | RAG, LLM, Zugangskontrolle | Alle Anfragen | Zentraler Koordinator |
+| **Daten-Indizierung & RAG** | LLM (für Embeddings) | Orchestrierung | Dokumentenabruf |
+| **LLM-Integration** | Deployment | Daten-Indizierung, Orchestrierung | Antwortgenerierung & Embeddings |
+| **Zugangskontrolle** | Deployment | Orchestrierung, RAG | Berechtigungsdurchsetzung |
+| **Deployment & Infrastruktur** | — | Alle anderen Features | Infrastruktur für alle |
 
 ---
 
 ## FAQ
 
-**Q: Can OPAA work offline or in an air-gapped environment?**
-A: Yes, when deployed with local LLM models and without external integrations.
+**F: Kann OPAA offline oder in einer Air-Gap-Umgebung funktionieren?**
+A: Ja, wenn mit lokalen LLM-Modellen und ohne externe Integrationen eingesetzt.
 
-**Q: Is my data secure?**
-A: OPAA is designed for on-premises deployment. Data remains in your infrastructure and is not sent to external services unless explicitly configured.
-All communication can be encrypted end-to-end.
+**F: Sind meine Daten sicher?**
+A: OPAA ist für On-Premises-Deployment ausgelegt. Daten verbleiben in Ihrer Infrastruktur und werden nicht an externe Dienste gesendet, sofern nicht explizit konfiguriert.
+Die gesamte Kommunikation kann Ende-zu-Ende verschlüsselt werden.
 
-**Q: What LLM models are supported?**
-A: Any OpenAI-compatible API, plus local models like Ollama, Llama, and others.
-The system is model-agnostic.
+**F: Welche LLM-Modelle werden unterstützt?**
+A: Jede OpenAI-kompatible API, plus lokale Modelle wie Ollama, Llama und andere.
+Das System ist modell-agnostisch.
 
-**Q: Can multiple teams use the same OPAA instance?**
-A: Yes, through workspace isolation and role-based access control.
-Each team can have its own workspace with separate documents and permissions.
+**F: Können mehrere Teams dieselbe OPAA-Instanz nutzen?**
+A: Ja, durch Workspace-Isolierung und rollenbasierte Zugangskontrolle.
+Jedes Team kann einen eigenen Workspace mit separaten Dokumenten und Berechtigungen haben.
 
-**Q: Can individual users upload their own documents?**
-A: Yes. Every user gets an auto-created personal workspace ("My Documents") where they can upload and index documents privately. Users can then share documents into team workspaces they have access to.
+**F: Können einzelne Benutzer eigene Dokumente hochladen?**
+A: Ja. Jeder Benutzer erhält einen automatisch erstellten persönlichen Workspace ("Meine Dokumente"), in dem er Dokumente privat hochladen und indizieren kann. Benutzer können dann Dokumente in Team-Workspaces teilen, auf die sie Zugang haben.
 
-**Q: How does OPAA handle sensitive documents?**
-A: Documents can be tagged with access controls.
-The system respects these permissions at query time, only returning information the user is authorized to access.
+**F: Wie geht OPAA mit sensiblen Dokumenten um?**
+A: Dokumente können mit Zugangskontrolle versehen werden.
+Das System respektiert diese Berechtigungen zur Abfragezeit und gibt nur Informationen zurück, auf die der Benutzer autorisiert ist.

@@ -1,96 +1,97 @@
-# Deployment & Infrastructure
+# Deployment & Infrastruktur
 
 ## Motivation
 
-OPAA is designed for organizations that need data sovereignty and control. Whether deploying on-premises in a data center, in private cloud infrastructure, or as a managed service, the same OPAA system adapts to different deployment models.
+OPAA ist für Organisationen ausgelegt, die Datensouveränität und Kontrolle benötigen. Ob On-Premises im Rechenzentrum, in privater Cloud-Infrastruktur oder als verwalteter Dienst — dasselbe OPAA-System passt sich an verschiedene Deployment-Modelle an.
 
-This feature describes how OPAA is deployed, configured, scaled, and operated across different infrastructure environments.
-
----
-
-## Overview
-
-OPAA supports three deployment models:
-
-1. **On-Premises** — Complete control, on your infrastructure
-2. **Private Cloud** — Your cloud account, your control (AWS, Azure, GCP)
-3. **Managed Service** — Hosted by OPAA team, shared infrastructure (optional future)
-
-All use the same codebase. Model choice made at deployment time.
+Dieses Feature beschreibt, wie OPAA in verschiedenen Infrastrukturumgebungen deployt, konfiguriert, skaliert und betrieben wird.
 
 ---
 
-## On-Premises Deployment
+## Überblick
 
-### Architecture
+OPAA unterstützt drei Deployment-Modelle:
+
+1. **On-Premises** — Vollständige Kontrolle, auf Ihrer Infrastruktur
+2. **Private Cloud** — Ihr Cloud-Account, Ihre Kontrolle (AWS, Azure, GCP)
+3. **Managed Service** — Vom OPAA-Team gehostet, gemeinsame Infrastruktur (optional, zukünftig)
+
+Alle verwenden dieselbe Codebasis. Die Modellwahl erfolgt zum Deployment-Zeitpunkt.
+
+---
+
+## On-Premises-Deployment
+
+### Architektur
 
 ```
 ┌─────────────────────────────────────┐
-│  Organization Firewall / Proxy      │
+│  Organisations-Firewall / Proxy     │
 └────────────────┬────────────────────┘
                  │
     ┌────────────▼──────────────┐
-    │  OPAA Kubernetes Cluster  │
-    │  (or Docker Compose)      │
+    │  OPAA Kubernetes-Cluster  │
+    │  (oder Docker Compose)    │
     │                           │
     │ ┌─────────────────────┐   │
-    │ │  Web UI Service     │   │
-    │ │  Chat Bot Services  │   │
-    │ │  API Server         │   │
+    │ │  Web-UI-Service     │   │
+    │ │  Chat-Bot-Services  │   │
+    │ │  API-Server         │   │
     │ └──────────┬──────────┘   │
     │            │              │
     │ ┌──────────▼──────────┐   │
-    │ │  Orchestration      │   │
+    │ │  Orchestrierungs-   │   │
     │ │  Service            │   │
     │ └──────────┬──────────┘   │
     │            │              │
     │ ┌──────────▼──────────┐   │
-    │ │  RAG Engine         │   │
-    │ │  LLM Integrations   │   │
+    │ │  RAG-Engine         │   │
+    │ │  LLM-Integrationen  │   │
     │ └──────────┬──────────┘   │
     │            │              │
     │ ┌──────────▼──────────┐   │
-    │ │  Vector Database    │   │
-    │ │  Cache Layer        │   │
-    │ │  Storage            │   │
+    │ │  Vektordatenbank    │   │
+    │ │  Cache-Schicht      │   │
+    │ │  Speicher           │   │
     │ └─────────────────────┘   │
     └────────────────────────────┘
                  │
     ┌────────────▼──────────────────────────┐
-    │  Data Sources (Confluence, Email, FS) │
-    │  (may be outside firewall or inside)  │
+    │  Datenquellen (Confluence, E-Mail, FS)│
+    │  (können außerhalb oder innerhalb     │
+    │   der Firewall liegen)                │
     └───────────────────────────────────────┘
 ```
 
-### Deployment Options
+### Deployment-Optionen
 
-#### Option A: Kubernetes (Recommended for Large Orgs)
+#### Option A: Kubernetes (Empfohlen für große Organisationen)
 
-Production-grade on-premises deployment.
+Produktionsreifes On-Premises-Deployment.
 
-**Infrastructure:**
-- Load balancer for ingress
-- Persistent volumes (local, NFS, block storage)
-- Secrets management (etcd, HashiCorp Vault)
-- Network policies for security
-- Monitoring (Prometheus, ELK stack)
+**Infrastruktur:**
+- Load Balancer für Ingress
+- Persistente Volumes (lokal, NFS, Block-Speicher)
+- Secrets-Management (etcd, HashiCorp Vault)
+- Netzwerk-Policies für Sicherheit
+- Monitoring (Prometheus, ELK-Stack)
 
 **Deployment:**
-- Helm charts provided for easy installation
-- Health checks, resource limits, auto-scaling configured
-- Log aggregation pre-configured
+- Helm Charts für einfache Installation bereitgestellt
+- Health Checks, Ressourcenlimits, Auto-Scaling konfiguriert
+- Log-Aggregation vorkonfiguriert
 
-#### Option B: Docker Compose (Small to Mid-Size Orgs)
+#### Option B: Docker Compose (Kleine bis mittelgroße Organisationen)
 
-Simpler deployment for smaller teams.
+Einfacheres Deployment für kleinere Teams.
 
 **Services:**
-- opaa-app (main application: REST API, chat server, web UI)
-- postgres (database for metadata)
-- postgres-pgvector (vector storage with pgvector)
-- redis (caching)
+- opaa-app (Hauptanwendung: REST-API, Chat-Server, Web-UI)
+- postgres (Datenbank für Metadaten)
+- postgres-pgvector (Vektorspeicher mit pgvector)
+- redis (Caching)
 
-**Example:**
+**Beispiel:**
 ```yaml
 version: '3.8'
 services:
@@ -121,46 +122,46 @@ volumes:
   postgres_data:
 ```
 
-#### Option C: Bare Metal (Specialized Needs)
+#### Option C: Bare Metal (Spezialisierte Anforderungen)
 
-Deployment on VMs or physical servers:
-- System packages (Python 3.11+, PostgreSQL, Redis)
-- Systemd services for process management
-- Manual health checks and restart logic
-- Complex but full control
+Deployment auf VMs oder physischen Servern:
+- Systempakete (Python 3.11+, PostgreSQL, Redis)
+- Systemd-Services für Prozessverwaltung
+- Manuelle Health Checks und Neustart-Logik
+- Komplex, aber volle Kontrolle
 
 ---
 
-## Configuration Management
+## Konfigurationsverwaltung
 
-### Environment Variables
+### Umgebungsvariablen
 
-All configuration via environment variables (12-factor app):
+Gesamte Konfiguration über Umgebungsvariablen (12-Faktor-App):
 
 ```bash
-# Database
+# Datenbank
 DATABASE_URL=postgresql://user:pass@localhost/opaa
 REDIS_URL=redis://localhost:6379
 
-# LLM Configuration
+# LLM-Konfiguration
 LLM_PROVIDER=openai
 LLM_API_KEY=${OPENAI_API_KEY}
 LLM_API_BASE=https://api.openai.com/v1
 LLM_MODEL=gpt-4
 LLM_EMBEDDING_MODEL=text-embedding-3-small
 
-# Vector Database
-VECTOR_DB=pgvector  # or elasticsearch, milvus
-ELASTICSEARCH_HOST=localhost:9200  # if using ES
+# Vektordatenbank
+VECTOR_DB=pgvector  # oder elasticsearch, milvus
+ELASTICSEARCH_HOST=localhost:9200  # bei ES
 
-# Indexing
+# Indizierung
 INDEXING_SCHEDULE=daily-2am
 CONFLUENCE_URL=https://wiki.company.com
 CONFLUENCE_TOKEN=${CONFLUENCE_API_TOKEN}
 EMAIL_IMAP_HOST=imap.gmail.com
 EMAIL_IMAP_PASSWORD=${EMAIL_PASSWORD}
 
-# Security & Auth
+# Sicherheit & Auth
 SECRET_KEY=${SECRET_KEY_32_BYTES}
 OAUTH_CLIENT_ID=${AUTH0_CLIENT_ID}
 OAUTH_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
@@ -174,9 +175,9 @@ MAX_CONCURRENT_INDEXING_JOBS=4
 LOG_LEVEL=info
 ```
 
-### Configuration Files (Optional)
+### Konfigurationsdateien (Optional)
 
-For complex setups, YAML config file:
+Für komplexe Setups, YAML-Konfigurationsdatei:
 
 ```yaml
 # config.yaml
@@ -200,21 +201,21 @@ data_sources:
     enabled: true
     url: https://wiki.company.com
     auth_token: ${CONFLUENCE_TOKEN}
-    schedule: "0 2 * * *"  # 2 AM daily
+    schedule: "0 2 * * *"  # Täglich 2 Uhr
 
   email:
     enabled: true
     imap_host: imap.gmail.com
     email: archive@company.com
     password: ${EMAIL_PASSWORD}
-    schedule: "*/6 * * * *"  # Every 6 hours
+    schedule: "*/6 * * * *"  # Alle 6 Stunden
 
   file_system:
     enabled: true
     paths:
       - /mnt/shared-docs
       - /mnt/team-wikis
-    schedule: "*/30 * * * *"  # Every 30 minutes
+    schedule: "*/30 * * * *"  # Alle 30 Minuten
 
 security:
   enable_auth: true
@@ -230,317 +231,317 @@ performance:
 
 ---
 
-## Scaling Considerations
+## Skalierungsüberlegungen
 
-OPAA is designed to scale from small teams to large enterprises. Concrete hardware requirements and sizing recommendations will be defined once the technology stack is established. The architecture supports:
+OPAA ist so konzipiert, dass es von kleinen Teams bis hin zu großen Unternehmen skaliert. Konkrete Hardware-Anforderungen und Sizing-Empfehlungen werden definiert, sobald der Technologie-Stack etabliert ist. Die Architektur unterstützt:
 
-- **Small deployments:** Single-server Docker Compose setup for teams and small organizations
-- **Medium deployments:** Multi-node Kubernetes cluster for mid-size organizations
-- **Large deployments:** Distributed infrastructure with horizontal scaling for enterprises
+- **Kleine Deployments:** Single-Server Docker-Compose-Setup für Teams und kleine Organisationen
+- **Mittlere Deployments:** Mehrknoten-Kubernetes-Cluster für mittelgroße Organisationen
+- **Große Deployments:** Verteilte Infrastruktur mit horizontaler Skalierung für Unternehmen
 
-### Cost Optimization Strategies
+### Kostensparstrategien
 
-- Use lightweight vector database (e.g. PostgreSQL + pgvector) for smaller deployments
-- Use cost-effective embedding models
-- Route simple queries to faster/cheaper LLM providers
-- Cache frequent answers to reduce LLM API costs
-- Batch indexing during off-peak hours
+- Leichtgewichtige Vektordatenbank (z. B. PostgreSQL + pgvector) für kleinere Deployments verwenden
+- Kosteneffiziente Embedding-Modelle verwenden
+- Einfache Abfragen an schnellere/günstigere LLM-Anbieter weiterleiten
+- Häufige Antworten cachen, um LLM-API-Kosten zu reduzieren
+- Batch-Indizierung während verkehrsarmer Zeiten
 
 ---
 
-## Private Cloud Deployment
+## Private-Cloud-Deployment
 
-### AWS Deployment
+### AWS-Deployment
 
-Typical AWS architecture:
+Typische AWS-Architektur:
 
 ```
 Application Load Balancer
   ↓
-ECS Cluster (OPAA services)
+ECS-Cluster (OPAA-Services)
   ↓
-RDS PostgreSQL (metadata)
+RDS PostgreSQL (Metadaten)
   ↓
-OpenSearch (vector DB)
+OpenSearch (Vektordatenbank)
   ↓
-S3 (document storage)
+S3 (Dokumentenspeicher)
   ↓
-Data sources (S3, Confluence, etc.)
+Datenquellen (S3, Confluence usw.)
 ```
 
-**Services used:**
-- ECS or EKS for container orchestration
-- RDS for PostgreSQL
-- OpenSearch for vector database
-- S3 for data storage and backups
-- Lambda for scheduled indexing jobs
-- CloudWatch for monitoring
-- VPC for network isolation
+**Verwendete Services:**
+- ECS oder EKS für Container-Orchestrierung
+- RDS für PostgreSQL
+- OpenSearch für Vektordatenbank
+- S3 für Datenspeicherung und Backups
+- Lambda für geplante Indizierungsjobs
+- CloudWatch für Monitoring
+- VPC für Netzwerkisolation
 
-**Advantages:**
-- Managed services reduce operational burden
-- Auto-scaling built-in
-- Backup and disaster recovery easy
-- IAM for access control
-- Same data privacy as on-premises (within AWS)
+**Vorteile:**
+- Verwaltete Services reduzieren den Betriebsaufwand
+- Auto-Scaling integriert
+- Backup und Disaster Recovery einfach
+- IAM für Zugangskontrolle
+- Gleicher Datenschutz wie On-Premises (innerhalb von AWS)
 
-### Azure Deployment
+### Azure-Deployment
 
-Similar to AWS:
-- Azure Container Instances or AKS
+Ähnlich wie AWS:
+- Azure Container Instances oder AKS
 - Azure Database for PostgreSQL
-- Azure Search (vector search)
+- Azure Search (Vektorsuche)
 - Azure Blob Storage
-- Same patterns, different provider
+- Gleiche Muster, anderer Anbieter
 
-### GCP Deployment
+### GCP-Deployment
 
-Similar pattern:
-- GKE for Kubernetes
-- Cloud SQL for PostgreSQL
+Ähnliches Muster:
+- GKE für Kubernetes
+- Cloud SQL für PostgreSQL
 - Vertex AI Vector Search
 - Cloud Storage
 
 ---
 
-## High Availability & Disaster Recovery
+## Hochverfügbarkeit & Notfallwiederherstellung
 
-### High Availability (HA)
+### Hochverfügbarkeit (HA)
 
-For production deployments:
+Für Produktions-Deployments:
 
-**Multiple Replicas:**
-- API servers: 3+ replicas
-- Vector DB: Replicated/sharded
-- PostgreSQL: Primary + standby replicas
-- Redis: Sentinel mode or Cluster
+**Mehrere Replikas:**
+- API-Server: 3+ Replikas
+- Vektordatenbank: Repliziert/gesharded
+- PostgreSQL: Primär + Standby-Replikas
+- Redis: Sentinel-Modus oder Cluster
 
 **Load Balancing:**
-- Load balancer distributes traffic
-- Health checks enable automatic failover
-- Circuit breakers for service degradation
+- Load Balancer verteilt Traffic
+- Health Checks ermöglichen automatisches Failover
+- Circuit Breaker für Service-Degradierung
 
-**Database Replication:**
-- PostgreSQL streaming replication
-- Vector DB replication (varies by backend)
-- Regular backup validation
+**Datenbankreplikation:**
+- PostgreSQL-Streaming-Replikation
+- Vektordatenbank-Replikation (je nach Backend unterschiedlich)
+- Regelmäßige Backup-Validierung
 
-### Disaster Recovery (DR)
+### Notfallwiederherstellung (DR)
 
-**Backup Strategy:**
-- Daily full backups of PostgreSQL
-- Incremental backups of vector embeddings
-- Document backups (source-of-truth, not critical)
-- Backup stored in separate region/account
+**Backup-Strategie:**
+- Tägliche Vollbackups von PostgreSQL
+- Inkrementelle Backups der Vektor-Embeddings
+- Dokumenten-Backups (Quelle der Wahrheit, nicht kritisch)
+- Backup in separater Region/Account gespeichert
 
-**Recovery:**
-- RTO (Recovery Time Objective): 1 hour
-- RPO (Recovery Point Objective): 1 day
-- Regular DR drills (quarterly)
-- Runbooks for common failures
+**Wiederherstellung:**
+- RTO (Recovery Time Objective): 1 Stunde
+- RPO (Recovery Point Objective): 1 Tag
+- Regelmäßige DR-Übungen (vierteljährlich)
+- Runbooks für häufige Fehler
 
 **Failover:**
-- Automatic failover for k8s services
-- Manual failover for databases (< 30 minutes)
-- Documented procedures for all services
+- Automatisches Failover für k8s-Services
+- Manuelles Failover für Datenbanken (< 30 Minuten)
+- Dokumentierte Verfahren für alle Services
 
 ---
 
-## Security
+## Sicherheit
 
-### Network Security
+### Netzwerksicherheit
 
-**Firewall Rules:**
-- OPAA cluster only accessible from internal network
-- Outbound: Only to configured data sources and LLM APIs
-- VPN/SSH access for administration
-- DDoS protection at perimeter
+**Firewall-Regeln:**
+- OPAA-Cluster nur aus internem Netzwerk erreichbar
+- Ausgehend: Nur zu konfigurierten Datenquellen und LLM-APIs
+- VPN/SSH-Zugang für Administration
+- DDoS-Schutz am Perimeter
 
-**Data Encryption:**
-- TLS 1.3 for all network traffic (internal and external)
-- Encrypted secrets management (Vault, k8s Secrets)
-- Database encryption at rest
-- Disk encryption on servers
+**Datenverschlüsselung:**
+- TLS 1.3 für den gesamten Netzwerkverkehr (intern und extern)
+- Verschlüsseltes Secrets-Management (Vault, k8s Secrets)
+- Datenbankverschlüsselung at Rest
+- Festplattenverschlüsselung auf Servern
 
-### Access Control
+### Zugangskontrolle
 
-**Authentication:**
-- SSO integration (OIDC, SAML)
-- API tokens with scopes
-- Service accounts for automation
+**Authentifizierung:**
+- SSO-Integration (OIDC, SAML)
+- API-Tokens mit Scopes
+- Service-Accounts für Automatisierung
 
-**Authorization:**
-- RBAC for admin functions
-- Document-level permissions
-- Workspace isolation
-- Audit logging of all access
+**Autorisierung:**
+- RBAC für Admin-Funktionen
+- Dokumentenebenen-Berechtigungen
+- Workspace-Isolation
+- Audit-Logging aller Zugriffe
 
 ### Compliance
 
-OPAA designed to support:
-- **GDPR:** Data retention policies, data deletion
-- **HIPAA:** Encryption, audit trails
-- **SOC 2:** Access controls, monitoring
-- **ISO 27001:** Security controls framework
+OPAA ist ausgelegt, folgendes zu unterstützen:
+- **DSGVO:** Datenaufbewahrungsrichtlinien, Datenlöschung
+- **HIPAA:** Verschlüsselung, Audit-Trails
+- **SOC 2:** Zugangskontrolle, Monitoring
+- **ISO 27001:** Sicherheitskontrollen-Framework
 
 ---
 
-## Monitoring & Operations
+## Monitoring & Betrieb
 
-### Metrics to Monitor
+### Zu überwachende Metriken
 
-Key performance indicators:
+Wichtige Leistungsindikatoren:
 
 ```
 Performance:
-  - API response time (p50, p95, p99)
-  - Vector search latency
-  - LLM generation time
-  - Page load time (web UI)
+  - API-Antwortzeit (p50, p95, p99)
+  - Vektorsuche-Latenz
+  - LLM-Generierungszeit
+  - Seitenladezeit (Web-UI)
 
-Reliability:
-  - API uptime %
-  - Error rates (5xx, 4xx)
-  - Failed indexing jobs
-  - Queue lengths
+Zuverlässigkeit:
+  - API-Verfügbarkeit %
+  - Fehlerquoten (5xx, 4xx)
+  - Fehlgeschlagene Indizierungsjobs
+  - Warteschlangenlängen
 
-Cost:
-  - LLM tokens/day
-  - Embedding cost
-  - Infrastructure cost
-  - Cost per query
+Kosten:
+  - LLM-Token/Tag
+  - Embedding-Kosten
+  - Infrastrukturkosten
+  - Kosten pro Abfrage
 
-Usage:
-  - Queries per day
-  - Active users
-  - Top questions
-  - Most-used documents
+Nutzung:
+  - Abfragen pro Tag
+  - Aktive Benutzer
+  - Häufigste Fragen
+  - Meistgenutzte Dokumente
 ```
 
-### Alerting
+### Alarmierung
 
-Alert on:
-- API error rate > 1%
-- Response time P95 > 2 seconds
-- Vector DB disk > 80% full
-- Indexing job failures > 3 in a row
-- LLM API failures
-- High costs (exceeding budget)
+Alarm auslösen bei:
+- API-Fehlerquote > 1%
+- Antwortzeit P95 > 2 Sekunden
+- Vektordatenbank-Festplatte > 80% voll
+- Indizierungsjob-Fehler > 3 hintereinander
+- LLM-API-Fehler
+- Hohe Kosten (Budget überschritten)
 
 ### Logging
 
-Central logging of:
-- API requests and responses (no sensitive data)
-- Errors and exceptions
-- Indexing progress and failures
-- Admin actions
-- User feedback
+Zentrales Logging von:
+- API-Anfragen und -Antworten (keine sensiblen Daten)
+- Fehler und Ausnahmen
+- Indizierungsfortschritt und -fehler
+- Admin-Aktionen
+- Benutzer-Feedback
 
-Standard log format: JSON with timestamps, service, severity
-
----
-
-## Backup & Restore
-
-### What to Backup
-
-**Critical:**
-- PostgreSQL database (metadata, user settings)
-- Vector embeddings (regeneratable but expensive)
-
-**Important:**
-- Configuration files
-- Custom integrations/plugins
-- Admin settings
-
-**Not needed:**
-- Source documents (can be re-indexed from source)
-- Cached embeddings (can be regenerated)
-
-### Backup Frequency
-
-- **PostgreSQL:** Daily full backup + hourly incremental
-- **Vector DB:** Daily after each indexing run
-- **Config:** Versioned in Git (separate repo)
-
-### Restore Testing
-
-- Monthly restore testing (to ensure backups work)
-- Documented restore procedures
-- Estimated restore time: < 4 hours for full restore
+Standard-Logformat: JSON mit Zeitstempeln, Service, Schweregrad
 
 ---
 
-## Upgrades & Maintenance
+## Backup & Wiederherstellung
 
-### Blue-Green Deployment
+### Was zu sichern ist
 
-For zero-downtime upgrades:
+**Kritisch:**
+- PostgreSQL-Datenbank (Metadaten, Benutzereinstellungen)
+- Vektor-Embeddings (regenerierbar, aber aufwändig)
 
-1. Deploy new version to "green" environment
-2. Run tests on green
-3. Switch load balancer from blue to green
-4. Keep blue as rollback
+**Wichtig:**
+- Konfigurationsdateien
+- Eigene Integrationen/Plugins
+- Admin-Einstellungen
 
-**Downtime:** 0 (for users), a few minutes total
+**Nicht erforderlich:**
+- Quelldokumente (können aus der Quelle neu indiziert werden)
+- Gecachte Embeddings (können neu generiert werden)
+
+### Backup-Häufigkeit
+
+- **PostgreSQL:** Tägliches Vollbackup + stündliches inkrementelles Backup
+- **Vektordatenbank:** Täglich nach jedem Indizierungslauf
+- **Konfiguration:** In Git versioniert (separates Repository)
+
+### Wiederherstellungstests
+
+- Monatliche Wiederherstellungstests (um sicherzustellen, dass Backups funktionieren)
+- Dokumentierte Wiederherstellungsverfahren
+- Geschätzte Wiederherstellungszeit: < 4 Stunden für vollständige Wiederherstellung
+
+---
+
+## Upgrades & Wartung
+
+### Blue-Green-Deployment
+
+Für unterbrechungsfreie Upgrades:
+
+1. Neue Version in „grüner" Umgebung deployen
+2. Tests in Grün durchführen
+3. Load Balancer von Blau auf Grün umschalten
+4. Blau als Rollback behalten
+
+**Ausfallzeit:** 0 (für Benutzer), einige Minuten insgesamt
 
 ### Rolling Deployment (Kubernetes)
 
-Alternative: Gradual rollout
-- Stop 1 pod, start 1 new version
-- Wait for health checks
-- Repeat until all pods updated
-- Automatic rollback if health checks fail
+Alternative: Schrittweiser Rollout
+- 1 Pod stoppen, 1 neue Version starten
+- Auf Health Checks warten
+- Wiederholen bis alle Pods aktualisiert
+- Automatischer Rollback bei fehlgeschlagenen Health Checks
 
-### Backward Compatibility
+### Abwärtskompatibilität
 
-- API versions maintained (v1, v2, etc.)
-- Database schema migrations non-breaking
-- Old features deprecated gradually, not removed abruptly
-
----
-
-## Multi-Tenancy (Future)
-
-For serving multiple organizations:
-
-**Isolation Levels:**
-1. Separate instances (simplest, most isolation)
-2. Shared infrastructure, separate databases (medium isolation)
-3. Shared database, row-level security (maximum density)
-
-OPAA designed for option 3:
-- Workspace IDs in all data
-- Row-level security policies
-- Separate vector embeddings per workspace (optional)
-- Cost allocation per tenant
+- API-Versionen beibehalten (v1, v2 usw.)
+- Datenbankschema-Migrationen nicht brechend
+- Alte Features schrittweise als veraltet markieren, nicht abrupt entfernen
 
 ---
 
-## Integration Points
+## Multi-Tenancy (Zukünftig)
 
-- **Data Sources:** Pull documents, handle credentials
-- **Authentication:** SSO provider integration
-- **Monitoring:** Send metrics to observability stack
-- **LLM Providers:** API access for generation and embeddings
+Für den Betrieb mehrerer Organisationen:
 
----
+**Isolationsstufen:**
+1. Separate Instanzen (einfachste, höchste Isolation)
+2. Gemeinsame Infrastruktur, separate Datenbanken (mittlere Isolation)
+3. Gemeinsame Datenbank, Row-Level-Security (maximale Dichte)
 
-## Open Questions / Future Enhancements
-
-- Should we provide managed OPAA as a service?
-- Should deployments auto-update?
-- Should we support GitOps (configuration in Git)?
-- Should we provide Terraform/CloudFormation templates?
-- Should we support multi-region deployments?
-- Should we provide Helm charts for community use?
+OPAA ist für Option 3 ausgelegt:
+- Workspace-IDs in allen Daten
+- Row-Level-Security-Policies
+- Separate Vektor-Embeddings pro Workspace (optional)
+- Kostenzuordnung pro Mandant
 
 ---
 
-## Success Metrics
+## Integrationspunkte
 
-- **Availability:** 99.9% uptime
-- **Performance:** P95 response time < 2 seconds
-- **Deployment Time:** New version deployed in < 15 minutes
-- **Scaling:** Can handle 10x query volume with 3x infrastructure cost
-- **Recovery:** Restore from backup in < 4 hours
+- **Datenquellen:** Dokumente abrufen, Anmeldedaten verwalten
+- **Authentifizierung:** SSO-Anbieter-Integration
+- **Monitoring:** Metriken an Observability-Stack senden
+- **LLM-Anbieter:** API-Zugriff für Generierung und Embeddings
+
+---
+
+## Offene Fragen / Zukünftige Erweiterungen
+
+- Sollen wir OPAA als verwalteten Service anbieten?
+- Sollen Deployments automatisch aktualisiert werden?
+- Sollen wir GitOps unterstützen (Konfiguration in Git)?
+- Sollen wir Terraform-/CloudFormation-Templates bereitstellen?
+- Sollen wir Multi-Region-Deployments unterstützen?
+- Sollen wir Helm Charts für die Community bereitstellen?
+
+---
+
+## Erfolgs-Metriken
+
+- **Verfügbarkeit:** 99,9% Uptime
+- **Performance:** P95-Antwortzeit < 2 Sekunden
+- **Deployment-Zeit:** Neue Version in < 15 Minuten deployt
+- **Skalierung:** Kann 10-faches Abfragevolumen mit 3-fachen Infrastrukturkosten bewältigen
+- **Wiederherstellung:** Aus Backup in < 4 Stunden wiederherstellen

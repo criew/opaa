@@ -1,11 +1,11 @@
 ---
-description: Independent OPAA reviewer for correctness, security, tests, documentation, and ADR compliance.
+description: Unabhängiger OPAA-Reviewer für Korrektheit, Sicherheit, Tests, Dokumentation und ADR-Compliance.
 mode: subagent
 permission:
   edit: deny
   bash: ask
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/code-reviewer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/code-reviewer.md` vor dem Start lesen.
 
-The shared role contract is binding. Do not modify workspace files.
+Der gemeinsame Rollenvertrag ist bindend. Workspace-Dateien nicht ändern.

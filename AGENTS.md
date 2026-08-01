@@ -1,64 +1,64 @@
-# AI Agent Instructions
+# Anweisungen für KI-Agenten
 
-## Project Overview
+## Projektübersicht
 
-OPAA (Open Project AI Assistant) is an open-source project building an AI-powered project assistant.
-Contributions from humans and AI agents are equally welcome.
+OPAA (Open Project AI Assistant) ist ein quelloffenes Projekt, das einen KI-gestützten Projektassistenten entwickelt.
+Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen.
 
-## Architecture
+## Architektur
 
 - **Backend:** Java 21 + Spring Boot 3.5.10 + Spring AI 1.1.2 (Gradle 9.3.1, Kotlin DSL)
-- **Database:** PostgreSQL 18 + pgvector, Liquibase
+- **Datenbank:** PostgreSQL 18 + pgvector, Liquibase
 - **Frontend:** React 19 + TypeScript + Material UI 7 + React Router 7 + Zustand + Vitest + MSW
 - **CI:** GitHub Actions
 - **Deployment:** Docker Compose
 
-> See [ADR-0002](docs/decisions/0002-mvp-technology-stack.md) for full rationale.
+> Vollständige Begründung: [ADR-0002](docs/decisions/0002-mvp-technology-stack.md)
 
 ## Build & Test
 
 ```bash
-# Backend (from backend/)
+# Backend (aus backend/)
 ./gradlew build
 ./gradlew test
 ./gradlew bootRun
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 
-# Frontend (from frontend/)
-npm ci                                  # Install dependencies
-VITE_ENABLE_MOCKS=true npm run dev      # Dev server with MSW mocks
-npm run dev                             # Dev server (needs backend on :8080)
-npm run build                           # Production build
+# Frontend (aus frontend/)
+npm ci                                  # Abhängigkeiten installieren
+VITE_ENABLE_MOCKS=true npm run dev      # Dev-Server mit MSW-Mocks
+npm run dev                             # Dev-Server (benötigt Backend auf :8080)
+npm run build                           # Production-Build
 npm run lint                            # Lint (ESLint)
 npm run test                            # Tests (Vitest)
-npm run format:check                    # Check Prettier formatting
-npm run format                          # Auto-format with Prettier
+npm run format:check                    # Prettier-Formatierung prüfen
+npm run format                          # Automatisch mit Prettier formatieren
 ```
 
-## Dependency Management
+## Abhängigkeitsverwaltung
 
-- All library and plugin versions MUST be declared in `backend/gradle/libs.versions.toml` — never inline a version in `build.gradle.kts`
-- All dependencies MUST be defined as libraries in the `[libraries]` section and referenced via `libs.*` in `build.gradle.kts`
-- Group related libraries into `[bundles]` where possible (e.g., `spring-boot`, `spring-ai`, `test-deps`)
-- Use version catalogs (`libs.versions.*`, `libs.*`, `libs.bundles.*`) for referencing versions, libraries, and bundles
-- This applies to `[versions]`, `[libraries]`, `[bundles]`, and `[plugins]` sections
+- Alle Bibliotheks- und Plugin-Versionen MÜSSEN in `backend/gradle/libs.versions.toml` deklariert werden — niemals eine Version direkt in `build.gradle.kts` eintragen
+- Alle Abhängigkeiten MÜSSEN im Abschnitt `[libraries]` als Bibliotheken definiert und über `libs.*` in `build.gradle.kts` referenziert werden
+- Verwandte Bibliotheken in `[bundles]` zusammenfassen, wo sinnvoll (z. B. `spring-boot`, `spring-ai`, `test-deps`)
+- Versions-Kataloge (`libs.versions.*`, `libs.*`, `libs.bundles.*`) für die Referenzierung von Versionen, Bibliotheken und Bundles verwenden
+- Dies gilt für die Abschnitte `[versions]`, `[libraries]`, `[bundles]` und `[plugins]`
 
-## API & DTO Convention
+## API & DTO-Konvention
 
-- **All API DTOs MUST be generated from the OpenAPI spec** (`backend/src/main/resources/openapi/opaa-api.yaml`) — never write DTO classes in `io.opaa.api.dto` by hand
-- Changes to request/response schemas start with a spec change, then use the generated DTOs
-- Domain enums used in DTOs (e.g., `WorkspaceRole`, `WorkspaceType`) are mapped via `typeMappings`/`importMappings` in `build.gradle.kts`
-- When adding new domain enums to the API, update `typeMappings`, `importMappings`, and the `doLast` cleanup block in `build.gradle.kts`
-- Frontend types are also generated from the same spec via `openapi-typescript`
+- **Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden** (`backend/src/main/resources/openapi/opaa-api.yaml`) — niemals DTO-Klassen in `io.opaa.api.dto` manuell schreiben
+- Änderungen an Request-/Response-Schemas beginnen mit einer Spec-Änderung, dann werden die generierten DTOs verwendet
+- Domain-Enums in DTOs (z. B. `WorkspaceRole`, `WorkspaceType`) werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt
+- Beim Hinzufügen neuer Domain-Enums zur API `typeMappings`, `importMappings` und den `doLast`-Cleanup-Block in `build.gradle.kts` aktualisieren
+- Frontend-Typen werden aus derselben Spezifikation über `openapi-typescript` generiert
 
-> See [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) for full rationale.
+> Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
 
-## Code Conventions
+## Code-Konventionen
 
-### Commit Messages
+### Commit-Nachrichten
 
-Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) verwenden:
 
 ```
 <type>[optional scope]: <description>
@@ -68,85 +68,85 @@ Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
 [optional footer(s)]
 ```
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `build`
+Typen: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `build`
 
-AI agents must include a `Co-Authored-By` trailer in commits.
+KI-Agenten müssen einen `Co-Authored-By`-Trailer in Commits einfügen.
 
-### Git Workflow
+### Git-Workflow
 
-- Always create a feature branch; never commit directly to `main`
-- Keep PRs focused: one logical change per PR
-- When fixing an issue, reference it with `Closes #N` in the PR body
+- Immer einen Feature-Branch erstellen; niemals direkt auf `main` committen
+- PRs fokussiert halten: eine logische Änderung pro PR
+- Bei der Behebung eines Issues in der PR-Beschreibung mit `Closes #N` referenzieren
 
-### Branch Naming
+### Branch-Benennung
 
-Format: `feature/<issue-id>_<short-description>`
+Format: `feature/<issue-id>_<kurze-beschreibung>`
 
-Every branch ties back to a GitHub Issue via its ID.
+Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 
-**Branch rule (mandatory):**
-- Always create branches with `feature/`.
-- Always include the GitHub issue ID in the branch name.
-- Do not use generic names like `feature/workspace` without an issue ID.
+**Branch-Regel (verbindlich):**
+- Branches immer mit `feature/` erstellen.
+- Immer die GitHub-Issue-ID im Branch-Namen angeben.
+- Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
 
-### GitHub Issues
+### GitHub-Issues
 
-- When creating a GitHub Issue, ALWAYS assign appropriate labels based on the issue content
-- Use existing labels (e.g., `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, etc.)
-- Issue titles and descriptions MUST be written in English
+- Beim Erstellen eines GitHub-Issues IMMER passende Labels basierend auf dem Inhalt zuweisen
+- Vorhandene Labels verwenden (z. B. `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, usw.)
+- Issue-Titel und -Beschreibungen MÜSSEN auf Englisch verfasst werden
 
 ### Pull Requests
 
-- No direct pushes to `main` — all changes go through PRs
-- PRs must be reviewed before merge
-- When creating a PR, ALWAYS assign appropriate labels based on the PR content
-- PR titles and descriptions MUST be written in English
-- ALWAYS use the PR template (Summary, Related Issues, Type of Change, Checklist, AI Agent Disclosure) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) when creating new pull requests
+- Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
+- PRs müssen vor dem Merge überprüft werden
+- Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
+- PR-Titel und -Beschreibungen MÜSSEN auf Englisch verfasst werden
+- IMMER das PR-Template (Zusammenfassung, Zugehörige Issues, Art der Änderung, Checkliste, KI-Agenten-Offenlegung) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) für neue Pull Requests verwenden
 
-### Pre-Push Checklist
+### Pre-Push-Checkliste
 
-Skip if only updating docs. Before every push, all of the following must pass locally:
+Bei reinen Dokumentationsänderungen überspringen. Vor jedem Push müssen alle folgenden Punkte lokal bestehen:
 
-- Backend formatting
-- Backend build + test
-- Frontend formatting
-- Frontend lint
-- Frontend build + test
+- Backend-Formatierung
+- Backend-Build + Test
+- Frontend-Formatierung
+- Frontend-Lint
+- Frontend-Build + Test
 
-## Important Paths
+## Wichtige Pfade
 
-- `docs/AGENT-ORGANIZATION.md` — Agent roles, idea-to-merge workflow, and collaboration rules
+- `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
 - `docs/decisions/` — Architecture Decision Records (ADRs)
-- `docs/features/` — Feature specifications
-- `.github/ISSUE_TEMPLATE/` — Issue templates
-- `.github/PULL_REQUEST_TEMPLATE.md` — PR template
-- `CONTRIBUTING.md` — Contributor guide
-- `AGENTS.md` — AI agent instructions
-- `backend/` — Spring Boot backend (Gradle project)
-- `frontend/` — React frontend (Vite project)
-- `frontend/src/test/test-utils.tsx` — Shared test render helpers
+- `docs/features/` — Feature-Spezifikationen
+- `.github/ISSUE_TEMPLATE/` — Issue-Templates
+- `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template
+- `CONTRIBUTING.md` — Leitfaden für Beitragende
+- `AGENTS.md` — Anweisungen für KI-Agenten
+- `backend/` — Spring Boot Backend (Gradle-Projekt)
+- `frontend/` — React-Frontend (Vite-Projekt)
+- `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 
 ## Contributor License Agreement
 
-OPAA requires all contributors to sign the [Contributor License Agreement](./CLA.md) before a Pull Request can be merged. The human operator of the AI agent is responsible for signing — not the AI itself.
+OPAA verlangt von allen Beitragenden, die [Contributor License Agreement](./CLA.md) zu unterzeichnen, bevor ein Pull Request zusammengeführt werden kann. Der menschliche Betreiber des KI-Agenten ist für die Unterzeichnung verantwortlich — nicht die KI selbst.
 
-**How to sign:** Post the following comment on the first PR:
+**So unterzeichnen:** Posten Sie folgenden Kommentar im ersten PR:
 
 > I have read the CLA Document and I hereby sign the CLA
 
-The signature is recorded automatically and only needs to be done once per GitHub account.
+Die Unterschrift wird automatisch erfasst und muss nur einmal pro GitHub-Account geleistet werden.
 
-## Agent Behavior
+## Agenten-Verhalten
 
-- Respond in the language the user writes in
-- Do not refactor code unless explicitly asked
-- Before creating new files, check if similar patterns or utilities already exist
-- Prefer small, focused commits over large ones
-- When fixing a bug, write a test that reproduces it first
-- Read `docs/decisions/` for Architecture Decision Records before making major structural changes
+- In der Sprache antworten, in der der Benutzer schreibt
+- Code nicht umstrukturieren, sofern nicht ausdrücklich verlangt
+- Vor dem Erstellen neuer Dateien prüfen, ob ähnliche Muster oder Hilfsfunktionen bereits existieren
+- Kleine, fokussierte Commits gegenüber großen bevorzugen
+- Bei der Behebung eines Bugs zuerst einen Test schreiben, der den Bug reproduziert
+- `docs/decisions/` für Architecture Decision Records vor größeren strukturellen Änderungen lesen
 
-## Security
+## Sicherheit
 
-- Never commit secrets, API keys, or credentials
-- Use environment variables for configuration
-- Do not commit `.env` files
+- Niemals Secrets, API-Schlüssel oder Anmeldeinformationen committen
+- Umgebungsvariablen für die Konfiguration verwenden
+- `.env`-Dateien nicht committen

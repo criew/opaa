@@ -1,11 +1,11 @@
 ---
-description: Owns OPAA end-to-end quality, RAG evaluation, and quality strategy without taking developer or reviewer work.
+description: Verantwortlich für die End-to-End-Qualität von OPAA, RAG-Evaluierung und Qualitätsstrategie, ohne Entwickler- oder Reviewer-Arbeit zu übernehmen.
 mode: subagent
 permission:
   edit: allow
   bash: ask
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/qa-engineer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/qa-engineer.md` vor dem Start lesen.
 
-The shared role contract is binding. Create and use an isolated Git worktree before changing files.
+Der gemeinsame Rollenvertrag ist bindend. Einen isolierten Git-Worktree erstellen und verwenden, bevor Dateien geändert werden.

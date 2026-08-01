@@ -1,30 +1,30 @@
-# ADR-0001: Collaboration Workflow for Humans and AI Agents
+# ADR-0001: Kollaborations-Workflow für Menschen und KI-Agenten
 
 ## Status
 
-Accepted
+Akzeptiert
 
-## Context
+## Kontext
 
-OPAA is a new open-source project where multiple humans and AI coding agents (Claude Code, GitHub Copilot, Cursor, etc.) collaborate. We need to establish conventions for documentation, branching, commits, and code review from the start.
+OPAA ist ein neues Open-Source-Projekt, bei dem mehrere Menschen und KI-Coding-Agenten (Claude Code, GitHub Copilot, Cursor, usw.) zusammenarbeiten. Wir müssen von Anfang an Konventionen für Dokumentation, Branching, Commits und Code-Review etablieren.
 
-## Decision
+## Entscheidung
 
-We adopt the following workflow:
+Wir übernehmen den folgenden Workflow:
 
-1. **Dual instruction files**: `AGENTS.md` as the universal AI agent instruction file (supported by 60+ tools), and `CLAUDE.md` for Claude-specific behavior that imports AGENTS.md.
+1. **Duale Instruktionsdateien**: `AGENTS.md` als universelle KI-Agenten-Instruktionsdatei (unterstützt von 60+ Tools) und `CLAUDE.md` für Claude-spezifisches Verhalten, das AGENTS.md importiert.
 
-2. **Documentation split**: GitHub Issues for task tracking and collaboration. `docs/decisions/` for Architecture Decision Records (ADRs). `docs/features/` for feature specifications. Issues link to their corresponding feature spec files.
+2. **Dokumentationsaufteilung**: GitHub Issues für Task-Tracking und Kollaboration. `docs/decisions/` für Architecture Decision Records (ADRs). `docs/features/` für Feature-Spezifikationen. Issues verlinken auf ihre entsprechenden Feature-Spezifikationsdateien.
 
-3. **Branch naming**: `feature/<issue-id>_<short-description>` format (e.g., `feature/42_user-auth`, `feature/15_fix-null-pointer`). Every branch ties back to a GitHub Issue. AI-generated worktree branch names are acceptable.
+3. **Branch-Benennung**: Format `feature/<issue-id>_<kurze-beschreibung>` (z. B. `feature/42_user-auth`, `feature/15_fix-null-pointer`). Jeder Branch ist über eine GitHub-Issue verknüpft. KI-generierte Worktree-Branch-Namen sind akzeptabel.
 
-4. **Conventional Commits**: All commit messages follow the Conventional Commits specification. AI agents include `Co-Authored-By` trailers.
+4. **Conventional Commits**: Alle Commit-Nachrichten folgen der Conventional-Commits-Spezifikation. KI-Agenten fügen `Co-Authored-By`-Trailer ein.
 
-5. **PR-based workflow**: No direct pushes to `main`. All changes go through Pull Requests with review. PR template includes AI agent disclosure.
+5. **PR-basierter Workflow**: Keine direkten Pushes zu `main`. Alle Änderungen durchlaufen Pull Requests mit Review. PR-Template enthält KI-Agenten-Offenlegung.
 
-6. **Transparency**: AI contributions are clearly labeled through commit trailers and PR template disclosure. This is provenance tracking, not gatekeeping.
+6. **Transparenz**: KI-Beiträge werden durch Commit-Trailer und PR-Template-Offenlegung klar gekennzeichnet. Dies ist Provenienz-Tracking, keine Einschränkung.
 
-## Consequences
+## Konsequenzen
 
-- **Easier**: Onboarding new contributors (human or AI) — clear conventions from day one. AI agents can read AGENTS.md and immediately understand project norms. Architecture decisions are documented and discoverable.
-- **Harder**: Slightly more overhead per contribution (branch naming, PR template, commit format). But this overhead is minimal and prevents confusion as the team grows.
+- **Einfacher**: Einarbeitung neuer Beitragender (Mensch oder KI) — klare Konventionen von Anfang an. KI-Agenten können AGENTS.md lesen und die Projektnormen sofort verstehen. Architekturentscheidungen sind dokumentiert und auffindbar.
+- **Schwieriger**: Etwas mehr Aufwand pro Beitrag (Branch-Benennung, PR-Template, Commit-Format). Dieser Aufwand ist jedoch minimal und verhindert Verwirrung, wenn das Team wächst.

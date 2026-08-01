@@ -1,33 +1,33 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve
+about: Einen Bug melden, um uns bei der Verbesserung zu helfen
 title: '[BUG] '
 labels: ['bug', 'triage']
 assignees: ''
 ---
 
-## Description
+## Beschreibung
 
-A clear description of the bug.
+Eine klare Beschreibung des Bugs.
 
-## Steps to Reproduce
+## Schritte zur Reproduktion
 
-1. Step one
-2. Step two
+1. Schritt eins
+2. Schritt zwei
 
-## Expected Behavior
+## Erwartetes Verhalten
 
-What should happen.
+Was passieren sollte.
 
-## Actual Behavior
+## Tatsächliches Verhalten
 
-What actually happens.
+Was tatsächlich passiert.
 
-## Environment
+## Umgebung
 
-- OS:
+- Betriebssystem:
 - Version:
 
-## Additional Context
+## Zusätzlicher Kontext
 
-Any other context, screenshots, or logs.
+Jeder weitere Kontext, Screenshots oder Logs.

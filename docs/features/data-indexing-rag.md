@@ -1,97 +1,97 @@
-# Data Indexing & RAG
+# Daten-Indizierung & RAG
 
 ## Motivation
 
-OPAA's value comes from having access to organizational knowledge. This feature describes how documents from diverse sources (wikis, email, file systems) are discovered, processed, and made searchable through semantic embeddings. In addition to organizational data sources discovered by connectors, OPAA also supports direct document uploads by individual users, enabling personal knowledge to enter the RAG pipeline.
+OPAAs Wert entsteht durch den Zugang zu organisationalem Wissen. Dieses Feature beschreibt, wie Dokumente aus verschiedenen Quellen (Wikis, E-Mail, Dateisysteme) entdeckt, verarbeitet und über semantische Embeddings auffindbar gemacht werden. Neben organisationalen Datenquellen, die von Konnektoren erschlossen werden, unterstützt OPAA auch das direkte Hochladen von Dokumenten durch einzelne Benutzer, sodass persönliches Wissen in die RAG-Pipeline eingespeist werden kann.
 
-The Retrieval-Augmented Generation (RAG) pipeline ensures answers are grounded in actual organizational documents, with full attribution and traceability.
-
----
-
-## Overview
-
-The Data Indexing & RAG system consists of three phases:
-
-1. **Source Discovery, Upload & Ingestion** — Finding documents in various sources or receiving them via user uploads
-2. **Document Processing** — Extracting, chunking, and embedding documents
-3. **Retrieval & Ranking** — Finding relevant documents for user questions
-
-Documents enter the pipeline through two paths:
-- **Connector-Based Ingestion:** OPAA pulls documents from configured data sources (Confluence, email, file systems) on schedule or via events.
-- **User Upload Ingestion:** Users push documents directly into OPAA through frontends (Web UI, Chat, REST API).
+Die Retrieval-Augmented-Generation-Pipeline (RAG) stellt sicher, dass Antworten auf tatsächlichen Organisationsdokumenten basieren — mit vollständiger Quellenangabe und Nachvollziehbarkeit.
 
 ---
 
-## Supported Data Sources
+## Überblick
 
-### Source Categories
+Das Daten-Indizierungs- & RAG-System besteht aus drei Phasen:
 
-OPAA connects to multiple source types:
+1. **Quellen-Erkennung, Upload & Ingestion** — Dokumente in verschiedenen Quellen finden oder über Benutzer-Uploads empfangen
+2. **Dokumentenverarbeitung** — Dokumente extrahieren, aufteilen und einbetten
+3. **Retrieval & Ranking** — Relevante Dokumente für Benutzerfragen finden
 
-#### 1. **Knowledge Management Systems**
-- **Confluence** — Wiki pages, spaces, attachments
-- **Notion** — Pages, databases, wikis
-- **MediaWiki** — Wikipedia-style wikis
-- **Custom Wikis** — Via REST API
+Dokumente gelangen über zwei Wege in die Pipeline:
+- **Konnektor-basierte Ingestion:** OPAA zieht Dokumente aus konfigurierten Datenquellen (Confluence, E-Mail, Dateisysteme) nach Zeitplan oder ereignisgesteuert.
+- **Benutzer-Upload-Ingestion:** Benutzer übertragen Dokumente direkt über Frontends (Web-UI, Chat, REST-API) in OPAA.
 
-#### 2. **Email Archives**
-- **Email Servers** — IMAP/SMTP (Gmail, Office 365, on-premises Exchange)
-- **Email Exports** — MBOX, PST files
-- **Email Services** — Gmail API, Microsoft Graph API
+---
 
-#### 3. **File Systems & Cloud Storage**
-- **Local File Systems** — On-premises servers
-- **HTTP Directory Listings** — Apache mod_autoindex / nginx autoindex servers (see below)
-- **Cloud Storage** — S3, Azure Blob, Google Cloud Storage, Google Drive, Dropbox
-- **Network Drives** — SMB/CIFS shares
-- **Git Repositories** — Documentation in GitHub/GitLab
+## Unterstützte Datenquellen
 
-#### 4. **Issue Trackers & Project Management**
-- **Jira** — Issues, comments, attachments
-- **GitHub Issues / GitLab Issues** — Issues, discussions, pull requests
-- **Custom Issue Trackers** — Via REST API
+### Quellkategorien
 
-#### 5. **Document Formats**
-Automatically detected and processed:
+OPAA verbindet sich mit mehreren Quelltypen:
+
+#### 1. **Wissensmanagement-Systeme**
+- **Confluence** — Wiki-Seiten, Spaces, Anhänge
+- **Notion** — Seiten, Datenbanken, Wikis
+- **MediaWiki** — Wikipedia-artige Wikis
+- **Eigene Wikis** — Über REST-API
+
+#### 2. **E-Mail-Archive**
+- **E-Mail-Server** — IMAP/SMTP (Gmail, Office 365, On-Premises-Exchange)
+- **E-Mail-Exporte** — MBOX-, PST-Dateien
+- **E-Mail-Dienste** — Gmail-API, Microsoft Graph API
+
+#### 3. **Dateisysteme & Cloud-Speicher**
+- **Lokale Dateisysteme** — On-Premises-Server
+- **HTTP-Verzeichnislisten** — Apache-mod_autoindex- / nginx-autoindex-Server (siehe unten)
+- **Cloud-Speicher** — S3, Azure Blob, Google Cloud Storage, Google Drive, Dropbox
+- **Netzlaufwerke** — SMB/CIFS-Freigaben
+- **Git-Repositories** — Dokumentation in GitHub/GitLab
+
+#### 4. **Issue-Tracker & Projektmanagement**
+- **Jira** — Issues, Kommentare, Anhänge
+- **GitHub Issues / GitLab Issues** — Issues, Diskussionen, Pull Requests
+- **Eigene Issue-Tracker** — Über REST-API
+
+#### 5. **Dokumentformate**
+Automatisch erkannt und verarbeitet:
 - **Markdown** (.md)
 - **AsciiDoc** (.adoc)
-- **PDF** (.pdf) — text extracted via OCR if needed
+- **PDF** (.pdf) — Textextraktion per OCR falls nötig
 - **Microsoft Office** (.docx, .xlsx, .pptx)
-- **Plain Text** (.txt)
+- **Klartext** (.txt)
 - **HTML** (.html)
-- **Structured Data** (.json, .csv, .xml)
+- **Strukturierte Daten** (.json, .csv, .xml)
 
-#### 6. **APIs & Custom Sources**
-- **REST APIs** — Any system with documented API
-- **Webhooks** — Push updates to OPAA
-- **Custom Connectors** — Extensible plugin system
+#### 6. **APIs & Eigene Quellen**
+- **REST-APIs** — Jedes System mit dokumentierter API
+- **Webhooks** — Updates an OPAA senden
+- **Eigene Konnektoren** — Erweiterbares Plugin-System
 
-### HTTP Directory Listings
+### HTTP-Verzeichnislisten
 
-OPAA can crawl and index documents from HTTP servers that expose Apache mod_autoindex (or compatible) directory listings. This is useful for accessing document repositories hosted on internal web servers without requiring specialized connectors.
+OPAA kann Dokumente von HTTP-Servern crawlen und indizieren, die Apache-mod_autoindex- (oder kompatible) Verzeichnislisten bereitstellen. Dies ist nützlich, um Dokument-Repositories auf internen Webservern zu erschließen, ohne spezialisierte Konnektoren zu benötigen.
 
-**How it works:**
+**So funktioniert es:**
 
-1. OPAA crawls the HTML directory listing at the given URL recursively
-2. Discovers all files across subdirectories
-3. Downloads each file to a temporary location for processing
-4. Uses the `lastModified` timestamp from the directory listing to skip downloads of unchanged files (bandwidth optimization)
-5. After download, computes a SHA-256 checksum on the file for content-based deduplication (detects renames, ensures content integrity)
-6. Processes each file through the standard pipeline (extraction, chunking, embedding)
-7. Cleans up temporary files after processing
+1. OPAA crawlt die HTML-Verzeichnisliste unter der angegebenen URL rekursiv
+2. Entdeckt alle Dateien in Unterverzeichnissen
+3. Lädt jede Datei an einen temporären Speicherort für die Verarbeitung herunter
+4. Verwendet den `lastModified`-Zeitstempel aus der Verzeichnisliste, um den Download unveränderter Dateien zu überspringen (Bandbreiten-Optimierung)
+5. Berechnet nach dem Download einen SHA-256-Prüfsumme der Datei für inhaltsbasierte Deduplizierung (erkennt Umbenennung, stellt Inhaltsintegrität sicher)
+6. Verarbeitet jede Datei durch die Standard-Pipeline (Extraktion, Chunking, Embedding)
+7. Bereinigt temporäre Dateien nach der Verarbeitung
 
-**Supported features:**
-- Basic authentication (username:password)
-- HTTP proxy support (host:port)
-- Insecure SSL mode (skip certificate verification for self-signed certificates)
-- Recursive directory traversal
-- Robust HTML parser that handles various Apache/nginx autoindex output formats
+**Unterstützte Funktionen:**
+- Basic-Authentifizierung (Benutzername:Passwort)
+- HTTP-Proxy-Unterstützung (Host:Port)
+- Unsicherer SSL-Modus (Zertifikatsprüfung für selbstsignierte Zertifikate überspringen)
+- Rekursives Verzeichnis-Traversal
+- Robuster HTML-Parser für verschiedene Apache/nginx-autoindex-Ausgabeformate
 
-**Triggering URL-based indexing:**
+**URL-basierte Indizierung auslösen:**
 
-Via Admin UI: Open the Admin drawer, expand "URL Source (optional)", enter the URL and optional proxy/credentials, then click "Index Documents".
+Über die Admin-UI: Admin-Drawer öffnen, „URL-Quelle (optional)" aufklappen, URL und optionalen Proxy/Anmeldedaten eingeben, dann auf „Dokumente indizieren" klicken.
 
-Via API:
+Über die API:
 ```bash
 curl -X POST http://localhost:8080/api/v1/indexing/trigger \
   -H "Content-Type: application/json" \
@@ -103,120 +103,120 @@ curl -X POST http://localhost:8080/api/v1/indexing/trigger \
   }'
 ```
 
-When no URL is provided, the standard filesystem-based indexing is triggered instead.
+Wenn keine URL angegeben wird, wird stattdessen die standardmäßige dateisystembasierte Indizierung ausgelöst.
 
-### Connector Model and Workspace Mapping
+### Konnektor-Modell und Workspace-Zuordnung
 
-A **connector** defines the type and shared configuration (credentials, schedule). Each connector has one or more **sources**, each of which can be mapped to one or more OPAA workspaces. Connectors and sources are configured independently of workspaces — Workspace-Admins then choose which available sources to include in their workspace. Only **System-Admins** can create connectors and define source mappings.
+Ein **Konnektor** definiert den Typ und die gemeinsame Konfiguration (Anmeldedaten, Zeitplan). Jeder Konnektor hat eine oder mehrere **Quellen**, von denen jede einem oder mehreren OPAA-Workspaces zugeordnet werden kann. Konnektoren und Quellen werden unabhängig von Workspaces konfiguriert — Workspace-Admins wählen dann, welche verfügbaren Quellen in ihren Workspace eingebunden werden sollen. Nur **System-Admins** können Konnektoren erstellen und Quellzuordnungen definieren.
 
-Some connector types have a natural instance level with sub-units (e.g., Confluence server with spaces). Others have no shared instance — each source is standalone (e.g., individual file paths or URLs).
+Manche Konnektor-Typen haben eine natürliche Instanzebene mit Untereinheiten (z. B. Confluence-Server mit Spaces). Andere haben keine gemeinsame Instanz — jede Quelle ist eigenständig (z. B. einzelne Dateipfade oder URLs).
 
 ```
-Example 1: Confluence (instance with sub-units)
-  Connector: "Confluence Production"
-    Type: confluence
+Beispiel 1: Confluence (Instanz mit Untereinheiten)
+  Konnektor: "Confluence Produktion"
+    Typ: confluence
     URL: https://wiki.company.com
-    Credentials: service-account / API-token
-    Schedule: Daily 2 AM
-    Sources:
+    Anmeldedaten: Service-Account / API-Token
+    Zeitplan: Täglich 2 Uhr
+    Quellen:
       Space "ENG"  → Workspaces: ["Engineering"]
       Space "MKT"  → Workspaces: ["Marketing"]
       Space "HR"   → Workspaces: ["HR", "Onboarding"]
       Space "ALL"  → Workspaces: ["Company"]
 
-Example 2: File System / Network Drive (one path per source)
-  Connector: "Network Drive Engineering"
-    Type: filesystem
-    Schedule: Daily 3 AM
-    Sources:
-      Path "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
+Beispiel 2: Dateisystem / Netzlaufwerk (ein Pfad pro Quelle)
+  Konnektor: "Netzlaufwerk Engineering"
+    Typ: filesystem
+    Zeitplan: Täglich 3 Uhr
+    Quellen:
+      Pfad "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
 
-Example 3: HTTP Directory (one URL per source)
-  Connector: "Docs Server Engineering"
-    Type: http
-    Schedule: Daily 4 AM
-    Sources:
+Beispiel 3: HTTP-Verzeichnis (eine URL pro Quelle)
+  Konnektor: "Docs-Server Engineering"
+    Typ: http
+    Zeitplan: Täglich 4 Uhr
+    Quellen:
       URL "https://docs.internal/engineering/" → Workspaces: ["Engineering", "Phoenix"]
 ```
 
-#### Connector Types and Their Sources
+#### Konnektor-Typen und ihre Quellen
 
-| Connector Type | Shared Config (Connector) | Source (one or more per connector) |
+| Konnektor-Typ | Gemeinsame Konfiguration (Konnektor) | Quelle (eine oder mehrere pro Konnektor) |
 |---|---|---|
-| Confluence | Server URL, Credentials | Space key |
-| Jira | Server URL, Credentials | Project key |
-| Email (IMAP) | Server URL, Credentials | Folder / Label |
-| File System / Network Drive | optionally Schedule | Path (local or UNC) |
-| HTTP Directory | optionally Proxy, Auth | URL |
-| Git | optionally Credentials | Repository URL + Branch |
+| Confluence | Server-URL, Anmeldedaten | Space-Key |
+| Jira | Server-URL, Anmeldedaten | Projekt-Key |
+| E-Mail (IMAP) | Server-URL, Anmeldedaten | Ordner / Label |
+| Dateisystem / Netzlaufwerk | optional Zeitplan | Pfad (lokal oder UNC) |
+| HTTP-Verzeichnis | optional Proxy, Auth | URL |
+| Git | optional Anmeldedaten | Repository-URL + Branch |
 
-#### Mapping Rules
+#### Zuordnungsregeln
 
-- **1:N** — Each source can be mapped to one or more OPAA workspaces. Documents from that source are indexed into all mapped workspaces (their chunks receive all corresponding `workspace_ids`).
-- **Unmapped sub-units** are ignored (e.g., Confluence spaces without a mapping are not indexed)
-- **Multiple connectors** can index into the same workspace (e.g., Confluence space "ENG" + network drive path both → "Engineering")
+- **1:N** — Jede Quelle kann einem oder mehreren OPAA-Workspaces zugeordnet werden. Dokumente aus dieser Quelle werden in alle zugeordneten Workspaces indiziert (ihre Chunks erhalten alle entsprechenden `workspace_ids`).
+- **Nicht zugeordnete Untereinheiten** werden ignoriert (z. B. Confluence-Spaces ohne Zuordnung werden nicht indiziert)
+- **Mehrere Konnektoren** können in denselben Workspace indizieren (z. B. Confluence-Space „ENG" + Netzlaufwerk-Pfad beide → „Engineering")
 
-#### Source Filtering
+#### Quellenfilterung
 
-Each source can optionally define include/exclude patterns:
+Jede Quelle kann optional Einschluss-/Ausschlussmuster definieren:
 ```
-Source: Confluence Space "ENG" → Workspace "Engineering"
-Filtering:
-  - Include patterns: ["public/*", "team/*"]
-  - Exclude patterns: ["draft/*", "archive/*"]
-Incremental: Only new/changed documents
+Quelle: Confluence Space "ENG" → Workspace "Engineering"
+Filterung:
+  - Einschlussmuster: ["public/*", "team/*"]
+  - Ausschlussmuster: ["draft/*", "archive/*"]
+Inkrementell: Nur neue/geänderte Dokumente
 ```
 
 ---
 
-## User Document Upload
+## Benutzer-Dokument-Upload
 
-### Concept
+### Konzept
 
-In addition to connector-based ingestion, users can upload documents directly into OPAA through any frontend (Web UI, Chat, REST API). Uploaded documents are stored on a configurable storage backend and processed through the same document processing pipeline as connector-sourced documents.
+Zusätzlich zur konnektor-basierten Ingestion können Benutzer Dokumente direkt über jedes Frontend (Web-UI, Chat, REST-API) in OPAA hochladen. Hochgeladene Dokumente werden auf einem konfigurierbaren Speicher-Backend gespeichert und durchlaufen dieselbe Dokumentenverarbeitungs-Pipeline wie konnektor-bezogene Dokumente.
 
-### How It Differs from Connectors
+### Unterschied zu Konnektoren
 
-| Aspect | Connectors | User Upload |
+| Aspekt | Konnektoren | Benutzer-Upload |
 |--------|-----------|-------------|
-| Direction | OPAA pulls from sources | User pushes to OPAA |
-| Trigger | Scheduled or event-based | On-demand (user action) |
-| Scope | Organizational data sources | Individual user documents |
-| Workspace | Configured per connector | User's personal workspace (default) |
-| Storage | Original stays in source system | Stored on OPAA's storage backend |
+| Richtung | OPAA zieht aus Quellen | Benutzer überträgt an OPAA |
+| Auslöser | Zeitplan- oder ereignisbasiert | Auf Abruf (Benutzeraktion) |
+| Umfang | Organisationale Datenquellen | Individuelle Benutzerdokumente |
+| Workspace | Pro Konnektor konfiguriert | Persönlicher Workspace des Benutzers (Standard) |
+| Speicherung | Original verbleibt im Quellsystem | Auf OPAAs Speicher-Backend gespeichert |
 
-### Upload Flow
+### Upload-Ablauf
 
-1. User selects file(s) through frontend (Web UI drag-and-drop, chat attachment, or API multipart upload)
-2. File is validated (format, size limits, virus scan)
-3. File is stored on the configured storage backend (S3, network drive, local FS)
-4. Document enters the standard processing pipeline (extraction, chunking, embedding, vector storage)
-5. Document is indexed into the user's personal workspace by default
-6. User can optionally share/publish into other workspaces they have access to
+1. Benutzer wählt Datei(en) über das Frontend aus (Web-UI Drag-and-Drop, Chat-Anhang oder API Multipart-Upload)
+2. Datei wird validiert (Format, Größenbeschränkungen, Virenscan)
+3. Datei wird auf dem konfigurierten Speicher-Backend gespeichert (S3, Netzlaufwerk, lokales FS)
+4. Dokument durchläuft die Standard-Verarbeitungs-Pipeline (Extraktion, Chunking, Embedding, Vektorspeicherung)
+5. Dokument wird standardmäßig in den persönlichen Workspace des Benutzers indiziert
+6. Benutzer kann optional in andere Workspaces, auf die er Zugriff hat, teilen/veröffentlichen
 
-### Storage Backend Abstraction
+### Speicher-Backend-Abstraktion
 
-Uploaded files are stored on a pluggable storage backend, chosen at deployment time. This is separate from the vector database — the storage backend holds the original uploaded files (PDF, DOCX, etc.) for download and re-processing, while the vector database holds the embeddings and chunk text for search.
+Hochgeladene Dateien werden auf einem austauschbaren Speicher-Backend gespeichert, das zum Zeitpunkt des Deployments gewählt wird. Dies ist getrennt von der Vektordatenbank — das Speicher-Backend hält die ursprünglich hochgeladenen Dateien (PDF, DOCX usw.) für den Download und die Wiederverarbeitung, während die Vektordatenbank die Embeddings und den Chunk-Text für die Suche enthält.
 
-#### Option 1: S3-Compatible Object Storage
-- AWS S3, MinIO, or any S3-compatible store
-- Best for cloud and hybrid deployments
-- Built-in redundancy and lifecycle management
+#### Option 1: S3-kompatibler Objektspeicher
+- AWS S3, MinIO oder ein beliebiger S3-kompatibler Speicher
+- Optimal für Cloud- und Hybrid-Deployments
+- Integrierte Redundanz und Lifecycle-Management
 
-#### Option 2: Network Drive (SMB/NFS)
-- Shared file system mount
-- Best for on-premises deployments with existing file servers
-- Familiar to operations teams
+#### Option 2: Netzlaufwerk (SMB/NFS)
+- Gemeinsames Dateisystem-Mount
+- Optimal für On-Premises-Deployments mit vorhandenen Dateiservern
+- Vertraut für Betriebsteams
 
-#### Option 3: Local Filesystem
-- Direct disk storage on OPAA server
-- Simplest option for small deployments and development
-- Requires separate backup strategy
+#### Option 3: Lokales Dateisystem
+- Direkter Festplattenspeicher auf dem OPAA-Server
+- Einfachste Option für kleine Deployments und Entwicklung
+- Erfordert separate Backup-Strategie
 
-**Storage Backend Configuration:**
+**Speicher-Backend-Konfiguration:**
 ```yaml
 storage:
-  backend: "s3"  # or "network-drive" or "local"
+  backend: "s3"  # oder "network-drive" oder "local"
   s3:
     endpoint: "https://s3.company.com"
     bucket: "opaa-uploads"
@@ -230,17 +230,17 @@ storage:
     allowed_formats: ["pdf", "docx", "md", "txt", "pptx", "xlsx"]
 ```
 
-### Supported Upload Formats
+### Unterstützte Upload-Formate
 
-Same document formats as connector-sourced documents (see Document Formats section above), with these additions for the upload context:
-- Maximum file size configurable (default: 50 MB)
-- Batch upload support (multiple files at once)
-- Drag-and-drop in Web UI
-- File attachment in chat platforms
+Dieselben Dokumentformate wie konnektor-bezogene Dokumente (siehe Abschnitt Dokumentformate oben), mit folgenden Ergänzungen für den Upload-Kontext:
+- Maximale Dateigröße konfigurierbar (Standard: 50 MB)
+- Batch-Upload-Unterstützung (mehrere Dateien gleichzeitig)
+- Drag-and-Drop in der Web-UI
+- Dateianhang in Chat-Plattformen
 
-### Upload Metadata
+### Upload-Metadaten
 
-Each uploaded document stores:
+Jedes hochgeladene Dokument speichert:
 ```json
 {
   "document_id": "upload-456",
@@ -258,69 +258,69 @@ Each uploaded document stores:
 
 ---
 
-## Document Processing Pipeline
+## Dokumentenverarbeitungs-Pipeline
 
-### Step 1: Discovery & Extraction
+### Schritt 1: Erkennung & Extraktion
 
-For each source, OPAA:
-- Connects to source system
-- Lists all available documents
-- Checks modification timestamp against last index
-- Downloads new/modified documents
-- Extracts text content (handles binary formats like PDF)
+Für jede Quelle führt OPAA folgendes durch:
+- Verbindung zum Quellsystem herstellen
+- Alle verfügbaren Dokumente auflisten
+- Änderungszeitstempel mit dem letzten Index vergleichen
+- Neue/geänderte Dokumente herunterladen
+- Textinhalt extrahieren (verarbeitet Binärformate wie PDF)
 
-**For user uploads:** The discovery step is replaced by the upload event itself. The uploaded file is retrieved from the storage backend and enters the pipeline at the extraction phase. All subsequent steps (chunking, embedding, storage) are identical to connector-sourced documents.
+**Bei Benutzer-Uploads:** Der Erkennungsschritt wird durch das Upload-Ereignis selbst ersetzt. Die hochgeladene Datei wird vom Speicher-Backend abgerufen und tritt in der Extraktionsphase in die Pipeline ein. Alle nachfolgenden Schritte (Chunking, Embedding, Speicherung) sind identisch mit konnektor-bezogenen Dokumenten.
 
-**Error Handling:**
-- Skips documents that can't be extracted
-- Logs failures for admin review
-- Retries failed documents on next run
+**Fehlerbehandlung:**
+- Überspringt Dokumente, die nicht extrahiert werden können
+- Protokolliert Fehler zur Admin-Überprüfung
+- Wiederholt fehlgeschlagene Dokumente beim nächsten Durchlauf
 
-### Step 2: Chunking
+### Schritt 2: Chunking
 
-Large documents are broken into smaller chunks:
-- **Strategy:** Semantic chunking (split on natural boundaries)
-- **Chunk Size:** 512-1024 tokens (configurable)
-- **Overlap:** 10% overlap between chunks to preserve context
-- **Metadata:** Each chunk preserves:
-  - Source document ID
-  - Document title
-  - Chunk position
-  - Timestamp
+Große Dokumente werden in kleinere Chunks aufgeteilt:
+- **Strategie:** Semantisches Chunking (Aufteilung an natürlichen Grenzen)
+- **Chunk-Größe:** 512–1024 Token (konfigurierbar)
+- **Überlappung:** 10% Überlappung zwischen Chunks zum Kontexterhalt
+- **Metadaten:** Jeder Chunk bewahrt:
+  - Quelldokument-ID
+  - Dokumenttitel
+  - Chunk-Position
+  - Zeitstempel
 
-**Example:**
+**Beispiel:**
 ```
-Document: "Enterprise Architecture Guide" (15,000 words)
+Dokument: "Enterprise Architecture Guide" (15.000 Wörter)
 ↓
 Chunks:
-  1. "Introduction & Principles" (chunk 0)
-  2. "Infrastructure Layer" (chunk 1)
-  3. "Application Architecture" (chunk 2)
+  1. "Einführung & Grundsätze" (Chunk 0)
+  2. "Infrastrukturschicht" (Chunk 1)
+  3. "Anwendungsarchitektur" (Chunk 2)
   ...
-  15. "Appendix & References" (chunk 14)
+  15. "Anhang & Referenzen" (Chunk 14)
 ```
 
-### Step 3: Embedding Generation
+### Schritt 3: Embedding-Generierung
 
-Each chunk is converted to a semantic embedding:
-- **Model Choice:** Configurable (OpenAI, open-source alternatives)
-- **Dimension:** 1536 for OpenAI, configurable for others
-- **Caching:** Embeddings cached to avoid re-computing
-- **Batching:** Processed in batches for efficiency
-- **Error Recovery:** Failed embeddings logged for retry
+Jeder Chunk wird in ein semantisches Embedding umgewandelt:
+- **Modellwahl:** Konfigurierbar (OpenAI, Open-Source-Alternativen)
+- **Dimension:** 1536 für OpenAI, konfigurierbar für andere
+- **Caching:** Embeddings werden zwischengespeichert, um Neuberechnungen zu vermeiden
+- **Batch-Verarbeitung:** In Batches für Effizienz verarbeitet
+- **Fehlerwiederherstellung:** Fehlgeschlagene Embeddings für Wiederholung protokolliert
 
-**Cost Consideration:** Embedding generation has minimal cost compared to LLM inference. Organizations can use cheaper embedding models.
+**Kostenbetrachtung:** Die Embedding-Generierung verursacht minimale Kosten im Vergleich zu LLM-Inferenz. Organisationen können günstigere Embedding-Modelle verwenden.
 
-### Step 4: Storage in Vector Database
+### Schritt 4: Speicherung in der Vektordatenbank
 
-Processed chunks stored with:
-- Embedding vector
-- Chunk text
-- Metadata (source, document ID, timestamp, chunk index)
-- Document URL (for retrieval)
-- Workspace IDs (for multi-tenancy; will also support cross-workspace sharing in the future)
+Verarbeitete Chunks werden gespeichert mit:
+- Embedding-Vektor
+- Chunk-Text
+- Metadaten (Quelle, Dokument-ID, Zeitstempel, Chunk-Index)
+- Dokument-URL (für Retrieval)
+- Workspace-IDs (für Multi-Tenancy; wird in Zukunft auch workspace-übergreifendes Teilen unterstützen)
 
-**Metadata Stored:**
+**Gespeicherte Metadaten:**
 ```json
 {
   "chunk_id": "doc-123-chunk-5",
@@ -337,71 +337,71 @@ Processed chunks stored with:
 }
 ```
 
-Note: `workspace_ids` is an array. A document can appear in multiple workspaces (e.g., when a source is mapped to multiple workspaces, or in the future via cross-workspace sharing). Permission enforcement uses this field as a metadata filter in the vector search (see [Access Control — Query-Time Permission Enforcement](./access-control-workspaces.md#query-time-permission-enforcement)).
+Hinweis: `workspace_ids` ist ein Array. Ein Dokument kann in mehreren Workspaces erscheinen (z. B. wenn eine Quelle mehreren Workspaces zugeordnet ist oder zukünftig über workspace-übergreifendes Teilen). Die Berechtigungsprüfung verwendet dieses Feld als Metadatenfilter in der Vektorsuche (siehe [Zugangskontrolle — Berechtigungsprüfung zur Abfragezeit](./access-control-workspaces.md#query-time-permission-enforcement)).
 
-### Step 5: Index Updates
+### Schritt 5: Index-Aktualisierungen
 
-Incremental processing:
-- Only new/modified documents processed
-- Changed chunks updated in vector store
-- Deleted documents removed from index
-- Full re-index available (force option)
+Inkrementelle Verarbeitung:
+- Nur neue/geänderte Dokumente werden verarbeitet
+- Geänderte Chunks im Vektorspeicher aktualisiert
+- Gelöschte Dokumente aus dem Index entfernt
+- Vollständige Neuindizierung verfügbar (Force-Option)
 
 ---
 
-## Supported Vector Databases
+## Unterstützte Vektordatenbanken
 
-OPAA supports multiple vector database backends. Organizations choose based on:
-- Infrastructure constraints (on-premises vs. cloud)
-- Scale requirements
-- Cost considerations
-- Integration with existing systems
+OPAA unterstützt mehrere Vektordatenbank-Backends. Organisationen wählen basierend auf:
+- Infrastrukturbeschränkungen (On-Premises vs. Cloud)
+- Skalierungsanforderungen
+- Kostenüberlegungen
+- Integration mit bestehenden Systemen
 
-### Option 1: **Elasticsearch with Vector Search**
-- Self-hosted or managed
-- Hybrid search (vector + keyword)
-- Advanced filtering and aggregation
-- Familiar to many ops teams
+### Option 1: **Elasticsearch mit Vektorsuche**
+- Self-Hosted oder verwaltet
+- Hybridsuche (Vektor + Keyword)
+- Erweiterte Filterung und Aggregation
+- Vielen Betriebsteams vertraut
 
 ### Option 2: **PostgreSQL + pgvector**
-- Lightweight, runs in existing database
-- No additional infrastructure
-- Good for small to mid-size deployments
-- SQL-native integration
+- Leichtgewichtig, läuft in der bestehenden Datenbank
+- Keine zusätzliche Infrastruktur
+- Gut für kleine bis mittelgroße Deployments
+- SQL-native Integration
 
 ### Option 3: **Milvus**
-- Open-source vector database
-- Designed for large-scale similarity search
-- Self-hosted, horizontally scalable
-- Optimized for high throughput
+- Open-Source-Vektordatenbank
+- Entwickelt für groß angelegte Ähnlichkeitssuche
+- Self-Hosted, horizontal skalierbar
+- Für hohen Durchsatz optimiert
 
-### Option 4: **Cloud Vector Databases**
-- Pinecone, Weaviate, Qdrant (managed)
-- Easy managed option
-- Scalability built-in
-- Can be combined with on-premises fallback
+### Option 4: **Cloud-Vektordatenbanken**
+- Pinecone, Weaviate, Qdrant (verwaltet)
+- Einfache verwaltete Option
+- Integrierte Skalierbarkeit
+- Kann mit On-Premises-Fallback kombiniert werden
 
-### Implementation Detail
-Vector database choice made at **deployment time**, not application design. No vendor lock-in. Switching databases requires re-indexing but no code changes.
+### Implementierungsdetail
+Die Wahl der Vektordatenbank erfolgt zum **Deployment-Zeitpunkt**, nicht beim Anwendungsdesign. Kein Vendor-Lock-in. Der Wechsel der Datenbank erfordert eine Neuindizierung, aber keine Code-Änderungen.
 
-OPAA uses Spring AI's `VectorStore` abstraction for all indexing and retrieval operations. Embedding generation, storage, and similarity search are delegated to the `VectorStore` interface, making the vector database backend interchangeable via configuration.
+OPAA verwendet die `VectorStore`-Abstraktion von Spring AI für alle Indizierungs- und Retrieval-Operationen. Embedding-Generierung, Speicherung und Ähnlichkeitssuche werden an das `VectorStore`-Interface delegiert, wodurch das Vektordatenbank-Backend über die Konfiguration austauschbar ist.
 
 ---
 
 ## Retrieval & Ranking
 
-### Retrieval Process
+### Retrieval-Prozess
 
-When a user asks a question:
+Wenn ein Benutzer eine Frage stellt:
 
-1. **Workspace-IDs:** Load all workspace IDs the user is a member of
-2. **Embedding Generation:** Question converted to embedding (same model as documents)
-3. **Vector Search with Workspace Filter:** Find top-K similar chunks, filtering by `workspace_ids` — only chunks whose `workspace_ids` include at least one of the user's workspace IDs are searched. The permission filter is part of the vector search itself, not a post-processing step.
-4. **Deduplication:** Remove duplicate information from same document
-5. **Source Deduplication:** When multiple chunks originate from the same file, only the chunk with the highest relevance score is kept as source reference (implemented in `QueryService.mapSources()`)
-6. **Re-ranking:** Score results by relevance
+1. **Workspace-IDs:** Alle Workspace-IDs laden, in denen der Benutzer Mitglied ist
+2. **Embedding-Generierung:** Frage in Embedding umgewandelt (gleiches Modell wie bei Dokumenten)
+3. **Vektorsuche mit Workspace-Filter:** Die Top-K ähnlichsten Chunks finden, gefiltert nach `workspace_ids` — nur Chunks, deren `workspace_ids` mindestens eine der Workspace-IDs des Benutzers enthält, werden durchsucht. Der Berechtigungsfilter ist Teil der Vektorsuche selbst, kein nachgelagerter Verarbeitungsschritt.
+4. **Deduplizierung:** Doppelte Informationen aus demselben Dokument entfernen
+5. **Quellen-Deduplizierung:** Wenn mehrere Chunks aus derselben Datei stammen, wird nur der Chunk mit der höchsten Relevanzbewertung als Quellenreferenz behalten (implementiert in `QueryService.mapSources()`)
+6. **Re-Ranking:** Ergebnisse nach Relevanz bewerten
 
-### Retrieval Configuration
+### Retrieval-Konfiguration
 
 ```
 Retrieval:
@@ -412,15 +412,15 @@ Retrieval:
   source_diversity: true
 ```
 
-### Re-ranking Strategy
+### Re-Ranking-Strategie
 
-After initial retrieval, results scored by:
-- **Semantic Similarity:** How close the embedding is to question
-- **Document Recency:** Newer documents ranked higher (optional)
-- **Source Trust Score:** Frequently updated sources ranked higher (optional)
-- **Keyword Overlap:** Exact phrase matches in document (optional)
+Nach dem initialen Retrieval werden Ergebnisse bewertet nach:
+- **Semantische Ähnlichkeit:** Wie nah das Embedding an der Frage ist
+- **Dokumentaktualität:** Neuere Dokumente werden höher eingestuft (optional)
+- **Quellen-Vertrauenswert:** Häufig aktualisierte Quellen werden höher eingestuft (optional)
+- **Keyword-Überlappung:** Exakte Phrasentreffer im Dokument (optional)
 
-**Score Combination:**
+**Score-Berechnung:**
 ```
 final_score = (
   0.6 * semantic_similarity +
@@ -430,183 +430,183 @@ final_score = (
 )
 ```
 
-### Confidence Scoring
+### Konfidenz-Bewertung
 
-System provides confidence for each retrieved document:
-- **High (> 0.85):** Definitely relevant to question
-- **Medium (0.6 - 0.85):** Probably relevant
-- **Low (< 0.6):** Questionable relevance, marked as uncertain
+Das System liefert einen Konfidenzwert für jedes abgerufene Dokument:
+- **Hoch (> 0,85):** Definitiv relevant für die Frage
+- **Mittel (0,6 – 0,85):** Wahrscheinlich relevant
+- **Niedrig (< 0,6):** Fraglich relevant, als unsicher markiert
 
-Users see scores and can filter by confidence.
-
----
-
-## Advanced Features
-
-### Multi-Language Support
-
-Documents in different languages indexed and searched:
-- Each document tagged with language
-- Embedding model must support language
-- Queries in any language matched to documents
-- Results returned in original language
-
-### Document Metadata Extraction
-
-From each document, system automatically extracts:
-- Title
-- Author (if available)
-- Creation/modification date
-- Document type (report, meeting notes, policy, etc.)
-- Key topics/tags (via NLP)
-
-This metadata enables:
-- Better search filtering
-- Trustworthiness signals
-- Related document discovery
-
-### Semantic Caching
-
-Frequently asked questions cached:
-- Same question asked within N hours returns cached answer
-- Cache aware of document updates (invalidates on source change)
-- Reduces embedding & LLM calls
-- User can force fresh answer
-
-### Document Expiry & Archival
-
-Documents can be marked:
-- **Active:** Included in searches
-- **Archived:** Searchable but flagged as older
-- **Expired:** Removed from searches (but kept for audit)
-- **Sensitive:** Restricted by permissions
+Benutzer sehen die Bewertungen und können nach Konfidenz filtern.
 
 ---
 
-## Indexing Status & Monitoring
+## Erweiterte Funktionen
 
-### Admin Visibility
+### Mehrsprachige Unterstützung
 
-Admins can see:
-- Which sources are active, when last indexed
-- Total documents in each source
-- Failed documents and error logs
-- Indexing queue status
-- Resource usage (CPU, memory, disk)
+Dokumente in verschiedenen Sprachen werden indiziert und durchsucht:
+- Jedes Dokument wird mit der Sprache gekennzeichnet
+- Das Embedding-Modell muss die Sprache unterstützen
+- Abfragen in beliebiger Sprache werden mit Dokumenten abgeglichen
+- Ergebnisse werden in der Originalsprache zurückgegeben
 
-### Indexing Alerts
+### Dokumenten-Metadaten-Extraktion
 
-System alerts admins on:
-- Source connection failures (3 failed attempts)
-- Large number of processing errors (> 10% of documents)
-- Indexing taking longer than expected (> 2 hours)
-- Vector database storage nearly full
+Aus jedem Dokument extrahiert das System automatisch:
+- Titel
+- Autor (falls verfügbar)
+- Erstellungs-/Änderungsdatum
+- Dokumenttyp (Bericht, Besprechungsnotizen, Richtlinie usw.)
+- Schlüsselthemen/Tags (per NLP)
 
-### Indexing Triggers
+Diese Metadaten ermöglichen:
+- Bessere Suchfilterung
+- Vertrauenswürdigkeitssignale
+- Verwandte Dokumente entdecken
 
-Indexing can start:
-- On schedule (daily, hourly, etc.)
-- On demand (manual admin trigger)
-- Via webhook (source system pings OPAA)
-- On document change (streaming if supported)
-- On user upload (immediate processing when user uploads a file)
+### Semantisches Caching
 
----
+Häufig gestellte Fragen werden zwischengespeichert:
+- Die gleiche Frage innerhalb von N Stunden gibt die zwischengespeicherte Antwort zurück
+- Cache ist sich Dokumentenaktualisierungen bewusst (Invalidierung bei Quellenänderung)
+- Reduziert Embedding- & LLM-Aufrufe
+- Benutzer kann eine frische Antwort erzwingen
 
-## Permissions & Multi-Tenancy
+### Dokumentenablauf & Archivierung
 
-### Workspace-Based Permissions
-
-Every indexed document belongs to exactly one **home workspace** (determined by the connector's source mapping or the upload target). Permissions are enforced at the workspace level:
-
-- Users can only find documents in workspaces they are members of
-- The workspace filter is integrated into the vector search (not a post-filter)
-- Search results never leak across workspaces
-
-### Cross-Workspace Sharing (Future Feature)
-
-Cross-workspace document sharing is planned as a future feature. When implemented, shared documents' chunks would gain additional `workspace_ids` entries, making them searchable in multiple workspaces without duplication. See [Document Sharing](./document-sharing.md) for the current concept and open questions.
-
-### User-Uploaded Document Permissions
-
-Documents uploaded by users follow a specific permission model:
-- **Default:** Private to the uploading user (in their personal workspace)
-- **Direct upload to team workspace:** Users with Editor role can upload directly to a team workspace — the document's home workspace is then the team workspace (see [Access Control — Upload to Team Workspace](./access-control-workspaces.md#upload-directly-to-team-workspace))
-- **Owner:** The uploading user is always the document owner
-- **Upload quotas:** Configurable per user with a global default
-- **Cross-workspace sharing:** Planned as a future feature — see [Document Sharing](./document-sharing.md)
-
-### Connector Document Permissions
-
-Connector-indexed documents inherit their workspace(s) from the source mapping:
-- Each source sub-unit (e.g., Confluence space) can be mapped to one or more workspaces
-- All documents from that source are indexed into all mapped workspaces
-- Workspace Admins can exclude individual documents from the index (see [Access Control — Exclude Mechanism](./access-control-workspaces.md#exclude-mechanism-for-connector-documents))
-
-### Duplicate Detection
-
-When a user uploads a document, OPAA performs a similarity check against existing documents the user has access to. If similar documents are found, the user is notified before the upload completes — helping prevent duplicate indexing (e.g., two users uploading the same meeting notes).
+Dokumente können markiert werden als:
+- **Aktiv:** In Suchen eingeschlossen
+- **Archiviert:** Durchsuchbar, aber als älter gekennzeichnet
+- **Abgelaufen:** Aus Suchen entfernt (aber für Prüfzwecke behalten)
+- **Sensibel:** Durch Berechtigungen eingeschränkt
 
 ---
 
-## Performance & Scalability
+## Indizierungsstatus & Überwachung
 
-### Indexing Performance
+### Admin-Sichtbarkeit
 
-- **Small organization (100 documents):** 5-10 minutes
-- **Mid-size (10,000 documents):** 30-60 minutes
-- **Large (100,000+ documents):** Parallel processing, as needed
+Admins können einsehen:
+- Welche Quellen aktiv sind, wann zuletzt indiziert wurde
+- Gesamtanzahl der Dokumente in jeder Quelle
+- Fehlgeschlagene Dokumente und Fehlerprotokolle
+- Status der Indizierungswarteschlange
+- Ressourcennutzung (CPU, Speicher, Festplatte)
 
-### Query Performance
+### Indizierungswarnungen
 
-- **Vector search (incl. workspace filter):** < 500ms for typical queries
-- **Re-ranking:** + 50-100ms
-- **Total retrieval time:** < 1 second
+Das System warnt Admins bei:
+- Verbindungsfehlern zur Quelle (3 fehlgeschlagene Versuche)
+- Großer Anzahl von Verarbeitungsfehlern (> 10% der Dokumente)
+- Längerer Indizierung als erwartet (> 2 Stunden)
+- Nahezu vollständiger Vektordatenbank-Speicher
 
-Note: Permission filtering is integrated into the vector search via metadata filter on `workspace_ids` and does not add a separate processing step.
+### Indizierungsauslöser
 
-### Scalability
-
-System scales to:
-- Millions of documents (via horizontal scaling)
-- Thousands of concurrent users (via distributed vector DB)
-- Multiple data sources simultaneously
-- Large chunks or small chunks (configurable)
-
----
-
-## Integration Points
-
-- **User Frontends:** Provide retrieved documents and answers
-- **LLM Integration:** Feed retrieved documents to LLM
-- **Access Control:** Enforce workspace/document permissions
-- **Deployment Infrastructure:** Storage configuration, resource allocation
+Indizierung kann starten:
+- Nach Zeitplan (täglich, stündlich usw.)
+- Auf Abruf (manueller Admin-Auslöser)
+- Per Webhook (Quellsystem benachrichtigt OPAA)
+- Bei Dokumentänderung (Streaming, sofern unterstützt)
+- Bei Benutzer-Upload (sofortige Verarbeitung, wenn ein Benutzer eine Datei hochlädt)
 
 ---
 
-## Resolved Questions
+## Berechtigungen & Multi-Tenancy
 
-- **Storage quotas:** Yes, for manual uploads. Upload limit is configurable per user with a global default.
-- **Document versioning:** Yes, ideally. Additionally, similar documents visible to the user are shown during upload to detect duplicates (see [Duplicate Detection](#duplicate-detection) above).
+### Workspace-basierte Berechtigungen
+
+Jedes indizierte Dokument gehört genau einem **Heimat-Workspace** (bestimmt durch die Quellzuordnung des Konnektors oder das Upload-Ziel). Berechtigungen werden auf Workspace-Ebene durchgesetzt:
+
+- Benutzer können nur Dokumente in Workspaces finden, in denen sie Mitglied sind
+- Der Workspace-Filter ist in die Vektorsuche integriert (kein Nachfilter)
+- Suchergebnisse lecken niemals workspace-übergreifend
+
+### Workspace-übergreifendes Teilen (Zukünftiges Feature)
+
+Workspace-übergreifendes Dokumentteilen ist als zukünftiges Feature geplant. Bei der Implementierung würden Chunks geteilter Dokumente zusätzliche `workspace_ids`-Einträge erhalten, wodurch sie in mehreren Workspaces durchsuchbar werden, ohne Duplikate zu erstellen. Aktuelle Konzepte und offene Fragen sind in [Dokument-Teilen](./document-sharing.md) beschrieben.
+
+### Berechtigungen für Benutzer-hochgeladene Dokumente
+
+Von Benutzern hochgeladene Dokumente folgen einem spezifischen Berechtigungsmodell:
+- **Standard:** Privat für den hochladenden Benutzer (in seinem persönlichen Workspace)
+- **Direkter Upload in Team-Workspace:** Benutzer mit Editor-Rolle können direkt in einen Team-Workspace hochladen — der Heimat-Workspace des Dokuments ist dann der Team-Workspace (siehe [Zugangskontrolle — Direkt in Team-Workspace hochladen](./access-control-workspaces.md#upload-directly-to-team-workspace))
+- **Owner:** Der hochladende Benutzer ist immer der Dokument-Owner
+- **Upload-Kontingente:** Pro Benutzer konfigurierbar mit einem globalen Standard
+- **Workspace-übergreifendes Teilen:** Als zukünftiges Feature geplant — siehe [Dokument-Teilen](./document-sharing.md)
+
+### Berechtigungen für Konnektor-Dokumente
+
+Konnektor-indizierte Dokumente erben ihre Workspace(s) aus der Quellzuordnung:
+- Jede Quell-Untereinheit (z. B. Confluence-Space) kann einem oder mehreren Workspaces zugeordnet werden
+- Alle Dokumente aus dieser Quelle werden in alle zugeordneten Workspaces indiziert
+- Workspace-Admins können einzelne Dokumente aus dem Index ausschließen (siehe [Zugangskontrolle — Ausschluss-Mechanismus](./access-control-workspaces.md#exclude-mechanism-for-connector-documents))
+
+### Duplikaterkennung
+
+Wenn ein Benutzer ein Dokument hochlädt, führt OPAA eine Ähnlichkeitsprüfung gegen bestehende Dokumente durch, auf die der Benutzer Zugriff hat. Werden ähnliche Dokumente gefunden, wird der Benutzer vor Abschluss des Uploads benachrichtigt — dies hilft, doppelte Indizierung zu vermeiden (z. B. zwei Benutzer laden dieselben Besprechungsnotizen hoch).
 
 ---
 
-## Open Questions / Future Enhancements
+## Performance & Skalierbarkeit
 
-- Should we support real-time indexing (as documents change) vs. scheduled batch?
-- Should re-ranking use a learned model or simple scoring?
-- Should we support document clustering (for discovering related docs automatically)?
-- Should we offer semantic deduplication (remove redundant documents automatically)? *(Note: basic source-reference deduplication by file name is already implemented — see Issue #42)*
-- How to handle very large documents (100K+ pages)?
-- Should we support hybrid retrieval (vector + keyword search together)?
-- Should we support bulk import from a user's local drive?
+### Indizierungs-Performance
+
+- **Kleine Organisation (100 Dokumente):** 5–10 Minuten
+- **Mittelgroß (10.000 Dokumente):** 30–60 Minuten
+- **Groß (100.000+ Dokumente):** Parallele Verarbeitung, nach Bedarf
+
+### Abfrage-Performance
+
+- **Vektorsuche (inkl. Workspace-Filter):** < 500 ms für typische Abfragen
+- **Re-Ranking:** + 50–100 ms
+- **Gesamte Retrieval-Zeit:** < 1 Sekunde
+
+Hinweis: Die Berechtigungsfilterung ist über den Metadatenfilter auf `workspace_ids` in die Vektorsuche integriert und fügt keinen separaten Verarbeitungsschritt hinzu.
+
+### Skalierbarkeit
+
+Das System skaliert auf:
+- Millionen von Dokumenten (über horizontale Skalierung)
+- Tausende gleichzeitiger Benutzer (über verteilte Vektordatenbank)
+- Mehrere Datenquellen gleichzeitig
+- Große oder kleine Chunks (konfigurierbar)
 
 ---
 
-## Success Metrics
+## Integrationspunkte
 
-- **Indexing Completeness:** % of source documents successfully indexed
-- **Retrieval Latency:** P95 search time < 500ms
-- **Relevance:** % of retrieved documents actually used in final answer
-- **Coverage:** Average # of relevant documents returned per query
-- **Freshness:** Median time between document change and re-indexing
+- **Benutzer-Frontends:** Abgerufene Dokumente und Antworten bereitstellen
+- **LLM-Integration:** Abgerufene Dokumente an LLM weitergeben
+- **Zugangskontrolle:** Workspace-/Dokumentenberechtigungen durchsetzen
+- **Deployment-Infrastruktur:** Speicherkonfiguration, Ressourcenzuweisung
+
+---
+
+## Geklärte Fragen
+
+- **Speicherkontingente:** Ja, für manuelle Uploads. Upload-Limit ist pro Benutzer mit einem globalen Standard konfigurierbar.
+- **Dokumentenversionierung:** Ja, idealerweise. Zusätzlich werden ähnliche Dokumente, die für den Benutzer sichtbar sind, beim Upload angezeigt, um Duplikate zu erkennen (siehe [Duplikaterkennung](#duplikaterkennung) oben).
+
+---
+
+## Offene Fragen / Zukünftige Erweiterungen
+
+- Sollen wir Echtzeit-Indizierung (bei Dokumentenänderungen) vs. geplante Batch-Verarbeitung unterstützen?
+- Soll Re-Ranking ein gelerntes Modell oder einfache Bewertung verwenden?
+- Sollen wir Dokument-Clustering unterstützen (um verwandte Dokumente automatisch zu entdecken)?
+- Sollen wir semantische Deduplizierung anbieten (redundante Dokumente automatisch entfernen)? *(Hinweis: grundlegende Quellenreferenz-Deduplizierung nach Dateiname ist bereits implementiert — siehe Issue #42)*
+- Wie sollen sehr große Dokumente (100.000+ Seiten) behandelt werden?
+- Sollen wir hybrides Retrieval unterstützen (Vektor- + Keyword-Suche kombiniert)?
+- Sollen wir Massen-Import von einem lokalen Laufwerk des Benutzers unterstützen?
+
+---
+
+## Erfolgs-Metriken
+
+- **Indizierungsvollständigkeit:** % der Quelldokumente erfolgreich indiziert
+- **Retrieval-Latenz:** P95-Suchzeit < 500 ms
+- **Relevanz:** % der abgerufenen Dokumente, die tatsächlich in der endgültigen Antwort verwendet wurden
+- **Abdeckung:** Durchschnittliche Anzahl relevanter Dokumente pro Abfrage
+- **Aktualität:** Medianzeit zwischen Dokumentänderung und Neuindizierung

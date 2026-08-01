@@ -1,207 +1,207 @@
-# User Frontends
+# Benutzer-Frontends
 
 ## Motivation
 
-Users interact with OPAA through different channels based on their workflow and preference. A developer might prefer a command-line or IDE integration, while an executive might use a web dashboard. Support teams might want integration with their chat platform (Mattermost), while data analysts might prefer REST API access.
+Benutzer interagieren mit OPAA über verschiedene Kanäle, je nach Workflow und Präferenz. Ein Entwickler bevorzugt möglicherweise eine Kommandozeilen- oder IDE-Integration, während eine Führungskraft ein Web-Dashboard nutzt. Support-Teams möchten möglicherweise Integration mit ihrer Chat-Plattform (Mattermost), während Datenanalysten den REST-API-Zugang bevorzugen.
 
-This feature ensures OPAA is accessible wherever users are already working, reducing friction and increasing adoption.
-
----
-
-## Overview
-
-OPAA provides three primary interface categories:
-
-1. **Web Interface** — Browser-based chat and document browser
-2. **Chat Platform Integrations** — Mattermost, RocketChat, Signal, Slack-compatible
-3. **REST API** — Programmatic access for custom integrations
-
-All interfaces share:
-- Unified authentication (SSO, token-based)
-- Common permission model
-- Consistent response format
-- Source document attribution
-- Document upload capability (files processed and indexed)
+Dieses Feature stellt sicher, dass OPAA dort zugänglich ist, wo Benutzer bereits arbeiten, was Reibung reduziert und die Akzeptanz erhöht.
 
 ---
 
-## Web Interface
+## Überblick
 
-### User Experience
+OPAA bietet drei primäre Schnittstellenkategorien:
 
-The web interface is a browser-based chat application with document browsing capabilities.
+1. **Web-Schnittstelle** — Browserbasierter Chat und Dokument-Browser
+2. **Chat-Plattform-Integrationen** — Mattermost, RocketChat, Signal, Slack-kompatibel
+3. **REST-API** — Programmatischer Zugang für benutzerdefinierte Integrationen
 
-**Core Screens:**
-- **Chat Screen:** Ask questions, see responses with sources
-- **Document Browser:** Search and browse indexed documents
-- **My Documents:** Personal workspace with upload, manage, and share functionality
-- **History:** View past conversations and searches
-- **Settings:** Manage user preferences, API tokens
+Alle Schnittstellen teilen:
+- Einheitliche Authentifizierung (SSO, Token-basiert)
+- Gemeinsames Berechtigungsmodell
+- Konsistentes Antwortformat
+- Quelldokument-Angabe
+- Dokument-Upload-Fähigkeit (Dateien verarbeitet und indiziert)
+
+---
+
+## Web-Schnittstelle
+
+### Benutzererfahrung
+
+Die Web-Schnittstelle ist eine browserbasierte Chat-Anwendung mit Dokument-Browse-Fähigkeiten.
+
+**Kern-Screens:**
+- **Chat-Screen:** Fragen stellen, Antworten mit Quellen sehen
+- **Dokument-Browser:** Indizierte Dokumente suchen und durchsuchen
+- **Meine Dokumente:** Persönlicher Workspace mit Upload-, Verwaltungs- und Teilungsfunktionen
+- **Verlauf:** Vergangene Gespräche und Suchen anzeigen
+- **Einstellungen:** Benutzerpräferenzen, API-Tokens verwalten
 
 ### Features
 
-#### Asking Questions
-Users type a natural language question. The system responds with:
-- A generated answer
-- List of source documents (with links)
-- Confidence score
-- Option to regenerate answer with different parameters
-- Ability to drill down into source documents
+#### Fragen stellen
+Benutzer geben eine natürlichsprachige Frage ein. Das System antwortet mit:
+- Einer generierten Antwort
+- Liste der Quelldokumente (mit Links)
+- Konfidenz-Score
+- Option, Antwort mit anderen Parametern neu zu generieren
+- Möglichkeit, in Quelldokumenten zu vertiefen
 
-**Example Interaction:**
+**Beispiel-Interaktion:**
 ```
-User: "What's our policy on remote work?"
+Benutzer: "Was ist unsere Richtlinie zur Remote-Arbeit?"
 
-OPAA Response:
-"Based on our HR policies, remote work is available
-3 days per week with manager approval. See:
-- HR Handbook (section 4.2)
-- Remote Work Policy 2024
-- Manager Approval Process"
+OPAA-Antwort:
+"Laut unseren HR-Richtlinien ist Remote-Arbeit an 3 Tagen
+pro Woche mit Genehmigung des Vorgesetzten möglich. Siehe:
+- HR-Handbuch (Abschnitt 4.2)
+- Remote-Arbeit-Richtlinie 2024
+- Vorgesetztengenehmigungsprozess"
 ```
 
-#### Document Browsing
-- Search across all indexed documents
-- Preview documents inline
-- Download full documents
-- View when document was last indexed
-- See indexing status (pending, indexed, failed)
+#### Dokument-Browser
+- Alle indizierten Dokumente durchsuchen
+- Dokumente inline in der Vorschau anzeigen
+- Vollständige Dokumente herunterladen
+- Anzeigen, wann das Dokument zuletzt indiziert wurde
+- Indizierungsstatus anzeigen (ausstehend, indiziert, fehlgeschlagen)
 
-#### Conversation Management
-- Save conversations to workspace
-- Share conversation links with colleagues
-- Export conversation as PDF or Markdown
-- Clear chat history
+#### Gesprächsverwaltung
+- Gespräche im Workspace speichern
+- Gesprächs-Links mit Kollegen teilen
+- Gespräch als PDF oder Markdown exportieren
+- Chathistorie löschen
 
-#### Search Filters
-- Filter by document type (Confluence page, Email, PDF)
-- Filter by date indexed
-- Filter by workspace/project
-- Filter by confidence score
+#### Suchfilter
+- Nach Dokumenttyp filtern (Confluence-Seite, E-Mail, PDF)
+- Nach Indizierungsdatum filtern
+- Nach Workspace/Projekt filtern
+- Nach Konfidenz-Score filtern
 
-#### Document Upload
-- Drag-and-drop file upload area in the personal workspace view
-- Multi-file upload support (batch)
-- Upload progress indicator with file validation feedback
-- Supported format detection and file size validation
-- Post-upload: document appears in "My Documents" within seconds
-- Indexing status shown (processing, indexed, failed)
-- Quick-share action: select target workspace(s) directly after upload
+#### Dokument-Upload
+- Drag-and-Drop-Datei-Upload-Bereich in der persönlichen Workspace-Ansicht
+- Multi-Datei-Upload-Unterstützung (Batch)
+- Upload-Fortschrittsanzeige mit Dateivalidierungs-Feedback
+- Unterstütztes Format-Erkennung und Dateigröße-Validierung
+- Nach dem Upload: Dokument erscheint in "Meine Dokumente" innerhalb von Sekunden
+- Indizierungsstatus angezeigt (verarbeitung, indiziert, fehlgeschlagen)
+- Schnell-Teilen-Aktion: Ziel-Workspace(s) direkt nach dem Upload auswählen
 
-#### Document Management (My Documents)
-- List view of all personally uploaded documents
-- Sort by date, name, size, or indexing status
-- Delete uploaded documents
-- View which workspaces a document is shared to
-- Share/unshare documents to team workspaces
-- Re-upload (new version) of an existing document
+#### Dokumentenverwaltung (Meine Dokumente)
+- Listenansicht aller persönlich hochgeladenen Dokumente
+- Sortieren nach Datum, Name, Größe oder Indizierungsstatus
+- Hochgeladene Dokumente löschen
+- Anzeigen, mit welchen Workspaces ein Dokument geteilt ist
+- Dokumente mit Team-Workspaces teilen/entteilen
+- Erneutes Hochladen (neue Version) eines vorhandenen Dokuments
 
-### Configuration
+### Konfiguration
 
-Administrators can customize:
-- UI theme (light/dark mode)
-- Custom branding (logo, colors)
-- Conversation retention policy
-- Whether to log queries
-- API documentation display
+Administratoren können anpassen:
+- UI-Thema (Hell-/Dunkelmodus)
+- Benutzerdefiniertes Branding (Logo, Farben)
+- Gesprächs-Aufbewahrungsrichtlinie
+- Ob Abfragen geloggt werden sollen
+- API-Dokumentationsanzeige
 
 ---
 
-## Chat Platform Integrations
+## Chat-Plattform-Integrationen
 
-### Supported Platforms
+### Unterstützte Plattformen
 
-OPAA provides native plugins for:
-- **Mattermost** — Self-hosted team communication
-- **Slack** — Widely-used team messaging platform
-- **Telegram** — Cloud-based messaging with bot API
-- **RocketChat** — Open-source chat platform
-- **Signal** — Secure messaging (via bot API)
-- **WhatsApp** — Business messaging (via WhatsApp Business API)
-- **Custom Chat Bots** — Via REST API (for proprietary systems)
+OPAA bietet native Plugins für:
+- **Mattermost** — Selbst gehostete Team-Kommunikation
+- **Slack** — Weit verbreitete Team-Messaging-Plattform
+- **Telegram** — Cloud-basiertes Messaging mit Bot-API
+- **RocketChat** — Open-Source-Chat-Plattform
+- **Signal** — Sicheres Messaging (über Bot-API)
+- **WhatsApp** — Business-Messaging (über WhatsApp Business API)
+- **Benutzerdefinierte Chat-Bots** — Über REST-API (für proprietäre Systeme)
 
-### User Interaction Pattern
+### Benutzer-Interaktionsmuster
 
-Users mention the bot and ask a question:
+Benutzer erwähnen den Bot und stellen eine Frage:
 
 ```
-@opaa-bot What's our approval process for new tools?
+@opaa-bot Was ist unser Genehmigungsprozess für neue Tools?
 
-OPAA Response:
-"Based on our policies: All new tools must go through
-security review. See: Tool Approval Process (updated Jan 2024)"
+OPAA-Antwort:
+"Laut unseren Richtlinien: Alle neuen Tools müssen durch
+Sicherheits-Review. Siehe: Tool-Genehmigungsprozess (aktualisiert Jan 2024)"
 ```
 
 ### Features
 
-#### Conversational Mode
-- Follow-up questions in same thread
-- Multi-turn conversations
-- Context awareness (remembers previous questions)
-- Ability to regenerate last answer
+#### Gesprächsmodus
+- Folgefragen im selben Thread
+- Multi-Turn-Gespräche
+- Kontextbewusstsein (erinnert sich an vorherige Fragen)
+- Möglichkeit, letzte Antwort neu zu generieren
 
-#### Rich Message Formatting
-- Markdown support
-- Links to source documents (with preview cards when possible)
-- Inline document snippets
-- Code block support (for technical documentation)
+#### Rich-Message-Formatierung
+- Markdown-Unterstützung
+- Links zu Quelldokumenten (mit Vorschauen wenn möglich)
+- Eingebettete Dokumenten-Ausschnitte
+- Code-Block-Unterstützung (für technische Dokumentation)
 
-#### Slash Commands
+#### Slash-Befehle
 ```
-/opaa ask <question>        — Ask a question
-/opaa search <term>         — Full-text search
-/opaa upload <attachment>   — Upload attached file to My Documents
-/opaa share <doc> <workspace> — Share a document to a workspace
-/opaa my-docs              — List recent uploads in My Documents
-/opaa config               — Show workspace settings
-/opaa feedback <message>   — Rate last answer
-/opaa sources             — Show source documents from last answer
+/opaa ask <frage>           — Frage stellen
+/opaa search <suchbegriff>  — Volltextsuche
+/opaa upload <anhang>       — Angehängte Datei in Meine Dokumente hochladen
+/opaa share <dok> <workspace> — Dokument mit Workspace teilen
+/opaa my-docs               — Aktuelle Uploads in Meine Dokumente auflisten
+/opaa config                — Workspace-Einstellungen anzeigen
+/opaa feedback <nachricht>  — Letzte Antwort bewerten
+/opaa sources               — Quelldokumente der letzten Antwort anzeigen
 ```
 
-#### Reactions & Feedback
-Users can react with 👍 or 👎 to answers. The system:
-- Tracks answer quality
-- Enables model improvement over time
-- Alerts admins to potentially bad answers
+#### Reaktionen & Feedback
+Benutzer können auf Antworten mit Daumen hoch oder runter reagieren. Das System:
+- Verfolgt Antwortqualität
+- Ermöglicht Modellverbesserung im Laufe der Zeit
+- Benachrichtigt Admins über möglicherweise schlechte Antworten
 
-#### File Upload via Chat
-- Users attach a file to a message mentioning the bot
-- Bot acknowledges receipt and begins processing
-- Notification when indexing is complete
-- File is stored in user's personal workspace by default
-- User can specify target workspace: "@opaa-bot upload to Engineering"
+#### Datei-Upload über Chat
+- Benutzer hängt eine Datei an eine Nachricht an, die den Bot erwähnt
+- Bot bestätigt Empfang und beginnt Verarbeitung
+- Benachrichtigung, wenn Indizierung abgeschlossen ist
+- Datei wird standardmäßig im persönlichen Workspace des Benutzers gespeichert
+- Benutzer kann Ziel-Workspace angeben: "@opaa-bot in Engineering hochladen"
 
-#### Message Threading
-All conversations happen in a single thread:
-- Original question
-- OPAA's response
-- Follow-up clarifications
-- Feedback reactions
+#### Nachrichten-Threading
+Alle Gespräche finden in einem einzigen Thread statt:
+- Ursprüngliche Frage
+- OPAAs Antwort
+- Klärende Folgefragen
+- Feedback-Reaktionen
 
-### Configuration
+### Konfiguration
 
-Administrators set up:
-- Bot authentication (token, webhook URL)
-- Which channels can access OPAA
-- Workspace mapping (Mattermost team → OPAA workspace)
-- Response format (concise vs. detailed)
-- Which Mattermost teams see which documents
+Administratoren richten ein:
+- Bot-Authentifizierung (Token, Webhook-URL)
+- Welche Kanäle auf OPAA zugreifen können
+- Workspace-Mapping (Mattermost-Team → OPAA-Workspace)
+- Antwortformat (knapp vs. detailliert)
+- Welche Mattermost-Teams welche Dokumente sehen
 
 ---
 
-## REST API
+## REST-API
 
-### Purpose
+### Zweck
 
-For developers, OPAA exposes a REST API for:
-- Custom frontend development
-- Integration with existing tools (Zapier, IFTTT, etc.)
-- Programmatic batch queries
-- Building specialized interfaces
+Für Entwickler stellt OPAA eine REST-API bereit für:
+- Benutzerdefinierte Frontend-Entwicklung
+- Integration mit vorhandenen Tools (Zapier, IFTTT, usw.)
+- Programmatische Batch-Abfragen
+- Aufbau spezialisierter Schnittstellen
 
-### Core Endpoints
+### Kern-Endpunkte
 
-#### Ask a Question
+#### Frage stellen
 ```
 POST /api/v1/ask
 {
@@ -212,7 +212,7 @@ POST /api/v1/ask
   "model_config": { "temperature": 0.7 }
 }
 
-Response:
+Antwort:
 {
   "answer": "string",
   "sources": [
@@ -232,39 +232,39 @@ Response:
 }
 ```
 
-#### Search Documents
+#### Dokumente suchen
 ```
-GET /api/v1/search?q=<query>&type=<filter>&limit=20
+GET /api/v1/search?q=<abfrage>&type=<filter>&limit=20
 
-Returns list of documents matching query with:
-- Document metadata
-- Preview/excerpt
-- Last indexed timestamp
+Gibt Liste von Dokumenten zurück, die der Abfrage entsprechen mit:
+- Dokument-Metadaten
+- Vorschau/Auszug
+- Zeitstempel der letzten Indizierung
 ```
 
-#### Get Document Details
+#### Dokumentdetails abrufen
 ```
 GET /api/v1/documents/<id>
 
-Returns:
-- Full document content (or chunked view)
-- Metadata
-- Related documents
-- Download links
+Gibt zurück:
+- Vollständiger Dokumentinhalt (oder Chunk-Ansicht)
+- Metadaten
+- Verwandte Dokumente
+- Download-Links
 ```
 
-#### Upload Document
+#### Dokument hochladen
 ```
 POST /api/v1/documents/upload
 Content-Type: multipart/form-data
 
-Fields:
+Felder:
   file: <binary>
-  workspace: "string (optional, defaults to personal workspace)"
+  workspace: "string (optional, Standard: persönlicher Workspace)"
   tags: ["string"] (optional)
   description: "string" (optional)
 
-Response:
+Antwort:
 {
   "document_id": "upload-456",
   "filename": "design-review.pdf",
@@ -275,7 +275,7 @@ Response:
 }
 ```
 
-#### Share Document to Workspace
+#### Dokument mit Workspace teilen
 ```
 POST /api/v1/documents/{id}/share
 {
@@ -283,7 +283,7 @@ POST /api/v1/documents/{id}/share
   "action": "share"
 }
 
-Response:
+Antwort:
 {
   "document_id": "upload-456",
   "shared_to": ["workspace-eng", "workspace-arch"],
@@ -291,7 +291,7 @@ Response:
 }
 ```
 
-#### Unshare Document from Workspace
+#### Teilen mit Workspace aufheben
 ```
 POST /api/v1/documents/{id}/share
 {
@@ -299,7 +299,7 @@ POST /api/v1/documents/{id}/share
   "action": "unshare"
 }
 
-Response:
+Antwort:
 {
   "document_id": "upload-456",
   "shared_to": ["workspace-arch"],
@@ -307,11 +307,11 @@ Response:
 }
 ```
 
-#### List User's Uploaded Documents
+#### Eigene hochgeladene Dokumente auflisten
 ```
 GET /api/v1/documents/my-uploads?status=indexed&limit=20
 
-Response:
+Antwort:
 {
   "documents": [
     {
@@ -338,136 +338,136 @@ POST /api/v1/feedback
 ```
 
 #### Rate Limiting
-- Standard tier: 100 requests/minute
-- Premium tier: 1000 requests/minute
-- Batch processing: 10,000 requests/day
+- Standardstufe: 100 Anfragen/Minute
+- Premium-Stufe: 1.000 Anfragen/Minute
+- Batch-Verarbeitung: 10.000 Anfragen/Tag
 
-### Authentication
+### Authentifizierung
 
-All API requests require authentication:
-- **Token-based:** Bearer token in Authorization header
-- **OAuth 2.0:** For web applications
-- **Service Accounts:** For server-to-server integration
+Alle API-Anfragen erfordern Authentifizierung:
+- **Token-basiert:** Bearer-Token im Authorization-Header
+- **OAuth 2.0:** Für Web-Anwendungen
+- **Service-Accounts:** Für Server-zu-Server-Integration
 
-Example:
+Beispiel:
 ```
 Authorization: Bearer opaa_token_abcd1234efgh5678
 ```
 
-### Use Cases
+### Anwendungsfälle
 
-**Custom Chat Interface for Domain-Specific Audience**
-A customer support portal embeds OPAA API to let customers search your knowledge base without accessing internal docs.
+**Benutzerdefinierte Chat-Schnittstelle für domänenspezifische Zielgruppe**
+Ein Kundensupport-Portal bettet die OPAA-API ein, um Kunden das Durchsuchen Ihrer Wissensbasis zu ermöglichen, ohne auf interne Dokumente zuzugreifen.
 
-**Batch Processing**
-A data team runs daily queries to generate reports:
+**Batch-Verarbeitung**
+Ein Datenteam führt täglich Abfragen aus, um Berichte zu erstellen:
 ```
 POST /api/v1/batch
 [
-  { "question": "How many new features shipped last quarter?" },
-  { "question": "What were the top 3 bug reports?" }
+  { "question": "Wie viele neue Features wurden letztes Quartal veröffentlicht?" },
+  { "question": "Was waren die Top-3-Bug-Reports?" }
 ]
 ```
 
-**Third-Party Integration**
-Zapier integration: "When a support ticket is created, ask OPAA for relevant answers and attach to ticket."
+**Drittanbieter-Integration**
+Zapier-Integration: "Wenn ein Support-Ticket erstellt wird, OPAA nach relevanten Antworten fragen und an das Ticket anhängen."
 
 ---
 
-## Cross-Frontend Features
+## Schnittstellen-übergreifende Features
 
-### Unified Authentication
+### Einheitliche Authentifizierung
 
-All frontends use the same authentication:
-- Single Sign-On (SSO) support (OIDC, SAML)
-- Token-based authentication
-- Session management
-- API key management
+Alle Frontends verwenden dieselbe Authentifizierung:
+- Single Sign-On (SSO)-Unterstützung (OIDC, SAML)
+- Token-basierte Authentifizierung
+- Session-Verwaltung
+- API-Schlüssel-Verwaltung
 
-### Common Permissions Model
+### Gemeinsames Berechtigungsmodell
 
-Regardless of frontend:
-- Users can only see documents in their workspace
-- Document-level permissions respected
-- API tokens inherit user permissions
-- Audit logs track all access
+Unabhängig vom Frontend:
+- Benutzer können nur Dokumente in ihrem Workspace sehen
+- Berechtigungen auf Dokumentenebene respektiert
+- API-Tokens erben Benutzerberechtigungen
+- Audit-Logs verfolgen alle Zugriffe
 
-### Response Format Consistency
+### Konsistenz des Antwortformats
 
-Every response includes:
-- The actual answer/data
-- Source documents with links
-- Metadata (confidence, retrieval time, model used)
-- Suggestion for next steps (related questions, documents)
+Jede Antwort enthält:
+- Die eigentliche Antwort/Daten
+- Quelldokumente mit Links
+- Metadaten (Konfidenz, Abrufzeit, verwendetes Modell)
+- Vorschlag für nächste Schritte (verwandte Fragen, Dokumente)
 
-### Search Behavior
+### Suchverhalten
 
-Across all interfaces:
-- Semantic search (not just keyword matching)
-- Re-ranking by relevance
-- Confidence scores displayed
-- Option to filter by document type, date, source
-
----
-
-## Design Considerations
-
-### Accessibility
-- WCAG 2.1 AA compliance for web interface
-- Keyboard navigation support
-- Screen reader compatibility
-- Chat commands for users who prefer command-line style
-
-### Performance
-- Web chat loads in < 2 seconds
-- Answers streamed to user (not waiting for full generation)
-- Search results returned in < 500ms
-- API responses in < 1 second for typical queries
-
-### Limitations & Edge Cases
-
-**What if a question has no relevant sources?**
-- System returns confidence score of 0
-- User is explicitly told "I couldn't find relevant information"
-- System suggests refining the question
-- Option to browse all documents as fallback
-
-**What if multiple documents have conflicting information?**
-- System shows all relevant sources and lets user decide
-- Highlights conflicting sections
-- Provides score for each source's relevance
-
-**What about very long documents?**
-- System shows excerpt, not full text
-- User can download full document
-- Chunking strategy explained to user (transparency)
+Über alle Schnittstellen:
+- Semantische Suche (nicht nur Schlüsselwort-Matching)
+- Re-Ranking nach Relevanz
+- Konfidenz-Scores angezeigt
+- Option zum Filtern nach Dokumenttyp, Datum, Quelle
 
 ---
 
-## Integration Points
+## Design-Überlegungen
 
-- **Authentication:** Integrates with organizational SSO
-- **User Directory:** Syncs with LDAP/Active Directory for user/role management
-- **Analytics:** Exports interaction data to business intelligence tools
-- **Logging:** Sends query logs to SIEM systems
-- **Document Sources:** Pulls documents from Data Indexing pipeline
+### Barrierefreiheit
+- WCAG-2.1-AA-Compliance für Web-Schnittstelle
+- Tastaturnavigation-Unterstützung
+- Screenreader-Kompatibilität
+- Chat-Befehle für Benutzer, die Kommandozeilen-Stil bevorzugen
+
+### Leistung
+- Web-Chat lädt in < 2 Sekunden
+- Antworten werden an den Benutzer gestreamt (nicht auf vollständige Generierung warten)
+- Suchergebnisse in < 500 ms zurückgegeben
+- API-Antworten in < 1 Sekunde für typische Abfragen
+
+### Einschränkungen & Sonderfälle
+
+**Was wenn eine Frage keine relevanten Quellen hat?**
+- System gibt Konfidenz-Score von 0 zurück
+- Benutzer wird explizit mitgeteilt "Ich konnte keine relevanten Informationen finden"
+- System schlägt vor, die Frage zu verfeinern
+- Option, alle Dokumente als Fallback zu durchsuchen
+
+**Was wenn mehrere Dokumente widersprüchliche Informationen haben?**
+- System zeigt alle relevanten Quellen und lässt Benutzer entscheiden
+- Markiert widersprüchliche Abschnitte
+- Gibt Score für Relevanz jeder Quelle an
+
+**Was mit sehr langen Dokumenten?**
+- System zeigt Auszug, nicht vollständigen Text
+- Benutzer kann vollständiges Dokument herunterladen
+- Chunking-Strategie dem Benutzer erklärt (Transparenz)
 
 ---
 
-## Open Questions / Future Considerations
+## Integrationspunkte
 
-- Should the web interface support voice input?
-- Should mobile apps be built natively or as progressive web app?
-- Should we support SMS/WhatsApp integration for low-bandwidth environments?
-- Should chat integrations support rich interactivity (buttons, forms)?
-- Should there be an IDE plugin (VS Code, IntelliJ)?
+- **Authentifizierung:** Integriert mit organisatorischem SSO
+- **Benutzerverzeichnis:** Synchronisiert mit LDAP/Active Directory für Benutzer-/Rollenverwaltung
+- **Analytics:** Exportiert Interaktionsdaten in Business-Intelligence-Tools
+- **Logging:** Sendet Abfrage-Logs an SIEM-Systeme
+- **Dokumentenquellen:** Zieht Dokumente aus der Daten-Indizierungs-Pipeline
 
 ---
 
-## Success Metrics
+## Offene Fragen / Zukünftige Überlegungen
 
-- **Adoption:** % of organization using OPAA at least weekly
-- **Query Quality:** % of answers rated positive by users
-- **Performance:** P95 response time < 2 seconds
-- **Uptime:** 99.9% availability for web interface
-- **API Usage:** Number of third-party integrations using REST API
+- Sollte die Web-Schnittstelle Spracheingabe unterstützen?
+- Sollten Mobile-Apps nativ oder als Progressive Web App gebaut werden?
+- Sollten wir SMS/WhatsApp-Integration für Umgebungen mit geringer Bandbreite unterstützen?
+- Sollten Chat-Integrationen reiche Interaktivität unterstützen (Buttons, Formulare)?
+- Sollte es ein IDE-Plugin geben (VS Code, IntelliJ)?
+
+---
+
+## Erfolgs-Metriken
+
+- **Akzeptanz:** % der Organisation, die OPAA mindestens wöchentlich nutzt
+- **Abfragequalität:** % der von Benutzern positiv bewerteten Antworten
+- **Leistung:** P95-Antwortzeit < 2 Sekunden
+- **Verfügbarkeit:** 99,9% Verfügbarkeit für Web-Schnittstelle
+- **API-Nutzung:** Anzahl der Drittanbieter-Integrationen, die REST-API nutzen

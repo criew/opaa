@@ -2,76 +2,76 @@
 
 **OPAA — Open Project AI Assistant**
 
-This Contributor License Agreement ("Agreement") documents the rights granted by contributors to the OPAA project. By signing this Agreement, you accept and agree to the following terms for your present and future contributions to OPAA.
+Diese Contributor License Agreement („Vereinbarung") dokumentiert die Rechte, die Beitragende dem OPAA-Projekt einräumen. Mit der Unterzeichnung dieser Vereinbarung akzeptieren und stimmen Sie den folgenden Bedingungen für Ihre gegenwärtigen und zukünftigen Beiträge zu OPAA zu.
 
 ---
 
-## 1. Definitions
+## 1. Definitionen
 
-**"You"** means the individual or legal entity submitting a Contribution.
+**„Sie"** bezeichnet die natürliche oder juristische Person, die einen Beitrag einreicht.
 
-**"Contribution"** means any original work of authorship, including modifications or additions, that you intentionally submit to the project.
+**„Beitrag"** bezeichnet jedes originale Werk der Urheberschaft, einschließlich Änderungen oder Ergänzungen, das Sie dem Projekt absichtlich einreichen.
 
-**"Licensor"** means the copyright owner of OPAA who accepts your Contribution.
-
----
-
-## 2. Grant of Copyright License
-
-You grant the Licensor a **perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable** copyright license to:
-
-- reproduce, prepare derivative works of, publicly display, publicly perform, and distribute your Contributions and any derivative works thereof;
-- **sublicense the above rights under any license terms**, including proprietary commercial licenses.
-
-This sublicensing right is essential to OPAA's dual-licensing model, which allows the project to be offered both under an open-source license and under commercial licenses.
+**„Lizenzgeber"** bezeichnet den Urheberrechtsinhaber von OPAA, der Ihren Beitrag annimmt.
 
 ---
 
-## 3. Grant of Patent License
+## 2. Einräumung einer Urheberrechtslizenz
 
-You grant the Licensor a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer your Contributions, where such license applies to patent claims licensable by you that are necessarily infringed by your Contributions.
+Sie räumen dem Lizenzgeber eine **unbefristete, weltweite, nicht-exklusive, kostenlose, gebührenfreie, unwiderrufliche** Urheberrechtslizenz ein, um:
 
----
+- Ihre Beiträge und daraus abgeleitete Werke zu vervielfältigen, abgeleitete Werke vorzubereiten, öffentlich anzuzeigen, öffentlich aufzuführen und zu vertreiben;
+- **die oben genannten Rechte unter beliebigen Lizenzbedingungen unterzulizenzieren**, einschließlich proprietärer kommerzieller Lizenzen.
 
-## 4. Representations
-
-You represent that:
-
-1. You are legally entitled to grant the above licenses.
-2. Each Contribution is your original creation, or you have sufficient rights to submit it under this Agreement.
-3. Your Contribution does not include third-party material that would restrict the Licensor's ability to sublicense it.
-4. If your employer has rights to intellectual property that you create (including your Contributions), your employer has either waived those rights or signed a Corporate CLA with the Licensor.
-
-You agree to notify the Licensor promptly if any of these representations become inaccurate.
+Dieses Unterlizenzierungsrecht ist wesentlich für OPAAs duales Lizenzmodell, das es ermöglicht, das Projekt sowohl unter einer Open-Source-Lizenz als auch unter kommerziellen Lizenzen anzubieten.
 
 ---
 
-## 5. Corporate Contributors
+## 3. Einräumung einer Patentlizenz
 
-If you are contributing on behalf of a company or organization, **both you and your employer** must agree to this CLA. The authorized representative of your employer must sign by posting the acknowledgment comment below. Individual engineers then do not need to sign separately.
-
----
-
-## 6. No Obligation to Use
-
-This Agreement does not obligate the Licensor to include your Contribution in the project or in any product.
+Sie räumen dem Lizenzgeber eine unbefristete, weltweite, nicht-exklusive, kostenlose, gebührenfreie, unwiderrufliche Patentlizenz ein, um Ihre Beiträge herzustellen, herstellen zu lassen, zu verwenden, zum Verkauf anzubieten, zu verkaufen, zu importieren und anderweitig zu übertragen, sofern diese Lizenz für Patentansprüche gilt, die von Ihnen lizenzierbar sind und die durch Ihre Beiträge notwendigerweise verletzt werden.
 
 ---
 
-## 7. How to Sign
+## 4. Zusicherungen
 
-**Sign electronically** by posting the following comment on your first Pull Request:
+Sie sichern zu, dass:
+
+1. Sie rechtlich berechtigt sind, die oben genannten Lizenzen zu gewähren.
+2. Jeder Beitrag Ihr originales Werk ist oder Sie über ausreichende Rechte verfügen, ihn unter dieser Vereinbarung einzureichen.
+3. Ihr Beitrag kein Material Dritter enthält, das die Fähigkeit des Lizenzgebers, ihn unterzulizenzieren, einschränken würde.
+4. Wenn Ihr Arbeitgeber Rechte an geistigem Eigentum hat, das Sie erschaffen (einschließlich Ihrer Beiträge), Ihr Arbeitgeber diese Rechte entweder aufgegeben hat oder eine Corporate CLA mit dem Lizenzgeber unterzeichnet hat.
+
+Sie verpflichten sich, den Lizenzgeber unverzüglich zu benachrichtigen, falls eine dieser Zusicherungen unzutreffend wird.
+
+---
+
+## 5. Unternehmensbeitragende
+
+Wenn Sie im Namen eines Unternehmens oder einer Organisation beitragen, müssen **sowohl Sie als auch Ihr Arbeitgeber** dieser CLA zustimmen. Der bevollmächtigte Vertreter Ihres Arbeitgebers muss unterzeichnen, indem er den Bestätigungskommentar unten postet. Einzelne Entwickler müssen dann nicht separat unterzeichnen.
+
+---
+
+## 6. Keine Verpflichtung zur Verwendung
+
+Diese Vereinbarung verpflichtet den Lizenzgeber nicht, Ihren Beitrag in das Projekt oder ein Produkt aufzunehmen.
+
+---
+
+## 7. Unterzeichnung
+
+**Elektronisch unterzeichnen** Sie, indem Sie folgenden Kommentar in Ihrem ersten Pull Request posten:
 
 > I have read the CLA Document and I hereby sign the CLA
 
-Your GitHub username and the date of signing are recorded automatically in `signatures/cla.json`.
+Ihr GitHub-Benutzername und das Datum der Unterzeichnung werden automatisch in `signatures/cla.json` erfasst.
 
 ---
 
-## 8. AI Agent Contributions
+## 8. KI-Agenten-Beiträge
 
-If you use an AI coding agent (Claude Code, GitHub Copilot, Cursor, Codex, etc.) to generate or assist with a Contribution, **you** (the human operator) are the contributor and must sign this CLA. The AI agent itself does not sign. By signing, you represent that you have reviewed the AI-generated Contribution and take responsibility for it.
+Wenn Sie einen KI-Coding-Agenten (Claude Code, GitHub Copilot, Cursor, Codex, usw.) verwenden, um einen Beitrag zu erstellen oder dabei zu helfen, sind **Sie** (der menschliche Betreiber) der Beitragende und müssen diese CLA unterzeichnen. Der KI-Agent selbst unterzeichnet nicht. Mit Ihrer Unterzeichnung sichern Sie zu, dass Sie den KI-generierten Beitrag überprüft haben und die Verantwortung dafür übernehmen.
 
 ---
 
-*This Agreement is governed by applicable law. Questions: open an issue or contact the maintainers.*
+*Diese Vereinbarung unterliegt dem anwendbaren Recht. Fragen: Öffnen Sie ein Issue oder kontaktieren Sie die Maintainer.*

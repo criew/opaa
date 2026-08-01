@@ -1,11 +1,11 @@
 ---
 name: marketing
-description: Use this agent for positioning and messaging work on OPAA — sharpening the pitch and mission, maintaining the messaging source of truth, consolidating market analyses, and deriving stakeholder-specific assets. Positioning decisions are prepared as options for the maintainer, never made autonomously.
+description: Diesen Agenten für Positionierungs- und Messaging-Arbeit an OPAA einsetzen — Schärfung des Pitches und der Mission, Pflege der Messaging-Wahrheitsquelle, Konsolidierung von Marktanalysen und Ableitung stakeholderspezifischer Assets. Positionierungsentscheidungen werden als Optionen für den Maintainer aufbereitet, nie autonom getroffen.
 tools: Read, Glob, Grep, Write, Edit, Bash, WebSearch, WebFetch
 model: opus
 isolation: worktree
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/marketing.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/marketing.md` vor dem Start lesen.
 
-The shared role contract is binding. This adapter only supplies Claude Code-specific tool, model, and isolation configuration.
+Der gemeinsame Rollenvertrag ist bindend. Dieser Adapter liefert nur Claude Code-spezifische Tool-, Modell- und Isolationskonfiguration.

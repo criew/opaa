@@ -1,68 +1,68 @@
-# ADR-0005: Authentication Strategy
+# ADR-0005: Authentifizierungsstrategie
 
 ## Status
 
-Accepted
+Akzeptiert
 
-## Context
+## Kontext
 
-OPAA has no authentication. All API endpoints are publicly accessible. Before implementing workspaces and access control (Epic #107), we need to establish user identity. Requirements:
+OPAA hat keine Authentifizierung. Alle API-Endpunkte sind öffentlich zugänglich. Vor der Implementierung von Workspaces und Zugangskontrolle (Epic #107) müssen wir Benutzeridentität etablieren. Anforderungen:
 
-- Stateless architecture (no server-side sessions)
-- OIDC support for enterprise SSO (Keycloak as reference implementation)
-- Simple auth option for PoCs and local development
-- Mock auth mode must continue working without auth
-- User auto-provisioning on first login
-- No role management at this stage
+- Zustandslose Architektur (keine serverseitigen Sessions)
+- OIDC-Unterstützung für Enterprise-SSO (Keycloak als Referenzimplementierung)
+- Einfache Auth-Option für PoCs und lokale Entwicklung
+- Mock-Auth-Modus muss weiterhin ohne Auth funktionieren
+- Automatische Benutzerbereitstellung beim ersten Login
+- Keine Rollenverwaltung in dieser Phase
 
-## Decision
+## Entscheidung
 
-### Three Auth Modes via Spring Profiles
+### Drei Auth-Modi über Spring-Profile
 
-Authentication mode is selected through Spring profiles and the `opaa.auth.mode` property:
+Auth-Modus wird durch Spring-Profile und die `opaa.auth.mode`-Eigenschaft gewählt:
 
-| Auth Mode | Mechanism |
-|-----------|-----------|
-| `mock` | No auth — all requests permitted, no login required |
-| `oidc` | OIDC Resource Server — backend validates JWTs from external OIDC provider (Keycloak, Auth0, etc.) using JWK Set |
-| `basic` | Static credentials — backend validates username/password against config, issues HMAC-signed JWTs |
+| Auth-Modus | Mechanismus |
+|------------|-------------|
+| `mock` | Kein Auth — alle Anfragen erlaubt, kein Login erforderlich |
+| `oidc` | OIDC-Resource-Server — Backend validiert JWTs vom externen OIDC-Anbieter (Keycloak, Auth0, usw.) mittels JWK-Set |
+| `basic` | Statische Anmeldeinformationen — Backend validiert Benutzername/Passwort gegen Konfiguration, gibt HMAC-signierte JWTs aus |
 
-### Stateless JWT Validation
+### Zustandslose JWT-Validierung
 
-Both `oidc` and `basic` profiles use **stateless JWT validation** via Spring Security's OAuth2 Resource Server. The backend never creates HTTP sessions. Every request must carry a valid `Authorization: Bearer <jwt>` header.
+Sowohl `oidc`- als auch `basic`-Profile verwenden **zustandslose JWT-Validierung** über Spring Securitys OAuth2-Resource-Server. Das Backend erstellt niemals HTTP-Sessions. Jede Anfrage muss einen gültigen `Authorization: Bearer <jwt>`-Header tragen.
 
-- **OIDC profile**: JWTs are validated using the provider's JWK Set (asymmetric keys, auto-discovered).
-- **Basic profile**: JWTs are signed and validated with an HMAC secret (symmetric key, configured via `opaa.auth.basic.secret`).
+- **OIDC-Profil**: JWTs werden mit dem JWK-Set des Anbieters validiert (asymmetrische Schlüssel, automatisch erkannt).
+- **Basic-Profil**: JWTs werden mit einem HMAC-Secret signiert und validiert (symmetrischer Schlüssel, über `opaa.auth.basic.secret` konfiguriert).
 
-### Frontend OIDC Flow
+### Frontend-OIDC-Fluss
 
-The frontend handles the OIDC authorization code flow directly using `oidc-client-ts`:
-1. Frontend discovers auth mode via `GET /api/v1/auth/config`
-2. For OIDC: redirects to provider, handles callback, stores token in memory
-3. For Basic: shows login form, calls `POST /api/v1/auth/login`, stores returned JWT in memory
-4. All subsequent API calls include `Authorization: Bearer <jwt>` via Axios interceptor
+Das Frontend handhabt den OIDC-Autorisierungscode-Fluss direkt mit `oidc-client-ts`:
+1. Frontend erkennt Auth-Modus über `GET /api/v1/auth/config`
+2. Bei OIDC: leitet zum Anbieter um, handhabt Callback, speichert Token im Speicher
+3. Bei Basic: zeigt Login-Formular an, ruft `POST /api/v1/auth/login` auf, speichert zurückgegebenen JWT im Speicher
+4. Alle nachfolgenden API-Aufrufe enthalten `Authorization: Bearer <jwt>` über Axios-Interceptor
 
-### User Auto-Provisioning
+### Automatische Benutzerbereitstellung
 
-On authenticated requests, a `UserProvisioningFilter` extracts user info from the JWT (subject, issuer, email, name) and upserts a record in the `users` table. No roles are stored.
+Bei authentifizierten Anfragen extrahiert ein `UserProvisioningFilter` Benutzerinformationen aus dem JWT (Subject, Issuer, E-Mail, Name) und upserts einen Datensatz in der `users`-Tabelle. Keine Rollen werden gespeichert.
 
-### Auth Config Discovery
+### Auth-Konfigurationserkennung
 
-A public endpoint `GET /api/v1/auth/config` returns the active auth mode and OIDC configuration. The frontend uses this to determine which login flow to present.
+Ein öffentlicher Endpunkt `GET /api/v1/auth/config` gibt den aktiven Auth-Modus und die OIDC-Konfiguration zurück. Das Frontend verwendet dies, um zu bestimmen, welchen Login-Fluss es präsentiert.
 
-## Consequences
+## Konsequenzen
 
-### Positive
-- **Flexible deployment**: Same codebase supports enterprise SSO, simple PoCs, and local development
-- **Stateless**: No session store needed, horizontal scaling is trivial
-- **Frontend-agnostic**: Any client that can send JWTs works (web, CLI, API tokens in future)
-- **Provider-independent**: Any OIDC-compliant provider works (Keycloak, Auth0, Okta, Azure AD)
+### Positiv
+- **Flexibles Deployment**: Dieselbe Codebasis unterstützt Enterprise-SSO, einfache PoCs und lokale Entwicklung
+- **Zustandslos**: Kein Session-Store benötigt, horizontales Skalieren ist trivial
+- **Frontend-agnostisch**: Jeder Client, der JWTs senden kann, funktioniert (Web, CLI, API-Token in Zukunft)
+- **Anbieter-unabhängig**: Jeder OIDC-konforme Anbieter funktioniert (Keycloak, Auth0, Okta, Azure AD)
 
-### Negative
-- **Basic profile has no token refresh**: Users must re-login when JWT expires (acceptable for PoCs)
-- **Token in memory**: Page refresh loses auth state; OIDC flow can silently renew, basic flow requires re-login
-- **Keycloak issuer mismatch in Docker**: Backend and frontend may see different hostnames for Keycloak, requiring careful `issuer-uri` configuration
+### Negativ
+- **Basic-Profil hat keine Token-Erneuerung**: Benutzer müssen sich nach JWT-Ablauf erneut anmelden (für PoCs akzeptabel)
+- **Token im Speicher**: Seitenaktualisierung verliert Auth-Status; OIDC-Fluss kann still erneuern, Basic-Fluss erfordert erneutes Anmelden
+- **Keycloak-Issuer-Mismatch in Docker**: Backend und Frontend sehen möglicherweise verschiedene Hostnamen für Keycloak, was eine sorgfältige `issuer-uri`-Konfiguration erfordert
 
 ### Neutral
-- Kerberos authentication is best handled by configuring Keycloak with Kerberos federation, so OPAA still speaks OIDC
-- No role management yet — will be added when workspaces are implemented
+- Kerberos-Authentifizierung wird am besten durch Konfiguration von Keycloak mit Kerberos-Federation gehandhabt, sodass OPAA weiterhin OIDC spricht
+- Noch keine Rollenverwaltung — wird bei der Implementierung von Workspaces hinzugefügt

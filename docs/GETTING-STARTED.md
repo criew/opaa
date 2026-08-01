@@ -1,265 +1,265 @@
-# Getting Started with OPAA Documentation
+# Einstieg in die OPAA-Dokumentation
 
-Not sure where to start? This guide helps you find the right documents for your needs.
-
----
-
-## Quick Navigation by Role
-
-### 👤 I'm New to OPAA
-
-1. **[README](../README.md)** (2 min) — What is OPAA?
-2. **[CONCEPTS.md](./CONCEPTS.md)** (10 min) — Learn key terminology (RAG, embeddings, workspaces, etc.)
-3. **[VISION.md](./VISION.md)** (15 min) — See the complete product vision
-4. Then: Dive into feature specs based on your role (see below)
+Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtigen Dokumente für Ihre Bedürfnisse zu finden.
 
 ---
 
-## Role-Based Reading Paths
+## Schnellnavigation nach Rolle
 
-### 🎯 **Project Manager / Product Owner**
+### Ich bin neu bei OPAA
 
-**Goal:** Understand the full product vision and roadmap
-
-**Reading path:**
-1. [VISION.md](./VISION.md) — Executive Summary, Problem, Use Cases, Design Principles (15 min)
-2. Skim all feature specs: Read the **Motivation** and **Design** sections only (20 min)
-3. Check Open Questions at the end of each feature spec for future enhancements (10 min)
-
-**Key sections to focus on:**
-- VISION: "Supported Use Cases" — What customers can do
-- VISION: "Core Design Principles" — Product philosophy
-- Each feature: "Motivation" — Why this feature matters
-
-**Time commitment:** ~45 minutes
+1. **[README](../README.md)** (2 Min.) — Was ist OPAA?
+2. **[CONCEPTS.md](./CONCEPTS.md)** (10 Min.) — Schlüsselbegriffe lernen (RAG, Embeddings, Workspaces, usw.)
+3. **[VISION.md](./VISION.md)** (15 Min.) — Die vollständige Produktvision sehen
+4. Dann: In Feature-Spezifikationen basierend auf Ihrer Rolle eintauchen (siehe unten)
 
 ---
 
-### 💻 **Backend / Full-Stack Developer**
+## Rollenbasierte Lesepfade
 
-**Goal:** Understand system architecture and integration points
+### Projektmanager / Product Owner
 
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — Read System Architecture and all sections (15 min)
-3. **Deep dive into features in this order:**
-   - [User Frontends](./features/user-frontends.md) — How requests come in (10 min)
-   - [Orchestration Layer](./features/user-frontends.md) → [Data Indexing](./features/data-indexing-rag.md) — Central logic (12 min)
-   - [LLM Integration](./features/llm-integration.md) — Response generation (10 min)
-   - [Access Control](./features/access-control-workspaces.md) — Permissions enforcement (10 min)
+**Ziel:** Vollständige Produktvision und Roadmap verstehen
 
-**Key sections to focus on:**
-- VISION: "System Architecture" — Data flow
-- VISION: "Core System Components" — Responsibilities
-- Each feature: "Integration Points" — How they connect
+**Lesepfad:**
+1. [VISION.md](./VISION.md) — Zusammenfassung, Problem, Anwendungsfälle, Designprinzipien (15 Min.)
+2. Alle Feature-Spezifikationen überfliegen: Nur die Abschnitte **Motivation** und **Design** lesen (20 Min.)
+3. Offene Fragen am Ende jeder Feature-Spezifikation für zukünftige Erweiterungen prüfen (10 Min.)
 
-**Time commitment:** ~1 hour 15 minutes
+**Wichtige Abschnitte:**
+- VISION: "Unterstützte Anwendungsfälle" — Was Kunden tun können
+- VISION: "Kern-Designprinzipien" — Produktphilosophie
+- Jedes Feature: "Motivation" — Warum dieses Feature wichtig ist
+
+**Zeitaufwand:** ~45 Minuten
 
 ---
 
-### ⚙️ **DevOps / Infrastructure Engineer**
+### Backend- / Full-Stack-Entwickler
 
-**Goal:** Deploy and operate OPAA at scale
+**Ziel:** Systemarchitektur und Integrationspunkte verstehen
 
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — System Architecture section (5 min)
-3. **Focus on:**
-   - [Deployment & Infrastructure](./features/deployment-infrastructure.md) — **Deep dive** (20 min)
-   - [Access Control](./features/access-control-workspaces.md) — Security & audit logging (10 min)
-4. Skim for integration points:
-   - [Data Indexing & RAG](./features/data-indexing-rag.md) — Storage & scaling (5 min)
-   - [LLM Integration](./features/llm-integration.md) — Configuration & cost (5 min)
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Systemarchitektur und alle Abschnitte lesen (15 Min.)
+3. **Features in dieser Reihenfolge vertiefen:**
+   - [Benutzer-Frontends](./features/user-frontends.md) — Wie Anfragen eingehen (10 Min.)
+   - [Orchestrierungsschicht](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) — Zentrale Logik (12 Min.)
+   - [LLM-Integration](./features/llm-integration.md) — Antwortgenerierung (10 Min.)
+   - [Zugangskontrolle](./features/access-control-workspaces.md) — Berechtigungsdurchsetzung (10 Min.)
 
-**Key sections to focus on:**
-- Deployment: Deployment options (Kubernetes, Docker Compose, cloud)
-- Deployment: Scaling Considerations (small/mid/large org sizing)
-- Deployment: High Availability & Disaster Recovery
-- Deployment: Security & monitoring
+**Wichtige Abschnitte:**
+- VISION: "Systemarchitektur" — Datenfluss
+- VISION: "Kernsystemkomponenten" — Verantwortlichkeiten
+- Jedes Feature: "Integrationspunkte" — Wie sie verbunden sind
 
-**Time commitment:** ~55 minutes
+**Zeitaufwand:** ~1 Stunde 15 Minuten
 
 ---
 
-### 📊 **Data / ML Engineer**
+### DevOps- / Infrastruktur-Engineer
 
-**Goal:** Understand data pipeline and LLM configuration
+**Ziel:** OPAA im großen Maßstab deployen und betreiben
 
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — System Architecture (5 min)
-3. **Deep dive into:**
-   - [Data Indexing & RAG](./features/data-indexing-rag.md) — **Deep dive** (15 min)
-   - [LLM Integration](./features/llm-integration.md) — **Deep dive** (15 min)
-4. Skim for context:
-   - [User Frontends](./features/user-frontends.md) — Where queries come from (5 min)
-   - [Deployment](./features/deployment-infrastructure.md) — Scaling considerations (5 min)
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Abschnitt Systemarchitektur (5 Min.)
+3. **Fokus auf:**
+   - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — **Vertieft** (20 Min.)
+   - [Zugangskontrolle](./features/access-control-workspaces.md) — Sicherheit & Audit-Logging (10 Min.)
+4. Für Integrationspunkte überfliegen:
+   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Speicherung & Skalierung (5 Min.)
+   - [LLM-Integration](./features/llm-integration.md) — Konfiguration & Kosten (5 Min.)
 
-**Key sections to focus on:**
-- Data Indexing: Document Processing Pipeline (chunking, embedding strategies)
-- Data Indexing: Supported Vector Databases (trade-offs)
-- LLM Integration: LLM Providers & configuration
-- LLM Integration: Cost Optimization strategies
-- Both: Open Questions for research opportunities
+**Wichtige Abschnitte:**
+- Deployment: Deployment-Optionen (Kubernetes, Docker Compose, Cloud)
+- Deployment: Skalierungsüberlegungen (Größenbestimmung für kleine/mittlere/große Org.)
+- Deployment: Hochverfügbarkeit & Disaster Recovery
+- Deployment: Sicherheit & Monitoring
 
-**Time commitment:** ~55 minutes
-
----
-
-### 🔒 **Security / Compliance Officer**
-
-**Goal:** Ensure OPAA meets security and compliance requirements
-
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — Design Principles section (5 min)
-3. **Deep dive into:**
-   - [Access Control & Workspaces](./features/access-control-workspaces.md) — **Deep dive** (15 min)
-   - [Deployment & Infrastructure](./features/deployment-infrastructure.md) — Security section (10 min)
-4. Check:
-   - [Data Indexing & RAG](./features/data-indexing-rag.md) — Permissions & data handling (5 min)
-   - [LLM Integration](./features/llm-integration.md) — Safety & responsible use (5 min)
-
-**Key sections to focus on:**
-- Access Control: Audit Logging & Compliance
-- Access Control: Query-Time Permission Enforcement
-- Deployment: Security section (encryption, network, access control)
-- Deployment: Compliance support (GDPR, HIPAA, SOC 2)
-- VISION: Design Principles — "Security & Privacy Built In"
-
-**Time commitment:** ~50 minutes
+**Zeitaufwand:** ~55 Minuten
 
 ---
 
-### 🎨 **UX / Frontend Designer**
+### Data- / ML-Engineer
 
-**Goal:** Understand user workflows and interface requirements
+**Ziel:** Datenpipeline und LLM-Konfiguration verstehen
 
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — Use Cases & Design Principles (10 min)
-3. **Deep dive into:**
-   - [User Frontends](./features/user-frontends.md) — **Deep dive** (15 min)
-4. Understand context:
-   - [Access Control](./features/access-control-workspaces.md) — How permissions affect UX (5 min)
-   - [Data Indexing](./features/data-indexing-rag.md) — Search & retrieval from user perspective (5 min)
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Systemarchitektur (5 Min.)
+3. **Vertiefen in:**
+   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — **Vertieft** (15 Min.)
+   - [LLM-Integration](./features/llm-integration.md) — **Vertieft** (15 Min.)
+4. Für Kontext überfliegen:
+   - [Benutzer-Frontends](./features/user-frontends.md) — Woher Abfragen kommen (5 Min.)
+   - [Deployment](./features/deployment-infrastructure.md) — Skalierungsüberlegungen (5 Min.)
 
-**Key sections to focus on:**
-- User Frontends: User Experience section (all screens and workflows)
-- User Frontends: Features (asking questions, document browsing, feedback)
-- User Frontends: Configuration (what admins can customize)
-- VISION: Use Cases (real-world scenarios)
+**Wichtige Abschnitte:**
+- Daten-Indizierung: Dokumentenverarbeitungs-Pipeline (Chunking-, Embedding-Strategien)
+- Daten-Indizierung: Unterstützte Vektor-Datenbanken (Abwägungen)
+- LLM-Integration: LLM-Anbieter & Konfiguration
+- LLM-Integration: Kostenoptimierungsstrategien
+- Beide: Offene Fragen für Forschungsmöglichkeiten
 
-**Time commitment:** ~45 minutes
-
----
-
-### 🔬 **AI/ML Researcher**
-
-**Goal:** Identify research opportunities and technical depth
-
-**Reading path:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Learn terminology (10 min)
-2. [VISION.md](./VISION.md) — Architecture overview (5 min)
-3. **Deep dive into:**
-   - [LLM Integration](./features/llm-integration.md) — Model selection & optimization (15 min)
-   - [Data Indexing & RAG](./features/data-indexing-rag.md) — Retrieval & ranking strategies (15 min)
-4. Check for future work:
-   - Open Questions in each feature spec (10 min)
-
-**Key sections to focus on:**
-- LLM Integration: Multi-Model Strategies, Advanced LLM Features, Cost Optimization
-- Data Indexing: Retrieval & Ranking, Advanced Features (re-ranking, semantic caching)
-- All specs: "Open Questions / Future Enhancements" section
-- Consider: Opportunities in hallucination reduction, context understanding, ranking
-
-**Time commitment:** ~55 minutes
+**Zeitaufwand:** ~55 Minuten
 
 ---
 
-## Reading Strategies
+### Sicherheits- / Compliance-Beauftragter
 
-### Strategy 1: "Big Picture First"
-Best for: Product managers, executives
-1. Read VISION.md executive summary & use cases
-2. Skim feature spec introductions
-3. Deep dive into areas of specific interest
+**Ziel:** Sicherstellen, dass OPAA Sicherheits- und Compliance-Anforderungen erfüllt
 
-### Strategy 2: "Learn as You Go"
-Best for: Developers starting on a feature
-1. Read CONCEPTS.md
-2. Read your feature spec completely
-3. Read related feature specs as dependencies emerge
-4. Reference VISION.md for architectural context
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Abschnitt Designprinzipien (5 Min.)
+3. **Vertiefen in:**
+   - [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) — **Vertieft** (15 Min.)
+   - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — Abschnitt Sicherheit (10 Min.)
+4. Prüfen:
+   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Berechtigungen & Datenverarbeitung (5 Min.)
+   - [LLM-Integration](./features/llm-integration.md) — Sicherheit & verantwortungsvolle Nutzung (5 Min.)
 
-### Strategy 3: "Deep Technical Dive"
-Best for: Architects, lead developers
-1. Read CONCEPTS.md
-2. Read VISION.md completely
-3. Read all feature specs in order (they build on each other)
-4. Make notes on integration points and dependencies
+**Wichtige Abschnitte:**
+- Zugangskontrolle: Audit-Logging & Compliance
+- Zugangskontrolle: Berechtigungsdurchsetzung zur Abfragezeit
+- Deployment: Abschnitt Sicherheit (Verschlüsselung, Netzwerk, Zugangskontrolle)
+- Deployment: Compliance-Unterstützung (DSGVO, HIPAA, SOC 2)
+- VISION: Designprinzipien — "Sicherheit & Datenschutz eingebaut"
 
----
-
-## Common Questions
-
-**Q: How long does it take to read everything?**
-A: ~2 hours for complete understanding, 1 hour for role-specific path.
-
-**Q: Can I just read one feature spec?**
-A: Yes, but start with VISION.md System Architecture first for context.
-
-**Q: Where do I find the answer to [specific question]?**
-A: See [INDEX.md](./INDEX.md) — "Common Questions" section.
-
-**Q: Are there code examples?**
-A: These are product/design documents, not technical specs.
-Code will be in the actual implementation.
-
-**Q: What if I get confused by terminology?**
-A: Jump to [CONCEPTS.md](./CONCEPTS.md) and search for the term.
+**Zeitaufwand:** ~50 Minuten
 
 ---
 
-## Next Steps After Reading
+### UX- / Frontend-Designer
 
-### Providing Feedback
-- Spotted an error or ambiguity? Open an issue in GitHub
-- Have a suggestion? Comment in the pull request or open a discussion
+**Ziel:** Benutzer-Workflows und Schnittstellenanforderungen verstehen
 
-### Contributing
-- Want to help refine the vision? See [CONTRIBUTING.md](../CONTRIBUTING.md)
-- AI agents: See [AGENTS.md](../AGENTS.md) for collaboration guidelines
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Anwendungsfälle & Designprinzipien (10 Min.)
+3. **Vertiefen in:**
+   - [Benutzer-Frontends](./features/user-frontends.md) — **Vertieft** (15 Min.)
+4. Kontext verstehen:
+   - [Zugangskontrolle](./features/access-control-workspaces.md) — Wie Berechtigungen UX beeinflussen (5 Min.)
+   - [Daten-Indizierung](./features/data-indexing-rag.md) — Suche & Retrieval aus Benutzerperspektive (5 Min.)
 
-### Implementation
-- Ready to build? Check if there's an existing [GitHub Issue](https://github.com/yourusername/opaa/issues) for your feature
-- Create a branch and start coding (follow conventions in AGENTS.md)
+**Wichtige Abschnitte:**
+- Benutzer-Frontends: Abschnitt Benutzererfahrung (alle Screens und Workflows)
+- Benutzer-Frontends: Features (Fragen stellen, Dokument-Browser, Feedback)
+- Benutzer-Frontends: Konfiguration (was Admins anpassen können)
+- VISION: Anwendungsfälle (reale Szenarien)
+
+**Zeitaufwand:** ~45 Minuten
 
 ---
 
-## Document Map (Quick Reference)
+### KI-/ML-Forscher
+
+**Ziel:** Forschungsmöglichkeiten und technische Tiefe identifizieren
+
+**Lesepfad:**
+1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
+2. [VISION.md](./VISION.md) — Architekturüberblick (5 Min.)
+3. **Vertiefen in:**
+   - [LLM-Integration](./features/llm-integration.md) — Modellauswahl & Optimierung (15 Min.)
+   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Retrieval- & Ranking-Strategien (15 Min.)
+4. Für zukünftige Arbeit prüfen:
+   - Offene Fragen in jeder Feature-Spezifikation (10 Min.)
+
+**Wichtige Abschnitte:**
+- LLM-Integration: Multi-Modell-Strategien, Erweiterte LLM-Features, Kostenoptimierung
+- Daten-Indizierung: Retrieval & Ranking, Erweiterte Features (Re-Ranking, semantisches Caching)
+- Alle Spezifikationen: Abschnitt "Offene Fragen / Zukünftige Erweiterungen"
+- Bedenken: Möglichkeiten bei Halluzinationsreduktion, Kontextverständnis, Ranking
+
+**Zeitaufwand:** ~55 Minuten
+
+---
+
+## Lesestrategien
+
+### Strategie 1: "Großes Bild zuerst"
+Geeignet für: Product Manager, Führungskräfte
+1. VISION.md-Zusammenfassung & Anwendungsfälle lesen
+2. Feature-Spezifikations-Einleitungen überfliegen
+3. In Bereiche spezifischen Interesses vertiefen
+
+### Strategie 2: "Lernen während des Tuns"
+Geeignet für: Entwickler, die an einem Feature beginnen
+1. CONCEPTS.md lesen
+2. Die eigene Feature-Spezifikation vollständig lesen
+3. Verwandte Feature-Spezifikationen lesen, wenn Abhängigkeiten auftauchen
+4. VISION.md für architektonischen Kontext referenzieren
+
+### Strategie 3: "Technisches Tiefen-Tauchen"
+Geeignet für: Architekten, leitende Entwickler
+1. CONCEPTS.md lesen
+2. VISION.md vollständig lesen
+3. Alle Feature-Spezifikationen in der Reihenfolge lesen (sie bauen aufeinander auf)
+4. Notizen zu Integrationspunkten und Abhängigkeiten machen
+
+---
+
+## Häufige Fragen
+
+**F: Wie lange dauert es, alles zu lesen?**
+A: ~2 Stunden für vollständiges Verständnis, 1 Stunde für rollenspezifischen Pfad.
+
+**F: Kann ich nur eine Feature-Spezifikation lesen?**
+A: Ja, aber zuerst den Abschnitt VISION.md Systemarchitektur für den Kontext lesen.
+
+**F: Wo finde ich die Antwort auf [spezifische Frage]?**
+A: Siehe [INDEX.md](./INDEX.md) — Abschnitt "Häufige Fragen".
+
+**F: Gibt es Code-Beispiele?**
+A: Dies sind Produkt-/Design-Dokumente, keine technischen Spezifikationen.
+Code befindet sich in der tatsächlichen Implementierung.
+
+**F: Was wenn ich durch Terminologie verwirrt bin?**
+A: Zu [CONCEPTS.md](./CONCEPTS.md) springen und nach dem Begriff suchen.
+
+---
+
+## Nächste Schritte nach dem Lesen
+
+### Feedback geben
+- Fehler oder Unklarheit entdeckt? Ein Issue in GitHub öffnen
+- Einen Vorschlag haben? Im Pull Request kommentieren oder eine Discussion öffnen
+
+### Beitragen
+- An der Vision mithelfen wollen? Siehe [CONTRIBUTING.md](../CONTRIBUTING.md)
+- KI-Agenten: Siehe [AGENTS.md](../AGENTS.md) für Kollaborations-Leitlinien
+
+### Implementierung
+- Bereit zu bauen? Prüfen, ob es ein vorhandenes [GitHub-Issue](https://github.com/yourusername/opaa/issues) für das Feature gibt
+- Branch erstellen und mit dem Coding beginnen (Konventionen in AGENTS.md folgen)
+
+---
+
+## Dokumenten-Karte (Kurzreferenz)
 
 ```
-📚 Main Entry Points:
-├── README.md (what is OPAA)
-├── GETTING-STARTED.md (this file)
-├── CONCEPTS.md (terminology)
-└── VISION.md (complete vision)
+Haupt-Einstiegspunkte:
+├── README.md (was ist OPAA)
+├── GETTING-STARTED.md (diese Datei)
+├── CONCEPTS.md (Terminologie)
+└── VISION.md (vollständige Vision)
 
-📋 Feature Specifications:
+Feature-Spezifikationen:
 ├── features/user-frontends.md
 ├── features/data-indexing-rag.md
 ├── features/llm-integration.md
 ├── features/deployment-infrastructure.md
 └── features/access-control-workspaces.md
 
-📑 Navigation:
-├── INDEX.md (complete index & reading paths)
+Navigation:
+├── INDEX.md (vollständiger Index & Lesepfade)
 
-🏗️ Architecture:
+Architektur:
 └── decisions/0001-collaboration-workflow.md
 ```
 
 ---
 
-**Ready to dive in? Start with your role above!**
+**Bereit einzutauchen? Mit Ihrer Rolle oben beginnen!**

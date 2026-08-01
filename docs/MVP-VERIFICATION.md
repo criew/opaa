@@ -1,116 +1,116 @@
-# MVP Verification
+# MVP-Verifikation
 
-This document maps each MVP success criterion (from [MVP.md](./MVP.md)) to its verification method — automated tests, CI pipeline checks, and manual smoke tests.
-
----
-
-## Success Criteria Verification Matrix
-
-| # | Criterion | Automated | Manual |
-|---|-----------|-----------|--------|
-| 1 | Indexing works | `DocumentIndexingIntegrationTest` | Docker Compose smoke test |
-| 2 | Q&A works end-to-end | `QueryIntegrationTest`, `OpenAiIntegrationTest` | Browser test via Docker Compose |
-| 3 | Sources are shown | `QueryIntegrationTest` (asserts sources) | Visual check in Web UI |
-| 4 | Dual LLM support (OpenAI + Ollama) | `OpenAiIntegrationTest`, `ProviderConfigurationTest` | Docker Compose with Ollama |
-| 5 | Separate configs (LLM + embedding) | `ProviderConfigurationTest`, `MixedProviderConfigurationTest` | — |
-| 6 | Docker Compose runs | — | Smoke test checklist below |
-| 7 | Local dev works | CI pipeline (backend + frontend build) | Local dev checklist below |
-| 8 | UI placeholders visible | Frontend component tests | Visual check in Web UI |
+Dieses Dokument ordnet jedes MVP-Erfolgskriterium (aus [MVP.md](./MVP.md)) seiner Verifizierungsmethode zu — automatisierte Tests, CI-Pipeline-Prüfungen und manuelle Smoke-Tests.
 
 ---
 
-## Automated Test Overview
+## Erfolgskriterien-Verifikationsmatrix
 
-### Backend Integration Tests (Testcontainers)
+| # | Kriterium | Automatisiert | Manuell |
+|---|-----------|---------------|---------|
+| 1 | Indizierung funktioniert | `DocumentIndexingIntegrationTest` | Docker-Compose-Smoke-Test |
+| 2 | Frage-Antwort funktioniert durchgehend | `QueryIntegrationTest`, `OpenAiIntegrationTest` | Browser-Test über Docker Compose |
+| 3 | Quellen werden angezeigt | `QueryIntegrationTest` (prüft Quellen) | Visuelle Prüfung in Web-UI |
+| 4 | Duale LLM-Unterstützung (OpenAI + Ollama) | `OpenAiIntegrationTest`, `ProviderConfigurationTest` | Docker Compose mit Ollama |
+| 5 | Separate Konfigurationen (LLM + Embedding) | `ProviderConfigurationTest`, `MixedProviderConfigurationTest` | — |
+| 6 | Docker Compose läuft | — | Smoke-Test-Checkliste unten |
+| 7 | Lokale Entwicklung funktioniert | CI-Pipeline (Backend + Frontend-Build) | Lokale Entwicklungs-Checkliste unten |
+| 8 | UI-Platzhalter sichtbar | Frontend-Komponenten-Tests | Visuelle Prüfung in Web-UI |
 
-All tests use Testcontainers with PostgreSQL 18 + pgvector. Docker must be running.
+---
 
-| Test Class | What It Verifies |
-|-----------|-----------------|
-| `DocumentIndexingIntegrationTest` | Markdown/TXT/PDF/DOCX indexing, chunking, embedding storage, re-indexing |
-| `QueryIntegrationTest` | Question answering with sources, metadata, empty results handling |
-| `ProviderConfigurationTest` | Default OpenAI config, Ollama config availability, independent provider properties |
-| `MixedProviderConfigurationTest` | Application loads with different chat and embedding providers |
-| `OpenAiIntegrationTest` | Full end-to-end with real OpenAI API (requires `OPAA_OPENAI_API_KEY`) |
+## Überblick über automatisierte Tests
 
-Run all backend tests:
+### Backend-Integrationstests (Testcontainers)
+
+Alle Tests verwenden Testcontainers mit PostgreSQL 18 + pgvector. Docker muss laufen.
+
+| Test-Klasse | Was verifiziert wird |
+|-------------|---------------------|
+| `DocumentIndexingIntegrationTest` | Markdown-/TXT-/PDF-/DOCX-Indizierung, Chunking, Embedding-Speicherung, Neu-Indizierung |
+| `QueryIntegrationTest` | Frage-Antwort mit Quellen, Metadaten, Behandlung leerer Ergebnisse |
+| `ProviderConfigurationTest` | Standard-OpenAI-Konfiguration, Ollama-Konfiguration Verfügbarkeit, unabhängige Anbieter-Eigenschaften |
+| `MixedProviderConfigurationTest` | Anwendung lädt mit verschiedenen Chat- und Embedding-Anbietern |
+| `OpenAiIntegrationTest` | Vollständiges End-to-End mit echter OpenAI-API (erfordert `OPAA_OPENAI_API_KEY`) |
+
+Alle Backend-Tests ausführen:
 
 ```bash
 cd backend && ./gradlew build
 ```
 
-Run OpenAI integration tests (requires API key):
+OpenAI-Integrationstests ausführen (erfordert API-Schlüssel):
 
 ```bash
 OPAA_OPENAI_API_KEY=sk-... ./gradlew test --tests "io.opaa.integration.*"
 ```
 
-### CI Pipeline
+### CI-Pipeline
 
-The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
+Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei jedem Push und PR zu `main`:
 
-- **backend**: `./gradlew build` (includes spotlessCheck, unit tests, Testcontainers tests)
-- **backend-integration**: OpenAI integration tests (only when `OPAA_OPENAI_API_KEY` secret is configured)
+- **backend**: `./gradlew build` (beinhaltet spotlessCheck, Unit-Tests, Testcontainers-Tests)
+- **backend-integration**: OpenAI-Integrationstests (nur wenn `OPAA_OPENAI_API_KEY` Secret konfiguriert ist)
 - **frontend**: `npm run format:check` + `npm run lint` + `npm run test` + `npm run build`
 
 ---
 
-## Docker Compose Smoke Test Checklist
+## Docker-Compose-Smoke-Test-Checkliste
 
-### Prerequisites
+### Voraussetzungen
 
-- Docker and Docker Compose installed
-- OpenAI API key (or Ollama running locally)
+- Docker und Docker Compose installiert
+- OpenAI-API-Schlüssel (oder lokal laufendes Ollama)
 
-### Steps
+### Schritte
 
-1. **Create `.env` file** in the project root:
+1. **`.env`-Datei erstellen** im Projektstammverzeichnis:
 
    ```
    OPAA_OPENAI_API_KEY=sk-your-key-here
    ```
 
-2. **Start the stack:**
+2. **Stack starten:**
 
    ```bash
    docker compose up --build -d
    ```
 
-3. **Verify all containers are running:**
+3. **Verifizieren, dass alle Container laufen:**
 
    ```bash
    docker compose ps
    ```
 
-   Expected: `opaa-postgres` (healthy), `opaa-backend` (running), `opaa-frontend` (running)
+   Erwartet: `opaa-postgres` (healthy), `opaa-backend` (running), `opaa-frontend` (running)
 
-4. **Check backend health:**
+4. **Backend-Gesundheit prüfen:**
 
    ```bash
    curl http://localhost:8080/api/health
    ```
 
-   Expected: `200 OK`
+   Erwartet: `200 OK`
 
-5. **Place test documents** in `./documents/` directory (or the configured path)
+5. **Testdokumente ablegen** im `./documents/`-Verzeichnis (oder dem konfigurierten Pfad)
 
-6. **Trigger indexing:**
+6. **Indizierung auslösen:**
 
    ```bash
    curl -X POST http://localhost:8080/api/v1/indexing/trigger
    ```
 
-   Expected: `200 OK` with job status
+   Erwartet: `200 OK` mit Job-Status
 
-7. **Check indexing status:**
+7. **Indizierungsstatus prüfen:**
 
    ```bash
    curl http://localhost:8080/api/v1/indexing/status
    ```
 
-   Expected: `200 OK` with `"status": "COMPLETED"`
+   Erwartet: `200 OK` mit `"status": "COMPLETED"`
 
-8. **Ask a question:**
+8. **Eine Frage stellen:**
 
    ```bash
    curl -X POST http://localhost:8080/api/v1/query \
@@ -118,16 +118,16 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and 
      -d '{"question": "What information is in the documents?"}'
    ```
 
-   Expected: JSON response with `answer`, `sources` (with file names and scores), and `metadata`
+   Erwartet: JSON-Antwort mit `answer`, `sources` (mit Dateinamen und Scores) und `metadata`
 
-9. **Open Web UI** at `http://localhost` and verify:
-   - [ ] Chat interface loads
-   - [ ] Can type and submit a question
-   - [ ] Answer is displayed with source references
-   - [ ] Feedback buttons (thumbs up/down) are visible
-   - [ ] Access level badges are visible on sources
+9. **Web-UI öffnen** unter `http://localhost` und verifizieren:
+   - [ ] Chat-Schnittstelle lädt
+   - [ ] Frage kann eingegeben und gesendet werden
+   - [ ] Antwort wird mit Quellenreferenzen angezeigt
+   - [ ] Feedback-Buttons (Daumen hoch/runter) sind sichtbar
+   - [ ] Zugangsstufen-Abzeichen sind auf Quellen sichtbar
 
-10. **Stop the stack:**
+10. **Stack stoppen:**
 
     ```bash
     docker compose down
@@ -135,18 +135,18 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and 
 
 ---
 
-## Local Development Checklist
+## Lokale Entwicklungs-Checkliste
 
-### Prerequisites
+### Voraussetzungen
 
-- Java 21 (e.g., Eclipse Temurin)
+- Java 21 (z. B. Eclipse Temurin)
 - Node.js 20+
-- Docker (for PostgreSQL via Testcontainers or standalone container)
-- OpenAI API key (optional — use Ollama for local development without it)
+- Docker (für PostgreSQL über Testcontainers oder eigenständigen Container)
+- OpenAI-API-Schlüssel (optional — Ollama für lokale Entwicklung ohne verwenden)
 
 ### Setup
 
-1. **Start PostgreSQL:**
+1. **PostgreSQL starten:**
 
    ```bash
    docker run -d --name opaa-postgres \
@@ -157,38 +157,38 @@ The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push and 
      pgvector/pgvector:pg18
    ```
 
-2. **Start backend:**
+2. **Backend starten:**
 
    ```bash
    cd backend
 
-   # With Ollama (local, no API key needed):
+   # Mit Ollama (lokal, kein API-Schlüssel nötig):
    ./gradlew bootRun
 
-   # With OpenAI (requires API key):
+   # Mit OpenAI (erfordert API-Schlüssel):
    OPAA_OPENAI_API_KEY=sk-... ./gradlew bootRun
    ```
 
-3. **Start frontend:**
+3. **Frontend starten:**
 
    ```bash
    cd frontend
    npm ci
 
-   # With MSW mocks (no backend needed):
+   # Mit MSW-Mocks (kein Backend nötig):
    VITE_ENABLE_MOCKS=true npm run dev
 
-   # Against real backend (backend must be running on :8080):
+   # Gegen echtes Backend (Backend muss auf :8080 laufen):
    npm run dev
    ```
 
-4. **Open** `http://localhost:5173` in a browser
+4. **Öffnen** `http://localhost:5173` im Browser
 
-### Verification
+### Verifikation
 
-- [ ] Backend starts without errors on port 8080
-- [ ] Frontend starts without errors on port 5173
-- [ ] `curl http://localhost:8080/api/health` returns 200
-- [ ] Chat interface works in the browser
-- [ ] Backend tests pass: `cd backend && ./gradlew build`
-- [ ] Frontend tests pass: `cd frontend && npm run test -- --run`
+- [ ] Backend startet ohne Fehler auf Port 8080
+- [ ] Frontend startet ohne Fehler auf Port 5173
+- [ ] `curl http://localhost:8080/api/health` gibt 200 zurück
+- [ ] Chat-Schnittstelle funktioniert im Browser
+- [ ] Backend-Tests bestehen: `cd backend && ./gradlew build`
+- [ ] Frontend-Tests bestehen: `cd frontend && npm run test -- --run`

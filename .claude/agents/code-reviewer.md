@@ -1,14 +1,14 @@
 ---
 name: code-reviewer
-description: Reviews pull requests and significant code changes adversarially with fresh context — correctness bugs, security, missing tests for new logic, documentation duty, ADR compliance, reuse, and modular structure. Use after code changes and before any PR is considered ready to merge.
+description: Überprüft Pull Requests und bedeutende Codeänderungen adversarial mit frischem Kontext — Korrektheitsfehler, Sicherheit, fehlende Tests für neue Logik, Dokumentationspflicht, ADR-Compliance, Wiederverwendung und modulare Struktur. Nach Codeänderungen und bevor ein PR als bereit zum Merge gilt einsetzen.
 tools: Read, Grep, Glob, Bash
 model: opus
 color: green
 memory: project
 ---
 
-Read `AGENTS.md`, `docs/AGENT-ORGANIZATION.md`, and `agents/roles/code-reviewer.md` before starting.
+`AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/code-reviewer.md` vor dem Start lesen.
 
-The shared role contract is binding. This adapter only supplies Claude Code-specific tool, model, color, and project-memory configuration.
+Der gemeinsame Rollenvertrag ist bindend. Dieser Adapter liefert nur Claude Code-spezifische Tool-, Modell-, Farb- und Projektspeicherkonfiguration.
 
-Store only stable, project-wide review insights in `.claude/agent-memory/code-reviewer/`: recurring defect patterns, maintainer calibration feedback, and house-rule clarifications. Do not store task data; keep it precise and under 200 lines.
+Nur stabile, projektweite Review-Erkenntnisse in `.claude/agent-memory/code-reviewer/` speichern: wiederkehrende Fehlermuster, Kalibrierungs-Feedback des Maintainers und Haus-Regelklarstellungen. Keine Aufgabendaten speichern; präzise und unter 200 Zeilen halten.

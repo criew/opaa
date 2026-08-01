@@ -1,106 +1,106 @@
 # OPAA: Open Project AI Assistant
 
-**An enterprise-grade, self-hosted AI assistant that turns your organizational knowledge into instant answers.**
+**Ein unternehmenstauglicher, selbst gehosteter KI-Assistent, der Ihr organisationales Wissen in sofortige Antworten verwandelt.**
 
-OPAA transforms scattered knowledge — stored in wikis, emails, documents, and files — into a unified intelligence layer. Ask questions in natural language and get sourced answers from your entire knowledge base, no matter where it's stored.
+OPAA transformiert verstreutes Wissen — gespeichert in Wikis, E-Mails, Dokumenten und Dateien — in eine einheitliche Intelligenzschicht. Stellen Sie Fragen in natürlicher Sprache und erhalten Sie quellengestützte Antworten aus Ihrer gesamten Wissensbasis, unabhängig davon, wo diese gespeichert ist.
 
-## What is OPAA?
+## Was ist OPAA?
 
-OPAA is an **open-source RAG (Retrieval-Augmented Generation) system** for organizations that need:
-- 🔍 **Unified search** across Confluence, email, file systems, and custom sources
-- 🧠 **Intelligent Q&A** using configurable LLM providers (OpenAI, Anthropic, local models)
-- 🏢 **On-premises deployment** with full data sovereignty
-- 🔐 **Multi-team support** with workspace isolation and fine-grained permissions
-- ⚙️ **Flexible architecture** — swap databases, LLMs, and data sources without code changes
+OPAA ist ein **quelloffenes RAG-System (Retrieval-Augmented Generation)** für Organisationen, die Folgendes benötigen:
+- 🔍 **Einheitliche Suche** über Confluence, E-Mail, Dateisysteme und benutzerdefinierte Quellen
+- 🧠 **Intelligentes Q&A** mit konfigurierbaren LLM-Anbietern (OpenAI, Anthropic, lokale Modelle)
+- 🏢 **On-Premises-Betrieb** mit vollständiger Datensouveränität
+- 🔐 **Multi-Team-Unterstützung** mit Workspace-Isolation und feingranularen Berechtigungen
+- ⚙️ **Flexible Architektur** — Datenbanken, LLMs und Datenquellen austauschen ohne Codeänderungen
 
-## Key Features
+## Hauptfunktionen
 
-- **Multiple User Interfaces:** Web chat, chat bot integrations (Mattermost, RocketChat, Slack, Telegram, Signal, WhatsApp), REST API
-- **Flexible Data Sources:** Confluence, Jira, email archives, file systems, cloud storage, issue trackers, custom APIs
-- **Configurable LLM Providers:** OpenAI, Anthropic, open-source models, or local deployments
-- **Multiple Vector Databases:** Elasticsearch, PostgreSQL + pgvector, Milvus, or cloud options
-- **Workspace Isolation:** Multi-team support with role-based access control
-- **Audit & Compliance:** Full audit logging, permission enforcement, GDPR/HIPAA support
-- **Enterprise Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP, or air-gapped environments
+- **Mehrere Benutzeroberflächen:** Web-Chat, Chat-Bot-Integrationen (Mattermost, RocketChat, Slack, Telegram, Signal, WhatsApp), REST-API
+- **Flexible Datenquellen:** Confluence, Jira, E-Mail-Archive, Dateisysteme, Cloud-Speicher, Issue-Tracker, benutzerdefinierte APIs
+- **Konfigurierbare LLM-Anbieter:** OpenAI, Anthropic, Open-Source-Modelle oder lokale Deployments
+- **Mehrere Vektordatenbanken:** Elasticsearch, PostgreSQL + pgvector, Milvus oder Cloud-Optionen
+- **Workspace-Isolation:** Multi-Team-Unterstützung mit rollenbasierter Zugriffskontrolle
+- **Audit & Compliance:** Vollständige Audit-Protokollierung, Berechtigungsdurchsetzung, DSGVO/HIPAA-Unterstützung
+- **Enterprise-Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP oder Offline-Umgebungen
 
-## Quick Start
+## Schnellstart
 
-**Read the documentation:**
+**Dokumentation lesen:**
 
-1. **New to OPAA?** Start here: [GETTING-STARTED.md](docs/GETTING-STARTED.md) (5 min)
-2. **Learn key concepts:** [CONCEPTS.md](docs/CONCEPTS.md) (10 min)
-3. **See the full vision:** [VISION.md](docs/VISION.md) (15 min)
-4. **Deep dive into features:** See [INDEX.md](docs/INDEX.md) for role-based reading paths
+1. **Neu bei OPAA?** Hier anfangen: [GETTING-STARTED.md](docs/GETTING-STARTED.md) (5 Min.)
+2. **Schlüsselkonzepte erlernen:** [CONCEPTS.md](docs/CONCEPTS.md) (10 Min.)
+3. **Die vollständige Vision:** [VISION.md](docs/VISION.md) (15 Min.)
+4. **Tiefer in Features eintauchen:** Siehe [INDEX.md](docs/INDEX.md) für rollenbasierte Lesepfade
 
-## Documentation
+## Dokumentation
 
-Complete documentation in `docs/`:
+Vollständige Dokumentation in `docs/`:
 
-### Core Vision & Concepts
-- **[VISION.md](docs/VISION.md)** — Complete product vision, use cases, architecture, principles
-- **[CONCEPTS.md](docs/CONCEPTS.md)** — Glossary and explanation of key concepts
-- **[GETTING-STARTED.md](docs/GETTING-STARTED.md)** — Guide to finding the right documentation
-- **[INDEX.md](docs/INDEX.md)** — Complete documentation index with reading paths by role
+### Kernvision & Konzepte
+- **[VISION.md](docs/VISION.md)** — Vollständige Produktvision, Anwendungsfälle, Architektur, Prinzipien
+- **[CONCEPTS.md](docs/CONCEPTS.md)** — Glossar und Erklärung der Schlüsselkonzepte
+- **[GETTING-STARTED.md](docs/GETTING-STARTED.md)** — Anleitung zur richtigen Dokumentation
+- **[INDEX.md](docs/INDEX.md)** — Vollständiger Dokumentationsindex mit rollenbasierten Lesepfaden
 
-### Feature Specifications
-Detailed specifications for each major feature:
+### Feature-Spezifikationen
+Detaillierte Spezifikationen für jedes Hauptfeature:
 
-1. **[User Frontends](docs/features/user-frontends.md)** — Web UI, chat integrations, REST API
-2. **[Data Indexing & RAG](docs/features/data-indexing-rag.md)** — Document indexing, semantic search, retrieval
-3. **[LLM Integration](docs/features/llm-integration.md)** — Model configuration, providers, cost optimization
-4. **[Deployment & Infrastructure](docs/features/deployment-infrastructure.md)** — On-premises, cloud, operations, scaling
-5. **[Access Control & Workspaces](docs/features/access-control-workspaces.md)** — Permissions, multi-tenancy, audit logging
+1. **[Benutzeroberflächen](docs/features/user-frontends.md)** — Web-UI, Chat-Integrationen, REST-API
+2. **[Datenindizierung & RAG](docs/features/data-indexing-rag.md)** — Dokumentindizierung, semantische Suche, Retrieval
+3. **[LLM-Integration](docs/features/llm-integration.md)** — Modellkonfiguration, Anbieter, Kostenoptimierung
+4. **[Deployment & Infrastruktur](docs/features/deployment-infrastructure.md)** — On-Premises, Cloud, Betrieb, Skalierung
+5. **[Zugriffskontrolle & Workspaces](docs/features/access-control-workspaces.md)** — Berechtigungen, Mandantenfähigkeit, Audit-Protokollierung
 
-### Architecture & Decisions
-- **[Architecture Decisions](docs/decisions/)** — Design rationale and technical decisions
+### Architektur & Entscheidungen
+- **[Architekturentscheidungen](docs/decisions/)** — Designbegründungen und technische Entscheidungen
 
-## Use Cases
+## Anwendungsfälle
 
-### Enterprise Knowledge Hub
-Fortune 500 company with 5,000+ employees uses OPAA to make internal wiki, documentation, and archived emails searchable. Employees ask "What's our approval process for international hiring?" and get instant, sourced answers with data governance compliance.
+### Enterprise-Wissensdrehscheibe
+Ein Fortune-500-Unternehmen mit mehr als 5.000 Mitarbeitern nutzt OPAA, um interne Wikis, Dokumentationen und archivierte E-Mails durchsuchbar zu machen. Mitarbeiter fragen „Was ist unser Genehmigungsverfahren für internationale Einstellungen?" und erhalten sofortige, quellengestützte Antworten bei vollständiger Daten-Governance-Compliance.
 
-### Team Productivity Multiplier
-50-person SaaS company deploys OPAA with Mattermost integration. Team members ask "@opaa-bot" questions. The system searches wikis, project documentation, and decision records. Weekly reports run automated queries.
+### Team-Produktivitätsmultiplikator
+Ein SaaS-Unternehmen mit 50 Mitarbeitern setzt OPAA mit Mattermost-Integration ein. Teammitglieder stellen Fragen an „@opaa-bot". Das System durchsucht Wikis, Projektdokumentationen und Entscheidungsprotokolle. Wöchentliche Berichte werden durch automatisierte Abfragen generiert.
 
-### Customer Success Knowledge Base
-Support team uses OPAA to provide better customer answers. Instead of searching multiple systems, they ask for product information and share sourced answers with customers.
+### Customer-Success-Wissensdatenbank
+Das Support-Team nutzt OPAA für bessere Kundenantworten. Anstatt mehrere Systeme zu durchsuchen, fragen sie OPAA nach Produktinformationen und teilen quellengestützte Antworten mit Kunden.
 
-### Compliance & Audit Trail
-Healthcare organization uses OPAA to index compliance policies and audit documents. When questioned, the system provides exact source references for audit trails.
+### Compliance & Audit-Trail
+Eine Gesundheitsorganisation nutzt OPAA, um Compliance-Richtlinien und Audit-Dokumente zu indizieren. Auf Nachfrage liefert das System genaue Quellenangaben für Audit-Trails.
 
-## Core Design Principles
+## Kerndesignprinzipien
 
-- 🔧 **Configurability First** — Every component is swappable (LLM, vector DB, data sources)
-- 🏢 **On-Premises by Default** — Data stays in your infrastructure, not external services
-- 🔌 **Extensible Architecture** — Plugin system for data sources, LLM adapters, custom frontends
-- 🔐 **Security & Privacy Built In** — Workspace isolation, permissions, audit trails, no data logging
-- 📖 **Source Attribution Always** — Every answer includes source documents and confidence scores
+- 🔧 **Konfigurierbarkeit zuerst** — Jede Komponente ist austauschbar (LLM, Vektordatenbank, Datenquellen)
+- 🏢 **On-Premises als Standard** — Daten verbleiben in Ihrer Infrastruktur, nicht bei externen Diensten
+- 🔌 **Erweiterbare Architektur** — Plugin-System für Datenquellen, LLM-Adapter, benutzerdefinierte Frontends
+- 🔐 **Sicherheit & Datenschutz eingebaut** — Workspace-Isolation, Berechtigungen, Audit-Trails, keine Datenprotokollierung
+- 📖 **Quellenangabe immer** — Jede Antwort enthält Quelldokumente und Konfidenzwerte
 
 ## Status
 
-OPAA is in **early product definition phase**. The documentation defines the complete vision and feature set. Implementation roadmap coming soon.
+OPAA befindet sich in der **frühen Produktdefinitionsphase**. Die Dokumentation beschreibt die vollständige Vision und den Funktionsumfang. Die Implementierungs-Roadmap folgt in Kürze.
 
-## Contributing
+## Mitwirken
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute.
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Richtlinien zur Mitarbeit.
 
-**For AI agents:** Read [AGENTS.md](AGENTS.md) for project conventions and collaboration guidelines.
+**Für KI-Agenten:** Lesen Sie [AGENTS.md](AGENTS.md) für Projektkonventionen und Kollaborationsrichtlinien.
 
-## Technology Stack
+## Technologiestack
 
-Technology choices will be made during implementation. OPAA is intentionally **technology-agnostic**:
+Technologieentscheidungen werden während der Implementierung getroffen. OPAA ist bewusst **technologieagnostisch**:
 
-- **LLM Provider:** Any OpenAI-compatible API (OpenAI, Anthropic Claude, Ollama, vLLM, etc.)
-- **Vector Database:** Elasticsearch, PostgreSQL + pgvector, Milvus, cloud alternatives
-- **Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP, or on-premises
-- **Data Sources:** Confluence, Jira, Gmail, S3, SharePoint, Google Drive, Dropbox, issue trackers, and more
+- **LLM-Anbieter:** Beliebige OpenAI-kompatible API (OpenAI, Anthropic Claude, Ollama, vLLM, usw.)
+- **Vektordatenbank:** Elasticsearch, PostgreSQL + pgvector, Milvus, Cloud-Alternativen
+- **Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP oder On-Premises
+- **Datenquellen:** Confluence, Jira, Gmail, S3, SharePoint, Google Drive, Dropbox, Issue-Tracker und mehr
 
-## License
+## Lizenz
 
-[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) — Free and open source. Commercial licenses available for organizations that cannot comply with AGPL terms. See [CLA.md](CLA.md) for contributor requirements.
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) — Frei und quelloffen. Kommerzielle Lizenzen für Organisationen verfügbar, die die AGPL-Bedingungen nicht einhalten können. Siehe [CLA.md](CLA.md) für Anforderungen an Beitragende.
 
-## Next Steps
+## Nächste Schritte
 
-- **Want to learn more?** Start with [CONCEPTS.md](docs/CONCEPTS.md)
-- **Ready to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Have feedback on the vision?** Open an issue or discussion in GitHub
+- **Mehr erfahren?** Beginnen Sie mit [CONCEPTS.md](docs/CONCEPTS.md)
+- **Beitragen?** Siehe [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Feedback zur Vision?** Öffnen Sie ein Issue oder eine Diskussion auf GitHub
