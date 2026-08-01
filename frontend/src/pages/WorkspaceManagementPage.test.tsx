@@ -4,8 +4,8 @@ import { renderWithProviders } from '../test/test-utils'
 import WorkspaceManagementPage from './WorkspaceManagementPage'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router')
   return {
     ...actual,
     useParams: () => ({ workspaceId: 'ws-personal' }),

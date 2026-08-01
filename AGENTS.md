@@ -9,7 +9,7 @@ Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen.
 
 - **Backend:** Java 21 + Spring Boot 4.1.0 + Spring AI 2.0.0 (Gradle 9.6.1, Kotlin DSL)
 - **Datenbank:** PostgreSQL 18 + pgvector, Liquibase
-- **Frontend:** React 19 + TypeScript + Material UI 7 + React Router 7 + Zustand + Vitest + MSW
+- **Frontend:** React 19 + TypeScript 6 + Material UI 9 + React Router 8 + Zustand + Vitest + MSW (Vite 8, Node 20+)
 - **CI:** GitHub Actions
 - **Deployment:** Docker Compose
 

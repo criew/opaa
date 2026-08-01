@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import ProtectedRoute from './ProtectedRoute'

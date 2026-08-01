@@ -25,7 +25,7 @@ export default function MobileHeader() {
         <IconButton edge="start" color="inherit" aria-label="open menu" onClick={toggleSidebar}>
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" fontWeight={700} sx={{ ml: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>
           OPAA
         </Typography>
         <Box sx={{ flexGrow: 1 }} />

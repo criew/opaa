@@ -11,7 +11,7 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import type { UserInfo, WorkspaceRole } from '../types/api'
 import { getUsers } from '../services/api'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -192,7 +192,7 @@ export default function WorkspaceManagementPage() {
                   <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
                     {member.displayName ?? member.userId}
                   </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     {canManage ? (
                       <Select
                         size="small"
