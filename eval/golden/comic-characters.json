@@ -1,0 +1,1811 @@
+[
+  {
+    "id": "comic-attr-001",
+    "domain": "comic-characters",
+    "query": "What eye color does Abin Sur have?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-004",
+    "domain": "comic-characters",
+    "query": "What eye color does Amygdala have?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-011",
+    "domain": "comic-characters",
+    "query": "What eye color does Bane (Dark Knight) have?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-024",
+    "domain": "comic-characters",
+    "query": "What hair color does Amygdala have?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-031",
+    "domain": "comic-characters",
+    "query": "What hair color does Bane (Dark Knight) have?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-038",
+    "domain": "comic-characters",
+    "query": "What hair color does Black Bolt (MCU) have?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-041",
+    "domain": "comic-characters",
+    "query": "Which company or creator created 3-D Man?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-044",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Agent 13?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-048",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Amygdala?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-061",
+    "domain": "comic-characters",
+    "query": "What is 3-D Man's real name?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-064",
+    "domain": "comic-characters",
+    "query": "What is Agent Zero's real name?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-067",
+    "domain": "comic-characters",
+    "query": "What is Amygdala's real name?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-081",
+    "domain": "comic-characters",
+    "query": "Where was Abin Sur born?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-084",
+    "domain": "comic-characters",
+    "query": "Where was Amygdala born?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-087",
+    "domain": "comic-characters",
+    "query": "Where was Atom (CW) born?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-101",
+    "domain": "comic-characters",
+    "query": "What is Abin Sur's occupation?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-105",
+    "domain": "comic-characters",
+    "query": "What is Angel Salvadore (FOX)'s occupation?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-109",
+    "domain": "comic-characters",
+    "query": "What is Atomica's occupation?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-121",
+    "domain": "comic-characters",
+    "query": "In which comic did Abin Sur first appear?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-124",
+    "domain": "comic-characters",
+    "query": "In which comic did Amygdala first appear?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-128",
+    "domain": "comic-characters",
+    "query": "In which comic did Atom (CW) first appear?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-141",
+    "domain": "comic-characters",
+    "query": "Is 3-D Man good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-144",
+    "domain": "comic-characters",
+    "query": "Is Agent Zero good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-147",
+    "domain": "comic-characters",
+    "query": "Is Amygdala good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0050_amygdala.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-161",
+    "domain": "comic-characters",
+    "query": "What species or race is 3-D Man?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-163",
+    "domain": "comic-characters",
+    "query": "What species or race is Alex Mercer?",
+    "expected_documents": [
+      "comic-0036_alex-mercer.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-166",
+    "domain": "comic-characters",
+    "query": "What species or race is Ant-Man II?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-181",
+    "domain": "comic-characters",
+    "query": "How tall is Abin Sur, in centimeters?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-183",
+    "domain": "comic-characters",
+    "query": "How tall is Agent Zero, in centimeters?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-attr-186",
+    "domain": "comic-characters",
+    "query": "How tall is Ant-Man II, in centimeters?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-001",
+    "domain": "comic-characters",
+    "query": "Which character created by Ubisoft is good-aligned, has Hazel eyes and can use Agility?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-002",
+    "domain": "comic-characters",
+    "query": "Which character created by J. R. R. Tolkien is good-aligned, has Grey eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-003",
+    "domain": "comic-characters",
+    "query": "Which character created by DC Comics is bad-aligned, has Hazel eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-005",
+    "domain": "comic-characters",
+    "query": "Which character created by Marvel Comics is good-aligned, has brown eyes and can use Force Fields?",
+    "expected_documents": [
+      "comic-0302_cloak.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-007",
+    "domain": "comic-characters",
+    "query": "Which character created by Lego is good-aligned, has White eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0526_golden-ninja.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-009",
+    "domain": "comic-characters",
+    "query": "Which character created by Marvel Comics is neutral-aligned, has Purple eyes and can use Dimensional Travel?",
+    "expected_documents": [
+      "comic-0631_impossible-man.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-012",
+    "domain": "comic-characters",
+    "query": "Which character created by Disney is good-aligned, has Brown eyes and can use Agility?",
+    "expected_documents": [
+      "comic-0862_maui.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-014",
+    "domain": "comic-characters",
+    "query": "Which character created by NBC - Heroes is good-aligned, has Brown eyes and can use Flight?",
+    "expected_documents": [
+      "comic-0939_nathan-petrelli.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-021",
+    "domain": "comic-characters",
+    "query": "Which good Human character is affiliated with Fellowship of the Ring and has Brown hair?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-023",
+    "domain": "comic-characters",
+    "query": "Which bad New God character is affiliated with Justice League Elite and has Black hair?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-025",
+    "domain": "comic-characters",
+    "query": "Which good Mutant character is affiliated with Ravagers and has Red hair?",
+    "expected_documents": [
+      "comic-0246_caitlin-fairchild.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-028",
+    "domain": "comic-characters",
+    "query": "Which good Inhuman character is affiliated with A-Force and has Blond hair?",
+    "expected_documents": [
+      "comic-0330_crystal-mcu.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-030",
+    "domain": "comic-characters",
+    "query": "Which neutral God / Eternal character is affiliated with Masters of Evil and has Black hair?",
+    "expected_documents": [
+      "comic-0456_executioner.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-033",
+    "domain": "comic-characters",
+    "query": "Which good Demon character is affiliated with Bureau for Paranormal Research and Defense and has Black hair?",
+    "expected_documents": [
+      "comic-0589_hellboy.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-036",
+    "domain": "comic-characters",
+    "query": "Which good Human character is affiliated with Batman Family and has Brown hair?",
+    "expected_documents": [
+      "comic-0666_james-gordon.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-039",
+    "domain": "comic-characters",
+    "query": "Which neutral Alien character is affiliated with Red Lantern Corps and has Black hair?",
+    "expected_documents": [
+      "comic-0778_lantern-bleez.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-042",
+    "domain": "comic-characters",
+    "query": "Which character born in Masyaf, Syria works as mentor of Assassin Order, Assassin and has Hazel eyes?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-048",
+    "domain": "comic-characters",
+    "query": "Which character born in Algeria works as mercenary and has Green eyes?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-054",
+    "domain": "comic-characters",
+    "query": "Which character born in Heaven works as fallen Angel, Hunter and has Green eyes?",
+    "expected_documents": [
+      "comic-0274_castiel.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-desc-059",
+    "domain": "comic-characters",
+    "query": "Which character born in Queens, New York works as retired Superhero and has Brown eyes?",
+    "expected_documents": [
+      "comic-0358_darkhawk.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual"
+  },
+  {
+    "id": "comic-filter-001",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Marvel Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0053_ancient-one-mcu.md",
+      "comic-0301_clea.md",
+      "comic-0406_doctor-strange-classic.md",
+      "comic-0493_franklin-richards.md",
+      "comic-0614_hulk-stark-gauntlet-mcu.md",
+      "comic-0786_legion.md",
+      "comic-1271_the-beyonder-earth-1298.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-009",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Telepathy Resistance?",
+    "expected_documents": [
+      "comic-0132_batman-arkham.md",
+      "comic-0175_black-alice.md",
+      "comic-0400_doctor-occult.md",
+      "comic-0689_john-constantine-power-of-shazam.md",
+      "comic-0690_john-constantine.md",
+      "comic-0853_martian-manhunter.md",
+      "comic-0878_metamorpho.md",
+      "comic-0974_offspring.md",
+      "comic-1009_plastic-man.md",
+      "comic-1131_saturn-girl-cw.md",
+      "comic-1201_spectre-oversoul.md",
+      "comic-1254_superman-smallville.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-017",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0728_kenshiro.md",
+      "comic-1130_sasuke-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-025",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0738_killer-bee.md",
+      "comic-0885_minato-namikaze.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1119_sai.md",
+      "comic-1121_sakura-haruno.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1159_shikamaru.md",
+      "comic-1337_tsunade.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-033",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0728_kenshiro.md",
+      "comic-0983_one-punch-man.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-041",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-049",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0034_akita.md",
+      "comic-0096_ash.md",
+      "comic-0526_golden-ninja.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-057",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0009_abomination.md",
+      "comic-0122_baron-zemo.md",
+      "comic-0255_captain-america-venomized.md",
+      "comic-0323_cosmic-hulk.md",
+      "comic-0415_dormammu.md",
+      "comic-0453_evil-deadpool.md",
+      "comic-0534_graviton-mcu.md",
+      "comic-0636_infernal-hulk.md",
+      "comic-0702_juggernaut-fox.md",
+      "comic-0834_maestro-hulk.md",
+      "comic-0979_omega.md",
+      "comic-0984_onslaught.md",
+      "comic-1269_thanos.md",
+      "comic-1346_ultron-final-form.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-065",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0067_anti-monitor.md",
+      "comic-0470_felix-faust.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0630_imperiex.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-0944_nekron.md",
+      "comic-0945_nergal.md",
+      "comic-0946_neron.md",
+      "comic-0973_ocean-master.md",
+      "comic-1333_trigon.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-073",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0172_black-adam-new-52.md",
+      "comic-0173_black-adam-pre-crisis.md",
+      "comic-0174_black-adam.md",
+      "comic-0194_black-manta-dceu.md",
+      "comic-0385_desaad.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0630_imperiex.md",
+      "comic-0797_lightning-lord.md",
+      "comic-0973_ocean-master.md",
+      "comic-1084_reverse-flash-cw.md",
+      "comic-1299_the-rival-cw.md",
+      "comic-1446_zoom-new-52.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-081",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0104_atom-smasher-cw.md",
+      "comic-0172_black-adam-new-52.md",
+      "comic-0174_black-adam.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0392_devastator.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0413_doomsday.md",
+      "comic-0536_grayven.md",
+      "comic-0716_kanto.md",
+      "comic-0739_killer-croc-dceu.md",
+      "comic-0831_mad-harriet.md",
+      "comic-0946_neron.md",
+      "comic-0972_ocean-master-dceu.md",
+      "comic-1239_stompa.md",
+      "comic-1333_trigon.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-089",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-097",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md",
+      "comic-0986_orochimaru.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-105",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Super Speed?",
+    "expected_documents": [
+      "comic-0039_alien.md",
+      "comic-0044_alucard.md",
+      "comic-0056_angel-of-death.md",
+      "comic-1261_t-1000.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-113",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0444_emma-frost.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1321_toad.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-121",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Magic?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0239_buri.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-129",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0370_deadpool.md",
+      "comic-0377_death-seed-archangel.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0772_lady-deadpool.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0940_nebula-mcu.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1259_symbiote-wolverine.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-137",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0188_black-flash.md",
+      "comic-0247_calculator.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0821_lucifer-fox.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-145",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Element Control?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-153",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0151_bekka.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-filter-161",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0655_itachi-uchiha.md",
+      "comic-0714_kale.md",
+      "comic-0726_kefla.md",
+      "comic-0934_nagato-uzumaki.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter"
+  },
+  {
+    "id": "comic-range-001",
+    "domain": "comic-characters",
+    "query": "Which characters have an intelligence score below 35?",
+    "expected_documents": [
+      "comic-0387_destroyer-mcu.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-002",
+    "domain": "comic-characters",
+    "query": "Which characters have an intelligence score below 40?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-003",
+    "domain": "comic-characters",
+    "query": "Which characters have an intelligence score below 45?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0217_bolobo.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0507_general-kozu.md",
+      "comic-0516_giant-stone-warrior.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-004",
+    "domain": "comic-characters",
+    "query": "Which characters have an intelligence score below 50?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0217_bolobo.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0414_doppelganger.md",
+      "comic-0507_general-kozu.md",
+      "comic-0516_giant-stone-warrior.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md",
+      "comic-0993_paul-blart.md",
+      "comic-1448_zzzax.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-005",
+    "domain": "comic-characters",
+    "query": "Which characters have a strength score below 5?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0562_harley-keener.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0727_kelex.md",
+      "comic-0890_misako.md",
+      "comic-1237_stewie.md",
+      "comic-1277_the-false-mandarin.md",
+      "comic-1300_the-rumor.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-006",
+    "domain": "comic-characters",
+    "query": "Which characters have a speed score below 10?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0494_franklin-storm.md",
+      "comic-1237_stewie.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-007",
+    "domain": "comic-characters",
+    "query": "Which characters have a durability score below 5?",
+    "expected_documents": [
+      "comic-0494_franklin-storm.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-008",
+    "domain": "comic-characters",
+    "query": "Which characters have a durability score below 10?",
+    "expected_documents": [
+      "comic-0023_agent-bob.md",
+      "comic-0219_bookworm.md",
+      "comic-0494_franklin-storm.md",
+      "comic-0562_harley-keener.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-009",
+    "domain": "comic-characters",
+    "query": "Which characters have a combat score below 10?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0656_j-jonah-jameson.md",
+      "comic-0659_jack-jack.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0993_paul-blart.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-010",
+    "domain": "comic-characters",
+    "query": "Which characters have a combat score below 15?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0351_daphne-powell.md",
+      "comic-0494_franklin-storm.md",
+      "comic-0504_gary-bell.md",
+      "comic-0508_general-vex.md",
+      "comic-0562_harley-keener.md",
+      "comic-0656_j-jonah-jameson.md",
+      "comic-0659_jack-jack.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0686_jj-powell.md",
+      "comic-0993_paul-blart.md",
+      "comic-1038_purple-man.md",
+      "comic-1050_rachel-pirzad.md",
+      "comic-1233_stephanie-powell.md",
+      "comic-1370_vicki-vale.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-011",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score below 2?",
+    "expected_documents": [
+      "comic-0130_bathound.md",
+      "comic-0993_paul-blart.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-012",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score below 3?",
+    "expected_documents": [
+      "comic-0023_agent-bob.md",
+      "comic-0071_aquababy.md",
+      "comic-0091_arnold-flass.md",
+      "comic-0130_bathound.md",
+      "comic-0260_captain-boomerang.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0292_chope.md",
+      "comic-0664_jaime-lannister.md",
+      "comic-0670_jar-jar-binks.md",
+      "comic-0757_kool-aid-man.md",
+      "comic-0990_parademon.md",
+      "comic-0993_paul-blart.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-013",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score above 120?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0357_dark-phoenix-venomized.md",
+      "comic-0393_devilman.md",
+      "comic-0415_dormammu.md",
+      "comic-0419_dr-manhattan.md",
+      "comic-0420_dracula.md",
+      "comic-0521_goblin-force.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0915_monstrox.md",
+      "comic-0933_nadakhan.md",
+      "comic-0982_one-above-all.md",
+      "comic-1285_the-keeper.md",
+      "comic-1292_the-overlord.md",
+      "comic-1347_unicron.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-014",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score above 150?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0393_devilman.md",
+      "comic-0420_dracula.md",
+      "comic-0521_goblin-force.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0933_nadakhan.md",
+      "comic-1285_the-keeper.md",
+      "comic-1292_the-overlord.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-015",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score above 180?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0393_devilman.md",
+      "comic-0420_dracula.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0537_great-evil-beast.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-range-016",
+    "domain": "comic-characters",
+    "query": "Which characters have an overall score above 210?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0393_devilman.md",
+      "comic-0420_dracula.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0537_great-evil-beast.md"
+    ],
+    "category": "numeric_range",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-001",
+    "domain": "comic-characters",
+    "query": "Welche Augenfarbe hat Abin Sur?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-002",
+    "domain": "comic-characters",
+    "query": "Welche Haarfarbe hat Abin Sur?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-003",
+    "domain": "comic-characters",
+    "query": "Von welchem Verlag oder Schöpfer stammt 3-D Man?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-004",
+    "domain": "comic-characters",
+    "query": "Wie lautet der echte Name von 3-D Man?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-005",
+    "domain": "comic-characters",
+    "query": "Wo wurde Abin Sur geboren?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-006",
+    "domain": "comic-characters",
+    "query": "Welchen Beruf übt Abin Sur aus?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-007",
+    "domain": "comic-characters",
+    "query": "In welchem Comic ist Abin Sur zuerst aufgetreten?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-008",
+    "domain": "comic-characters",
+    "query": "Ist 3-D Man gut, böse oder neutral?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-009",
+    "domain": "comic-characters",
+    "query": "Welcher Spezies gehört 3-D Man an?",
+    "expected_documents": [
+      "comic-0001_3-d-man.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-010",
+    "domain": "comic-characters",
+    "query": "Wie groß ist Abin Sur in Zentimetern?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "easy",
+    "language": "de",
+    "type": "factual"
+  },
+  {
+    "id": "comic-de-011",
+    "domain": "comic-characters",
+    "query": "Welche guten Figuren von Marvel Comics beherrschen die Fähigkeit Reality Warping?",
+    "expected_documents": [
+      "comic-0053_ancient-one-mcu.md",
+      "comic-0301_clea.md",
+      "comic-0406_doctor-strange-classic.md",
+      "comic-0493_franklin-richards.md",
+      "comic-0614_hulk-stark-gauntlet-mcu.md",
+      "comic-0786_legion.md",
+      "comic-1271_the-beyonder-earth-1298.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-012",
+    "domain": "comic-characters",
+    "query": "Welche guten Figuren von Shueisha beherrschen die Fähigkeit Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0728_kenshiro.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1121_sakura-haruno.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-013",
+    "domain": "comic-characters",
+    "query": "Welche guten Figuren von Shueisha beherrschen die Fähigkeit Force Fields?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0497_gaara.md",
+      "comic-0597_hinata-hy-ga.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1119_sai.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1324_tobirama-senju.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-014",
+    "domain": "comic-characters",
+    "query": "Welche guten Figuren von Dark Horse Comics beherrschen die Fähigkeit Immortality?",
+    "expected_documents": [
+      "comic-0007_abe-sapien.md",
+      "comic-0059_angel.md",
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md",
+      "comic-1287_the-lobster.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-015",
+    "domain": "comic-characters",
+    "query": "Welche guten Figuren von Lego beherrschen die Fähigkeit Heat Resistance?",
+    "expected_documents": [
+      "comic-0096_ash.md",
+      "comic-0139_batman-lego.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0712_kai-the-lego-ninjago-movie.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-016",
+    "domain": "comic-characters",
+    "query": "Welche bösen Figuren von DC Comics beherrschen die Fähigkeit Matter Manipulation?",
+    "expected_documents": [
+      "comic-0010_abra-kadabra-cw.md",
+      "comic-0011_abra-kadabra.md",
+      "comic-0537_great-evil-beast.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-017",
+    "domain": "comic-characters",
+    "query": "Welche bösen Figuren von DC Comics beherrschen die Fähigkeit Force Fields?",
+    "expected_documents": [
+      "comic-0048_amazo.md",
+      "comic-0227_brainiac.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0532_granny-goodness.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0630_imperiex.md",
+      "comic-0693_johnny-quick.md",
+      "comic-0793_lex-luthor.md",
+      "comic-0849_mantis.md",
+      "comic-0864_maxima.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-1020_power-ring.md",
+      "comic-1066_red-death.md",
+      "comic-1446_zoom-new-52.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-018",
+    "domain": "comic-characters",
+    "query": "Welche bösen Figuren von Shueisha beherrschen die Fähigkeit Self-Sustenance?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-019",
+    "domain": "comic-characters",
+    "query": "Welche bösen Figuren von Dark Horse Comics beherrschen die Fähigkeit Super Speed?",
+    "expected_documents": [
+      "comic-0039_alien.md",
+      "comic-0044_alucard.md",
+      "comic-0056_angel-of-death.md",
+      "comic-1261_t-1000.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-020",
+    "domain": "comic-characters",
+    "query": "Welche neutralen Figuren von Marvel Comics beherrschen die Fähigkeit Energy Beams?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-021",
+    "domain": "comic-characters",
+    "query": "Welche neutralen Figuren von Marvel Comics beherrschen die Fähigkeit Heat Resistance?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0273_captain-universe.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0444_emma-frost.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1259_symbiote-wolverine.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-022",
+    "domain": "comic-characters",
+    "query": "Welche neutralen Figuren von DC Comics beherrschen die Fähigkeit Magic?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0451_etrigan.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0955_nightshade.md",
+      "comic-0989_pandora.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "hard",
+    "language": "de",
+    "type": "filter"
+  },
+  {
+    "id": "comic-de-023",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Intelligenzwert unter 35?",
+    "expected_documents": [
+      "comic-0387_destroyer-mcu.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-024",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Intelligenzwert unter 40?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-025",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Intelligenzwert unter 45?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0217_bolobo.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0507_general-kozu.md",
+      "comic-0516_giant-stone-warrior.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-026",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Intelligenzwert unter 50?",
+    "expected_documents": [
+      "comic-0051_anacondrai-serpent.md",
+      "comic-0217_bolobo.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0387_destroyer-mcu.md",
+      "comic-0414_doppelganger.md",
+      "comic-0507_general-kozu.md",
+      "comic-0516_giant-stone-warrior.md",
+      "comic-0659_jack-jack.md",
+      "comic-0966_nuckal.md",
+      "comic-0993_paul-blart.md",
+      "comic-1448_zzzax.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-027",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Stärkewert unter 5?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0562_harley-keener.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0727_kelex.md",
+      "comic-0890_misako.md",
+      "comic-1237_stewie.md",
+      "comic-1277_the-false-mandarin.md",
+      "comic-1300_the-rumor.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-028",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Geschwindigkeitswert unter 10?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0494_franklin-storm.md",
+      "comic-1237_stewie.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-029",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Widerstandsfähigkeitswert unter 5?",
+    "expected_documents": [
+      "comic-0494_franklin-storm.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-030",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Widerstandsfähigkeitswert unter 10?",
+    "expected_documents": [
+      "comic-0023_agent-bob.md",
+      "comic-0219_bookworm.md",
+      "comic-0494_franklin-storm.md",
+      "comic-0562_harley-keener.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-031",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Kampfwert unter 10?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0656_j-jonah-jameson.md",
+      "comic-0659_jack-jack.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0993_paul-blart.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-032",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Kampfwert unter 15?",
+    "expected_documents": [
+      "comic-0219_bookworm.md",
+      "comic-0351_daphne-powell.md",
+      "comic-0494_franklin-storm.md",
+      "comic-0504_gary-bell.md",
+      "comic-0508_general-vex.md",
+      "comic-0562_harley-keener.md",
+      "comic-0656_j-jonah-jameson.md",
+      "comic-0659_jack-jack.md",
+      "comic-0660_jack-kirby.md",
+      "comic-0686_jj-powell.md",
+      "comic-0993_paul-blart.md",
+      "comic-1038_purple-man.md",
+      "comic-1050_rachel-pirzad.md",
+      "comic-1233_stephanie-powell.md",
+      "comic-1370_vicki-vale.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-033",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Gesamtwert unter 2?",
+    "expected_documents": [
+      "comic-0130_bathound.md",
+      "comic-0993_paul-blart.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  },
+  {
+    "id": "comic-de-034",
+    "domain": "comic-characters",
+    "query": "Welche Figuren haben einen Gesamtwert unter 3?",
+    "expected_documents": [
+      "comic-0023_agent-bob.md",
+      "comic-0071_aquababy.md",
+      "comic-0091_arnold-flass.md",
+      "comic-0130_bathound.md",
+      "comic-0260_captain-boomerang.md",
+      "comic-0262_captain-cold-cw.md",
+      "comic-0292_chope.md",
+      "comic-0664_jaime-lannister.md",
+      "comic-0670_jar-jar-binks.md",
+      "comic-0757_kool-aid-man.md",
+      "comic-0990_parademon.md",
+      "comic-0993_paul-blart.md",
+      "comic-1426_wyatt-wingfoot.md"
+    ],
+    "category": "crosslingual",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "numeric"
+  }
+]
