@@ -69,3 +69,7 @@ documents/
 **/.claude/agent-memory/
 
 tmp
+
+# Python (Hilfsskripte unter .github/scripts/)
+__pycache__/
+*.pyc
