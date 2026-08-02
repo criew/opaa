@@ -32,13 +32,13 @@ Aus dieser Regel folgen zwei Objektklassen mit **bewusst unterschiedlicher Recht
 |---|---|---|
 | Beispiele | Wissensbibliothek, Agent, Prompt-Bibliothek | Chat, Artefakt (Excel, Chart; später Bericht, Entwurf, Auswertung) |
 | Beziehung zum Space | Assoziation: 0..n Spaces, optional, jederzeit lösbar | Enthaltensein: genau 1 Space, zwingend, nicht lösbar |
-| Rechteanker | **eigene ACL am Asset** | **Space-Mitgliedschaft** |
+| Rechteanker | **eigene ACL am Asset** | **Ersteller**, bis er ablegt — danach **Space-Mitgliedschaft** |
 | Entstehung | anderswo erzeugt, hineingereicht | im Space erzeugt |
 
 **Präzise Fassung der Grundregel — beide Hälften gelten:**
 
 - Space-Mitgliedschaft gewährt **keinen** Zugriff auf assoziierte Assets und deren Dokumente.
-- Space-Mitgliedschaft gewährt **vollen** Zugriff auf space-eigene Inhalte.
+- Space-Mitgliedschaft gewährt **vollen** Zugriff auf **abgelegte** space-eigene Inhalte. Entwürfe gehören ausschließlich ihrem Ersteller — auch Space-Admins und System-Admins sehen sie nicht.
 
 Ein pauschaler Satz in nur eine Richtung („der Space trägt keine Rechte" oder „der Space trägt die Rechte") wäre falsch.
 
