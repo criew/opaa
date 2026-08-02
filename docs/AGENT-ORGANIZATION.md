@@ -15,12 +15,46 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` (Sonnet) |
 | **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` (Opus) |
 
+Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review).
+
 Designprinzipien hinter dieser Struktur (basierend auf Multi-Agenten-Forschung und Anthropic-Leitfäden):
 
 - **Ein Agent, eine Spur** — enge Geltungsbereiche halten den Kontext sauber und Ergebnisse zuverlässig.
 - **Artefakte statt Dialog** — Agenten übergeben Arbeit durch Spezifikationen, Issues und PRs, niemals durch informelle Gespräche.
 - **Schreibvorgänge sind single-threaded** — Parallelismus entsteht durch mehrere Entwickler an *verschiedenen* Issues, nicht durch Aufteilung eines Features auf Agenten.
 - **Reviewer ist immer vom Implementierer getrennt** — der am besten dokumentierte Qualitätshebel in der Multi-Agenten-Entwicklung.
+
+## Stakeholder-Review
+
+Die Liefer-Rollen bauen das Produkt. Sie teilen jedoch eine Schwäche: Sie bewerten Konzepte aus der Perspektive derer, die sie entwerfen. Die Menschen, die OPAA in einer Behörde tatsächlich benutzen, betreiben und verantworten müssen, kommen darin nicht vor — und genau an deren Wirklichkeit scheitern Einführungsprojekte.
+
+Die Stakeholder-Rollen schließen diese Lücke. Jede vertritt eine benannte Perspektive aus der öffentlichen Verwaltung und liefert eine schriftliche fachliche Bewertung.
+
+| Rolle | Perspektive | Läuft als |
+|---|---|---|
+| **Sachbearbeiter** | Tagesgeschäft: Aufwand pro Vorgang, Verständlichkeit der Begriffe, Folgen von Fehlbedienung. Umgeht, was ihn ausbremst. | Subagent `stakeholder-sachbearbeiter` (Sonnet) |
+| **Referatsleitung** | Verantwortung für fachliche Richtigkeit, Nachvollziehbarkeit über Jahre, Kontrolle über das, was das Referat abgibt und aufnimmt. | Subagent `stakeholder-referatsleitung` (Sonnet) |
+| **KI-Champion** | Treibt die Einführung: Zeit bis zum ersten sichtbaren Nutzen, Verbreitungsfähigkeit, Selbstständigkeit der Fachbereiche, Umgehungswege. | Subagent `stakeholder-ki-champion` (Sonnet) |
+| **Betriebsverantwortlicher** | Betrieb und Informationssicherheit: Migrierbarkeit, Nachweisbarkeit gegenüber Prüfern, Rechteexplosion, Wiederherstellbarkeit, laufender Aufwand. | Subagent `stakeholder-betrieb` (Opus) |
+| **Skeptiker** | Notorischer Kritiker: wohin die Arbeit verschoben wird, was im dritten Jahr passiert, wer die unbezahlte Pflegearbeit macht. | Subagent `stakeholder-skeptiker` (Opus) |
+| **Personalrat** | Mitbestimmung: Eignung zur Leistungs- und Verhaltenskontrolle, Sichtbarkeit unter Kollegen, Aufbewahrung, Bedingungen für eine Dienstvereinbarung. | Subagent `stakeholder-personalrat` (Opus) |
+
+### Wann ein Stakeholder-Review läuft
+
+Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
+
+Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
+
+### Was ein Stakeholder-Review liefert
+
+Alle sechs Rollen liefern dasselbe Format: Gesamturteil, was funktioniert, was nicht funktioniert (jeweils mit einer konkreten Situation, in der es scheitert), die eine Änderung, die sie vornehmen würden, und was sie ausdrücklich nicht beurteilen können. Der Personalrat ergänzt die Bedingungen für eine Zustimmung.
+
+### Grenzen
+
+- Stakeholder-Agenten schreiben **keinen Produktivcode**, erstellen **keine Issues** und ändern **keine Spezifikationen**. Sie erzeugen ausschließlich Bewertungsberichte.
+- Sie sind **beratend, nicht sperrend**. Ein negatives Urteil ist eine Stimme, keine Blockade; der Maintainer entscheidet.
+- Sie ersetzen weder den Code Reviewer noch den QA Engineer. Diese prüfen die Umsetzung, die Stakeholder prüfen die Absicht.
+- Sie simulieren echte Personengruppen und liegen deshalb manchmal falsch. Eine Bewertung ist ein Hinweis auf ein Risiko, kein Beleg dafür.
 
 ## Agenten-Definitionen und Client-Adapter
 
@@ -34,7 +68,7 @@ Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den
 | Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
 | OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die fünf konkreten Rollendefinitionen sind Product Manager, Developer, Code Reviewer, QA Engineer und Marketing.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die fünf Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer und Marketing; hinzu kommen die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
 
 ## Workflow: von der Idee bis zum Merge
 

@@ -33,7 +33,7 @@ Sie sind der QA Engineer von OPAA. Sie testen das laufende System aus der Perspe
 
 ## Bug-Reports
 
-Englische, beschriftete Bug-Reports mit Schweregrad und Bereich erstellen, die Folgendes enthalten:
+Deutschsprachige, beschriftete Bug-Reports mit Schweregrad und Bereich erstellen, die Folgendes enthalten:
 
 1. **Repro** — deterministische Schritte im Clean-State mit dem Docker-Compose-Stack, Mock-Auth und Seed-Dokumenten aus `backend/src/test/resources/test-documents/`
 2. **Erwartet** — mit Verweis auf das Abnahmekriterium, die Spezifikation oder die Dokumentation
