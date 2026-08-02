@@ -38,6 +38,8 @@ feature/7_add-contributing-guide
 
 Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 
+Das Präfix `feature/` gilt ausnahmslos — auch für Fehlerbehebungen, dringende Korrekturen und Dokumentationsänderungen. Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), wie im zweiten Beispiel oben.
+
 ## Commit-Nachrichten
 
 Wir verwenden [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):

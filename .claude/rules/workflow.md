@@ -1,10 +1,12 @@
 # Git-Workflow-Regeln
 
 - Immer einen Feature-Branch erstellen; niemals direkt auf main committen
+- Branch-Format `feature/<issue-id>_<kurze-beschreibung>` — ausnahmslos, auch bei Fehlerbehebungen und dringenden Korrekturen; kein `fix/`- oder `hotfix/`-Präfix. Die Art der Änderung steht im Conventional-Commit-Typ, nicht im Branch-Namen
 - Conventional-Commits-Format für alle Commit-Nachrichten verwenden
 - Das PR-Template verwenden
 - PRs fokussiert halten: eine logische Änderung pro PR
 - Bei der Behebung eines Issues im PR-Body mit „Closes #N" referenzieren
+- Bei Fehlerbehebungen den **Reproduktionsnachweis** in die PR-Beschreibung aufnehmen: Test gegen den fehlerhaften Stand laufen lassen und das Fehlschlagen mit Fehlermeldung belegen, dann mit dem Fix erneut. Ein grüner Test allein beweist nicht, dass er den Fehler gefangen hätte (siehe `AGENTS.md`, Abschnitt „Reproduktionsnachweis")
 
 ## Git Worktrees für parallele Sessions
 
