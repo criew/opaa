@@ -258,6 +258,51 @@ Dokumente) — sonst ist die Metrik nicht aussagekräftig. Die rund 60 boolesche
 Fähigkeits-Merkmale des Datensatzes lassen sich dafür kombinieren, bis die Treffermenge in diesem
 Fenster liegt.
 
+### Sentinel-Werte: Entitäten außerhalb der Skala ausschließen
+
+**Regel (verbindlich, domänenübergreifend).** Führt ein Feld Werte, die außerhalb seiner
+definierten Skala liegen — fehlend, unendlich, ein Platzhalter wie `-1`, `"unknown"` oder `"N/A"` —,
+dann werden die betroffenen Entitäten aus jeder numerischen Golden Query auf **diesem** Feld
+**ausgeschlossen**. Sie erscheinen dort weder in der erwarteten Treffermenge noch als stillschweigend
+übergangener Sonderfall. Auf anderen Feldern bleiben dieselben Entitäten regulär verwendbar; der
+Ausschluss gilt feldbezogen, nicht dokumentbezogen.
+
+Der Grund ist, dass ein Sentinel-Wert zwei unvereinbare Rollen spielt. Für die Ground Truth ist er
+ein Nichtwert — die Entität hat auf diesem Feld keine Ausprägung. Für den generierten Fließtext und
+damit für das Retrieval ist er dagegen ein ganz normaler Textbestandteil: Das Dokument sagt wörtlich
+etwas über den Wert und wird deshalb zu einer Bereichsfrage gefunden. Wer den Sentinel in der Ground
+Truth ignoriert, misst das Retrieval an einer Erwartung, die dem Korpus widerspricht, und bestraft
+oder belohnt Treffer, die inhaltlich nicht zu bewerten sind. Das Ergebnis ist eine Baseline, deren
+Schwankungen sich nicht mehr auf Retrieval-Qualität zurückführen lassen.
+
+Drei Folgerungen für den Generator:
+
+1. **Die Sentinel-Werte jeder Domäne sind ausdrücklich zu benennen**, bevor Golden Queries daraus
+   entstehen — sie ergeben sich aus der Quelle und sind nicht erratbar.
+2. **Der Ausschluss geschieht vor der Bestimmung der Treffermenge**, nicht als nachträglicher Filter
+   auf dem Ergebnis. Sonst verschiebt sich die Größe der Treffermenge unbemerkt aus dem Fenster von
+   2–15 Dokumenten.
+3. **Auch die Prosa ist zu prüfen.** Formuliert der Generator einen Sentinel als scheinbar gültigen
+   Wert aus („scores 0 for intelligence" für einen fehlenden Wert), entsteht ein Widerspruch
+   zwischen Frontmatter und Fließtext, den kein Ausschluss in der Ground Truth mehr repariert.
+
+**Sentinel-Werte je Domäne:**
+
+| Domäne | Feld | Sentinel | Umfang | Verhalten im Fließtext |
+|---|---|---|---|---|
+| Comichelden | `overall_score` | `null` (unbewertet) | 105 Dokumente | Prosa formuliert den fehlenden Wert als `0` aus — der Widerspruch ist Gegenstand von #226 |
+| Comichelden | `overall_score` | `"∞"` | 18 Dokumente | Prosa sagt wörtlich „his overall score is ∞"; erfüllt jede „größer als"-Bedingung |
+
+Für die Ausweitung auf weitere Domänen (#234 — Filme, Reiseziele, Tiere) ist diese Tabelle
+fortzuschreiben. Eine Domäne gilt erst dann als aufnahmefähig, wenn für jedes numerisch verwendete
+Feld geklärt ist, ob es Sentinel-Werte führt, und die gefundenen hier eingetragen sind — auch das
+Ergebnis „keine" gehört festgehalten, damit es später nicht als ungeprüft gilt.
+
+Die Regel bleibt bewusst in dieser Spezifikation und bekommt keinen eigenen ADR: Ablage,
+Versionierung und Einfrieren des Golden Dataset sind bereits im ADR zur Suchqualitäts-Evaluierung
+entschieden, und die Sentinel-Behandlung ist eine Präzisierung der dort festgelegten Ground Truth,
+keine eigenständige Strukturentscheidung.
+
 ### Kuratierung
 
 Vollautomatisch generierte Fälle sind ein „Silver Dataset". Vor der Aufnahme in die Baseline wird
