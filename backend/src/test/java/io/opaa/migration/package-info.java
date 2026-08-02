@@ -8,14 +8,20 @@
  * the new changelog file, and assert on the resulting schema and data.
  *
  * <p><b>Mandatory teardown pattern (#288):</b> {@code Liquibase.update(...)} leaves the JDBC
- * connection's auto-commit disabled. If a test class needs a clean, schema-less database again
- * afterwards - either between multiple {@code @Test} methods sharing one container ({@code
- * Migration010SpaceUniquenessTest}), or simply to release the connection cleanly - it MUST call
- * {@code connection.setAutoCommit(true)} before running any further statement (schema reset,
- * seeding, or a later {@code update()} call). This fixes the root cause: every raw JDBC statement
- * after that point then commits independently, exactly like the application does in production,
- * instead of silently accumulating in an open transaction that gets rolled back when the connection
- * closes.
+ * connection's auto-commit disabled. Every test class in this package MUST call {@code
+ * connection.setAutoCommit(true)} immediately after each {@code update()} call - unconditionally,
+ * not only when a further statement happens to be needed afterwards. This fixes the root cause:
+ * every raw JDBC statement after that point then commits independently, exactly like the
+ * application does in production, instead of silently accumulating in an open transaction that gets
+ * rolled back when the connection closes. It is what lets {@code Migration010SpaceUniquenessTest}
+ * reset the schema between {@code @Test} methods sharing one container, and it is required even for
+ * single-method test classes that only close the connection afterwards - the connection must never
+ * be left in a state where a caller has to guess whether auto-commit is on.
+ *
+ * <p>{@code Migration008RenameWorkspaceToSpaceTest} predates this rule (it was written before #283
+ * established it) and does not call {@code setAutoCommit(true)}; this is a known, documented
+ * exception, not a second accepted alternative. Do not copy its {@code tearDown()} - copy {@code
+ * Migration010SpaceUniquenessTest} instead.
  *
  * <p>Do not use {@code connection.rollback()} in {@code tearDown()} as an alternative - it only
  * discards whatever happened to still be uncommitted at that point and leaves the underlying

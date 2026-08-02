@@ -27,14 +27,12 @@ import org.testcontainers.utility.DockerImageName;
  * workspace data covering all four historical roles and both historical workspace types - not
  * against an empty schema.
  *
- * <p>{@code SpaceServiceIntegrationTest} and {@code SpaceRepositoryTest} run with {@code
- * spring.liquibase.enabled=false} and {@code ddl-auto=create-drop}; their schema comes from
- * Hibernate directly and never executes a single Liquibase changeSet. {@code OpaaApplicationTests}
- * does run the full changelog, but against an empty database - that proves changeset 008 is
- * syntactically applicable, not that a *data* migration survives non-empty legacy data. It is
- * exactly this gap that let a check-constraint ordering bug in {@code
- * 008-remap-space-membership-roles} pass CI: the changeSet failed on any database that had at least
- * one VIEWER or EDITOR membership row.
+ * <p>{@code SpaceServiceIntegrationTest} and {@code SpaceRepositoryTest} run the real, versioned
+ * Liquibase changelog too (since #288) - but against an empty database at context startup, exactly
+ * like {@code OpaaApplicationTests}. That proves changeset 008 is syntactically applicable, not
+ * that a *data* migration survives non-empty legacy data. It is exactly this gap that let a
+ * check-constraint ordering bug in {@code 008-remap-space-membership-roles} pass CI: the changeSet
+ * failed on any database that had at least one VIEWER or EDITOR membership row.
  *
  * <p>This test closes that gap and is meant as a reusable pattern for future data migrations (see
  * #237, #238): apply the real, versioned changelog up to the changeSet immediately preceding the

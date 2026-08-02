@@ -15,6 +15,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +58,8 @@ class SpaceServiceIntegrationTest {
     // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
     // Liquibase and other tests sharing this Spring context (e.g.
     // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
-    // Each test creates its own throwaway organizations instead, scoped by random ids.
+    // Each test creates its own throwaway organizations instead, scoped by random ids, and removes
+    // them again in tearDown() - see tearDown() below.
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     userRepository.deleteAll();
@@ -65,6 +67,18 @@ class SpaceServiceIntegrationTest {
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
     organizationB =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org B")).getId();
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Users created during the test still reference organizationA/organizationB
+    // (fk_users_organization) - delete them first, then remove only the two organizations this
+    // test created (by id), never Organization.DEFAULT_ID or organizations created by other tests
+    // sharing this context.
+    membershipRepository.deleteAll();
+    spaceRepository.deleteAll();
+    userRepository.deleteAll();
+    organizationRepository.deleteAllById(List.of(organizationA, organizationB));
   }
 
   private UUID createUser(UUID organizationId) {

@@ -1,6 +1,7 @@
 package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
@@ -9,11 +10,13 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -25,6 +28,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * not create a foreign key for those (Liquibase's {@code fk_spaces_owner} / {@code
  * fk_space_memberships_user} do), so every owner/member id used here must be a real, persisted
  * {@link User}.
+ *
+ * <p>{@link #savingASpaceWithANonExistentOwnerFailsInsteadOfSilentlyPersisting()} and {@link
+ * #savingASpaceWithANonExistentOrganizationFailsInsteadOfSilentlyPersisting()} are the #288
+ * regression guards for this class: {@link SpaceRepository#save} is production code (used directly
+ * by {@link SpaceService} today, and by anything that saves a {@link Space} in the future). Before
+ * #288, saving a {@code Space} with a dangling {@code ownerId}/{@code organizationId} succeeded
+ * silently under Hibernate's {@code ddl-auto=create-drop} schema - there was no foreign key to
+ * violate. Against the real Liquibase schema it now fails loudly with {@code fk_spaces_owner} /
+ * {@code fk_spaces_organization}, exactly like the #280 regression this pattern was built to catch.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -46,11 +58,23 @@ class SpaceRepositoryTest {
     // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
     // Liquibase and other tests sharing this Spring context (e.g.
     // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
-    // Each test creates its own throwaway organization instead, scoped by a random id.
+    // Each test creates its own throwaway organization instead, scoped by a random id, and removes
+    // it again in tearDown() - see tearDown() below.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
     userRepository.deleteAll();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Users created during the test still reference org (fk_users_organization) - delete them
+    // first, then remove only the organization this test created (by id), never
+    // Organization.DEFAULT_ID or organizations created by other tests sharing this context.
+    spaceMembershipRepository.deleteAll();
+    spaceRepository.deleteAll();
+    userRepository.deleteAll();
+    organizationRepository.deleteById(org);
   }
 
   private UUID createUser() {
@@ -143,5 +167,40 @@ class SpaceRepositoryTest {
     assertThat(spaceRepository.findAll())
         .filteredOn(space -> space.getName().equals("Phoenix"))
         .hasSize(2);
+  }
+
+  @Test
+  void savingASpaceWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
+    UUID nonExistentOwner = UUID.randomUUID();
+    Space space =
+        new Space(
+            "Ghost",
+            "Owner does not exist",
+            SpaceKind.PROJECT,
+            SpaceVisibility.PRIVATE,
+            nonExistentOwner,
+            org);
+
+    assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_spaces_owner");
+  }
+
+  @Test
+  void savingASpaceWithANonExistentOrganizationFailsInsteadOfSilentlyPersisting() {
+    UUID owner = createUser();
+    UUID nonExistentOrganization = UUID.randomUUID();
+    Space space =
+        new Space(
+            "Ghost",
+            "Organization does not exist",
+            SpaceKind.PROJECT,
+            SpaceVisibility.PRIVATE,
+            owner,
+            nonExistentOrganization);
+
+    assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_spaces_organization");
   }
 }
