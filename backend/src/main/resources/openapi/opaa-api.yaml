@@ -188,6 +188,193 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/groups:
+    get:
+      operationId: listGroups
+      tags: [admin]
+      summary: List groups in the caller's organization (system admin only)
+      responses:
+        "200":
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createGroup
+      tags: [admin]
+      summary: Create an ad-hoc group (system admin only)
+      description: >
+        Always creates a group of kind AD_HOC. Groups of kind ORG_UNIT are created only by
+        directory synchronisation (see #237) and cannot be created through this endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupRequest"
+      responses:
+        "201":
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/groups/{groupId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getGroup
+      tags: [admin]
+      summary: Get group details (system admin only)
+      responses:
+        "200":
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateGroup
+      tags: [admin]
+      summary: Rename an ad-hoc group or change its description (system admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupUpdateRequest"
+      responses:
+        "200":
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteGroup
+      tags: [admin]
+      summary: Delete an ad-hoc group (system admin only)
+      responses:
+        "204":
+          description: Group deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/groups/{groupId}/members:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listGroupMembers
+      tags: [admin]
+      summary: List group members (system admin only)
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupMemberResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: addGroupMember
+      tags: [admin]
+      summary: Add a member to an ad-hoc group (system admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupAddMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/groups/{groupId}/members/{userId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: removeGroupMember
+      tags: [admin]
+      summary: Remove a member from an ad-hoc group (system admin only)
+      responses:
+        "204":
+          description: Member removed
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/spaces:
     get:
       operationId: listSpaces
@@ -844,6 +1031,139 @@ components:
           $ref: "#/components/schemas/SpaceRole"
 
     SpaceTransferOwnershipRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+
+    GroupKind:
+      type: string
+      description: >
+        ORG_UNIT groups are synchronised from the directory (see #237), carry a parent unit and
+        can have curators. AD_HOC groups are created in the system, have no curator and no
+        distribution level of their own.
+      enum: [ORG_UNIT, AD_HOC]
+      example: AD_HOC
+
+    GroupRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Projektbeteiligte Phoenix
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+
+    GroupUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Projektbeteiligte Phoenix
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+
+    GroupMemberResponse:
+      type: object
+      required: [userId, createdAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    GroupListResponse:
+      type: object
+      required: [id, name, kind, memberCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Projektbeteiligte Phoenix
+        description:
+          type: string
+          nullable: true
+        kind:
+          $ref: "#/components/schemas/GroupKind"
+        externalId:
+          type: string
+          nullable: true
+          description: Stable directory identifier (objectGUID or SCIM externalId); null for AD_HOC groups
+        parentGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent organizational unit; only set for ORG_UNIT groups
+        memberCount:
+          type: integer
+          example: 4
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GroupResponse:
+      type: object
+      required: [id, name, kind, memberCount, members, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Projektbeteiligte Phoenix
+        description:
+          type: string
+          nullable: true
+        kind:
+          $ref: "#/components/schemas/GroupKind"
+        externalId:
+          type: string
+          nullable: true
+          description: Stable directory identifier (objectGUID or SCIM externalId); null for AD_HOC groups
+        parentGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent organizational unit; only set for ORG_UNIT groups
+        memberCount:
+          type: integer
+          example: 4
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupMemberResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GroupAddMemberRequest:
       type: object
       required: [userId]
       properties:

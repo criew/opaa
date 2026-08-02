@@ -39,6 +39,14 @@ export type UserInfo = UserInfoResponse
 export type RoleChangeRequest = components['schemas']['RoleChangeRequest']
 export type SystemRole = components['schemas']['SystemRole']
 
+export type GroupKind = components['schemas']['GroupKind']
+export type GroupRequest = components['schemas']['GroupRequest']
+export type GroupUpdateRequest = components['schemas']['GroupUpdateRequest']
+export type GroupMemberResponse = components['schemas']['GroupMemberResponse']
+export type GroupListResponse = components['schemas']['GroupListResponse']
+export type GroupResponse = components['schemas']['GroupResponse']
+export type GroupAddMemberRequest = components['schemas']['GroupAddMemberRequest']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

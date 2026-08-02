@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpaceManagementPage from './pages/SpaceManagementPage'
+import GroupManagementPage from './pages/GroupManagementPage'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
               <Route path="spaces" element={<SpacePage />} />
               <Route path="documents" element={<DocumentsPage />} />
+              <Route path="admin/groups" element={<GroupManagementPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>
