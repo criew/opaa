@@ -35,11 +35,11 @@ System-Admins können:
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken setzen
 - Benutzerverzeichnis-Synchronisation und Gruppen konfigurieren
 - Globale Modell-Policies und Governance-Einstellungen setzen
-- Verwaiste Assets übernehmen und einer neuen Zuständigkeit zuweisen
+- Assets im Zustand „Nachfolge offen" einer neuen Zuständigkeit zuweisen
 
 **System-Admins existieren je Organisation.** Die Mandantengrenze gilt auch für sie; es gibt keine organisationsübergreifende Sicht.
 
-Wichtige Abgrenzung: System-Admins verwalten das System, sind aber **nicht automatisch berechtigt, jeden Inhalt zu lesen**. Der Zugriff auf Wissensbibliotheken folgt der Rechteliste des Assets. Wo eine Übernahme nötig ist (verwaiste Assets, Offboarding), ist sie ein protokollierter Verwaltungsakt und keine stillschweigende Leseberechtigung.
+Wichtige Abgrenzung: System-Admins verwalten das System, sind aber **nicht automatisch berechtigt, jeden Inhalt zu lesen**. Der Zugriff auf Wissensbibliotheken folgt der Rechteliste des Assets. Wo eine Übernahme nötig ist (offene Nachfolge, Offboarding), ist sie ein protokollierter Verwaltungsakt und keine stillschweigende Leseberechtigung. Entwürfe und persönliche Spaces bleiben auch dabei unlesbar.
 
 ### Dokumentenfluss: Konnektoren gegen Benutzer-Uploads
 

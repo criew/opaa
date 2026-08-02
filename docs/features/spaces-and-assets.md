@@ -95,7 +95,7 @@ Eine Rechteliste verweist auf **einen Nutzer oder eine Gruppe**. Gruppen sind ke
 
 - **Sie skalieren, wo Einzelfreigaben es nicht tun.** Eine Stabsstelle braucht Lesezugriff quer über viele Referate; das über Einzelgrants zu pflegen ist aussichtslos und veraltet ab dem ersten Personalwechsel.
 - **Sie bilden die Aufbauorganisation ab.** Verwaltung ist nach Referat, Abteilung und Amt gegliedert. Genau diese Struktur steht im Verzeichnisdienst und wird später über die Verzeichnis-Synchronisation übernommen.
-- **Sie tragen die Verteilungsstufen** (siehe nächster Abschnitt) und lösen das Problem der verwaisten Assets (siehe [Eigentümerschaft](#eigentümerschaft-und-verwaisung)).
+- **Sie tragen die Verteilungsstufen** (siehe nächster Abschnitt) und lösen das Problem der Assets ohne Zuständigkeit (siehe [Eigentümerschaft](#eigentümerschaft-und-verwaisung)).
 
 In der ersten Ausbaustufe werden Gruppen im System gepflegt; die Übernahme aus dem Verzeichnisdienst folgt und ändert nichts am Rechtemodell, sondern nur an der Herkunft der Mitgliedschaften.
 
