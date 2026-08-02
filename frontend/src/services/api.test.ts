@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../mocks/server'
-import { getHealth, sendQuery } from './api'
+import { getHealth, sendQuery, updateSpaceDetails } from './api'
 
 describe('api service', () => {
   describe('getHealth', () => {
@@ -17,6 +17,37 @@ describe('api service', () => {
       expect(result.answer).toBeDefined()
       expect(result.sources.length).toBeGreaterThanOrEqual(1)
       expect(result.metadata.model).toBe('gpt-4o')
+    })
+  })
+
+  describe('updateSpaceDetails', () => {
+    it('sends only name, description and visibility - no kind, ownerId or initialMembers', async () => {
+      let capturedBody: unknown = null
+      server.use(
+        http.put('/api/v1/spaces/:spaceId', async ({ request }) => {
+          capturedBody = await request.json()
+          return HttpResponse.json({
+            id: 'space-1',
+            name: 'Renamed',
+            kind: 'PROJECT',
+            visibility: 'PRIVATE',
+            ownerId: 'u1',
+            memberCount: 1,
+            roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+            members: [],
+            createdAt: '2026-03-01T10:00:00Z',
+            updatedAt: '2026-03-01T10:00:00Z',
+          })
+        }),
+      )
+
+      await updateSpaceDetails('space-1', 'Renamed', 'A new description')
+
+      expect(capturedBody).toEqual({
+        name: 'Renamed',
+        description: 'A new description',
+        visibility: undefined,
+      })
     })
   })
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { useAuthStore } from './authStore'
-import { useWorkspaceStore } from './workspaceStore'
+import { useSpaceStore } from './spaceStore'
 
 describe('authStore', () => {
   beforeEach(() => {
@@ -69,20 +69,21 @@ describe('authStore', () => {
       isAuthenticated: true,
       isLoading: false,
     })
-    useWorkspaceStore.setState({
-      workspaces: [
+    useSpaceStore.setState({
+      spaces: [
         {
-          id: 'ws-1',
+          id: 'space-1',
           name: 'Test',
           description: '',
-          type: 'PERSONAL',
+          kind: 'PERSONAL',
+          visibility: 'PRIVATE',
           memberCount: 1,
-          userRole: 'OWNER',
+          userRole: 'ADMIN',
           createdAt: '',
           updatedAt: '',
         },
       ],
-      selectedWorkspaceId: 'ws-1',
+      selectedSpaceId: 'space-1',
     })
 
     await useAuthStore.getState().logout()
@@ -93,9 +94,9 @@ describe('authStore', () => {
     expect(authState.user).toBeNull()
     expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeNull()
 
-    const wsState = useWorkspaceStore.getState()
-    expect(wsState.workspaces).toEqual([])
-    expect(wsState.selectedWorkspaceId).toBeNull()
+    const spaceState = useSpaceStore.getState()
+    expect(spaceState.spaces).toEqual([])
+    expect(spaceState.selectedSpaceId).toBeNull()
   })
 
   it('returns access token via getAccessToken', () => {

@@ -9,9 +9,8 @@ import {
   mockLoginResponse,
   mockUser,
   mockUsers,
-  mockWorkspaces,
-  mockWorkspaceDetails,
-  mockWorkspaceDocuments,
+  mockSpaces,
+  mockSpaceDetails,
 } from './fixtures'
 import type { IndexingStatusResponse, QueryRequest } from '../types/api'
 import type { LoginRequest } from '../types/auth'
@@ -27,15 +26,15 @@ export function resetIndexingState() {
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
 
-function recalculateRoleCounts(workspaceId: string) {
-  const workspace = mockWorkspaceDetails[workspaceId]
-  if (!workspace) return
-  const base = { VIEWER: 0, EDITOR: 0, ADMIN: 0, OWNER: 0 }
-  for (const member of workspace.members) {
+function recalculateRoleCounts(spaceId: string) {
+  const space = mockSpaceDetails[spaceId]
+  if (!space) return
+  const base = { MEMBER: 0, CURATOR: 0, ADMIN: 0 }
+  for (const member of space.members) {
     base[member.role] += 1
   }
-  workspace.roleCounts = base
-  workspace.memberCount = workspace.members.length
+  space.roleCounts = base
+  space.memberCount = space.members.length
 }
 
 function getRunningStatus(step: number): IndexingStatusResponse {
@@ -101,13 +100,13 @@ export const handlers = [
       )
     }
     const mockResponse = getRandomMockResponse()
-    const requestedWorkspaceIds = body.workspaceIds ?? []
+    const requestedSpaceIds = body.spaceIds ?? []
     const filteredSources =
-      requestedWorkspaceIds.length > 0
+      requestedSpaceIds.length > 0
         ? mockResponse.sources.filter((source) =>
-            requestedWorkspaceIds.some((workspaceId) => {
-              const workspace = mockWorkspaces.find((item) => item.id === workspaceId)
-              return workspace?.name === source.workspaceName
+            requestedSpaceIds.some((spaceId) => {
+              const space = mockSpaces.find((item) => item.id === spaceId)
+              return space?.name === source.spaceName
             }),
           )
         : mockResponse.sources
@@ -118,156 +117,142 @@ export const handlers = [
     })
   }),
 
-  http.post('/api/v1/workspaces', async ({ request }) => {
-    const body = (await request.json()) as { name: string; description?: string }
+  http.post('/api/v1/spaces', async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      kind?: 'PERSONAL' | 'PROJECT' | 'TEAM'
+    }
     if (!body.name || body.name.trim() === '') {
-      return HttpResponse.json(
-        { error: 'Der Name des Workspace ist erforderlich' },
-        { status: 400 },
-      )
+      return HttpResponse.json({ error: 'Der Name des Space ist erforderlich' }, { status: 400 })
     }
-    if (mockWorkspaces.some((ws) => ws.name.toLowerCase() === body.name.trim().toLowerCase())) {
-      return HttpResponse.json(
-        { error: 'Ein Workspace mit diesem Namen existiert bereits' },
-        { status: 409 },
-      )
-    }
-    const id = `ws-${crypto.randomUUID().slice(0, 8)}`
+    const id = `space-${crypto.randomUUID().slice(0, 8)}`
     const now = new Date().toISOString()
-    const listEntry: (typeof mockWorkspaces)[number] = {
+    const listEntry: (typeof mockSpaces)[number] = {
       id,
       name: body.name.trim(),
       description: body.description?.trim() ?? null,
-      type: 'SHARED',
+      kind: body.kind ?? 'PROJECT',
+      visibility: 'PRIVATE',
       memberCount: 1,
-      userRole: 'OWNER',
+      userRole: 'ADMIN',
       createdAt: now,
       updatedAt: now,
     }
-    mockWorkspaces.push(listEntry)
+    mockSpaces.push(listEntry)
     const detail = {
       ...listEntry,
       ownerId: 'mock-user-id',
-      roleCounts: { VIEWER: 0, EDITOR: 0, ADMIN: 0, OWNER: 1 },
-      members: [{ userId: 'mock-user-id', role: 'OWNER' as const, createdAt: now }],
+      roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
+      members: [{ userId: 'mock-user-id', role: 'ADMIN' as const, createdAt: now }],
     }
-    mockWorkspaceDetails[id] = detail
-    mockWorkspaceDocuments[id] = []
+    mockSpaceDetails[id] = detail
     return HttpResponse.json(detail, { status: 201 })
   }),
 
-  http.get('/api/v1/workspaces', () => {
-    return HttpResponse.json(mockWorkspaces)
+  http.get('/api/v1/spaces', () => {
+    return HttpResponse.json(mockSpaces)
   }),
 
-  http.get('/api/v1/workspaces/:workspaceId', ({ params }) => {
-    const workspaceId = String(params.workspaceId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+  http.get('/api/v1/spaces/:spaceId', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    return HttpResponse.json(workspace)
+    return HttpResponse.json(space)
   }),
 
-  http.get('/api/v1/workspaces/:workspaceId/documents', ({ params }) => {
-    const workspaceId = String(params.workspaceId)
-    return HttpResponse.json(mockWorkspaceDocuments[workspaceId] ?? [])
-  }),
-
-  http.post('/api/v1/workspaces/:workspaceId/members', async ({ params, request }) => {
-    const workspaceId = String(params.workspaceId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+  http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
 
-    const body = (await request.json()) as { userId: string; role?: 'VIEWER' | 'EDITOR' | 'ADMIN' }
+    const body = (await request.json()) as { userId: string; role?: 'MEMBER' | 'CURATOR' | 'ADMIN' }
     if (!body.userId) {
       return HttpResponse.json({ error: 'userId is required' }, { status: 400 })
     }
-    if (workspace.members.some((member) => member.userId === body.userId)) {
+    if (space.members.some((member) => member.userId === body.userId)) {
       return HttpResponse.json(
-        { error: 'Der Benutzer ist bereits Mitglied dieses Workspace' },
+        { error: 'Der Benutzer ist bereits Mitglied dieses Space' },
         { status: 409 },
       )
     }
 
-    const role = body.role ?? 'VIEWER'
+    const role = body.role ?? 'MEMBER'
     const member = { userId: body.userId, role, createdAt: new Date().toISOString() }
-    workspace.members.push(member)
-    recalculateRoleCounts(workspaceId)
+    space.members.push(member)
+    recalculateRoleCounts(spaceId)
     return HttpResponse.json(member, { status: 201 })
   }),
 
-  http.delete('/api/v1/workspaces/:workspaceId/members/:userId', ({ params }) => {
-    const workspaceId = String(params.workspaceId)
+  http.delete('/api/v1/spaces/:spaceId/members/:userId', ({ params }) => {
+    const spaceId = String(params.spaceId)
     const userId = String(params.userId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    workspace.members = workspace.members.filter((member) => member.userId !== userId)
-    recalculateRoleCounts(workspaceId)
+    space.members = space.members.filter((member) => member.userId !== userId)
+    recalculateRoleCounts(spaceId)
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.put('/api/v1/workspaces/:workspaceId/members/:userId/role', async ({ params, request }) => {
-    const workspaceId = String(params.workspaceId)
+  http.put('/api/v1/spaces/:spaceId/members/:userId/role', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
     const userId = String(params.userId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const target = workspace.members.find((member) => member.userId === userId)
+    const target = space.members.find((member) => member.userId === userId)
     if (!target) {
-      return HttpResponse.json({ error: 'Mitglied des Workspace nicht gefunden' }, { status: 404 })
+      return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }
-    const body = (await request.json()) as { role: 'VIEWER' | 'EDITOR' | 'ADMIN' }
+    const body = (await request.json()) as { role: 'MEMBER' | 'CURATOR' | 'ADMIN' }
     target.role = body.role
-    recalculateRoleCounts(workspaceId)
+    recalculateRoleCounts(spaceId)
     return HttpResponse.json(target)
   }),
 
-  http.post('/api/v1/workspaces/:workspaceId/transfer-ownership', async ({ params, request }) => {
-    const workspaceId = String(params.workspaceId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+  http.post('/api/v1/spaces/:spaceId/transfer-ownership', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { userId: string }
-    const currentOwner = workspace.members.find((member) => member.role === 'OWNER')
-    const newOwner = workspace.members.find((member) => member.userId === body.userId)
-    if (!currentOwner || !newOwner) {
-      return HttpResponse.json({ error: 'Mitglied des Workspace nicht gefunden' }, { status: 404 })
+    const newOwner = space.members.find((member) => member.userId === body.userId)
+    if (!newOwner) {
+      return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }
-    currentOwner.role = 'ADMIN'
-    newOwner.role = 'OWNER'
-    recalculateRoleCounts(workspaceId)
+    space.ownerId = body.userId
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.put('/api/v1/workspaces/:workspaceId', async ({ params, request }) => {
-    const workspaceId = String(params.workspaceId)
-    const workspace = mockWorkspaceDetails[workspaceId]
-    const listEntry = mockWorkspaces.find((item) => item.id === workspaceId)
-    if (!workspace || !listEntry) {
-      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
+  http.put('/api/v1/spaces/:spaceId', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    const listEntry = mockSpaces.find((item) => item.id === spaceId)
+    if (!space || !listEntry) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { name: string; description: string }
-    workspace.name = body.name
-    workspace.description = body.description
+    space.name = body.name
+    space.description = body.description
     listEntry.name = body.name
     listEntry.description = body.description
-    return HttpResponse.json(workspace)
+    return HttpResponse.json(space)
   }),
 
-  http.delete('/api/v1/workspaces/:workspaceId', ({ params }) => {
-    const workspaceId = String(params.workspaceId)
-    delete mockWorkspaceDetails[workspaceId]
-    delete mockWorkspaceDocuments[workspaceId]
-    const idx = mockWorkspaces.findIndex((item) => item.id === workspaceId)
+  http.delete('/api/v1/spaces/:spaceId', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    delete mockSpaceDetails[spaceId]
+    const idx = mockSpaces.findIndex((item) => item.id === spaceId)
     if (idx >= 0) {
-      mockWorkspaces.splice(idx, 1)
+      mockSpaces.splice(idx, 1)
     }
     return new HttpResponse(null, { status: 204 })
   }),

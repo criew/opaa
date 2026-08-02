@@ -55,9 +55,9 @@ export default function SourceCard({ source }: SourceCardProps) {
           />
         </Tooltip>
       </Box>
-      {source.workspaceName && (
+      {source.spaceName && (
         <Chip
-          label={source.workspaceName}
+          label={source.spaceName}
           size="small"
           variant="outlined"
           sx={{ mb: 0.75, height: 20, fontSize: '0.7rem' }}

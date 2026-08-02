@@ -1,10 +1,7 @@
 package io.opaa.auth;
 
-import io.opaa.workspace.Workspace;
-import io.opaa.workspace.WorkspaceMembership;
-import io.opaa.workspace.WorkspaceRepository;
-import io.opaa.workspace.WorkspaceRole;
-import io.opaa.workspace.WorkspaceType;
+import io.opaa.organization.Organization;
+import io.opaa.space.SpaceService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -19,19 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 @EnableConfigurationProperties(AuthProperties.class)
 public class UserService {
 
-  private static final String PERSONAL_WORKSPACE_NAME = "Meine Dokumente";
-  private static final String PERSONAL_WORKSPACE_DESCRIPTION = "Privater persönlicher Workspace";
-
   private final UserRepository userRepository;
-  private final WorkspaceRepository workspaceRepository;
+  private final SpaceService spaceService;
   private final AuthProperties authProperties;
 
   public UserService(
-      UserRepository userRepository,
-      WorkspaceRepository workspaceRepository,
-      AuthProperties authProperties) {
+      UserRepository userRepository, SpaceService spaceService, AuthProperties authProperties) {
     this.userRepository = userRepository;
-    this.workspaceRepository = workspaceRepository;
+    this.spaceService = spaceService;
     this.authProperties = authProperties;
   }
 
@@ -54,13 +46,14 @@ public class UserService {
             .orElseGet(
                 () -> {
                   User newUser = new User(subject, issuer, email, displayName);
+                  newUser.setOrganizationId(Organization.DEFAULT_ID);
                   if (isInitialAdmin(email)) {
                     newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
                   }
                   return userRepository.save(newUser);
                 });
 
-    ensurePersonalWorkspace(user);
+    spaceService.ensurePersonalSpace(user.getId(), user.getOrganizationId());
     return user;
   }
 
@@ -91,20 +84,5 @@ public class UserService {
     return initialAdminEmail != null
         && !initialAdminEmail.isBlank()
         && initialAdminEmail.equalsIgnoreCase(email);
-  }
-
-  private void ensurePersonalWorkspace(User user) {
-    if (workspaceRepository.existsByOwnerIdAndType(user.getId(), WorkspaceType.PERSONAL)) {
-      return;
-    }
-
-    Workspace personalWorkspace =
-        new Workspace(
-            PERSONAL_WORKSPACE_NAME,
-            PERSONAL_WORKSPACE_DESCRIPTION,
-            WorkspaceType.PERSONAL,
-            user.getId());
-    personalWorkspace.addMembership(new WorkspaceMembership(user.getId(), WorkspaceRole.OWNER));
-    workspaceRepository.save(personalWorkspace);
   }
 }

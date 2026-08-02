@@ -104,14 +104,16 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 
     typeMappings.set(mapOf(
         "DateTime" to "Instant",
-        "WorkspaceRole" to "WorkspaceRole",
-        "WorkspaceType" to "WorkspaceType",
+        "SpaceRole" to "SpaceRole",
+        "SpaceKind" to "SpaceKind",
+        "SpaceVisibility" to "SpaceVisibility",
         "SystemRole" to "SystemRole",
     ))
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
-        "WorkspaceRole" to "io.opaa.workspace.WorkspaceRole",
-        "WorkspaceType" to "io.opaa.workspace.WorkspaceType",
+        "SpaceRole" to "io.opaa.space.SpaceRole",
+        "SpaceKind" to "io.opaa.space.SpaceKind",
+        "SpaceVisibility" to "io.opaa.space.SpaceVisibility",
         "SystemRole" to "io.opaa.auth.SystemRole",
     ))
 }
@@ -121,7 +123,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
-        listOf("WorkspaceRole.java", "WorkspaceType.java", "SystemRole.java").forEach { fileName ->
+        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java").forEach { fileName ->
             file("$generatedDir/$fileName").delete()
         }
     }

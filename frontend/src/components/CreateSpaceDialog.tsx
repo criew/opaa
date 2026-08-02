@@ -7,17 +7,13 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 
-interface CreateWorkspaceDialogProps {
+interface CreateSpaceDialogProps {
   open: boolean
   onClose: () => void
-  onCreated: (workspaceId: string) => void
+  onCreated: (spaceId: string) => void
 }
 
-export default function CreateWorkspaceDialog({
-  open,
-  onClose,
-  onCreated,
-}: CreateWorkspaceDialogProps) {
+export default function CreateSpaceDialog({ open, onClose, onCreated }: CreateSpaceDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -40,15 +36,13 @@ export default function CreateWorkspaceDialog({
     setError(null)
     setSubmitting(true)
     try {
-      const { useWorkspaceStore } = await import('../stores/workspaceStore')
-      const workspaceId = await useWorkspaceStore
-        .getState()
-        .createNewWorkspace(trimmedName, description.trim())
+      const { useSpaceStore } = await import('../stores/spaceStore')
+      const spaceId = await useSpaceStore.getState().createNewSpace(trimmedName, description.trim())
       setName('')
       setDescription('')
-      onCreated(workspaceId)
+      onCreated(spaceId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Workspace konnte nicht erstellt werden')
+      setError(err instanceof Error ? err.message : 'Space konnte nicht erstellt werden')
     } finally {
       setSubmitting(false)
     }
@@ -56,7 +50,7 @@ export default function CreateWorkspaceDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Workspace erstellen</DialogTitle>
+      <DialogTitle>Space erstellen</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

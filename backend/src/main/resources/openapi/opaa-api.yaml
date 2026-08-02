@@ -188,40 +188,40 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/workspaces:
+  /api/v1/spaces:
     get:
-      operationId: listWorkspaces
-      tags: [workspace]
-      summary: List workspaces the current user is a member of
+      operationId: listSpaces
+      tags: [space]
+      summary: List spaces the current user is a member of
       responses:
         "200":
-          description: List of workspaces
+          description: List of spaces
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/WorkspaceListResponse"
+                  $ref: "#/components/schemas/SpaceListResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
     post:
-      operationId: createWorkspace
-      tags: [workspace]
-      summary: Create a new shared workspace (system admin only)
+      operationId: createSpace
+      tags: [space]
+      summary: Create a new space (project spaces are self-service, team spaces are system admin only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WorkspaceRequest"
+              $ref: "#/components/schemas/SpaceRequest"
       responses:
         "201":
-          description: Workspace created
+          description: Space created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceResponse"
+                $ref: "#/components/schemas/SpaceResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -229,9 +229,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/workspaces/{workspaceId}:
+  /api/v1/spaces/{spaceId}:
     parameters:
-      - name: workspaceId
+      - name: spaceId
         in: path
         required: true
         schema:
@@ -239,38 +239,38 @@ paths:
           format: uuid
 
     get:
-      operationId: getWorkspace
-      tags: [workspace]
-      summary: Get workspace details
+      operationId: getSpace
+      tags: [space]
+      summary: Get space details
       responses:
         "200":
-          description: Workspace details
+          description: Space details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceResponse"
+                $ref: "#/components/schemas/SpaceResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
     put:
-      operationId: updateWorkspace
-      tags: [workspace]
-      summary: Update workspace name and description (admin/owner only)
+      operationId: updateSpace
+      tags: [space]
+      summary: Update space name, description and visibility (admin or owner only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WorkspaceRequest"
+              $ref: "#/components/schemas/SpaceUpdateRequest"
       responses:
         "200":
-          description: Workspace updated
+          description: Space updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceResponse"
+                $ref: "#/components/schemas/SpaceResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -281,12 +281,12 @@ paths:
           $ref: "#/components/responses/Conflict"
 
     delete:
-      operationId: deleteWorkspace
-      tags: [workspace]
-      summary: Delete a workspace (owner or system admin only)
+      operationId: deleteSpace
+      tags: [space]
+      summary: Delete a space (owner or system admin only)
       responses:
         "204":
-          description: Workspace deleted
+          description: Space deleted
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -294,9 +294,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/workspaces/{workspaceId}/documents:
+  /api/v1/spaces/{spaceId}/members:
     parameters:
-      - name: workspaceId
+      - name: spaceId
         in: path
         required: true
         schema:
@@ -304,36 +304,9 @@ paths:
           format: uuid
 
     get:
-      operationId: listWorkspaceDocuments
-      tags: [workspace]
-      summary: List documents in a workspace
-      responses:
-        "200":
-          description: List of workspace documents
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WorkspaceDocumentResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/workspaces/{workspaceId}/members:
-    parameters:
-      - name: workspaceId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: listWorkspaceMembers
-      tags: [workspace]
-      summary: List workspace members
+      operationId: listSpaceMembers
+      tags: [space]
+      summary: List space members
       responses:
         "200":
           description: List of members
@@ -342,29 +315,29 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/WorkspaceMemberResponse"
+                  $ref: "#/components/schemas/SpaceMemberResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
     post:
-      operationId: addWorkspaceMember
-      tags: [workspace]
-      summary: Add a member to a workspace (admin/owner only)
+      operationId: addSpaceMember
+      tags: [space]
+      summary: Add a member to a space (admin only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WorkspaceAddMemberRequest"
+              $ref: "#/components/schemas/SpaceAddMemberRequest"
       responses:
         "201":
           description: Member added
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceMemberResponse"
+                $ref: "#/components/schemas/SpaceMemberResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -374,9 +347,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/workspaces/{workspaceId}/members/{userId}:
+  /api/v1/spaces/{spaceId}/members/{userId}:
     parameters:
-      - name: workspaceId
+      - name: spaceId
         in: path
         required: true
         schema:
@@ -390,9 +363,9 @@ paths:
           format: uuid
 
     delete:
-      operationId: removeWorkspaceMember
-      tags: [workspace]
-      summary: Remove a member from a workspace (admin/owner only)
+      operationId: removeSpaceMember
+      tags: [space]
+      summary: Remove a member from a space (admin only)
       responses:
         "204":
           description: Member removed
@@ -403,9 +376,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/workspaces/{workspaceId}/members/{userId}/role:
+  /api/v1/spaces/{spaceId}/members/{userId}/role:
     parameters:
-      - name: workspaceId
+      - name: spaceId
         in: path
         required: true
         schema:
@@ -419,22 +392,22 @@ paths:
           format: uuid
 
     put:
-      operationId: updateWorkspaceMemberRole
-      tags: [workspace]
-      summary: Update a member's role (admin/owner only)
+      operationId: updateSpaceMemberRole
+      tags: [space]
+      summary: Update a member's role (admin only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WorkspaceRoleUpdateRequest"
+              $ref: "#/components/schemas/SpaceRoleUpdateRequest"
       responses:
         "200":
           description: Role updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkspaceMemberResponse"
+                $ref: "#/components/schemas/SpaceMemberResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -442,9 +415,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/workspaces/{workspaceId}/transfer-ownership:
+  /api/v1/spaces/{spaceId}/transfer-ownership:
     parameters:
-      - name: workspaceId
+      - name: spaceId
         in: path
         required: true
         schema:
@@ -452,15 +425,15 @@ paths:
           format: uuid
 
     post:
-      operationId: transferWorkspaceOwnership
-      tags: [workspace]
-      summary: Transfer workspace ownership to another member (owner only)
+      operationId: transferSpaceOwnership
+      tags: [space]
+      summary: Transfer space ownership to another member (owner or system admin only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WorkspaceTransferOwnershipRequest"
+              $ref: "#/components/schemas/SpaceTransferOwnershipRequest"
       responses:
         "204":
           description: Ownership transferred
@@ -586,12 +559,12 @@ components:
           type: string
           pattern: "^[a-zA-Z0-9-]{1,50}$"
           example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
-        workspaceIds:
+        spaceIds:
           type: array
           items:
             type: string
             format: uuid
-          description: Optional list of workspace IDs to restrict the query to
+          description: Optional list of space IDs to restrict the query to
 
     QueryResponse:
       type: object
@@ -617,7 +590,7 @@ components:
         fileName:
           type: string
           example: architecture-overview.md
-        workspaceName:
+        spaceName:
           type: string
           nullable: true
           example: Engineering
@@ -687,19 +660,24 @@ components:
           type: string
           format: date-time
 
-    WorkspaceRole:
+    SpaceRole:
       type: string
-      enum: [VIEWER, EDITOR, ADMIN, OWNER]
-      example: EDITOR
+      enum: [MEMBER, CURATOR, ADMIN]
+      example: CURATOR
 
-    WorkspaceType:
+    SpaceKind:
       type: string
-      enum: [PERSONAL, SHARED]
-      example: SHARED
+      enum: [PERSONAL, PROJECT, TEAM]
+      example: PROJECT
 
-    WorkspaceRequest:
+    SpaceVisibility:
+      type: string
+      enum: [PRIVATE, DISCOVERABLE, OPEN]
+      example: PRIVATE
+
+    SpaceRequest:
       type: object
-      required: [name]
+      required: [name, kind]
       properties:
         name:
           type: string
@@ -710,19 +688,45 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Engineering team workspace
+          example: Engineering project space
+        kind:
+          $ref: "#/components/schemas/SpaceKind"
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid
           nullable: true
-          description: Required when creating a workspace
+          description: Defaults to the creator; a system admin may set it explicitly
         initialMembers:
           type: array
           nullable: true
           items:
-            $ref: "#/components/schemas/WorkspaceMemberRequest"
+            $ref: "#/components/schemas/SpaceMemberRequest"
 
-    WorkspaceMemberRequest:
+    SpaceUpdateRequest:
+      type: object
+      required: [name]
+      description: >
+        Body for updating an existing space. Deliberately narrower than SpaceRequest: kind and
+        ownerId cannot be changed here (kind is fixed at creation, ownership changes go through
+        the dedicated transfer-ownership endpoint), and initialMembers has no meaning for an
+        update.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Engineering
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Engineering project space
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
+
+    SpaceMemberRequest:
       type: object
       required: [userId, role]
       properties:
@@ -730,11 +734,11 @@ components:
           type: string
           format: uuid
         role:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
 
-    WorkspaceListResponse:
+    SpaceListResponse:
       type: object
-      required: [id, name, type, memberCount, createdAt, updatedAt]
+      required: [id, name, kind, memberCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -745,13 +749,15 @@ components:
         description:
           type: string
           nullable: true
-        type:
-          $ref: "#/components/schemas/WorkspaceType"
+        kind:
+          $ref: "#/components/schemas/SpaceKind"
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
           type: integer
           example: 5
         userRole:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
         createdAt:
           type: string
           format: date-time
@@ -759,7 +765,7 @@ components:
           type: string
           format: date-time
 
-    WorkspaceMemberResponse:
+    SpaceMemberResponse:
       type: object
       required: [userId, role, createdAt]
       properties:
@@ -770,14 +776,14 @@ components:
           type: string
           nullable: true
         role:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
         createdAt:
           type: string
           format: date-time
 
-    WorkspaceResponse:
+    SpaceResponse:
       type: object
-      required: [id, name, type, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
+      required: [id, name, kind, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -788,8 +794,10 @@ components:
         description:
           type: string
           nullable: true
-        type:
-          $ref: "#/components/schemas/WorkspaceType"
+        kind:
+          $ref: "#/components/schemas/SpaceKind"
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
           type: string
           format: uuid
@@ -797,21 +805,20 @@ components:
           type: integer
           example: 5
         userRole:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
         roleCounts:
           type: object
           additionalProperties:
             type: integer
             format: int64
           example:
-            VIEWER: 2
-            EDITOR: 1
+            MEMBER: 2
+            CURATOR: 1
             ADMIN: 1
-            OWNER: 1
         members:
           type: array
           items:
-            $ref: "#/components/schemas/WorkspaceMemberResponse"
+            $ref: "#/components/schemas/SpaceMemberResponse"
         createdAt:
           type: string
           format: date-time
@@ -819,7 +826,7 @@ components:
           type: string
           format: date-time
 
-    WorkspaceAddMemberRequest:
+    SpaceAddMemberRequest:
       type: object
       required: [userId]
       properties:
@@ -827,42 +834,22 @@ components:
           type: string
           format: uuid
         role:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
 
-    WorkspaceRoleUpdateRequest:
+    SpaceRoleUpdateRequest:
       type: object
       required: [role]
       properties:
         role:
-          $ref: "#/components/schemas/WorkspaceRole"
+          $ref: "#/components/schemas/SpaceRole"
 
-    WorkspaceTransferOwnershipRequest:
+    SpaceTransferOwnershipRequest:
       type: object
       required: [userId]
       properties:
         userId:
           type: string
           format: uuid
-
-    WorkspaceDocumentResponse:
-      type: object
-      required: [id, name, type, uploadedAt, ownerDisplayName]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-          example: architecture-overview.md
-        type:
-          type: string
-          example: MARKDOWN
-        uploadedAt:
-          type: string
-          format: date-time
-        ownerDisplayName:
-          type: string
-          example: Alice
 
   responses:
     ValidationError:

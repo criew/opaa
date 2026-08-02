@@ -10,8 +10,8 @@ import DocumentsPage from './pages/DocumentsPage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
-import WorkspacePage from './pages/WorkspacePage'
-import WorkspaceManagementPage from './pages/WorkspaceManagementPage'
+import SpacePage from './pages/SpacePage'
+import SpaceManagementPage from './pages/SpaceManagementPage'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -44,9 +44,9 @@ export default function App() {
             >
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatPage />} />
-              <Route path="workspaces/:workspaceId" element={<WorkspacePage />} />
-              <Route path="workspaces/:workspaceId/manage" element={<WorkspaceManagementPage />} />
-              <Route path="workspaces" element={<WorkspacePage />} />
+              <Route path="spaces/:spaceId" element={<SpacePage />} />
+              <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
+              <Route path="spaces" element={<SpacePage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/chat" replace />} />
