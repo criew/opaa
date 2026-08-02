@@ -35,20 +35,40 @@ Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **T
 - **Zweck:** Öffentlich erreichbare Instanz zum Ausprobieren und Vorzeigen des aktuellen `main`-Stands.
 - **Zugriff:** Die Instanz läuft mit `OPAA_AUTH_MODE=oidc` hinter Keycloak (siehe [Authentifizierung](#authentifizierung)). Der Zugang ist bewusst account-gebunden — ein anonymer Zugang oder Gastzugang ist **nicht** vorgesehen; jede Nutzung erfordert eine Anmeldung. Wer welchen Zugang erhält, ist außerhalb dieses Dokuments geregelt und hier nicht beschrieben. Eine Konsequenz dieser Festlegung: Inhalte auf der Instanz — etwa ein dort ausgerollter Demo-Korpus (siehe #230) — sind nur für angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
 - **Administration:** Genau ein Konto trägt die Rolle `SYSTEM_ADMIN` — das persönliche Konto des Maintainers, auf das `OPAA_INITIAL_ADMIN_EMAIL` zeigt. Alle administrativen Vorgänge auf der Instanz (insbesondere das Auslösen der Indizierung) führt dieses Konto über den Admin-Bereich der Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
-- **Konfigurationsabweichungen vom Compose-Standard:** Belegt ist der Auth-Modus (`oidc` statt `mock`). Welche LLM- und Embedding-Anbieter (`OPAA_AI_CHAT_PROVIDER`, `OPAA_AI_EMBEDDING_PROVIDER`) sowie welche Rate-Limit-, Bind-Adress- und Port-Einstellungen die Instanz tatsächlich verwendet, ist **nicht dokumentiert und ungeklärt** — nicht mit dem Stack-Default aus der Tabelle unten verwechseln. Der Stack-Default ohne explizite Konfiguration wäre `OPAA_AI_CHAT_PROVIDER=ollama` mit Modell `phi3:mini` und `OPAA_AI_EMBEDDING_PROVIDER=ollama` mit Modell `nomic-embed-text`; die Instanz nutzt nach Aussage des Maintainers **OpenAI**, die konkreten Modellnamen und Grenzwerte sind aber offen und müssen beim Betreiber erfragt werden.
+- **Netzwerk:** Alle Container-Ports binden ausschließlich auf `127.0.0.1`. Nach außen führt ausschließlich ein nginx auf dem Host, der TLS terminiert und weiterleitet. Keycloak ist unter dem Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend `/auth/callback` selbst als OIDC-Redirect verwendet und die beiden sich sonst überlagern.
+- **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`). Auf dem Server gibt es **keinen Repository-Checkout** und keinen Build — nur eine `docker-compose.yml`, die `image:` statt `build:` verwendet.
 - **Daten:** Es dürfen dort **keine personenbezogenen, vertraulichen oder produktiven Organisationsdaten** abgelegt werden. Die Instanz ist ausschließlich für Demo- und Testzwecke mit unkritischen Beispieldaten vorgesehen.
+
+#### Modellkonfiguration der Instanz
+
+Hier ist eine Verwechslung angelegt, die bereits mehrfach zu falschen Aussagen geführt hat und deshalb ausdrücklich benannt wird:
+
+| | Anbieter | Modell | Anmerkung |
+|---|---|---|---|
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht**. `OPAA_AI_CHAT_PROVIDER` steht deshalb formal auf `openai`; nur `OPAA_OPENAI_BASE_URL`, der API-Schlüssel und `OPAA_OPENAI_CHAT_MODEL` zeigen auf Anthropic. |
+| **Embedding** | Ollama, lokal | `nomic-embed-text` | 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768` statt des Stack-Defaults 1536. |
+
+Drei Punkte dazu:
+
+- **Der Wert `openai` in `OPAA_AI_CHAT_PROVIDER` bezeichnet hier das Protokoll, nicht den Anbieter.** Wer ihn als Anbieterangabe liest, kommt zu einem falschen Ergebnis — genau das ist in der Vergangenheit passiert.
+- **Die Aufteilung Chat bei Anthropic, Embedding lokal ist dauerhaft, nicht provisorisch.** Anthropic bietet keine Embeddings-API an; ein einheitlicher Anbieter für beides ist mit dieser Wahl gar nicht möglich.
+- Anthropic bezeichnet die OpenAI-kompatible Schicht ausdrücklich als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen Zugang. Für eine Testinstanz ist das angemessen; für einen Dauerbetrieb wäre die native Anbindung zu wählen.
+
+**Kostenseite:** Token-Kosten entstehen ausschließlich beim Chat. Die Einbettung läuft lokal über Ollama und kostet nichts — eine Neuindizierung des Korpus ist deshalb kostenlos, unabhängig von seiner Größe.
+
+Die Rate-Limit-Werte der Instanz sind hier nicht festgehalten.
 
 ### Korpus einspielen und indizieren
 
 Der Dokumentenbestand der Instanz liegt **nicht** im Repository, sondern in einem Verzeichnis auf dem VPS, das über `OPAA_INDEXING_DOCUMENT_PATH_HOST` in den Backend-Container unter `/app/documents` gemountet wird (siehe [Dokumente](#dokumente)). Das Verzeichnis wird manuell befüllt.
 
-1. Dateien vom Arbeitsrechner in das gemountete Verzeichnis auf dem VPS übertragen:
+1. Dateien vom Arbeitsrechner in das gemountete Verzeichnis auf dem VPS übertragen, per `rsync` oder `scp`:
 
    ```bash
-   rsync -av --delete ./corpus/ <benutzer>@<vps>:<PFAD-DES-GEMOUNTETEN-VERZEICHNISSES>/
+   rsync -av --delete ./corpus/ <benutzer>@<host>:<dokumentenverzeichnis>/
    ```
 
-   > **Lücke:** Der konkrete Pfad des gemounteten Verzeichnisses auf dem VPS ist noch nicht dokumentiert. Der Maintainer reicht ihn nach; bis dahin ist er beim Betreiber zu erfragen. Er ist **nicht** zu raten — ein falscher Pfad führt dazu, dass die Indizierung ein leeres Verzeichnis sieht.
+   > **Bewusst ohne konkrete Angaben:** `criew/opaa` ist ein öffentliches Repository. Host, Benutzername und der Pfad des Dokumentenverzeichnisses auf dem Server stehen deshalb nicht hier, sondern in der Betriebsdokumentation des Maintainers. Wer den Rollout ausführen soll, bekommt sie von ihm. Beschrieben ist hier das Verfahren, nicht die Belegung.
 
 2. Ein Neustart des Backends ist nicht nötig: Das Verzeichnis ist ein Bind-Mount, neue Dateien sind sofort im Container sichtbar.
 3. Die Indizierung löst der Inhaber der Rolle `SYSTEM_ADMIN` über den **Admin-Bereich der Oberfläche** aus. Das Feld „URL" bleibt dabei **leer** — nur dann indiziert OPAA das gemountete Verzeichnis. Ein ausgefülltes URL-Feld schaltet stattdessen auf das Crawlen einer entfernten Verzeichnisauflistung um.
@@ -60,7 +80,11 @@ Unveränderte Dateien werden anhand ihrer SHA-256-Prüfsumme übersprungen; ein 
 
 Der Workflow [`publish-images.yml`](../.github/workflows/publish-images.yml) baut bei jedem Push auf `main` neue `ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
 
-Auf dem VPS zieht ein **Cron-Job** diese Images und startet den Stack neu. Derselbe Ablauf lässt sich jederzeit von Hand ausführen — im Verzeichnis, in dem die `docker-compose.yml` der Instanz liegt:
+Auf dem Server liegt ein **Deployment-Skript**, das genau das tut: die aktuellen Images ziehen und den Stack auf den neuen Stand bringen. Es kennt zusätzlich einen Schalter, der auch die Volumes verwirft — damit ist die Datenbank und mit ihr der gesamte Index weg. Dieser Schalter ist deshalb kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige Neuindizierung nötig.
+
+Ein **Cron-Job ruft dieses Skript täglich um 2 Uhr morgens auf** — ohne den zurücksetzenden Schalter, die Daten bleiben also erhalten. Die Ausgabe der Läufe wird protokolliert und wöchentlich rotiert. Die Instanz folgt dem `main`-Stand damit mit höchstens einem Tag Verzug; ein Push auf `main` erscheint nicht sofort, sondern beim nächsten nächtlichen Lauf. Wer schneller sein will, ruft das Skript von Hand auf.
+
+Ohne das Skript entspricht der Ablauf diesen Schritten, ausgeführt im Verzeichnis mit der `docker-compose.yml` der Instanz:
 
 ```bash
 docker compose pull          # neue Images aus GHCR holen
@@ -77,9 +101,7 @@ docker compose ps
 docker compose logs -f backend
 ```
 
-> **Container-Namen:** Der Compose-Stack vergibt keine festen `container_name` mehr. Die Container heißen `<projektname>-<service>-<nummer>`, wobei der Projektname aus dem Verzeichnisnamen bzw. `COMPOSE_PROJECT_NAME` stammt — auf der Instanz also z. B. `opaa-postgres-1`, `opaa-backend-1`, `opaa-frontend-1`. Befehle wie `docker compose logs backend` sind gegenüber `docker logs <name>` vorzuziehen, weil sie vom Projektnamen unabhängig sind.
-
-> **Zeitplan:** Wie oft der Cron-Job läuft, ist Teil der VPS-Konfiguration und hier nicht festgehalten.
+> **Service- statt Containernamen verwenden.** Alle Befehle oben sprechen den **Servicenamen** aus der Compose-Datei an (`backend`, `frontend`, `postgres`), nicht einen Containernamen. Das ist der robustere Weg: Wie die Container tatsächlich heißen, hängt davon ab, ob die jeweilige Compose-Datei `container_name` setzt und wie das Compose-Projekt heißt — beides unterscheidet sich zwischen der Testinstanz, lokalen Entwicklungsstacks und der E2E-Suite. `docker compose logs backend` funktioniert in allen dreien, `docker logs <name>` nur in einem.
 
 #### Was ein Update mit dem Index macht
 
@@ -94,16 +116,20 @@ Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image
 
 | Auslöser | Folge |
 |---|---|
-| `OPAA_OPENAI_EMBEDDING_MODEL` bzw. `OPAA_AI_EMBEDDING_PROVIDER` gewechselt | Bestehende Vektoren stammen aus einem anderen Modell und sind nicht mehr vergleichbar — vollständige Neuindizierung nötig |
-| `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht mehr zur bestehenden Vektortabelle — Tabelle muss neu aufgebaut werden |
-| `docker compose down -v` ausgeführt | Datenbank inklusive Index ist weg — vollständige Neuindizierung nötig |
+| Embedding-Modell oder -Anbieter gewechselt | Bestehende Vektoren stammen aus einem anderen Modell und sind nicht mehr vergleichbar — vollständige Neuindizierung nötig. **`OPAA_PGVECTOR_DIMENSIONS` muss mitgezogen werden**, sonst passt die Vektorbreite nicht zum neuen Modell |
+| `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht mehr zur bestehenden Vektortabelle — die Datenbank muss zurückgesetzt und der Korpus neu indiziert werden |
+| `docker compose down -v` bzw. das Deployment-Skript mit zurücksetzendem Schalter ausgeführt | Datenbank inklusive Index ist weg — vollständige Neuindizierung nötig |
 | PostgreSQL-Hauptversion gewechselt (Image-Tag von `pg18` auf eine höhere Version) | Das Datenverzeichnis im Volume ist nicht aufwärtskompatibel; ein solcher Wechsel ist ein eigener Migrationsvorgang, kein `docker compose pull` |
+
+Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank zurücksetzen. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung sind auf der Instanz ohnehin getrennte Anbieter.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt Dateien, deren SHA-256-Prüfsumme unverändert ist **und** deren Datensatz in der Tabelle `documents` den Status `INDEXED` trägt. Wird die Vektortabelle geleert, ohne auch `documents` zu bereinigen, meldet ein neuer Lauf lauter übersprungene Dateien und der Index bleibt leer. Beide Tabellen liegen in derselben Datenbank — wer den Index verwirft, muss `documents` mitverwerfen.
 
 ### Sicherheitshinweis: `POST /api/v1/indexing/trigger` ist von außen erreichbar
 
-Der Endpunkt ist auf der Testinstanz aus dem Internet erreichbar. Er ist durch Keycloak authentifiziert und zusätzlich auf die Rolle `SYSTEM_ADMIN` beschränkt (`@PreAuthorize("hasRole('SYSTEM_ADMIN')")` in `IndexingController`); zusätzlich greift das Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`, standardmäßig eine Anfrage pro IP und Minute).
+Der Endpunkt ist auf der Testinstanz aus dem Internet erreichbar. Dass alle Container-Ports nur auf `127.0.0.1` binden, ändert daran nichts — der nach außen gerichtete nginx reicht die API-Pfade durch, und der Indizierungspfad ist davon nicht ausgenommen. Die Bindung auf `127.0.0.1` verhindert lediglich, dass jemand die Container unter Umgehung des nginx direkt anspricht.
+
+Er ist durch Keycloak authentifiziert und zusätzlich auf die Rolle `SYSTEM_ADMIN` beschränkt (`@PreAuthorize("hasRole('SYSTEM_ADMIN')")` in `IndexingController`); zusätzlich greift das Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`, standardmäßig eine Anfrage pro IP und Minute).
 
 Wer den Endpunkt aufrufen darf, kann im Feld `url` eine beliebige Adresse angeben, die der Server dann abruft und crawlt. Das schließt Ziele ein, die nur aus dem Netz des VPS erreichbar sind und nicht aus dem Internet. Fachlich ist das serverseitige Anfragefälschung (Server-Side Request Forgery, SSRF) — hier allerdings als **Eigenschaft der Funktion**, nicht als Fehler: Der Endpunkt existiert genau dafür, entfernte Dokumentenquellen zu erschließen, und er verlangt Anmeldung plus Adminrolle.
 

@@ -102,12 +102,20 @@ behaupteten, die öffentliche Instanz `opaa.ewerlin.com` laufe mit ihrer „best
 Ollama-Konfiguration (`phi3:mini`)", weshalb „kein Kostenrisiko" bestehe und „kein kommerzielles
 Modell" eingeführt werde.
 
-Der Maintainer hat auf Nachfrage klargestellt: **Die Instanz nutzt OpenAI.** Die Fehlannahme
-entstand aus einer Verwechslung zweier Ebenen — der *Anwendungs-Default* in
+Der Maintainer hat auf Nachfrage klargestellt, dass die Instanz nicht mit dem Ollama-Anwendungsdefault
+läuft. Die Fehlannahme entstand aus einer Verwechslung zweier Ebenen — der *Anwendungs-Default* in
 `backend/src/main/resources/application.yml` ist `${OPAA_AI_CHAT_PROVIDER:ollama}`, die
 *empfohlene Compose-Belegung* in `.env.example` dagegen `OPAA_AI_CHAT_PROVIDER=openai`. Die zweite
 Ebene beschreibt den tatsächlichen Betrieb, die erste nur das Verhalten ohne jede Konfiguration.
 Ein Folge-Issue klärt diese Zweideutigkeit auch in `docs/deployment.md`.
+
+> **Zweite Berichtigung (2026-08-02).** Die daraus abgeleitete Aussage „Die Instanz nutzt
+> OpenAI" war ihrerseits ungenau und ist zurückgenommen. Die Betriebsdokumentation des Maintainers
+> belegt: **Das Chat-Modell ist `claude-haiku-4-5` von Anthropic**, angebunden über Anthropics
+> OpenAI-kompatible Schicht — `OPAA_AI_CHAT_PROVIDER=openai` bezeichnet dort das Protokoll, nicht
+> den Anbieter. **Eingebettet wird mit `nomic-embed-text` lokal über Ollama** (768 Dimensionen),
+> weil Anthropic keine Embeddings-API anbietet. Diese Aufteilung ist dauerhaft. Der Abschnitt
+> „Was sich dennoch ändert" weiter unten ist wegen dieser Korrektur neu gefasst.
 
 Zweite Korrektur derselben Runde, ohne Bezug zu diesem ADR, aber der Vollständigkeit halber: Die
 Instanz erhält **keinen anonymen Lesezugriff**; sie bleibt account-gebunden hinter Keycloak. Für
@@ -133,20 +141,37 @@ Es besteht also **kein Anlass, ADR-0011 neu zu bewerten oder zu ersetzen.**
 
 ### Was sich dennoch ändert
 
-Eine Konsequenz kommt hinzu, die vor der Korrektur nicht sichtbar war und die den ADR nicht
-umstößt, aber seine Aussagekraft begrenzt:
+> **Neu gefasst am 2026-08-02.** Die ursprüngliche Fassung dieses Abschnitts stützte sich
+> auf die inzwischen widerlegte Annahme, die Instanz bette mit `text-embedding-3-small` über OpenAI
+> ein. Der daraus gezogene Schluss war falsch und ist **vollständig zurückgenommen**; die
+> zurückgenommene Aussage steht unten im Wortlaut, damit niemand sie aus älteren Notizen erneut
+> aufgreift.
 
-- **Der CI-Harness misst eine andere Konfiguration als die Demo-Instanz fährt.** Die Baseline
-  entsteht mit `nomic-embed-text` über Ollama, die Instanz bettet laut `.env.example` mit
-  `text-embedding-3-small` über OpenAI ein. Ein grüner Regressionslauf sagt damit nichts über die
-  Trefferqualität, die ein Besucher auf `opaa.ewerlin.com` erlebt. Das ist vertretbar — der
-  Harness ist ein Regressionsdetektor für die Pipeline, keine Vorhersage für eine bestimmte
-  Installation —, muss aber benannt werden, damit niemand die Baseline als Aussage über die Demo
-  liest.
-- Daraus folgt eine Präzisierung, keine Änderung: Der in Entscheidung 4 vorgesehene **optionale
-  OpenAI-Vergleichslauf sollte mindestens einmal gegen die Konfiguration der Demo-Instanz laufen**,
-  damit der Abstand zwischen beiden Anbietern beziffert ist. Er bleibt ausdrücklich außerhalb der
-  Baseline.
-- Für den Betrieb der Demo — nicht für diesen ADR — folgt aus der Korrektur, dass Kosten aktiv zu
-  begrenzen sind: Ausgabenlimit beim Anbieter und Rate Limiting pro Konto. Das ist in der
-  Feature-Spezifikation und in den Abnahmekriterien von #230 verankert.
+Zwei Punkte, von denen der erste die Aussagekraft des Harness **stärkt** statt sie zu begrenzen:
+
+- **Der CI-Harness misst dieselbe Einbettung wie die Demo-Instanz.** Beide verwenden
+  `nomic-embed-text` über Ollama mit 768 Dimensionen. Ein grüner Regressionslauf sagt damit sehr
+  wohl etwas über die Retrieval-Qualität, die ein Besucher auf `opaa.ewerlin.com` erlebt: Der
+  gemessene Teil der Pipeline — Chunking, Einbettung, Vektorsuche, Ranking — ist in CI und auf der
+  Instanz identisch konfiguriert. Nicht gemessen wird weiterhin die **Generierung**, weil kein LLM
+  am Harness beteiligt ist und das Chat-Modell der Instanz (`claude-haiku-4-5` von Anthropic) in CI
+  nicht vorkommt. Die Grenze verläuft also zwischen Retrieval und Generierung, nicht zwischen zwei
+  Einbettungskonfigurationen.
+- Für den Betrieb der Demo — nicht für diesen ADR — bleibt es dabei, dass Kosten aktiv zu begrenzen
+  sind: Ausgabenlimit beim Chat-Anbieter und Rate Limiting pro Konto. Neu ist die Einsicht, dass
+  **die Indizierung selbst kostenlos ist**, weil lokal eingebettet wird; das Kostenrisiko liegt
+  vollständig auf der Anfrageseite. Verankert ist das in der Feature-Spezifikation und in den
+  Abnahmekriterien von #230.
+
+**Zurückgenommene Aussage (galt vom 2026-08-02 bis zur Berichtigung desselben Tages):**
+
+> „Der CI-Harness misst eine andere Konfiguration als die Demo-Instanz fährt. Die Baseline entsteht
+> mit `nomic-embed-text` über Ollama, die Instanz bettet laut `.env.example` mit
+> `text-embedding-3-small` über OpenAI ein. Ein grüner Regressionslauf sagt damit nichts über die
+> Trefferqualität, die ein Besucher auf `opaa.ewerlin.com` erlebt." — **Falsch.** Die Angabe stützte
+> sich auf `.env.example` statt auf die tatsächliche Belegung der Instanz. Ebenfalls hinfällig ist
+> die daran gehängte Empfehlung, den optionalen OpenAI-Vergleichslauf „mindestens einmal gegen die
+> Konfiguration der Demo-Instanz" laufen zu lassen: Es gibt keinen Abstand zwischen zwei
+> Einbettungsanbietern zu beziffern, weil beide Seiten dasselbe Modell verwenden. Der optionale
+> Vergleichslauf aus Entscheidung 4 behält seinen ursprünglichen Zweck — Modellvergleich —, aber
+> nicht mehr diese Begründung.

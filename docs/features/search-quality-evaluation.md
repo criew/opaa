@@ -258,6 +258,51 @@ Dokumente) — sonst ist die Metrik nicht aussagekräftig. Die rund 60 boolesche
 Fähigkeits-Merkmale des Datensatzes lassen sich dafür kombinieren, bis die Treffermenge in diesem
 Fenster liegt.
 
+### Sentinel-Werte: Entitäten außerhalb der Skala ausschließen
+
+**Regel (verbindlich, domänenübergreifend).** Führt ein Feld Werte, die außerhalb seiner
+definierten Skala liegen — fehlend, unendlich, ein Platzhalter wie `-1`, `"unknown"` oder `"N/A"` —,
+dann werden die betroffenen Entitäten aus jeder numerischen Golden Query auf **diesem** Feld
+**ausgeschlossen**. Sie erscheinen dort weder in der erwarteten Treffermenge noch als stillschweigend
+übergangener Sonderfall. Auf anderen Feldern bleiben dieselben Entitäten regulär verwendbar; der
+Ausschluss gilt feldbezogen, nicht dokumentbezogen.
+
+Der Grund ist, dass ein Sentinel-Wert zwei unvereinbare Rollen spielt. Für die Ground Truth ist er
+ein Nichtwert — die Entität hat auf diesem Feld keine Ausprägung. Für den generierten Fließtext und
+damit für das Retrieval ist er dagegen ein ganz normaler Textbestandteil: Das Dokument sagt wörtlich
+etwas über den Wert und wird deshalb zu einer Bereichsfrage gefunden. Wer den Sentinel in der Ground
+Truth ignoriert, misst das Retrieval an einer Erwartung, die dem Korpus widerspricht, und bestraft
+oder belohnt Treffer, die inhaltlich nicht zu bewerten sind. Das Ergebnis ist eine Baseline, deren
+Schwankungen sich nicht mehr auf Retrieval-Qualität zurückführen lassen.
+
+Drei Folgerungen für den Generator:
+
+1. **Die Sentinel-Werte jeder Domäne sind ausdrücklich zu benennen**, bevor Golden Queries daraus
+   entstehen — sie ergeben sich aus der Quelle und sind nicht erratbar.
+2. **Der Ausschluss geschieht vor der Bestimmung der Treffermenge**, nicht als nachträglicher Filter
+   auf dem Ergebnis. Sonst verschiebt sich die Größe der Treffermenge unbemerkt aus dem Fenster von
+   2–15 Dokumenten.
+3. **Auch die Prosa ist zu prüfen.** Formuliert der Generator einen Sentinel als scheinbar gültigen
+   Wert aus („scores 0 for intelligence" für einen fehlenden Wert), entsteht ein Widerspruch
+   zwischen Frontmatter und Fließtext, den kein Ausschluss in der Ground Truth mehr repariert.
+
+**Sentinel-Werte je Domäne:**
+
+| Domäne | Feld | Sentinel | Umfang | Verhalten im Fließtext |
+|---|---|---|---|---|
+| Comichelden | `overall_score` | `null` (unbewertet) | 105 Dokumente | Prosa formuliert den fehlenden Wert als `0` aus — der Widerspruch ist Gegenstand von #226 |
+| Comichelden | `overall_score` | `"∞"` | 18 Dokumente | Prosa sagt wörtlich „his overall score is ∞"; erfüllt jede „größer als"-Bedingung |
+
+Für die Ausweitung auf weitere Domänen (#234 — Filme, Reiseziele, Tiere) ist diese Tabelle
+fortzuschreiben. Eine Domäne gilt erst dann als aufnahmefähig, wenn für jedes numerisch verwendete
+Feld geklärt ist, ob es Sentinel-Werte führt, und die gefundenen hier eingetragen sind — auch das
+Ergebnis „keine" gehört festgehalten, damit es später nicht als ungeprüft gilt.
+
+Die Regel bleibt bewusst in dieser Spezifikation und bekommt keinen eigenen ADR: Ablage,
+Versionierung und Einfrieren des Golden Dataset sind bereits im ADR zur Suchqualitäts-Evaluierung
+entschieden, und die Sentinel-Behandlung ist eine Präzisierung der dort festgelegten Ground Truth,
+keine eigenständige Strukturentscheidung.
+
 ### Kuratierung
 
 Vollautomatisch generierte Fälle sind ein „Silver Dataset". Vor der Aufnahme in die Baseline wird
@@ -357,28 +402,40 @@ Entwicklungsumgebung ihn nicht startet.
 **Sie existiert bereits: `opaa.ewerlin.com`.** Es ist also kein Hosting aufzubauen, sondern der
 Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 
-> **Korrektur (aus dem Review zu PR #247).** Zwei Aussagen in diesem Abschnitt waren falsch und
-> sind nachfolgend berichtigt: Die Instanz läuft **nicht** auf Ollama, sondern auf **OpenAI**, und
-> es wird **kein anonymer Lesezugriff** eingeführt. Beide Punkte hat der Maintainer klargestellt.
+> **Korrektur (aus dem Review zu PR #247), zweite Fassung (2026-08-02).** Dieser Abschnitt wurde
+> zweimal berichtigt. Aus dem Review zu #247 stammt, dass **kein anonymer Lesezugriff** eingeführt
+> wird und dass die Instanz nicht mit dem Ollama-Anwendungsdefault läuft. Die damalige Ersatzangabe
+> „die Instanz läuft auf **OpenAI**" war jedoch selbst ungenau und ist inzwischen präzisiert:
+> **Das Chat-Modell stammt von Anthropic, die Einbettung läuft lokal über Ollama.** Alle Punkte hat
+> der Maintainer klargestellt.
 > Was das für die Begründung von ADR-0011 bedeutet, steht dort im
 > [Nachtrag](../decisions/0011-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
 
 Drei Folgerungen:
 
-- **Die Instanz läuft auf OpenAI.** Der Maintainer hat bestätigt, dass `opaa.ewerlin.com` ein
-  kommerzielles Modell über OpenAI nutzt. Das deckt sich mit `.env.example`, das für den
-  Compose-Betrieb `OPAA_AI_CHAT_PROVIDER=openai` und `OPAA_AI_EMBEDDING_PROVIDER=openai` setzt;
-  lediglich der *Anwendungs-Default* in `application.yml` lautet `ollama`. Die frühere Aussage
-  („bestehende Ollama-Konfiguration mit `phi3:mini`, kein Kostenrisiko") verwechselte diese beiden
-  Ebenen und ist zurückgezogen.
-- **Damit besteht ein echtes Kostenrisiko.** Jede Demo-Anfrage erzeugt Token-Kosten beim Anbieter.
-  Der Zugriff ist zwar account-gebunden (siehe unten), anonymer Massenzugriff also ausgeschlossen —
-  aber ein einzelnes berechtigtes Konto kann laufende Kosten in unbegrenzter Höhe auslösen, und die
-  Zahl der Konten wächst mit dem Erfolg der Demo. Kostenbegrenzung ist deshalb eine
-  Betriebsanforderung, kein optionaler Schutz.
-- **Die Instanz ist nirgends dokumentiert.** Weder `docs/deployment.md` noch `docker-compose.yml`
-  erwähnen sie. Das ist eine eigenständige Lücke und wird als eigenes Dokumentations-Issue geführt
-  (#244); ohne diese Beschreibung kann ein Entwickler den Rollout gar nicht durchführen.
+- **Das Chat-Modell ist ein kommerzielles Modell von Anthropic** (`claude-haiku-4-5`), angebunden
+  über Anthropics OpenAI-kompatible Schicht. Deshalb steht `OPAA_AI_CHAT_PROVIDER` formal auf
+  `openai`, obwohl kein OpenAI-Modell im Spiel ist — der Wert bezeichnet hier das Protokoll, nicht
+  den Anbieter. Genau daraus entstand die frühere Fehllesart. Zurückgezogen sind damit **beide**
+  bisherigen Angaben: die ursprüngliche („bestehende Ollama-Konfiguration mit `phi3:mini`, kein
+  Kostenrisiko") und die erste Korrektur („die Instanz läuft auf OpenAI"). Anthropic bezeichnet die
+  Kompatibilitätsschicht selbst als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen
+  Zugang; für eine Testinstanz ist das vertretbar, für einen Dauerbetrieb wäre die native Anbindung
+  zu wählen.
+- **Die Einbettung läuft lokal über Ollama mit `nomic-embed-text`** (768 Dimensionen,
+  `OPAA_PGVECTOR_DIMENSIONS=768`). Das ist keine Übergangslösung: Anthropic bietet keine
+  Embeddings-API an, die Zweiteilung Chat-Anbieter / lokales Embedding-Modell ist deshalb dauerhaft.
+- **Das Kostenrisiko besteht, betrifft aber nur den Chat.** Jede Demo-Anfrage erzeugt Token-Kosten
+  beim Chat-Anbieter. Der Zugriff ist zwar account-gebunden (siehe unten), anonymer Massenzugriff
+  also ausgeschlossen — aber ein einzelnes berechtigtes Konto kann laufende Kosten in unbegrenzter
+  Höhe auslösen, und die Zahl der Konten wächst mit dem Erfolg der Demo. Kostenbegrenzung bleibt
+  eine Betriebsanforderung. Die **Indizierung ist dagegen kostenlos**, weil sie lokal einbettet; ein
+  Rollout oder eine Neuindizierung des Korpus kostet unabhängig von seiner Größe nichts.
+- **Der CI-Harness und die Instanz betten identisch ein.** Beide verwenden `nomic-embed-text` über
+  Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
+  auf `opaa.ewerlin.com` erlebt — siehe den Nachtrag im ADR.
+- **Die Instanz ist inzwischen dokumentiert.** `docs/deployment.md` beschreibt sie seit #244; die
+  Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind dort ergänzt.
 
 ### Zugangsmodell: account-gebunden, kein Gastzugang
 
@@ -401,8 +458,8 @@ Anforderungen an den Betrieb der Instanz:
 - **Zugriff nur mit Konto.** Authentifizierung über Keycloak für alle Endpunkte, auch für die
   Suche; keine anonymen Lesepfade. Der Indizierungs-Endpunkt ist bereits auf `SYSTEM_ADMIN`
   beschränkt und bleibt es.
-- **Harter Kostendeckel beim Anbieter.** Ein Ausgabenlimit auf dem OpenAI-Konto, damit ein Fehler
-  oder Missbrauch nicht in eine offene Rechnung läuft. Ein Deckel wirkt auch dann, wenn das Rate
+- **Harter Kostendeckel beim Anbieter.** Ein Ausgabenlimit auf dem Konto des Chat-Anbieters, damit
+  ein Fehler oder Missbrauch nicht in eine offene Rechnung läuft. Ein Deckel wirkt auch dann, wenn das Rate
   Limiting falsch konfiguriert ist — deshalb beides, nicht eines davon.
 - **Rate Limiting** ist vorhanden (`opaa.rate-limit`) und muss für die Demo scharf gestellt sein —
   pro Konto *und* global. Es ist jetzt die primäre Kostenbremse und nicht mehr nur der Schutz einer
@@ -450,7 +507,7 @@ Vom Maintainer entschieden:
 |---|---|
 | 1 | **Phase-1-Quelle:** `jrtec/Superheroes` (CC0-1.0). Der FiveThirtyEight-Datensatz entfällt. |
 | 2 | **Multi-Tenancy:** ein gemeinsamer Index, Domänentrennung über Dateinamen-Präfix. Die Workspace-Variante wartet auf #115/#117, nicht auf Epic #198. |
-| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. Sie läuft auf **OpenAI**, nicht auf Ollama — *korrigiert am 2026-08-02; die vorherige Angabe „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" war falsch.* Daraus folgt ein reales Kostenrisiko pro Anfrage, das über Ausgabenlimit und Rate Limiting begrenzt wird. |
+| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. **Chat: `claude-haiku-4-5` von Anthropic** über dessen OpenAI-kompatible Schicht (`OPAA_AI_CHAT_PROVIDER=openai` bezeichnet das Protokoll, nicht den Anbieter). **Einbettung: `nomic-embed-text` lokal über Ollama**, 768 Dimensionen. *Zweimal korrigiert am 2026-08-02: zuerst war „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" falsch, dann die Ersatzangabe „läuft auf OpenAI" ungenau.* Ein reales Kostenrisiko pro Anfrage besteht nur beim Chat und wird über Ausgabenlimit und Rate Limiting begrenzt; die Indizierung ist kostenlos. |
 | 4 | **Korpus-Ablage:** Hauptrepository mit SHA-256-Manifest; Neubewertung bei der Ausweitung auf vier Domänen. |
 | 5 | **ADR-0011** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
 | 6 | **Zugangsmodell der Demo:** account-gebunden hinter Keycloak. Kein Gast- und kein Read-only-Zugang. *Korrigiert am 2026-08-02; die vorherige Anforderung „anonymer Lesezugriff" ist gestrichen.* Für diese Entscheidung wird ausdrücklich **kein ADR** angelegt. |
@@ -477,11 +534,13 @@ Vom Product Manager gesetzt, mangels Rückfrage, weiterhin widerrufbar:
 Die Fragen zu Lizenz, Demo-Hosting, Korpus-Ablage und Multi-Tenancy sind entschieden und stehen
 oben unter [Festlegungen](#festlegungen). Offen bleibt:
 
-1. **Laufende Kosten der Demo:** Die Instanz nutzt OpenAI, jede Anfrage kostet Geld. Wie hoch die
-   Kosten pro Monat tatsächlich ausfallen, lässt sich erst beziffern, wenn der Korpus dort liegt
-   und Anfragen laufen. Offen bleibt, ab welchem Betrag der Maintainer gegensteuert und womit —
-   engeres Rate Limit, kleineres Modell (z. B. `gpt-4o-mini`) oder ein Wechsel der Demo auf ein
-   lokales Modell. Erst messen, dann entscheiden.
+1. **Laufende Kosten der Demo:** Jede Chat-Anfrage kostet Geld beim Anbieter des Chat-Modells; die
+   Einbettung ist kostenlos, weil sie lokal läuft. Wie hoch die Kosten pro Monat tatsächlich
+   ausfallen, lässt sich erst beziffern, wenn der Korpus dort liegt und Anfragen laufen. Offen
+   bleibt, ab welchem Betrag der Maintainer gegensteuert und womit — engeres Rate Limit, ein
+   nochmals kleineres Chat-Modell oder ein Wechsel der Demo auf ein lokales Chat-Modell. Mit
+   `claude-haiku-4-5` ist bereits das kleinste Modell seiner Familie im Einsatz, der Spielraum nach
+   unten ist also begrenzt. Erst messen, dann entscheiden.
 2. **Niedrigschwelliger Zugang:** Die Anmeldepflicht kostet die Demo ihren stärksten Effekt. Ein
    Gastzugang bliebe die wirksamste Variante, ist aber vom Maintainer abgelehnt, solange die
    Kostenfrage nicht geklärt ist. Falls sie geklärt wird, wäre der Punkt neu zu bewerten — mit
