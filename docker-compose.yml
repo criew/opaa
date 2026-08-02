@@ -4,14 +4,18 @@
 services:
   postgres:
     image: pgvector/pgvector:pg18
-    container_name: opaa-postgres
-    env_file: .env.docker
+    # No fixed container_name: Compose prefixes container/network/volume
+    # names with the project name (directory name, or COMPOSE_PROJECT_NAME)
+    # instead, so this file can run as multiple independent stacks side by
+    # side (e.g. a developer's own dev stack and the E2E suite's stack, see
+    # e2e/scripts/run-e2e.mjs) without colliding.
+    env_file: ${OPAA_ENV_FILE:-.env.docker}
     environment:
       POSTGRES_DB: opaa
       POSTGRES_USER: ${OPAA_DB_USERNAME:-opaa}
       POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}
     ports:
-      - "5432:5432"
+      - "${OPAA_DB_PORT:-5432}:5432"
     volumes:
       - opaa-postgres-data:/var/lib/postgresql
     healthcheck:
@@ -22,8 +26,7 @@ services:
 
   backend:
     build: ./backend
-    container_name: opaa-backend
-    env_file: .env.docker
+    env_file: ${OPAA_ENV_FILE:-.env.docker}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -38,7 +41,6 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    container_name: opaa-frontend
     ports:
       - "${OPAA_FRONTEND_PORT:-3000}:80"
     depends_on:
@@ -46,14 +48,13 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: opaa-keycloak
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8180
     ports:
-      - "8180:8180"
+      - "${OPAA_KEYCLOAK_PORT:-8180}:8180"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     profiles:

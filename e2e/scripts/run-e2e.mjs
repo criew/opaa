@@ -4,42 +4,70 @@
 // the stack back down (`down -v`) so the next run starts from the same
 // defined baseline. Used both locally (`npm test` in e2e/) and in CI
 // (.github/workflows/e2e.yml), so both environments behave identically.
+//
+// The stack runs as its own Compose project (COMPOSE_PROJECT_NAME below),
+// which prefixes container/network/volume names so it never collides with
+// a developer's own docker-compose.yml stack running at the same time (see
+// AGENTS.md "Git Worktrees für parallele Sessions"). It also uses its own
+// host ports and its own env file (OPAA_ENV_FILE, see docker-compose.yml),
+// so this script never reads or writes a developer's own .env.docker.
 
+import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const e2eDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = resolve(e2eDir, '..')
 const isWindows = process.platform === 'win32'
-const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
+
+const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? 'opaa-e2e'
+const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
+const frontendPort = process.env.OPAA_FRONTEND_PORT ?? '13000'
+const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
-const composeArgs = ['compose', '-f', 'docker-compose.yml']
+const skipBuild = process.env.E2E_SKIP_BUILD === 'true'
 const extraTestArgs = process.argv.slice(2)
 
-// docker-compose.yml pins fixed container_name values (opaa-postgres,
-// opaa-backend, opaa-frontend, opaa-keycloak), so `docker compose down`
-// scoped to a different Compose project (e.g. a stray container from
-// another worktree, or a plain `docker compose up` run outside of one of
-// the scripted flows) won't be cleaned up by our own `down -v` below, and
-// `up` then fails with a container-name conflict. Force-removing them by
-// name first guarantees the clean slate the E2E suite needs regardless of
-// where a same-named leftover container came from.
-const fixedContainerNames = ['opaa-postgres', 'opaa-backend', 'opaa-frontend', 'opaa-keycloak']
+const composeArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'e2e/docker-compose.e2e.yml']
 
-// docker-compose.yml requires a root-level .env.docker file (env_file:) for
-// the postgres/backend services. To keep the E2E stack fully self-contained
-// (throwaway test credentials, placeholder AI key, no dependency on a
-// developer's own .env.docker), we temporarily install e2e/e2e.env as
-// .env.docker for the duration of the run and restore whatever was there
-// before, so this script never permanently overwrites a developer's own
-// configuration.
-const envDockerPath = join(repoRoot, '.env.docker')
-const envDockerBackupPath = join(repoRoot, '.env.docker.e2e-backup')
-const e2eEnvPath = join(e2eDir, 'e2e.env')
+// e2e/e2e.env deliberately does not contain OPAA_AUTH_BASIC_SECRET (no
+// signing secret should ever live in a tracked file): a fresh one is
+// generated for every run and passed through the process environment only
+// (see e2e/docker-compose.e2e.yml, which injects it into the backend
+// container).
+const authSecret = randomBytes(32).toString('hex')
 
-function run(command, args, cwd = repoRoot, env = process.env) {
+const composeEnv = {
+  ...process.env,
+  COMPOSE_PROJECT_NAME: composeProjectName,
+  OPAA_ENV_FILE: 'e2e/e2e.env',
+  OPAA_BACKEND_PORT: backendPort,
+  OPAA_FRONTEND_PORT: frontendPort,
+  OPAA_DB_PORT: dbPort,
+  OPAA_AUTH_BASIC_SECRET: authSecret,
+}
+
+let tornDown = false
+
+// e2e/e2e.env is the single source of truth for the test user's
+// username/password (OPAA_AUTH_BASIC_USERNAME/PASSWORD, consumed by the
+// backend container). Read them back here so Playwright (running on the
+// host, not in a container) logs in with the exact same credentials,
+// instead of duplicating them in a second place that could drift out of
+// sync.
+function readE2eEnvVar(name) {
+  const contents = readFileSync(join(e2eDir, 'e2e.env'), 'utf8')
+  const match = contents.match(new RegExp(`^${name}=(.*)$`, 'm'))
+  if (!match) {
+    throw new Error(`${name} not found in e2e/e2e.env`)
+  }
+  return match[1]
+}
+
+function run(command, args, { cwd = repoRoot, env = process.env } = {}) {
   const result = spawnSync(command, args, {
     cwd,
     stdio: 'inherit',
@@ -52,42 +80,40 @@ function run(command, args, cwd = repoRoot, env = process.env) {
   return result.status ?? 1
 }
 
-// e2e/e2e.env is the single source of truth for the test user credentials
-// (OPAA_AUTH_BASIC_USERNAME/PASSWORD, consumed by the backend container).
-// Read them back here so Playwright (running on the host, not in a
-// container) logs in with the exact same credentials, instead of
-// duplicating them in a second place that could drift out of sync.
-function readE2eEnvVar(name) {
-  const contents = readFileSync(e2eEnvPath, 'utf8')
-  const match = contents.match(new RegExp(`^${name}=(.*)$`, 'm'))
-  return match?.[1]
-}
-
-function installE2eEnvFile() {
-  if (existsSync(envDockerPath) && !existsSync(envDockerBackupPath)) {
-    copyFileSync(envDockerPath, envDockerBackupPath)
+function dumpLogs() {
+  const logPath = join(e2eDir, 'docker-compose.log')
+  console.log(`\n> Saving container logs to ${logPath}`)
+  const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {
+    cwd: repoRoot,
+    shell: isWindows,
+    env: composeEnv,
+  })
+  try {
+    writeFileSync(
+      logPath,
+      Buffer.concat([result.stdout ?? Buffer.alloc(0), result.stderr ?? Buffer.alloc(0)]),
+    )
+  } catch (error) {
+    // Best-effort: log capture failures must never mask the real test result.
+    console.error('Failed to write docker-compose.log', error)
   }
-  copyFileSync(e2eEnvPath, envDockerPath)
-}
-
-function restoreEnvFile() {
-  if (existsSync(envDockerBackupPath)) {
-    copyFileSync(envDockerBackupPath, envDockerPath)
-    rmSync(envDockerBackupPath)
-  } else {
-    rmSync(envDockerPath, { force: true })
-  }
-}
-
-function removeStaleFixedNameContainers() {
-  run('docker', ['rm', '-f', ...fixedContainerNames])
 }
 
 function teardown() {
+  if (tornDown) {
+    return
+  }
+  tornDown = true
   console.log('\n> Tearing down E2E stack (docker compose down -v)')
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'])
-  removeStaleFixedNameContainers()
-  restoreEnvFile()
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    console.log(`\n> Received ${signal}, tearing down before exit`)
+    teardown()
+    process.exit(130)
+  })
 }
 
 async function waitUntilReady(timeoutMs) {
@@ -107,24 +133,21 @@ async function waitUntilReady(timeoutMs) {
 }
 
 async function main() {
-  installE2eEnvFile()
+  console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
+  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
-  console.log('> Starting from a clean slate (docker compose down -v)')
-  run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'])
-  removeStaleFixedNameContainers()
-
-  console.log('> Starting E2E stack (postgres, backend, frontend)')
-  const upStatus = run('docker', [
-    ...composeArgs,
-    'up',
-    '-d',
-    '--build',
-    'postgres',
-    'backend',
-    'frontend',
-  ])
+  console.log(
+    `> Starting E2E stack (postgres, backend, frontend) as Compose project "${composeProjectName}"` +
+      ` on ports ${dbPort}/${backendPort}/${frontendPort}`,
+  )
+  const upArgs = [...composeArgs, 'up', '-d', 'postgres', 'backend', 'frontend']
+  if (!skipBuild) {
+    upArgs.splice(upArgs.indexOf('up') + 1, 0, '--build')
+  }
+  const upStatus = run('docker', upArgs, { env: composeEnv })
   if (upStatus !== 0) {
     console.error('docker compose up failed')
+    dumpLogs()
     teardown()
     process.exitCode = upStatus
     return
@@ -134,23 +157,26 @@ async function main() {
   const ready = await waitUntilReady(120_000)
   if (!ready) {
     console.error('Stack did not become ready within 120s')
-    run('docker', [...composeArgs, 'logs'])
+    dumpLogs()
     teardown()
     process.exitCode = 1
     return
   }
 
   console.log('> Running Playwright tests')
-  const testStatus = run(
-    isWindows ? 'npx.cmd' : 'npx',
-    ['playwright', 'test', ...extraTestArgs],
-    e2eDir,
-    {
+  const testStatus = run(isWindows ? 'npx.cmd' : 'npx', ['playwright', 'test', ...extraTestArgs], {
+    cwd: e2eDir,
+    env: {
       ...process.env,
+      E2E_BASE_URL: baseUrl,
       E2E_USERNAME: readE2eEnvVar('OPAA_AUTH_BASIC_USERNAME'),
       E2E_PASSWORD: readE2eEnvVar('OPAA_AUTH_BASIC_PASSWORD'),
     },
-  )
+  })
+
+  if (testStatus !== 0) {
+    dumpLogs()
+  }
 
   teardown()
   process.exitCode = testStatus
@@ -158,6 +184,7 @@ async function main() {
 
 main().catch((error) => {
   console.error(error)
+  dumpLogs()
   teardown()
   process.exitCode = 1
 })

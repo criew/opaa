@@ -76,7 +76,9 @@ Kein E2E-Test nötig für:
 - Fälle, die sich genauso zuverlässig und schneller mit einem Integrationstest abdecken lassen.
 
 Neue Szenarien nutzen die vorhandenen Fixtures (z. B. die Anmeldung aus `e2e/fixtures/auth.ts`)
-statt sie zu kopieren; siehe `e2e/README.md` für Details zum lokalen Ausführen.
+statt sie zu kopieren; siehe `e2e/README.md` für Details zum lokalen Ausführen, die
+Selektor-Konvention (`getByRole`/`getByLabel` vor `data-testid` vor Text-/Placeholder-Selektoren)
+und die Serialisierungs-Konvention für Specs, die gemeinsamen Zustand verändern.
 
 ## Issues
 
