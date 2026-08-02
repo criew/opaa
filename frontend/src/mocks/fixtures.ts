@@ -5,6 +5,8 @@ import type {
   UserInfo,
   SpaceListResponse,
   SpaceResponse,
+  GroupListResponse,
+  GroupResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser, LoginResponse } from '../types/auth'
 
@@ -329,6 +331,75 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
         userId: 'mock-user-id',
         displayName: 'Admin',
         role: 'CURATOR',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+}
+
+export const mockGroups: GroupListResponse[] = [
+  {
+    id: 'group-phoenix',
+    name: 'Projektbeteiligte Phoenix',
+    description: 'Ad-hoc-Gruppe fuer das Projekt Phoenix',
+    kind: 'AD_HOC',
+    externalId: null,
+    parentGroupId: null,
+    memberCount: 2,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'group-referat-50',
+    name: 'Referat 50',
+    description: 'Aus dem Verzeichnis synchronisiert',
+    kind: 'ORG_UNIT',
+    externalId: 'directory-guid-referat-50',
+    parentGroupId: null,
+    memberCount: 1,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+]
+
+export const mockGroupDetails: Record<string, GroupResponse> = {
+  'group-phoenix': {
+    id: 'group-phoenix',
+    name: 'Projektbeteiligte Phoenix',
+    description: 'Ad-hoc-Gruppe fuer das Projekt Phoenix',
+    kind: 'AD_HOC',
+    externalId: null,
+    parentGroupId: null,
+    memberCount: 2,
+    members: [
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        userId: 'owner-1',
+        displayName: 'Alice',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'group-referat-50': {
+    id: 'group-referat-50',
+    name: 'Referat 50',
+    description: 'Aus dem Verzeichnis synchronisiert',
+    kind: 'ORG_UNIT',
+    externalId: 'directory-guid-referat-50',
+    parentGroupId: null,
+    memberCount: 1,
+    members: [
+      {
+        userId: 'curator-1',
+        displayName: 'Bob',
         createdAt: '2026-03-01T10:00:00Z',
       },
     ],

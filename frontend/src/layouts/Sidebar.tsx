@@ -16,6 +16,7 @@ import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import GroupsIcon from '@mui/icons-material/Groups'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -208,6 +209,19 @@ export default function Sidebar() {
           </ListItemIcon>
           <ListItemText primary="Dokumente" />
         </ListItemButton>
+        {user?.systemRole === 'SYSTEM_ADMIN' && (
+          <ListItemButton
+            component={NavLink}
+            to="/admin/groups"
+            selected={location.pathname === '/admin/groups'}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <GroupsIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Gruppen" />
+          </ListItemButton>
+        )}
       </List>
 
       <Box sx={{ flexGrow: 1 }} />
