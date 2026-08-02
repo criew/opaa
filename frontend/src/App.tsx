@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'

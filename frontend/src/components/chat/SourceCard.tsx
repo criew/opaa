@@ -41,7 +41,7 @@ export default function SourceCard({ source }: SourceCardProps) {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Tooltip title={source.fileName}>
-          <Typography variant="body2" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600, flexGrow: 1 }}>
             {source.fileName}
           </Typography>
         </Tooltip>

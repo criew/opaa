@@ -23,10 +23,12 @@ OPAA benötigt einen Technologie-Stack, um das in [docs/MVP.md](../MVP.md) defin
 - **Gradle 9.6.1** (Kotlin DSL) wird als Build-System verwendet und bietet schnelle inkrementelle Builds und eine prägnante Build-Konfiguration.
 - Das Backend ist als **modularer Monolith** mit separaten Packages unter `io.opaa` für `indexing`, `query` und `api` strukturiert, was eine spätere Zerlegung in Microservices ermöglicht.
 
-### Frontend: React + TypeScript + Material UI 7.3.8
+### Frontend: React + TypeScript + Material UI 9.2.0
 
-- **React** mit **TypeScript** ist der Industriestandard für moderne Web-Anwendungen.
-- **Material UI 7.3.8** bietet eine umfassende, zugängliche Komponentenbibliothek mit konsistentem Design.
+- **React** mit **TypeScript** ist der Industriestandard für moderne Web-Anwendungen. Der MVP startete auf TypeScript 5.9; die Anhebung auf TypeScript 6.0 erfolgte mit Issue #189.
+- **Material UI 9.2.0** bietet eine umfassende, zugängliche Komponentenbibliothek mit konsistentem Design. Der MVP startete auf Material UI 7.3.8; die Migration auf 9.2 erfolgte mit Issue #189 (v8 wurde vom MUI-Team zugunsten der MUI-X-Angleichung übersprungen). Seit v9 entfallen die System-Props auf `Typography`/`Stack` — Layout-Werte gehören in die `sx`-Prop.
+- **React Router 8** wird über das Paket `react-router` eingebunden; `react-router-dom` wurde in v8 entfernt.
+- **Vite 8** (Rolldown-Backend) dient als Build-Tool und Dev-Server. Das Frontend benötigt seit Issue #189 **Node 22+** (genauer: `^22.22.2 || ^24.15.0 || >=26.0.0`, die strengste transitive Anforderung stammt von `jsdom`).
 - **Vitest + React Testing Library** wird für Frontend-Unit-Tests verwendet und bietet schnelle Vite-native Testausführung mit einer Jest-kompatiblen API.
 - **MSW (Mock Service Worker)** ermöglicht Frontend-Entwicklung und -Tests ohne laufendes Backend durch Abfangen von HTTP-Anfragen.
 - Das Frontend kommuniziert ausschließlich über die REST-API des Backends, wodurch es einer von vielen möglichen Clients ist.

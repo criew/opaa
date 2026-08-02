@@ -69,7 +69,7 @@ export default function AdminDrawer() {
             p: 2,
           }}
         >
-          <Typography variant="h6" fontWeight={700}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Admin
           </Typography>
           <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close admin drawer">
@@ -108,7 +108,7 @@ export default function AdminDrawer() {
                 size="small"
                 fullWidth
                 sx={{ mb: 1.5 }}
-                inputProps={{ 'aria-label': 'URL' }}
+                slotProps={{ htmlInput: { 'aria-label': 'URL' } }}
               />
               <TextField
                 label="Proxy (host:port)"
@@ -118,7 +118,7 @@ export default function AdminDrawer() {
                 size="small"
                 fullWidth
                 sx={{ mb: 1.5 }}
-                inputProps={{ 'aria-label': 'Proxy' }}
+                slotProps={{ htmlInput: { 'aria-label': 'Proxy' } }}
               />
               <TextField
                 label="Credentials (user:password)"
@@ -128,7 +128,7 @@ export default function AdminDrawer() {
                 size="small"
                 fullWidth
                 sx={{ mb: 1 }}
-                inputProps={{ 'aria-label': 'Credentials' }}
+                slotProps={{ htmlInput: { 'aria-label': 'Credentials' } }}
               />
               <FormControlLabel
                 control={
@@ -136,7 +136,7 @@ export default function AdminDrawer() {
                     checked={insecureSsl}
                     onChange={(e) => setInsecureSsl(e.target.checked)}
                     size="small"
-                    inputProps={{ 'aria-label': 'Skip SSL verification' }}
+                    slotProps={{ input: { 'aria-label': 'Skip SSL verification' } }}
                   />
                 }
                 label={

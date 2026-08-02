@@ -20,7 +20,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router'
 import CreateWorkspaceDialog from '../components/CreateWorkspaceDialog'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
@@ -70,7 +70,7 @@ export default function Sidebar() {
       }}
     >
       <Box sx={{ p: 2.5 }}>
-        <Typography variant="h6" fontWeight={700}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           OPAA
         </Typography>
         <Typography variant="caption" color="text.secondary">
@@ -134,7 +134,7 @@ export default function Sidebar() {
                     <ListItemText
                       primary={workspace.name}
                       secondary={`${workspace.memberCount} member${workspace.memberCount === 1 ? '' : 's'}`}
-                      primaryTypographyProps={{ noWrap: true }}
+                      slotProps={{ primary: { noWrap: true } }}
                     />
                     <Chip label={workspace.userRole} size="small" variant="outlined" />
                   </ListItemButton>

@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import UploadIcon from '@mui/icons-material/Upload'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 function canUpload(role: string | undefined): boolean {
@@ -80,9 +80,13 @@ export default function WorkspacePage() {
       )}
       <Stack spacing={2.5}>
         <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ justifyContent: 'space-between' }}
+          >
             <Box>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                 <Typography variant="h5">{workspace.name}</Typography>
                 <Chip label={workspace.type} size="small" color="primary" variant="outlined" />
               </Stack>
@@ -90,7 +94,7 @@ export default function WorkspacePage() {
                 {workspace.description || 'No description provided.'}
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               {canUpload(workspace.userRole) && (
                 <Button variant="contained" startIcon={<UploadIcon />}>
                   Upload

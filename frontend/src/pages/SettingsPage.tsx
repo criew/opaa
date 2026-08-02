@@ -20,10 +20,10 @@ export default function SettingsPage() {
       </Typography>
 
       <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
-        <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
           Appearance
         </Typography>
-        <Typography variant="body2" color="text.secondary" mb={2}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Choose how OPAA looks to you.
         </Typography>
         <ToggleButtonGroup

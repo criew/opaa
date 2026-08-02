@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Collapse from '@mui/material/Collapse'
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
 
 interface Props {
   children: ReactNode
@@ -47,7 +47,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         >
           <ErrorOutlineIcon sx={{ fontSize: 64 }} color="error" />
           <Typography variant="h5">Something went wrong</Typography>
-          <Typography variant="body1" color="text.secondary" textAlign="center">
+          <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
             An unexpected error occurred. Please try reloading the page.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>

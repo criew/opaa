@@ -5,7 +5,7 @@ import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router'
 import { useAuthStore } from '../stores/authStore'
 
 export default function LoginPage() {
@@ -46,7 +46,7 @@ export default function LoginPage() {
       }}
     >
       <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
           OPAA
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

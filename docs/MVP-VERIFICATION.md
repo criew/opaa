@@ -140,7 +140,7 @@ Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei jedem Push u
 ### Voraussetzungen
 
 - Java 21 (z. B. Eclipse Temurin)
-- Node.js 20+
+- Node.js 22+ (siehe `frontend/.nvmrc`)
 - Docker (für PostgreSQL über Testcontainers oder eigenständigen Container)
 - OpenAI-API-Schlüssel (optional — Ollama für lokale Entwicklung ohne verwenden)
 

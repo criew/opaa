@@ -70,7 +70,7 @@ export default function CreateWorkspaceDialog({
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          inputProps={{ maxLength: 255 }}
+          slotProps={{ htmlInput: { maxLength: 255 } }}
           sx={{ mt: 1 }}
         />
         <TextField
@@ -80,7 +80,7 @@ export default function CreateWorkspaceDialog({
           minRows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          inputProps={{ maxLength: 2000 }}
+          slotProps={{ htmlInput: { maxLength: 2000 } }}
           sx={{ mt: 2 }}
         />
       </DialogContent>
