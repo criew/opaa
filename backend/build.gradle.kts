@@ -76,6 +76,29 @@ tasks.register<Test>("evaluateRetrieval") {
     }
 }
 
+// Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
+// CorpusManifest — see their Javadoc). Lives in the evalTest source set (not `main`/`test`) so the
+// classes under test never ship in the production jar, but still runs as part of `check` so a
+// Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math regression, is caught
+// without Docker. Explicitly excludes RetrievalEvaluationHarnessTest, which needs Testcontainers
+// and stays exclusive to `evaluateRetrieval` — issue #227's exclusion criterion is about that one
+// Docker-requiring test class, not about the evalTest source set as a whole.
+tasks.register<Test>("evalUnitTest") {
+    description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
+        "MetricsAggregate, CorpusManifest). Part of check; does not touch Testcontainers."
+    group = "verification"
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*RetrievalEvaluationHarnessTest")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("evalUnitTest")
+}
+
 dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")

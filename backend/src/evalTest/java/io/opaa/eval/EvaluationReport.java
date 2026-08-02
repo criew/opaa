@@ -5,6 +5,7 @@ import java.util.Map;
 
 /** Machine-readable retrieval-evaluation report (issue #227 acceptance criteria). */
 public record EvaluationReport(
+    int measurementContractVersion,
     RunConfiguration runConfiguration,
     OneChunkInvariantResult oneChunkInvariant,
     DatasetNotes datasetNotes,
@@ -12,15 +13,25 @@ public record EvaluationReport(
     Map<String, MetricsAggregate> byCategory,
     Map<String, MetricsAggregate> byDifficulty,
     Map<String, MetricsAggregate> byLanguage,
-    List<WorstQuery> worstQueries) {
+    List<WorstQuery> worstQueries,
+    List<WorstQuery> allQueryResults) {
+
+  /**
+   * Version of the measurement contract this report was produced under — see ADR-0012. Bump this
+   * whenever a change to gain function, IDCG basis, k-windows, threshold handling or the
+   * micro/macro averaging choice would make historical reports incomparable to new ones.
+   */
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 1;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
       String embeddingProvider,
       String embeddingModel,
+      String embeddingModelDigest,
       String ollamaImage,
       int embeddingDimensions,
       int chunkSize,
+      boolean chunkSizeMatchesApplicationDefault,
       int searchTopK,
       double productionSimilarityThreshold,
       String similarityThresholdNote,

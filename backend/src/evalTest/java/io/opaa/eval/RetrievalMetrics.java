@@ -7,7 +7,13 @@ import java.util.Set;
 /**
  * Pure ranking-metric math (Hit Rate@k, MRR, nDCG@k, Recall@k) — see
  * docs/discussions/discussion-rag-evaluation.md, section 2.1, and issue #227. No I/O, no Spring:
- * kept independent of the harness so the metric definitions can be unit-tested in isolation.
+ * kept independent of the harness so the metric definitions can be unit-tested in isolation — see
+ * {@code RetrievalMetricsTest}, run via the Docker-free {@code evalUnitTest} Gradle task (wired
+ * into {@code check}), not the Docker-requiring {@code evaluateRetrieval} task.
+ *
+ * <p>Deliberately kept in the {@code evalTest} source set rather than {@code main}: this is
+ * evaluation tooling, not something OPAA needs at runtime, and it must not ship in the production
+ * jar (see build.gradle.kts and eval/README.md, "Unit-Tests für die Metrikmathematik").
  *
  * <p>All metrics are computed against a single ranked list per query (deduplicated by document file
  * name, best rank kept), evaluated to a fixed maximum depth. Relevance is binary: a document either
@@ -80,6 +86,18 @@ public final class RetrievalMetrics {
     }
     long hits = ranked.stream().limit(k).filter(expected::contains).count();
     return (double) hits / expected.size();
+  }
+
+  /**
+   * The highest Recall@k a query could possibly achieve, given how many documents are actually
+   * expected. When {@code |expected| > k}, even a perfect ranking cannot reach 1.0 — see the
+   * "Recall@10-Obergrenze" note in the eval README. Returns 1.0 when the query is achievable.
+   */
+  public static double recallCeilingAtK(Set<String> expected, int k) {
+    if (expected.isEmpty()) {
+      return 0.0;
+    }
+    return (double) Math.min(k, expected.size()) / expected.size();
   }
 
   private static double log2(double x) {

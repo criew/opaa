@@ -25,44 +25,52 @@ public final class ReportWriter {
   public static String renderSummary(EvaluationReport report) {
     StringBuilder sb = new StringBuilder();
     sb.append("\n=== Retrieval-Evaluation: comic-characters ===\n\n");
+    sb.append(
+        format(
+            "Messvertrag-Version: %d (siehe ADR-0012)\n\n", report.measurementContractVersion()));
 
     var cfg = report.runConfiguration();
     sb.append("Konfiguration:\n");
     sb.append(
-        "  Embedding: %s/%s (%d Dimensionen, Image %s)\n"
-            .formatted(
-                cfg.embeddingProvider(),
-                cfg.embeddingModel(),
-                cfg.embeddingDimensions(),
-                cfg.ollamaImage()));
+        format(
+            "  Embedding: %s/%s (Digest %s, %d Dimensionen, Image %s)\n",
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            shortHash(cfg.embeddingModelDigest()),
+            cfg.embeddingDimensions(),
+            cfg.ollamaImage()));
     sb.append(
-        "  chunkSize=%d, searchTopK=%d, pgvectorIndexType=%s\n"
-            .formatted(cfg.chunkSize(), cfg.searchTopK(), cfg.pgvectorIndexType()));
+        format(
+            "  chunkSize=%d (== Anwendungsdefault: %s), searchTopK=%d, pgvectorIndexType=%s\n",
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.searchTopK(),
+            cfg.pgvectorIndexType()));
     sb.append(
-        "  Korpus: %d Dokumente, Manifest %s\n"
-            .formatted(cfg.corpusDocumentCount(), shortHash(cfg.corpusManifestSha256())));
+        format(
+            "  Korpus: %d Dokumente, Manifest %s\n",
+            cfg.corpusDocumentCount(), shortHash(cfg.corpusManifestSha256())));
     sb.append(
-        "  Golden Dataset: %s, %d Fälle, Hash %s\n"
-            .formatted(
-                cfg.goldenDatasetFile(),
-                cfg.goldenCaseCount(),
-                shortHash(cfg.goldenDatasetSha256())));
-    sb.append("  Laufzeit: %.1f s\n\n".formatted(cfg.runDurationSeconds()));
+        format(
+            "  Golden Dataset: %s, %d Fälle, Hash %s\n",
+            cfg.goldenDatasetFile(), cfg.goldenCaseCount(), shortHash(cfg.goldenDatasetSha256())));
+    sb.append(format("  Laufzeit: %.1f s\n\n", cfg.runDurationSeconds()));
 
     var invariant = report.oneChunkInvariant();
     sb.append(
-        "Ein-Chunk-Invariante: %d Dokumente geprüft, %d Verletzung(en)%s\n\n"
-            .formatted(
-                invariant.documentsChecked(),
-                invariant.violations().size(),
-                invariant.holds() ? " — hält" : " — VERLETZT: " + invariant.violations()));
+        format(
+            "Ein-Chunk-Invariante: %d Dokumente geprüft, %d Verletzung(en)%s\n\n",
+            invariant.documentsChecked(),
+            invariant.violations().size(),
+            invariant.holds() ? " — hält" : " — VERLETZT: " + invariant.violations()));
 
     var notes = report.datasetNotes();
     sb.append(
-        "Datensatz-Hinweis: %d Fälle, %d unterschiedliche Erwartungsmengen — %s\n\n"
-            .formatted(notes.caseCount(), notes.distinctExpectedDocumentSets(), notes.note()));
+        format(
+            "Datensatz-Hinweis: %d Fälle, %d unterschiedliche Erwartungsmengen — %s\n\n",
+            notes.caseCount(), notes.distinctExpectedDocumentSets(), notes.note()));
 
-    sb.append("Gesamt (n=%d):\n".formatted(report.overall().n()));
+    sb.append(format("Gesamt (n=%d):\n", report.overall().n()));
     appendMetricLine(sb, report.overall());
     sb.append('\n');
 
@@ -73,18 +81,22 @@ public final class ReportWriter {
     sb.append("Schlechteste 10 Anfragen (nach nDCG@10):\n");
     for (var q : report.worstQueries()) {
       sb.append(
-          "  [%s|%s|%s] nDCG@10=%.3f hit@5=%.0f recall@10=%.3f — \"%s\" erwartet=%s gefunden=%s\n"
-              .formatted(
-                  q.category(),
-                  q.difficulty(),
-                  q.language(),
-                  q.ndcgAt10(),
-                  q.hitRateAt5(),
-                  q.recallAt10(),
-                  q.query(),
-                  q.expectedDocuments(),
-                  q.rankedFileNames()));
+          format(
+              "  [%s|%s|%s] nDCG@10=%.3f hit@5=%.0f recall@10=%.3f — \"%s\" erwartet=%s gefunden=%s\n",
+              q.category(),
+              q.difficulty(),
+              q.language(),
+              q.ndcgAt10(),
+              q.hitRateAt5(),
+              q.recallAt10(),
+              q.query(),
+              q.expectedDocuments(),
+              q.rankedFileNames()));
     }
+    sb.append(
+        format(
+            "\nAlle %d Einzelergebnisse stehen im JSON-Report unter 'allQueryResults'.\n",
+            report.allQueryResults().size()));
     return sb.toString();
   }
 
@@ -93,7 +105,7 @@ public final class ReportWriter {
     sb.append(title).append(":\n");
     groups.forEach(
         (key, aggregate) -> {
-          sb.append("  %-24s (n=%d): ".formatted(key, aggregate.n()));
+          sb.append(format("  %-24s (n=%d): ", key, aggregate.n()));
           appendMetricLine(sb, aggregate);
         });
     sb.append('\n');
@@ -101,16 +113,19 @@ public final class ReportWriter {
 
   private static void appendMetricLine(StringBuilder sb, MetricsAggregate a) {
     sb.append(
-        "HitRate@5=%.3f  MRR=%.3f  nDCG@10=%.3f  Recall@10=%.3f\n"
-            .formatted(a.hitRateAt5(), a.mrr(), a.ndcgAt10(), a.recallAt10()));
+        format(
+            "HitRate@5=%.3f  MRR=%.3f  nDCG@10=%.3f  Recall@10=%.3f (Obergrenze=%.3f)\n",
+            a.hitRateAt5(), a.mrr(), a.ndcgAt10(), a.recallAt10(), a.recallAt10Ceiling()));
   }
 
   private static String shortHash(String hash) {
     return hash == null || hash.length() < 12 ? String.valueOf(hash) : hash.substring(0, 12) + "…";
   }
 
-  static {
-    // Ensures %f formatting uses '.' regardless of the JVM's default locale.
-    Locale.setDefault(Locale.ROOT);
+  // Explicit Locale.ROOT per call, deliberately not a JVM-wide Locale.setDefault(Locale.ROOT):
+  // this class only formats report text, so it has no business changing global JVM state for the
+  // rest of the (test) process.
+  private static String format(String pattern, Object... args) {
+    return String.format(Locale.ROOT, pattern, args);
   }
 }
