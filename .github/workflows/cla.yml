@@ -14,6 +14,9 @@ permissions:
 
 jobs:
   cla-check:
+    # issue_comment feuert auch bei Kommentaren auf gewöhnlichen Issues. Die
+    # CLA-Action erwartet dort einen Pull Request und bricht ab, daher der Filter.
+    if: github.event_name == 'pull_request_target' || github.event.issue.pull_request
     runs-on: ubuntu-latest
     steps:
       - name: CLA Assistant
