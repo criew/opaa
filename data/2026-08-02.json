@@ -1,8 +1,21 @@
 {
   "repo": "criew/opaa",
   "date": "2026-08-02",
-  "generated_at": "2026-08-02T23:32:39.030570+02:00",
+  "generated_at": "2026-08-02T23:47:52.036136+02:00",
   "closed_issues": [
+    {
+      "number": 290,
+      "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+      "url": "https://github.com/criew/opaa/issues/290",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:M",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung zeigt drei Fehlzuordnungen. Alle gehen darauf zurück, dass Zugehörigkeiten aus Fließtext geraten statt aus strukturierten Daten gelesen werden.\n\n## Befunde\n\n**1. Aufzählungsmarker werden als Ticketnummern gelesen**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Diese Marker sind keine Issue-Referenzen. Da die Issues #1 bis #20 im Repository längst geschlossen sind, erscheint das Epic als „20 von 20 Tickets erledigt\".\n\n**2. Erwähnungen im Prosatext werden als Tickets gewertet**\n\nJede Zahl der Form `#N` im Body zählt derzeit als Ticket. Dadurch wurde Epic #198 als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt.\n\n**3. Beispieltexte in PR-Beschreibungen werden als Verknüpfung gelesen**\n\nDie Zuordnung eines Pull Requests erfolgt über einen Ausdruck auf `Closes #N` im Body. PR #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` sowie `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen, wodurch der PR über #12 und #13 bei Epic #60 landete.\n\n## Umfang\n\n- Ticketlisten nur aus Checklisteneinträgen lesen, bei denen die Nummer unmittelbar auf die Checkbox folgt, entsprechend dem Format der Epic-Vorlage\n- Nur Nummern berücksichtigen, die einem existierenden Issue entsprechen; Epics selbst sind keine Tickets\n- Für Pull Requests die von GitHub gepflegte Verknüpfung `closingIssuesReferences` verwenden statt den Body auszuwerten\n\n## Abnahmekriterien\n\n- [ ] Epic #60 erscheint nicht mehr mit erfundenem Fortschritt\n- [ ] Epics werden nicht als Tickets anderer Epics gezählt\n- [ ] Ein Pull Request wird nur über die tatsächlich von GitHub verknüpften Issues zugeordnet\n- [ ] Beispieltexte in Beschreibungen erzeugen keine Zuordnung mehr",
+      "closes": []
+    },
     {
       "number": 285,
       "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
@@ -301,6 +314,46 @@
     }
   ],
   "opened_issues": [
+    {
+      "number": 290,
+      "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+      "url": "https://github.com/criew/opaa/issues/290",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:M",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung zeigt drei Fehlzuordnungen. Alle gehen darauf zurück, dass Zugehörigkeiten aus Fließtext geraten statt aus strukturierten Daten gelesen werden.\n\n## Befunde\n\n**1. Aufzählungsmarker werden als Ticketnummern gelesen**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Diese Marker sind keine Issue-Referenzen. Da die Issues #1 bis #20 im Repository längst geschlossen sind, erscheint das Epic als „20 von 20 Tickets erledigt\".\n\n**2. Erwähnungen im Prosatext werden als Tickets gewertet**\n\nJede Zahl der Form `#N` im Body zählt derzeit als Ticket. Dadurch wurde Epic #198 als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt.\n\n**3. Beispieltexte in PR-Beschreibungen werden als Verknüpfung gelesen**\n\nDie Zuordnung eines Pull Requests erfolgt über einen Ausdruck auf `Closes #N` im Body. PR #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` sowie `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen, wodurch der PR über #12 und #13 bei Epic #60 landete.\n\n## Umfang\n\n- Ticketlisten nur aus Checklisteneinträgen lesen, bei denen die Nummer unmittelbar auf die Checkbox folgt, entsprechend dem Format der Epic-Vorlage\n- Nur Nummern berücksichtigen, die einem existierenden Issue entsprechen; Epics selbst sind keine Tickets\n- Für Pull Requests die von GitHub gepflegte Verknüpfung `closingIssuesReferences` verwenden statt den Body auszuwerten\n\n## Abnahmekriterien\n\n- [ ] Epic #60 erscheint nicht mehr mit erfundenem Fortschritt\n- [ ] Epics werden nicht als Tickets anderer Epics gezählt\n- [ ] Ein Pull Request wird nur über die tatsächlich von GitHub verknüpften Issues zugeordnet\n- [ ] Beispieltexte in Beschreibungen erzeugen keine Zuordnung mehr",
+      "closes": []
+    },
+    {
+      "number": 289,
+      "title": "feat(backend): Organisationsgrenze auf Datenbankebene symmetrisch absichern",
+      "url": "https://github.com/criew/opaa/issues/289",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:S",
+        "security"
+      ],
+      "body": "## Kontext\n\nDie Organisationsgrenze ist heute auf Datenbankebene nur einseitig abgesichert.\n\n**Gesichert** ist jeweils die Seite der besitzenden Entität, über zusammengesetzte Fremdschlüssel:\n\n- `space_memberships (space_id, organization_id)` → `spaces (id, organization_id)`\n- `group_memberships (group_id, organization_id)` → `groups (id, organization_id)`\n\n**Nicht gesichert** ist die Nutzerseite: `user_id` verweist nur per einfachem Fremdschlüssel auf `users (id)`. Eine Zeile mit einem Nutzer aus Organisation B und `organization_id = A` verletzt keine Constraint.\n\nAnwendungsseitig ist das geschlossen — `SpaceService` und `GroupService` lösen Fremd-IDs über `requireUserInOrganization` auf und lehnen mit 404 ab, beides getestet. Die Datenbank fängt einen Fehler an dieser Stelle aber nicht ab.\n\nGefunden bei den Reviews zu PR #254 und PR #283.\n\n## Warum es sich lohnt\n\nADR-0008 bezeichnet die Mandantengrenze als harte Invariante. Bei den bisherigen Umsetzungsschritten hat sich gezeigt, dass genau die Pfade, die IDs aus einem Request-Body auflösen, die fehleranfälligen sind — in #199 waren sie zunächst offen und wurden erst im Review gefunden.\n\nEine Absicherung auf Datenbankebene macht diese Fehlerklasse strukturell unmöglich, statt sie in jedem neuen Service erneut korrekt implementieren zu müssen. #201, #202 und #208 führen weitere Tabellen mit Nutzerbezug ein.\n\n## Umsetzung\n\nVoraussetzung ist ein Unique-Index auf `users (id, organization_id)` — technisch redundant, aber als Referenzziel eines zusammengesetzten Fremdschlüssels erforderlich.\n\nDarauf aufbauend die Nutzerseite in `space_memberships` und `group_memberships` als zusammengesetzten Fremdschlüssel führen, analog zur bereits gesicherten Gruppen- beziehungsweise Space-Seite.\n\nZu bewerten: ob dasselbe Muster als Konvention für alle künftigen Tabellen mit Organisations- und Nutzerbezug festgehalten werden sollte — dann gehört ein Satz dazu in `docs/features/spaces-and-assets.md` oder in ADR-0008.\n\n## Abnahmekriterien\n\n- [ ] Unique-Index auf `users (id, organization_id)` angelegt\n- [ ] Nutzerseite von `space_memberships` und `group_memberships` per zusammengesetztem Fremdschlüssel abgesichert\n- [ ] Migrationstest weist nach, dass eine organisationsübergreifende Zeile von der Datenbank abgelehnt wird\n- [ ] Rollback dokumentiert\n- [ ] Backend-Formatierung, Build und Test bestehen\n\n## Hinweis\n\nSinnvollerweise gemeinsam mit #288 (Umstellung FK-abhängiger Tests auf echtes Liquibase-Schema) zu betrachten — ohne diese Umstellung wäre der neue Fremdschlüssel in den bestehenden Integrationstests gar nicht wirksam.\n\n## Bezug\n\nFolge aus PR #254 und PR #283, gehört zu #198.",
+      "closes": []
+    },
+    {
+      "number": 288,
+      "title": "test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen",
+      "url": "https://github.com/criew/opaa/issues/288",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nDie Integrationstests laufen überwiegend mit `spring.liquibase.enabled=false` und `spring.jpa.hibernate.ddl-auto=create-drop`. Das Schema kommt damit von Hibernate, nicht von Liquibase — und die beiden unterscheiden sich an einer entscheidenden Stelle.\n\n`Space.ownerId`, `SpaceMembership.userId` und sämtliche `organizationId`-Felder sind schlichte `UUID`-Spalten ohne `@ManyToOne`. Hibernate legt dafür **keine** Fremdschlüssel an, Liquibase schon. **Jeder FK-abhängige Fall ist in diesen Suiten damit ungetestet.**\n\n## Warum das jetzt angegangen werden muss\n\nInnerhalb kurzer Zeit sind zwei Regressionen durch grünes CI gerutscht, beide aus derselben Wurzel:\n\n1. **PR #254** — Changelog 008 brach auf jedem nicht-leeren Bestand ab. Nicht bemerkt, weil die Integrationstests Liquibase gar nicht ausführen und die einzige Stelle, die es anwendet, gegen eine leere Datenbank läuft.\n2. **PR #280** — die `REQUIRES_NEW`-Transaktion in `ensurePersonalSpace` brach auf `main` jede Erstanmeldung, weil der Insert gegen `fk_spaces_owner` lief. Nicht bemerkt, weil dieser Fremdschlüssel im Testschema nicht existiert. Behoben in PR #287.\n\nBeide Male war der Code fachlich falsch und die Tests waren grün. Das ist kein Zufall, sondern ein struktureller blinder Fleck.\n\n**#201** (Wissensbibliothek als Dokumentencontainer) und **#202** (Asset-Rechte und rechtebewusste Vektorsuche) führen weitere Fremdschlüssel und die gesamte Rechtedurchsetzung ein. Ein blinder Fleck an dieser Stelle wäre deutlich teurer als die beiden bisherigen Fälle.\n\n## Umsetzung\n\nSchrittweise Umstellung FK-abhängiger Tests auf `spring.liquibase.enabled=true` und `ddl-auto=none`. Als Muster dient `UserServicePersonalSpaceIntegrationTest` aus PR #287.\n\nNicht jeder Test muss umgestellt werden — reine Service-Logik ohne Bezug auf Fremdschlüssel darf beim schnelleren Hibernate-Schema bleiben. Zu entscheiden ist, welche Suiten betroffen sind; Kandidaten sind `SpaceServiceIntegrationTest`, `SpaceRepositoryTest` und alles, was Nutzer-, Space- oder Organisationsbezüge schreibt.\n\nZusätzlich zu klären: ob die Laufzeit darunter leidet und ob sich ein gemeinsamer Testcontainer über mehrere Suiten hinweg lohnt.\n\n## Nebenpunkt: uneinheitliche Teardown-Muster\n\nIn den Migrationstests stehen inzwischen zwei Lösungen für dasselbe Problem nebeneinander — Liquibase lässt die JDBC-Verbindung nach `update()` mit `autoCommit=false` zurück:\n\n- `Migration010SpaceUniquenessTest`: `setAutoCommit(true)` nach jedem `update()`, Schema-Reset im `tearDown()`\n- `Migration009CreateGroupsTest`: `connection.rollback()` im `tearDown()`\n\nBeides ist korrekt. Vor #237 und #238 sollte eines davon als verbindliches Muster festgelegt werden, damit die Folge-Issues nicht raten müssen.\n\n## Abnahmekriterien\n\n- [ ] Entscheidung dokumentiert, welche Suiten auf Liquibase-Schema laufen und welche nicht\n- [ ] Betroffene Suiten umgestellt, alle Tests grün\n- [ ] Ein Test, der ohne Fremdschlüssel bestehen würde, schlägt nach der Umstellung ohne den zugehörigen Produktivcode fehl (Nachweis, dass die Umstellung wirkt)\n- [ ] Einheitliches Teardown-Muster für Migrationstests festgelegt und dokumentiert\n- [ ] Laufzeit der Testsuite gemessen und bewertet\n- [ ] Backend-Formatierung, Build und Test bestehen\n\n## Bezug\n\nFolge aus PR #254, #280 und #287. Gehört zu Stufe A von #198 und sollte **vor #202** abgeschlossen sein.",
+      "closes": []
+    },
     {
       "number": 285,
       "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
@@ -1224,6 +1277,23 @@
   ],
   "merged_pull_requests": [
     {
+      "number": 291,
+      "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+      "url": "https://github.com/criew/opaa/pull/291",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung (#286) zeigte drei Fehlzuordnungen. Alle gehen auf dieselbe Ursache zurück: Zugehörigkeiten wurden aus Fließtext geraten statt aus strukturierten Daten gelesen.\n\n## Die drei Befunde\n\n**1. Aufzählungsmarker als Ticketnummern**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Da die Issues #1 bis #20 längst geschlossen sind, erschien das Epic als „20 von 20 Tickets erledigt\" — mit zwanzig Tickets, die es nie hatte.\n\n**2. Erwähnungen im Fließtext als Tickets**\n\nJede Zahl der Form `#N` im Body zählte als Ticket. Epic #198 wurde dadurch als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt. Statt 14 hatte #224 scheinbar 17 Tickets.\n\n**3. Beispieltexte als Verknüpfung**\n\nAm deutlichsten sichtbar an diesem PR-Vorgänger selbst: #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` und `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen:\n\n```\nPR #286 closes: [12, 13, 99, 221, 285]   ← vorher\nPR #286 closes: [285]                     ← nachher\n```\n\nÜber #12 landete der PR damit bei Epic #60.\n\n## Die Änderung\n\n| Bereich | vorher | nachher |\n| --- | --- | --- |\n| Ticketliste | jedes `#N` im Body | nur `- [ ] #123 titel`, Nummer direkt nach der Checkbox |\n| Gültigkeit | jede Zahl | nur existierende Issues, keine Epics, keine Pull Requests |\n| PR-Zuordnung | Ausdruck auf `Closes #N` im Body | `closingIssuesReferences` von GitHub |\n\nDie Verknüpfungen aller Pull Requests eines Tages werden in **einer** GraphQL-Abfrage geholt.\n\n## Wirkung auf die echten Daten\n\n```\nvorher                          nachher\n#198  1/25                      #198  1/25\n#224  4/17  ← 3 Querverweise    #224  4/14\n#60  20/20  ← erfunden          (verschwunden)\n```\n\nStichprobe der neuen Verknüpfungen: `#286 → [285]`, `#280 → [265, 266]`, `#278 → [276]`.\n\n## Prüfung\n\nTicketmuster gegen die tatsächlich vorkommenden Formate:\n\n| Eingabe | Ergebnis |\n| --- | --- |\n| `- [x] #225 \\`feat(eval): …\\`` | 225 |\n| `- [ ] #227 \\`test(eval): …\\`` | 227 |\n| `- [ ] **#1 CORS Wildcard Headers**` | keine — korrekt abgewiesen |\n| `- [ ] **#14 Fehlende Tests**` | keine — korrekt abgewiesen |\n| `Siehe auch #198 im Fließtext` | keine — korrekt abgewiesen |\n| `  - [x]   #300  mit Leerraum` | 300 |\n\nAußerdem: Reports im alten Format lassen sich weiterhin rendern, und eine leere PR-Liste erzeugt keine Abfrage.\n\n## Zugehörige Issues\n\nCloses #290\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echten Repository-Daten und in sechs Musterfällen geprüft)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
+      "closes": [
+        290
+      ],
+      "additions": 85,
+      "deletions": 15,
+      "changed_files": 2
+    },
+    {
       "number": 286,
       "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
       "url": "https://github.com/criew/opaa/pull/286",
@@ -1234,10 +1304,6 @@
       ],
       "body": "## Zusammenfassung\n\nDie Zusammenfassung erzählte bisher die Liste der Vorgänge nach, ohne feste Ordnung. Sie folgt jetzt den Epics — den thematisch zusammenhängenden Einheiten des Projekts — und ordnet die Tagesbewegung in den Gesamtfortschritt ein.\n\n## Vorher / nachher\n\n**Vorher** (~250 Wörter, Gliederung vom Modell gewählt):\n\n> Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler. […] Im Bereich der Infrastruktur wurden zwei CI-Probleme behoben: #278 trennt das Secret […]\n\n**Nachher** (183 Wörter, Gliederung aus den Daten):\n\n> Epic #198 „Space and asset model\" kam mit 25 neu angelegten Tickets voran, wobei #199 als Grundstein abgeschlossen und gemergt wurde. Das Epic steht bei 1 von 25 Tickets erledigt und definiert damit überwiegend die kommende Arbeit […]\n>\n> Epic #224 „Suchqualität messbar machen\" erzielte mit 4 von 17 Tickets erledigt deutlichere Fortschritte. […]\n>\n> Ohne Epic-Bezug entstanden 28 neue Tickets, 17 wurden abgeschlossen und 21 gemergt. Schwerpunkte waren Infrastruktur und Dokumentation: Der tägliche Projektreport (#248/#259) läuft nun automatisiert […]\n\n## Wie die Zuordnung entsteht\n\nNative Sub-Issues werden im Repository nicht verwendet — die Zugehörigkeit steht als Ticketliste im Body des Epic-Issues.\n\n| Schritt | Grundlage |\n| --- | --- |\n| Epics finden | Issues mit dem Label `epic` |\n| Tickets zuordnen | Issue-Nummern im Body des Epics |\n| Pull Requests zuordnen | das über `Closes #N` geschlossene Issue |\n| Fortschritt | Anteil geschlossener Tickets der Liste |\n\nDer Fortschritt entsteht aus **einem** Abruf aller Issues statt aus einer Abfrage je Ticket.\n\nVorgänge ohne Eintrag in einer Ticketliste werden **nicht geraten**, sondern gesondert ausgewiesen. Wer die Zuordnung verbessern will, trägt die Nummer im Epic nach; der nächste Lauf greift sie auf.\n\n## Warum die Zahlen vorgegeben werden\n\nIm ersten Durchlauf erhielt das Modell nur die Listen und zählte selbst ab — mit durchweg falschen Werten: „23 neue Tickets\" statt 25, „drei abgeschlossen\" statt vier, „24 neu und 16 abgeschlossen\" statt 28 und 17. Die Fortschrittszahlen stimmten, weil sie explizit im Prompt standen.\n\nJetzt stehen alle Kennzahlen im Prompt, und die Anweisung lautet, keine Zahl zu nennen, die nicht wörtlich in der Eingabe steht. Im erneuten Lauf stimmten sämtliche Zahlen mit den Daten überein.\n\n## Prüfung\n\nGegen die echten Daten vom 2. August mit `claude-haiku-4-5-20251001`:\n\n- Struktur korrekt erkannt: #198 mit 1/25 Tickets (25 neu, 1 zu, 1 gemergt), #224 mit 4/17 (15 neu, 4 zu, 4 gemergt), 28/17/21 ohne Epic\n- Alle im Text genannten Zahlen stimmen mit den Daten überein\n- Länge von ~250 auf 183 Wörter gesunken\n- `CLOSES_MUSTER` gegen `Closes #221`, `fixes #12 und Closes #13`, `Schließt #99` sowie den Fehlfall `Enclosesx #5` geprüft\n- Ältere Reports ohne die neuen Felder lassen sich weiterhin rendern (Seite, Index und Feed)\n\n## Zugehörige Issues\n\nCloses #285\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echte API und auf Rückwärtskompatibilität geprüft)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
       "closes": [
-        12,
-        13,
-        99,
-        221,
         285
       ],
       "additions": 211,
@@ -1690,6 +1756,32 @@
   ],
   "open_pull_requests": [
     {
+      "number": 292,
+      "title": "test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)",
+      "url": "https://github.com/criew/opaa/pull/292",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "evaluation"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 287,
+      "title": "fix(auth): Erstanmeldung nach #280 wieder funktionsfähig machen",
+      "url": "https://github.com/criew/opaa/pull/287",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
       "number": 283,
       "title": "Gruppen als Rechtesubjekt einfuehren",
       "url": "https://github.com/criew/opaa/pull/283",
@@ -1702,9 +1794,7 @@
         "auth"
       ],
       "body": "",
-      "closes": [
-        200
-      ]
+      "closes": []
     },
     {
       "number": 161,
@@ -1722,11 +1812,11 @@
   ],
   "ci": {
     "conclusion": "in_progress",
-    "url": "https://github.com/criew/opaa/actions/runs/30768076806",
-    "title": "Merge pull request #286 from criew/feature/285_report-nach-epics",
-    "finished_at": "2026-08-02T21:31:35Z"
+    "url": "https://github.com/criew/opaa/actions/runs/30768608350",
+    "title": "Merge pull request #291 from criew/feature/290_epic-zuordnung-korrigi…",
+    "finished_at": "2026-08-02T21:46:03Z"
   },
-  "summary": "Epic #198 „Space and asset model\" hat heute mit 25 neu angelegten Tickets die Definitionsphase begonnen. Mit #199 wurde das erste Ticket abgeschlossen und gemergt: die mechanische Umbenennung von Workspace zu Space, die Organisationsgrenze und die neuen Space-Rollen. Von 25 Tickets sind damit 1 erledigt. Die Arbeit konzentriert sich auf die Modellierung von Assets, Rechten, Governance und Versionierung.\n\nEpic #224 „Suchqualität messbar machen\" hat heute mit 15 neu angelegten Tickets die Infrastruktur für Evaluation aufgebaut. Vier Tickets wurden abgeschlossen und vier gemergt: der Korpus-Generator für Comichelden (#225), das Golden Dataset (#226), das E2E-Grundgerüst (#231) und die Deployment-Dokumentation (#244). Von 17 Tickets sind damit 4 erledigt. Der Demo-Korpus wird als HTTP-Verzeichnis im Compose-Stack bereitgestellt und über den bestehenden Konnektor indiziert.\n\nEpic #60 „Security & Code Review Findings\" ist mit 20 von 20 Tickets abgeschlossen. Heute wurde ein Ticket gemergt, das die Report-Zusammenfassung an die Epic-Struktur ausrichtet und kürzt.\n\nOhne Epic-Bezug wurden 28 Tickets neu angelegt, 18 abgeschlossen und 21 gemergt. Die Arbeit verteilt sich auf Dokumentation, Sicherheit, Infrastruktur und Konfiguration: Standardwerte in der Deployment-Dokumentation, Härtungsanforderungen für öffentliche Compose-Deployments, Unterstützung für Anthropic in der Report-Zusammenfassung, Eindeutigkeit persönlicher Spaces, fehlende Datenbankindizes, Auflösung einer ADR-Nummernkollision und Behebung mehrerer CI-Fehler.",
+  "summary": "Epic #198 „Space and asset model\" hat am Sonntag seine erste Umsetzungsphase abgeschlossen: 25 neue Tickets wurden angelegt, eines abgeschlossen und eines gemergt. Mit #199 ist der mechanische Rename von Workspace zu Space sowie die Neuordnung der Space-Rollen live. Die übrigen 24 Tickets decken die komplexere Arbeit ab — von Governance-Controls über Versionierung bis zur Drift-Schutz-Mechanik für Abkömmlinge, die bewusst zurückgestellt wird.\n\nEpic #224 „Suchqualität messbar machen\" ist mit 4 von 14 Tickets erledigt. Der Tag brachte 14 neue Tickets, vier abgeschlossene und vier gemergte. Der Korpus-Generator für Comichelden (#225) und das Golden Dataset (#226) sind implementiert, die E2E-Test-Infrastruktur (#231) steht, und die öffentliche Demo-Instanz ist dokumentiert. Der Retrieval-Harness mit Metriken und automatisiertem Regressions-Check folgt als nächster Schritt.\n\nOhne Epic-Bezug wurden 32 Tickets angelegt, 19 abgeschlossen und 23 gemergt. Schwerpunkte waren die Stabilisierung der Report-Infrastruktur — Fehlzuordnungen im Epic-Report behoben, Anthropic-Support hinzugefügt, eigenes Secret für die Zusammenfassung — sowie mehrere vorbestehende Fehler in Sicherheit, Performance und Dokumentation. Die ADR-Nummernkollision (zwei Tickets mit 0008) wurde aufgelöst, und die Projektsprache wurde auf Deutsch festgelegt.",
   "epics": [
     {
       "number": 198,
@@ -2128,7 +2218,7 @@
     {
       "number": 224,
       "title": "Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression",
-      "tickets_total": 17,
+      "tickets_total": 14,
       "tickets_closed": 4,
       "opened": [
         {
@@ -2319,23 +2409,6 @@
           ],
           "body": "## Zusammenfassung\n\nEin deterministischer Generator erzeugt aus einem eingefrorenen Snapshot des HuggingFace-Datensatzes `jrtec/Superheroes` (CC0-1.0) eine Markdown-Datei pro Comicfigur — mit YAML-Frontmatter (strukturierte Felder) und selbst formuliertem Fließtext.\n\n## Kontext / Warum\n\nRohdateien sind für RAG unbrauchbar: Ein Datensatz mit tausenden Figuren ist für Tika ein einziges Dokument und wird vom `ChunkingService` an willkürlichen Zeilengrenzen zerschnitten. Zudem ist `.csv` gar kein unterstütztes Format — unterstützt sind `.md`, `.txt`, `.pdf`, `.docx`, `.pptx`.\n\nEin Dokument pro Entität löst beides: Bei `chunkSize=1000` Tokens und `minChunkSizeChars=350` ergibt ein Dokument von 1–2 KB genau **einen** Chunk. Ein gefundener Chunk entspricht damit eindeutig einer Entität — die Voraussetzung für saubere Retrieval-Metriken. Das Frontmatter ist zugleich die Ground Truth für das Golden Dataset (#226).\n\nSpezifikation: `docs/features/search-quality-evaluation.md`, Abschnitt „Der Testkorpus\". Entscheidung: ADR-0008 (Akzeptiert).\n\n## Ziel / Ergebnis\n\nDanach existiert ein reproduzierbarer, lizenzfreier Korpus im Repository, den sowohl der Regressionstest als auch die öffentliche Demo verwenden können.\n\n## Umfang\n\n- Python-Werkzeug unter `eval/generator/` (siehe ADR-0008: bewusst außerhalb des Gradle-Builds, läuft nie in CI und nie zur Laufzeit)\n- Einmaliger Snapshot der Quelle, dokumentiert mit Quell-URL, Abrufdatum und SHA-256 der Rohdatei\n- **Kein Sampling.** Der Datensatz umfasst rund 1.450 Entitäten (Splits `train` und `test` zusammen) und wird vollständig verwendet. Sortierung nach `id` vor der Generierung stabil festlegen.\n- Ausgabe nach `eval/corpus/comic-characters/`, Dateiname als stabiler Slug mit ID, z. B. `comic-0142_spider-man.md`\n- `MANIFEST.sha256` über alle generierten Dateien\n- `SOURCE.md` mit Quelle, Lizenz (CC0-1.0) und Abrufdatum\n- Kurze README zur Reproduktion des Laufs\n\n## Außerhalb des Umfangs\n\n- Golden Dataset (#226)\n- Die weiteren drei Domänen (#234)\n- Jede Änderung am Backend\n\n## Abnahmekriterien\n\n- [ ] Zwei Läufe des Generators mit identischem Input erzeugen byte-identische Ausgabe\n- [ ] `eval/corpus/comic-characters/` enthält eine Datei je verwertbarer Entität (Größenordnung 1.400–1.450)\n- [ ] Jedes Frontmatter enthält mindestens: `id`, `domain`, `name`, `real_name`, `creator`, `alignment`, `gender`, `type_race`, `place_of_birth`, `first_appearance`, `occupation`, `teams`, `eye_color`, `hair_color`, `height_cm`, `weight_kg`, die sechs Bewertungsfelder (`intelligence_score`, `strength_score`, `speed_score`, `durability_score`, `combat_score`, `overall_score`), die Liste der gesetzten Fähigkeiten, `source`, `license`\n- [ ] Die rund 60 booleschen `has_*`-Merkmale werden als **Liste der gesetzten** Fähigkeiten abgebildet, nicht als 60 einzelne `false`-Zeilen — andernfalls dominiert Rauschen das Dokument und alle Entitäten ähneln sich im Vektorraum\n- [ ] **`history_text` und `powers_text` werden nicht übernommen.** `history_text` reicht bis 130.000 Zeichen und würde die Zuordnung „ein Chunk = eine Entität\" zerstören; zugleich bleibt so die Provenienz des Fließtexts eindeutig beim Generator\n- [ ] Der Fließtext ist vom Generator aus den Faktenfeldern formuliert; **kein** Text wird aus der Quelle übernommen\n- [ ] Kein generiertes Dokument überschreitet 4 KB (Nachweis, dass die Ein-Chunk-Eigenschaft hält)\n- [ ] `MANIFEST.sha256` deckt alle generierten Dateien ab und lässt sich mit einem Standardwerkzeug prüfen\n- [ ] `SOURCE.md` nennt Quelle, Lizenz und Abrufdatum\n- [ ] Ein Zufallsmuster von 20 Dateien wurde manuell auf Lesbarkeit und faktische Übereinstimmung mit der Quelle geprüft\n- [ ] Der Gesamtumfang des generierten Korpus liegt unter 5 MB\n- [ ] Dokumentation aktualisiert (README des Generators, Verweis aus der Feature-Spezifikation)\n\n## Technische Hinweise\n\n- Quelle: https://huggingface.co/datasets/jrtec/Superheroes — 1.450 Zeilen, 46+ Spalten, **CC0-1.0**. Der Maintainer hat sich bewusst gegen den zuvor erwogenen FiveThirtyEight-Datensatz entschieden: CC0 macht Attributionspflicht und die Frage einer CC-BY-SA-Ansteckung über Fandom-Ursprungsdaten gegenstandslos. Ein Quellenhinweis wird trotzdem geführt, weil Nachvollziehbarkeit zum Charakter des Korpus gehört.\n- Die Quelle ist für die Domäne ergiebiger als die ursprünglich geplante: sechs numerische Bewertungen und ~60 boolesche Fähigkeits-Merkmale liefern genau das Material für die Filter- und Bereichsfragen aus #226, an denen reine Vektorsuche scheitert.\n- Tika liefert das Frontmatter als Teil des Fließtexts aus. Das ist gewollt (Attributbegriffe landen im Vektorraum), sollte aber bei der Formulierung der Fließtexte berücksichtigt werden.\n- Datensätze ohne Namen oder mit leeren Pflichtfeldern werden verworfen; die Verwerfungsregel ist zu dokumentieren, damit die Dateianzahl reproduzierbar bleibt.\n- Der Datensatz enthält eine `img`-Spalte mit Fremd-URLs. Sie wird nicht übernommen.\n\n## Betroffene Module\n\n`eval/` (neu). Keine Änderung an `backend/`, `frontend/` oder der OpenAPI-Spezifikation.\n\n## Abhängigkeiten\n\nKeine. Erstes Ticket des Epics.\n\n## Teil des Epics\n\n#224",
           "closes": []
-        },
-        {
-          "number": 198,
-          "title": "Epic: Space and asset model — replace the workspace model",
-          "url": "https://github.com/criew/opaa/issues/198",
-          "author": "criew",
-          "labels": [
-            "enhancement",
-            "epic",
-            "backend",
-            "frontend",
-            "size:L",
-            "security",
-            "workspace"
-          ],
-          "body": "Replace the workspace model with a space and asset model.\r\n\r\n## Why\r\n\r\nThe current workspace is three things at once: document container, permission boundary and\r\norganizing frame. That combination blocks the core product promise — that AI capability becomes\r\n*distributable*.\r\n\r\nWorse, the permission anchor does not exist in the implementation at all: `io.opaa.indexing.Document`\r\nhas no workspace reference, no Liquibase changelog defines one, and `QueryService` performs a\r\nsimilarity search **with no filter whatsoever**. This epic introduces the permission-aware search\r\nfor the first time rather than moving it.\r\n\r\n## The model\r\n\r\n> **What is created in a space belongs to the space. What is associated with it keeps its owner.**\r\n\r\n- **Assets** (knowledge libraries, agents, prompt libraries) are standalone objects with their own\r\n  owner and ACL. Associating one with a space grants **nothing** — it is pure curation.\r\n- **Space-owned content** (chats, artifacts) lives in exactly one space. It is created as a\r\n  **draft belonging to its author** and becomes visible to all members when the author **places it**\r\n  in the space.\r\n\r\nFull specification: [`docs/features/spaces-and-assets.md`](docs/features/spaces-and-assets.md)\r\nDecision, alternatives and surveyed systems: [ADR-0008](docs/decisions/0008-space-and-asset-model.md)\r\n\r\n## Ordering — cut by introducibility, not by model logic\r\n\r\nSix stakeholder reviews (case worker, unit head, AI champion, operations, sceptic, staff council)\r\nled to a recut. Two independent voices drove it: the AI champion needs *build an agent, share it,\r\nfind it in the catalog* early or he stays the bottleneck the model was meant to remove; the sceptic\r\npointed out that the governance controls a works council agreement depends on were scheduled last,\r\nalthough the specification itself says no rollout begins without one.\r\n\r\nThe result is four stages. **Stage A is the only one that is technically mandatory in its order** —\r\nthe rest follows what an authority can actually introduce.\r\n\r\n### Stage A — Foundation and provability\r\n\r\nNothing is real before this. The permission anchor is introduced here for the first time.\r\n\r\n| # | Item | Why here |\r\n|---|---|---|\r\n| 1 | #199 Rename to space, organization scope, three space roles | Mechanical plus two semantic changes; every later change would otherwise be made twice |\r\n| 2 | #200 Groups as permission subjects | Before any grant exists — retrofitting a subject type touches every grant, query and cache |\r\n| 3 | #237 Directory synchronisation as a rights event | The only place where rights change in bulk without a human decision. Gates the **first productive directory connection**, not a pilot: a pilot with manually maintained groups can start before it |\r\n| 4 | #201 Knowledge library as document container, with migration | The first asset type and the only one the vector search depends on |\r\n| 5 | #202 Asset permissions and permission-aware vector search | **The linchpin.** The central gap of the current implementation |\r\n| 6 | #238 Historisation of rights and group memberships | The auditor's question is the *negative* one — an event log cannot answer it. Must be built with the grants, not bolted on |\r\n| 7 | #239 Audit governance: no person-based evaluation path | The audit log is written from step 5 onwards. A switchable statistic does not protect while the same data accrues in the log regardless |\r\n\r\n### Stage B — First visible benefit\r\n\r\nThe path *build an agent, share it, find it*. Note that no space-owned content exists yet in this\r\nstage, so the derivation leak has not been opened — which makes this a safe place to stop and pilot.\r\n\r\n| # | Item |\r\n|---|---|\r\n| 8 | #203 Space-asset association as pure curation |\r\n| 9 | #207 Connector sources target exactly one library |\r\n| 10 | #208 Curator roles bound to organizational units |\r\n| 11 | #209 Agent and prompt library assets with the share chain |\r\n| 12 | #210 Asset parameters — **same release as 11**, derivatives created in the meantime cannot be collected back in |\r\n| 13 | #215 Asset catalog: visibility, listed flag, space directory |\r\n| 14 | #240 Succession instead of blocking: assets of departed owners |\r\n\r\n### Stage C — Collaboration in the space\r\n\r\n| # | Item |\r\n|---|---|\r\n| 15 | #205 Persistent chats with the placement model |\r\n| 16 | #204 Strict mode for spaces (provenance tracking moved into #205, which needs it for the placement dialog) |\r\n| 17 | #206 Artifacts with lifecycle |\r\n| 18 | #216 Retention and governance controls for space-owned content |\r\n\r\n### Stage D — Operating and maintaining\r\n\r\n| # | Item |\r\n|---|---|\r\n| 19 | #211 Asset versioning with immediate propagation and rollback |\r\n| 20 | #212 Recall by deactivation |\r\n| 21 | #213 Derivatives with permanent provenance |\r\n| 22 | #214 Built-in assets as a distinct origin type |\r\n| 23 | #241 Time limits and recertification of individual grants |\r\n| 24 | #242 Consistency check between vector store and database |\r\n\r\n### Deferred until there is evidence\r\n\r\n| # | Item |\r\n|---|---|\r\n| 25 | #243 Drift protection for derivatives: deadlines and automatic deactivation |\r\n\r\nThe most complex behaviour in the model and the only place where an asset changes state without\r\naction by its owner. It presupposes that derivatives arise in relevant numbers — which #210 is meant\r\nto prevent. Build it when the first real case exists.\r\n\r\n## Migration\r\n\r\n- Personal workspaces become personal spaces; each user additionally gets a personal knowledge\r\n  library\r\n- Shared workspaces become team spaces; roles map `VIEWER`→`MEMBER`, `EDITOR`→`CURATOR`,\r\n  `ADMIN`→`ADMIN`, `OWNER`→`ADMIN`\r\n- Existing documents have **no** workspace assignment today and move into a system library readable\r\n  by system admins only\r\n- `/api/v1/workspaces/{workspaceId}/documents` is spec fiction — declared with no controller\r\n  implementation — and is removed without replacement\r\n- Migration must be resumable and preceded by a dry run with volume figures\r\n- Hard cut, no compatibility layer: pre-1.0, no external clients\r\n\r\n## Out of scope\r\n\r\nApproval and review workflow, agent test bench, the model policy engine itself, SCIM directory\r\nprovisioning beyond the group sync in #237, and document versioning.\r\n\r\n## Constraints\r\n\r\n- DTOs come from the OpenAPI spec only (ADR-0006)\r\n- Library and plugin versions only in `backend/gradle/libs.versions.toml`\r\n- Pre-push checklist applies to every child issue that touches code\r\n\r\n---\r\n\r\n## Child issues\r\n\r\n**Stage A — Foundation and provability**\r\n\r\n- [x] #199\r\n- [ ] #200\r\n- [ ] #237\r\n- [ ] #201\r\n- [ ] #202\r\n- [ ] #238\r\n- [ ] #239\r\n\r\n**Stage B — First visible benefit**\r\n\r\n- [ ] #203\r\n- [ ] #207\r\n- [ ] #208\r\n- [ ] #209\r\n- [ ] #210\r\n- [ ] #215\r\n- [ ] #240\r\n\r\n**Stage C — Collaboration in the space**\r\n\r\n- [ ] #205\r\n- [ ] #204\r\n- [ ] #206\r\n- [ ] #216\r\n\r\n**Stage D — Operating and maintaining**\r\n\r\n- [ ] #211\r\n- [ ] #212\r\n- [ ] #213\r\n- [ ] #214\r\n- [ ] #241\r\n- [ ] #242\r\n\r\n**Deferred**\r\n\r\n- [ ] #243",
-          "closes": []
         }
       ],
       "closed": [
@@ -2467,41 +2540,50 @@
           "changed_files": 2
         }
       ]
-    },
-    {
-      "number": 60,
-      "title": "🔍 Security & Code Review Findings (20 Issues)",
-      "tickets_total": 20,
-      "tickets_closed": 20,
-      "opened": [],
-      "closed": [],
-      "merged": [
-        {
-          "number": 286,
-          "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
-          "url": "https://github.com/criew/opaa/pull/286",
-          "author": "criew",
-          "labels": [
-            "enhancement",
-            "ci"
-          ],
-          "body": "## Zusammenfassung\n\nDie Zusammenfassung erzählte bisher die Liste der Vorgänge nach, ohne feste Ordnung. Sie folgt jetzt den Epics — den thematisch zusammenhängenden Einheiten des Projekts — und ordnet die Tagesbewegung in den Gesamtfortschritt ein.\n\n## Vorher / nachher\n\n**Vorher** (~250 Wörter, Gliederung vom Modell gewählt):\n\n> Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler. […] Im Bereich der Infrastruktur wurden zwei CI-Probleme behoben: #278 trennt das Secret […]\n\n**Nachher** (183 Wörter, Gliederung aus den Daten):\n\n> Epic #198 „Space and asset model\" kam mit 25 neu angelegten Tickets voran, wobei #199 als Grundstein abgeschlossen und gemergt wurde. Das Epic steht bei 1 von 25 Tickets erledigt und definiert damit überwiegend die kommende Arbeit […]\n>\n> Epic #224 „Suchqualität messbar machen\" erzielte mit 4 von 17 Tickets erledigt deutlichere Fortschritte. […]\n>\n> Ohne Epic-Bezug entstanden 28 neue Tickets, 17 wurden abgeschlossen und 21 gemergt. Schwerpunkte waren Infrastruktur und Dokumentation: Der tägliche Projektreport (#248/#259) läuft nun automatisiert […]\n\n## Wie die Zuordnung entsteht\n\nNative Sub-Issues werden im Repository nicht verwendet — die Zugehörigkeit steht als Ticketliste im Body des Epic-Issues.\n\n| Schritt | Grundlage |\n| --- | --- |\n| Epics finden | Issues mit dem Label `epic` |\n| Tickets zuordnen | Issue-Nummern im Body des Epics |\n| Pull Requests zuordnen | das über `Closes #N` geschlossene Issue |\n| Fortschritt | Anteil geschlossener Tickets der Liste |\n\nDer Fortschritt entsteht aus **einem** Abruf aller Issues statt aus einer Abfrage je Ticket.\n\nVorgänge ohne Eintrag in einer Ticketliste werden **nicht geraten**, sondern gesondert ausgewiesen. Wer die Zuordnung verbessern will, trägt die Nummer im Epic nach; der nächste Lauf greift sie auf.\n\n## Warum die Zahlen vorgegeben werden\n\nIm ersten Durchlauf erhielt das Modell nur die Listen und zählte selbst ab — mit durchweg falschen Werten: „23 neue Tickets\" statt 25, „drei abgeschlossen\" statt vier, „24 neu und 16 abgeschlossen\" statt 28 und 17. Die Fortschrittszahlen stimmten, weil sie explizit im Prompt standen.\n\nJetzt stehen alle Kennzahlen im Prompt, und die Anweisung lautet, keine Zahl zu nennen, die nicht wörtlich in der Eingabe steht. Im erneuten Lauf stimmten sämtliche Zahlen mit den Daten überein.\n\n## Prüfung\n\nGegen die echten Daten vom 2. August mit `claude-haiku-4-5-20251001`:\n\n- Struktur korrekt erkannt: #198 mit 1/25 Tickets (25 neu, 1 zu, 1 gemergt), #224 mit 4/17 (15 neu, 4 zu, 4 gemergt), 28/17/21 ohne Epic\n- Alle im Text genannten Zahlen stimmen mit den Daten überein\n- Länge von ~250 auf 183 Wörter gesunken\n- `CLOSES_MUSTER` gegen `Closes #221`, `fixes #12 und Closes #13`, `Schließt #99` sowie den Fehlfall `Enclosesx #5` geprüft\n- Ältere Reports ohne die neuen Felder lassen sich weiterhin rendern (Seite, Index und Feed)\n\n## Zugehörige Issues\n\nCloses #285\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echte API und auf Rückwärtskompatibilität geprüft)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
-          "closes": [
-            12,
-            13,
-            99,
-            221,
-            285
-          ],
-          "additions": 211,
-          "deletions": 20,
-          "changed_files": 2
-        }
-      ]
     }
   ],
   "ohne_epic": {
     "opened": [
+      {
+        "number": 290,
+        "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+        "url": "https://github.com/criew/opaa/issues/290",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "size:M",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung zeigt drei Fehlzuordnungen. Alle gehen darauf zurück, dass Zugehörigkeiten aus Fließtext geraten statt aus strukturierten Daten gelesen werden.\n\n## Befunde\n\n**1. Aufzählungsmarker werden als Ticketnummern gelesen**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Diese Marker sind keine Issue-Referenzen. Da die Issues #1 bis #20 im Repository längst geschlossen sind, erscheint das Epic als „20 von 20 Tickets erledigt\".\n\n**2. Erwähnungen im Prosatext werden als Tickets gewertet**\n\nJede Zahl der Form `#N` im Body zählt derzeit als Ticket. Dadurch wurde Epic #198 als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt.\n\n**3. Beispieltexte in PR-Beschreibungen werden als Verknüpfung gelesen**\n\nDie Zuordnung eines Pull Requests erfolgt über einen Ausdruck auf `Closes #N` im Body. PR #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` sowie `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen, wodurch der PR über #12 und #13 bei Epic #60 landete.\n\n## Umfang\n\n- Ticketlisten nur aus Checklisteneinträgen lesen, bei denen die Nummer unmittelbar auf die Checkbox folgt, entsprechend dem Format der Epic-Vorlage\n- Nur Nummern berücksichtigen, die einem existierenden Issue entsprechen; Epics selbst sind keine Tickets\n- Für Pull Requests die von GitHub gepflegte Verknüpfung `closingIssuesReferences` verwenden statt den Body auszuwerten\n\n## Abnahmekriterien\n\n- [ ] Epic #60 erscheint nicht mehr mit erfundenem Fortschritt\n- [ ] Epics werden nicht als Tickets anderer Epics gezählt\n- [ ] Ein Pull Request wird nur über die tatsächlich von GitHub verknüpften Issues zugeordnet\n- [ ] Beispieltexte in Beschreibungen erzeugen keine Zuordnung mehr",
+        "closes": []
+      },
+      {
+        "number": 289,
+        "title": "feat(backend): Organisationsgrenze auf Datenbankebene symmetrisch absichern",
+        "url": "https://github.com/criew/opaa/issues/289",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend",
+          "size:S",
+          "security"
+        ],
+        "body": "## Kontext\n\nDie Organisationsgrenze ist heute auf Datenbankebene nur einseitig abgesichert.\n\n**Gesichert** ist jeweils die Seite der besitzenden Entität, über zusammengesetzte Fremdschlüssel:\n\n- `space_memberships (space_id, organization_id)` → `spaces (id, organization_id)`\n- `group_memberships (group_id, organization_id)` → `groups (id, organization_id)`\n\n**Nicht gesichert** ist die Nutzerseite: `user_id` verweist nur per einfachem Fremdschlüssel auf `users (id)`. Eine Zeile mit einem Nutzer aus Organisation B und `organization_id = A` verletzt keine Constraint.\n\nAnwendungsseitig ist das geschlossen — `SpaceService` und `GroupService` lösen Fremd-IDs über `requireUserInOrganization` auf und lehnen mit 404 ab, beides getestet. Die Datenbank fängt einen Fehler an dieser Stelle aber nicht ab.\n\nGefunden bei den Reviews zu PR #254 und PR #283.\n\n## Warum es sich lohnt\n\nADR-0008 bezeichnet die Mandantengrenze als harte Invariante. Bei den bisherigen Umsetzungsschritten hat sich gezeigt, dass genau die Pfade, die IDs aus einem Request-Body auflösen, die fehleranfälligen sind — in #199 waren sie zunächst offen und wurden erst im Review gefunden.\n\nEine Absicherung auf Datenbankebene macht diese Fehlerklasse strukturell unmöglich, statt sie in jedem neuen Service erneut korrekt implementieren zu müssen. #201, #202 und #208 führen weitere Tabellen mit Nutzerbezug ein.\n\n## Umsetzung\n\nVoraussetzung ist ein Unique-Index auf `users (id, organization_id)` — technisch redundant, aber als Referenzziel eines zusammengesetzten Fremdschlüssels erforderlich.\n\nDarauf aufbauend die Nutzerseite in `space_memberships` und `group_memberships` als zusammengesetzten Fremdschlüssel führen, analog zur bereits gesicherten Gruppen- beziehungsweise Space-Seite.\n\nZu bewerten: ob dasselbe Muster als Konvention für alle künftigen Tabellen mit Organisations- und Nutzerbezug festgehalten werden sollte — dann gehört ein Satz dazu in `docs/features/spaces-and-assets.md` oder in ADR-0008.\n\n## Abnahmekriterien\n\n- [ ] Unique-Index auf `users (id, organization_id)` angelegt\n- [ ] Nutzerseite von `space_memberships` und `group_memberships` per zusammengesetztem Fremdschlüssel abgesichert\n- [ ] Migrationstest weist nach, dass eine organisationsübergreifende Zeile von der Datenbank abgelehnt wird\n- [ ] Rollback dokumentiert\n- [ ] Backend-Formatierung, Build und Test bestehen\n\n## Hinweis\n\nSinnvollerweise gemeinsam mit #288 (Umstellung FK-abhängiger Tests auf echtes Liquibase-Schema) zu betrachten — ohne diese Umstellung wäre der neue Fremdschlüssel in den bestehenden Integrationstests gar nicht wirksam.\n\n## Bezug\n\nFolge aus PR #254 und PR #283, gehört zu #198.",
+        "closes": []
+      },
+      {
+        "number": 288,
+        "title": "test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen",
+        "url": "https://github.com/criew/opaa/issues/288",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M"
+        ],
+        "body": "## Kontext\n\nDie Integrationstests laufen überwiegend mit `spring.liquibase.enabled=false` und `spring.jpa.hibernate.ddl-auto=create-drop`. Das Schema kommt damit von Hibernate, nicht von Liquibase — und die beiden unterscheiden sich an einer entscheidenden Stelle.\n\n`Space.ownerId`, `SpaceMembership.userId` und sämtliche `organizationId`-Felder sind schlichte `UUID`-Spalten ohne `@ManyToOne`. Hibernate legt dafür **keine** Fremdschlüssel an, Liquibase schon. **Jeder FK-abhängige Fall ist in diesen Suiten damit ungetestet.**\n\n## Warum das jetzt angegangen werden muss\n\nInnerhalb kurzer Zeit sind zwei Regressionen durch grünes CI gerutscht, beide aus derselben Wurzel:\n\n1. **PR #254** — Changelog 008 brach auf jedem nicht-leeren Bestand ab. Nicht bemerkt, weil die Integrationstests Liquibase gar nicht ausführen und die einzige Stelle, die es anwendet, gegen eine leere Datenbank läuft.\n2. **PR #280** — die `REQUIRES_NEW`-Transaktion in `ensurePersonalSpace` brach auf `main` jede Erstanmeldung, weil der Insert gegen `fk_spaces_owner` lief. Nicht bemerkt, weil dieser Fremdschlüssel im Testschema nicht existiert. Behoben in PR #287.\n\nBeide Male war der Code fachlich falsch und die Tests waren grün. Das ist kein Zufall, sondern ein struktureller blinder Fleck.\n\n**#201** (Wissensbibliothek als Dokumentencontainer) und **#202** (Asset-Rechte und rechtebewusste Vektorsuche) führen weitere Fremdschlüssel und die gesamte Rechtedurchsetzung ein. Ein blinder Fleck an dieser Stelle wäre deutlich teurer als die beiden bisherigen Fälle.\n\n## Umsetzung\n\nSchrittweise Umstellung FK-abhängiger Tests auf `spring.liquibase.enabled=true` und `ddl-auto=none`. Als Muster dient `UserServicePersonalSpaceIntegrationTest` aus PR #287.\n\nNicht jeder Test muss umgestellt werden — reine Service-Logik ohne Bezug auf Fremdschlüssel darf beim schnelleren Hibernate-Schema bleiben. Zu entscheiden ist, welche Suiten betroffen sind; Kandidaten sind `SpaceServiceIntegrationTest`, `SpaceRepositoryTest` und alles, was Nutzer-, Space- oder Organisationsbezüge schreibt.\n\nZusätzlich zu klären: ob die Laufzeit darunter leidet und ob sich ein gemeinsamer Testcontainer über mehrere Suiten hinweg lohnt.\n\n## Nebenpunkt: uneinheitliche Teardown-Muster\n\nIn den Migrationstests stehen inzwischen zwei Lösungen für dasselbe Problem nebeneinander — Liquibase lässt die JDBC-Verbindung nach `update()` mit `autoCommit=false` zurück:\n\n- `Migration010SpaceUniquenessTest`: `setAutoCommit(true)` nach jedem `update()`, Schema-Reset im `tearDown()`\n- `Migration009CreateGroupsTest`: `connection.rollback()` im `tearDown()`\n\nBeides ist korrekt. Vor #237 und #238 sollte eines davon als verbindliches Muster festgelegt werden, damit die Folge-Issues nicht raten müssen.\n\n## Abnahmekriterien\n\n- [ ] Entscheidung dokumentiert, welche Suiten auf Liquibase-Schema laufen und welche nicht\n- [ ] Betroffene Suiten umgestellt, alle Tests grün\n- [ ] Ein Test, der ohne Fremdschlüssel bestehen würde, schlägt nach der Umstellung ohne den zugehörigen Produktivcode fehl (Nachweis, dass die Umstellung wirkt)\n- [ ] Einheitliches Teardown-Muster für Migrationstests festgelegt und dokumentiert\n- [ ] Laufzeit der Testsuite gemessen und bewertet\n- [ ] Backend-Formatierung, Build und Test bestehen\n\n## Bezug\n\nFolge aus PR #254, #280 und #287. Gehört zu Stufe A von #198 und sollte **vor #202** abgeschlossen sein.",
+        "closes": []
+      },
       {
         "number": 285,
         "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
@@ -2819,6 +2901,23 @@
         "closes": []
       },
       {
+        "number": 198,
+        "title": "Epic: Space and asset model — replace the workspace model",
+        "url": "https://github.com/criew/opaa/issues/198",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "epic",
+          "backend",
+          "frontend",
+          "size:L",
+          "security",
+          "workspace"
+        ],
+        "body": "Replace the workspace model with a space and asset model.\r\n\r\n## Why\r\n\r\nThe current workspace is three things at once: document container, permission boundary and\r\norganizing frame. That combination blocks the core product promise — that AI capability becomes\r\n*distributable*.\r\n\r\nWorse, the permission anchor does not exist in the implementation at all: `io.opaa.indexing.Document`\r\nhas no workspace reference, no Liquibase changelog defines one, and `QueryService` performs a\r\nsimilarity search **with no filter whatsoever**. This epic introduces the permission-aware search\r\nfor the first time rather than moving it.\r\n\r\n## The model\r\n\r\n> **What is created in a space belongs to the space. What is associated with it keeps its owner.**\r\n\r\n- **Assets** (knowledge libraries, agents, prompt libraries) are standalone objects with their own\r\n  owner and ACL. Associating one with a space grants **nothing** — it is pure curation.\r\n- **Space-owned content** (chats, artifacts) lives in exactly one space. It is created as a\r\n  **draft belonging to its author** and becomes visible to all members when the author **places it**\r\n  in the space.\r\n\r\nFull specification: [`docs/features/spaces-and-assets.md`](docs/features/spaces-and-assets.md)\r\nDecision, alternatives and surveyed systems: [ADR-0008](docs/decisions/0008-space-and-asset-model.md)\r\n\r\n## Ordering — cut by introducibility, not by model logic\r\n\r\nSix stakeholder reviews (case worker, unit head, AI champion, operations, sceptic, staff council)\r\nled to a recut. Two independent voices drove it: the AI champion needs *build an agent, share it,\r\nfind it in the catalog* early or he stays the bottleneck the model was meant to remove; the sceptic\r\npointed out that the governance controls a works council agreement depends on were scheduled last,\r\nalthough the specification itself says no rollout begins without one.\r\n\r\nThe result is four stages. **Stage A is the only one that is technically mandatory in its order** —\r\nthe rest follows what an authority can actually introduce.\r\n\r\n### Stage A — Foundation and provability\r\n\r\nNothing is real before this. The permission anchor is introduced here for the first time.\r\n\r\n| # | Item | Why here |\r\n|---|---|---|\r\n| 1 | #199 Rename to space, organization scope, three space roles | Mechanical plus two semantic changes; every later change would otherwise be made twice |\r\n| 2 | #200 Groups as permission subjects | Before any grant exists — retrofitting a subject type touches every grant, query and cache |\r\n| 3 | #237 Directory synchronisation as a rights event | The only place where rights change in bulk without a human decision. Gates the **first productive directory connection**, not a pilot: a pilot with manually maintained groups can start before it |\r\n| 4 | #201 Knowledge library as document container, with migration | The first asset type and the only one the vector search depends on |\r\n| 5 | #202 Asset permissions and permission-aware vector search | **The linchpin.** The central gap of the current implementation |\r\n| 6 | #238 Historisation of rights and group memberships | The auditor's question is the *negative* one — an event log cannot answer it. Must be built with the grants, not bolted on |\r\n| 7 | #239 Audit governance: no person-based evaluation path | The audit log is written from step 5 onwards. A switchable statistic does not protect while the same data accrues in the log regardless |\r\n\r\n### Stage B — First visible benefit\r\n\r\nThe path *build an agent, share it, find it*. Note that no space-owned content exists yet in this\r\nstage, so the derivation leak has not been opened — which makes this a safe place to stop and pilot.\r\n\r\n| # | Item |\r\n|---|---|\r\n| 8 | #203 Space-asset association as pure curation |\r\n| 9 | #207 Connector sources target exactly one library |\r\n| 10 | #208 Curator roles bound to organizational units |\r\n| 11 | #209 Agent and prompt library assets with the share chain |\r\n| 12 | #210 Asset parameters — **same release as 11**, derivatives created in the meantime cannot be collected back in |\r\n| 13 | #215 Asset catalog: visibility, listed flag, space directory |\r\n| 14 | #240 Succession instead of blocking: assets of departed owners |\r\n\r\n### Stage C — Collaboration in the space\r\n\r\n| # | Item |\r\n|---|---|\r\n| 15 | #205 Persistent chats with the placement model |\r\n| 16 | #204 Strict mode for spaces (provenance tracking moved into #205, which needs it for the placement dialog) |\r\n| 17 | #206 Artifacts with lifecycle |\r\n| 18 | #216 Retention and governance controls for space-owned content |\r\n\r\n### Stage D — Operating and maintaining\r\n\r\n| # | Item |\r\n|---|---|\r\n| 19 | #211 Asset versioning with immediate propagation and rollback |\r\n| 20 | #212 Recall by deactivation |\r\n| 21 | #213 Derivatives with permanent provenance |\r\n| 22 | #214 Built-in assets as a distinct origin type |\r\n| 23 | #241 Time limits and recertification of individual grants |\r\n| 24 | #242 Consistency check between vector store and database |\r\n\r\n### Deferred until there is evidence\r\n\r\n| # | Item |\r\n|---|---|\r\n| 25 | #243 Drift protection for derivatives: deadlines and automatic deactivation |\r\n\r\nThe most complex behaviour in the model and the only place where an asset changes state without\r\naction by its owner. It presupposes that derivatives arise in relevant numbers — which #210 is meant\r\nto prevent. Build it when the first real case exists.\r\n\r\n## Migration\r\n\r\n- Personal workspaces become personal spaces; each user additionally gets a personal knowledge\r\n  library\r\n- Shared workspaces become team spaces; roles map `VIEWER`→`MEMBER`, `EDITOR`→`CURATOR`,\r\n  `ADMIN`→`ADMIN`, `OWNER`→`ADMIN`\r\n- Existing documents have **no** workspace assignment today and move into a system library readable\r\n  by system admins only\r\n- `/api/v1/workspaces/{workspaceId}/documents` is spec fiction — declared with no controller\r\n  implementation — and is removed without replacement\r\n- Migration must be resumable and preceded by a dry run with volume figures\r\n- Hard cut, no compatibility layer: pre-1.0, no external clients\r\n\r\n## Out of scope\r\n\r\nApproval and review workflow, agent test bench, the model policy engine itself, SCIM directory\r\nprovisioning beyond the group sync in #237, and document versioning.\r\n\r\n## Constraints\r\n\r\n- DTOs come from the OpenAPI spec only (ADR-0006)\r\n- Library and plugin versions only in `backend/gradle/libs.versions.toml`\r\n- Pre-push checklist applies to every child issue that touches code\r\n\r\n---\r\n\r\n## Child issues\r\n\r\n**Stage A — Foundation and provability**\r\n\r\n- [x] #199\r\n- [ ] #200\r\n- [ ] #237\r\n- [ ] #201\r\n- [ ] #202\r\n- [ ] #238\r\n- [ ] #239\r\n\r\n**Stage B — First visible benefit**\r\n\r\n- [ ] #203\r\n- [ ] #207\r\n- [ ] #208\r\n- [ ] #209\r\n- [ ] #210\r\n- [ ] #215\r\n- [ ] #240\r\n\r\n**Stage C — Collaboration in the space**\r\n\r\n- [ ] #205\r\n- [ ] #204\r\n- [ ] #206\r\n- [ ] #216\r\n\r\n**Stage D — Operating and maintaining**\r\n\r\n- [ ] #211\r\n- [ ] #212\r\n- [ ] #213\r\n- [ ] #214\r\n- [ ] #241\r\n- [ ] #242\r\n\r\n**Deferred**\r\n\r\n- [ ] #243",
+        "closes": []
+      },
+      {
         "number": 196,
         "title": "ci: publish backend and frontend Docker images to GHCR",
         "url": "https://github.com/criew/opaa/issues/196",
@@ -2867,6 +2966,19 @@
       }
     ],
     "closed": [
+      {
+        "number": 290,
+        "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+        "url": "https://github.com/criew/opaa/issues/290",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "size:M",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung zeigt drei Fehlzuordnungen. Alle gehen darauf zurück, dass Zugehörigkeiten aus Fließtext geraten statt aus strukturierten Daten gelesen werden.\n\n## Befunde\n\n**1. Aufzählungsmarker werden als Ticketnummern gelesen**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Diese Marker sind keine Issue-Referenzen. Da die Issues #1 bis #20 im Repository längst geschlossen sind, erscheint das Epic als „20 von 20 Tickets erledigt\".\n\n**2. Erwähnungen im Prosatext werden als Tickets gewertet**\n\nJede Zahl der Form `#N` im Body zählt derzeit als Ticket. Dadurch wurde Epic #198 als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt.\n\n**3. Beispieltexte in PR-Beschreibungen werden als Verknüpfung gelesen**\n\nDie Zuordnung eines Pull Requests erfolgt über einen Ausdruck auf `Closes #N` im Body. PR #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` sowie `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen, wodurch der PR über #12 und #13 bei Epic #60 landete.\n\n## Umfang\n\n- Ticketlisten nur aus Checklisteneinträgen lesen, bei denen die Nummer unmittelbar auf die Checkbox folgt, entsprechend dem Format der Epic-Vorlage\n- Nur Nummern berücksichtigen, die einem existierenden Issue entsprechen; Epics selbst sind keine Tickets\n- Für Pull Requests die von GitHub gepflegte Verknüpfung `closingIssuesReferences` verwenden statt den Body auszuwerten\n\n## Abnahmekriterien\n\n- [ ] Epic #60 erscheint nicht mehr mit erfundenem Fortschritt\n- [ ] Epics werden nicht als Tickets anderer Epics gezählt\n- [ ] Ein Pull Request wird nur über die tatsächlich von GitHub verknüpften Issues zugeordnet\n- [ ] Beispieltexte in Beschreibungen erzeugen keine Zuordnung mehr",
+        "closes": []
+      },
       {
         "number": 285,
         "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
@@ -3097,6 +3209,40 @@
       }
     ],
     "merged": [
+      {
+        "number": 291,
+        "title": "fix(ci): Fehlzuordnungen im Epic-Report beheben",
+        "url": "https://github.com/criew/opaa/pull/291",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer erste Lauf der epic-orientierten Zusammenfassung (#286) zeigte drei Fehlzuordnungen. Alle gehen auf dieselbe Ursache zurück: Zugehörigkeiten wurden aus Fließtext geraten statt aus strukturierten Daten gelesen.\n\n## Die drei Befunde\n\n**1. Aufzählungsmarker als Ticketnummern**\n\nEpic #60 nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Da die Issues #1 bis #20 längst geschlossen sind, erschien das Epic als „20 von 20 Tickets erledigt\" — mit zwanzig Tickets, die es nie hatte.\n\n**2. Erwähnungen im Fließtext als Tickets**\n\nJede Zahl der Form `#N` im Body zählte als Ticket. Epic #198 wurde dadurch als Ticket von Epic #224 geführt, weil #224 es im Text erwähnt. Statt 14 hatte #224 scheinbar 17 Tickets.\n\n**3. Beispieltexte als Verknüpfung**\n\nAm deutlichsten sichtbar an diesem PR-Vorgänger selbst: #286 beschreibt in seiner Prüfliste die Testfälle `Closes #221`, `fixes #12 und Closes #13` und `Schließt #99`. Alle wurden als echte Verknüpfungen gelesen:\n\n```\nPR #286 closes: [12, 13, 99, 221, 285]   ← vorher\nPR #286 closes: [285]                     ← nachher\n```\n\nÜber #12 landete der PR damit bei Epic #60.\n\n## Die Änderung\n\n| Bereich | vorher | nachher |\n| --- | --- | --- |\n| Ticketliste | jedes `#N` im Body | nur `- [ ] #123 titel`, Nummer direkt nach der Checkbox |\n| Gültigkeit | jede Zahl | nur existierende Issues, keine Epics, keine Pull Requests |\n| PR-Zuordnung | Ausdruck auf `Closes #N` im Body | `closingIssuesReferences` von GitHub |\n\nDie Verknüpfungen aller Pull Requests eines Tages werden in **einer** GraphQL-Abfrage geholt.\n\n## Wirkung auf die echten Daten\n\n```\nvorher                          nachher\n#198  1/25                      #198  1/25\n#224  4/17  ← 3 Querverweise    #224  4/14\n#60  20/20  ← erfunden          (verschwunden)\n```\n\nStichprobe der neuen Verknüpfungen: `#286 → [285]`, `#280 → [265, 266]`, `#278 → [276]`.\n\n## Prüfung\n\nTicketmuster gegen die tatsächlich vorkommenden Formate:\n\n| Eingabe | Ergebnis |\n| --- | --- |\n| `- [x] #225 \\`feat(eval): …\\`` | 225 |\n| `- [ ] #227 \\`test(eval): …\\`` | 227 |\n| `- [ ] **#1 CORS Wildcard Headers**` | keine — korrekt abgewiesen |\n| `- [ ] **#14 Fehlende Tests**` | keine — korrekt abgewiesen |\n| `Siehe auch #198 im Fließtext` | keine — korrekt abgewiesen |\n| `  - [x]   #300  mit Leerraum` | 300 |\n\nAußerdem: Reports im alten Format lassen sich weiterhin rendern, und eine leere PR-Liste erzeugt keine Abfrage.\n\n## Zugehörige Issues\n\nCloses #290\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echten Repository-Daten und in sechs Musterfällen geprüft)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
+        "closes": [
+          290
+        ],
+        "additions": 85,
+        "deletions": 15,
+        "changed_files": 2
+      },
+      {
+        "number": 286,
+        "title": "feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen",
+        "url": "https://github.com/criew/opaa/pull/286",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDie Zusammenfassung erzählte bisher die Liste der Vorgänge nach, ohne feste Ordnung. Sie folgt jetzt den Epics — den thematisch zusammenhängenden Einheiten des Projekts — und ordnet die Tagesbewegung in den Gesamtfortschritt ein.\n\n## Vorher / nachher\n\n**Vorher** (~250 Wörter, Gliederung vom Modell gewählt):\n\n> Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler. […] Im Bereich der Infrastruktur wurden zwei CI-Probleme behoben: #278 trennt das Secret […]\n\n**Nachher** (183 Wörter, Gliederung aus den Daten):\n\n> Epic #198 „Space and asset model\" kam mit 25 neu angelegten Tickets voran, wobei #199 als Grundstein abgeschlossen und gemergt wurde. Das Epic steht bei 1 von 25 Tickets erledigt und definiert damit überwiegend die kommende Arbeit […]\n>\n> Epic #224 „Suchqualität messbar machen\" erzielte mit 4 von 17 Tickets erledigt deutlichere Fortschritte. […]\n>\n> Ohne Epic-Bezug entstanden 28 neue Tickets, 17 wurden abgeschlossen und 21 gemergt. Schwerpunkte waren Infrastruktur und Dokumentation: Der tägliche Projektreport (#248/#259) läuft nun automatisiert […]\n\n## Wie die Zuordnung entsteht\n\nNative Sub-Issues werden im Repository nicht verwendet — die Zugehörigkeit steht als Ticketliste im Body des Epic-Issues.\n\n| Schritt | Grundlage |\n| --- | --- |\n| Epics finden | Issues mit dem Label `epic` |\n| Tickets zuordnen | Issue-Nummern im Body des Epics |\n| Pull Requests zuordnen | das über `Closes #N` geschlossene Issue |\n| Fortschritt | Anteil geschlossener Tickets der Liste |\n\nDer Fortschritt entsteht aus **einem** Abruf aller Issues statt aus einer Abfrage je Ticket.\n\nVorgänge ohne Eintrag in einer Ticketliste werden **nicht geraten**, sondern gesondert ausgewiesen. Wer die Zuordnung verbessern will, trägt die Nummer im Epic nach; der nächste Lauf greift sie auf.\n\n## Warum die Zahlen vorgegeben werden\n\nIm ersten Durchlauf erhielt das Modell nur die Listen und zählte selbst ab — mit durchweg falschen Werten: „23 neue Tickets\" statt 25, „drei abgeschlossen\" statt vier, „24 neu und 16 abgeschlossen\" statt 28 und 17. Die Fortschrittszahlen stimmten, weil sie explizit im Prompt standen.\n\nJetzt stehen alle Kennzahlen im Prompt, und die Anweisung lautet, keine Zahl zu nennen, die nicht wörtlich in der Eingabe steht. Im erneuten Lauf stimmten sämtliche Zahlen mit den Daten überein.\n\n## Prüfung\n\nGegen die echten Daten vom 2. August mit `claude-haiku-4-5-20251001`:\n\n- Struktur korrekt erkannt: #198 mit 1/25 Tickets (25 neu, 1 zu, 1 gemergt), #224 mit 4/17 (15 neu, 4 zu, 4 gemergt), 28/17/21 ohne Epic\n- Alle im Text genannten Zahlen stimmen mit den Daten überein\n- Länge von ~250 auf 183 Wörter gesunken\n- `CLOSES_MUSTER` gegen `Closes #221`, `fixes #12 und Closes #13`, `Schließt #99` sowie den Fehlfall `Enclosesx #5` geprüft\n- Ältere Reports ohne die neuen Felder lassen sich weiterhin rendern (Seite, Index und Feed)\n\n## Zugehörige Issues\n\nCloses #285\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echte API und auf Rückwärtskompatibilität geprüft)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
+        "closes": [
+          285
+        ],
+        "additions": 211,
+        "deletions": 20,
+        "changed_files": 2
+      },
       {
         "number": 284,
         "title": "fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset",

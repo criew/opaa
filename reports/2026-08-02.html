@@ -77,14 +77,14 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 </header>
 
 <section class="summary">
-<p>Epic #198 „Space and asset model&quot; hat heute mit 25 neu angelegten Tickets die Definitionsphase begonnen. Mit #199 wurde das erste Ticket abgeschlossen und gemergt: die mechanische Umbenennung von Workspace zu Space, die Organisationsgrenze und die neuen Space-Rollen. Von 25 Tickets sind damit 1 erledigt. Die Arbeit konzentriert sich auf die Modellierung von Assets, Rechten, Governance und Versionierung.</p>
-<p>Epic #224 „Suchqualität messbar machen&quot; hat heute mit 15 neu angelegten Tickets die Infrastruktur für Evaluation aufgebaut. Vier Tickets wurden abgeschlossen und vier gemergt: der Korpus-Generator für Comichelden (#225), das Golden Dataset (#226), das E2E-Grundgerüst (#231) und die Deployment-Dokumentation (#244). Von 17 Tickets sind damit 4 erledigt. Der Demo-Korpus wird als HTTP-Verzeichnis im Compose-Stack bereitgestellt und über den bestehenden Konnektor indiziert.</p>
-<p>Epic #60 „Security &amp; Code Review Findings&quot; ist mit 20 von 20 Tickets abgeschlossen. Heute wurde ein Ticket gemergt, das die Report-Zusammenfassung an die Epic-Struktur ausrichtet und kürzt.</p>
-<p>Ohne Epic-Bezug wurden 28 Tickets neu angelegt, 18 abgeschlossen und 21 gemergt. Die Arbeit verteilt sich auf Dokumentation, Sicherheit, Infrastruktur und Konfiguration: Standardwerte in der Deployment-Dokumentation, Härtungsanforderungen für öffentliche Compose-Deployments, Unterstützung für Anthropic in der Report-Zusammenfassung, Eindeutigkeit persönlicher Spaces, fehlende Datenbankindizes, Auflösung einer ADR-Nummernkollision und Behebung mehrerer CI-Fehler.</p>
+<p>Epic #198 „Space and asset model&quot; hat am Sonntag seine erste Umsetzungsphase abgeschlossen: 25 neue Tickets wurden angelegt, eines abgeschlossen und eines gemergt. Mit #199 ist der mechanische Rename von Workspace zu Space sowie die Neuordnung der Space-Rollen live. Die übrigen 24 Tickets decken die komplexere Arbeit ab — von Governance-Controls über Versionierung bis zur Drift-Schutz-Mechanik für Abkömmlinge, die bewusst zurückgestellt wird.</p>
+<p>Epic #224 „Suchqualität messbar machen&quot; ist mit 4 von 14 Tickets erledigt. Der Tag brachte 14 neue Tickets, vier abgeschlossene und vier gemergte. Der Korpus-Generator für Comichelden (#225) und das Golden Dataset (#226) sind implementiert, die E2E-Test-Infrastruktur (#231) steht, und die öffentliche Demo-Instanz ist dokumentiert. Der Retrieval-Harness mit Metriken und automatisiertem Regressions-Check folgt als nächster Schritt.</p>
+<p>Ohne Epic-Bezug wurden 32 Tickets angelegt, 19 abgeschlossen und 23 gemergt. Schwerpunkte waren die Stabilisierung der Report-Infrastruktur — Fehlzuordnungen im Epic-Report behoben, Anthropic-Support hinzugefügt, eigenes Secret für die Zusammenfassung — sowie mehrere vorbestehende Fehler in Sicherheit, Performance und Dokumentation. Die ADR-Nummernkollision (zwei Tickets mit 0008) wurde aufgelöst, und die Projektsprache wurde auf Deutsch festgelegt.</p>
 </section>
 
 <h2>Abgeschlossene Issues</h2>
 <ul class="items">
+<li><span class="num">#290</span><a href="https://github.com/criew/opaa/issues/290">fix(ci): Fehlzuordnungen im Epic-Report beheben</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#285</span><a href="https://github.com/criew/opaa/issues/285">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#282</span><a href="https://github.com/criew/opaa/issues/282">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">evaluation</span>criew</span></li>
 <li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
@@ -112,6 +112,7 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Gemergte Pull Requests</h2>
 <ul class="items">
+<li><span class="num">#291</span><a href="https://github.com/criew/opaa/pull/291">fix(ci): Fehlzuordnungen im Epic-Report beheben</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>2 Dateien, +85 / −15</span></li>
 <li><span class="num">#286</span><a href="https://github.com/criew/opaa/pull/286">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span>2 Dateien, +211 / −20</span></li>
 <li><span class="num">#284</span><a href="https://github.com/criew/opaa/pull/284">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">evaluation</span>2 Dateien, +308 / −199</span></li>
 <li><span class="num">#281</span><a href="https://github.com/criew/opaa/pull/281">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span>3 Dateien, +108 / −23</span></li>
@@ -143,6 +144,9 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Neu angelegte Issues</h2>
 <ul class="items">
+<li><span class="num">#290</span><a href="https://github.com/criew/opaa/issues/290">fix(ci): Fehlzuordnungen im Epic-Report beheben</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#289</span><a href="https://github.com/criew/opaa/issues/289">feat(backend): Organisationsgrenze auf Datenbankebene symmetrisch absichern</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#288</span><a href="https://github.com/criew/opaa/issues/288">test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:M</span>criew</span></li>
 <li><span class="num">#285</span><a href="https://github.com/criew/opaa/issues/285">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#282</span><a href="https://github.com/criew/opaa/issues/282">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">evaluation</span>criew</span></li>
 <li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
@@ -215,15 +219,17 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Offen zum Tagesende</h2>
 <ul class="items">
+<li><span class="num">#292</span><a href="https://github.com/criew/opaa/pull/292">test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#287</span><a href="https://github.com/criew/opaa/pull/287">fix(auth): Erstanmeldung nach #280 wieder funktionsfähig machen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
 <li><span class="num">#283</span><a href="https://github.com/criew/opaa/pull/283">Gruppen als Rechtesubjekt einfuehren</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
 <li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
 </ul>
 
 <h2>Stand der CI</h2>
-<p>Hauptbranch: <span class="status bad">in_progress</span> — <a href="https://github.com/criew/opaa/actions/runs/30768076806">Merge pull request #286 from criew/feature/285_report-nach-epics</a></p>
+<p>Hauptbranch: <span class="status bad">in_progress</span> — <a href="https://github.com/criew/opaa/actions/runs/30768608350">Merge pull request #291 from criew/feature/290_epic-zuordnung-korrigi…</a></p>
 
 <footer>
-Erzeugt am 2026-08-02 um 23:32 Uhr ·
+Erzeugt am 2026-08-02 um 23:47 Uhr ·
 <a href="../feed.xml">Feed abonnieren</a>
 </footer>
 </main>
