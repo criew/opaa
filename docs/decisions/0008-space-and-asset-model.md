@@ -69,7 +69,27 @@ Ein Chat läuft immer in einem Space und ist ein persistentes Objekt darin. Der 
 
 Die maßgebliche Menge ist die restriktivste über System, Space, jede beteiligte Bibliothek und den Agenten. Datenschutzrelevante Beschränkungen hängen an der **Bibliothek**, nicht am Space.
 
-### 8. Organisation als harte Mandantengrenze
+### 8. Verteilung per Referenz, Anpassung per Abkömmling
+
+Ein verteiltes Asset ist eine **Referenz**; alle arbeiten mit demselben Objekt, Verbesserungen wirken sofort bei allen, mit vollständiger Versionshistorie und Rückrollmöglichkeit. Wer abweichen muss, erzeugt einen **Abkömmling**, der seine Herkunft dauerhaft trägt und sichtbar als abgeleitet gekennzeichnet ist. Stilles Kopieren gibt es nicht.
+
+Damit kleine Anpassungen keinen Abkömmling erzwingen, erklärt ein Asset eine kurze, typisierte Liste von **Parametern** (etwa Register, Anrede, Zusatzhinweis), die Empfangende je Nutzer, Gruppe oder Space setzen, ohne die Wartungsverbindung zum Original zu kappen. Bewusst kein Vorlagensystem.
+
+**Abdriften von Abkömmlingen** wird als eigenes Risiko behandelt: sichtbarer Versionsstand, Benachrichtigung des Verantwortlichen bei neuer Version, einsehbare Änderungen ohne automatisches Zusammenführen — und bei **Deaktivierung des Originals** eine Prüfaufforderung mit Frist, nach deren Ablauf der Abkömmling automatisch deaktiviert wird. Das ist die einzige Stelle, an der ein Asset ohne Zutun seines Eigentümers den Zustand wechselt; der Fall einer unbemerkt weiterlaufenden überholten Rechtsauffassung wiegt schwerer.
+
+**Rückruf erfolgt durch Deaktivieren, nie durch Löschen.** Bestehende Chatverläufe bleiben lesbar und tragen einen Warnhinweis mit Grund und Datum, weil auf Grundlage der damaligen Antworten Bescheide ergangen sein können. Wer deaktiviert, muss einen Grund angeben.
+
+**Mitgelieferte Assets** sind ein eigener Herkunftstyp: Sie gehören keinem Nutzer und werden mit Produkt-Updates aktualisiert. Anpassung erfolgt per Abkömmling, der von Updates unangetastet bleibt — ein Update kann behördeneigene Änderungen nie überschreiben.
+
+### 9. Kuratoren sind an Organisationseinheiten gebunden
+
+Die Verteilungsstufen bilden sich auf die **Aufbauorganisation** ab, die aus dem Verzeichnis kommt. `ORG_UNIT`-Gruppen sind zugleich Rechtesubjekt und Freigabeziel — dasselbe Objekt in zwei Verwendungen; eine Freigabe an eine Einheit ist ein Grant an deren Gruppe, neu ist nur, wer ihn erteilen darf. `AD_HOC`-Gruppen sind reine Rechtesubjekte ohne Kurator.
+
+Kuratoren sind je Einheit besetzbar; fehlt einer, fällt die Zuständigkeit an die nächsthöhere Einheit. Eine Pilotbehörde ist damit mit einem einzigen zentralen Kurator arbeitsfähig.
+
+Zwei Richtungen, die nicht verwechselt werden dürfen: **Mitgliedschaft vererbt nicht** (sie kommt so, wie das Verzeichnis sie führt), **Zuständigkeit vererbt aufwärts**. Damit ist auch präzisiert, dass die einzige Hierarchie im System die Aufbauorganisation ist — Spaces und Assets bleiben flach.
+
+### 10. Organisation als harte Mandantengrenze
 
 `organizationId` an Space, Asset, Nutzer und Gruppe. Nichts überschreitet die Grenze, auch keine Systemverwaltung.
 
@@ -82,6 +102,14 @@ Die maßgebliche Menge ist die restriktivste über System, Space, jede beteiligt
 **Assoziation mit explizitem, gedeckeltem Grant.** Sicher, aber sie verlangt bei jeder Zuordnung eine zusätzliche Entscheidung durch den Asset-Verantwortlichen. Zugunsten des einfacheren und strikteren Modells verworfen.
 
 **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Verworfen. Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, organisationsweit — kombiniert mit `visibility` und `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
+
+**Kopie beim Verteilen.** Verworfen — sie ist der Grund, warum heute veraltete Prompt-Fassungen per Mail kursieren. Verteilt wird per Referenz.
+
+**Automatisches Zusammenführen von Abkömmling und Original.** Verworfen. Bei frei formulierten Aufgabenbeschreibungen ist ein verlässliches Zusammenführen nicht möglich; ein unzuverlässiges wäre schlimmer als keines. Der Verantwortliche sieht die Änderungen und entscheidet selbst.
+
+**Abkömmling bei Deaktivierung des Originals sofort mitdeaktivieren.** Verworfen als zu hart — es bricht die Arbeit einer Einheit zu einem willkürlichen Zeitpunkt ab. Stattdessen Prüfaufforderung mit Frist und automatischer Deaktivierung erst danach.
+
+**Nur benachrichtigen, wenn das Original deaktiviert wird.** Verworfen als zu schwach — genau dieser Fall (überholtes Original gesperrt, Abkömmling läuft unbemerkt weiter) ist der gefährlichste.
 
 **Agent liest mit eigenen Rechten (Rechtedelegation).** Zunächst als admin-aktivierbare Ausnahme vorgesehen, dann vollständig verworfen. Mit der Freigabekette gibt es bereits einen Weg, auf dem ein geteilter Agent beim Empfänger funktioniert; ein zweiter wäre redundant und zugleich der riskantere von beiden. Bewusst in Kauf genommen: Ein Agent, dessen Wissen nicht freigegeben werden darf, ist nicht teilbar.
 
@@ -107,6 +135,9 @@ Die maßgebliche Menge ist die restriktivste über System, Space, jede beteiligt
 - **Persistente Chats sind ein Neubau.** Bisher existiert nur ein In-Memory-Chatgedächtnis.
 - **Breiter Umbenennungsschnitt:** Entitäten, Liquibase-Changelogs, OpenAPI-Spezifikation, generierte DTOs auf beiden Seiten, Frontend-Store und -Seiten. Ein harter Schnitt ohne Kompatibilitätsschicht ist vertretbar, weil das Projekt vor 1.0 steht und keine externen Clients existieren.
 - **Konnektor-gespeiste Bibliotheken brauchen eine Freigabe-Obergrenze** vom System-Admin, sonst könnte ein Bibliotheks-Eigentümer eingespeiste Bestände organisationsweit freigeben.
+- **Abkömmlinge driften ab.** Wer abzweigt, verliert die fachlichen Korrekturen des Originals. Das ist nicht vollständig lösbar, nur beherrschbar: sichtbarer Versionsstand, Benachrichtigung, Prüfaufforderung mit Frist bei Deaktivierung. Der beste Hebel dagegen ist, Abkömmlinge seltener nötig zu machen — dafür sind die Parameter da, und deshalb müssen sie zusammen mit dem Teilen von Agenten ausgeliefert werden und nicht danach: Bereits entstandene Abkömmlinge lassen sich nicht mehr einsammeln.
+- **Eine Prüfaufforderung mit Frist kann ein Asset ohne Zutun seines Eigentümers deaktivieren.** Die einzige solche Stelle im Modell, bewusst in Kauf genommen.
+- **Deaktivieren verlangt eine Begründung.** Ohne sie ist der Warnhinweis in Verläufen und bei Abkömmlingen Rauschen und wird ignoriert.
 - **Ein Agent, dessen Wissen nicht mitfreigegeben werden darf, ist nicht teilbar.** Bewusste Auslassung, kein Versehen — sie ist der Preis dafür, dass die Rechteschicht keinen Umgehungsweg hat.
 - **Gruppen werden früh gebraucht**, nicht erst mit der Verzeichnis-Anbindung. Das vergrößert den ersten Umsetzungsschritt spürbar, ist aber unvermeidbar: Ohne Gruppen fehlt die Verteilungsstufe „Fachbereich", und Eigentümerschaft bliebe an Personen gebunden.
 - **Assets brauchen eine Verwaisungsregel.** Eigentum kann an einer Gruppe hängen; Offboarding erzwingt eine Nachfolge; als Sicherheitsnetz gibt es einen Verwaist-Status ohne stillschweigende Löschung oder Reichweitenänderung.

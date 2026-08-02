@@ -16,7 +16,8 @@ Dieses Dokument beschreibt das abgelöste Modell: **Assets** (Wissensbibliotheke
 4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Ablage, Standard-Suchbereich, Modell-Policy und Zurechnung — aber keine Rechte an Assets.
 5. **Rechte gelten für Nutzer und Gruppen.** Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe „Fachbereich".
 6. **Ein Agent liest immer mit den Rechten des Nutzers.** Damit ein geteilter Agent funktioniert, wird sein Wissen mitfreigegeben — es gibt keinen Umgehungsweg.
-7. **Organisation** ist die harte Mandantengrenze, die nichts überschreitet.
+7. **Verteilt wird per Referenz, nicht per Kopie.** Verbesserungen wirken sofort bei allen; wer abweichen muss, erzeugt einen gekennzeichneten Abkömmling.
+8. **Organisation** ist die harte Mandantengrenze, die nichts überschreitet.
 
 ---
 
@@ -111,7 +112,7 @@ Die Stufe ergibt sich stattdessen daraus, **wem** der Grant gilt, kombiniert mit
 | **Fachbereich** | `visibility = SHARED`, **Grant an die Abteilungs- oder Amts-Gruppe** |
 | organisationsweit | `visibility = ORGANIZATION` |
 
-Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Gruppe, die die Abteilung abbildet.** Ohne Gruppen gäbe es die Stufe „Fachbereich" nicht — sie ist der Punkt, an dem das flache Space-Modell sonst eine Lücke hätte. Das ist der eigentliche Grund, warum Gruppen früh und nicht später gebraucht werden.
+Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Gruppe, die die Abteilung abbildet** — erteilt mit Zustimmung des Kurators dieser Einheit. Ohne Gruppen gäbe es die Stufe „Fachbereich" nicht; sie ist der Punkt, an dem das flache Space-Modell sonst eine Lücke hätte. Das ist der eigentliche Grund, warum Gruppen früh und nicht später gebraucht werden. Einzelheiten unter [Verteilung von Assets](#verteilung-von-assets).
 
 Zwei Felder steuern das:
 
@@ -133,6 +134,123 @@ Jedes Asset hat genau einen Eigentümer. Wenn dieser Eigentümer eine **Person**
 3. **Verwaist-Status als Sicherheitsnetz.** Fällt ein Eigentümer trotzdem weg (Massen-Deprovisionierung aus dem Verzeichnis, gelöschte Gruppe), wird das Asset als **verwaist** markiert und fällt an den System-Admin. Es wird dabei **niemals** stillschweigend gelöscht und **niemals** stillschweigend in seiner Reichweite verändert. Bestehende Grants bleiben unverändert bestehen, damit die laufende Arbeit nicht abreißt; das Asset erscheint aber in einer Aufräumliste.
 
 Verfall — also automatisches Löschen verwaister Assets — wird ausdrücklich verworfen: In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter unklarer Zuständigkeit.
+
+---
+
+## Verteilung von Assets
+
+Bis hierher ging es darum, **wer** auf ein Asset zugreifen darf. Jetzt geht es darum, **wie** ein Asset durch die Organisation wandert — der Kern des Verteilungsversprechens.
+
+### Organisationseinheiten sind Gruppen
+
+Die Verteilungsstufen der Produktvision — persönlich → Team → Fachbereich → organisationsweit — bilden sich auf die **Aufbauorganisation** ab, die im Verzeichnisdienst ohnehin gepflegt wird. Es gibt kein eigenes Abteilungs- oder Amts-Objekt und keine Space-Hierarchie.
+
+Gruppen haben zwei Ausprägungen:
+
+| `Group.kind` | Herkunft | Verwendung |
+|---|---|---|
+| `ORG_UNIT` | aus dem Verzeichnis synchronisiert (Referat, Abteilung, Amt) | Rechtesubjekt **und** Freigabeziel; kennt ihre übergeordnete Einheit; kann Kuratoren haben |
+| `AD_HOC` | im System angelegt | nur Rechtesubjekt (z. B. „Projektbeteiligte Phoenix", „Stabsstelle Leserunde") |
+
+**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Neu ist nicht *was* passiert, sondern *wer es erteilen darf* — bei einer Organisationseinheit ist dafür deren Kurator zuständig (siehe unten). Ein Grant an eine `AD_HOC`-Gruppe braucht keinen Kurator und wird wie jede andere Rechtevergabe vom Asset-Admin erteilt.
+
+**Zwei Richtungen, die nicht verwechselt werden dürfen:**
+
+- **Mitgliedschaft vererbt nicht.** Wer in einer Einheit Mitglied ist, sagt das Verzeichnis. OPAA erfindet keine Vererbung nach unten: Ein Grant an „Amt 5" erreicht nur, wen das Verzeichnis dieser Gruppe zurechnet.
+- **Zuständigkeit vererbt aufwärts.** Ist für eine Einheit kein Kurator benannt, fällt die Zuständigkeit an die nächsthöhere Einheit, im Zweifel an die Gesamtorganisation.
+
+Damit ist auch die frühere Aussage „keine Hierarchie" präzisiert: **Die einzige Hierarchie im System ist die Aufbauorganisation, und sie kommt aus dem Verzeichnis.** Spaces bleiben flach, Assets bleiben flach.
+
+### Kuratoren
+
+Ein **Kurator** ist an eine Organisationseinheit gebunden, nicht global. Es gibt Kuratoren für Referate, für Abteilungen und für die Gesamtorganisation.
+
+- Eine Freigabe an eine Einheit erfordert die Zustimmung ihres Kurators.
+- Ist für eine Einheit kein Kurator benannt, greift der Kurator der nächsthöheren Einheit.
+- Die Besetzung ist damit **optional und wächst mit**: Eine Pilotbehörde benennt einen einzigen zentralen Kurator und ist sofort arbeitsfähig. Eine große Behörde besetzt Referats- und Abteilungsebene und steuert fein.
+
+Der Kurator entscheidet über die Aufnahme in seinen Verantwortungsbereich — er wird dadurch nicht Eigentümer des Assets. Eigentum und Kuratierung sind getrennt.
+
+### Referenz statt Kopie
+
+**Ein verteiltes Asset ist eine Referenz.** Alle Nutzenden arbeiten mit demselben Objekt; es wird beim Verteilen nicht kopiert. Daraus folgt unmittelbar:
+
+**Verbesserungen wirken sofort bei allen.** Korrigiert der Eigentümer einen Agenten, arbeiten alle Nutzenden ab dem nächsten Aufruf mit der neuen Fassung. Dazu gehört zwingend:
+
+- **Vollständige Versionshistorie** — jede Änderung ist eine Version mit Urheber, Zeitpunkt und Anlass.
+- **Rückrollmöglichkeit** — eine frühere Version kann wieder aktiv gesetzt werden. Das Zurückrollen ist selbst ein Vorgang mit Eintrag, kein Löschen der Zwischenversionen.
+
+Versioniert wird die **Konfiguration** des Assets: bei einem Agenten die Aufgabenbeschreibung, die gebundenen Wissensbibliotheken, die Modellwahl und die Parameter; bei einer Prompt-Bibliothek ihre Prompts; bei einer Wissensbibliothek ihre Konfiguration — **nicht** der Dokumentenbestand. Dokumentenversionierung ist ein eigenes Thema und hier nicht gemeint.
+
+### Anpassen ohne Fork: Parameter
+
+Bevor jemand ein Asset abwandelt, sollte er es einstellen können. Der Asset-Eigentümer erklärt am Asset eine kleine Zahl **Parameter** — benannt, typisiert, mit erlaubten Werten und Vorbelegung:
+
+```
+Agent "Auskunft Beihilfe"
+  Parameter:
+    register        : Amtssprache | Leichte Sprache      (Vorgabe: Amtssprache)
+    zusatzhinweis   : Freitext, max. 200 Zeichen         (Vorgabe: leer)
+    anrede          : Sie | neutral                      (Vorgabe: Sie)
+```
+
+Empfangende setzen Werte je Nutzer, Gruppe oder Space, **ohne zu forken**. Das Asset bleibt eine Referenz, Verbesserungen fließen weiter.
+
+Das ist bewusst **kein Vorlagensystem** — keine Schleifen, keine Bedingungen, keine freie Textersetzung im Systemprompt. Eine kurze, typisierte Liste. Der Zweck ist ausschließlich, den häufigsten Fork-Anlass zu vermeiden: Wer nur einen anderen Tonfall oder einen Zusatzhinweis braucht, soll dafür nicht die Wartungsverbindung zum Original kappen.
+
+**Zur Reihenfolge:** Parameter gehören in dieselbe Auslieferung wie das Teilen von Agenten, nicht in eine spätere. Forks, die in der Zwischenzeit entstehen, lassen sich nachträglich nicht mehr einsammeln — sie sind dauerhaft.
+
+### Abkömmlinge (Forks)
+
+Reicht die Parametrisierung nicht, wird ein **Abkömmling** erzeugt. Nie ein stilles Kopieren:
+
+- Der Abkömmling trägt seine **Herkunft dauerhaft**: aus welchem Asset und aus welcher Version er entstanden ist.
+- Er ist überall sichtbar **als abgeleitet gekennzeichnet** — im Katalog, in der Detailansicht und dort, wo er benutzt wird.
+- Er hat einen eigenen Eigentümer und eigene Rechte und ist ein vollwertiges Asset.
+
+### Das Abdriften von Abkömmlingen
+
+**Dies ist die Kehrseite von Referenz plus sofort wirksamen Verbesserungen, und sie ist gefährlich.** Referat 51 zweigt wegen einer Kleinigkeit im Tonfall ab und bekommt danach die fachlichen Korrekturen von Referat 34 nicht mehr. Bei einer Gesetzesänderung ist das ein fachlicher Fehler mit Außenwirkung — und in Verbindung mit der Deaktivierung (siehe unten) noch schärfer: Das Original wird gesperrt, weil es überholt ist, der Abkömmling läuft weiter, und **niemand merkt es**.
+
+Die Gefahr ist nicht, dass ein Abkömmling existiert. Die Gefahr ist, dass niemand hinsieht. Die Behandlung setzt deshalb genau dort an:
+
+1. **Versionsstand ist immer sichtbar.** Der Abkömmling zeigt: „basiert auf Version 3 — das Original steht bei Version 5".
+2. **Der Verantwortliche wird benachrichtigt**, wenn das Original eine neue Version bekommt. Bei Gruppen-Eigentum geht die Nachricht an die Einheit und nicht an eine Person, die im Urlaub sein kann.
+3. **Änderungen sind einsehbar.** Der Verantwortliche sieht, was sich am Original geändert hat, und entscheidet selbst, ob er es übernimmt. Ein automatisches Zusammenführen gibt es **nicht** und ist ausdrücklich nicht geplant — es wäre bei frei formulierten Aufgabenbeschreibungen nicht verlässlich.
+4. **Bei Deaktivierung des Originals reicht eine Benachrichtigung nicht.** Der Abkömmling erhält eine **Prüfaufforderung mit Frist**:
+   - Er läuft zunächst weiter, trägt aber für **alle Nutzenden** — nicht nur für den Verantwortlichen — einen deutlichen Hinweis mit dem Grund der Deaktivierung des Originals.
+   - Der Verantwortliche muss innerhalb der Frist ausdrücklich bestätigen, dass der Abkömmling fachlich weiter gilt, oder ihn selbst deaktivieren.
+   - Bleibt die Bestätigung aus, wird der Abkömmling **automatisch deaktiviert**.
+
+Punkt 4 ist die einzige Stelle im Modell, an der ein Asset ohne Zutun seines Eigentümers seinen Zustand ändert. Das ist beabsichtigt: Der Fall, dass eine überholte Rechtsauffassung unbemerkt weiterläuft, wiegt schwerer als die Unannehmlichkeit einer erzwungenen Prüfung.
+
+**Voraussetzung dafür ist eine Begründungspflicht:** Wer ein Asset deaktiviert, gibt einen Grund an („SGB II § 7 geändert zum 1. Januar"). Dieser Grund ist es, der bei Abkömmlingen und in Chatverläufen angezeigt wird. Ohne ihn ist der Hinweis Rauschen und wird ignoriert.
+
+### Rückruf durch Deaktivieren
+
+Ein fachlich überholtes Asset wird **deaktiviert, nicht gelöscht**:
+
+- Es ist nicht mehr aufrufbar und erscheint nicht mehr im Katalog.
+- **Bestehende Chatverläufe bleiben vollständig lesbar** und tragen an den Stellen, an denen das Asset gewirkt hat, einen sichtbaren Warnhinweis mit Grund und Datum.
+
+Der Grund ist die Nachvollziehbarkeit: Auf Grundlage der damaligen Antworten können Bescheide ergangen sein. Ein Löschen würde die Spur zerstören, die eine Revision oder ein Widerspruchsverfahren später braucht. Deshalb wird nichts entfernt, sondern nur unbrauchbar gemacht und gekennzeichnet.
+
+Für Wissensbibliotheken gilt dasselbe: Eine deaktivierte Bibliothek liefert keine Treffer mehr; vorhandene Zitate in Verläufen bleiben lesbar, und ihre Sprungmarken bleiben rechtegeprüft.
+
+Der Hinweis hängt an den Nachrichten, die das Asset tatsächlich genutzt haben — das setzt die Herkunftsverfolgung voraus, die ohnehin für das Ableitungsleck geführt wird.
+
+### Mitgelieferte Assets
+
+OPAA liefert erprobte Verwaltungs-Agenten und -Prompts ab Werk aus. Sie sind ein eigener **Herkunftstyp**:
+
+| `Asset.origin` | Bedeutung |
+|---|---|
+| `BUILT_IN` | mitgeliefert; gehört keinem Nutzer, wird mit Produkt-Updates aktualisiert, in der Behörde nicht änderbar |
+| `LOCAL` | von der Behörde angelegt oder abgezweigt |
+
+Wer ein mitgeliefertes Asset anpassen will, erzeugt einen Abkömmling. Der Abkömmling ist `LOCAL` und wird von Produkt-Updates **nicht angefasst**. Damit kann ein Update niemals behördeneigene Änderungen überschreiben — die häufigste und ärgerlichste Form von Datenverlust bei ausgelieferten Vorlagen.
+
+Ein Produkt-Update des Originals löst bei Abkömmlingen dieselbe Anzeige und Benachrichtigung aus wie jede andere neue Version. Ein mitgeliefertes Asset, das die Behörde nicht einsetzen will, kann sie **lokal deaktivieren**, ohne es zu löschen.
 
 ---
 
