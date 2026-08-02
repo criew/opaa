@@ -5,13 +5,19 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-02T17:23:16Z</updated>
+  <updated>2026-08-02T21:07:47Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-01.html"/>
     <id>https://criew.github.io/opaa/reports/2026-08-01.html</id>
-    <updated>2026-08-02T17:23:16Z</updated>
-    <summary type="text">Für diesen Tag liegt keine Zusammenfassung vor.</summary>
+    <updated>2026-08-02T21:07:47Z</updated>
+    <summary type="text">Die Arbeit des Tages konzentrierte sich auf zwei große Modernisierungsvorhaben: die Aktualisierung der Abhängigkeiten und die Umstellung der Projektsprache auf Deutsch.
+
+Im Backend wurde #188 abgeschlossen und #190 gemergt. Das Projekt wurde auf Spring Boot 4.1.0 und Spring AI 2.0.0 migriert, was eine koordinierte Aktualisierung aller unterstützenden Bibliotheken und des Gradle-Wrappers umfasste. Diese Änderung war notwendig, da Spring Boot 3.5.x bald nicht mehr unterstützt wird und Spring AI 2.0 Spring Boot 4 voraussetzt. Neben den Hauptkomponenten wurden auch Spotless, OpenAPI Generator, JJWT, Caffeine und weitere Abhängigkeiten auf ihre neuesten stabilen Versionen gebracht. Liquibase und Testcontainers werden nun über die Spring-Boot-4-BOM verwaltet.
+
+Parallel dazu wurde die gesamte Projektdokumentation ins Deutsche übersetzt (#186 und #187). Dazu gehörten die zentralen Dateien wie README.md und CONTRIBUTING.md, alle Dokumentationsdateien in docs/, GitHub-Templates, Agent-Definitionen und Workflow-Regeln. Technische Bezeichner, Code-Blöcke und Klassennamen blieben unverändert, um die Wartbarkeit des Quellcodes zu bewahren.
+
+Für das Frontend wurde #189 neu angelegt, um eine entsprechende Abhängigkeitsaktualisierung durchzuführen. Diese ist zeitkritisch, da ESLint v9 am 6. August 2026 das Ende seiner Unterstützung erreicht. Die geplante Aktualisierung umfasst Major-Versionen von MUI (v7 → v9), Vite (7 → 8), TypeScript (5.9 → 6.0) und ESLint (9 → 10).</summary>
   </entry>
 </feed>
