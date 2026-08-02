@@ -14,6 +14,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -29,9 +31,8 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Deleting a group that owns an asset is meant to be blocked until ownership is transferred (see
  * the feature spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria).
  * There is no asset model yet ({@code io.opaa.indexing.Document} is the only content type, and it
- * carries no owner) - #201/#202 introduce assets and asset ownership. Once they land, {@link
- * #deleteGroup} must check for owned assets before deleting; there is nothing to check against yet,
- * so no such check exists here.
+ * carries no owner) - #201/#202 introduce assets and asset ownership; see the {@code TODO} on
+ * {@link #deleteGroup}.
  */
 @Service
 @Transactional(readOnly = true)
@@ -97,13 +98,16 @@ public class GroupService {
 
   @Transactional
   public void deleteGroup(UUID groupId, UUID currentUserId) {
+    // TODO(#202): block deletion while the group still owns an asset, once asset ownership
+    // exists. There is nothing to check against yet - see the class javadoc for why no such
+    // check exists here.
     Group group = loadGroup(groupId, currentUserId);
     rejectOrgUnit(group);
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();
     groupRepository.delete(group);
-    membershipResolver.invalidateUsers(affectedUserIds);
+    invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
 
   public List<GroupMemberResponse> listMembers(UUID groupId, UUID currentUserId) {
@@ -135,7 +139,7 @@ public class GroupService {
     GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
     group.addMembership(membership);
     groupRepository.save(group);
-    membershipResolver.invalidateUser(memberUserId);
+    invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
     return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
         .displayName(resolveDisplayName(membership.getUserId()));
@@ -153,7 +157,7 @@ public class GroupService {
 
     group.removeMembership(target);
     groupRepository.save(group);
-    membershipResolver.invalidateUser(memberUserId);
+    invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
   }
 
   private String validateName(String name) {
@@ -174,6 +178,36 @@ public class GroupService {
           HttpStatus.BAD_REQUEST,
           "description darf hoechstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
+  }
+
+  /**
+   * Defers a cache invalidation until the enclosing transaction has finished, instead of running it
+   * immediately at the point of the call. Every {@code @Transactional} method here commits through
+   * the Spring proxy only after it returns, so invalidating inline (as an earlier version of this
+   * class did) can race a concurrent reader: it can observe the pre-image under {@code READ
+   * COMMITTED}, repopulate the cache with it, and then have this transaction commit - leaving a
+   * revoked membership readable from the cache for up to the cache's expiry (see {@link
+   * GroupMembershipResolver}).
+   *
+   * <p>Registered as {@code afterCompletion} rather than {@code afterCommit} so a rollback also
+   * evicts the entry the transaction may have touched - a stale hit is the wrong failure mode
+   * either way, so there is no reason to skip cleanup on the rollback path.
+   *
+   * <p>Falls back to running immediately when no transaction is active (e.g. called directly in a
+   * test), so the invalidation is never silently dropped.
+   */
+  private void invalidateAfterCommit(Runnable invalidation) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      invalidation.run();
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            invalidation.run();
+          }
+        });
   }
 
   private void rejectOrgUnit(Group group) {

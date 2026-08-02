@@ -74,22 +74,40 @@ class GroupMembershipResolverTest {
   @Test
   void resolveUserIdsForAUserSubjectReturnsExactlyThatUserWithoutQueryingTheRepository() {
     UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
 
-    Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.user(userId));
+    Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.user(userId, organizationId));
 
     assertThat(resolved).containsExactly(userId);
   }
 
   @Test
-  void resolveUserIdsForAGroupSubjectReturnsItsMembers() {
+  void resolveUserIdsForAGroupSubjectReturnsItsMembersScopedToTheOrganization() {
     UUID groupId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
     UUID memberOne = UUID.randomUUID();
     UUID memberTwo = UUID.randomUUID();
-    when(membershipRepository.findUserIdsByGroupId(groupId))
+    when(membershipRepository.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId))
         .thenReturn(Set.of(memberOne, memberTwo));
 
-    Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.group(groupId));
+    Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.group(groupId, organizationId));
 
     assertThat(resolved).containsExactlyInAnyOrder(memberOne, memberTwo);
+  }
+
+  @Test
+  void resolveUserIdsForAGroupSubjectFromAnotherOrganizationResolvesToNobody() {
+    UUID groupId = UUID.randomUUID();
+    UUID otherOrganizationId = UUID.randomUUID();
+    // The repository itself filters by organization; returning an empty set for the wrong
+    // organizationId here simulates that and shows resolveUserIds passes the subject's
+    // organizationId through rather than trusting the group id alone.
+    when(membershipRepository.findUserIdsByGroupIdAndOrganizationId(groupId, otherOrganizationId))
+        .thenReturn(Set.of());
+
+    Set<UUID> resolved =
+        resolver.resolveUserIds(PermissionSubject.group(groupId, otherOrganizationId));
+
+    assertThat(resolved).isEmpty();
   }
 }

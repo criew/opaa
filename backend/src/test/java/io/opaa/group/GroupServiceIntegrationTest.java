@@ -20,17 +20,30 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * {@code @Transactional(NOT_SUPPORTED)} disables the transaction Spring Test would otherwise wrap
+ * around each test method. Without it, every {@code GroupService} call below would join that single
+ * outer test transaction instead of committing on its own, and {@code
+ * GroupService#invalidateAfterCommit} would only fire once - when the outer transaction rolls back
+ * at the end of the test, not when each individual service call actually completes. That would
+ * silently defeat the very assertions this class makes about cache invalidation timing. Cleanup
+ * that a rolled-back transaction would otherwise have given us for free is done explicitly in
+ * {@link #cleanUp()} instead.
+ */
 @DataJpaTest
 @Import({GroupService.class, GroupMembershipResolver.class})
 @Testcontainers(disabledWithoutDocker = true)
 @TestPropertySource(
     properties = {"spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class GroupServiceIntegrationTest {
 
   @Container
