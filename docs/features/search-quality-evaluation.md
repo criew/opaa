@@ -435,7 +435,7 @@ Drei Folgerungen:
   Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
   auf `opaa.ewerlin.com` erlebt — siehe den Nachtrag im ADR.
 - **Die Instanz ist inzwischen dokumentiert.** `docs/deployment.md` beschreibt sie seit #244; die
-  Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind mit #269 ergänzt.
+  Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind dort ergänzt.
 
 ### Zugangsmodell: account-gebunden, kein Gastzugang
 

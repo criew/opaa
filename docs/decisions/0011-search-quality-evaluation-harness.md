@@ -109,7 +109,7 @@ läuft. Die Fehlannahme entstand aus einer Verwechslung zweier Ebenen — der *A
 Ebene beschreibt den tatsächlichen Betrieb, die erste nur das Verhalten ohne jede Konfiguration.
 Ein Folge-Issue klärt diese Zweideutigkeit auch in `docs/deployment.md`.
 
-> **Zweite Berichtigung (2026-08-02, PR #269).** Die daraus abgeleitete Aussage „Die Instanz nutzt
+> **Zweite Berichtigung (2026-08-02).** Die daraus abgeleitete Aussage „Die Instanz nutzt
 > OpenAI" war ihrerseits ungenau und ist zurückgenommen. Die Betriebsdokumentation des Maintainers
 > belegt: **Das Chat-Modell ist `claude-haiku-4-5` von Anthropic**, angebunden über Anthropics
 > OpenAI-kompatible Schicht — `OPAA_AI_CHAT_PROVIDER=openai` bezeichnet dort das Protokoll, nicht
@@ -141,7 +141,7 @@ Es besteht also **kein Anlass, ADR-0011 neu zu bewerten oder zu ersetzen.**
 
 ### Was sich dennoch ändert
 
-> **Neu gefasst am 2026-08-02 (PR #269).** Die ursprüngliche Fassung dieses Abschnitts stützte sich
+> **Neu gefasst am 2026-08-02.** Die ursprüngliche Fassung dieses Abschnitts stützte sich
 > auf die inzwischen widerlegte Annahme, die Instanz bette mit `text-embedding-3-small` über OpenAI
 > ein. Der daraus gezogene Schluss war falsch und ist **vollständig zurückgenommen**; die
 > zurückgenommene Aussage steht unten im Wortlaut, damit niemand sie aus älteren Notizen erneut
