@@ -23,6 +23,7 @@ import argparse
 import html
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -131,14 +132,23 @@ def search_issues(repo: str, qualifier: str) -> list[dict]:
     return items
 
 
+CLOSES_MUSTER = re.compile(
+    r"\b(?:closes|fixes|resolves|schliesst|schließt)\s+#(\d+)", re.IGNORECASE
+)
+
+
 def simplify_issue(item: dict) -> dict:
+    body = (item.get("body") or "").strip()
     return {
         "number": item["number"],
         "title": item["title"],
         "url": item["html_url"],
         "author": (item.get("user") or {}).get("login", ""),
         "labels": [label["name"] for label in item.get("labels", [])],
-        "body": (item.get("body") or "").strip(),
+        "body": body,
+        # Erlaubt es, einen Pull Request über das von ihm geschlossene Issue
+        # einem Epic zuzuordnen.
+        "closes": sorted({int(n) for n in CLOSES_MUSTER.findall(body)}),
     }
 
 
@@ -175,6 +185,115 @@ def ci_status(repo: str) -> dict | None:
     }
 
 
+def collect_epics(repo: str) -> list[dict]:
+    """Erhebt die Epics samt Ticketliste und Fortschritt.
+
+    Native Sub-Issues werden im Repository nicht verwendet — die Zuordnung
+    steht als Ticketliste im Body des Epic-Issues. Der Status aller Tickets
+    wird über einen einzigen Abruf aller Issues ermittelt statt über eine
+    Abfrage je Ticket.
+    """
+    try:
+        alle = gh_api(
+            f"repos/{repo}/issues?state=all&per_page=100&labels=", paginate=True
+        )
+    except RuntimeError as error:
+        print(f"Epics konnten nicht erhoben werden: {error}", file=sys.stderr)
+        return []
+
+    status_je_nummer = {
+        item["number"]: item.get("state", "open")
+        for item in alle
+        if isinstance(item, dict) and "number" in item
+    }
+
+    epics: list[dict] = []
+    for item in alle:
+        labels = {label["name"] for label in item.get("labels", [])}
+        if "epic" not in labels:
+            continue
+        tickets = sorted(
+            {
+                int(nummer)
+                for nummer in re.findall(r"#(\d+)", item.get("body") or "")
+                if int(nummer) != item["number"]
+            }
+        )
+        if not tickets:
+            continue
+        erledigt = sum(
+            1 for nummer in tickets if status_je_nummer.get(nummer) == "closed"
+        )
+        epics.append(
+            {
+                "number": item["number"],
+                "title": item["title"],
+                "url": item["html_url"],
+                "state": item.get("state", "open"),
+                "tickets": tickets,
+                "tickets_total": len(tickets),
+                "tickets_closed": erledigt,
+            }
+        )
+    return epics
+
+
+def assign_to_epics(data: dict, epics: list[dict]) -> dict:
+    """Ordnet die Bewegungen des Tages den Epics zu.
+
+    Ein Vorgang gehört zu einem Epic, wenn seine Nummer in dessen Ticketliste
+    steht. Pull Requests werden über die von ihnen geschlossenen Issues
+    zugeordnet. Was sich nicht zuordnen lässt, bleibt bewusst ungruppiert
+    statt geraten zu werden.
+    """
+    zuordnung: dict[int, int] = {}
+    for epic in epics:
+        for nummer in epic["tickets"]:
+            zuordnung.setdefault(nummer, epic["number"])
+
+    gruppen: dict[int, dict] = {
+        epic["number"]: {
+            "number": epic["number"],
+            "title": epic["title"],
+            "tickets_total": epic["tickets_total"],
+            "tickets_closed": epic["tickets_closed"],
+            "opened": [],
+            "closed": [],
+            "merged": [],
+        }
+        for epic in epics
+    }
+    ohne = {"opened": [], "closed": [], "merged": []}
+
+    def einsortieren(schluessel: str, eintraege: list[dict]) -> None:
+        for eintrag in eintraege:
+            epic_nummer = zuordnung.get(eintrag["number"])
+            if epic_nummer is None:
+                # Pull Requests tragen ihre Issue-Nummer im Body ("Closes #N").
+                for referenz in eintrag.get("closes", []):
+                    if referenz in zuordnung:
+                        epic_nummer = zuordnung[referenz]
+                        break
+            ziel = gruppen[epic_nummer] if epic_nummer in gruppen else ohne
+            ziel[schluessel].append(eintrag)
+
+    einsortieren("opened", data["opened_issues"])
+    einsortieren("closed", data["closed_issues"])
+    einsortieren("merged", data["merged_pull_requests"])
+
+    aktiv = [
+        gruppe
+        for gruppe in gruppen.values()
+        if gruppe["opened"] or gruppe["closed"] or gruppe["merged"]
+    ]
+    # Die stärkste Tagesbewegung zuerst, damit der Absatz dazu oben steht.
+    aktiv.sort(
+        key=lambda g: len(g["opened"]) + len(g["closed"]) + len(g["merged"]),
+        reverse=True,
+    )
+    return {"epics": aktiv, "ohne_epic": ohne}
+
+
 def collect(repo: str, day: Date) -> dict:
     """Trägt alle Daten für einen Tag zusammen."""
     start, end = day_bounds(day)
@@ -202,7 +321,7 @@ def collect(repo: str, day: Date) -> dict:
     for pull_request in open_pulls:
         pull_request["body"] = ""
 
-    return {
+    ergebnis = {
         "repo": repo,
         "date": day.isoformat(),
         "generated_at": datetime.now(tz=TIMEZONE).isoformat(),
@@ -213,6 +332,8 @@ def collect(repo: str, day: Date) -> dict:
         "ci": ci_status(repo),
         "summary": "",
     }
+    ergebnis.update(assign_to_epics(ergebnis, collect_epics(repo)))
+    return ergebnis
 
 
 def has_activity(data: dict) -> bool:
@@ -231,17 +352,31 @@ def has_activity(data: dict) -> bool:
 SUMMARY_SYSTEM_PROMPT = """\
 Du schreibst die Zusammenfassung eines Tagesreports für ein Softwareprojekt.
 
-Schreibe zwei bis vier Absätze in schlichtem, sachlichem Deutsch. Beschreibe,
-was sich inhaltlich geändert hat und was neu angesetzt wurde — nicht, wie viele
-Issues bewegt wurden. Der Leser sieht die Listen ohnehin.
+Die Eingabe ist bereits nach Epics gegliedert. Ein Epic bündelt thematisch
+zusammenhängende Arbeit. Übernimm diese Gliederung unverändert.
 
-Regeln:
-- Beziehe dich auf Issues und Pull Requests mit ihrer Nummer, etwa "#221".
-- Gruppiere nach Thema, nicht nach Issue-Reihenfolge.
-- Keine Aufzählungszeichen, keine Überschriften, kein Markdown, reiner Fließtext.
-- Keine Werbesprache und keine Bewertung der Arbeitsleistung.
-- Wenn ein Vorhaben erkennbar über mehrere Issues zusammenhängt, benenne den
-  gemeinsamen Faden.
+Aufbau:
+- Ein Absatz je Epic, in der vorgegebenen Reihenfolge. Kein Epic auslassen,
+  keines hinzuerfinden, keine zwei Epics in einem Absatz zusammenfassen.
+- Danach höchstens ein Absatz für die Vorgänge ohne Epic-Bezug. Fasse ihn
+  nach Themen zusammen, etwa Projektsetup, Sicherheit oder Dokumentation,
+  und halte ihn kürzer als die Epic-Absätze.
+- Jeder Absatz höchstens drei Sätze, und jeder Satz höchstens 25 Wörter.
+
+Inhalt je Absatz:
+- Nenne das Epic beim Namen und sage, was an diesem Tag darin geschehen ist:
+  überwiegend Definition neuer Tickets, überwiegend Umsetzung, oder beides.
+- Ordne es in den Gesamtfortschritt ein. Jede Zahl, die du nennst, muss
+  wörtlich in der Eingabe stehen. Zähle nichts selbst ab, rechne nichts aus
+  und schätze nichts. Im Zweifel nenne gar keine Zahl.
+- Nenne höchstens zwei Vorgänge beispielhaft mit Nummer, und nur solche, die
+  den Schwerpunkt des Tages tragen. Zähle nicht alles auf; der Leser sieht
+  die Listen darunter.
+
+Sprache:
+- Schlichtes, sachliches Deutsch. Reiner Fließtext.
+- Keine Aufzählungszeichen, keine Überschriften, kein Markdown.
+- Keine Werbesprache, keine Bewertung der Arbeitsleistung.
 - Technische Begriffe und Bezeichner bleiben in ihrer Originalform.
 """
 
@@ -254,24 +389,54 @@ def truncate(text: str, limit: int) -> str:
 
 
 def build_summary_prompt(data: dict) -> str:
+    """Baut den Prompt entlang der Epic-Gliederung.
+
+    Die Struktur wird hier festgelegt und nicht dem Modell überlassen, damit
+    die Gliederung von Tag zu Tag gleich bleibt und die Fortschrittszahlen aus
+    den Daten stammen statt aus einer Schätzung.
+    """
     lines: list[str] = [f"Datum: {german_date(Date.fromisoformat(data['date']))}", ""]
 
-    def section(title: str, items: list[dict], *, body_limit: int) -> None:
+    def eintraege(titel: str, items: list[dict], *, body_limit: int) -> None:
         if not items:
             return
-        lines.append(f"## {title}")
+        lines.append(f"{titel}:")
         for item in items[:PROMPT_MAX_ITEMS]:
-            labels = ", ".join(item["labels"]) if item["labels"] else "ohne Label"
-            lines.append(f"- #{item['number']} {item['title']} [{labels}]")
+            lines.append(f"- #{item['number']} {item['title']}")
             if body_limit and item.get("body"):
                 lines.append(f"  {truncate(item['body'], body_limit)}")
         if len(items) > PROMPT_MAX_ITEMS:
             lines.append(f"- … und {len(items) - PROMPT_MAX_ITEMS} weitere")
         lines.append("")
 
-    section("Abgeschlossene Issues", data["closed_issues"], body_limit=600)
-    section("Gemergte Pull Requests", data["merged_pull_requests"], body_limit=900)
-    section("Neu angelegte Issues", data["opened_issues"], body_limit=600)
+    def kennzahlen(gruppe: dict) -> str:
+        return (
+            f"Heute: {len(gruppe.get('opened', []))} neu angelegt, "
+            f"{len(gruppe.get('closed', []))} abgeschlossen, "
+            f"{len(gruppe.get('merged', []))} gemergt."
+        )
+
+    for epic in data.get("epics", []):
+        lines.append(f"## Epic #{epic['number']}: {epic['title']}")
+        lines.append(
+            f"Gesamtfortschritt: {epic['tickets_closed']} von "
+            f"{epic['tickets_total']} Tickets erledigt."
+        )
+        lines.append(kennzahlen(epic))
+        lines.append("")
+        eintraege("Heute neu angelegt", epic["opened"], body_limit=300)
+        eintraege("Heute abgeschlossen", epic["closed"], body_limit=300)
+        eintraege("Heute gemergt", epic["merged"], body_limit=500)
+
+    ohne = data.get("ohne_epic") or {}
+    if any(ohne.get(k) for k in ("opened", "closed", "merged")):
+        lines.append("## Ohne Epic-Bezug")
+        lines.append(kennzahlen(ohne))
+        lines.append("")
+        eintraege("Heute neu angelegt", ohne.get("opened", []), body_limit=300)
+        eintraege("Heute abgeschlossen", ohne.get("closed", []), body_limit=300)
+        eintraege("Heute gemergt", ohne.get("merged", []), body_limit=500)
+
     return "\n".join(lines)
 
 
