@@ -268,7 +268,7 @@ Detaillierte Spezifikationen jeder Komponente finden Sie unter:
 2. **[Daten-Indizierung & RAG](./features/data-indexing-rag.md)** — Dokumentenquellen, Embedding, Retrieval
 3. **[LLM-Integration](./features/llm-integration.md)** — Modellkonfiguration, Anbieter-Unterstützung
 4. **[Deployment & Infrastruktur](./features/deployment-infrastructure.md)** — On-premises, Cloud, Betrieb
-5. **[Zugangskontrolle & Workspaces](./features/access-control-workspaces.md)** — Berechtigungen, Multi-Tenancy
+5. **[Zugangskontrolle & Workspaces](./features/access-control.md)** — Berechtigungen, Multi-Tenancy
 
 ---
 

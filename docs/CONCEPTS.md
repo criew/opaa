@@ -110,35 +110,51 @@ Ein KI-Modell, das auf großen Mengen von Textdaten trainiert wurde und menschen
 
 ---
 
-### Workspace
+### Space
 
-Ein eigenständiger Bereich in OPAA, in dem Dokumente und Benutzer von anderen Workspaces isoliert sind.
+Ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen Fachbereich oder die eigene Arbeit. Der Space ist **kein Sicherheitssilo für Dokumente**, sondern der Ort, an dem gearbeitet wird und an dem die Ergebnisse dieser Arbeit liegen.
 
 **Zweck:**
-- Separate Wissensbasen für verschiedene Teams/Abteilungen
-- Kontrolle, wer was sehen kann
-- Beispiel: "Engineering"-Workspace nur für Engineering-Team sichtbar
+- Chats und Artefakte thematisch bündeln
+- Kuratieren, welche Assets hier angeboten werden
+- Standard-Suchbereich, Modell-Obergrenze und Zurechnung für Nutzung und Kosten
 
 **Flaches Modell:**
-Workspaces sind **flach** — es gibt keine Hierarchie oder Verschachtelung. Wenn ein Benutzer sucht, ruft OPAA Ergebnisse aus allen Workspaces ab, in denen der Benutzer Mitglied ist, sortiert nach Relevanz. Häufige Workspace-Typen:
+Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt drei Arten:
 
-1. **Organisationsweiter Workspace** — Unternehmensrichtlinien, All-Hands-Notizen, öffentliche Dokumentation (für alle sichtbar)
-2. **Team-Workspaces** — Engineering-Docs, Marketing-Pläne (für Teammitglieder sichtbar)
-3. **Projekt-Workspaces** — Gemeinsame Workspaces, denen mehrere Teams beitreten, um an einem Projekt zusammenzuarbeiten (z. B. "Phoenix" mit Frontend-, Backend- und QA-Teams)
-4. **Persönlicher Workspace ("Meine Dokumente")** — Automatisch für jeden Benutzer erstellt. Speichert vom Benutzer hochgeladene Dokumente. Standardmäßig privat. Workspace-übergreifendes Teilen ist als zukünftiges Feature geplant (siehe [Dokument-Teilen](./features/document-sharing.md)).
+1. **Persönlicher Space** — automatisch je Nutzer, nicht teilbar, nicht löschbar
+2. **Projekt-Space** — von jedem Nutzer anlegbar, nicht im Verzeichnis gelistet, nur selbst eingeladene Mitglieder
+3. **Team-Space** — vom System-Admin angelegt, für Teams, Fachbereiche und hausweite Räume
 
-Das bedeutet, eine Suche nach "Remote-Arbeit-Richtlinie" könnte die unternehmensweite HR-Richtlinie (aus dem Organisations-Workspace) neben den spezifischen Remote-Arbeit-Leitlinien Ihres Teams (aus Ihrem Team-Workspace) und Ihren persönlichen Notizen zu diesem Thema zurückgeben.
-
-**Details zum persönlichen Workspace:**
-- Automatisch erstellt, wenn ein Benutzer sich erstmals anmeldet oder ein Dokument hochlädt
-- Einer pro Benutzer, kann nicht gelöscht werden (bei Offboarding deaktiviert)
-- Benutzer ist immer Owner mit voller Kontrolle
-- Workspace-übergreifendes Dokument-Teilen ist ein geplantes zukünftiges Feature — siehe [Dokument-Teilen](./features/document-sharing.md)
-- Siehe [Zugangskontrolle & Workspaces — Persönliche Workspaces](./features/access-control-workspaces.md#personal-workspaces)
+**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber **vollen** Zugriff auf die space-eigenen Inhalte (Chats, Artefakte). Siehe [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
 
 **Analogie:**
-- Wie separate Slack-Workspaces oder Google-Drive-Ordner mit Berechtigungen
-- Benutzer im "Engineering"-Workspace sieht keine Dokumente aus dem "Marketing"-Workspace, aber beide sehen Dokumente aus dem "Unternehmen"-Workspace
+- Wie ein Confluence-Space: Er besitzt seine Seiten, verlinkt aber auf Fremdes, ohne daran Rechte zu vergeben.
+
+---
+
+### Asset
+
+Ein eigenständiges, teilbares Objekt mit genau einem Eigentümer und einer eigenen Rechteliste — eine **Wissensbibliothek**, ein **Agent** oder eine **Prompt-Bibliothek**.
+
+**Zweck:**
+- KI-Können und Wissen verteilbar machen, ohne es zu kopieren
+- Ein Bestand liegt einmal und wird an vielen Stellen genutzt
+
+**Assoziation:** Ein Asset wird in beliebig viele Spaces assoziiert. Die Assoziation ist reine Kuratierung und **gewährt keinerlei Zugriff**; sie stellt das Asset nur denen im Space bereit, die ohnehin ein Recht darauf haben.
+
+**Merkregel:** Was im Space entsteht, gehört dem Space. Was assoziiert wird, behält seinen Eigentümer.
+
+---
+
+### Wissensbibliothek
+
+Der Dokumentencontainer. Jedes Dokument gehört zu genau einer Wissensbibliothek, und jeder Chunk trägt die Bibliotheks-Kennung als Filterachse der rechtebewussten Suche.
+
+**Details zur persönlichen Ablage:**
+- Jeder Nutzer hat einen persönlichen Space und darin eine persönliche Wissensbibliothek "Meine Dokumente"
+- Automatisch erstellt, einer pro Nutzer, nicht löschbar (bei Offboarding deaktiviert)
+- Teilen läuft über die Bibliothek, nicht über den Raum: Ein direkter Grant an eine andere Person genügt, der persönliche Space bleibt privat
 
 ---
 
@@ -147,13 +163,23 @@ Das bedeutet, eine Suche nach "Remote-Arbeit-Richtlinie" könnte die unternehmen
 Eine Reihe von Berechtigungen, die Benutzern zugewiesen werden. Bestimmt, welche Aktionen sie ausführen können.
 
 **Systemweite Rolle:**
-- **System-Admin** — Organisationsweite Administration. Kann Workspaces erstellen, Konnektoren konfigurieren, Quellzuordnungen definieren, Benutzerverzeichnis-Synchronisation verwalten. Auf der Benutzer-Entität gespeichert (nicht pro Workspace).
+- **System-Admin** — Organisationsweite Administration. Kann Team-Spaces anlegen, Konnektoren konfigurieren, Quellzuordnungen definieren, Gruppen und Verzeichnis-Synchronisation verwalten. Auf der Benutzer-Entität gespeichert. Er verwaltet das System, ist aber **nicht automatisch leseberechtigt** für alle Inhalte.
 
-**Workspace-Rollen (pro Workspace-Mitgliedschaft):**
-- **Viewer** — Kann Dokumente durchsuchen, Fragen stellen, herunterladen. Kann nicht ändern.
-- **Editor** — Kann Dokumente hinzufügen/ändern, eigene Uploads löschen. Kann Benutzer oder Workspace-Einstellungen nicht verwalten.
-- **Admin** — Volle Kontrolle über Workspace. Kann Benutzer, Einstellungen, Berechtigungen verwalten. Kann Konnektor-Dokumente ausschließen.
-- **Owner** — Nur einer pro Workspace. Kann Workspace löschen, Ownership übertragen.
+**Space-Rollen (pro Space-Mitgliedschaft) — regeln Mitarbeit und Kuratierung, nicht den Dokumentenzugriff:**
+- **Member** — Space betreten, Chats führen, alle Chats und Artefakte des Space lesen
+- **Curator** — zusätzlich Assets assoziieren und lösen
+- **Admin** — zusätzlich Mitglieder, Einstellungen und Modell-Obergrenze verwalten, Inhalte moderieren
+
+Dazu trägt jeder Space einen **Verantwortlichen** als Attribut; nur er oder ein System-Admin darf den Space löschen.
+
+**Asset-Rollen (pro Asset) — regeln den tatsächlichen Zugriff:**
+- **User** — benutzen, ohne die Konfiguration zu sehen
+- **Viewer** — zusätzlich die Konfiguration einsehen
+- **Editor** — zusätzlich ändern
+- **Admin** — zusätzlich teilen und Rechte vergeben
+- **Owner** — zusätzlich löschen und Eigentum übertragen
+
+Rechte werden an **Nutzer oder Gruppen** vergeben. Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe "Fachbereich".
 
 ---
 
@@ -211,12 +237,12 @@ Semantische Suche findet:
 
 ### Berechtigungsdurchsetzung zur Abfragezeit
 
-Berechtigungen werden **als Teil der Vektorsuche selbst** durchgesetzt — die Workspace-IDs des Benutzers werden als Metadaten-Filter direkt in die Abfrage übergeben. Nicht autorisierte Chunks werden niemals geladen oder gerankt.
+Berechtigungen werden **als Teil der Vektorsuche selbst** durchgesetzt — die für den Benutzer lesbaren Wissensbibliotheken werden als Metadaten-Filter direkt in die Abfrage übergeben. Nicht autorisierte Chunks werden niemals geladen oder gerankt.
 
 **Wie es funktioniert:**
-1. System lädt die Workspace-IDs des Benutzers
+1. System bestimmt die lesbaren Wissensbibliotheken des Benutzers und schneidet sie mit dem Suchbereich des Kontexts (Space bzw. gebundener Agent)
 2. Benutzer sucht: "Gehaltsrichtlinien"
-3. Vektorsuche gibt nur Chunks zurück, deren `workspace_ids` mindestens eine der Workspaces des Benutzers entsprechen
+3. Vektorsuche gibt nur Chunks zurück, deren `library_id` im ermittelten Suchbereich liegt
 4. Benutzer sieht nur Dokumente, auf die er autorisiert ist zuzugreifen
 
 **Warum das wichtig ist:**
@@ -276,7 +302,7 @@ Das Hochladen eines Dokuments durch einen Benutzer in OPAA über eine Frontend-S
 **Wesentliche Unterschiede zur Konnektor-basierten Aufnahme:**
 - Benutzer schiebt aktiv Dokumente (vs. OPAA zieht aus Quellen)
 - Auf Anfrage durch Benutzeraktion ausgelöst (vs. geplant oder ereignisbasiert)
-- Dokumente landen standardmäßig im persönlichen Workspace des Benutzers
+- Dokumente landen standardmäßig in der persönlichen Wissensbibliothek des Benutzers
 - Originaldateien werden auf OPAAs konfigurierbarem Speicher-Backend gespeichert
 
 Siehe [Daten-Indizierung & RAG — Benutzer-Dokument-Upload](./features/data-indexing-rag.md#user-document-upload) für Details.
@@ -294,11 +320,11 @@ Das pluggbare Dateispeichersystem, in dem hochgeladene Dokumente gespeichert wer
 
 ---
 
-### Workspace-übergreifendes Dokumenten-Teilen (Zukünftiges Feature)
+### Bestände mehrfach verwenden
 
-Ein Dokument aus einem Workspace in einem anderen Workspace sichtbar und durchsuchbar machen. Das Dokument würde nicht dupliziert — stattdessen würden seine indizierten Daten mit mehreren Workspace-IDs versehen.
+Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselbe **Wissensbibliothek** wird in mehreren Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Vervielfachung von Chunks.
 
-**Status:** Als zukünftiges Feature geplant. Das Teilkonzept hat erhebliche offene Sicherheitsfragen (z. B. Verhinderung unbeabsichtigter Informationsoffenlegung über Workspaces mit unterschiedlichen Zugangsstufen hinweg). Siehe [Dokument-Teilen](./features/document-sharing.md) für das aktuelle Konzept und offene Fragen.
+**Status:** Durch das Asset-Modell gelöst. Das frühere Konzept eines workspace-übergreifenden Dokument-Teilens samt seiner offenen Sicherheitsfragen ist gegenstandslos — siehe [Dokument-Teilen](./features/document-sharing.md) (überholt).
 
 ---
 
@@ -573,15 +599,16 @@ OPAA sofort aktualisieren, wenn Quelldokumente sich ändern (innerhalb von Sekun
 | **Chunk** | Teil eines Dokuments | Seite 3 eines 50-seitigen Handbuchs |
 | **Semantisch** | Basierend auf Bedeutung, nicht Schlüsselwörtern | "Remote-Arbeit" ≈ "von zu Hause arbeiten" |
 | **LLM** | KI-Sprachmodell | GPT-4, Claude, Llama |
-| **Workspace** | Isolierter Wissensbereich (flach, keine Hierarchie) | "Engineering"-Team-Dokumente |
-| **Persönlicher Workspace** | Automatisch erstellter privater Workspace pro Benutzer | "Meine Dokumente" für jeden Benutzer |
-| **Projekt-Workspace** | Gemeinsamer Workspace für teamübergreifende Zusammenarbeit | "Phoenix"-Projekt mit mehreren Teams |
+| **Space** | Thematischer Arbeitsraum (flach, keine Hierarchie); trägt Chats und Artefakte | "Projekt Phoenix" |
+| **Asset** | Eigenständiges, teilbares Objekt mit eigenem Eigentümer und eigener Rechteliste | Wissensbibliothek, Agent, Prompt-Bibliothek |
+| **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | "Rechtsquellen Soziales" |
 | **Benutzer-Upload** | Benutzer schiebt Dokument in OPAA | Drag-and-Drop in Web-UI |
 | **Speicher-Backend** | Pluggbarer Dateispeicher für Uploads | S3, Netzlaufwerk, lokal |
-| **Workspace-übergreifendes Teilen** | Dokument in einem anderen Workspace sichtbar machen (zukünftiges Feature) | Aus "Backend-Team" mit "Frontend-Team" teilen |
-| **System-Admin** | Systemweite Rolle für organisationsweite Administration | Konnektor-Konfiguration, Workspace-Erstellung |
-| **Rolle** | Workspace-Berechtigungsset | Owner, Admin, Editor, Viewer |
-| **Konnektor** | Datenquellen-Verbindung mit Workspace-Zuordnung | Confluence-Server mit Space→Workspace-Zuordnungen |
+| **Assoziation** | Ein Asset in einem Space bereitstellen — reine Kuratierung, gewährt keine Rechte | "Rechtsquellen" in fünf Team-Spaces |
+| **System-Admin** | Systemweite Rolle für organisationsweite Administration, je Organisation | Konnektor-Konfiguration, Anlegen von Team-Spaces |
+| **Space-Rolle** | Mitarbeit und Kuratierung im Arbeitsraum | Member, Curator, Admin |
+| **Asset-Rolle** | Tatsächlicher Zugriff auf ein Asset | User, Viewer, Editor, Admin, Owner |
+| **Konnektor** | Datenquellen-Verbindung; jede Quelle indiziert in genau eine Wissensbibliothek | Confluence-Server mit Space→Bibliothek-Zuordnungen |
 | **Vektor-DB** | Für Ähnlichkeitssuche optimierte Datenbank | Elasticsearch, Milvus, pgvector |
 | **Latenz** | Zeit bis zur Antwort | < 4 Sekunden Ziel |
 | **Halluzination** | LLM erfindet Fakten | LLM: "Unsere Richtlinie ist X" (nicht wahr) |

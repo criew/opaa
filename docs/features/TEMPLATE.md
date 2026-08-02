@@ -26,7 +26,7 @@ Produkt-Konzeptebene geschrieben: Verhalten, Rollen, Abläufe und Optionen mit A
 ("Option 1/2/3" + Empfehlung) — keine Klassen oder Dateinamen. Konfigurationsausschnitte
 (YAML/env), Tabellen (z. B. Berechtigungsmatrizen) und ASCII-Diagramme (Abläufe, UI-Mockups)
 verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
-Siehe `access-control-workspaces.md` als Referenzbeispiel.
+Siehe `access-control.md` als Referenzbeispiel.
 -->
 
 ---
