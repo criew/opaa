@@ -56,6 +56,11 @@ npm run lint                            # Lint (ESLint)
 npm run test                            # Tests (Vitest)
 npm run format:check                    # Prettier-Formatierung prüfen
 npm run format                          # Automatisch mit Prettier formatieren
+
+# E2E-Suite (aus e2e/, siehe e2e/README.md)
+npm ci                                  # Abhängigkeiten installieren
+npx playwright install --with-deps chromium   # Browser installieren (einmalig)
+npm test                                # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 ```
 
 ## Abhängigkeitsverwaltung
@@ -155,6 +160,7 @@ Bei reinen Dokumentationsänderungen überspringen. Vor jedem Push müssen alle 
 - `backend/` — Spring Boot Backend (Gradle-Projekt)
 - `frontend/` — React-Frontend (Vite-Projekt)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
+- `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 
 ## Contributor License Agreement
 
