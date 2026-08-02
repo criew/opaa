@@ -126,7 +126,7 @@ Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt drei 
 2. **Projekt-Space** — von jedem Nutzer anlegbar, nicht im Verzeichnis gelistet, nur selbst eingeladene Mitglieder
 3. **Team-Space** — vom System-Admin angelegt, für Teams, Fachbereiche und hausweite Räume
 
-**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber **vollen** Zugriff auf die space-eigenen Inhalte (Chats, Artefakte). Siehe [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
+**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber vollen Zugriff auf die **abgelegten** space-eigenen Inhalte. Chats und Artefakte entstehen als Entwurf beim Ersteller und werden erst durch Ablegen sichtbar. Siehe [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
 
 **Analogie:**
 - Wie ein Confluence-Space: Er besitzt seine Seiten, verlinkt aber auf Fremdes, ohne daran Rechte zu vergeben.
@@ -176,7 +176,7 @@ Dazu trägt jeder Space einen **Verantwortlichen** als Attribut; nur er oder ein
 - **User** — benutzen, ohne die Konfiguration zu sehen
 - **Viewer** — zusätzlich die Konfiguration einsehen
 - **Editor** — zusätzlich ändern
-- **Admin** — zusätzlich teilen und Rechte vergeben
+- **Manager** — zusätzlich teilen und Rechte vergeben
 - **Owner** — zusätzlich löschen und Eigentum übertragen
 
 Rechte werden an **Nutzer oder Gruppen** vergeben. Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe "Fachbereich".
@@ -607,7 +607,7 @@ OPAA sofort aktualisieren, wenn Quelldokumente sich ändern (innerhalb von Sekun
 | **Assoziation** | Ein Asset in einem Space bereitstellen — reine Kuratierung, gewährt keine Rechte | "Rechtsquellen" in fünf Team-Spaces |
 | **System-Admin** | Systemweite Rolle für organisationsweite Administration, je Organisation | Konnektor-Konfiguration, Anlegen von Team-Spaces |
 | **Space-Rolle** | Mitarbeit und Kuratierung im Arbeitsraum | Member, Curator, Admin |
-| **Asset-Rolle** | Tatsächlicher Zugriff auf ein Asset | User, Viewer, Editor, Admin, Owner |
+| **Asset-Rolle** | Tatsächlicher Zugriff auf ein Asset | User, Viewer, Editor, Manager, Owner |
 | **Konnektor** | Datenquellen-Verbindung; jede Quelle indiziert in genau eine Wissensbibliothek | Confluence-Server mit Space→Bibliothek-Zuordnungen |
 | **Vektor-DB** | Für Ähnlichkeitssuche optimierte Datenbank | Elasticsearch, Milvus, pgvector |
 | **Latenz** | Zeit bis zur Antwort | < 4 Sekunden Ziel |

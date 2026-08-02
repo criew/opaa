@@ -93,9 +93,10 @@ Die Synchronisation ändert nur die **Herkunft** von Gruppenmitgliedschaften, ni
 Wenn ein Nutzer die Organisation verlässt:
 
 1. Die Verzeichnis-Synchronisation entfernt ihn; er kann sich nicht mehr anmelden.
-2. **Assets in seinem Eigentum müssen übertragen werden** — an eine Person oder an eine Gruppe. Ein Konto kann nicht deaktiviert werden, solange es Assets besitzt. Für zentral gepflegte Bestände ist Gruppen-Eigentum der Regelfall und verhindert das Problem von vornherein.
-3. Fällt ein Eigentümer trotzdem weg, wird das Asset als **verwaist** markiert und fällt an den System-Admin. Es wird niemals stillschweigend gelöscht und seine Reichweite nie stillschweigend verändert; bestehende Rechte bleiben, damit laufende Arbeit nicht abreißt.
-4. Sein persönlicher Space wird deaktiviert, nicht gelöscht (Nachweisgründe). Chats und Artefakte darin unterliegen der Aufbewahrungsregel.
+2. **Die Deaktivierung wird nie durch offene Eigentumsfragen aufgehalten.** Eine Regel, die das verlangt, wird am Freitagnachmittag umgangen und schützt dann gerade nicht.
+3. Seine Assets gehen in den Zustand **„Nachfolge offen"**: nutzbar und mit unveränderten Rechten, aber mit **eingefrorener Reichweite** — keine neuen Grants, keine höhere Freigabestufe, keine neue Bereitstellung. Zuständig für die Nachfolge ist der Kurator seiner Organisationseinheit, mit Frist und Eskalation.
+4. Für zentral gepflegte Bestände ist Gruppen-Eigentum der Regelfall und verhindert das Problem von vornherein.
+5. Sein persönlicher Space wird deaktiviert, nicht gelöscht (Nachweisgründe) — und **nicht lesbar gemacht**. Entwürfe darin bleiben unzugänglich. Chats und Artefakte unterliegen der Aufbewahrungsregel.
 
 ### API-Tokens und Service-Accounts
 
@@ -113,11 +114,23 @@ Ein Token kann **nie mehr Rechte haben als sein Inhaber**. Service-Accounts sind
 
 ---
 
+## Nachweisbarkeit: Historisierung von Rechten
+
+Die Rechtemenge eines Nutzers ist eine **berechnete Größe** aus drei Quellen — direkte Grants, Gruppengrants und organisationsweite Freigaben —, von denen sich eine, die Gruppenmitgliedschaft, per Verzeichnissynchronisation ändert. Rechte, die aus mehreren Quellen zusammengerechnet werden, muss man erklären können.
+
+Die Prüferfrage lautet nicht „was hat Frau K. getan", sondern: *„Worauf hatte Frau K. am 3. März Zugriff, und belegen Sie, dass die Bibliothek `Personalvorgänge` nicht dazugehörte."* Die **Negativfrage** ist die schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es Lücken haben kann.
+
+Deshalb werden **Grants und Gruppenmitgliedschaften historisiert**: Zu jedem Zeitpunkt ist rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs. Die Rechtemenge eines beliebigen Stichtags wird aus der Historie berechnet, nicht aus dem Protokoll gelesen.
+
+Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das, was die Datensparsamkeit vermeiden soll — und wäre trotzdem lückenanfällig. Die Historie liefert dieselbe Aussage mit weniger Daten.
+
+**Folge für die Compliance-Berichte:** Einen Bericht „abgelehnte Zugriffe" kann es nicht geben. Weil der Filter Teil der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren könnte — unberechtigte Chunks werden nie geladen. Was es gibt, ist der Nachweis über die Rechtehistorie und über den bei jeder Abfrage protokollierten **angewandten Suchbereich**.
+
+---
+
 ## Audit & Compliance
 
-### Audit-Logging
-
-Jede relevante Handlung wird protokolliert:
+### Der Protokollsatz
 
 ```json
 {
@@ -129,52 +142,62 @@ Jede relevante Handlung wird protokolliert:
   "libraries_searched": ["lib-rechtsquellen"],
   "results_count": 5,
   "documents_accessed": ["doc-1", "doc-2"],
-  "result": "success",
-  "ip_address": "10.0.1.45"
+  "result": "success"
 }
 ```
 
-Besonders protokollpflichtig sind die Handlungen, an denen sich Rechte oder Reichweiten ändern:
+**Die Netzadresse ist nicht Teil des Standardsatzes.** Sie unterscheidet Dienststelle von Homeoffice und ist damit ein Anwesenheitsmerkmal. Sie kann für Sicherheitszwecke ausdrücklich eingeschaltet werden; dann ist die Einschaltung zu begründen, und das Feld bleibt aus Berichten und Exporten ausgeschlossen. Ob eine C5-Prüfung das Feld zwingend verlangt, ist offen; sollte das so sein, ist es schriftlich zu begründen.
 
-- Rechtevergabe und -entzug an Assets, einschließlich Mitfreigaben aus der Freigabekette beim Teilen eines Agenten
-- Assoziation einer Bibliothek in einen Space mit **gemischtem Leserkreis** samt Bestätigung des Kurators
-- Freigabe eines Artefakts mit gemischter Herkunft
+### Besonders protokollpflichtige Handlungen
+
+Handlungen, an denen sich Rechte, Reichweiten oder die Beobachtbarkeit ändern:
+
+- Rechtevergabe und -entzug an Assets, einschließlich Mitfreigaben aus der Freigabekette
+- **Ablegen** eines Chats oder Artefakts im Space und **Zurückziehen** durch Ersteller oder Space-Admin
+- Aufnahme und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in einen Space mit abgelegten Inhalten zusätzlich mit ausdrücklicher Bestätigung
+- Bereitstellung einer Bibliothek in einem Space, dessen Mitglieder nicht sämtlich Lesezugriff haben
 - Änderung der Freigabestufe oder Auffindbarkeit eines Assets
-- Übernahme verwaister Assets und Eigentümerwechsel
+- Übernahme von Assets ohne Zuständigkeit und Eigentümerwechsel
 - Änderungen an Modell-Policies
+- **Änderungen an Governance-Einstellungen** — Aufbewahrungsfristen, Aggregation, Statistik, Audit-Konfiguration. Ohne diesen Punkt bleibt eine spätere Abweichung von der Dienstvereinbarung unbemerkt; die Änderung wird zusätzlich angezeigt
+- Jede bewirkte Rechteänderung aus einem Verzeichnissynchronisationslauf — je Änderung, nicht je Lauf
 
-Protokolle:
+### Aufbewahrung und Zugriff
 
-- Aufbewahrung mindestens ein Jahr, konfigurierbar
-- An ein SIEM exportierbar
-- Unveränderlich, nur anfügend
+- **Frist mit Ober- und Untergrenze**, konfigurierbar, mit automatischer Löschung nach Ablauf. Eine reine Untergrenze („mindestens ein Jahr") ist keine Regelung, sondern eine unbefristete Speicherung mit Mindestdauer.
+- Die Audit-Frist muss **mindestens so lang** gewählt werden wie die Aufbewahrung der Inhalte, auf die sie sich bezieht. Sonst existiert ein Chatverlauf noch, aber es ist nicht mehr belegbar, wer ihn wann gelesen hat. Das Produkt warnt bei einer inkonsistenten Einstellung. Die konkrete Dauer folgt aus Fachrecht und Aktenordnung der einführenden Stelle.
+- **Abschließend geregelter Zugriff:** benannter Personenkreis, dokumentierter Anlass. Die Trennung der Auswertungswege für Revision und Dienststellenleitung ist technisch durchgesetzt, nicht nur organisatorisch zugesagt. Der Audit-Zugriff erzeugt selbst einen Eintrag — protokollierter Zugriff ist aber kein begrenzter Zugriff, beides ist nötig.
+- **Der SIEM-Export ist keine Umgehung.** Was exportiert wird, unterliegt denselben Zweck-, Zugriffs- und Sparsamkeitsregeln.
+- **Kein personenbezogener Auswertungspfad.** Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Herkunftsdaten nach Person filtert, gruppiert oder sortiert — auch nicht abschaltbar. Offen bleiben nur die Selbstauskunft der betroffenen Person und die anlassbezogene Klärung eines Sicherheitsvorfalls im Vier-Augen-Prinzip. Siehe [Mitbestimmung und Personalvertretung](./spaces-and-assets.md#mitbestimmung-und-personalvertretung).
 
-**Der Audit-Zugriff ist selbst protokolliert** und von den Auswertungswegen der Dienststellenleitung getrennt — siehe [Mitbestimmung und Personalvertretung](./spaces-and-assets.md#mitbestimmung-und-personalvertretung).
+### Unveränderlichkeit und Löschrecht
+
+Ein nur anfügendes Protokoll und ein nachträgliches Schwärzen schließen einander aus. Der Widerspruch wird zugunsten der Unveränderlichkeit aufgelöst:
+
+**Der Personenbezug wird ab dem Schreibzeitpunkt pseudonymisiert.** Das Protokoll enthält eine Kennung, die Zuordnung zur Person liegt in einer getrennt gehaltenen Tabelle. Beim Löschen eines Kontos entfällt dieser Eintrag — das Protokoll bleibt unverändert und ist danach nicht mehr auf eine Person zurückführbar. Es wird nichts nachträglich verändert und nichts überschrieben.
 
 ### Compliance-Berichte
 
 - **Zugangsbericht:** wer hat wann worauf zugegriffen
-- **Rechteänderungen:** wer hat wem was freigegeben
+- **Rechteänderungen:** wer hat wem was freigegeben, mit Rechtestand zum Stichtag aus der Historie
 - **Zugriff auf geschützte Bestände**
-- **Abgelehnte Zugriffe**
-
-Verwendet für Revisionsnachweise, C5-Prüfpfade, DSGVO-Auskunftsersuchen und interne Untersuchungen.
+- **Auskunftsexport:** welche personenbeziehbaren Daten erhoben werden, in welcher Granularität und wie lange sie liegen — vor dem Rollout vollständig vorlegbar
 
 ### Datenlöschung (DSGVO)
 
 Wenn ein Benutzerkonto gelöscht wird:
 
 ```
-1. Eigentum an Assets übertragen (erzwungen, siehe Offboarding)
-2. Nutzer aus allen Spaces und Gruppen entfernen
-3. Konto und Auth-Tokens löschen
-4. Audit-Logs behalten (Compliance), Personenbezug schwärzen
-5. Personenbezogene Daten anonymisieren
+1. Zugang sofort deaktivieren — nie durch offene Eigentumsfragen aufgehalten
+2. Assets in den Zustand "Nachfolge offen" versetzen: nutzbar, aber Reichweite eingefroren
+3. Nutzer aus allen Spaces und Gruppen entfernen
+4. Konto und Auth-Tokens löschen
+5. Pseudonymzuordnung entfernen — das Protokoll bleibt unverändert bestehen
 ```
 
-Für Chats und Artefakte in geteilten Spaces gilt die Aufbewahrungsregel des jeweiligen Space: Sie sind Arbeitsergebnisse der Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Fristablauf gelöscht.
+Entwürfe des Nutzers folgen den Regeln des persönlichen Space. Abgelegte Chats und Artefakte in geteilten Spaces sind Arbeitsergebnisse der Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Ablauf der Aufbewahrungsfrist gelöscht.
 
-Dokumente werden über ihre Wissensbibliothek gelöscht. Für konnektor-indizierte Dokumente gilt weiterhin der Ausschluss-Mechanismus, weil sie beim nächsten Lauf sonst erneut aufgenommen würden — er wirkt jetzt an der Bibliothek und damit an genau einer Stelle.
+Dokumente werden über ihre Wissensbibliothek gelöscht. Für konnektor-indizierte Dokumente gilt weiterhin der Ausschluss-Mechanismus, weil sie beim nächsten Lauf sonst erneut aufgenommen würden.
 
 ---
 
@@ -198,7 +221,7 @@ Befristung:  bis 2026-03-31
 Hinweis:     Sie sieht alle Chats und Artefakte des Space — vor der Aufnahme prüfen
 ```
 
-Die Aufnahme externer Personen in einen Space mit gemischtem Leserkreis ist besonders folgenreich, weil space-eigene Inhalte vollständig sichtbar sind. Für solche Fälle ist ein eigener, eng geschnittener Space der richtige Weg.
+Die Aufnahme externer Personen ist besonders folgenreich, weil ihnen damit alle **abgelegten** Inhalte des Space offenstehen — also die Arbeitsergebnisse namentlich bekannter Beschäftigter. Externe Konten sind gekennzeichnet, die Aufnahme verlangt eine ausdrückliche Bestätigung und wird protokolliert. Ein bloßer Hinweistext genügt hier nicht. Für solche Fälle ist ein eigener, eng geschnittener Space der richtige Weg.
 
 ---
 
@@ -227,7 +250,7 @@ Die Aufnahme externer Personen in einen Space mit gemischtem Leserkreis ist beso
 - **Compliance:** Audit-Logs vollständig aufbewahrt und zugänglich
 - **Leistung:** Rechteprüfung erhöht die Abfragezeit um weniger als 50 ms
 - **Genauigkeit:** keine unbeabsichtigten Zugriffe
-- **Verständlichkeit:** Neue Nutzer verstehen den Unterschied zwischen Space-Mitgliedschaft und Asset-Recht ohne Schulung
+- **Verständlichkeit:** Anteil der Support-Anfragen, die sich auf „warum sehe ich das nicht“ beziehen, sinkt über die ersten drei Monate. (Die frühere Formulierung „Nutzer verstehen den Unterschied ohne Schulung“ ist gestrichen — ADR-0008 bezeichnet dieselbe Sache als „Hauptlast des Modells“; eine Metrik, deren Erfüllung die eigene Architekturentscheidung für unwahrscheinlich erklärt, ist keine Metrik.)
 
 ---
 

@@ -105,9 +105,11 @@ curl -X POST http://localhost:8080/api/v1/indexing/trigger \
 
 Wenn keine URL angegeben wird, wird stattdessen die standardmäßige dateisystembasierte Indizierung ausgelöst.
 
-### Konnektor-Modell und Workspace-Zuordnung
+### Konnektor-Modell und Zuordnung zu Wissensbibliotheken
 
-Ein **Konnektor** definiert den Typ und die gemeinsame Konfiguration (Anmeldedaten, Zeitplan). Jeder Konnektor hat eine oder mehrere **Quellen**, von denen jede einem oder mehreren OPAA-Workspaces zugeordnet werden kann. Konnektoren und Quellen werden unabhängig von Workspaces konfiguriert — Workspace-Admins wählen dann, welche verfügbaren Quellen in ihren Workspace eingebunden werden sollen. Nur **System-Admins** können Konnektoren erstellen und Quellzuordnungen definieren.
+Ein **Konnektor** definiert den Typ und die gemeinsame Konfiguration (Anmeldedaten, Zeitplan). Jeder Konnektor hat eine oder mehrere **Quellen**, von denen jede **genau einer Wissensbibliothek** zugeordnet wird. Nur **System-Admins** können Konnektoren erstellen und Quellzuordnungen definieren; wer die Bibliothek anschließend sehen darf, entscheidet deren Eigentümer im Rahmen der vom System-Admin gesetzten Freigabe-Obergrenze.
+
+Wird derselbe Bestand an mehreren Stellen gebraucht, wird **die Bibliothek** in weiteren Spaces bereitgestellt oder an weitere Nutzer und Gruppen freigegeben — die Quelle wird nicht mehrfach zugeordnet und das Dokument nicht vervielfacht.
 
 Manche Konnektor-Typen haben eine natürliche Instanzebene mit Untereinheiten (z. B. Confluence-Server mit Spaces). Andere haben keine gemeinsame Instanz — jede Quelle ist eigenständig (z. B. einzelne Dateipfade oder URLs).
 
@@ -119,24 +121,24 @@ Beispiel 1: Confluence (Instanz mit Untereinheiten)
     Anmeldedaten: Service-Account / API-Token
     Zeitplan: Täglich 2 Uhr
     Quellen:
-      Space "ENG"  → Workspaces: ["Engineering"]
-      Space "MKT"  → Workspaces: ["Marketing"]
-      Space "HR"   → Workspaces: ["HR", "Onboarding"]
-      Space "ALL"  → Workspaces: ["Company"]
+      Space "ENG"  → Bibliothek: "Engineering"
+      Space "MKT"  → Bibliothek: "Marketing"
+      Space "HR"   → Bibliothek: "Personal"
+      Space "ALL"  → Bibliothek: "Hausweite Regelungen"
 
 Beispiel 2: Dateisystem / Netzlaufwerk (ein Pfad pro Quelle)
   Konnektor: "Netzlaufwerk Engineering"
     Typ: filesystem
     Zeitplan: Täglich 3 Uhr
     Quellen:
-      Pfad "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
+      Pfad "//fileserver/engineering/docs" → Bibliothek: "Engineering"
 
 Beispiel 3: HTTP-Verzeichnis (eine URL pro Quelle)
   Konnektor: "Docs-Server Engineering"
     Typ: http
     Zeitplan: Täglich 4 Uhr
     Quellen:
-      URL "https://docs.internal/engineering/" → Workspaces: ["Engineering", "Phoenix"]
+      URL "https://docs.internal/engineering/" → Bibliothek: "Engineering"
 ```
 
 #### Konnektor-Typen und ihre Quellen
@@ -161,7 +163,7 @@ Beispiel 3: HTTP-Verzeichnis (eine URL pro Quelle)
 
 Jede Quelle kann optional Einschluss-/Ausschlussmuster definieren:
 ```
-Quelle: Confluence Space "ENG" → Workspace "Engineering"
+Quelle: Confluence Space "ENG" → Bibliothek "Engineering"
 Filterung:
   - Einschlussmuster: ["public/*", "team/*"]
   - Ausschlussmuster: ["draft/*", "archive/*"]
@@ -183,7 +185,7 @@ Zusätzlich zur konnektor-basierten Ingestion können Benutzer Dokumente direkt 
 | Richtung | OPAA zieht aus Quellen | Benutzer überträgt an OPAA |
 | Auslöser | Zeitplan- oder ereignisbasiert | Auf Abruf (Benutzeraktion) |
 | Umfang | Organisationale Datenquellen | Individuelle Benutzerdokumente |
-| Workspace | Pro Konnektor konfiguriert | Persönlicher Workspace des Benutzers (Standard) |
+| Wissensbibliothek | Pro Quelle konfiguriert (genau eine) | Persönliche Bibliothek des Benutzers (Standard) |
 | Speicherung | Original verbleibt im Quellsystem | Auf OPAAs Speicher-Backend gespeichert |
 
 ### Upload-Ablauf
@@ -192,8 +194,8 @@ Zusätzlich zur konnektor-basierten Ingestion können Benutzer Dokumente direkt 
 2. Datei wird validiert (Format, Größenbeschränkungen, Virenscan)
 3. Datei wird auf dem konfigurierten Speicher-Backend gespeichert (S3, Netzlaufwerk, lokales FS)
 4. Dokument durchläuft die Standard-Verarbeitungs-Pipeline (Extraktion, Chunking, Embedding, Vektorspeicherung)
-5. Dokument wird standardmäßig in den persönlichen Workspace des Benutzers indiziert
-6. Benutzer kann optional in andere Workspaces, auf die er Zugriff hat, teilen/veröffentlichen
+5. Dokument wird standardmäßig in die persönliche Wissensbibliothek des Benutzers indiziert
+6. Benutzer kann es stattdessen in eine Bibliothek hochladen, an der er mindestens EDITOR ist
 
 ### Speicher-Backend-Abstraktion
 
@@ -517,7 +519,7 @@ Indizierung kann starten:
 
 ## Berechtigungen & Multi-Tenancy
 
-### Workspace-basierte Berechtigungen
+### Bibliotheksbasierte Berechtigungen
 
 Jedes indizierte Dokument gehört genau einer **Wissensbibliothek** (bestimmt durch die Quellzuordnung des Konnektors oder das Upload-Ziel). Berechtigungen werden auf Bibliotheksebene durchgesetzt:
 
@@ -561,7 +563,7 @@ Wenn ein Benutzer ein Dokument hochlädt, führt OPAA eine Ähnlichkeitsprüfung
 
 ### Abfrage-Performance
 
-- **Vektorsuche (inkl. Workspace-Filter):** < 500 ms für typische Abfragen
+- **Vektorsuche (inkl. Bibliotheks-Filter):** < 500 ms für typische Abfragen
 - **Re-Ranking:** + 50–100 ms
 - **Gesamte Retrieval-Zeit:** < 1 Sekunde
 
@@ -581,7 +583,7 @@ Das System skaliert auf:
 
 - **Benutzer-Frontends:** Abgerufene Dokumente und Antworten bereitstellen
 - **LLM-Integration:** Abgerufene Dokumente an LLM weitergeben
-- **Zugangskontrolle:** Workspace-/Dokumentenberechtigungen durchsetzen
+- **Zugangskontrolle:** Bibliotheksberechtigungen zur Abfragezeit durchsetzen
 - **Deployment-Infrastruktur:** Speicherkonfiguration, Ressourcenzuweisung
 
 ---

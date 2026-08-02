@@ -11,7 +11,7 @@ Dieses Dokument beschreibt das abgelöste Modell: **Assets** (Wissensbibliotheke
 ## Überblick
 
 1. **Assets** gehören ihrem Eigentümer und tragen ihre eigenen Rechte. Sie werden in Spaces *assoziiert* — die Assoziation gewährt keinerlei Zugriff.
-2. **Spaces** sind Arbeitsräume. Chats und Artefakte entstehen *in* einem Space und gehören ihm; jedes Space-Mitglied sieht sie.
+2. **Spaces** sind Arbeitsräume. Chats und Artefakte entstehen *in* einem Space und gehören ihm — sie entstehen als **Entwurf beim Ersteller** und werden für alle Mitglieder sichtbar, wenn er sie **ablegt**.
 3. **Dokumente** liegen in Wissensbibliotheken, nicht in Spaces. Die rechtebewusste Vektorsuche filtert über die Bibliothek.
 4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Ablage, Standard-Suchbereich, Modell-Policy und Zurechnung — aber keine Rechte an Assets.
 5. **Rechte gelten für Nutzer und Gruppen.** Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe „Fachbereich".
@@ -65,12 +65,12 @@ Die Ausdifferenzierung der Asset-Typen ist **nicht** Gegenstand dieses Dokuments
 | `USER` | benutzen, ohne die Konfiguration zu sehen — Agent aufrufen, Bibliothek liefert Treffer in Antworten |
 | `VIEWER` | zusätzlich die Konfiguration einsehen: Aufgabenbeschreibung, Wissensbindung, Dokumentenliste |
 | `EDITOR` | zusätzlich ändern |
-| `ADMIN` | zusätzlich teilen, Rechte vergeben, Freigabestufe und Auffindbarkeit setzen |
+| `MANAGER` | zusätzlich teilen, Rechte vergeben, Freigabestufe und Auffindbarkeit setzen |
 | `OWNER` | zusätzlich löschen und Eigentum übertragen |
 
 Die Trennung **`USER` gegen `VIEWER`** ist der wesentliche Zugewinn: Ein Sachgebiet soll einen geprüften Agenten nutzen können, ohne dass jeder Nutzer seine Aufgabenbeschreibung ändern oder die zugrundeliegende Dokumentenliste einsehen kann.
 
-Asset-Rollen sind eine **eigene Rangordnung**. Sie haben mit den Space-Rollen weder Namensraum noch Rangfolge gemeinsam, auch wenn einzelne Namen ähnlich klingen.
+Asset-Rollen sind eine **eigene Rangordnung**, getrennt von den Space-Rollen. **Kein Rollenname kommt in beiden Systemen vor** — deshalb heißt die verwaltende Asset-Rolle `MANAGER` und nicht `ADMIN`. Wer sagt „ich habe hier Admin-Rechte", meint damit immer einen Space; wer Asset-Rechte meint, sagt `MANAGER` oder `OWNER`. Das ist keine Kosmetik: Bei der Übergabe eines Vorgangs muss ohne Rückfrage klar sein, wovon die Rede ist.
 
 ### Rechte an einem Asset erhalten
 
@@ -127,13 +127,19 @@ Zwei Felder steuern das:
 
 Jedes Asset hat genau einen Eigentümer. Wenn dieser Eigentümer eine **Person** ist, hängt das Asset in dem Moment, in dem sie die Behörde verlässt oder das Referat wechselt — ein realer und häufiger Fall, den die bisherige Spezifikation nur für Dokumente und persönliche Ablagen regelt, nicht für Agenten und Bibliotheken.
 
+**Grundsatz: Der Zugang wird nie durch die Eigentumsfrage aufgehalten.** Eine frühere Fassung verlangte, ein Konto könne nicht deaktiviert werden, solange es Assets besitzt. Das ist nicht haltbar: Ein Beschäftigter scheidet Freitagnachmittag kurzfristig aus, der Zugang muss sofort weg, und niemand kann in diesem Moment für dutzende Objekte entscheiden, wer künftig zuständig ist. Eine Regel, die das verlangt, wird umgangen — man deprovisioniert im Verzeichnis, und der Sicherungsmechanismus greift genau dann nicht, wenn er gebraucht wird.
+
 **Regelung:**
 
-1. **Eigentümer kann eine Person oder eine Gruppe sein.** Für zentral gepflegte Assets — Rechtsquellen, Dienstanweisungen, hausweite Agenten — ist die **Gruppe der Regelfall**: Eigentümer ist „Referat Z 2", nicht Frau Müller. Damit übersteht das Asset jeden Personalwechsel, und die Zuständigkeit ist im Katalog als Organisationseinheit ausgewiesen.
-2. **Erzwungene Nachfolge beim Offboarding.** Ein Nutzerkonto kann nicht deaktiviert werden, solange es Assets besitzt. Die Deaktivierung verlangt eine Übertragung — an eine Person oder eine Gruppe.
-3. **Verwaist-Status als Sicherheitsnetz.** Fällt ein Eigentümer trotzdem weg (Massen-Deprovisionierung aus dem Verzeichnis, gelöschte Gruppe), wird das Asset als **verwaist** markiert und fällt an den System-Admin. Es wird dabei **niemals** stillschweigend gelöscht und **niemals** stillschweigend in seiner Reichweite verändert. Bestehende Grants bleiben unverändert bestehen, damit die laufende Arbeit nicht abreißt; das Asset erscheint aber in einer Aufräumliste.
+1. **Eigentümer kann eine Person oder eine Gruppe sein.** Für zentral gepflegte Assets — Rechtsquellen, Dienstanweisungen, hausweite Agenten — ist die **Gruppe der Regelfall**: Eigentümer ist „Referat Z 2", nicht Frau Müller. Damit übersteht das Asset jeden Personalwechsel, und die Zuständigkeit ist im Katalog als Organisationseinheit ausgewiesen. Das ist die eigentliche Lösung; alles Folgende ist Auffangnetz.
+2. **Die Deaktivierung eines Kontos ist immer sofort möglich** und wird nie blockiert.
+3. **Assets des Ausgeschiedenen gehen in den Zustand „Nachfolge offen".** Sie funktionieren weiter und behalten ihre Rechte, damit die laufende Arbeit nicht abreißt — **aber ihre Reichweite kann nicht mehr wachsen**: keine neuen Grants, keine Erhöhung der Freigabestufe, keine neue Assoziation. Ein Asset ohne fachlich Verantwortlichen darf sich nicht weiter verbreiten.
+4. **Die Nachfolge hat einen benannten Adressaten und eine Frist.** Zuständig ist der Kurator der Organisationseinheit des Ausgeschiedenen; ist keiner benannt, greift die Eskalation nach oben (siehe [Kuratoren](#kuratoren)). Der Vorgang erscheint auf seiner Liste mit Frist und wird bei Ablauf eskaliert — er verfällt nicht und landet nicht in einer namenlosen Sammelliste.
+5. **Nichts wird stillschweigend gelöscht oder in seiner Reichweite verändert.**
 
-Verfall — also automatisches Löschen verwaister Assets — wird ausdrücklich verworfen: In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter unklarer Zuständigkeit.
+Damit gibt es keine Regel mehr, die eine andere aufhebt: Der Zugang endet sofort, die Zuständigkeit wird nachgezogen, und in der Zwischenzeit ist das Asset nutzbar, aber eingefroren.
+
+Verfall — also automatisches Löschen von Assets ohne Zuständigkeit — wird ausdrücklich verworfen: In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter geklärter Einschränkung.
 
 ---
 
@@ -170,6 +176,14 @@ Ein **Kurator** ist an eine Organisationseinheit gebunden, nicht global. Es gibt
 - Die Besetzung ist damit **optional und wächst mit**: Eine Pilotbehörde benennt einen einzigen zentralen Kurator und ist sofort arbeitsfähig. Eine große Behörde besetzt Referats- und Abteilungsebene und steuert fein.
 
 Der Kurator entscheidet über die Aufnahme in seinen Verantwortungsbereich — er wird dadurch nicht Eigentümer des Assets. Eigentum und Kuratierung sind getrennt.
+
+**Die Zuständigkeit hängt an der Reichweite, nicht an der Gruppenart.** Sonst gäbe es einen offenen Umgehungsweg: Wer eine Freigabe an „Abteilung 5" nicht durch den Kurator bringt, legt eine `AD_HOC`-Gruppe mit denselben Personen an und erteilt den Grant ohne jede Kuratierung — materiell dieselbe Reichweite, formal keine Freigabe an die Einheit. Deshalb gilt:
+
+> Ein Grant an eine Gruppe ab einer konfigurierbaren Größe erfordert die Zustimmung eines Kurators — **unabhängig davon, ob es eine Organisationseinheit oder eine Ad-hoc-Gruppe ist.**
+
+Zuständig ist bei einer Ad-hoc-Gruppe der Kurator der Organisationseinheit des Erteilenden. Kleine Ad-hoc-Gruppen — der übliche Projektkreis — bleiben frei von Kuratierung; sie sind der Grund, warum es diese Gruppenart überhaupt gibt.
+
+**Voraussetzung dafür ist, dass die Kuratorenrolle tatsächlich besetzt und mit Arbeitszeit hinterlegt ist.** Bleibt sie unbesetzt, fällt über die Eskalation alles auf die zentrale Ebene, dort stapeln sich die Anfragen, und die dokumentierte Freigabekette ist nicht mehr die gelebte. Das ist keine Frage der Technik, sondern der Einführung — die einführende Stelle muss die Rolle benennen und ausstatten. Das Produkt macht sie sichtbar: Offene Anfragen mit Liegezeit stehen auf einer Liste, und die Liegezeit ist auswertbar.
 
 ### Referenz statt Kopie
 
@@ -254,6 +268,32 @@ Ein Produkt-Update des Originals löst bei Abkömmlingen dieselbe Anzeige und Be
 
 ---
 
+## Verzeichnissynchronisation als Rechteereignis
+
+Gruppen kommen aus dem Verzeichnisdienst. Ein Synchronisationslauf, der Mitgliedschaften entfernt, ist damit ein **Massen-Rechteentzug ohne menschlichen Entscheidungspunkt** — die einzige Stelle im gesamten Modell, an der sich Rechte in großer Zahl ändern, ohne dass jemand eine Entscheidung trifft. Die Formel „die Synchronisation ändert nur die Herkunft der Mitgliedschaften, nicht das Rechtemodell" ist deshalb irreführend: Die Herkunft **ist** das Risiko.
+
+An ihr hängen die Verwaisung, der Zustand von Strikt-Spaces und die Nachweisbarkeit. Sie ist keine spätere Ausbaustufe, sondern eine Voraussetzung für den ersten Produktivbetrieb.
+
+### Verbindliche Anforderungen
+
+- **Stabile Kennung statt Name.** Der Abgleich erfolgt über die unveränderliche Kennung des Verzeichnisses (etwa `objectGUID` oder die SCIM-`externalId`), niemals über den Gruppennamen. Andernfalls ist jede Umbenennung ein Totalschaden: Alte Gruppen laufen leer, neue entstehen, Grants zeigen ins Leere, und die Verwaisungsregel greift auf jedes Asset, dessen Eigentümer eine solche Gruppe war.
+- **Plausibilitätsschwelle mit Abbruch.** Übersteigt ein Lauf einen konfigurierbaren Anteil geänderter Mitgliedschaften, wird er **abgebrochen und gemeldet**, statt durchgeführt. Der klassische Auslöser ist kein Personalereignis, sondern ein Konfigurations- oder Zertifikatswechsel, nach dem das Verzeichnis leere Gruppen liefert.
+- **Trockenlauf mit Differenzbericht.** Vor dem ersten Lauf und vor jeder Konfigurationsänderung lässt sich der Lauf ohne Wirkung ausführen; der Bericht zeigt, welche Rechte sich ändern würden.
+- **Verhalten bei nicht erreichbarem Verzeichnis: last-known-good.** Der letzte bekannte Stand bleibt in Kraft, es werden **keine** Rechte entzogen, und der Zustand wird gemeldet. Ein Entzug aufgrund fehlender Information wäre der schlechtere Fehler: Er legt die Arbeit still, ohne die Sicherheit zu erhöhen.
+- **Eine Protokollzeile je bewirkter Rechteänderung**, nicht je Lauf. Ohne sie ist im Nachhinein nicht feststellbar, warum jemand ab einem bestimmten Tag etwas nicht mehr sehen konnte.
+
+### Reorganisation, Umbenennung, Zusammenlegung
+
+In einer Behörde findet alle paar Jahre eine Reorganisation statt. Umbenennung und Zusammenlegung sind dabei die häufigeren Fälle, nicht die Auflösung.
+
+- **Umbenennung** ist folgenlos, weil über die stabile Kennung abgeglichen wird.
+- **Zusammenlegung und Neuschnitt:** Verschwindet eine Einheit aus dem Verzeichnis, werden ihre Gruppen als **aufgelöst** markiert. Bestehende Grants an sie bleiben bestehen und wirken für die verbliebenen Mitglieder weiter, können aber nicht erweitert werden. Assets, deren Eigentümerin eine aufgelöste Einheit war, gehen in den Zustand **„Nachfolge offen"** — derselbe Mechanismus wie beim Ausscheiden einer Person (siehe [Eigentümerschaft und Verwaisung](#eigentümerschaft-und-verwaisung)).
+- Der System-Admin erhält einen **Reorganisationsbericht**: welche Einheiten weggefallen sind, welche Assets und Grants betroffen sind, wer die Nachfolge übernehmen muss.
+
+Ohne diese Behandlung liegt nach der ersten Reorganisation ein erheblicher Teil des Assetbestands ohne Zuständigkeit da, während die Fachbereiche weiterarbeiten wollen — der teuerste denkbare Betriebsvorfall in diesem Modell.
+
+---
+
 ## Spaces
 
 ### Was ein Space ist
@@ -296,9 +336,9 @@ Mitgliedschaft und Assetzugriff sind entkoppelt; deshalb braucht der Space eine 
 
 | Rolle | Darf |
 |---|---|
-| `MEMBER` | Space betreten; Chats anlegen und führen; **alle** Chats und Artefakte des Space lesen; kuratierte Assets sehen — gefiltert auf den eigenen Zugriff |
+| `MEMBER` | Space betreten; Chats anlegen und führen; **alle abgelegten** Chats und Artefakte des Space lesen; kuratierte Assets sehen — gefiltert auf den eigenen Zugriff |
 | `CURATOR` | zusätzlich Assets assoziieren und lösen, Inhalte ordnen |
-| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, Chats und Artefakte moderieren und löschen |
+| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, abgelegte Inhalte **zurückziehen** (nicht löschen) |
 
 Dazu trägt jeder Space eine `ownerId` als **Attribut** — den fachlich Verantwortlichen, der im Verzeichnis ausgewiesen wird. Einen Space löschen oder die Verantwortung übertragen darf nur der Verantwortliche selbst oder ein System-Admin.
 
@@ -306,13 +346,19 @@ Warum drei statt der bisherigen vier Rollen:
 
 - `VIEWER` und `EDITOR` implizierten Zugriff auf Dokumente. Genau diesen Fehlschluss soll das neue Modell vermeiden; die Umbenennung ist semantisch notwendig.
 - `OWNER` als eigener Rang trug sein Gewicht daraus, dass eine Workspace-Löschung alle Dokumente vernichtete. Das ist nicht mehr so — Dokumente liegen in Bibliotheken, die anderen gehören. Der Schutz bleibt über das `ownerId`-Attribut erhalten, ohne vierte Rangstufe.
-- `ADMIN` gewinnt dagegen an Gewicht, weil Policy-Obergrenze und Mitgliederverwaltung an ihm hängen — und Mitgliederverwaltung ist in gemischten Spaces folgenreich (siehe [Das Ableitungsleck](#das-ableitungsleck)).
+- `ADMIN` gewinnt dagegen an Gewicht, weil Policy-Obergrenze und Mitgliederverwaltung an ihm hängen.
+
+**Grenze der Admin-Rechte:** Ein Space-Admin kann abgelegte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann Entwürfe anderer Mitglieder **nicht sehen** — auch nicht als Admin.
 
 ### Assets in einen Space assoziieren
 
 Ein Kurator kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
+
+**Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Ablegen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
+
+**Selbstschutz des Eigentümers.** Ein Bibliotheks-Eigentümer kann für seine Bibliothek festlegen, dass sie **nur in Strikt-Spaces** assoziiert werden darf. Damit liegt das Werkzeug gegen das Ableitungsleck nicht nur in fremder Hand: Wer einen besonders geschützten Bestand verantwortet, kann dessen Verbreitung selbst begrenzen, statt auf die Sorgfalt fremder Kuratoren angewiesen zu sein.
 
 **Folge für die Oberfläche:** Zwei Mitglieder desselben Space sehen unterschiedlich viele Assets. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler und muss in der Oberfläche einmal deutlich benannt werden.
 
@@ -342,38 +388,64 @@ Voraussetzung ist eine **benannte pflegende Stelle**. Deshalb ist der Eigentüme
 
 ## Space-eigene Inhalte: Chats und Artefakte
 
+### Die Grundregel: entstehen als Entwurf, sichtbar durch Ablegen
+
+Für **alle** space-eigenen Inhalte — Chats, Artefakte und alles, was später hinzukommt — gilt eine einzige Regel:
+
+> **Was du erzeugst, gehört zunächst dir. Sichtbar für den Space wird es, wenn du es dort ablegst.**
+
+Das ist die vertrauteste Regel der Verwaltung überhaupt: Was zur Akte gegeben wird, sehen alle. Was auf dem Schreibtisch liegt, nicht. Es gibt keinen Sonderweg, keine von der Herkunft abhängige Ausnahme und keinen Modus, den man sich merken müsste.
+
+| Status | Sichtbar für |
+|---|---|
+| `DRAFT` | nur den Ersteller |
+| `PLACED` | alle Mitglieder des Space |
+| `SUPERSEDED` | alle Mitglieder, als überholt gekennzeichnet |
+| `WITHDRAWN` | niemand außer Ersteller und Space-Admin, bleibt nachweisbar |
+
+Das Ablegen ist **eine bewusste, protokollierte Handlung** des Erstellers. Es ist die Stelle, an der er die Verantwortung für die Weitergabe übernimmt — und die einzige Stelle, an der Inhalte aus seinem Arbeitsbereich in den Leserkreis des Space übergehen.
+
+**Was diese Regel kostet, ausdrücklich benannt:** Sie tauscht automatische gegen freiwillige Transparenz. Ein Chat, den niemand ablegt, ist für die Organisation nicht vorhanden, und es gibt keine Garantie, dass Wertvolles abgelegt wird. Die Gegenrechnung: Automatische Sichtbarkeit erzeugt Ausweichverhalten — gearbeitet wird dann im persönlichen Space oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Die freiwillige Variante dürfte am Ende mehr sichtbar machen als die erzwungene, aber das ist eine Annahme über Verhalten und keine Gewissheit. Das Ablegen muss deshalb **ein Klick** sein und darf nie hinter einem Menü liegen.
+
 ### Chats
 
-Ein Chat ist ein **persistentes Objekt im Space**, kein flüchtiger Kontext. Ein Space enthält n Chats. Alle Space-Mitglieder sehen alle Chats des Space — der Space ist ein gemeinsamer Arbeitsraum, und Transparenz im Team ist gewollt.
+Ein Chat ist ein **persistentes Objekt im Space**, kein flüchtiger Kontext. Ein Space enthält n Chats.
 
-Diese Regel gilt **ohne Ausnahme**, auch im referatsübergreifenden Projekt-Space: Es gibt keine private Markierung und keinen Ausnahmemechanismus für einzelne Chats. Die Regel ist bewusst einfach gehalten, weil jede Ausnahme die Vorhersagbarkeit zerstört: Sobald es private Chats gäbe, müsste jeder Nutzer bei jeder Nachricht prüfen, in welchem Modus er gerade ist. Wer Vertrauliches bespricht, wählt einen anderen Space — das ist die einzige Regel, die man sich merken muss.
+Ein Chat entsteht als `DRAFT` und ist ausschließlich für seinen Autor sichtbar. Erst wenn der Autor ihn im Space ablegt, sehen ihn alle Mitglieder. Damit existiert der Denkraum vor der Ablage: die unfertige Einschätzung, die schwierige Personalsache, die dreimal gestellte Rückfrage, bei der man unsicher ist — all das findet statt, ohne dass jemand mitliest, und niemand muss dafür den Space wechseln oder auf E-Mail ausweichen.
 
-**Konsequenz für die Nutzerführung.** Weil die Regel nicht am einzelnen Chat, sondern am Space hängt, muss der Space als Ort jederzeit präsent sein. Verbindlich:
+**Konsequenz für die Nutzerführung.** Verbindlich:
 
-- Der Chat zeigt dauerhaft, **in welchem Space** er läuft und **wer mitliest** — nicht in einem Untermenü, sondern im Kopfbereich, mit Zugriff auf die Mitgliederliste.
-- Beim Anlegen eines Chats in einem Space mit vielen oder referatsfremden Mitgliedern wird der Leserkreis **vor** der ersten Nachricht benannt.
+- Der Chat zeigt dauerhaft seinen Status und, sobald abgelegt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
+- Beim Ablegen wird der Leserkreis benannt, **bevor** die Ablage wirksam wird.
+- Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Ablagedialog** — ohne Anzahlen und ohne Namen der Bibliotheken zu nennen. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
 - Der Wechsel des Space ist eine sichtbare Handlung, nie eine stillschweigende Voreinstellung.
-- Der persönliche Space ist als der Ort erkennbar, an dem niemand mitliest.
+- Der Autor kann einen abgelegten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
 
 Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich; ist er es nicht, bestimmt ihn der Space.
 
-Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden. So steht das Modell einer späteren Ausbaustufe nicht im Weg.
+Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
+
+#### Chats sind vor fremder Löschung geschützt
+
+Für Chats gilt dasselbe wie für Assets: **Zurückziehen statt Löschen.** Ein Space-Admin kann einen abgelegten Chat aus dem Space entfernen — er kann ihn nicht beseitigen. Der Chat bleibt für seinen Autor und im Nachweis erhalten, die Entfernung wird mit Grund protokolliert.
+
+Der Grund ist derselbe wie bei Assets: Ein Chat kann eine fachliche Einschätzung dokumentieren, auf die sich später jemand beruft. Es wäre nicht vertretbar, für Assets „Rückruf durch Deaktivieren, nie durch Löschen" zu fordern und die Arbeitsspuren der Beschäftigten schlechter zu stellen.
+
+Der Autor kann seinen Chat jederzeit exportieren.
 
 ### Artefakte
 
-In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Diese **Artefakte** sind ebenfalls space-eigene Inhalte und für alle Space-Mitglieder sichtbar.
+In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Für sie gilt **dieselbe** Regel wie für Chats — sie entstehen als Entwurf beim Ersteller und werden durch Ablegen space-sichtbar. Kein Sonderweg, keine Abhängigkeit von der Herkunft der Daten.
 
 Die Objektklasse ist bewusst allgemein gehalten, damit weitere Ergebnistypen ohne Modelländerung hinzukommen können.
 
 #### Lebenszyklus
 
-Ohne Ordnung liegt in einem Projekt-Space nach kurzer Zeit ein unsortierter Haufen. Deshalb gilt:
-
 - **Zuordnung:** Jedes Artefakt kennt den Chat, aus dem es entstanden ist, und seinen Erzeugungszeitpunkt.
-- **Versionierung:** Ein neues Artefakt kann ein bestehendes ersetzen. Das ersetzte wird als überholt markiert, bleibt aber auffindbar.
-- **Status:** `DRAFT` (nur für den Ersteller) → `ACTIVE` → `SUPERSEDED` oder `DELETED`.
-- **Löschen:** durch Ersteller und Space-Admin, protokolliert.
-- **Aufbewahrung:** Je Space konfigurierbare Regel, damit Projekt-Spaces nicht unbegrenzt wachsen.
+- **Versionierung:** Ein neues Artefakt kann ein bestehendes ersetzen. Das ersetzte wird `SUPERSEDED`, bleibt aber auffindbar.
+- **Herkunftskennzeichnung:** Jedes Artefakt zeigt, aus welchen Bibliotheken es abgeleitet wurde, und ist auf seinen Ursprungs-Chat rückführbar.
+- **Zurückziehen:** durch Ersteller und Space-Admin, mit Grund protokolliert — kein Löschen.
+- **Aufbewahrung:** Je Space konfigurierbare Frist, damit Projekt-Spaces nicht unbegrenzt wachsen. Entwürfe unterliegen ihr ebenso.
 - **Übergang ins Wissen:** Ein Artefakt kann in eine Wissensbibliothek übernommen werden und wird dabei zu einem Dokument. **Ab dann gelten die Rechte der Bibliothek, nicht mehr die des Space.** Das ist der Rückweg aus der space-eigenen in die assoziierte Welt und der einzige Weg, auf dem ein Ergebnis dauerhaft und rechtegeführt wird.
 
 ### Warum Chats und Artefakte keine Assets sind
@@ -410,6 +482,8 @@ In beiden Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers
 
 Der Space **verengt** den ungebundenen Chat, **verengt aber nicht den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos.
 
+**Der persönliche Space ist die Ausnahme von der Verengung:** Dort ist der Suchbereich **alles, was der Nutzer lesen darf** — es gibt in einem Ein-Personen-Raum nichts zu kuratieren. Damit steht der persönliche Space fachlich nie schlechter da als ein Team-Space, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
+
 Ein Space, in dem der Nutzer auf keine assoziierte Bibliothek Zugriff hat, ist ein **zulässiger Zustand, kein Fehler**: Der Suchbereich ist leer, und im Zitierzwang-Modus verweigert das System folgerichtig die Antwort. Die Meldung darf dabei **keine Anzahlen nennen**. Zulässig: „In diesem Space ist für dich derzeit kein Wissen verfügbar." Unzulässig: „3 von 4 Bibliotheken sind für dich gesperrt."
 
 ### Einen Agenten weitergeben: die Freigabekette
@@ -434,6 +508,14 @@ Kein neuer Mechanismus, sondern die vorhandene Rechtevergabe an der richtigen St
 **Bewusst in Kauf genommene Konsequenz:** Der Empfänger bekommt damit auch **Lesezugriff auf das Rohmaterial**, nicht nur auf die Antworten des Agenten. Das ist beabsichtigt — es ist der ehrliche Weg, weil der Empfänger die Antworten ohnehin fachlich verantworten muss und dafür die Quelle prüfen können soll. Der Bibliotheks-Eigentümer entscheidet in Schritt 4 in voller Kenntnis dieser Wirkung.
 
 Eine Teilablehnung blockiert die Weitergabe nicht. Der Agent wird geteilt und arbeitet mit dem, was freigegeben wurde; Empfänger und Absender sehen, welcher Teil fehlt.
+
+**Nicht-Reaktion ist der Regelfall, nicht die Ablehnung** — Urlaub, unklare Zuständigkeit, Postfach ohne Betreuung. Ohne Behandlung hinge ein Agent dauerhaft unvollständig, ohne dass jemand weiß, woran es liegt. Deshalb:
+
+- Jede Anfrage hat eine **Frist**. Läuft sie ab, wird sie an den Kurator der Organisationseinheit des Bibliotheks-Eigentümers eskaliert, von dort nach oben.
+- Der Zustand ist für beide Seiten **jederzeit sichtbar**: „wartet seit 6 Tagen auf Referat 34".
+- **Der Empfänger sieht am Agenten selbst**, dass eine Wissensquelle fehlt — nicht erst an schlechteren Antworten. Sonst hält er den Agenten für untauglich, statt zu erkennen, dass eine Freigabe aussteht.
+
+**Ehrlich zu benennen ist der Preis dieser Kette:** Wer einen Agenten annimmt, erhält Lesezugriff auf das *gesamte* Rohmaterial der beteiligten Bibliotheken, nicht nur auf das, was der Agent tatsächlich verwendet. Ein Eigentümer, der seinen Bestand nicht öffnen will, wird ablehnen — und der Agent ist dann nicht teilbar. Diese Folge muss dem Eigentümer **im Moment seiner Entscheidung** angezeigt werden, und sie darf beim Bewerben des Produkts nicht verschwiegen werden: Geteilte Agenten funktionieren garantiert nur dort, wo die Kette vollständig durchläuft.
 
 ### Ein Agent liest immer mit den Rechten des Nutzers
 
@@ -461,65 +543,65 @@ Der Ausschluss einzelner Konnektor-Dokumente bleibt inhaltlich unverändert, wan
 
 ## Das Ableitungsleck
 
-Dies ist der schwierigste Punkt des Modells. Chats und Artefakte sind zwei Ausprägungen **desselben** Problems und werden deshalb hier gemeinsam behandelt.
+Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigenes Objekt mit **weiterem** Leserkreis. Dabei wechselt der Rechteanker: von der Asset-Rechteliste zur Space-Mitgliedschaft. Der Zitierzwang verschärft das, weil wörtliche Passagen dauerhaft im Verlauf stehen.
 
-### Das Problem
+### Warum das Problem klein geworden ist
 
-Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigenes Objekt mit **weiterem** Leserkreis. Dabei wechselt der Rechteanker: von der Asset-Rechteliste zur Space-Mitgliedschaft. Jedes im Space entstehende Objekt ist damit ein potenzieller Kanal — die Antwort im Chat, das Zitat im Verlauf, die Zahl in der Excel-Auswertung.
+Mit der Ablage-Regel (siehe [Space-eigene Inhalte](#die-grundregel-entstehen-als-entwurf-sichtbar-durch-ablegen)) ist der Übergang **kein automatischer Vorgang mehr, sondern eine Handlung**. Nichts fließt in den Leserkreis des Space, ohne dass ein Mensch es dorthin legt — und dieser Mensch ist immer jemand, der die Inhalte selbst lesen durfte.
 
-Der Zitierzwang verschärft das: Er ist ein Kernversprechen von OPAA und sorgt dafür, dass wörtliche Passagen dauerhaft im Verlauf stehen.
+Das entspricht dem Verwaltungshandeln: Wer etwas lesen darf, darf es seinen Kollegen berichten und verantwortet das. Neu ist nur, dass die Weitergabe sichtbar, zurechenbar und protokolliert ist statt beiläufig.
 
-**Der Preis dieser Modellentscheidung, in einem Satz:**
+**Wichtig — das Leck ist damit nicht verschwunden, sondern in einen verantworteten Akt überführt.** Ein abgelegter Chat kann weiterhin Passagen enthalten, die andere Space-Mitglieder nie hätten öffnen dürfen. Der Unterschied ist, dass es jetzt eine Person gibt, die diese Entscheidung getroffen hat, und einen Zeitpunkt, an dem sie getroffen wurde.
 
-> In einem Space, in dem Bibliotheken mit engerem Leserkreis genutzt werden, wird die Space-Mitgliedschaft faktisch zum effektiven Leserkreis für alles, was dort entsteht. Jemanden einem solchen Space hinzuzufügen ist so folgenreich, wie ihm Leserechte an diesen Bibliotheken zu geben — nur sieht es nicht so aus.
+### Was daraufhin entfallen ist
 
-Das ist eine bewusste Entscheidung zugunsten der Zusammenarbeit, keine Fehlfunktion. Sie muss aber bekannt sein, weil sonst die Mitgliederverwaltung gemischter Spaces unterschätzt wird.
+Drei Mechanismen aus einem früheren Entwurf sind ersatzlos gestrichen, weil sie den Kanal an einer Stelle absichern sollten, an der er sich gar nicht mehr öffnet:
 
-### Warum Zitat-Redaktion das Problem nicht löst
+| Entfallen | Grund |
+|---|---|
+| **Bestätigungspflicht des Kurators bei gemischter Assoziation** | Die Assoziation setzt niemanden mehr etwas aus. Sie stellt eine Bibliothek bereit; sichtbar wird ein Ergebnis erst durch das Ablegen |
+| **Dauerhafte Kennzeichnung gemischter Spaces** | In einer realen Behörde fallen Leserkreise praktisch nie exakt zusammen — ein Teilzeitbeschäftigter, eine externe Kraft, ein Abgeordneter genügt. Damit wäre so gut wie *jeder* Space gekennzeichnet, und ein Warnzeichen, das an allem klebt, informiert über nichts |
+| **Herkunftsabhängiger Sonderweg bei Artefakten** | Ein Ergebnis war mal sofort sichtbar und mal nicht, ohne dass der Ersteller den Unterschied erklären konnte. Jetzt gilt für alles dieselbe Regel |
 
-Naheliegend wäre, Zitate beim Lesen gegen die Rechte des Lesenden zu prüfen und zu maskieren. Das ist **unvollständig, nicht bloß aufwendig**:
+Was **bleibt**, ist das Billige und Wirksame:
+
+1. **Herkunftsverfolgung.** Jeder Chat und jedes Artefakt führt mit, aus welchen Bibliotheken tatsächlich Treffer stammten — Grundlage für den Hinweis im Ablagedialog, für den Nachweis und für die Kennzeichnung am Artefakt.
+2. **Hinweis im Ablagedialog**, wenn der Inhalt aus Bibliotheken stammt, die nicht alle Mitglieder lesen dürfen — ohne Anzahlen, ohne Namen, und ohne zusätzlichen Dialog: die Information steht dort, wo die Entscheidung ohnehin fällt.
+3. **Zitat-Sprungmarken bleiben rechtegeprüft.** Der Sprung in das Quelldokument wird beim Klick gegen die Rechte des Lesenden geprüft und gegebenenfalls verweigert. Das verhindert das Weiterhangeln vom Zitat in den vollen Bestand.
+4. **Benachrichtigung des Bibliotheks-Eigentümers**, wenn seine Bibliothek in einem Space bereitgestellt wird, dessen Mitglieder nicht sämtlich Lesezugriff haben (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)).
+
+### Warum Zitat-Redaktion weiterhin nicht gebaut wird
+
+Naheliegend wäre, Zitate beim Lesen gegen die Rechte des Lesenden zu maskieren. Das ist **unvollständig, nicht bloß aufwendig**:
 
 1. **Der Antworttext bleibt.** Der eigentliche Kanal ist nicht das wörtliche Zitat, sondern die Aussage, die das Modell daraus gebildet hat. Maskiert man nur das Zitat, bleibt die Information erhalten — nur schlechter belegt. Maskiert man auch die Aussage, bleibt vom Chat nichts übrig.
-2. **Sie zerstört die Transparenz, für die der gemeinsame Raum da ist.** Jeder sähe einen anderen Verlauf.
-3. **Sie verlagert die Prüfung auf jeden Lesevorgang** statt auf den Entstehungsvorgang — teurer und fehleranfälliger.
+2. **Sie zerstört den gemeinsamen Arbeitsraum.** Jeder sähe einen anderen Verlauf.
+3. **Sie verlagert die Prüfung auf jeden Lesevorgang** statt auf den einen Entstehungsvorgang.
 
-Davon zu unterscheiden sind **Zitat-Sprungmarken**: Der Sprung in das Quelldokument wird beim Klick gegen die Rechte des Lesenden geprüft und gegebenenfalls verweigert. Das ist billig und sinnvoll und bleibt bestehen — es verhindert, dass sich jemand von einem Zitat in den vollen Bestand weiterhangelt. Das Substanzleck löst es nicht.
+### Der Strikt-Modus
 
-**Schlussfolgerung:** Die Lösung liegt **vor** der Entstehung, nicht beim Lesen — nicht Redaktion, sondern Abgleich der Leserkreise plus Rechenschaft.
+Für die wenigen Räume, in denen eine technische Zusicherung gebraucht wird statt einer verantworteten Handlung, gibt es den **Strikt-Modus je Space**. Er ist standardmäßig aus und wird vom System-Admin oder vom Space-Verantwortlichen gesetzt — empfohlen für Räume wie Rechnungsprüfung, Revision oder Personal.
 
-### Lösung für Chats
+In einem Strikt-Space gilt:
 
-Ein Chat entsteht nicht in einem Moment, sondern wächst; seine Herkunft ergibt sich erst im Verlauf. Ein Umschlagen der Sichtbarkeit mitten im Gespräch wäre unbrauchbar. Deshalb wirkt die Steuerung früher:
+- Es dürfen nur Bibliotheken assoziiert werden, deren Leserkreis **alle** Space-Mitglieder umfasst.
+- **Ein Agent, dessen gebundene Bibliotheken nicht sämtlich zu dieser Menge gehören, kann in diesem Space nicht aufgerufen werden.**
 
-1. **Leserkreis-Abgleich bei der Assoziation.** Assoziiert ein Kurator eine Bibliothek in einen Space, dessen Mitglieder nicht sämtlich Lesezugriff auf sie haben, wird die Assoziation als **gemischt** gekennzeichnet, und der Kurator bestätigt einmal: *„Antworten aus dieser Bibliothek werden für alle Space-Mitglieder sichtbar, auch für die, die sie selbst nicht öffnen dürfen."* Das ist der Moment, in dem der Kanal geöffnet wird — hier gehört die Entscheidung hin.
-2. **Kennzeichnung.** Ein Space mit mindestens einer gemischten Assoziation trägt eine sichtbare Markierung, ebenso jeder Chat, der aus einer solchen Bibliothek Treffer verwendet hat.
-3. **Herkunftsverfolgung.** Jeder Chat führt mit, aus welchen Bibliotheken tatsächlich Treffer stammten. Grundlage für Kennzeichnung, Audit und spätere Rückfragen.
-4. **Strikt-Modus je Space (optional).** Es dürfen nur Bibliotheken assoziiert und genutzt werden, deren Leserkreis alle Space-Mitglieder umfasst. Ein solcher Space ist garantiert leckfrei. Standardmäßig aus; empfohlen für Räume wie „Rechnungsprüfung" oder „Personal" und durch den System-Admin vorgebbar.
-5. **Zitat-Sprungmarken bleiben rechtegeprüft.**
+Der zweite Punkt schließt eine Lücke, die eine frühere Fassung offen ließ: Der Space verengt den Suchbereich eines Agenten nicht (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)), weil ein geprüftes Agenten-Release sonst nicht mehr reproduzierbar wäre. Ein Agent könnte damit im Strikt-Space aus einer engen, dort nicht assoziierten Bibliothek liefern.
 
-Damit bleibt die Zusage erhalten, dass alle Mitglieder alle Chats sehen — und die Entscheidung über den Kanal fällt bei der Kuratierung, durch einen Menschen, protokolliert.
+Die Auflösung ist **weder den Agenten zu verengen noch die Zusicherung zurückzunehmen, sondern den Aufruf zu verweigern**: Der Agent läuft entweder mit seiner vollständigen, reproduzierbaren Bindung oder gar nicht. Die Reproduzierbarkeit bleibt unangetastet, weil sein Suchbereich nie stillschweigend verkleinert wird — er wird nur an einem Ort nicht zugelassen. Der Nutzer erhält einen klaren Hinweis, dass dieser Agent in diesem Raum nicht verwendet werden darf.
 
-### Lösung für Artefakte
+### Wenn die Voraussetzung eines Strikt-Space nachträglich bricht
 
-Für Artefakte trägt Redaktion **prinzipiell** nicht: Ein Diagramm oder eine Tabelle ist abgeleitetes Material ohne Quellenstruktur. Es gibt keine markierten Stellen zum Ausblenden, und eine teilredigierte Tabelle ist wertlos. Deshalb greift hier eine andere Lösung.
+Die Bedingung „alle Mitglieder dürfen alles lesen" hängt an Größen, die sich außerhalb des Space ändern: eine Verzeichnissynchronisation entfernt jemanden aus einer Gruppe, ein Bibliotheks-Eigentümer nimmt einen Grant zurück, eine Freigabe-Obergrenze wird gesenkt.
 
-Geprüfte Richtungen:
+Das System löst dann **weder Assoziationen automatisch** (das entzöge einem ganzen Team sein Wissen, weil eine Person versetzt wurde) **noch entfernt es Mitglieder** (das koppelte eine Rechteänderung an einer Bibliothek an die Mitgliedschaft in einem Arbeitsraum). Stattdessen geht der Space in den Zustand **„Voraussetzung verletzt"**:
 
-| Richtung | Bewertung |
-|---|---|
-| Sichtbarkeit folgt der Schnittmenge der Quell-Leserkreise | **Verworfen.** Ein Artefakt aus drei Bibliotheken wäre oft für niemanden außer dem Ersteller sichtbar, und die Sichtbarkeit änderte sich rückwirkend bei jeder Rechteänderung |
-| Erzeugung nur aus Quellen erlaubt, die alle Mitglieder sehen dürfen | **Verworfen als Pflicht** — macht Artefakterzeugung in gemischten Spaces unbrauchbar. Bleibt als Strikt-Modus sinnvoll |
-| Erzeugung gilt als bewusster Freigabeakt, protokolliert | **Trägt** — entspricht dem Verwaltungshandeln: Wer lesen durfte, darf berichten und verantwortet es |
-| Herkunftskennzeichnung am Artefakt | **Trägt als Ergänzung**, nicht allein — Kennzeichnung ohne Entscheidungsmoment bleibt folgenlos |
+- Bestehende Inhalte bleiben unangetastet und lesbar.
+- **Neue Ablagen und Agentenaufrufe sind gesperrt**, bis der Zustand behoben ist.
+- Space-Verantwortlicher und die Eigentümer der betroffenen Bibliotheken werden benachrichtigt; der Vorgang steht im Protokoll.
 
-**Gewählte Lösung — bewusster Freigabeakt mit Herkunftskennzeichnung, aber mit gezielter statt pauschaler Reibung:**
-
-- Stammt das Artefakt **ausschließlich** aus Bibliotheken, die alle Space-Mitglieder lesen dürfen, wird es ohne Rückfrage space-sichtbar. Das ist der Normalfall und darf keine Klickstrecke auslösen.
-- Ist **mindestens eine** Quelle enger als der Space, entsteht das Artefakt zunächst **nur für den Ersteller sichtbar**, mit der Aktion „für den Space freigeben". Erst diese Freigabe macht es sichtbar; sie wird mit Herkunft, Zeitpunkt und Person protokolliert.
-- Jedes Artefakt trägt eine sichtbare **Herkunftskennzeichnung** und ist auf seinen Ursprungs-Chat rückführbar.
-- Ersteller und Eigentümer jeder beteiligten Bibliothek können ein freigegebenes Artefakt nachträglich wieder einschränken.
-
-Warum nicht einfach ein Bestätigungsdialog bei jeder Erzeugung: Reibung, die immer auftritt, wird binnen einer Woche blind weggeklickt und schützt dann nichts mehr. Sie wirkt nur, wenn sie selten und begründet ist. Der kritische Fall ist technisch erkennbar, weil die Herkunft ohnehin geführt wird.
+Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund.
 
 ---
 
@@ -562,8 +644,8 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | **Asset / Katalog** | **Umformuliert:** Der Nutzer sieht nur Assets, auf die er Zugriff hat, oder die bewusst zur Auffindbarkeit veröffentlicht wurden |
 | **Space-Ansicht** | Nur zugängliche Assets; Meldungen nennen keine Anzahlen |
 | **Agent** | **Unverändert.** Ein Agent liest immer mit den Rechten des Nutzers; es gibt keinen Umgehungsweg |
-| **Chat im Space** | **Gilt nicht.** Bewusst geöffneter Kanal — die Entscheidung fällt bei der Assoziation und wird protokolliert |
-| **Artefakt im Space** | **Gilt eingeschränkt.** Bei gemischter Herkunft erst nach ausdrücklicher Freigabe sichtbar |
+| **Entwurf** | **Unverändert.** Ein nicht abgelegter Chat oder ein nicht abgelegtes Artefakt ist ausschließlich für seinen Ersteller sichtbar — auch für Space-Admins und System-Admins nicht |
+| **Abgelegter Inhalt** | **Gilt nicht — und das ist eine bewusste Handlung.** Wer ablegt, gibt weiter, was er selbst lesen durfte, und verantwortet das. Der Vorgang wird protokolliert |
 
 ---
 
@@ -584,39 +666,77 @@ Günstige Ausgangslage: Dokumente tragen heute **keine** Workspace-Zuordnung, un
 
 ## Mitbestimmung und Personalvertretung
 
-Zwei Eigenschaften dieses Modells berühren in einer deutschen Behörde das Personalvertretungsrecht — nicht am Rande, sondern als **Einführungshindernis**: Ohne Dienstvereinbarung beginnt kein Rollout, und der Personalrat wird genau diese Punkte ansprechen.
+In einer deutschen Behörde ist die Mitbestimmung ein **Einführungshindernis, kein Randthema**: Ohne Dienstvereinbarung beginnt kein Rollout. Das Produkt hat deshalb die Aufgabe, die Dienstvereinbarung zu einer Konfigurationsaufgabe zu machen statt zu einem Projektrisiko.
 
-1. **Alle Space-Mitglieder sehen alle Chats.** Damit ist für jeden Beschäftigten nachvollziehbar, wer im Space womit gearbeitet hat, wie oft und mit welchem Ergebnis.
-2. **Nutzungstransparenz je Asset** („wer nutzt welches Asset wie oft"), die die Produktvision als Steuerungsinstrument für den KI-Rollout vorsieht.
+### Drei Datenquellen mit Personenbezug
+
+| Quelle | Was daraus ableitbar ist |
+|---|---|
+| **Abgelegte Chats und Artefakte** | wer im Space womit gearbeitet hat |
+| **Nutzungsstatistik je Asset** | wer welches Asset wie oft nutzt — von der Produktvision als Steuerungsinstrument gewollt |
+| **Audit-Log** | **die eigentliche Quelle** — ein zeitgestempelter Tätigkeitsnachweis, der unabhängig von jeder Statistikfunktion anfällt |
 
 Beides zusammen ist geeignet, Verhalten und Leistung von Beschäftigten abzubilden. Damit liegt der Mitbestimmungstatbestand der Einführung und Anwendung technischer Einrichtungen nahe, die zur Überwachung von Verhalten oder Leistung **bestimmt oder geeignet** sind (BPersVG und die entsprechenden Landespersonalvertretungsgesetze). Das ist eine Einschätzung aus Produktsicht und keine Rechtsberatung; die Bewertung obliegt der einführenden Stelle.
 
-Hinzu kommt als dritte Datenquelle das revisionssichere **Audit-Log**, das für die C5-Fähigkeit ohnehin gebraucht wird.
+**Die dritte Quelle ist die entscheidende, und sie wurde zunächst unterschätzt.** Eine abschaltbare Nutzungsstatistik schützt nicht, wenn das Audit-Log denselben Sachverhalt ohnehin erhebt: Wer wann wie oft gearbeitet hat, in welchem Sachgebiet und von welcher Netzadresse aus, ergibt sich unmittelbar aus den Protokollsätzen. Die Abschaltbarkeit betrifft dann nur die bequeme Auswertung, nicht die Erhebung — und was heute abgeschaltet ist, ist morgen eingeschaltet, mit rückwirkend auswertbaren Daten von gestern.
+
+### Kein personenbezogener Auswertungspfad
+
+Deshalb die schärfste Festlegung dieses Kapitels:
+
+> **Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Herkunftsdaten nach Person filtert, gruppiert oder sortiert. Diese Funktion ist nicht abschaltbar vorhanden — sie existiert nicht.**
+
+Eine Funktion, die es nicht gibt, kann niemand einschalten. Für eine Dienstvereinbarung ist das der Unterschied zwischen einer Zusage und einer Tatsache, und der Bau kostet weniger als das Nachrüsten der Kontrollen, die eine vorhandene Funktion sonst braucht.
+
+Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
+
+- **Selbstauskunft.** Jede Person kann ihre eigenen Daten einsehen und exportieren. Das ist keine Überwachung, sondern das Auskunftsrecht der betroffenen Person.
+- **Anlassbezogene Klärung** bei einem konkreten Sicherheitsvorfall — über den Audit-Pfad, mit dokumentiertem Anlass, im Vier-Augen-Prinzip unter Beteiligung der Personalvertretung und mit eigenem Protokolleintrag über den Zugriff. Ein Produkt ohne jede Möglichkeit, einen Vorfall aufzuklären, wäre nicht betreibbar; ein Produkt, in dem diese Aufklärung der Normalweg ist, wäre nicht zustimmungsfähig.
 
 ### Stellschrauben, die das Produkt anbietet
 
-Die Aufgabe des Produkts ist nicht, die Mitbestimmung zu umgehen, sondern der Behörde die Regelungsmöglichkeiten zu geben, die eine Dienstvereinbarung braucht:
-
 | Stellschraube | Ausprägung |
 |---|---|
-| **Aggregation statt Personenbezug** | Nutzungsstatistiken standardmäßig nur aggregiert je Organisationseinheit, mit Mindestgruppengröße; personenbezogene Auswertung nur, wenn ausdrücklich eingeschaltet |
-| **Keine Ranglisten** | Kein Vergleich einzelner Beschäftigter, keine Bestenlisten, keine Aktivitätsbewertung — auch nicht als Gamification |
-| **Abschaltbarkeit** | Nutzungsstatistiken je Asset und je Organisationseinheit vollständig deaktivierbar, ohne dass die Fachfunktion leidet |
-| **Aufbewahrungsfristen** | Chatverläufe und Artefakte mit konfigurierbarer, je Space-Art vorgebbarer Frist; automatische Löschung nach Ablauf |
-| **Getrennte Zugriffswege** | Auswertungen für die Revision sind nicht dieselben wie Auswertungen für die Dienststellenleitung; Audit-Zugriff ist selbst protokolliert |
-| **Zweckbindung dokumentiert** | Für jede erhobene Kennzahl ist dokumentiert, wofür sie da ist — Grundlage der Dienstvereinbarung |
-| **Auskunft für den Personalrat** | Export, welche personenbeziehbaren Daten erhoben werden, in welcher Granularität und wie lange sie liegen |
+| **Aggregation statt Personenbezug** | Nutzungsstatistiken nur je Organisationseinheit, mit Mindestgruppengröße; unterhalb der Schwelle wird der Wert **unterdrückt**, nicht angezeigt |
+| **Keine Ranglisten** | Kein Vergleich einzelner Beschäftigter, keine Bestenlisten, keine Aktivitätsbewertung — auch nicht als spielerisches Element |
+| **Abschaltbarkeit** | Nutzungsstatistiken je Asset und Organisationseinheit vollständig deaktivierbar, ohne dass die Fachfunktion leidet |
+| **Aufbewahrung mit Ober- und Untergrenze** | Für Chats, Artefakte, Herkunftsdaten **und das Audit-Log**: konfigurierbare Frist mit einer **Höchstdauer**, nicht nur einer Mindestdauer, und automatischer Löschung nach Ablauf |
+| **Datensparsamkeit im Protokollsatz** | Die Netzadresse ist **nicht Teil des Standardsatzes**. Sie ist ein Anwesenheitsmerkmal, weil sie Dienststelle von Homeoffice unterscheidet. Wird sie für Sicherheitszwecke benötigt, wird sie ausdrücklich eingeschaltet, begründet und aus Berichten und Exporten ausgeschlossen |
+| **Zweckbindung** | Für jede erhobene Angabe ist dokumentiert, wofür sie da ist — **auch für das Audit-Log und die Herkunftsverfolgung**, nicht nur für Kennzahlen |
+| **Abschließend geregelter Audit-Zugriff** | Benannter Personenkreis, dokumentierter Anlass, technisch durchgesetzte Trennung der Auswertungswege für Revision und Dienststellenleitung; der Audit-Zugriff ist selbst protokolliert |
+| **SIEM-Export ist keine Umgehung** | Was exportiert wird, unterliegt denselben Zweck- und Zugriffsregeln und derselben Datensparsamkeit; andernfalls verliert die Trennung ihren Sinn |
+| **Governance-Änderungen sind protokollpflichtig** | Jede Änderung an Aufbewahrung, Aggregation, Statistik oder Audit-Einstellungen wird protokolliert und angezeigt — sonst bleibt eine spätere Abweichung von der Dienstvereinbarung unbemerkt |
+| **Auskunft für die Personalvertretung** | Export, welche personenbeziehbaren Daten erhoben werden, in welcher Granularität und wie lange sie liegen — vor dem Rollout einmal vollständig vorlegbar |
 
-### Wirkung auf das Modell
+### Wirkung des Ablage-Modells
 
-Der Space-Zuschnitt ist auch aus dieser Sicht das entscheidende Werkzeug: Wer einen Chat in seinem persönlichen Space führt, arbeitet unbeobachtet; wer ihn in einem Team-Space führt, arbeitet sichtbar. Weil diese Wahl **bewusst, sichtbar und jederzeit erkennbar** ist (siehe [Chats](#chats)), ist sie auch gegenüber der Personalvertretung darstellbar — anders als eine Protokollierung, die im Hintergrund läuft.
+Die Ablage-Regel ist zugleich die wichtigste Antwort auf die häufigste Sorge der Beschäftigten. Weil ein Chat erst durch eine **Handlung seines Autors** sichtbar wird, entsteht Sichtbarkeit nicht mehr nebenbei:
+
+- Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, an der jemand unsicher ist, liegt im Entwurf und wird nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
+- Die Führungskraft, die in aller Regel Mitglied des Team-Space ist, sieht abgelegte Arbeitsergebnisse — nicht den Arbeitsweg dorthin.
+- Wer ablegt, tut es bewusst; das ist gegenüber der Personalvertretung darstellbar, anders als eine Sichtbarkeit, die im Hintergrund entsteht.
+
+### Der persönliche Space ist unbeobachtet
+
+Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
+
+- Inhalte des persönlichen Space und **alle Entwürfe** sind für System-Admins, Revision und Dienststellenleitung **nicht lesbar**. Ein System-Admin kann im Rahmen des Offboardings einen persönlichen Space deaktivieren; er kann ihn nicht einsehen.
+- Der persönliche Space steht fachlich **nicht schlechter** da als ein Team-Space: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ohne diese Zusage wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum faktisch.
+
+### Was das Produkt nicht regeln kann
+
+- **Freiwilligkeit.** Ob die Nutzung verpflichtend wird und ob Beschäftigten ein Nachteil entsteht, die den Assistenten nicht oder nur im persönlichen Space nutzen, entscheidet die Dienststelle. Das gehört in die Dienstvereinbarung.
+- **Die Höhe der Mindestgruppengröße.** In einem Referat mit vier Beschäftigten ist auch ein Aggregatwert personenbeziehbar, sobald zwei im Urlaub sind. Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze; die angemessene Zahl folgt aus dem tatsächlichen Zuschnitt der Einheiten.
+- **Die Aufnahme externer Personen** in Spaces mit abgelegten Inhalten ist aus Beschäftigtensicht die heikelste Konstellation — Externe erhalten Einblick in die Arbeitsergebnisse namentlich bekannter Beschäftigter. Das Produkt kennzeichnet externe Konten, verlangt bei der Aufnahme eine ausdrückliche Bestätigung und protokolliert sie. Ob der Vorgang mitbestimmungspflichtig ist, entscheidet die Dienststelle.
+- **Ob der Umfang des Protokollsatzes für eine C5-Prüfung erforderlich ist.** Sollte ein Feld zwingend sein, das hier als verzichtbar behandelt wird, ist das schriftlich zu begründen und das Feld aus Berichten und Exporten auszuschließen.
 
 ---
 
 ## Offene Punkte
 
-- Herkunft und Pflege von Gruppen aus dem Verzeichnisdienst (Synchronisation, Verschachtelung, Konfliktbehandlung) — das Rechtemodell steht, die Anbindung ist offen.
-- Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art.
+- Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art und für die Mindestgruppengröße bei Auswertungen.
+- Verschachtelte Gruppen im Verzeichnis (Gruppe als Mitglied einer Gruppe) — Auflösungsregel offen.
+- Ob und wie mitgelieferte Assets in ein Netz ohne Internetanbindung gelangen (Aktualisierungsweg, Signatur, Prüfung).
 - Freigabe- und Review-Workflow sowie Versionierung von Assets — bewusst außerhalb dieser Ausbaustufe.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
 - Verhalten bei Auflösung einer Organisationseinheit, die Eigentümerin von Assets ist.
