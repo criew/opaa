@@ -32,6 +32,8 @@ OPAA ist ein **quelloffenes RAG-System (Retrieval-Augmented Generation)** für O
 3. **Die vollständige Vision:** [VISION.md](docs/VISION.md) (15 Min.)
 4. **Tiefer in Features eintauchen:** Siehe [INDEX.md](docs/INDEX.md) für rollenbasierte Lesepfade
 
+**Selbst ausprobieren:** Eine öffentliche Test-/Demo-Instanz läuft unter [opaa.ewerlin.com](https://opaa.ewerlin.com) (Anmeldung über Keycloak erforderlich, kein anonymer Zugang). Details siehe [Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
+
 ## Dokumentation
 
 Vollständige Dokumentation in `docs/`:
