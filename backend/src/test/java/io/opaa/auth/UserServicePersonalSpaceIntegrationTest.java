@@ -1,0 +1,171 @@
+package io.opaa.auth;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import io.opaa.space.Space;
+import io.opaa.space.SpaceKind;
+import io.opaa.space.SpaceRepository;
+import io.opaa.space.SpaceService;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * Exercises {@link UserService#findOrCreateUser} against a real Postgres database with the real,
+ * versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none})
+ * - not against Hibernate-generated DDL, and not with a mocked transaction manager. This is
+ * deliberate: the regression this test guards against (follow-up to #265/#280) only manifests with
+ * real foreign-key constraints and real, separately committed transactions. Neither {@code
+ * SpaceServiceIntegrationTest} (Hibernate {@code ddl-auto=create-drop}; plain UUID columns like
+ * {@code Space.ownerId} get no foreign key at all under that regime) nor {@code SpaceServiceTest}
+ * (mocked {@link org.springframework.transaction.PlatformTransactionManager} - no real connection,
+ * no real propagation, no real visibility semantics) can exercise it.
+ *
+ * <p><b>The regression:</b> {@code SpaceService.ensurePersonalSpace} (#265) runs its insert in its
+ * own {@code REQUIRES_NEW} transaction, on its own connection with its own snapshot, so that a
+ * constraint violation there does not poison the caller's transaction. {@code
+ * UserService.findOrCreateUser} is itself {@code @Transactional} and - before this fix - called
+ * {@code ensurePersonalSpace} from inside that still-open transaction. The {@code users} row it had
+ * just inserted was not committed yet, so it was invisible on the {@code REQUIRES_NEW} connection,
+ * and the personal-space insert failed on {@code fk_spaces_owner} for every single first login (not
+ * just concurrent ones) - the whole outer transaction then rolled back, so not even the user was
+ * created. {@link #firstLoginCreatesUserAndPersonalSpaceWithoutError()} reproduces this with a
+ * single call and no concurrency at all. {@code UserService} now defers the {@code
+ * ensurePersonalSpace} call to a {@code TransactionSynchronization#afterCommit} callback,
+ * guaranteeing the user row is committed and visible by the time the personal space is created.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(UserServicePersonalSpaceIntegrationTest.PostgresTestConfiguration.class)
+@ActiveProfiles({"local", "basic"})
+@TestPropertySource(
+    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
+@Testcontainers(disabledWithoutDocker = true)
+class UserServicePersonalSpaceIntegrationTest {
+
+  @TestConfiguration(proxyBeanMethods = false)
+  static class PostgresTestConfiguration {
+    @Bean
+    @ServiceConnection
+    PostgreSQLContainer postgresContainer() {
+      return new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+    }
+  }
+
+  @Autowired private UserService userService;
+  @Autowired private SpaceService spaceService;
+  @Autowired private SpaceRepository spaceRepository;
+  @Autowired private UserRepository userRepository;
+
+  @BeforeEach
+  void cleanUp() {
+    spaceRepository.deleteAll();
+    userRepository.deleteAll();
+  }
+
+  @Test
+  void firstLoginCreatesUserAndPersonalSpaceWithoutError() {
+    String subject = UUID.randomUUID().toString();
+
+    // A single, non-concurrent call is enough to reproduce the regression - see the class
+    // Javadoc. Before the fix, this threw a fk_spaces_owner DataIntegrityViolationException and no
+    // user was created at all.
+    assertThatCode(
+            () -> userService.findOrCreateUser(subject, "test-issuer", "user@example.com", "Test"))
+        .doesNotThrowAnyException();
+
+    User user = userRepository.findBySubjectAndIssuer(subject, "test-issuer").orElseThrow();
+    List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(user.getId());
+    assertThat(spaces).hasSize(1);
+    assertThat(spaces.getFirst().getKind()).isEqualTo(SpaceKind.PERSONAL);
+  }
+
+  @Test
+  void concurrentFirstLoginsOfDifferentUsersEachGetExactlyOnePersonalSpace() throws Exception {
+    // Two real, independent first logins racing end-to-end through UserService, with real
+    // connections and real commits - not SpaceService in isolation.
+    String subjectA = UUID.randomUUID().toString();
+    String subjectB = UUID.randomUUID().toString();
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<User> loginA =
+          executor.submit(
+              () -> userService.findOrCreateUser(subjectA, "test-issuer", "a@example.com", "A"));
+      Future<User> loginB =
+          executor.submit(
+              () -> userService.findOrCreateUser(subjectB, "test-issuer", "b@example.com", "B"));
+
+      User userA = loginA.get(30, TimeUnit.SECONDS);
+      User userB = loginB.get(30, TimeUnit.SECONDS);
+
+      assertThat(spaceRepository.findDistinctByMembershipsUserId(userA.getId())).hasSize(1);
+      assertThat(spaceRepository.findDistinctByMembershipsUserId(userB.getId())).hasSize(1);
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  @Test
+  void concurrentEnsurePersonalSpaceCallsForTheSameAlreadyCommittedUserCreateExactlyOneSpace()
+      throws Exception {
+    // The race #265 actually targets: two concurrent calls for the SAME user, both starting after
+    // the user row is already committed - exactly what UserService's afterCommit hook now
+    // guarantees. Calling SpaceService directly (bypassing UserService) isolates the
+    // partial-unique-index race from the user-creation race exercised above.
+    User user =
+        userService.findOrCreateUser(
+            UUID.randomUUID().toString(), "test-issuer", "race@example.com", "Race");
+    spaceRepository.deleteAll();
+    assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).isEmpty();
+
+    int threadCount = 2;
+    CountDownLatch ready = new CountDownLatch(threadCount);
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    try {
+      List<Future<?>> futures =
+          List.of(
+              executor.submit(
+                  () -> {
+                    ready.countDown();
+                    start.await();
+                    spaceService.ensurePersonalSpace(user.getId(), user.getOrganizationId());
+                    return null;
+                  }),
+              executor.submit(
+                  () -> {
+                    ready.countDown();
+                    start.await();
+                    spaceService.ensurePersonalSpace(user.getId(), user.getOrganizationId());
+                    return null;
+                  }));
+      ready.await();
+      start.countDown();
+      for (Future<?> future : futures) {
+        future.get(30, TimeUnit.SECONDS);
+      }
+    } finally {
+      executor.shutdown();
+    }
+
+    assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).hasSize(1);
+  }
+}

@@ -53,6 +53,19 @@ Transaktion, die den Insert ausgeführt hat, jede nachfolgende Anweisung in dies
 ebenfalls scheitern ließe. Details siehe Klassenkommentar auf
 `SpaceService.ensurePersonalSpace`.
 
+**Regression nach dem Merge (Fix-PR, Referenz statt eigener Nummer hier — siehe Git-Historie):**
+Die `REQUIRES_NEW`-Transaktion oben löst die Race zwischen zwei `ensurePersonalSpace`-Aufrufen,
+setzt aber voraus, dass die referenzierte `users`-Zeile zum Zeitpunkt des Inserts bereits committet
+ist — der Insert läuft auf einer eigenen Connection mit eigenem Snapshot. `UserService.findOrCreateUser`
+ist selbst `@Transactional` und legte die `users`-Zeile ursprünglich in derselben, noch offenen
+Transaktion an, bevor `ensurePersonalSpace` gerufen wurde. Die `REQUIRES_NEW`-Connection konnte die
+noch nicht committete Zeile nicht sehen, der Insert verletzte `fk_spaces_owner`, und da der Space
+tatsächlich nicht existierte, griff auch die Race-Behandlung nicht — jede Erstanmeldung scheiterte.
+Behoben, indem `UserService` den Aufruf von `ensurePersonalSpace` über
+`TransactionSynchronization#afterCommit` erst nach dem Commit der eigenen Transaktion ausführt.
+Siehe Klassenkommentar auf `UserService#ensurePersonalSpaceAfterCommit` und den Regressionstest
+`UserServicePersonalSpaceIntegrationTest` (echtes Postgres-Schema über Liquibase, `ddl-auto=none`).
+
 ### Fehlender Index auf `space_memberships.space_id` (#266)
 
 Der vorhandene Unique-Index `uk_space_memberships_user_space` führt mit `(user_id, space_id)` und
