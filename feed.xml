@@ -5,22 +5,20 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-02T21:09:44Z</updated>
+  <updated>2026-08-02T21:32:39Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
     <title>Tagesreport Sonntag, 2. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-02.html"/>
     <id>https://criew.github.io/opaa/reports/2026-08-02.html</id>
-    <updated>2026-08-02T21:09:44Z</updated>
-    <summary type="text">Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler im Space-Modell.
+    <updated>2026-08-02T21:32:39Z</updated>
+    <summary type="text">Epic #198 „Space and asset model&quot; hat heute mit 25 neu angelegten Tickets die Definitionsphase begonnen. Mit #199 wurde das erste Ticket abgeschlossen und gemergt: die mechanische Umbenennung von Workspace zu Space, die Organisationsgrenze und die neuen Space-Rollen. Von 25 Tickets sind damit 1 erledigt. Die Arbeit konzentriert sich auf die Modellierung von Assets, Rechten, Governance und Versionierung.
 
-Bei der Report-Zusammenfassung wurde Anthropic als zusätzlicher Anbieter neben OpenAI unterstützt (#279, #281). Die beiden Systeme unterscheiden sich in ihren API-Schnittstellen erheblich — Pfad, Authentifizierung, Systemanweisung und Antwortformat sind jeweils unterschiedlich. Der Anbieter wird über `OPAA_REPORT_PROVIDER` gewählt oder automatisch am Schlüsselpräfix erkannt. Gleichzeitig wurde das Report-Secret von dem für Integrationstests genutzten Secret getrennt (#276, #278), um zu verhindern, dass die Aktivierung der Zusammenfassung unbeabsichtigt echte OpenAI-Aufrufe in der CI auslöst.
+Epic #224 „Suchqualität messbar machen&quot; hat heute mit 15 neu angelegten Tickets die Infrastruktur für Evaluation aufgebaut. Vier Tickets wurden abgeschlossen und vier gemergt: der Korpus-Generator für Comichelden (#225), das Golden Dataset (#226), das E2E-Grundgerüst (#231) und die Deployment-Dokumentation (#244). Von 17 Tickets sind damit 4 erledigt. Der Demo-Korpus wird als HTTP-Verzeichnis im Compose-Stack bereitgestellt und über den bestehenden Konnektor indiziert.
 
-Im Space-Modell wurden zwei Fehler aus dem Umbau in #199 behoben, die beide im Review zu #254 als vorbestehend eingestuft worden waren. Der persönliche Space eines Nutzers konnte bei gleichzeitiger Erstanmeldung doppelt entstehen, weil die Prüfung in `ensurePersonalSpace` ohne Datenbankschutz ablief (#265, #280). Ein partieller Unique-Index auf `(owner_id, kind)` für `PERSONAL`-Spaces schließt diese Lücke. Zusätzlich fehlte ein eigenständiger Index auf `space_memberships.space_id` (#266, #280), wodurch Abfragen zum Laden von Space-Mitgliedern den zusammengesetzten Index nicht nutzen konnten.
+Epic #60 „Security &amp; Code Review Findings&quot; ist mit 20 von 20 Tickets abgeschlossen. Heute wurde ein Ticket gemergt, das die Report-Zusammenfassung an die Epic-Struktur ausrichtet und kürzt.
 
-Das Golden Dataset wurde nach dem Code-Review nachgebessert (#274, #277). Die Prüfung auf Feldwerte wurde case-insensitiv gemacht, da der Korpus Werte wie `&quot;Brown&quot;` und `&quot;brown&quot;` nebeneinander enthielt. Alle 49 Testfälle wurden unabhängig nachgerechnet und bestätigt.
-
-Die ADR-Nummernkollision zweier Dokumente mit der Nummer 0008 wurde aufgelöst (#263, #264): Das ältere ADR zum Space-und-Asset-Modell behielt die Nummer, das jüngere zur Suchqualitäts-Evaluierung wurde zu ADR-0011 umnummeriert. Alle Querverweise wurden angepasst.</summary>
+Ohne Epic-Bezug wurden 28 Tickets neu angelegt, 18 abgeschlossen und 21 gemergt. Die Arbeit verteilt sich auf Dokumentation, Sicherheit, Infrastruktur und Konfiguration: Standardwerte in der Deployment-Dokumentation, Härtungsanforderungen für öffentliche Compose-Deployments, Unterstützung für Anthropic in der Report-Zusammenfassung, Eindeutigkeit persönlicher Spaces, fehlende Datenbankindizes, Auflösung einer ADR-Nummernkollision und Behebung mehrerer CI-Fehler.</summary>
   </entry>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>

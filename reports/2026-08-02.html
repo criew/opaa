@@ -77,15 +77,16 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 </header>
 
 <section class="summary">
-<p>Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler im Space-Modell.</p>
-<p>Bei der Report-Zusammenfassung wurde Anthropic als zusätzlicher Anbieter neben OpenAI unterstützt (#279, #281). Die beiden Systeme unterscheiden sich in ihren API-Schnittstellen erheblich — Pfad, Authentifizierung, Systemanweisung und Antwortformat sind jeweils unterschiedlich. Der Anbieter wird über `OPAA_REPORT_PROVIDER` gewählt oder automatisch am Schlüsselpräfix erkannt. Gleichzeitig wurde das Report-Secret von dem für Integrationstests genutzten Secret getrennt (#276, #278), um zu verhindern, dass die Aktivierung der Zusammenfassung unbeabsichtigt echte OpenAI-Aufrufe in der CI auslöst.</p>
-<p>Im Space-Modell wurden zwei Fehler aus dem Umbau in #199 behoben, die beide im Review zu #254 als vorbestehend eingestuft worden waren. Der persönliche Space eines Nutzers konnte bei gleichzeitiger Erstanmeldung doppelt entstehen, weil die Prüfung in `ensurePersonalSpace` ohne Datenbankschutz ablief (#265, #280). Ein partieller Unique-Index auf `(owner_id, kind)` für `PERSONAL`-Spaces schließt diese Lücke. Zusätzlich fehlte ein eigenständiger Index auf `space_memberships.space_id` (#266, #280), wodurch Abfragen zum Laden von Space-Mitgliedern den zusammengesetzten Index nicht nutzen konnten.</p>
-<p>Das Golden Dataset wurde nach dem Code-Review nachgebessert (#274, #277). Die Prüfung auf Feldwerte wurde case-insensitiv gemacht, da der Korpus Werte wie `&quot;Brown&quot;` und `&quot;brown&quot;` nebeneinander enthielt. Alle 49 Testfälle wurden unabhängig nachgerechnet und bestätigt.</p>
-<p>Die ADR-Nummernkollision zweier Dokumente mit der Nummer 0008 wurde aufgelöst (#263, #264): Das ältere ADR zum Space-und-Asset-Modell behielt die Nummer, das jüngere zur Suchqualitäts-Evaluierung wurde zu ADR-0011 umnummeriert. Alle Querverweise wurden angepasst.</p>
+<p>Epic #198 „Space and asset model&quot; hat heute mit 25 neu angelegten Tickets die Definitionsphase begonnen. Mit #199 wurde das erste Ticket abgeschlossen und gemergt: die mechanische Umbenennung von Workspace zu Space, die Organisationsgrenze und die neuen Space-Rollen. Von 25 Tickets sind damit 1 erledigt. Die Arbeit konzentriert sich auf die Modellierung von Assets, Rechten, Governance und Versionierung.</p>
+<p>Epic #224 „Suchqualität messbar machen&quot; hat heute mit 15 neu angelegten Tickets die Infrastruktur für Evaluation aufgebaut. Vier Tickets wurden abgeschlossen und vier gemergt: der Korpus-Generator für Comichelden (#225), das Golden Dataset (#226), das E2E-Grundgerüst (#231) und die Deployment-Dokumentation (#244). Von 17 Tickets sind damit 4 erledigt. Der Demo-Korpus wird als HTTP-Verzeichnis im Compose-Stack bereitgestellt und über den bestehenden Konnektor indiziert.</p>
+<p>Epic #60 „Security &amp; Code Review Findings&quot; ist mit 20 von 20 Tickets abgeschlossen. Heute wurde ein Ticket gemergt, das die Report-Zusammenfassung an die Epic-Struktur ausrichtet und kürzt.</p>
+<p>Ohne Epic-Bezug wurden 28 Tickets neu angelegt, 18 abgeschlossen und 21 gemergt. Die Arbeit verteilt sich auf Dokumentation, Sicherheit, Infrastruktur und Konfiguration: Standardwerte in der Deployment-Dokumentation, Härtungsanforderungen für öffentliche Compose-Deployments, Unterstützung für Anthropic in der Report-Zusammenfassung, Eindeutigkeit persönlicher Spaces, fehlende Datenbankindizes, Auflösung einer ADR-Nummernkollision und Behebung mehrerer CI-Fehler.</p>
 </section>
 
 <h2>Abgeschlossene Issues</h2>
 <ul class="items">
+<li><span class="num">#285</span><a href="https://github.com/criew/opaa/issues/285">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#282</span><a href="https://github.com/criew/opaa/issues/282">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">evaluation</span>criew</span></li>
 <li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#276</span><a href="https://github.com/criew/opaa/issues/276">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#274</span><a href="https://github.com/criew/opaa/issues/274">fix(eval): Nachziehbedarf aus dem Review des Golden Datasets</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
@@ -111,6 +112,8 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Gemergte Pull Requests</h2>
 <ul class="items">
+<li><span class="num">#286</span><a href="https://github.com/criew/opaa/pull/286">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span>2 Dateien, +211 / −20</span></li>
+<li><span class="num">#284</span><a href="https://github.com/criew/opaa/pull/284">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">evaluation</span>2 Dateien, +308 / −199</span></li>
 <li><span class="num">#281</span><a href="https://github.com/criew/opaa/pull/281">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span>3 Dateien, +108 / −23</span></li>
 <li><span class="num">#280</span><a href="https://github.com/criew/opaa/pull/280">fix(space): Eindeutigkeit persönlicher Spaces und fehlender Index auf space_memberships.space_id</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>7 Dateien, +631 / −3</span></li>
 <li><span class="num">#278</span><a href="https://github.com/criew/opaa/pull/278">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>4 Dateien, +45 / −10</span></li>
@@ -140,6 +143,8 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Neu angelegte Issues</h2>
 <ul class="items">
+<li><span class="num">#285</span><a href="https://github.com/criew/opaa/issues/285">feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#282</span><a href="https://github.com/criew/opaa/issues/282">fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">evaluation</span>criew</span></li>
 <li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#276</span><a href="https://github.com/criew/opaa/issues/276">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
 <li><span class="num">#274</span><a href="https://github.com/criew/opaa/issues/274">fix(eval): Nachziehbedarf aus dem Review des Golden Datasets</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
@@ -210,14 +215,15 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 
 <h2>Offen zum Tagesende</h2>
 <ul class="items">
+<li><span class="num">#283</span><a href="https://github.com/criew/opaa/pull/283">Gruppen als Rechtesubjekt einfuehren</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
 <li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
 </ul>
 
 <h2>Stand der CI</h2>
-<p>Hauptbranch: <span class="status ok">grün</span> — <a href="https://github.com/criew/opaa/actions/runs/30767111635">Merge pull request #277 from criew/feature/274_golden-dataset-review-…</a></p>
+<p>Hauptbranch: <span class="status bad">in_progress</span> — <a href="https://github.com/criew/opaa/actions/runs/30768076806">Merge pull request #286 from criew/feature/285_report-nach-epics</a></p>
 
 <footer>
-Erzeugt am 2026-08-02 um 23:09 Uhr ·
+Erzeugt am 2026-08-02 um 23:32 Uhr ·
 <a href="../feed.xml">Feed abonnieren</a>
 </footer>
 </main>
