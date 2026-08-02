@@ -1,3 +1,10 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 008 - i.e. the schema exactly as it existed immediately before migration 010.
+#
+# Used by Migration010SpaceUniquenessTest to build a realistic pre-migration database (via the
+# real, versioned changelog files, not a hand-rolled schema) and then seed legacy data before
+# applying 010 in isolation. See test-master-through-007.yaml and
+# Migration008RenameWorkspaceToSpaceTest for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -15,5 +22,3 @@ databaseChangeLog:
       file: db/changelog/changes/007-create-workspaces-and-memberships.yaml
   - include:
       file: db/changelog/changes/008-rename-workspace-to-space.yaml
-  - include:
-      file: db/changelog/changes/010-space-uniqueness-and-membership-index.yaml
