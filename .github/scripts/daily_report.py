@@ -275,6 +275,81 @@ def build_summary_prompt(data: dict) -> str:
     return "\n".join(lines)
 
 
+ANTHROPIC_VERSION = "2023-06-01"
+DEFAULT_MODELS = {
+    "anthropic": "claude-haiku-4-5-20251001",
+    "openai": "gpt-4o",
+}
+DEFAULT_BASE_URLS = {
+    "anthropic": "https://api.anthropic.com",
+    "openai": "https://api.openai.com",
+}
+
+
+def detect_provider(api_key: str) -> str:
+    """Bestimmt den Anbieter, vorrangig aus der Konfiguration.
+
+    Ohne gesetzte Variable entscheidet das Präfix des Schlüssels. Anthropic
+    vergibt Schlüssel mit `sk-ant-`, alles andere wird als OpenAI-kompatibel
+    behandelt.
+    """
+    configured = os.environ.get("OPAA_REPORT_PROVIDER", "").strip().lower()
+    if configured in DEFAULT_MODELS:
+        return configured
+    if configured:
+        print(
+            f"Unbekannter Anbieter '{configured}' — erkenne anhand des Schlüssels.",
+            file=sys.stderr,
+        )
+    return "anthropic" if api_key.startswith("sk-ant-") else "openai"
+
+
+def build_request(provider: str, api_key: str, base_url: str, model: str, prompt: str):
+    """Baut die Anfrage im Format des jeweiligen Anbieters."""
+    if provider == "anthropic":
+        payload = {
+            "model": model,
+            "max_tokens": 900,
+            "temperature": 0.3,
+            "system": SUMMARY_SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "content-type": "application/json",
+        }
+        path = "/v1/messages"
+    else:
+        payload = {
+            "model": model,
+            "max_tokens": 900,
+            "temperature": 0.3,
+            "messages": [
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        path = "/v1/chat/completions"
+
+    return urllib.request.Request(
+        f"{base_url}{path}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+    )
+
+
+def extract_text(provider: str, body: dict) -> str:
+    """Liest den Antworttext aus der Struktur des jeweiligen Anbieters."""
+    if provider == "anthropic":
+        return body["content"][0]["text"].strip()
+    return body["choices"][0]["message"]["content"].strip()
+
+
 def summarize(data: dict) -> str:
     """Erzeugt die Zusammenfassung. Bei jedem Fehler bleibt sie leer."""
     api_key = os.environ.get("OPAA_REPORT_API_KEY", "").strip()
@@ -282,34 +357,30 @@ def summarize(data: dict) -> str:
         print("Kein API-Schlüssel gesetzt — Report ohne Zusammenfassung.", file=sys.stderr)
         return ""
 
+    provider = detect_provider(api_key)
     # Nicht gesetzte Repository-Variablen erreichen den Prozess als leerer
     # String, nicht als fehlender Eintrag. Der Vorgabewert von `get` würde
     # deshalb nie greifen.
-    model = os.environ.get("OPAA_REPORT_MODEL", "").strip() or "gpt-4o"
+    model = os.environ.get("OPAA_REPORT_MODEL", "").strip() or DEFAULT_MODELS[provider]
     base_url = (
-        os.environ.get("OPAA_REPORT_BASE_URL", "").strip() or "https://api.openai.com"
+        os.environ.get("OPAA_REPORT_BASE_URL", "").strip() or DEFAULT_BASE_URLS[provider]
     ).rstrip("/")
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-            {"role": "user", "content": build_summary_prompt(data)},
-        ],
-        "temperature": 0.3,
-        "max_tokens": 900,
-    }
-    request = urllib.request.Request(
-        f"{base_url}/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+
+    print(f"Zusammenfassung über {provider}, Modell {model}.", file=sys.stderr)
+    request = build_request(
+        provider, api_key, base_url, model, build_summary_prompt(data)
     )
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             body = json.loads(response.read().decode("utf-8"))
-        return body["choices"][0]["message"]["content"].strip()
+        return extract_text(provider, body)
+    except urllib.error.HTTPError as error:
+        # Der Fehlertext des Anbieters nennt die Ursache, etwa ein unbekanntes
+        # Modell oder einen abgelaufenen Schlüssel. Er enthält den Schlüssel
+        # selbst nicht und kann daher protokolliert werden.
+        detail = error.read().decode("utf-8", errors="replace")[:400]
+        print(f"Zusammenfassung fehlgeschlagen ({error.code}): {detail}", file=sys.stderr)
+        return ""
     except (urllib.error.URLError, KeyError, IndexError, TimeoutError) as error:
         print(f"Zusammenfassung fehlgeschlagen: {error}", file=sys.stderr)
         return ""

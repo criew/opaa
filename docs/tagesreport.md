@@ -71,16 +71,29 @@ Zum Aktivieren einen Schlüssel als Repository-Secret hinterlegen:
 gh secret set OPAA_REPORT_API_KEY
 ```
 
-Das Modell und der Endpunkt lassen sich über Repository-Variablen wechseln;
-ohne sie werden `gpt-4o` und die OpenAI-API verwendet:
+Unterstützt werden **Anthropic** und **OpenAI**. Welcher Anbieter angesprochen
+wird, ergibt sich aus dem Präfix des Schlüssels: `sk-ant-` bedeutet Anthropic,
+alles andere wird als OpenAI-kompatibel behandelt. Explizit setzen lässt es sich
+über `OPAA_REPORT_PROVIDER` mit den Werten `anthropic` oder `openai`.
+
+Modell und Endpunkt sind über Repository-Variablen wählbar:
 
 ```bash
-gh variable set OPAA_REPORT_MODEL --body "gpt-4o-mini"
+gh variable set OPAA_REPORT_MODEL --body "claude-haiku-4-5-20251001"
 gh variable set OPAA_REPORT_BASE_URL --body "https://mein-endpunkt.example"
 ```
 
+Ohne diese Variablen gelten je Anbieter:
+
+| Anbieter | Vorgabemodell | Endpunkt |
+| --- | --- | --- |
+| Anthropic | `claude-haiku-4-5-20251001` | `https://api.anthropic.com` |
+| OpenAI | `gpt-4o` | `https://api.openai.com` |
+
 Schlägt der Aufruf fehl, erscheint der Report ohne Zusammenfassung statt gar
-nicht.
+nicht. Die Fehlermeldung des Anbieters steht im Protokoll des Workflows und
+nennt typische Ursachen wie ein unbekanntes Modell oder einen abgelaufenen
+Schlüssel.
 
 ### Warum ein eigenes Secret
 
