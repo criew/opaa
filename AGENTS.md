@@ -78,6 +78,14 @@ KI-Agenten müssen einen `Co-Authored-By`-Trailer in Commits einfügen.
 - PRs fokussiert halten: eine logische Änderung pro PR
 - Bei der Behebung eines Issues in der PR-Beschreibung mit `Closes #N` referenzieren
 
+### Git Worktrees für parallele Sessions
+
+Wenn mehrere Agent-Sessions gleichzeitig in diesem Verzeichnis arbeiten (z. B. mehrere Features parallel), für jede neue Aufgabe einen eigenen Git Worktree nutzen, statt im Hauptverzeichnis zu branchen. So blockieren sich parallele Sessions nicht gegenseitig durch Branch-Wechsel im selben Arbeitsverzeichnis.
+
+- Neue Aufgabe → eigenen Worktree anlegen (eigener Branch, eigenes Arbeitsverzeichnis)
+- Aufgabe fertig & gemerged → Worktree entfernen
+- Aufgabe unterbrochen, später weiterführen → Worktree behalten
+
 ### Branch-Benennung
 
 Format: `feature/<issue-id>_<kurze-beschreibung>`
