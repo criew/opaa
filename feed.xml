@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>OPAA — Tagesreport</title>
+  <subtitle>Was sich im Projekt bewegt hat, Tag für Tag</subtitle>
+  <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
+  <link href="https://criew.github.io/opaa/"/>
+  <id>https://criew.github.io/opaa/</id>
+  <updated>2026-08-02T17:23:16Z</updated>
+  <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 1. August 2026</title>
+    <link href="https://criew.github.io/opaa/reports/2026-08-01.html"/>
+    <id>https://criew.github.io/opaa/reports/2026-08-01.html</id>
+    <updated>2026-08-02T17:23:16Z</updated>
+    <summary type="text">Für diesen Tag liegt keine Zusammenfassung vor.</summary>
+  </entry>
+</feed>

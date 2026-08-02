@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-01</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.summary p { margin: 0 0 .9rem; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+.tag {
+  display: inline-block;
+  font-size: .72rem;
+  padding: .1rem .45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-right: .3rem;
+  color: var(--muted);
+}
+.status { font-weight: 600; }
+.status.ok { color: #1a7f37; }
+.status.bad { color: #cf222e; }
+@media (prefers-color-scheme: dark) {
+  .status.ok { color: #3fb950; }
+  .status.bad { color: #f85149; }
+}
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Samstag, 1. August 2026</h1>
+<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/criew/opaa">criew/opaa</a></p>
+</header>
+
+<section class="summary">
+<p class="empty">Für diesen Tag liegt keine Zusammenfassung vor.</p>
+</section>
+
+<h2>Abgeschlossene Issues</h2>
+<ul class="items">
+<li><span class="num">#188</span><a href="https://github.com/criew/opaa/issues/188">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#186</span><a href="https://github.com/criew/opaa/issues/186">Projektsprache auf Deutsch umstellen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>criew</span></li>
+</ul>
+
+<h2>Gemergte Pull Requests</h2>
+<ul class="items">
+<li><span class="num">#190</span><a href="https://github.com/criew/opaa/pull/190">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>36 Dateien, +189 / −130</span></li>
+<li><span class="num">#187</span><a href="https://github.com/criew/opaa/pull/187">docs: Dokumentation ins Deutsche übersetzen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>50 Dateien, +3994 / −3994</span></li>
+</ul>
+
+<h2>Neu angelegte Issues</h2>
+<ul class="items">
+<li><span class="num">#189</span><a href="https://github.com/criew/opaa/issues/189">chore(frontend): bump all frontend dependencies to latest stable (MUI 9, Vite 8, TypeScript 6, ESLint 10)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#188</span><a href="https://github.com/criew/opaa/issues/188">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#186</span><a href="https://github.com/criew/opaa/issues/186">Projektsprache auf Deutsch umstellen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>criew</span></li>
+</ul>
+
+<h2>Offen zum Tagesende</h2>
+<ul class="items">
+<li><span class="num">#254</span><a href="https://github.com/criew/opaa/pull/254">Workspace in Space umbenennen, Organisationsgrenze und neue Space-Rollen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#253</span><a href="https://github.com/criew/opaa/pull/253">docs(eval): Demo-Instanz auf OpenAI und Account-Bindung korrigieren</a><span class="meta"><span class="tag">documentation</span><span class="tag">evaluation</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#251</span><a href="https://github.com/criew/opaa/pull/251">test(e2e): Grundgerüst für browserbasierte End-to-End-Tests</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#249</span><a href="https://github.com/criew/opaa/pull/249">feat(eval): Korpus-Generator für die Domäne Comichelden</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
+</ul>
+
+<h2>Stand der CI</h2>
+<p>Hauptbranch: <span class="status bad">in_progress</span> — <a href="https://github.com/criew/opaa/actions/runs/30758716608">Merge pull request #262 from criew/feature/261_report-branch-fix</a></p>
+
+<footer>
+Erzeugt am 2026-08-02 um 19:23 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+</footer>
+</main>
+</body>
+</html>
