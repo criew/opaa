@@ -12,6 +12,9 @@ Aufruf:
 
 Benötigt die GitHub-CLI (`gh`) mit gültigem Token. Ein API-Schlüssel für die
 Zusammenfassung ist optional; fehlt er, entsteht der Report ohne Fließtext.
+Der Schlüssel wird bewusst aus OPAA_REPORT_API_KEY gelesen und nicht aus dem
+Anwendungsschlüssel OPAA_OPENAI_API_KEY, damit sich das Aktivieren der
+Zusammenfassung nicht auf die Integrationstests in der CI auswirkt.
 """
 
 from __future__ import annotations
@@ -274,13 +277,18 @@ def build_summary_prompt(data: dict) -> str:
 
 def summarize(data: dict) -> str:
     """Erzeugt die Zusammenfassung. Bei jedem Fehler bleibt sie leer."""
-    api_key = os.environ.get("OPAA_OPENAI_API_KEY", "").strip()
+    api_key = os.environ.get("OPAA_REPORT_API_KEY", "").strip()
     if not api_key:
         print("Kein API-Schlüssel gesetzt — Report ohne Zusammenfassung.", file=sys.stderr)
         return ""
 
-    model = os.environ.get("OPAA_REPORT_MODEL", "gpt-4o").strip()
-    base_url = os.environ.get("OPAA_OPENAI_BASE_URL", "https://api.openai.com").rstrip("/")
+    # Nicht gesetzte Repository-Variablen erreichen den Prozess als leerer
+    # String, nicht als fehlender Eintrag. Der Vorgabewert von `get` würde
+    # deshalb nie greifen.
+    model = os.environ.get("OPAA_REPORT_MODEL", "").strip() or "gpt-4o"
+    base_url = (
+        os.environ.get("OPAA_REPORT_BASE_URL", "").strip() or "https://api.openai.com"
+    ).rstrip("/")
     payload = {
         "model": model,
         "messages": [

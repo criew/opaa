@@ -68,19 +68,37 @@ Ohne API-Schlüssel entsteht der Report vollständig, nur ohne den Fließtext.
 Zum Aktivieren einen Schlüssel als Repository-Secret hinterlegen:
 
 ```bash
-gh secret set OPAA_OPENAI_API_KEY
+gh secret set OPAA_REPORT_API_KEY
 ```
 
-Das Modell lässt sich über eine Repository-Variable wechseln, standardmäßig
-wird `gpt-4o` verwendet:
+Das Modell und der Endpunkt lassen sich über Repository-Variablen wechseln;
+ohne sie werden `gpt-4o` und die OpenAI-API verwendet:
 
 ```bash
 gh variable set OPAA_REPORT_MODEL --body "gpt-4o-mini"
+gh variable set OPAA_REPORT_BASE_URL --body "https://mein-endpunkt.example"
 ```
 
-Über `OPAA_OPENAI_BASE_URL` ist auch ein anderer OpenAI-kompatibler Endpunkt
-ansprechbar. Schlägt der Aufruf fehl, erscheint der Report ohne Zusammenfassung
-statt gar nicht.
+Schlägt der Aufruf fehl, erscheint der Report ohne Zusammenfassung statt gar
+nicht.
+
+### Warum ein eigenes Secret
+
+Der Report verwendet bewusst **nicht** den Anwendungsschlüssel
+`OPAA_OPENAI_API_KEY`. Dieser steuert in [`ci.yml`](../.github/workflows/ci.yml),
+ob der Job `backend-integration` die OpenAI-Integrationstests ausführt —
+`OpenAiIntegrationTest` ist über `@EnabledIfEnvironmentVariable` an dieselbe
+Variable gebunden.
+
+Wären beide gekoppelt, hätte das Aktivieren der Zusammenfassung zur Folge, dass
+bei jedem Push und jedem Pull Request echte Aufrufe gegen die OpenAI-API laufen.
+Da `backend-integration` ein erforderlicher Status-Check ist, würde zudem eine
+Störung beim Anbieter Merges blockieren.
+
+| Secret | Zweck |
+| --- | --- |
+| `OPAA_REPORT_API_KEY` | Zusammenfassung im Tagesreport |
+| `OPAA_OPENAI_API_KEY` | Anwendung und ihre Integrationstests in der CI |
 
 ## Einmalige Einrichtung
 
