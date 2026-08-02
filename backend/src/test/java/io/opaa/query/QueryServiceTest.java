@@ -353,7 +353,7 @@ class QueryServiceTest {
     String tooLong = "a".repeat(51);
     assertThatThrownBy(() -> queryService.validateConversationId(tooLong))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Invalid conversationId format");
+        .hasMessage("Ungültiges Format der conversationId");
   }
 
   @Test

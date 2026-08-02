@@ -93,7 +93,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 </Typography>
                 <IconButton
                   size="small"
-                  aria-label={uncitedOpen ? 'collapse uncited sources' : 'expand uncited sources'}
+                  aria-label={
+                    uncitedOpen ? 'Weitere Quellen einklappen' : 'Weitere Quellen ausklappen'
+                  }
                   sx={{
                     ml: 0.5,
                     transform: uncitedOpen ? 'rotate(180deg)' : 'rotate(0deg)',

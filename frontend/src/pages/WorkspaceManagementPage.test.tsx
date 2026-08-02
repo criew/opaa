@@ -28,7 +28,7 @@ describe('WorkspaceManagementPage', () => {
       selectedWorkspaceId: 'ws-personal',
       selectedWorkspace: {
         id: 'ws-personal',
-        name: 'My Documents',
+        name: 'Meine Dokumente',
         description: 'Private docs',
         type: 'PERSONAL',
         ownerId: 'u1',
@@ -49,7 +49,7 @@ describe('WorkspaceManagementPage', () => {
 
   it('shows personal workspace message and disables member management', () => {
     renderWithProviders(<WorkspaceManagementPage />, { withRouter: true })
-    expect(screen.getByText(/personal workspace/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /add member/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/persönlicher workspace/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mitglied hinzufügen/i })).not.toBeInTheDocument()
   })
 })

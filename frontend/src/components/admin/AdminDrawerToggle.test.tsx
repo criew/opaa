@@ -13,17 +13,17 @@ describe('AdminDrawerToggle', () => {
   it('renders toggle button', () => {
     renderWithProviders(<AdminDrawerToggle />)
 
-    expect(screen.getByLabelText('Toggle admin drawer')).toBeInTheDocument()
+    expect(screen.getByLabelText('Admin-Bereich ein- oder ausblenden')).toBeInTheDocument()
   })
 
   it('toggles drawer on click', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AdminDrawerToggle />)
 
-    await user.click(screen.getByLabelText('Toggle admin drawer'))
+    await user.click(screen.getByLabelText('Admin-Bereich ein- oder ausblenden'))
     expect(useIndexingStore.getState().drawerOpen).toBe(true)
 
-    await user.click(screen.getByLabelText('Toggle admin drawer'))
+    await user.click(screen.getByLabelText('Admin-Bereich ein- oder ausblenden'))
     expect(useIndexingStore.getState().drawerOpen).toBe(false)
   })
 })

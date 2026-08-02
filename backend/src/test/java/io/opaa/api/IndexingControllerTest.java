@@ -74,7 +74,7 @@ class IndexingControllerTest {
         .andExpect(jsonPath("$.status").value("IDLE"))
         .andExpect(jsonPath("$.totalDocuments").value(0))
         .andExpect(jsonPath("$.documentsSkipped").value(0))
-        .andExpect(jsonPath("$.message").value("No indexing job found"));
+        .andExpect(jsonPath("$.message").value("Kein Indizierungslauf gefunden"));
   }
 
   @Test
@@ -106,7 +106,7 @@ class IndexingControllerTest {
         .andExpect(jsonPath("$.status").value("COMPLETED"))
         .andExpect(jsonPath("$.documentCount").value(10))
         .andExpect(jsonPath("$.documentsSkipped").value(5))
-        .andExpect(jsonPath("$.message").value(containsString("5 skipped")));
+        .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")));
   }
 
   @Test

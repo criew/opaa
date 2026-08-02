@@ -106,7 +106,7 @@ class QueryControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isServiceUnavailable())
-        .andExpect(jsonPath("$.error").value("AI service temporarily unavailable"))
+        .andExpect(jsonPath("$.error").value("KI-Dienst vorübergehend nicht verfügbar"))
         .andExpect(jsonPath("$.status").value(503));
   }
 
@@ -121,7 +121,7 @@ class QueryControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isBadGateway())
-        .andExpect(jsonPath("$.error").value("AI service error"))
+        .andExpect(jsonPath("$.error").value("Fehler im KI-Dienst"))
         .andExpect(jsonPath("$.status").value(502));
   }
 

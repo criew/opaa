@@ -13,7 +13,7 @@ describe('Sidebar', () => {
       workspaces: [
         {
           id: 'ws-personal',
-          name: 'My Documents',
+          name: 'Meine Dokumente',
           description: 'Private',
           type: 'PERSONAL',
           memberCount: 1,
@@ -30,19 +30,19 @@ describe('Sidebar', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
     expect(screen.getByText('Workspaces')).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByText('My Documents')).toBeInTheDocument()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByText('Meine Dokumente')).toBeInTheDocument()
+    expect(screen.getByText('Einstellungen')).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
     expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.getByText('AI Project Assistant')).toBeInTheDocument()
+    expect(screen.getByText('KI-Projektassistent')).toBeInTheDocument()
   })
 
   it('renders New Chat button', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
-    expect(screen.getByRole('button', { name: /new chat/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
   })
 
   it('clears messages when New Chat button is clicked', async () => {
@@ -53,7 +53,7 @@ describe('Sidebar', () => {
 
     renderWithProviders(<Sidebar />, { withRouter: true })
 
-    await userEvent.click(screen.getByRole('button', { name: /new chat/i }))
+    await userEvent.click(screen.getByRole('button', { name: /neuer chat/i }))
 
     const state = useChatStore.getState()
     expect(state.messages).toHaveLength(0)

@@ -47,14 +47,14 @@ describe('CreateWorkspaceDialog', () => {
       <CreateWorkspaceDialog open={true} onClose={onClose} onCreated={onCreated} />,
     )
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/description/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/beschreibung/i)).toBeInTheDocument()
   })
 
   it('disables create button when name is empty', () => {
     renderWithProviders(
       <CreateWorkspaceDialog open={true} onClose={onClose} onCreated={onCreated} />,
     )
-    expect(screen.getByRole('button', { name: /create/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /erstellen/i })).toBeDisabled()
   })
 
   it('calls onCreated with workspace id after submit', async () => {
@@ -64,7 +64,7 @@ describe('CreateWorkspaceDialog', () => {
     )
 
     await user.type(screen.getByLabelText(/name/i), 'My New Workspace')
-    await user.click(screen.getByRole('button', { name: /create/i }))
+    await user.click(screen.getByRole('button', { name: /erstellen/i }))
 
     await waitFor(() => {
       expect(onCreated).toHaveBeenCalledWith('ws-new')
@@ -77,7 +77,7 @@ describe('CreateWorkspaceDialog', () => {
       <CreateWorkspaceDialog open={true} onClose={onClose} onCreated={onCreated} />,
     )
 
-    await user.click(screen.getByRole('button', { name: /cancel/i }))
+    await user.click(screen.getByRole('button', { name: /abbrechen/i }))
     expect(onClose).toHaveBeenCalled()
   })
 })

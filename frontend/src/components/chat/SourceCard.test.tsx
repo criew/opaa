@@ -35,24 +35,26 @@ describe('SourceCard', () => {
 
   it('shows Public badge for .md files', () => {
     render(<SourceCard source={baseSource} />)
-    expect(screen.getByText('Public')).toBeInTheDocument()
+    expect(screen.getByText('Öffentlich')).toBeInTheDocument()
   })
 
   it('shows Confidential badge for .pdf files', () => {
     render(<SourceCard source={{ ...baseSource, fileName: 'report.pdf' }} />)
-    expect(screen.getByText('Confidential')).toBeInTheDocument()
+    expect(screen.getByText('Vertraulich')).toBeInTheDocument()
   })
 
   it('shows Internal badge for other files', () => {
     render(<SourceCard source={{ ...baseSource, fileName: 'config.yaml' }} />)
-    expect(screen.getByText('Internal')).toBeInTheDocument()
+    expect(screen.getByText('Intern')).toBeInTheDocument()
   })
 
   it('shows tooltip on access level badge hover', async () => {
     const user = userEvent.setup()
     render(<SourceCard source={{ ...baseSource, fileName: 'config.yaml' }} />)
-    await user.hover(screen.getByText('Internal'))
-    expect(await screen.findByText('Access levels coming in a future release')).toBeInTheDocument()
+    await user.hover(screen.getByText('Intern'))
+    expect(
+      await screen.findByText('Zugriffsstufen folgen in einer künftigen Version'),
+    ).toBeInTheDocument()
   })
 
   it('renders cited source with full opacity', () => {

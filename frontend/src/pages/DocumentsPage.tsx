@@ -16,8 +16,8 @@ export default function DocumentsPage() {
       }}
     >
       <DescriptionIcon sx={{ fontSize: 48 }} />
-      <Typography variant="h5">Documents</Typography>
-      <Typography variant="body1">Coming soon</Typography>
+      <Typography variant="h5">Dokumente</Typography>
+      <Typography variant="body1">Demnächst verfügbar</Typography>
     </Box>
   )
 }

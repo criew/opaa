@@ -85,7 +85,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         isLoadingList: false,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load workspaces'
+      const message = err instanceof Error ? err.message : 'Workspaces konnten nicht geladen werden'
       set({ error: message, isLoadingList: false })
     }
   },
@@ -103,7 +103,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         isLoadingDetails: false,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load workspace details'
+      const message =
+        err instanceof Error ? err.message : 'Workspace-Details konnten nicht geladen werden'
       set({
         error: message,
         selectedWorkspace: null,

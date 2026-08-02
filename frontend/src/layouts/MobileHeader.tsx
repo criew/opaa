@@ -22,7 +22,7 @@ export default function MobileHeader() {
       }}
     >
       <Toolbar>
-        <IconButton edge="start" color="inherit" aria-label="open menu" onClick={toggleSidebar}>
+        <IconButton edge="start" color="inherit" aria-label="Menü öffnen" onClick={toggleSidebar}>
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>

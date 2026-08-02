@@ -148,6 +148,7 @@ public class WorkspaceController {
 
     return userService
         .findBySubjectAndIssuer(jwt.getSubject(), issuer)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

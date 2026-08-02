@@ -24,20 +24,20 @@ describe('AdminDrawer', () => {
     renderWithProviders(<AdminDrawer />)
 
     expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByText('Index Documents')).toBeInTheDocument()
+    expect(screen.getByText('Dokumente indizieren')).toBeInTheDocument()
   })
 
   it('shows close button', () => {
     renderWithProviders(<AdminDrawer />)
 
-    expect(screen.getByLabelText('Close admin drawer')).toBeInTheDocument()
+    expect(screen.getByLabelText('Admin-Bereich schließen')).toBeInTheDocument()
   })
 
   it('closes drawer on close button click', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AdminDrawer />)
 
-    await user.click(screen.getByLabelText('Close admin drawer'))
+    await user.click(screen.getByLabelText('Admin-Bereich schließen'))
     expect(useIndexingStore.getState().drawerOpen).toBe(false)
   })
 
@@ -45,19 +45,19 @@ describe('AdminDrawer', () => {
     const user = userEvent.setup()
     renderWithProviders(<AdminDrawer />)
 
-    await user.click(screen.getByText('URL Source (optional)'))
+    await user.click(screen.getByText('URL-Quelle (optional)'))
 
     expect(screen.getByLabelText('URL')).toBeInTheDocument()
     expect(screen.getByLabelText('Proxy')).toBeInTheDocument()
-    expect(screen.getByLabelText('Credentials')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Skip SSL verification' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Anmeldedaten')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'SSL-Prüfung überspringen' })).toBeInTheDocument()
   })
 
   it('disables button when indexing is running', () => {
     useIndexingStore.setState({ status: 'RUNNING' })
     renderWithProviders(<AdminDrawer />)
 
-    expect(screen.getByRole('button', { name: /indexing/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /indizierung läuft/i })).toBeDisabled()
   })
 
   it('shows indeterminate progress when total is unknown', () => {
@@ -69,7 +69,7 @@ describe('AdminDrawer', () => {
     renderWithProviders(<AdminDrawer />)
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.getByText(/discovering documents/i)).toBeInTheDocument()
+    expect(screen.getByText(/dokumente werden ermittelt/i)).toBeInTheDocument()
   })
 
   it('shows determinate progress with document counts', () => {
@@ -84,7 +84,7 @@ describe('AdminDrawer', () => {
     const progressbar = screen.getByRole('progressbar')
     expect(progressbar).toBeInTheDocument()
     expect(progressbar).toHaveAttribute('aria-valuenow', '24')
-    expect(screen.getByText(/10 of 42 documents processed/i)).toBeInTheDocument()
+    expect(screen.getByText(/10 von 42 dokumenten verarbeitet/i)).toBeInTheDocument()
   })
 
   it('shows last indexing info when completed', () => {
@@ -97,8 +97,8 @@ describe('AdminDrawer', () => {
     })
     renderWithProviders(<AdminDrawer />)
 
-    expect(screen.getByText(/completed/i)).toBeInTheDocument()
-    expect(screen.getByText(/documents: 42 processed/i)).toBeInTheDocument()
+    expect(screen.getByText(/abgeschlossen/i)).toBeInTheDocument()
+    expect(screen.getByText(/dokumente: 42 verarbeitet/i)).toBeInTheDocument()
   })
 
   it('shows skipped count when documents were skipped', () => {
@@ -111,7 +111,7 @@ describe('AdminDrawer', () => {
     })
     renderWithProviders(<AdminDrawer />)
 
-    expect(screen.getByText(/10 skipped/i)).toBeInTheDocument()
+    expect(screen.getByText(/10 übersprungen/i)).toBeInTheDocument()
   })
 
   it('does not show skipped text when zero skipped', () => {
@@ -124,7 +124,7 @@ describe('AdminDrawer', () => {
     })
     renderWithProviders(<AdminDrawer />)
 
-    expect(screen.queryByText(/skipped/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/übersprungen/i)).not.toBeInTheDocument()
   })
 
   it('does not render content when drawer is closed', () => {

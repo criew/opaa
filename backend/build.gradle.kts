@@ -60,9 +60,16 @@ spotless {
     }
 }
 
+// Deutsche Texte in Quellen und Ressourcen sind UTF-8. Ohne diese Einstellung
+// nutzt javac das Plattform-Encoding, was auf Windows Umlaute verfälscht.
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("-XX:+EnableDynamicAgentLoading")
+    systemProperty("file.encoding", "UTF-8")
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {

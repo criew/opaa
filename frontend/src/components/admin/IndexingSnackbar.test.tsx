@@ -29,11 +29,11 @@ describe('IndexingSnackbar', () => {
 
   it('shows error snackbar', () => {
     useIndexingStore.setState({
-      snackbar: { open: true, message: 'Indexing failed', severity: 'error' },
+      snackbar: { open: true, message: 'Indizierung fehlgeschlagen', severity: 'error' },
     })
     renderWithProviders(<IndexingSnackbar />)
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('Indexing failed')).toBeInTheDocument()
+    expect(screen.getByText('Indizierung fehlgeschlagen')).toBeInTheDocument()
   })
 })

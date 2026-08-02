@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography'
 import type { SourceReference } from '../../types/api'
 import type { AccessLevel } from '../../types/chat'
 import { deriveAccessLevel } from '../../utils/accessLevel'
+import { accessLevelLabel } from '../../utils/labels'
 
 const accessLevelColors: Record<AccessLevel, 'error' | 'warning' | 'success'> = {
   Confidential: 'error',
@@ -45,9 +46,9 @@ export default function SourceCard({ source }: SourceCardProps) {
             {source.fileName}
           </Typography>
         </Tooltip>
-        <Tooltip title="Access levels coming in a future release">
+        <Tooltip title="Zugriffsstufen folgen in einer künftigen Version">
           <Chip
-            label={accessLevel}
+            label={accessLevelLabel(accessLevel)}
             size="small"
             color={accessLevelColors[accessLevel]}
             sx={{ height: 20, fontSize: '0.7rem' }}
@@ -67,7 +68,7 @@ export default function SourceCard({ source }: SourceCardProps) {
           {relevancePercent}% relevant
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {source.matchCount} {source.matchCount === 1 ? 'Treffer' : 'Treffer'}
+          {source.matchCount} Treffer
         </Typography>
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>

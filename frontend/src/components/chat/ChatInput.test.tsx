@@ -5,18 +5,18 @@ import ChatInput from './ChatInput'
 describe('ChatInput', () => {
   it('renders input field and send button', () => {
     render(<ChatInput onSend={vi.fn()} />)
-    expect(screen.getByPlaceholderText('Ask a question...')).toBeInTheDocument()
-    expect(screen.getByLabelText('send message')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /search scope/i })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nachricht senden')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /suchbereich/i })).toBeInTheDocument()
   })
 
   it('calls onSend with trimmed text on button click', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Ask a question...')
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
     fireEvent.change(input, { target: { value: 'Hello world' } })
-    fireEvent.click(screen.getByLabelText('send message'))
+    fireEvent.click(screen.getByLabelText('Nachricht senden'))
 
     expect(onSend).toHaveBeenCalledWith('Hello world')
   })
@@ -25,7 +25,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Ask a question...')
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -36,7 +36,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Ask a question...')
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
 
@@ -47,7 +47,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Ask a question...')
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -56,6 +56,6 @@ describe('ChatInput', () => {
 
   it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
-    expect(screen.getByPlaceholderText('Ask a question...')).toBeDisabled()
+    expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeDisabled()
   })
 })

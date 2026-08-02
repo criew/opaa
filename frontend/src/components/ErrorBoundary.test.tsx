@@ -28,12 +28,12 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     )
 
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByText('Etwas ist schiefgelaufen')).toBeInTheDocument()
     expect(
-      screen.getByText('An unexpected error occurred. Please try reloading the page.'),
+      screen.getByText('Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show Details' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Neu laden' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Details anzeigen' })).toBeInTheDocument()
   })
 
   it('shows error details when "Show Details" is clicked', async () => {
@@ -46,10 +46,10 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Show Details' }))
+    await user.click(screen.getByRole('button', { name: 'Details anzeigen' }))
 
     expect(screen.getByText('Something broke')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Hide Details' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Details ausblenden' })).toBeInTheDocument()
   })
 
   it('hides error details when "Hide Details" is clicked', async () => {
@@ -62,11 +62,11 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Show Details' }))
-    expect(screen.getByRole('button', { name: 'Hide Details' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Details anzeigen' }))
+    expect(screen.getByRole('button', { name: 'Details ausblenden' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Hide Details' }))
-    expect(screen.getByRole('button', { name: 'Show Details' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Details ausblenden' }))
+    expect(screen.getByRole('button', { name: 'Details anzeigen' })).toBeInTheDocument()
   })
 
   it('logs the error to console', () => {

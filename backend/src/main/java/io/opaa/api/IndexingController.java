@@ -68,23 +68,23 @@ public class IndexingController {
         .map(this::toResponse)
         .orElse(
             new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, Instant.now())
-                .message("No indexing job found"));
+                .message("Kein Indizierungslauf gefunden"));
   }
 
   private IndexingStatusResponse toResponse(IndexingJob job) {
     IndexingStatus status = mapStatus(job.getStatus());
     String message =
         switch (job.getStatus()) {
-          case RUNNING -> "Indexing in progress";
+          case RUNNING -> "Indizierung läuft";
           case COMPLETED ->
-              "Indexing completed: "
+              "Indizierung abgeschlossen: "
                   + job.getDocumentsProcessed()
-                  + " processed, "
+                  + " verarbeitet, "
                   + job.getDocumentsSkipped()
-                  + " skipped, "
+                  + " übersprungen, "
                   + job.getDocumentsFailed()
-                  + " failed";
-          case FAILED -> "Indexing failed: " + job.getErrorMessage();
+                  + " fehlgeschlagen";
+          case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
         };
     return new IndexingStatusResponse(
             status,

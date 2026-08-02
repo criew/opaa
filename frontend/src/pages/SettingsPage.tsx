@@ -16,15 +16,15 @@ export default function SettingsPage() {
   return (
     <Box sx={{ flexGrow: 1, p: 4, maxWidth: 600 }}>
       <Typography variant="h5" gutterBottom>
-        Settings
+        Einstellungen
       </Typography>
 
       <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
         <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
-          Appearance
+          Darstellung
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Choose how OPAA looks to you.
+          Legen Sie fest, wie OPAA für Sie aussieht.
         </Typography>
         <ToggleButtonGroup
           value={themeMode}
@@ -32,19 +32,19 @@ export default function SettingsPage() {
           onChange={(_e, value: ThemeMode | null) => {
             if (value !== null) setThemeMode(value)
           }}
-          aria-label="theme mode"
+          aria-label="Farbschema"
         >
-          <ToggleButton value="light" aria-label="light mode">
+          <ToggleButton value="light" aria-label="Helles Farbschema">
             <LightModeIcon sx={{ mr: 1 }} fontSize="small" />
-            Light
+            Hell
           </ToggleButton>
-          <ToggleButton value="system" aria-label="system default">
+          <ToggleButton value="system" aria-label="Systemvorgabe">
             <SettingsBrightnessIcon sx={{ mr: 1 }} fontSize="small" />
             System
           </ToggleButton>
-          <ToggleButton value="dark" aria-label="dark mode">
+          <ToggleButton value="dark" aria-label="Dunkles Farbschema">
             <DarkModeIcon sx={{ mr: 1 }} fontSize="small" />
-            Dark
+            Dunkel
           </ToggleButton>
         </ToggleButtonGroup>
       </Paper>

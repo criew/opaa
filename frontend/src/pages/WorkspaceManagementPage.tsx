@@ -15,6 +15,7 @@ import { useNavigate, useParams } from 'react-router'
 import type { UserInfo, WorkspaceRole } from '../types/api'
 import { getUsers } from '../services/api'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { workspaceRoleLabel } from '../utils/labels'
 
 const editableRoles: WorkspaceRole[] = ['VIEWER', 'EDITOR', 'ADMIN']
 
@@ -77,7 +78,7 @@ export default function WorkspaceManagementPage() {
   if (!workspaceId || !workspace) {
     return (
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h6">Workspace not loaded</Typography>
+        <Typography variant="h6">Workspace nicht geladen</Typography>
       </Box>
     )
   }
@@ -98,12 +99,12 @@ export default function WorkspaceManagementPage() {
       <Stack spacing={2.5}>
         <Paper variant="outlined" sx={{ p: 2.5 }}>
           <Typography variant="h6" gutterBottom>
-            Workspace Settings
+            Workspace-Einstellungen
           </Typography>
           <Divider sx={{ mb: 2 }} />
           <Stack spacing={1.5}>
             <TextField
-              label="Workspace name"
+              label="Name des Workspace"
               value={name}
               onChange={(event) =>
                 setDraft({
@@ -115,7 +116,7 @@ export default function WorkspaceManagementPage() {
               disabled={!canManage}
             />
             <TextField
-              label="Description"
+              label="Beschreibung"
               value={description}
               onChange={(event) =>
                 setDraft({
@@ -135,13 +136,15 @@ export default function WorkspaceManagementPage() {
                   setLocalError(null)
                   try {
                     await updateDetails(workspaceId, name, description)
-                    setSuccessMessage('Workspace updated')
+                    setSuccessMessage('Workspace aktualisiert')
                   } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Update failed')
+                    setLocalError(
+                      err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen',
+                    )
                   }
                 }}
               >
-                Save Settings
+                Einstellungen speichern
               </Button>
             )}
             {isOwner && workspace.type !== 'PERSONAL' && (
@@ -149,7 +152,11 @@ export default function WorkspaceManagementPage() {
                 color="error"
                 variant="outlined"
                 onClick={async () => {
-                  if (!window.confirm('Delete this workspace? This action cannot be undone.')) {
+                  if (
+                    !window.confirm(
+                      'Diesen Workspace löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+                    )
+                  ) {
                     return
                   }
                   setLocalError(null)
@@ -157,11 +164,11 @@ export default function WorkspaceManagementPage() {
                     await deleteSelectedWorkspace(workspaceId)
                     navigate('/workspaces')
                   } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Deletion failed')
+                    setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
                   }
                 }}
               >
-                Delete Workspace
+                Workspace löschen
               </Button>
             )}
           </Stack>
@@ -169,12 +176,12 @@ export default function WorkspaceManagementPage() {
 
         <Paper variant="outlined" sx={{ p: 2.5 }}>
           <Typography variant="h6" gutterBottom>
-            Members
+            Mitglieder
           </Typography>
           <Divider sx={{ mb: 2 }} />
           {workspace.type === 'PERSONAL' ? (
             <Alert severity="info">
-              This is your personal workspace. Member management is disabled.
+              Dies ist Ihr persönlicher Workspace. Die Mitgliederverwaltung ist deaktiviert.
             </Alert>
           ) : (
             <Stack spacing={1.5}>
@@ -206,7 +213,9 @@ export default function WorkspaceManagementPage() {
                           try {
                             await updateMemberRole(workspaceId, member.userId, nextRole)
                           } catch (err) {
-                            setLocalError(err instanceof Error ? err.message : 'Role update failed')
+                            setLocalError(
+                              err instanceof Error ? err.message : 'Rollenänderung fehlgeschlagen',
+                            )
                           }
                         }}
                         disabled={member.role === 'OWNER'}
@@ -215,19 +224,23 @@ export default function WorkspaceManagementPage() {
                           .filter((value, index, arr) => arr.indexOf(value) === index)
                           .map((role) => (
                             <MenuItem key={role} value={role}>
-                              {role}
+                              {workspaceRoleLabel(role)}
                             </MenuItem>
                           ))}
                       </Select>
                     ) : (
-                      <Chip label={member.role} size="small" />
+                      <Chip label={workspaceRoleLabel(member.role)} size="small" />
                     )}
                     {canManage && member.role !== 'OWNER' && (
                       <Button
                         color="error"
                         size="small"
                         onClick={async () => {
-                          if (!window.confirm(`Remove ${member.userId} from this workspace?`)) {
+                          if (
+                            !window.confirm(
+                              `${member.displayName ?? member.userId} aus diesem Workspace entfernen?`,
+                            )
+                          ) {
                             return
                           }
                           setLocalError(null)
@@ -235,33 +248,41 @@ export default function WorkspaceManagementPage() {
                             await removeMember(workspaceId, member.userId)
                           } catch (err) {
                             setLocalError(
-                              err instanceof Error ? err.message : 'Member removal failed',
+                              err instanceof Error
+                                ? err.message
+                                : 'Entfernen des Mitglieds fehlgeschlagen',
                             )
                           }
                         }}
                       >
-                        Remove
+                        Entfernen
                       </Button>
                     )}
                     {isOwner && member.role !== 'OWNER' && (
                       <Button
                         size="small"
                         onClick={async () => {
-                          if (!window.confirm(`Transfer ownership to ${member.userId}?`)) {
+                          if (
+                            !window.confirm(
+                              `Eigentum an ${member.displayName ?? member.userId} übertragen?`,
+                            )
+                          ) {
                             return
                           }
                           setLocalError(null)
                           try {
                             await transferOwnership(workspaceId, member.userId)
-                            setSuccessMessage('Ownership transferred')
+                            setSuccessMessage('Eigentum übertragen')
                           } catch (err) {
                             setLocalError(
-                              err instanceof Error ? err.message : 'Ownership transfer failed',
+                              err instanceof Error
+                                ? err.message
+                                : 'Übertragung des Eigentums fehlgeschlagen',
                             )
                           }
                         }}
                       >
-                        Make Owner
+                        Zum Eigentümer machen
                       </Button>
                     )}
                   </Stack>
@@ -280,7 +301,7 @@ export default function WorkspaceManagementPage() {
                     value={selectedUser}
                     onChange={(_event, value) => setSelectedUser(value)}
                     renderInput={(params) => (
-                      <TextField {...params} label="User" placeholder="Search users..." />
+                      <TextField {...params} label="Benutzer" placeholder="Benutzer suchen …" />
                     )}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     sx={{ minWidth: 280 }}
@@ -289,11 +310,11 @@ export default function WorkspaceManagementPage() {
                     size="small"
                     value={newMemberRole}
                     onChange={(event) => setNewMemberRole(event.target.value as WorkspaceRole)}
-                    sx={{ width: 140 }}
+                    sx={{ width: 180 }}
                   >
                     {editableRoles.map((role) => (
                       <MenuItem key={role} value={role}>
-                        {role}
+                        {workspaceRoleLabel(role)}
                       </MenuItem>
                     ))}
                   </Select>
@@ -306,13 +327,17 @@ export default function WorkspaceManagementPage() {
                       try {
                         await addMember(workspaceId, selectedUser.id, newMemberRole)
                         setSelectedUser(null)
-                        setSuccessMessage('Member added')
+                        setSuccessMessage('Mitglied hinzugefügt')
                       } catch (err) {
-                        setLocalError(err instanceof Error ? err.message : 'Failed to add member')
+                        setLocalError(
+                          err instanceof Error
+                            ? err.message
+                            : 'Mitglied konnte nicht hinzugefügt werden',
+                        )
                       }
                     }}
                   >
-                    Add Member
+                    Mitglied hinzufügen
                   </Button>
                 </Stack>
               )}

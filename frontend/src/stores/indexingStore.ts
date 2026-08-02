@@ -64,10 +64,10 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     } catch (err) {
       set({
         status: 'FAILED',
-        message: err instanceof Error ? err.message : 'Failed to trigger indexing',
+        message: err instanceof Error ? err.message : 'Indizierung konnte nicht gestartet werden',
         snackbar: {
           open: true,
-          message: 'Failed to trigger indexing',
+          message: 'Indizierung konnte nicht gestartet werden',
           severity: 'error',
         },
       })
@@ -98,8 +98,8 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
               open: true,
               message:
                 response.status === 'COMPLETED'
-                  ? `Indexing completed: ${response.documentCount} processed, ${response.documentsSkipped} skipped`
-                  : (response.message ?? 'Indexing failed'),
+                  ? `Indizierung abgeschlossen: ${response.documentCount} verarbeitet, ${response.documentsSkipped} übersprungen`
+                  : (response.message ?? 'Indizierung fehlgeschlagen'),
               severity: response.status === 'COMPLETED' ? 'success' : 'error',
             },
           })
@@ -108,10 +108,10 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
         get().stopPolling()
         set({
           status: 'FAILED',
-          message: 'Failed to fetch indexing status',
+          message: 'Indizierungsstatus konnte nicht abgerufen werden',
           snackbar: {
             open: true,
-            message: 'Failed to fetch indexing status',
+            message: 'Indizierungsstatus konnte nicht abgerufen werden',
             severity: 'error',
           },
         })

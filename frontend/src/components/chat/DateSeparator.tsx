@@ -6,7 +6,7 @@ interface DateSeparatorProps {
 }
 
 export default function DateSeparator({ date }: DateSeparatorProps) {
-  const label = date.toLocaleDateString(undefined, {
+  const label = date.toLocaleDateString('de-DE', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

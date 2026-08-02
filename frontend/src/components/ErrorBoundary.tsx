@@ -46,19 +46,19 @@ export default class ErrorBoundary extends Component<Props, State> {
           }}
         >
           <ErrorOutlineIcon sx={{ fontSize: 64 }} color="error" />
-          <Typography variant="h5">Something went wrong</Typography>
+          <Typography variant="h5">Etwas ist schiefgelaufen</Typography>
           <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
-            An unexpected error occurred. Please try reloading the page.
+            Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button variant="contained" onClick={() => window.location.reload()}>
-              Reload
+              Neu laden
             </Button>
             <Button
               variant="outlined"
               onClick={() => this.setState((prev) => ({ showDetails: !prev.showDetails }))}
             >
-              {showDetails ? 'Hide Details' : 'Show Details'}
+              {showDetails ? 'Details ausblenden' : 'Details anzeigen'}
             </Button>
           </Box>
           <Collapse in={showDetails}>

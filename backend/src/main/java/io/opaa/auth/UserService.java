@@ -19,8 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @EnableConfigurationProperties(AuthProperties.class)
 public class UserService {
 
-  private static final String PERSONAL_WORKSPACE_NAME = "My Documents";
-  private static final String PERSONAL_WORKSPACE_DESCRIPTION = "Private personal workspace";
+  private static final String PERSONAL_WORKSPACE_NAME = "Meine Dokumente";
+  private static final String PERSONAL_WORKSPACE_DESCRIPTION = "Privater persönlicher Workspace";
 
   private final UserRepository userRepository;
   private final WorkspaceRepository workspaceRepository;
@@ -81,7 +81,7 @@ public class UserService {
     User user =
         userRepository
             .findById(userId)
-            .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
+            .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
     user.setSystemRole(role);
     return userRepository.save(user);
   }

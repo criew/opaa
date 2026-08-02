@@ -16,6 +16,7 @@ import UploadIcon from '@mui/icons-material/Upload'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { workspaceRoleLabel, workspaceTypeLabel } from '../utils/labels'
 
 function canUpload(role: string | undefined): boolean {
   return role === 'EDITOR' || role === 'ADMIN' || role === 'OWNER'
@@ -66,7 +67,7 @@ export default function WorkspacePage() {
   if (!workspace) {
     return (
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h6">No workspace selected</Typography>
+        <Typography variant="h6">Kein Workspace ausgewählt</Typography>
       </Box>
     )
   }
@@ -88,16 +89,21 @@ export default function WorkspacePage() {
             <Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                 <Typography variant="h5">{workspace.name}</Typography>
-                <Chip label={workspace.type} size="small" color="primary" variant="outlined" />
+                <Chip
+                  label={workspaceTypeLabel(workspace.type)}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
               </Stack>
               <Typography color="text.secondary">
-                {workspace.description || 'No description provided.'}
+                {workspace.description || 'Keine Beschreibung hinterlegt.'}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               {canUpload(workspace.userRole) && (
                 <Button variant="contained" startIcon={<UploadIcon />}>
-                  Upload
+                  Hochladen
                 </Button>
               )}
               {canManage(workspace.userRole) && (
@@ -106,7 +112,7 @@ export default function WorkspacePage() {
                   startIcon={<ManageAccountsIcon />}
                   onClick={() => navigate(`/workspaces/${workspace.id}/manage`)}
                 >
-                  Manage Workspace
+                  Workspace verwalten
                 </Button>
               )}
             </Stack>
@@ -120,12 +126,14 @@ export default function WorkspacePage() {
           disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography variant="h6">Documents</Typography>
+            <Typography variant="h6">Dokumente</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
             {documents.length === 0 ? (
-              <Typography color="text.secondary">No documents in this workspace yet.</Typography>
+              <Typography color="text.secondary">
+                Noch keine Dokumente in diesem Workspace.
+              </Typography>
             ) : (
               <Stack spacing={1.25}>
                 {documents.map((document) => (
@@ -141,7 +149,7 @@ export default function WorkspacePage() {
                     <Typography>{document.name}</Typography>
                     <Typography color="text.secondary">
                       {document.type} · {document.ownerDisplayName} ·{' '}
-                      {new Date(document.uploadedAt).toLocaleDateString()}
+                      {new Date(document.uploadedAt).toLocaleDateString('de-DE')}
                     </Typography>
                   </Box>
                 ))}
@@ -157,12 +165,12 @@ export default function WorkspacePage() {
           disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography variant="h6">Members</Typography>
+            <Typography variant="h6">Mitglieder</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
             {workspace.members.length === 0 ? (
-              <Typography color="text.secondary">No members found.</Typography>
+              <Typography color="text.secondary">Keine Mitglieder gefunden.</Typography>
             ) : (
               <Stack spacing={1}>
                 {workspace.members.map((member) => (
@@ -173,7 +181,7 @@ export default function WorkspacePage() {
                     <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
                       {member.displayName ?? member.userId}
                     </Typography>
-                    <Chip label={member.role} size="small" />
+                    <Chip label={workspaceRoleLabel(member.role)} size="small" />
                   </Box>
                 ))}
               </Stack>

@@ -72,7 +72,7 @@ export default function AdminDrawer() {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Admin
           </Typography>
-          <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close admin drawer">
+          <IconButton onClick={() => setDrawerOpen(false)} aria-label="Admin-Bereich schließen">
             <CloseIcon />
           </IconButton>
         </Box>
@@ -81,7 +81,7 @@ export default function AdminDrawer() {
 
         <Box sx={{ p: 2 }}>
           <Typography variant="overline" color="text.secondary">
-            Document Indexing
+            Dokumentenindizierung
           </Typography>
 
           <Accordion
@@ -97,7 +97,7 @@ export default function AdminDrawer() {
             }}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="body2">URL Source (optional)</Typography>
+              <Typography variant="body2">URL-Quelle (optional)</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ pt: 0 }}>
               <TextField
@@ -121,14 +121,14 @@ export default function AdminDrawer() {
                 slotProps={{ htmlInput: { 'aria-label': 'Proxy' } }}
               />
               <TextField
-                label="Credentials (user:password)"
+                label="Anmeldedaten (Benutzer:Passwort)"
                 type="password"
                 value={credentials}
                 onChange={(e) => setCredentials(e.target.value)}
                 size="small"
                 fullWidth
                 sx={{ mb: 1 }}
-                slotProps={{ htmlInput: { 'aria-label': 'Credentials' } }}
+                slotProps={{ htmlInput: { 'aria-label': 'Anmeldedaten' } }}
               />
               <FormControlLabel
                 control={
@@ -136,12 +136,12 @@ export default function AdminDrawer() {
                     checked={insecureSsl}
                     onChange={(e) => setInsecureSsl(e.target.checked)}
                     size="small"
-                    slotProps={{ input: { 'aria-label': 'Skip SSL verification' } }}
+                    slotProps={{ input: { 'aria-label': 'SSL-Prüfung überspringen' } }}
                   />
                 }
                 label={
                   <Typography variant="body2" color="text.secondary">
-                    Skip SSL verification
+                    SSL-Prüfung überspringen
                   </Typography>
                 }
               />
@@ -156,7 +156,7 @@ export default function AdminDrawer() {
             fullWidth
             sx={{ mt: 1, mb: 2 }}
           >
-            {isRunning ? 'Indexing...' : 'Index Documents'}
+            {isRunning ? 'Indizierung läuft …' : 'Dokumente indizieren'}
           </Button>
 
           {isRunning && (
@@ -168,8 +168,8 @@ export default function AdminDrawer() {
               />
               <Typography variant="body2" color="text.secondary">
                 {totalDocuments > 0
-                  ? `${documentCount + documentsSkipped} of ${totalDocuments} documents processed`
-                  : 'Discovering documents...'}
+                  ? `${documentCount + documentsSkipped} von ${totalDocuments} Dokumenten verarbeitet`
+                  : 'Dokumente werden ermittelt …'}
               </Typography>
             </Box>
           )}
@@ -177,15 +177,15 @@ export default function AdminDrawer() {
           {status !== 'IDLE' && !isRunning && (
             <Box sx={{ mt: 1 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Last indexing: {status === 'COMPLETED' ? 'Completed' : 'Failed'}
+                Letzte Indizierung: {status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Documents: {documentCount} processed
-                {documentsSkipped > 0 && ` (${documentsSkipped} skipped)`}
+                Dokumente: {documentCount} verarbeitet
+                {documentsSkipped > 0 && ` (${documentsSkipped} übersprungen)`}
               </Typography>
               {timestamp && (
                 <Typography variant="caption" color="text.secondary">
-                  {new Date(timestamp).toLocaleString()}
+                  {new Date(timestamp).toLocaleString('de-DE')}
                 </Typography>
               )}
             </Box>

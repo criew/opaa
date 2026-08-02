@@ -34,7 +34,7 @@ export default function CreateWorkspaceDialog({
   async function handleCreate() {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('Name is required')
+      setError('Name ist erforderlich')
       return
     }
     setError(null)
@@ -48,7 +48,7 @@ export default function CreateWorkspaceDialog({
       setDescription('')
       onCreated(workspaceId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create workspace')
+      setError(err instanceof Error ? err.message : 'Workspace konnte nicht erstellt werden')
     } finally {
       setSubmitting(false)
     }
@@ -56,7 +56,7 @@ export default function CreateWorkspaceDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Create Workspace</DialogTitle>
+      <DialogTitle>Workspace erstellen</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -74,7 +74,7 @@ export default function CreateWorkspaceDialog({
           sx={{ mt: 1 }}
         />
         <TextField
-          label="Description"
+          label="Beschreibung"
           fullWidth
           multiline
           minRows={2}
@@ -86,10 +86,10 @@ export default function CreateWorkspaceDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>
-          Cancel
+          Abbrechen
         </Button>
         <Button onClick={handleCreate} variant="contained" disabled={submitting || !name.trim()}>
-          {submitting ? 'Creating...' : 'Create'}
+          {submitting ? 'Wird erstellt …' : 'Erstellen'}
         </Button>
       </DialogActions>
     </Dialog>

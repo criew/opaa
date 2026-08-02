@@ -42,7 +42,7 @@ describe('MessageBubble', () => {
     }
     render(<MessageBubble message={msg} />)
     expect(screen.getByText('Here is the answer')).toBeInTheDocument()
-    expect(screen.getByLabelText('thumbs up')).toBeInTheDocument()
+    expect(screen.getByLabelText('Daumen hoch')).toBeInTheDocument()
   })
 
   it('renders assistant message with markdown', () => {

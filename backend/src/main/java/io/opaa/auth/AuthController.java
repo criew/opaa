@@ -43,7 +43,7 @@ public class AuthController {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(
               new ErrorResponse(
-                  "Invalid credentials", HttpStatus.UNAUTHORIZED.value(), Instant.now()));
+                  "Ungültige Anmeldedaten", HttpStatus.UNAUTHORIZED.value(), Instant.now()));
     }
 
     String token =

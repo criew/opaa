@@ -8,7 +8,7 @@ describe('AppShell', () => {
     renderWithProviders(<AppShell />, { withRouter: true, initialRoute: '/chat' })
     expect(screen.getByText('Workspaces')).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByText('Einstellungen')).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {

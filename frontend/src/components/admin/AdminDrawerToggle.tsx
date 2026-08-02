@@ -6,7 +6,11 @@ export default function AdminDrawerToggle() {
   const toggleDrawer = useIndexingStore((s) => s.toggleDrawer)
 
   return (
-    <IconButton onClick={toggleDrawer} aria-label="Toggle admin drawer" sx={{ ml: 'auto' }}>
+    <IconButton
+      onClick={toggleDrawer}
+      aria-label="Admin-Bereich ein- oder ausblenden"
+      sx={{ ml: 'auto' }}
+    >
       <AdminPanelSettingsIcon />
     </IconButton>
   )

@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors().stream()
             .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
             .findFirst()
-            .orElse("Validation failed");
+            .orElse("Validierung fehlgeschlagen");
     return ResponseEntity.badRequest()
         .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
   }
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest()
         .body(
             new ErrorResponse(
-                "Request body is missing or malformed",
+                "Der Anfragetext fehlt oder ist fehlerhaft",
                 HttpStatus.BAD_REQUEST.value(),
                 Instant.now()));
   }
@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
         .body(
             new ErrorResponse(
-                "AI service temporarily unavailable",
+                "KI-Dienst vorübergehend nicht verfügbar",
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
                 Instant.now()));
   }
@@ -67,13 +67,15 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-        .body(new ErrorResponse("AI service error", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
+        .body(
+            new ErrorResponse(
+                "Fehler im KI-Dienst", HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
 
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(new ErrorResponse("Access denied", HttpStatus.FORBIDDEN.value(), Instant.now()));
+        .body(new ErrorResponse("Zugriff verweigert", HttpStatus.FORBIDDEN.value(), Instant.now()));
   }
 
   @ExceptionHandler(Exception.class)
@@ -82,6 +84,6 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             new ErrorResponse(
-                "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR.value(), Instant.now()));
+                "Interner Serverfehler", HttpStatus.INTERNAL_SERVER_ERROR.value(), Instant.now()));
   }
 }

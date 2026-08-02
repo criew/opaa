@@ -50,7 +50,7 @@ export default function LoginPage() {
           OPAA
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sign in to continue
+          Zum Fortfahren anmelden
         </Typography>
 
         {error && (
@@ -62,7 +62,7 @@ export default function LoginPage() {
         {mode === 'basic' && (
           <form onSubmit={handleBasicLogin}>
             <TextField
-              label="Username"
+              label="Benutzername"
               fullWidth
               margin="normal"
               value={username}
@@ -70,7 +70,7 @@ export default function LoginPage() {
               autoComplete="username"
             />
             <TextField
-              label="Password"
+              label="Passwort"
               type="password"
               fullWidth
               margin="normal"
@@ -79,14 +79,14 @@ export default function LoginPage() {
               autoComplete="current-password"
             />
             <Button type="submit" variant="contained" fullWidth disabled={isLoading} sx={{ mt: 2 }}>
-              Sign In
+              Anmelden
             </Button>
           </form>
         )}
 
         {mode === 'oidc' && (
           <Button variant="contained" fullWidth onClick={loginOidc} disabled={isLoading}>
-            Sign in with SSO
+            Mit SSO anmelden
           </Button>
         )}
       </Paper>
