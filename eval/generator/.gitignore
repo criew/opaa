@@ -1,0 +1,4 @@
+# Cached raw source CSVs (see README.md). Not committed: the source snapshot is
+# documented via URL, commit hash and SHA-256 instead (ADR-0008, "Rohquelle wird
+# dokumentiert, aber nicht committet").
+raw-source/
