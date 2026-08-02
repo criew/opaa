@@ -1,0 +1,288 @@
+package io.opaa.group;
+
+import io.opaa.api.dto.GroupListResponse;
+import io.opaa.api.dto.GroupMemberResponse;
+import io.opaa.api.dto.GroupRequest;
+import io.opaa.api.dto.GroupResponse;
+import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ * Manages groups as permission subjects. All endpoints are system-admin only (enforced at the
+ * controller via {@code @PreAuthorize}); this service still resolves the caller's organization and
+ * enforces the organization boundary the same way {@code SpaceService} does, because a system admin
+ * exists per organization and must never see or touch another organization's groups.
+ *
+ * <p>Only {@link GroupKind#AD_HOC} groups can be created, renamed, deleted or have their membership
+ * managed here. {@link GroupKind#ORG_UNIT} groups are synchronised from the directory (#237) and
+ * are read-only through this service.
+ *
+ * <p>Deleting a group that owns an asset is meant to be blocked until ownership is transferred (see
+ * the feature spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria).
+ * There is no asset model yet ({@code io.opaa.indexing.Document} is the only content type, and it
+ * carries no owner) - #201/#202 introduce assets and asset ownership. Once they land, {@link
+ * #deleteGroup} must check for owned assets before deleting; there is nothing to check against yet,
+ * so no such check exists here.
+ */
+@Service
+@Transactional(readOnly = true)
+public class GroupService {
+
+  private static final int MAX_NAME_LENGTH = 255;
+  private static final int MAX_DESCRIPTION_LENGTH = 2000;
+
+  private final GroupRepository groupRepository;
+  private final UserRepository userRepository;
+  private final GroupMembershipResolver membershipResolver;
+
+  public GroupService(
+      GroupRepository groupRepository,
+      UserRepository userRepository,
+      GroupMembershipResolver membershipResolver) {
+    this.groupRepository = groupRepository;
+    this.userRepository = userRepository;
+    this.membershipResolver = membershipResolver;
+  }
+
+  @Transactional
+  public GroupResponse createGroup(GroupRequest request, UUID currentUserId) {
+    User currentUser = requireUser(currentUserId);
+    String normalizedName = validateName(request.getName());
+    validateDescription(request.getDescription());
+
+    Group group =
+        new Group(
+            currentUser.getOrganizationId(),
+            GroupKind.AD_HOC,
+            normalizedName,
+            request.getDescription(),
+            null,
+            null);
+    Group saved = groupRepository.save(group);
+    return toGroupResponse(saved);
+  }
+
+  public List<GroupListResponse> listGroups(UUID currentUserId) {
+    User currentUser = requireUser(currentUserId);
+    return groupRepository.findByOrganizationId(currentUser.getOrganizationId()).stream()
+        .map(this::toGroupListResponse)
+        .toList();
+  }
+
+  public GroupResponse getGroup(UUID groupId, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    return toGroupResponse(group);
+  }
+
+  @Transactional
+  public GroupResponse updateGroup(UUID groupId, GroupUpdateRequest request, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    rejectOrgUnit(group);
+
+    String normalizedName = validateName(request.getName());
+    validateDescription(request.getDescription());
+    group.updateDetails(normalizedName, request.getDescription());
+    Group updated = groupRepository.save(group);
+    return toGroupResponse(updated);
+  }
+
+  @Transactional
+  public void deleteGroup(UUID groupId, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    rejectOrgUnit(group);
+
+    List<UUID> affectedUserIds =
+        group.getMemberships().stream().map(GroupMembership::getUserId).toList();
+    groupRepository.delete(group);
+    membershipResolver.invalidateUsers(affectedUserIds);
+  }
+
+  public List<GroupMemberResponse> listMembers(UUID groupId, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    List<UUID> userIds = group.getMemberships().stream().map(GroupMembership::getUserId).toList();
+    Map<UUID, String> displayNames = resolveDisplayNames(userIds);
+
+    return group.getMemberships().stream()
+        .map(
+            m ->
+                new GroupMemberResponse(m.getUserId(), m.getCreatedAt())
+                    .displayName(displayNames.get(m.getUserId())))
+        .toList();
+  }
+
+  @Transactional
+  public GroupMemberResponse addMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    rejectOrgUnit(group);
+    // Resolving the target user first also turns a non-existent userId into a clean 404 instead
+    // of a raw foreign-key violation from the membership insert below.
+    requireUserInOrganization(memberUserId, group.getOrganizationId());
+
+    if (userMembership(group, memberUserId) != null) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Der Benutzer ist bereits Mitglied dieser Gruppe");
+    }
+
+    GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
+    group.addMembership(membership);
+    groupRepository.save(group);
+    membershipResolver.invalidateUser(memberUserId);
+
+    return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
+        .displayName(resolveDisplayName(membership.getUserId()));
+  }
+
+  @Transactional
+  public void removeMember(UUID groupId, UUID memberUserId, UUID currentUserId) {
+    Group group = loadGroup(groupId, currentUserId);
+    rejectOrgUnit(group);
+
+    GroupMembership target = userMembership(group, memberUserId);
+    if (target == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mitglied der Gruppe nicht gefunden");
+    }
+
+    group.removeMembership(target);
+    groupRepository.save(group);
+    membershipResolver.invalidateUser(memberUserId);
+  }
+
+  private String validateName(String name) {
+    if (name == null || name.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
+    }
+    String trimmed = name.trim();
+    if (trimmed.length() > MAX_NAME_LENGTH) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "name darf hoechstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+    }
+    return trimmed;
+  }
+
+  private void validateDescription(String description) {
+    if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "description darf hoechstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
+    }
+  }
+
+  private void rejectOrgUnit(Group group) {
+    if (group.isOrgUnit()) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "Organisationseinheiten werden aus dem Verzeichnis synchronisiert und koennen hier"
+              + " nicht bearbeitet werden");
+    }
+  }
+
+  private User requireUser(UUID userId) {
+    return userRepository
+        .findById(userId)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+  }
+
+  /**
+   * Resolves a user and enforces the organization boundary for it - mirrors {@code
+   * SpaceService#requireUserInOrganization}. Returns 404 rather than 403 both when the user does
+   * not exist and when it belongs to a different organization, so a caller cannot distinguish "no
+   * such user" from "user in another organization".
+   */
+  private User requireUserInOrganization(UUID userId, UUID organizationId) {
+    User user = requireUser(userId);
+    if (!user.getOrganizationId().equals(organizationId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden");
+    }
+    return user;
+  }
+
+  /**
+   * Loads a group and enforces the organization boundary, treating a group from another
+   * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
+   * well; the boundary is not overstepped even to reveal existence.
+   */
+  private Group loadGroup(UUID groupId, UUID currentUserId) {
+    User currentUser = requireUser(currentUserId);
+    Group group =
+        groupRepository
+            .findByIdWithMemberships(groupId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden"));
+
+    if (!group.getOrganizationId().equals(currentUser.getOrganizationId())) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gruppe nicht gefunden");
+    }
+    return group;
+  }
+
+  private GroupMembership userMembership(Group group, UUID userId) {
+    return group.getMemberships().stream()
+        .filter(membership -> membership.getUserId().equals(userId))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private String resolveDisplayName(UUID userId) {
+    return userRepository
+        .findById(userId)
+        .map(u -> u.getDisplayName() != null ? u.getDisplayName() : u.getEmail())
+        .orElse(null);
+  }
+
+  private Map<UUID, String> resolveDisplayNames(List<UUID> userIds) {
+    Map<UUID, String> result = new HashMap<>();
+    for (User user : userRepository.findAllById(userIds)) {
+      result.put(
+          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
+    }
+    return result;
+  }
+
+  private GroupListResponse toGroupListResponse(Group group) {
+    return new GroupListResponse(
+            group.getId(),
+            group.getName(),
+            group.getKind(),
+            group.getMemberships().size(),
+            group.getCreatedAt(),
+            group.getUpdatedAt())
+        .description(group.getDescription())
+        .externalId(group.getExternalId())
+        .parentGroupId(group.getParentGroupId());
+  }
+
+  private GroupResponse toGroupResponse(Group group) {
+    List<UUID> memberIds = group.getMemberships().stream().map(GroupMembership::getUserId).toList();
+    Map<UUID, String> displayNames = resolveDisplayNames(memberIds);
+
+    List<GroupMemberResponse> members =
+        group.getMemberships().stream()
+            .map(
+                m ->
+                    new GroupMemberResponse(m.getUserId(), m.getCreatedAt())
+                        .displayName(displayNames.get(m.getUserId())))
+            .toList();
+
+    return new GroupResponse(
+            group.getId(),
+            group.getName(),
+            group.getKind(),
+            members.size(),
+            members,
+            group.getCreatedAt(),
+            group.getUpdatedAt())
+        .description(group.getDescription())
+        .externalId(group.getExternalId())
+        .parentGroupId(group.getParentGroupId());
+  }
+}
