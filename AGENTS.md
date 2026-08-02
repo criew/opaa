@@ -120,9 +120,11 @@ Format: `feature/<issue-id>_<kurze-beschreibung>`
 Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 
 **Branch-Regel (verbindlich):**
-- Branches immer mit `feature/` erstellen.
+- Branches immer mit `feature/` erstellen — **ausnahmslos**, auch bei Fehlerbehebungen, dringenden Korrekturen und Dokumentationsänderungen. Es gibt kein `fix/`-, `hotfix/`- oder `docs/`-Präfix.
 - Immer die GitHub-Issue-ID im Branch-Namen angeben.
 - Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
+
+Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), nicht über das Branch-Präfix — in der Commit-Nachricht und im PR-Titel. Ein Branch `feature/295_branch-regel-klarstellen` mit dem Commit `docs(agents): …` ist der Normalfall, kein Widerspruch.
 
 ### GitHub-Issues
 

@@ -1,6 +1,7 @@
 # Git-Workflow-Regeln
 
 - Immer einen Feature-Branch erstellen; niemals direkt auf main committen
+- Branch-Format `feature/<issue-id>_<kurze-beschreibung>` — ausnahmslos, auch bei Fehlerbehebungen und dringenden Korrekturen; kein `fix/`- oder `hotfix/`-Präfix. Die Art der Änderung steht im Conventional-Commit-Typ, nicht im Branch-Namen
 - Conventional-Commits-Format für alle Commit-Nachrichten verwenden
 - Das PR-Template verwenden
 - PRs fokussiert halten: eine logische Änderung pro PR
