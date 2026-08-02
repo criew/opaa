@@ -5,6 +5,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,12 +20,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GroupMembershipResolverTest {
 
   @Mock private GroupMembershipRepository membershipRepository;
+  @Mock private UserRepository userRepository;
 
   private GroupMembershipResolver resolver;
 
   @BeforeEach
   void setUp() {
-    resolver = new GroupMembershipResolver(membershipRepository);
+    resolver = new GroupMembershipResolver(membershipRepository, userRepository);
   }
 
   @Test
@@ -72,13 +76,45 @@ class GroupMembershipResolverTest {
   }
 
   @Test
-  void resolveUserIdsForAUserSubjectReturnsExactlyThatUserWithoutQueryingTheRepository() {
+  void resolveUserIdsForAUserSubjectInTheSameOrganizationReturnsExactlyThatUser() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
+    User user = new User("sub", "issuer", "u@example.com", "User");
+    user.setOrganizationId(organizationId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
     Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.user(userId, organizationId));
 
     assertThat(resolved).containsExactly(userId);
+  }
+
+  @Test
+  void resolveUserIdsForAUserSubjectFromAnotherOrganizationResolvesToNobody() {
+    UUID userId = UUID.randomUUID();
+    UUID actualOrganizationId = UUID.randomUUID();
+    UUID claimedOrganizationId = UUID.randomUUID();
+    User user = new User("sub", "issuer", "u@example.com", "User");
+    user.setOrganizationId(actualOrganizationId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+    // A subject that names this user but the wrong organization must not resolve to them -
+    // otherwise the USER branch would be the unguarded exception to the boundary the GROUP
+    // branch enforces.
+    Set<UUID> resolved =
+        resolver.resolveUserIds(PermissionSubject.user(userId, claimedOrganizationId));
+
+    assertThat(resolved).isEmpty();
+  }
+
+  @Test
+  void resolveUserIdsForANonExistentUserSubjectResolvesToNobody() {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+    Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.user(userId, organizationId));
+
+    assertThat(resolved).isEmpty();
   }
 
   @Test

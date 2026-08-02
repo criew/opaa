@@ -2,6 +2,7 @@ package io.opaa.group;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.auth.UserRepository;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Set;
@@ -30,10 +31,13 @@ import org.springframework.stereotype.Component;
 public class GroupMembershipResolver {
 
   private final GroupMembershipRepository membershipRepository;
+  private final UserRepository userRepository;
   private final Cache<UUID, Set<UUID>> groupIdsByUser;
 
-  public GroupMembershipResolver(GroupMembershipRepository membershipRepository) {
+  public GroupMembershipResolver(
+      GroupMembershipRepository membershipRepository, UserRepository userRepository) {
     this.membershipRepository = membershipRepository;
+    this.userRepository = userRepository;
     // A stale entry only ever grants access a moment too long between a completed transaction's
     // invalidation and its next read, never too little - invalidateUser/invalidateUsers below,
     // called post-commit, are the primary correctness mechanism. The time-based expiry is a
@@ -49,19 +53,36 @@ public class GroupMembershipResolver {
   }
 
   /**
-   * The set of user ids that a grant to {@code subject} would reach. For a {@code USER} subject
-   * this is just that user; for a {@code GROUP} subject it is the group's current membership,
-   * scoped to {@link PermissionSubject#organizationId()} so a subject naming a group from another
-   * organization resolves to nobody rather than leaking that group's members - membership is never
-   * inherited downward beyond what is recorded here (see #237, #208).
+   * The set of user ids that a grant to {@code subject} would reach, scoped to {@link
+   * PermissionSubject#organizationId()} in both branches: for a {@code GROUP} subject it is the
+   * group's current membership, filtered to that organization at the query in {@link
+   * GroupMembershipRepository#findUserIdsByGroupIdAndOrganizationId} - membership is never
+   * inherited downward beyond what is recorded there (see #237, #208). For a {@code USER} subject
+   * it is that one user, but only if the user actually belongs to the given organization; otherwise
+   * the empty set. This is the one place every future caller (#202) goes through, so it is
+   * deliberately not left to each caller to re-check the boundary for the {@code USER} case - the
+   * extra lookup costs one indexed hit on the hot path, which is cheaper than repeating the
+   * organization-boundary bug class that #199 had to fix in review.
    */
   public Set<UUID> resolveUserIds(PermissionSubject subject) {
     return switch (subject.type()) {
-      case USER -> Set.of(subject.id());
+      case USER -> resolveUserSubject(subject);
       case GROUP ->
           membershipRepository.findUserIdsByGroupIdAndOrganizationId(
               subject.id(), subject.organizationId());
     };
+  }
+
+  private Set<UUID> resolveUserSubject(PermissionSubject subject) {
+    // subject.id() rather than the loaded user's own getId(): a repository match by id already
+    // guarantees they are equal, and using subject.id() keeps this independent of whichever
+    // fields a test double happens to populate on the returned User.
+    boolean belongsToOrganization =
+        userRepository
+            .findById(subject.id())
+            .map(user -> user.getOrganizationId().equals(subject.organizationId()))
+            .orElse(false);
+    return belongsToOrganization ? Set.of(subject.id()) : Set.of();
   }
 
   public void invalidateUser(UUID userId) {

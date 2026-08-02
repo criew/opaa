@@ -11,6 +11,8 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +22,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -62,6 +66,7 @@ class GroupServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -259,6 +264,63 @@ class GroupServiceIntegrationTest {
 
     groupService.deleteGroup(saved.getId(), admin);
 
+    assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
+  }
+
+  /**
+   * Reproduces the race the review of PR #283 raised: {@code removeMember} runs inside an open,
+   * not-yet-committed transaction; a concurrent reader on a separate connection reads the
+   * membership in that window. Under {@code READ COMMITTED}, that reader cannot see the deletion
+   * until the transaction commits, so it (correctly, given the timing) repopulates the cache with
+   * the still-current, soon-to-be-stale membership. What matters is what happens to that entry
+   * afterwards.
+   *
+   * <p>With invalidation deferred to {@code afterCompletion} (the fix), the entry the reader wrote
+   * is evicted right after the transaction commits, so the assertion below passes. With inline
+   * invalidation - called before the reader ever ran, so it has nothing left to evict - that stale
+   * entry survives with no further trigger to clear it, and the assertion fails. Confirmed manually
+   * by reverting {@code GroupService} to call {@code membershipResolver.invalidateUser} directly
+   * instead of through {@code invalidateAfterCommit}: this test fails against that version and
+   * passes against the current one.
+   */
+  @Test
+  void removingAMemberDoesNotLeaveAStaleCacheEntryFromAReaderDuringTheOpenTransaction()
+      throws InterruptedException {
+    UUID admin = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    group.addMembership(new GroupMembership(member, organizationA));
+    Group saved = groupRepository.save(group);
+    // Start from a known, uncached state right before the race.
+    membershipResolver.invalidateUser(member);
+
+    TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+    CountDownLatch readerDone = new CountDownLatch(1);
+
+    transactionTemplate.execute(
+        status -> {
+          // removeMember's own @Transactional(REQUIRED) joins this already-open transaction
+          // rather than starting and committing a second one, so the deletion below is not yet
+          // committed when the reader thread runs.
+          groupService.removeMember(saved.getId(), member, admin);
+
+          Thread reader =
+              new Thread(
+                  () -> {
+                    membershipResolver.groupIdsForUser(member);
+                    readerDone.countDown();
+                  });
+          reader.start();
+          try {
+            assertThat(readerDone.await(5, TimeUnit.SECONDS)).isTrue();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+          }
+          return null;
+        });
+    // The transaction has now committed, and with it, invalidateAfterCommit's afterCompletion
+    // synchronization has run.
     assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
   }
 }
