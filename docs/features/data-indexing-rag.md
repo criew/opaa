@@ -341,6 +341,8 @@ Verarbeitete Chunks werden gespeichert mit:
 }
 ```
 
+**Führender Speicher ist die relationale Datenbank**; der Vektorspeicher ist abgeleitet. Das ist keine Nebensächlichkeit, sondern bestimmt das Sicherungsverfahren: Nach dem Einspielen einer Datenbanksicherung können Chunks mit Bibliotheks-Kennungen existieren, deren Bibliothek inzwischen anders berechtigt oder gelöscht ist. Bei pgvector in derselben Datenbank entschärft sich das; bei getrennt gesicherten Vektorspeichern nicht. Ein Konsistenzprüflauf gleicht beide Seiten ab.
+
 Hinweis: `library_id` ist **einwertig** — jedes Dokument gehört zu genau einer Wissensbibliothek. Die Mehrfachverwendung eines Bestands wird eine Ebene höher gelöst (dieselbe Bibliothek in mehreren Spaces assoziiert) und muss deshalb nicht je Chunk materialisiert werden. Die Berechtigungsprüfung verwendet dieses Feld als Metadatenfilter in der Vektorsuche (siehe [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
 
 ### Schritt 5: Index-Aktualisierungen
@@ -544,7 +546,7 @@ Von Benutzern hochgeladene Dokumente folgen einem spezifischen Berechtigungsmode
 
 Konnektor-indizierte Dokumente erben ihre Bibliothek aus der Quellzuordnung:
 - Jede Quell-Untereinheit (z. B. Confluence-Space) wird genau einer Wissensbibliothek zugeordnet
-- Wer an der Bibliothek `ADMIN` ist, kann einzelne Dokumente aus dem Index ausschließen; der Ausschluss wirkt an genau einer Stelle
+- Wer an der Bibliothek `MANAGER` ist, kann einzelne Dokumente aus dem Index ausschließen; der Ausschluss wirkt an genau einer Stelle
 - Die Freigabe-Obergrenze des System-Admins begrenzt, wie weit die Bibliothek geöffnet werden darf
 
 ### Duplikaterkennung

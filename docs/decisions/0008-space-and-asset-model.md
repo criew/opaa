@@ -109,7 +109,11 @@ Die Rechtemenge ist eine berechnete Größe aus drei Quellen. Die Prüferfrage i
 
 Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Herkunftsdaten nach Person filtert, gruppiert oder sortiert — **auch nicht abschaltbar**. Eine abschaltbare Statistik schützt nicht, weil das Audit-Log denselben Sachverhalt unabhängig davon erhebt und was heute aus ist, morgen an sein kann, mit rückwirkend auswertbaren Daten. Offen bleiben nur die Selbstauskunft der betroffenen Person und die anlassbezogene Klärung eines Sicherheitsvorfalls im Vier-Augen-Prinzip. Dazu: Netzadresse nicht im Standardprotokollsatz, Aufbewahrung mit Ober- statt nur Untergrenze, technisch getrennte Auswertungswege, Governance-Änderungen protokoll- und anzeigepflichtig.
 
-### 14. Organisation als harte Mandantengrenze
+### 14. Entwürfe sind der Hauptbestand und werden wie solcher behandelt
+
+Das Ablage-Modell dreht die Mengenverhältnisse um: Nicht der Entwurf ist die Ausnahme, sondern die Ablage. Daraus folgt: Vorwarnung vor Fristablauf und Verlängerungsmöglichkeit statt stiller Löschung, die Aufbewahrungsfrist des persönlichen Space wird vom System-Admin gesetzt, beim Ausscheiden gilt Ablage-Aufforderung im geordneten Austritt mit Löschung nach Frist als Auffangregel — **ohne Lesbarkeit für Dritte, auch nicht für Nachfolger**. Kapazität wird über aggregierte Belegung je Organisationseinheit und eine technisch durchgesetzte Quote je Konto gesteuert, nicht über einen Bericht; eine Quote braucht keinen Auswertungspfad. Über die Entwürfe anderer wird nichts angezeigt, und die Ablagequote ist nur oberhalb der Mindestgruppengröße aggregiert messbar — ein bewusst gezahlter Preis.
+
+### 15. Organisation als harte Mandantengrenze
 
 `organizationId` an Space, Asset, Nutzer und Gruppe. Nichts überschreitet die Grenze, auch keine Systemverwaltung.
 
@@ -156,6 +160,7 @@ Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Her
 
 - **Zwei Rechtelogiken müssen nebeneinander verstanden werden.** Das ist die Hauptlast des Modells. Ein Space-Admin darf das Regal umräumen, aber nicht die Bücher lesen — das ist ungewohnt und muss in der Oberfläche deutlich werden.
 - **Zwei Mitglieder desselben Space sehen unterschiedlich viele Assets.** Gewollt, wirkt ohne Erklärung wie ein Fehler.
+- **Der Sperrzustand eines Strikt-Space braucht einen Zuständigen.** „Voraussetzung verletzt" erhält denselben Zuschnitt wie „Nachfolge offen": benannter Adressat, Frist, Eskalation, Liste mit Liegezeit für den System-Admin, Neubewertung ausgelöst durch jede Rechteänderung an jeder betroffenen Bibliothek, Ursache im Klartext, Meldung als fachlicher Vorgang und ausdrücklich kein Bereitschaftsereignis. Sonst erzeugt der Modus Arbeitsstillstand in genau dem Raum, für den er empfohlen wird.
 - **Transparenz wird freiwillig statt automatisch.** Ein Chat, den niemand ablegt, ist für die Organisation nicht vorhanden. Die Gegenrechnung — automatische Sichtbarkeit erzeugt Ausweichverhalten und macht am Ende weniger sichtbar — ist plausibel, aber eine Annahme über Verhalten und keine Gewissheit. Das Ablegen muss deshalb ein Klick sein.
 - **Das Ableitungsleck bleibt bestehen, nur verantwortet.** Ein abgelegter Chat kann Passagen enthalten, die andere Mitglieder nie hätten öffnen dürfen. Neu ist, dass es eine Person und einen Zeitpunkt dafür gibt. Zitat-Sprungmarken bleiben rechtegeprüft.
 - **Der Strikt-Modus musste repariert werden.** Er versprach „garantiert leckfrei", konnte das aber nicht halten, weil der Space den Agenten nicht verengt. Auflösung: weder den Agenten verengen (das bräche die Reproduzierbarkeit) noch die Zusicherung zurücknehmen, sondern **den Aufruf verweigern** — ein Agent läuft mit vollständiger Bindung oder gar nicht. Bricht die Voraussetzung nachträglich, geht der Space in den Zustand „Voraussetzung verletzt": keine neuen Ablagen, keine Agentenaufrufe, nichts wird zerstört.

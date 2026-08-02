@@ -48,11 +48,19 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 - **Konnektoren (System-Admin):** System-Admins konfigurieren Konnektoren und legen fest, welche Quelle in welche Wissensbibliothek indiziert. Der primäre Weg für automatisierte Massenaufnahme.
 - **Manuelle Uploads:** Wer an einer Wissensbibliothek mindestens `EDITOR` ist, kann Dokumente hochladen — in seine persönliche Bibliothek oder in jede andere, an der er dieses Recht hat.
 
-Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**. Die Freigabe-Obergrenze verhindert, dass eingespeiste Bestände weiter geöffnet werden, als der Einspeisende es vorgesehen hat.
+Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
+
+**Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist" und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
+
+- Gedeckelt werden `visibility`, `listed` und Grants an Gruppen oberhalb einer festgelegten Größe.
+- Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben" und „nicht behoben"; ein stilles Weiterwirken wäre das eine, ein stiller Entzug das andere Extrem.
+- Eine Bibliothek, die sowohl aus einem Konnektor als auch aus manuellem Upload gespeist wird, **trägt die Obergrenze ebenfalls** — sonst wäre der manuelle Upload der Weg an ihr vorbei.
 
 ### Löschung eines Space
 
-Ein Space zu löschen ist unter dem neuen Modell ein vergleichsweise harmloser Vorgang: Er vernichtet **keine Dokumente**, weil diese in Wissensbibliotheken liegen, die anderen gehören. Gelöscht werden die Assoziationen (die Assets selbst bleiben unberührt) sowie die space-eigenen Inhalte — Chats und Artefakte —, sofern sie nicht zuvor in eine Wissensbibliothek überführt wurden. Ein Audit-Eintrag hält die Löschung fest.
+Ein Space zu löschen ist unter dem neuen Modell ein vergleichsweise harmloser Vorgang: Er vernichtet **keine Dokumente**, weil diese in Wissensbibliotheken liegen, die anderen gehören. Gelöst werden die Assoziationen; die Assets selbst bleiben unberührt.
+
+**Space-eigene Inhalte werden dabei nicht gelöscht.** Die Regel „Zurückziehen statt Löschen" gilt auch hier: Abgelegte Chats und Artefakte werden zurückgezogen und bleiben für ihre Autoren und im Nachweis erhalten; Entwürfe bleiben ihren Erstellern erhalten. Andernfalls wäre die Space-Löschung ein Massenlöschpfad für die Arbeitsspuren fremder Beschäftigter — genau das, was der Schutz an anderer Stelle ausschließt. Ein Audit-Eintrag hält den Vorgang fest.
 
 Löschen darf nur der im Space als Verantwortlicher hinterlegte Nutzer oder ein System-Admin.
 
@@ -120,7 +128,13 @@ Die Rechtemenge eines Nutzers ist eine **berechnete Größe** aus drei Quellen �
 
 Die Prüferfrage lautet nicht „was hat Frau K. getan", sondern: *„Worauf hatte Frau K. am 3. März Zugriff, und belegen Sie, dass die Bibliothek `Personalvorgänge` nicht dazugehörte."* Die **Negativfrage** ist die schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es Lücken haben kann.
 
-Deshalb werden **Grants und Gruppenmitgliedschaften historisiert**: Zu jedem Zeitpunkt ist rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs. Die Rechtemenge eines beliebigen Stichtags wird aus der Historie berechnet, nicht aus dem Protokoll gelesen.
+Deshalb werden **alle drei Quellen historisiert**: Grants, Gruppenmitgliedschaften **und die Reichweitenfelder am Asset** (`visibility`, `listed`). Zu jedem Zeitpunkt ist rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
+
+Die dritte Quelle mitzunehmen ist nicht optional: Eine Bibliothek, die vom 1. bis zum 10. März organisationsweit freigegeben war, verschaffte in dieser Zeit Zugriff, ohne dass je ein Grant existierte. Wäre nur protokolliert statt historisiert, ruhte ein Drittel der Rekonstruktion auf genau der lückenanfälligen Quelle, die dieses Kapitel verwirft — und die Antwort auf die Prüferfrage fiele falsch aus, und zwar in die gefährliche Richtung. Es sind zwei Felder an wenigen hundert Objekten.
+
+**Aufbewahrung und Löschschicksal der Historie** folgen derselben Logik wie das Protokoll: Sie unterliegt einer Höchstdauer, und der Personenbezug ist ab dem Schreibzeitpunkt pseudonymisiert. Beim Löschen eines Kontos entfällt die Zuordnung; die Historie selbst bleibt unverändert bestehen. Ohne diese Festlegung entstünden zwei unvereinbare Aussagen — entweder wäre die Zusage „danach nicht mehr auf eine Person zurückführbar" nicht haltbar, oder für ausgeschiedene Personen wäre nichts mehr belegbar, obwohl Prüfungen gerade sie häufig betreffen.
+
+**Regressionsprüfung gegen Filterfehler:** Enthält `libraries_searched` einer Abfrage eine Bibliothek, die nach der Historie zu diesem Zeitpunkt für den Nutzer nicht lesbar war, ist das ein beweisbarer Durchsetzungsfehler. Der Abgleich ist billig und wird als Prüfung geführt.
 
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das, was die Datensparsamkeit vermeiden soll — und wäre trotzdem lückenanfällig. Die Historie liefert dieselbe Aussage mit weniger Daten.
 
@@ -168,7 +182,10 @@ Handlungen, an denen sich Rechte, Reichweiten oder die Beobachtbarkeit ändern:
 - Die Audit-Frist muss **mindestens so lang** gewählt werden wie die Aufbewahrung der Inhalte, auf die sie sich bezieht. Sonst existiert ein Chatverlauf noch, aber es ist nicht mehr belegbar, wer ihn wann gelesen hat. Das Produkt warnt bei einer inkonsistenten Einstellung. Die konkrete Dauer folgt aus Fachrecht und Aktenordnung der einführenden Stelle.
 - **Abschließend geregelter Zugriff:** benannter Personenkreis, dokumentierter Anlass. Die Trennung der Auswertungswege für Revision und Dienststellenleitung ist technisch durchgesetzt, nicht nur organisatorisch zugesagt. Der Audit-Zugriff erzeugt selbst einen Eintrag — protokollierter Zugriff ist aber kein begrenzter Zugriff, beides ist nötig.
 - **Der SIEM-Export ist keine Umgehung.** Was exportiert wird, unterliegt denselben Zweck-, Zugriffs- und Sparsamkeitsregeln.
-- **Kein personenbezogener Auswertungspfad.** Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Herkunftsdaten nach Person filtert, gruppiert oder sortiert — auch nicht abschaltbar. Offen bleiben nur die Selbstauskunft der betroffenen Person und die anlassbezogene Klärung eines Sicherheitsvorfalls im Vier-Augen-Prinzip. Siehe [Mitbestimmung und Personalvertretung](./spaces-and-assets.md#mitbestimmung-und-personalvertretung).
+- **Kein personenbezogener Auswertungspfad.** Es gibt keine Schnittstelle und keine Oberfläche, die Nutzungs-, Chat- oder Herkunftsdaten nach Person filtert, gruppiert oder sortiert — auch nicht abschaltbar. Offen bleiben nur zwei Wege:
+
+  - die **Selbstauskunft** der betroffenen Person — nicht delegierbar, für niemanden sonst auslösbar;
+  - die **anlassbezogene Klärung** eines Sicherheitsvorfalls im Vier-Augen-Prinzip **unter Beteiligung der Personalvertretung**, mit dokumentiertem Anlass und eigenem Protokolleintrag. Sie ist zusätzlich **inhaltlich begrenzt**: kein Einsatz für arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen — auch nicht bei Mischsachverhalten —, Person, Zeitraum und Zweck vorab festgelegt und die Abfrage technisch darauf begrenzt, Unterrichtung der betroffenen Person nach Abschluss, und ein Jahresbericht an die Personalvertretung über Fallzahl und Anlasskategorien ohne Namen. Siehe [Mitbestimmung und Personalvertretung](./spaces-and-assets.md#mitbestimmung-und-personalvertretung).
 
 ### Unveränderlichkeit und Löschrecht
 
@@ -182,6 +199,7 @@ Ein nur anfügendes Protokoll und ein nachträgliches Schwärzen schließen eina
 - **Rechteänderungen:** wer hat wem was freigegeben, mit Rechtestand zum Stichtag aus der Historie
 - **Zugriff auf geschützte Bestände**
 - **Auskunftsexport:** welche personenbeziehbaren Daten erhoben werden, in welcher Granularität und wie lange sie liegen — vor dem Rollout vollständig vorlegbar
+- **Testzugang für die Personalvertretung** vor dem Rollout, damit sie die Zusagen selbst nachvollziehen kann statt sie zu glauben
 
 ### Datenlöschung (DSGVO)
 
@@ -210,6 +228,8 @@ Nicht über eine Sonderrolle, sondern über **Gruppen**: Die Stabsstelle erhält
 ### Revision und Rechnungsprüfung
 
 Prüfende Stellen brauchen Unabhängigkeit. Empfohlen ist ein eigener Space im **Strikt-Modus** (nur Bibliotheken, deren Leserkreis alle Mitglieder umfasst), damit in der Prüfung keine Inhalte an Unberechtigte gelangen und die Prüfakte sauber abgegrenzt bleibt.
+
+**Der Preis gehört an dieselbe Stelle wie die Empfehlung:** Ein hausweit geteilter Agent ist in aller Regel an mindestens eine Bibliothek gebunden, deren Leserkreis die Prüfstelle nicht umfasst — im Strikt-Modus ist er dort nicht aufrufbar. Die Prüfstelle verliert damit faktisch den größten Teil der geteilten Agenten des Hauses. Das ist vertretbar und für die Unabhängigkeit sogar folgerichtig, muss aber vor der Entscheidung bekannt sein und nicht drei Monate später auffallen.
 
 ### Externe Beteiligte
 
@@ -250,6 +270,7 @@ Die Aufnahme externer Personen ist besonders folgenreich, weil ihnen damit alle 
 - **Compliance:** Audit-Logs vollständig aufbewahrt und zugänglich
 - **Leistung:** Rechteprüfung erhöht die Abfragezeit um weniger als 50 ms
 - **Genauigkeit:** keine unbeabsichtigten Zugriffe
+- **Ablagequote:** nur **aggregiert je Organisationseinheit oberhalb der Mindestgruppengröße** messbar, nie je Person. Ob das Ablage-Modell trägt, wird damit nur grob und spät erkennbar sein — ein bewusst gezahlter Preis: Genauer zu messen hieße, die Zusage zu brechen, die das Konzept gegenüber der Personalvertretung am stärksten macht.
 - **Verständlichkeit:** Anteil der Support-Anfragen, die sich auf „warum sehe ich das nicht“ beziehen, sinkt über die ersten drei Monate. (Die frühere Formulierung „Nutzer verstehen den Unterschied ohne Schulung“ ist gestrichen — ADR-0008 bezeichnet dieselbe Sache als „Hauptlast des Modells“; eine Metrik, deren Erfüllung die eigene Architekturentscheidung für unwahrscheinlich erklärt, ist keine Metrik.)
 
 ---

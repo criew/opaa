@@ -158,7 +158,7 @@ Gruppen haben zwei Ausprägungen:
 | `ORG_UNIT` | aus dem Verzeichnis synchronisiert (Referat, Abteilung, Amt) | Rechtesubjekt **und** Freigabeziel; kennt ihre übergeordnete Einheit; kann Kuratoren haben |
 | `AD_HOC` | im System angelegt | nur Rechtesubjekt (z. B. „Projektbeteiligte Phoenix", „Stabsstelle Leserunde") |
 
-**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Neu ist nicht *was* passiert, sondern *wer es erteilen darf* — bei einer Organisationseinheit ist dafür deren Kurator zuständig (siehe unten). Ein Grant an eine `AD_HOC`-Gruppe braucht keinen Kurator und wird wie jede andere Rechtevergabe vom Asset-Admin erteilt.
+**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Neu ist nicht *was* passiert, sondern *wer es erteilen darf* — bei einer Organisationseinheit ist dafür deren Kurator zuständig (siehe unten). Ein Grant an eine `AD_HOC`-Gruppe braucht keinen Kurator und wird wie jede andere Rechtevergabe von einem `MANAGER` des Assets erteilt.
 
 **Zwei Richtungen, die nicht verwechselt werden dürfen:**
 
@@ -231,7 +231,7 @@ Die Gefahr ist nicht, dass ein Abkömmling existiert. Die Gefahr ist, dass niema
 1. **Versionsstand ist immer sichtbar.** Der Abkömmling zeigt: „basiert auf Version 3 — das Original steht bei Version 5".
 2. **Der Verantwortliche wird benachrichtigt**, wenn das Original eine neue Version bekommt. Bei Gruppen-Eigentum geht die Nachricht an die Einheit und nicht an eine Person, die im Urlaub sein kann.
 3. **Änderungen sind einsehbar.** Der Verantwortliche sieht, was sich am Original geändert hat, und entscheidet selbst, ob er es übernimmt. Ein automatisches Zusammenführen gibt es **nicht** und ist ausdrücklich nicht geplant — es wäre bei frei formulierten Aufgabenbeschreibungen nicht verlässlich.
-4. **Bei Deaktivierung des Originals reicht eine Benachrichtigung nicht.** Der Abkömmling erhält eine **Prüfaufforderung mit Frist**:
+4. **Bei Deaktivierung des Originals reicht eine Benachrichtigung nicht.** Der Abkömmling erhält eine **Prüfaufforderung mit Frist** — dieser Teil ist bewusst **zurückgestellt** und nicht Bestandteil der ersten Ausbaustufe, weil er voraussetzt, dass Abkömmlinge in nennenswerter Zahl entstehen:
    - Er läuft zunächst weiter, trägt aber für **alle Nutzenden** — nicht nur für den Verantwortlichen — einen deutlichen Hinweis mit dem Grund der Deaktivierung des Originals.
    - Der Verantwortliche muss innerhalb der Frist ausdrücklich bestätigen, dass der Abkömmling fachlich weiter gilt, oder ihn selbst deaktivieren.
    - Bleibt die Bestätigung aus, wird der Abkömmling **automatisch deaktiviert**.
@@ -245,7 +245,7 @@ Punkt 4 ist die einzige Stelle im Modell, an der ein Asset ohne Zutun seines Eig
 Ein fachlich überholtes Asset wird **deaktiviert, nicht gelöscht**:
 
 - Es ist nicht mehr aufrufbar und erscheint nicht mehr im Katalog.
-- **Bestehende Chatverläufe bleiben vollständig lesbar** und tragen an den Stellen, an denen das Asset gewirkt hat, einen sichtbaren Warnhinweis mit Grund und Datum.
+- **Bestehende Chatverläufe bleiben vollständig lesbar** und tragen einen sichtbaren Warnhinweis mit Grund und Datum. Der Hinweis wird **je Verlauf beim Öffnen** aus dem Zustand des Assets aufgelöst, nicht je Nachricht materialisiert — sonst trüge nach der Deaktivierung einer viel genutzten Rechtsquellen-Bibliothek eine sechsstellige Zahl von Nachrichten dieselbe Meldung, und der Hinweis würde zu dem Rauschen, das er vermeiden soll.
 
 Der Grund ist die Nachvollziehbarkeit: Auf Grundlage der damaligen Antworten können Bescheide ergangen sein. Ein Löschen würde die Spur zerstören, die eine Revision oder ein Widerspruchsverfahren später braucht. Deshalb wird nichts entfernt, sondern nur unbrauchbar gemacht und gekennzeichnet.
 
@@ -259,7 +259,7 @@ OPAA liefert erprobte Verwaltungs-Agenten und -Prompts ab Werk aus. Sie sind ein
 
 | `Asset.origin` | Bedeutung |
 |---|---|
-| `BUILT_IN` | mitgeliefert; gehört keinem Nutzer, wird mit Produkt-Updates aktualisiert, in der Behörde nicht änderbar |
+| `BUILT_IN` | mitgeliefert; gehört keinem Nutzer, in der Behörde nicht änderbar, wird über den Aktualisierungsweg des Produkts gepflegt |
 | `LOCAL` | von der Behörde angelegt oder abgezweigt |
 
 Wer ein mitgeliefertes Asset anpassen will, erzeugt einen Abkömmling. Der Abkömmling ist `LOCAL` und wird von Produkt-Updates **nicht angefasst**. Damit kann ein Update niemals behördeneigene Änderungen überschreiben — die häufigste und ärgerlichste Form von Datenverlust bei ausgelieferten Vorlagen.
@@ -358,7 +358,16 @@ Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzei
 
 **Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Ablegen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
 
-**Selbstschutz des Eigentümers.** Ein Bibliotheks-Eigentümer kann für seine Bibliothek festlegen, dass sie **nur in Strikt-Spaces** assoziiert werden darf. Damit liegt das Werkzeug gegen das Ableitungsleck nicht nur in fremder Hand: Wer einen besonders geschützten Bestand verantwortet, kann dessen Verbreitung selbst begrenzen, statt auf die Sorgfalt fremder Kuratoren angewiesen zu sein.
+**Selbstschutz des Eigentümers.** Ein Bibliotheks-Eigentümer kann seine Bibliothek als **strikt-only** kennzeichnen. Die Kennzeichnung wirkt an **zwei** Stellen, und die zweite ist die wichtigere:
+
+- Die Bibliothek darf nur in Strikt-Spaces bereitgestellt werden.
+- **Sie darf nur von Agenten gebunden werden, die selbst ausschließlich in Strikt-Spaces aufrufbar sind.**
+
+Ohne die zweite Regel liefe die Kennzeichnung ins Leere: Sie würde die Assoziation begrenzen — die dieses Dokument an anderer Stelle ausdrücklich für harmlos erklärt — und den verbliebenen Weg offen lassen. Eine Sachbearbeiterin mit persönlichem Grant auf eine geschützte Bibliothek könnte sonst in einem gewöhnlichen Space einen daran gebundenen Agenten aufrufen, weil der Space den Agenten nicht verengt, und das Ergebnis anschließend ablegen. Erst die Bindungsregel macht aus der Kennzeichnung ein Werkzeug gegen das Ableitungsleck.
+
+**Nachträgliche Umstellung auf strikt-only** ist möglich, aber nicht stillschweigend: Bestehen bereits Bereitstellungen in Nicht-Strikt-Spaces oder Bindungen durch entsprechende Agenten, zeigt das System sie auf und der Eigentümer entscheidet — lösen oder abbrechen. Es gibt keinen Zustandswechsel im Hintergrund.
+
+**Was die Kennzeichnung nicht leistet:** Sie gilt für die Bibliothek als Ganzes, nicht je Bereitstellung. Für einen Bestand, der in den meisten Räumen breit verfügbar sein soll und nur in einem einzelnen gemischten Projektraum eine Prüfung verdiente, ist sie das falsche Werkzeug — der Eigentümer müsste im Voraus über künftige Verwendungen entscheiden, die er noch nicht kennt. Für diesen Fall bleiben die Benachrichtigung, das Lösen der Bereitstellung und die Nennung des Eigentümers im Ablagedialog.
 
 **Folge für die Oberfläche:** Zwei Mitglieder desselben Space sehen unterschiedlich viele Assets. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler und muss in der Oberfläche einmal deutlich benannt werden.
 
@@ -417,15 +426,56 @@ Ein Chat entsteht als `DRAFT` und ist ausschließlich für seinen Autor sichtbar
 
 - Der Chat zeigt dauerhaft seinen Status und, sobald abgelegt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
 - Beim Ablegen wird der Leserkreis benannt, **bevor** die Ablage wirksam wird.
-- Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Ablagedialog** — ohne Anzahlen und ohne Namen der Bibliotheken zu nennen. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
+- Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Ablagedialog**. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
+- Der Hinweis nennt **den Eigentümer der betroffenen Bibliothek**, nicht aber Anzahlen oder Inhalte. Ohne diese Angabe kann der Ablegende nicht abwägen, ob die Weitergabe vertretbar ist — er weiß sonst nur, dass „irgendetwas eingeschränkt" ist, und klickt den Hinweis weg. Der Name der verantwortlichen Stelle ist, anders als der Inhalt, kein schützenswertes Geheimnis; er erlaubt im Zweifel eine kurze Rückfrage statt einer Entscheidung in Unkenntnis.
 - Der Wechsel des Space ist eine sichtbare Handlung, nie eine stillschweigende Voreinstellung.
 - Der Autor kann einen abgelegten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
+- **Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm abgelegten Inhalts wesentlich erweitert** — bei Aufnahme neuer Mitglieder, insbesondere externer Personen, und bei Öffnung des Space. Ohne diese Nachricht wäre die Ablageentscheidung nachträglich eine andere geworden als die, die er getroffen hat: Er hat im Februar sieben Kolleginnen und den Referatsleiter zugestimmt, nicht der externen Beraterin, die im Juni dazukommt. Die Legitimation des ganzen Modells ruht darauf, dass der Ersteller weiß, was er tut; das Zurückziehen ist nur dann ein Werkzeug, wenn er von der Änderung erfährt.
 
 Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich; ist er es nicht, bestimmt ihn der Space.
 
 Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
 
-#### Chats sind vor fremder Löschung geschützt
+#### Entwürfe: der Hauptbestand des Systems
+
+Das Ablage-Modell dreht die Mengenverhältnisse um. **Nicht der Entwurf ist die Ausnahme, sondern die Ablage.** Die meisten Chats werden nie abgelegt — Rückfragen, Fehlversuche, Verworfenes. Entwürfe sind damit der Hauptbestand, nicht der Bodensatz, und brauchen dieselbe Sorgfalt wie abgelegte Inhalte.
+
+**Entwürfe sind nicht Teil der Akte.** Dieser Satz muss vor der Einführung gesagt sein und nicht im ersten Widerspruchsverfahren auffallen. Es gilt dieselbe Aussage wie für ein persönliches E-Mail-Postfach: Was aktenrelevant ist, wird abgelegt oder in eine Wissensbibliothek überführt.
+
+#### Nichts verschwindet ohne Ansage
+
+Niemand räumt den Schreibtisch eines Kollegen ohne Vorwarnung ab. Verbindlich:
+
+- **Vorwarnung vor Fristablauf** an den Autor, rechtzeitig genug, um zu handeln. Das Exportrecht nützt nur, wer weiß, dass er es ausüben muss.
+- **Verlängerungsmöglichkeit.** Ein Vorgang, der ein Jahr ruht, ist Verwaltungsalltag — Widerspruch, Gerichtsverfahren, Rückstellung. Ein Entwurf dazu darf nicht ablaufen, nur weil nichts passiert ist.
+- **Eine Liste „deine offenen Entwürfe"** für den Autor, damit ein vergessener Entwurf sichtbar wird, bevor die Frist ihn löscht.
+- **Export schließt Entwürfe ein.**
+
+#### Wer die Frist des persönlichen Space setzt
+
+Der überwiegende Teil der Entwürfe liegt im persönlichen Space. Stellt der Nutzer dessen Aufbewahrungsfrist selbst ein, läuft sie nie ab und der Bestand wächst unbegrenzt. Deshalb setzt sie der **System-Admin** — was bedeutet, dass das System Arbeit löscht, die niemand sonst je gesehen hat. Das ist nur mit den beiden Sicherungen oben vertretbar und ohne sie nicht.
+
+#### Was beim Ausscheiden geschieht
+
+Für Assets gilt: Der Zugang wird nie durch die Eigentumsfrage aufgehalten, das Objekt bleibt nutzbar, die Zuständigkeit wird nachgezogen. Für Entwürfe ist die Lage anders, weil niemand sie sehen darf — auch kein Nachfolger. Deshalb gilt:
+
+1. **Im geordneten Austritt** wird der Autor vor der Deaktivierung aufgefordert, seine Entwürfe abzulegen oder zu exportieren. Das löst den Regelfall.
+2. **Als Auffangregel** werden Entwürfe eines ausgeschiedenen Nutzers nach einer benannten Frist gelöscht.
+
+**Entwürfe werden nicht für Dritte lesbar gemacht** — auch nicht für Nachfolger, auch nicht im Vier-Augen-Verfahren. Die Zusage, dass dort niemand mitliest, ist zu wertvoll, um sie für den Einzelfall aufzugeben. Der Preis ist, dass eine halbfertige Einschätzung zu einem laufenden Vorgang mit dem Ausscheiden verloren geht; deshalb ist die Ablage-Aufforderung im Austrittsverfahren die eigentliche Lösung und die Löschung nur das Netz darunter.
+
+#### Speicherbedarf ohne Auswertungspfad
+
+Entwürfe treiben das Speicherwachstum, und wegen des Zitierzwangs enthalten sie wörtliche Passagen aus den Quelldokumenten. Der Betrieb muss die Kapazität planen können, ohne dass jemand in fremde Daten sieht. Ein Speicherbericht je Nutzer wäre wörtlich eine Gruppierung von Chatdaten nach Person und ist damit ausgeschlossen. Stattdessen:
+
+- **Belegung nur aggregiert je Organisationseinheit**, mit derselben Mindestgruppengröße wie die Nutzungsstatistik.
+- **Eine technisch durchgesetzte Obergrenze je Konto statt eines Berichts.** Eine Quote braucht keinen Auswertungspfad: Das System setzt sie durch und meldet sie **dem Betroffenen selbst**. Damit ist auch der Ausreißerfall beherrschbar — ein Konto, das durch eine fehlgeschlagene Automatisierung Millionen Entwürfe erzeugt.
+
+#### Was über Entwürfe nicht angezeigt wird
+
+Es gibt **keinen Entwurfszähler, keine Aktivitätsanzeige und keine Fortschrittsanzeige** über die Entwürfe einer anderen Person. Ob die Ablage überhaupt genutzt wird, ist nur **aggregiert je Organisationseinheit oberhalb der Mindestgruppengröße** messbar — nie je Person und nie je Space unterhalb der Schwelle. Das ist ein bewusst gezahlter Preis: Genauer zu messen hieße, die Zusage zu brechen, die das Konzept gegenüber der Personalvertretung trägt.
+
+### Chats sind vor fremder Löschung geschützt
 
 Für Chats gilt dasselbe wie für Assets: **Zurückziehen statt Löschen.** Ein Space-Admin kann einen abgelegten Chat aus dem Space entfernen — er kann ihn nicht beseitigen. Der Chat bleibt für seinen Autor und im Nachweis erhalten, die Entfernung wird mit Grund protokolliert.
 
@@ -445,7 +495,7 @@ Die Objektklasse ist bewusst allgemein gehalten, damit weitere Ergebnistypen ohn
 - **Versionierung:** Ein neues Artefakt kann ein bestehendes ersetzen. Das ersetzte wird `SUPERSEDED`, bleibt aber auffindbar.
 - **Herkunftskennzeichnung:** Jedes Artefakt zeigt, aus welchen Bibliotheken es abgeleitet wurde, und ist auf seinen Ursprungs-Chat rückführbar.
 - **Zurückziehen:** durch Ersteller und Space-Admin, mit Grund protokolliert — kein Löschen.
-- **Aufbewahrung:** Je Space konfigurierbare Frist, damit Projekt-Spaces nicht unbegrenzt wachsen. Entwürfe unterliegen ihr ebenso.
+- **Aufbewahrung:** Je Space konfigurierbare Frist, damit Projekt-Spaces nicht unbegrenzt wachsen. Entwürfe unterliegen ihr ebenso. Die Frist ist mit den Fach- und Rechtsbehelfsfristen abzustimmen: Sonst wird genau die Spur gelöscht, die nach dem Grundsatz „deaktivieren statt löschen" für ein laufendes Widerspruchsverfahren erhalten bleiben soll. Das Produkt warnt, wenn die eingestellte Frist kürzer ist als die konfigurierte Rechtsbehelfsfrist — analog zur Warnung bei der Audit-Frist.
 - **Übergang ins Wissen:** Ein Artefakt kann in eine Wissensbibliothek übernommen werden und wird dabei zu einem Dokument. **Ab dann gelten die Rechte der Bibliothek, nicht mehr die des Space.** Das ist der Rückweg aus der space-eigenen in die assoziierte Welt und der einzige Weg, auf dem ein Ergebnis dauerhaft und rechtegeführt wird.
 
 ### Warum Chats und Artefakte keine Assets sind
@@ -549,7 +599,7 @@ Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigene
 
 Mit der Ablage-Regel (siehe [Space-eigene Inhalte](#die-grundregel-entstehen-als-entwurf-sichtbar-durch-ablegen)) ist der Übergang **kein automatischer Vorgang mehr, sondern eine Handlung**. Nichts fließt in den Leserkreis des Space, ohne dass ein Mensch es dorthin legt — und dieser Mensch ist immer jemand, der die Inhalte selbst lesen durfte.
 
-Das entspricht dem Verwaltungshandeln: Wer etwas lesen darf, darf es seinen Kollegen berichten und verantwortet das. Neu ist nur, dass die Weitergabe sichtbar, zurechenbar und protokolliert ist statt beiläufig.
+Das entspricht dem Verwaltungshandeln: Wer etwas lesen darf, darf es seinen Kollegen **im Rahmen der Zweckbindung des Bestands** berichten und verantwortet das. Die Einschränkung ist wesentlich und nicht bloß vorsichtshalber angefügt: Bei Sozialdaten, Personalakten und Steuerdaten ist die Weitergabe an nicht zuständige Kollegen gerade nicht zulässig, auch wenn der Zugriff selbst rechtmäßig war. Die Ablage entbindet niemanden von der Zweckbindung, die für den Bestand ohnehin gilt. Neu ist nur, dass die Weitergabe sichtbar, zurechenbar und protokolliert ist statt beiläufig.
 
 **Wichtig — das Leck ist damit nicht verschwunden, sondern in einen verantworteten Akt überführt.** Ein abgelegter Chat kann weiterhin Passagen enthalten, die andere Space-Mitglieder nie hätten öffnen dürfen. Der Unterschied ist, dass es jetzt eine Person gibt, die diese Entscheidung getroffen hat, und einen Zeitpunkt, an dem sie getroffen wurde.
 
@@ -586,6 +636,7 @@ In einem Strikt-Space gilt:
 
 - Es dürfen nur Bibliotheken assoziiert werden, deren Leserkreis **alle** Space-Mitglieder umfasst.
 - **Ein Agent, dessen gebundene Bibliotheken nicht sämtlich zu dieser Menge gehören, kann in diesem Space nicht aufgerufen werden.**
+- **Eine Mitgliederaufnahme, die die Voraussetzung brechen würde, wird an Ort und Stelle abgelehnt**, mit dem Hinweis, welche Freigabe fehlt. Das ist der einzige Auslöser, den der Handelnde selbst kontrolliert und vorher sieht; ohne die Prüfung sperrt ein Space-Admin mit der Aufnahme einer neuen Kollegin im selben Moment seinen eigenen Raum für alle Mitglieder.
 
 Der zweite Punkt schließt eine Lücke, die eine frühere Fassung offen ließ: Der Space verengt den Suchbereich eines Agenten nicht (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)), weil ein geprüftes Agenten-Release sonst nicht mehr reproduzierbar wäre. Ein Agent könnte damit im Strikt-Space aus einer engen, dort nicht assoziierten Bibliothek liefern.
 
@@ -599,9 +650,16 @@ Das System löst dann **weder Assoziationen automatisch** (das entzöge einem ga
 
 - Bestehende Inhalte bleiben unangetastet und lesbar.
 - **Neue Ablagen und Agentenaufrufe sind gesperrt**, bis der Zustand behoben ist.
-- Space-Verantwortlicher und die Eigentümer der betroffenen Bibliotheken werden benachrichtigt; der Vorgang steht im Protokoll.
 
-Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund.
+Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund. Ein Sperrzustand ohne Zuständigen wäre allerdings nur die halbe Regelung — er erzeugt **Arbeitsstillstand**, und zwar in genau dem Raum, für den dieses Dokument den Strikt-Modus empfiehlt. Deshalb gilt derselbe Zuschnitt wie bei „Nachfolge offen":
+
+- **Benannter Adressat, Frist und Eskalation.** Der Vorgang erscheint auf der Liste des Kurators der Organisationseinheit des betroffenen Bibliotheks-Eigentümers, mit Frist und Eskalation nach oben. Ohne das hängt die Arbeitsfähigkeit einer Prüfstelle an der Reaktionszeit eines Referatsleiters, den sie unter Umständen gerade prüft.
+- **Der System-Admin erhält eine Liste mit Liegezeit** — wie bei offenen Kuratorenanfragen und bei der Nachfolge. Sonst sieht niemand, wie viele Räume betroffen sind und wie lange schon, und ein Space kann monatelang gesperrt daliegen, weil eine Nachricht im Urlaub ankam.
+- **Die Neubewertung wird von jeder Rechteänderung an jeder Bibliothek ausgelöst, die in irgendeinem Strikt-Space bereitgestellt ist.** Sonst löst sich der Zustand nicht von selbst, wenn seine Ursache wegfällt, sondern bleibt hängen, bis jemand einen Knopf drückt.
+- **Die Ursache geht im Klartext an den Space-Verantwortlichen:** welche Bibliothek, welches Ereignis, welcher Zeitpunkt.
+- **Die Meldung an den Nutzer weist den Zustand als fachlichen Vorgang aus, nicht als Störung**, und benennt die zuständige Stelle. Sinngemäß: „Dieser Raum ist gesperrt, weil eine Zugriffsvoraussetzung nicht mehr erfüllt ist. Zuständig ist der Space-Verantwortliche."
+- **Der Zustandswechsel ist ausdrücklich kein Bereitschaftsereignis.** Ein fail-closed-Zustand, der nachts eintritt und tagsüber fachlich aufgelöst wird, ist richtig — aber nur, wenn niemand nachts daran zieht und zur „Behebung" eine Mitgliedschaft zurücksetzt.
+- Der Vorgang steht im Protokoll.
 
 ---
 
@@ -690,8 +748,15 @@ Eine Funktion, die es nicht gibt, kann niemand einschalten. Für eine Dienstvere
 
 Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 
-- **Selbstauskunft.** Jede Person kann ihre eigenen Daten einsehen und exportieren. Das ist keine Überwachung, sondern das Auskunftsrecht der betroffenen Person.
+- **Selbstauskunft.** Jede Person kann ihre eigenen Daten einsehen und exportieren. Das ist keine Überwachung, sondern das Auskunftsrecht der betroffenen Person. Sie ist **nicht delegierbar**: Der Export geht an die Person selbst und ist für niemanden sonst auslösbar — weder über eine Vertretungsfunktion noch durch einen Admin „im Auftrag“ noch in ein fremdes Postfach.
 - **Anlassbezogene Klärung** bei einem konkreten Sicherheitsvorfall — über den Audit-Pfad, mit dokumentiertem Anlass, im Vier-Augen-Prinzip unter Beteiligung der Personalvertretung und mit eigenem Protokolleintrag über den Zugriff. Ein Produkt ohne jede Möglichkeit, einen Vorfall aufzuklären, wäre nicht betreibbar; ein Produkt, in dem diese Aufklärung der Normalweg ist, wäre nicht zustimmungsfähig.
+
+**Diese Ausnahme ist inhaltlich begrenzt, nicht nur formal.** Nach der Streichung des Auswertungspfads ist sie der einzige verbliebene Weg von den Daten zu einer Person — und damit auch der einzige, der an die Verhaltensspur aus dem Entwurfsraum heranreicht. Alles, was jemand wissen will, drückt künftig durch dieses eine Nadelöhr; ein dokumentierter Anlass ist schnell geschrieben, und zwei Augen sind schnell gefunden, wenn beide derselben Leitung berichten. Deshalb gilt:
+
+1. **Zweckausschluss.** Der Pfad steht für arbeitsrechtliche, disziplinarische und leistungsbezogene Fragen **nicht** zur Verfügung — auch dann nicht, wenn ein Sachverhalt beides berührt.
+2. **Umfangsbegrenzung vorab.** Person, Zeitraum und Zweck werden vor der Freigabe festgelegt und begrenzen die Abfrage **technisch**. Sonst klärt man einen Vorfall vom Mai und liest dabei zwei Jahre.
+3. **Unterrichtung der betroffenen Person** nach Abschluss, mit Anlass und Umfang — außer die Klärung richtet sich gegen einen Dritten.
+4. **Jahresbericht an die Personalvertretung:** Zahl der Fälle und Anlässe in Kategorien, ohne Namen.
 
 ### Stellschrauben, die das Produkt anbietet
 
@@ -721,6 +786,7 @@ Die Ablage-Regel ist zugleich die wichtigste Antwort auf die häufigste Sorge de
 Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 
 - Inhalte des persönlichen Space und **alle Entwürfe** sind für System-Admins, Revision und Dienststellenleitung **nicht lesbar**. Ein System-Admin kann im Rahmen des Offboardings einen persönlichen Space deaktivieren; er kann ihn nicht einsehen.
+- **Geschützt ist der Inhalt, nicht die Tatsache der Nutzung.** Der Protokollsatz entsteht bei jeder Abfrage, unabhängig davon, ob ein Chat abgelegt ist und in welchem Space er läuft. Wer im persönlichen Space arbeitet, tut das inhaltlich unbeobachtet — dass er arbeitet, wann und wie oft, wird protokolliert. Das gehört ausgesprochen, damit eine Auskunft an die Beschäftigten stimmt: *„Dass du arbeitest, wird protokolliert. Was du schreibst, nicht. Und es gibt keine Funktion, die das nach dir sortiert."* Der einzige Weg, der von dieser Spur noch zu einer Person führt, ist die anlassbezogene Klärung — deshalb ist deren Begrenzung so wichtig.
 - Der persönliche Space steht fachlich **nicht schlechter** da als ein Team-Space: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ohne diese Zusage wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum faktisch.
 
 ### Was das Produkt nicht regeln kann
@@ -736,10 +802,10 @@ Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 
 - Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art und für die Mindestgruppengröße bei Auswertungen.
 - Verschachtelte Gruppen im Verzeichnis (Gruppe als Mitglied einer Gruppe) — Auflösungsregel offen.
-- Ob und wie mitgelieferte Assets in ein Netz ohne Internetanbindung gelangen (Aktualisierungsweg, Signatur, Prüfung).
+- Voreinstellung der Aufbewahrungsfrist für Entwürfe — lang genug, um „vergessen, aber noch rettbar" von „endgültig verloren" zu trennen.
 - Freigabe- und Review-Workflow sowie Versionierung von Assets — bewusst außerhalb dieser Ausbaustufe.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
-- Verhalten bei Auflösung einer Organisationseinheit, die Eigentümerin von Assets ist.
+- Konkreter Aktualisierungsweg für mitgelieferte Assets in einem Netz ohne Internetanbindung (Signatur, Prüfung, Einspielung).
 
 ---
 
