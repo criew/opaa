@@ -105,9 +105,11 @@ curl -X POST http://localhost:8080/api/v1/indexing/trigger \
 
 Wenn keine URL angegeben wird, wird stattdessen die standardmäßige dateisystembasierte Indizierung ausgelöst.
 
-### Konnektor-Modell und Workspace-Zuordnung
+### Konnektor-Modell und Zuordnung zu Wissensbibliotheken
 
-Ein **Konnektor** definiert den Typ und die gemeinsame Konfiguration (Anmeldedaten, Zeitplan). Jeder Konnektor hat eine oder mehrere **Quellen**, von denen jede einem oder mehreren OPAA-Workspaces zugeordnet werden kann. Konnektoren und Quellen werden unabhängig von Workspaces konfiguriert — Workspace-Admins wählen dann, welche verfügbaren Quellen in ihren Workspace eingebunden werden sollen. Nur **System-Admins** können Konnektoren erstellen und Quellzuordnungen definieren.
+Ein **Konnektor** definiert den Typ und die gemeinsame Konfiguration (Anmeldedaten, Zeitplan). Jeder Konnektor hat eine oder mehrere **Quellen**, von denen jede **genau einer Wissensbibliothek** zugeordnet wird. Nur **System-Admins** können Konnektoren erstellen und Quellzuordnungen definieren; wer die Bibliothek anschließend sehen darf, entscheidet deren Eigentümer im Rahmen der vom System-Admin gesetzten Freigabe-Obergrenze.
+
+Wird derselbe Bestand an mehreren Stellen gebraucht, wird **die Bibliothek** in weiteren Spaces bereitgestellt oder an weitere Nutzer und Gruppen freigegeben — die Quelle wird nicht mehrfach zugeordnet und das Dokument nicht vervielfacht.
 
 Manche Konnektor-Typen haben eine natürliche Instanzebene mit Untereinheiten (z. B. Confluence-Server mit Spaces). Andere haben keine gemeinsame Instanz — jede Quelle ist eigenständig (z. B. einzelne Dateipfade oder URLs).
 
@@ -119,24 +121,24 @@ Beispiel 1: Confluence (Instanz mit Untereinheiten)
     Anmeldedaten: Service-Account / API-Token
     Zeitplan: Täglich 2 Uhr
     Quellen:
-      Space "ENG"  → Workspaces: ["Engineering"]
-      Space "MKT"  → Workspaces: ["Marketing"]
-      Space "HR"   → Workspaces: ["HR", "Onboarding"]
-      Space "ALL"  → Workspaces: ["Company"]
+      Space "ENG"  → Bibliothek: "Engineering"
+      Space "MKT"  → Bibliothek: "Marketing"
+      Space "HR"   → Bibliothek: "Personal"
+      Space "ALL"  → Bibliothek: "Hausweite Regelungen"
 
 Beispiel 2: Dateisystem / Netzlaufwerk (ein Pfad pro Quelle)
   Konnektor: "Netzlaufwerk Engineering"
     Typ: filesystem
     Zeitplan: Täglich 3 Uhr
     Quellen:
-      Pfad "//fileserver/engineering/docs" → Workspaces: ["Engineering"]
+      Pfad "//fileserver/engineering/docs" → Bibliothek: "Engineering"
 
 Beispiel 3: HTTP-Verzeichnis (eine URL pro Quelle)
   Konnektor: "Docs-Server Engineering"
     Typ: http
     Zeitplan: Täglich 4 Uhr
     Quellen:
-      URL "https://docs.internal/engineering/" → Workspaces: ["Engineering", "Phoenix"]
+      URL "https://docs.internal/engineering/" → Bibliothek: "Engineering"
 ```
 
 #### Konnektor-Typen und ihre Quellen
@@ -152,15 +154,16 @@ Beispiel 3: HTTP-Verzeichnis (eine URL pro Quelle)
 
 #### Zuordnungsregeln
 
-- **1:N** — Jede Quelle kann einem oder mehreren OPAA-Workspaces zugeordnet werden. Dokumente aus dieser Quelle werden in alle zugeordneten Workspaces indiziert (ihre Chunks erhalten alle entsprechenden `workspace_ids`).
+- **1:1** — Jede Quelle wird **genau einer Wissensbibliothek** zugeordnet. Wird derselbe Bestand an mehreren Stellen gebraucht, wird die Bibliothek in weiteren Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben — das Dokument wird nicht vervielfacht.
+- **Freigabe-Obergrenze:** Der System-Admin setzt je konnektor-gespeister Bibliothek, wie weit ihr Eigentümer sie höchstens freigeben darf.
 - **Nicht zugeordnete Untereinheiten** werden ignoriert (z. B. Confluence-Spaces ohne Zuordnung werden nicht indiziert)
-- **Mehrere Konnektoren** können in denselben Workspace indizieren (z. B. Confluence-Space „ENG" + Netzlaufwerk-Pfad beide → „Engineering")
+- **Mehrere Konnektoren** können in dieselbe Wissensbibliothek indizieren (z. B. Confluence-Space „ENG" + Netzlaufwerk-Pfad beide → „Engineering")
 
 #### Quellenfilterung
 
 Jede Quelle kann optional Einschluss-/Ausschlussmuster definieren:
 ```
-Quelle: Confluence Space "ENG" → Workspace "Engineering"
+Quelle: Confluence Space "ENG" → Bibliothek "Engineering"
 Filterung:
   - Einschlussmuster: ["public/*", "team/*"]
   - Ausschlussmuster: ["draft/*", "archive/*"]
@@ -182,7 +185,7 @@ Zusätzlich zur konnektor-basierten Ingestion können Benutzer Dokumente direkt 
 | Richtung | OPAA zieht aus Quellen | Benutzer überträgt an OPAA |
 | Auslöser | Zeitplan- oder ereignisbasiert | Auf Abruf (Benutzeraktion) |
 | Umfang | Organisationale Datenquellen | Individuelle Benutzerdokumente |
-| Workspace | Pro Konnektor konfiguriert | Persönlicher Workspace des Benutzers (Standard) |
+| Wissensbibliothek | Pro Quelle konfiguriert (genau eine) | Persönliche Bibliothek des Benutzers (Standard) |
 | Speicherung | Original verbleibt im Quellsystem | Auf OPAAs Speicher-Backend gespeichert |
 
 ### Upload-Ablauf
@@ -191,8 +194,8 @@ Zusätzlich zur konnektor-basierten Ingestion können Benutzer Dokumente direkt 
 2. Datei wird validiert (Format, Größenbeschränkungen, Virenscan)
 3. Datei wird auf dem konfigurierten Speicher-Backend gespeichert (S3, Netzlaufwerk, lokales FS)
 4. Dokument durchläuft die Standard-Verarbeitungs-Pipeline (Extraktion, Chunking, Embedding, Vektorspeicherung)
-5. Dokument wird standardmäßig in den persönlichen Workspace des Benutzers indiziert
-6. Benutzer kann optional in andere Workspaces, auf die er Zugriff hat, teilen/veröffentlichen
+5. Dokument wird standardmäßig in die persönliche Wissensbibliothek des Benutzers indiziert
+6. Benutzer kann es stattdessen in eine Bibliothek hochladen, an der er mindestens EDITOR ist
 
 ### Speicher-Backend-Abstraktion
 
@@ -247,7 +250,7 @@ Jedes hochgeladene Dokument speichert:
   "filename": "design-review-q1.pdf",
   "uploaded_by": "user-123",
   "uploaded_at": "2026-02-16T10:30:00Z",
-  "workspace_id": "personal-user-123",
+  "library_id": "lib-personal-user-123",
   "storage_backend": "s3",
   "storage_path": "s3://opaa-uploads/user-123/design-review-q1.pdf",
   "file_size_bytes": 2048576,
@@ -318,7 +321,7 @@ Verarbeitete Chunks werden gespeichert mit:
 - Chunk-Text
 - Metadaten (Quelle, Dokument-ID, Zeitstempel, Chunk-Index)
 - Dokument-URL (für Retrieval)
-- Workspace-IDs (für Multi-Tenancy; wird in Zukunft auch workspace-übergreifendes Teilen unterstützen)
+- Bibliotheks-ID (Filterachse der rechtebewussten Suche) und Organisations-ID (Mandantengrenze)
 
 **Gespeicherte Metadaten:**
 ```json
@@ -326,7 +329,8 @@ Verarbeitete Chunks werden gespeichert mit:
   "chunk_id": "doc-123-chunk-5",
   "document_id": "doc-123",
   "document_title": "Enterprise Architecture Guide",
-  "workspace_ids": ["workspace-eng"],
+  "library_id": "lib-eng",
+  "organization_id": "org-1",
   "source": "confluence",
   "source_type": "connector",
   "source_url": "https://wiki.company.com/pages/view/123456",
@@ -337,7 +341,9 @@ Verarbeitete Chunks werden gespeichert mit:
 }
 ```
 
-Hinweis: `workspace_ids` ist ein Array. Ein Dokument kann in mehreren Workspaces erscheinen (z. B. wenn eine Quelle mehreren Workspaces zugeordnet ist oder zukünftig über workspace-übergreifendes Teilen). Die Berechtigungsprüfung verwendet dieses Feld als Metadatenfilter in der Vektorsuche (siehe [Zugangskontrolle — Berechtigungsprüfung zur Abfragezeit](./access-control-workspaces.md#query-time-permission-enforcement)).
+**Führender Speicher ist die relationale Datenbank**; der Vektorspeicher ist abgeleitet. Das ist keine Nebensächlichkeit, sondern bestimmt das Sicherungsverfahren: Nach dem Einspielen einer Datenbanksicherung können Chunks mit Bibliotheks-Kennungen existieren, deren Bibliothek inzwischen anders berechtigt oder gelöscht ist. Bei pgvector in derselben Datenbank entschärft sich das; bei getrennt gesicherten Vektorspeichern nicht. Ein Konsistenzprüflauf gleicht beide Seiten ab.
+
+Hinweis: `library_id` ist **einwertig** — jedes Dokument gehört zu genau einer Wissensbibliothek. Die Mehrfachverwendung eines Bestands wird eine Ebene höher gelöst (dieselbe Bibliothek in mehreren Spaces assoziiert) und muss deshalb nicht je Chunk materialisiert werden. Die Berechtigungsprüfung verwendet dieses Feld als Metadatenfilter in der Vektorsuche (siehe [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
 
 ### Schritt 5: Index-Aktualisierungen
 
@@ -394,9 +400,9 @@ OPAA verwendet die `VectorStore`-Abstraktion von Spring AI für alle Indizierung
 
 Wenn ein Benutzer eine Frage stellt:
 
-1. **Workspace-IDs:** Alle Workspace-IDs laden, in denen der Benutzer Mitglied ist
+1. **Suchbereich bestimmen:** Die für den Benutzer lesbaren Wissensbibliotheken laden und mit dem Bereich des Kontexts schneiden — bei einem Chat ohne Agent sind das die im Space assoziierten Bibliotheken, bei einem Chat mit Agent die vom Agenten gebundenen. Der Rechtekontext ist immer der des aufrufenden Nutzers.
 2. **Embedding-Generierung:** Frage in Embedding umgewandelt (gleiches Modell wie bei Dokumenten)
-3. **Vektorsuche mit Workspace-Filter:** Die Top-K ähnlichsten Chunks finden, gefiltert nach `workspace_ids` — nur Chunks, deren `workspace_ids` mindestens eine der Workspace-IDs des Benutzers enthält, werden durchsucht. Der Berechtigungsfilter ist Teil der Vektorsuche selbst, kein nachgelagerter Verarbeitungsschritt.
+3. **Vektorsuche mit Bibliotheks-Filter:** Die Top-K ähnlichsten Chunks finden, gefiltert nach `library_id`. Der Berechtigungsfilter ist Teil der Vektorsuche selbst, kein nachgelagerter Verarbeitungsschritt.
 4. **Deduplizierung:** Doppelte Informationen aus demselben Dokument entfernen
 5. **Quellen-Deduplizierung:** Wenn mehrere Chunks aus derselben Datei stammen, wird nur der Chunk mit der höchsten Relevanzbewertung als Quellenreferenz behalten (implementiert in `QueryService.mapSources()`)
 6. **Re-Ranking:** Ergebnisse nach Relevanz bewerten
@@ -515,33 +521,33 @@ Indizierung kann starten:
 
 ## Berechtigungen & Multi-Tenancy
 
-### Workspace-basierte Berechtigungen
+### Bibliotheksbasierte Berechtigungen
 
-Jedes indizierte Dokument gehört genau einem **Heimat-Workspace** (bestimmt durch die Quellzuordnung des Konnektors oder das Upload-Ziel). Berechtigungen werden auf Workspace-Ebene durchgesetzt:
+Jedes indizierte Dokument gehört genau einer **Wissensbibliothek** (bestimmt durch die Quellzuordnung des Konnektors oder das Upload-Ziel). Berechtigungen werden auf Bibliotheksebene durchgesetzt:
 
-- Benutzer können nur Dokumente in Workspaces finden, in denen sie Mitglied sind
-- Der Workspace-Filter ist in die Vektorsuche integriert (kein Nachfilter)
-- Suchergebnisse lecken niemals workspace-übergreifend
+- Benutzer finden nur Dokumente in Bibliotheken, auf die sie ein Recht haben — direkt, über eine Gruppe oder über eine organisationsweite Freigabe
+- Der Bibliotheks-Filter ist in die Vektorsuche integriert (kein Nachfilter)
+- Suchergebnisse lecken niemals über Bibliotheks- oder Organisationsgrenzen
 
-### Workspace-übergreifendes Teilen (Zukünftiges Feature)
+### Bestände mehrfach verwenden
 
-Workspace-übergreifendes Dokumentteilen ist als zukünftiges Feature geplant. Bei der Implementierung würden Chunks geteilter Dokumente zusätzliche `workspace_ids`-Einträge erhalten, wodurch sie in mehreren Workspaces durchsuchbar werden, ohne Duplikate zu erstellen. Aktuelle Konzepte und offene Fragen sind in [Dokument-Teilen](./document-sharing.md) beschrieben.
+Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselbe Wissensbibliothek wird in mehreren Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Chunk-Vervielfachung. Das frühere Konzept eines workspace-übergreifenden Dokument-Teilens ist damit gegenstandslos — siehe [Dokument-Teilen](./document-sharing.md) (überholt).
 
 ### Berechtigungen für Benutzer-hochgeladene Dokumente
 
 Von Benutzern hochgeladene Dokumente folgen einem spezifischen Berechtigungsmodell:
-- **Standard:** Privat für den hochladenden Benutzer (in seinem persönlichen Workspace)
-- **Direkter Upload in Team-Workspace:** Benutzer mit Editor-Rolle können direkt in einen Team-Workspace hochladen — der Heimat-Workspace des Dokuments ist dann der Team-Workspace (siehe [Zugangskontrolle — Direkt in Team-Workspace hochladen](./access-control-workspaces.md#upload-directly-to-team-workspace))
+- **Standard:** in die persönliche Wissensbibliothek des hochladenden Benutzers
+- **Upload in eine geteilte Bibliothek:** möglich, wo der Benutzer mindestens `EDITOR` am Asset ist
 - **Owner:** Der hochladende Benutzer ist immer der Dokument-Owner
 - **Upload-Kontingente:** Pro Benutzer konfigurierbar mit einem globalen Standard
-- **Workspace-übergreifendes Teilen:** Als zukünftiges Feature geplant — siehe [Dokument-Teilen](./document-sharing.md)
+- **Weitergabe:** über die Rechte der Bibliothek, nicht über ein Teilen einzelner Dokumente
 
 ### Berechtigungen für Konnektor-Dokumente
 
-Konnektor-indizierte Dokumente erben ihre Workspace(s) aus der Quellzuordnung:
-- Jede Quell-Untereinheit (z. B. Confluence-Space) kann einem oder mehreren Workspaces zugeordnet werden
-- Alle Dokumente aus dieser Quelle werden in alle zugeordneten Workspaces indiziert
-- Workspace-Admins können einzelne Dokumente aus dem Index ausschließen (siehe [Zugangskontrolle — Ausschluss-Mechanismus](./access-control-workspaces.md#exclude-mechanism-for-connector-documents))
+Konnektor-indizierte Dokumente erben ihre Bibliothek aus der Quellzuordnung:
+- Jede Quell-Untereinheit (z. B. Confluence-Space) wird genau einer Wissensbibliothek zugeordnet
+- Wer an der Bibliothek `MANAGER` ist, kann einzelne Dokumente aus dem Index ausschließen; der Ausschluss wirkt an genau einer Stelle
+- Die Freigabe-Obergrenze des System-Admins begrenzt, wie weit die Bibliothek geöffnet werden darf
 
 ### Duplikaterkennung
 
@@ -559,11 +565,11 @@ Wenn ein Benutzer ein Dokument hochlädt, führt OPAA eine Ähnlichkeitsprüfung
 
 ### Abfrage-Performance
 
-- **Vektorsuche (inkl. Workspace-Filter):** < 500 ms für typische Abfragen
+- **Vektorsuche (inkl. Bibliotheks-Filter):** < 500 ms für typische Abfragen
 - **Re-Ranking:** + 50–100 ms
 - **Gesamte Retrieval-Zeit:** < 1 Sekunde
 
-Hinweis: Die Berechtigungsfilterung ist über den Metadatenfilter auf `workspace_ids` in die Vektorsuche integriert und fügt keinen separaten Verarbeitungsschritt hinzu.
+Hinweis: Die Berechtigungsfilterung ist über den Metadatenfilter auf `library_id` in die Vektorsuche integriert und fügt keinen separaten Verarbeitungsschritt hinzu.
 
 ### Skalierbarkeit
 
@@ -579,7 +585,7 @@ Das System skaliert auf:
 
 - **Benutzer-Frontends:** Abgerufene Dokumente und Antworten bereitstellen
 - **LLM-Integration:** Abgerufene Dokumente an LLM weitergeben
-- **Zugangskontrolle:** Workspace-/Dokumentenberechtigungen durchsetzen
+- **Zugangskontrolle:** Bibliotheksberechtigungen zur Abfragezeit durchsetzen
 - **Deployment-Infrastruktur:** Speicherkonfiguration, Ressourcenzuweisung
 
 ---

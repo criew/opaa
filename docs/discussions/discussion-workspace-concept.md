@@ -1,8 +1,15 @@
 # Discussion: Workspace-Konzept und Berechtigungsmodell
 
+> **Status: Historisch — die hier festgehaltenen Entscheidungen sind durch das Space- und
+> Asset-Modell abgelöst.** Maßgeblich sind [ADR-0008](../decisions/0008-space-and-asset-model.md)
+> und [Spaces, Assets & Zugangskontrolle](../features/spaces-and-assets.md).
+> Was von den damaligen Festlegungen trägt und was fiel, steht in
+> [Abschnitt 9](#9-nachtrag-was-vom-workspace-konzept-bleibt) am Ende dieses Dokuments.
+> Der übrige Text bleibt unverändert, damit die Entscheidungsgeschichte nachvollziehbar ist.
+
 **Thema:** Konzeptionelles Design des Workspace-Modells, Dokument-Sharing, Verknüpfung von Indexing-Quellen mit Workspaces, und Rollen-Hierarchie
 
-**Kontext:** Die Feature-Spezifikationen (`access-control-workspaces.md`, `data-indexing-rag.md`) beschreiben Workspaces und Berechtigungen auf Feature-Ebene. Dieses Dokument klärt offene konzeptionelle Fragen und hält Design-Entscheidungen fest, bevor die Feature-Specs aktualisiert werden.
+**Kontext:** Die Feature-Spezifikationen (`access-control.md`, `data-indexing-rag.md`) beschreiben Workspaces und Berechtigungen auf Feature-Ebene. Dieses Dokument klärt offene konzeptionelle Fragen und hält Design-Entscheidungen fest, bevor die Feature-Specs aktualisiert werden.
 
 ---
 
@@ -291,3 +298,44 @@ Außerdem in Abschnitt 7 verschoben:
 
 - **Konnektor-Permissions aus Quellsystem:** Sollen z.B. Confluence-Space-Permissions zusätzlich zu Workspace-Permissions berücksichtigt werden? Grundsätzlich ja, aber die Umsetzung ist komplex: Berechtigungsmodelle und User-IDs zwischen Quellsystem und OPAA stimmen nicht notwendigerweise überein. Wird in einer separaten Diskussion vertieft.
 - **User-to-User Sharing:** Im aktuellen Modell ist direktes Sharing zwischen Personal Workspaces nicht möglich, da Sharing Editor-Rechte in beiden Workspaces erfordert und Personal Workspaces keine fremden Mitglieder zulassen. Mögliche Lösungen: (a) Dokument in einen gemeinsamen Workspace teilen, (b) einen dedizierten Sharing-Mechanismus auf User-Ebene einführen (z.B. "Dokument für User X freigeben"), oder (c) den Umweg über einen gemeinsamen Workspace als bewusste Design-Entscheidung akzeptieren.
+
+
+---
+
+## 9. Nachtrag: Was vom Workspace-Konzept bleibt
+
+Ergänzt nach der Entscheidung für das Space- und Asset-Modell ([ADR-0008](../decisions/0008-space-and-asset-model.md)).
+
+### Was trägt
+
+| Damalige Festlegung | Heute |
+|---|---|
+| **Flaches Modell, keine Verschachtelung** (§1) | **Gilt weiter.** Spaces sind flach. Die Verteilungsstufe „Fachbereich" wird nicht über eine Hierarchie abgebildet, sondern über einen Grant an die Abteilungs-Gruppe |
+| **System-Admin als eigene Ebene** (§2) | **Gilt weiter**, mit zwei Änderungen: Er existiert je Organisation, und er ist nicht automatisch leseberechtigt für alle Inhalte |
+| **Rechtebewusste Suche als Teil der Vektorsuche** (§5) | **Gilt weiter** — nur ist die Filterachse jetzt die Wissensbibliothek statt des Workspace |
+| **Exclude-Mechanismus für Konnektor-Dokumente** (§3) | **Gilt weiter**, wirkt aber an der Bibliothek statt je Workspace und damit an genau einer Stelle |
+| **Konnektor mit mehreren Quellen** (§4) | **Gilt weiter.** Geändert hat sich nur das Ziel: Eine Quelle indiziert in **genau eine** Wissensbibliothek |
+| **Persönliche Ablage je Nutzer** (§1) | **Gilt weiter** als persönlicher Space — allerdings ist er nicht mehr der Rechteanker; die Dokumente liegen in der persönlichen Wissensbibliothek |
+
+### Was fiel
+
+- **Workspace als Dokumentencontainer.** Dokumente liegen in Wissensbibliotheken. Der Workspace war zugleich Container, Rechtegrenze und Ordnungsrahmen — diese Ämterhäufung ist aufgelöst.
+- **`chunk.workspace_ids` als Mehrfachzuordnung.** Ersetzt durch eine einwertige Bibliotheks-Zuordnung je Chunk. Die Mehrfachverwendung liegt eine Ebene höher (eine Bibliothek in mehreren Spaces) und muss nicht je Chunk materialisiert werden.
+- **Vier Workspace-Rollen.** Space-Rollen sind auf `MEMBER`, `CURATOR`, `ADMIN` geschrumpft; `OWNER` wurde zum Attribut. `VIEWER` und `EDITOR` implizierten Dokumentenzugriff, den Space-Rollen nicht mehr gewähren.
+- **Workspace-Erstellung nur durch System-Admin.** Nutzer dürfen eigene Projekt-Spaces anlegen; Team- und Fachbereichs-Spaces bleiben Admin-Sache.
+- **Global eindeutige Workspace-Namen.** Entfallen.
+- **Workspace-Löschung vernichtet alle Dokumente.** Gilt nicht mehr — Dokumente liegen in Bibliotheken, die anderen gehören.
+
+### Die beiden offenen Fragen aus §8
+
+**Cross-Workspace Document Sharing** — *gegenstandslos geworden.* Die Frage entstand nur, weil Dokumente in Workspaces eingesperrt waren. Man teilt kein Dokument über eine Space-Grenze, sondern gibt die **Bibliothek** frei oder assoziiert sie in einen weiteren Space. Die damals benannte Sicherheitslücke — ein Editor schiebt Vertrauliches in einen Kontext niedrigerer Stufe — entfällt, weil die Reichweite eines Bestands nur ändern kann, wer am Asset dazu berechtigt ist. Die Spezifikation [Dokument-Teilen](../features/document-sharing.md) ist entsprechend als überholt markiert.
+
+**User-to-User Sharing** — *gelöst.* Die damals aufgeführten Auswege (a), (b) und (c) sind alle hinfällig: Nutzer A gibt Nutzer B einen direkten Grant auf seine persönliche Wissensbibliothek oder auf eine daraus abgezweigte. Der persönliche Space bleibt dabei privat und bekommt kein fremdes Mitglied — geteilt wird das Asset, nicht der Raum. Genau dafür ist die Trennung von Raum und Asset da.
+
+### Was neu hinzukam und in diesem Dokument nicht vorkommt
+
+- **Zwei Objektklassen** mit unterschiedlicher Rechtelogik: assoziierte Assets gegen space-eigene Inhalte (Chats, Artefakte).
+- **Gruppen als Rechtesubjekt**, ohne die es die Verteilungsstufe „Fachbereich" nicht gäbe.
+- **Das Ableitungsleck** — Chats und Artefakte tragen Wissen aus engeren Bibliotheken in den weiteren Leserkreis des Space.
+- **Verwaisung von Assets** und Gruppen-Eigentum als Regelfall für zentral gepflegte Bestände.
+- **Mitbestimmung** als Einführungsvoraussetzung in einer deutschen Behörde.

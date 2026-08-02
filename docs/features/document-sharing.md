@@ -1,7 +1,27 @@
 # Workspace-übergreifendes Dokument-Teilen
 
-> **Status: Früher Entwurf — wesentliche offene Fragen verbleiben.**
-> Dieses Feature wurde aus der Spezifikation Zugangskontrolle & Workspaces extrahiert, weil es eine separate, eingehende Designphase erfordert. Die aktuellen Konzepte sind nicht abschließend und haben bekannte Sicherheitslücken, die vor der Implementierung behoben werden müssen.
+> **Status: Überholt — durch das Asset-Modell abgelöst. Nicht umsetzen.**
+>
+> Dieses Feature beschrieb, wie einzelne Dokumente über Workspace-Grenzen hinweg geteilt werden.
+> Mit [ADR-0008](../decisions/0008-space-and-asset-model.md) entfällt der Bedarf: Dokumente liegen
+> in **Wissensbibliotheken**, die eigenständige, teilbare Assets mit eigener Rechteliste sind.
+>
+> - Ein Bestand soll mehreren Teams zur Verfügung stehen → die **Bibliothek** wird in mehreren
+>   Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben. Keine Kopien, kein
+>   Vervielfachen von Chunks, eine Fassung.
+> - Ein einzelnes Dokument soll weitergegeben werden → es wird in eine Bibliothek verschoben,
+>   deren Leserkreis passt.
+> - Teilen zwischen persönlichen Ablagen — im alten Modell strukturell unmöglich — funktioniert
+>   jetzt über einen direkten Grant auf die persönliche Bibliothek.
+>
+> Damit entfällt auch die hier dokumentierte Sicherheitslücke: Es gibt keinen Vorgang mehr, bei dem
+> ein Editor Inhalte in einen Kontext mit niedrigerer Vertraulichkeitsstufe schiebt. Die Reichweite
+> ändert nur, wer am Asset dazu berechtigt ist.
+>
+> Der folgende Text bleibt zur Nachvollziehbarkeit der Entscheidungsgeschichte stehen.
+> Maßgeblich ist [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md).
+
+---
 
 ## Motivation
 
@@ -131,7 +151,7 @@ Vor der Implementierung von Teilen müssen folgende Fragen beantwortet werden:
 
 ## Integrationspunkte
 
-- **Zugangskontrolle & Workspaces:** Teilen erweitert workspace-ebenen Berechtigungen — siehe [Zugangskontrolle & Workspaces](./access-control-workspaces.md)
+- **Zugangskontrolle & Workspaces:** Teilen erweitert workspace-ebenen Berechtigungen — siehe [Zugangskontrolle & Workspaces](./access-control.md)
 - **Daten-Indizierung & RAG:** Geteilte Dokumente erhalten zusätzliche `workspace_ids`-Tags auf ihren Chunks
 - **Benutzer-Frontends:** Teilungs-UI, Teilungs-Verwaltung, Benachrichtigungen
 - **Audit & Compliance:** Alle Teilungsaktionen geloggt

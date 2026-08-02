@@ -9,7 +9,7 @@ Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtige
 ### Ich bin neu bei OPAA
 
 1. **[README](../README.md)** (2 Min.) — Was ist OPAA?
-2. **[CONCEPTS.md](./CONCEPTS.md)** (10 Min.) — Schlüsselbegriffe lernen (RAG, Embeddings, Workspaces, usw.)
+2. **[CONCEPTS.md](./CONCEPTS.md)** (10 Min.) — Schlüsselbegriffe lernen (RAG, Embeddings, Spaces, Assets, usw.)
 3. **[VISION.md](./VISION.md)** (15 Min.) — Die vollständige Produktvision sehen
 4. Dann: In Feature-Spezifikationen basierend auf Ihrer Rolle eintauchen (siehe unten)
 
@@ -46,7 +46,7 @@ Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtige
    - [Benutzer-Frontends](./features/user-frontends.md) — Wie Anfragen eingehen (10 Min.)
    - [Orchestrierungsschicht](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) — Zentrale Logik (12 Min.)
    - [LLM-Integration](./features/llm-integration.md) — Antwortgenerierung (10 Min.)
-   - [Zugangskontrolle](./features/access-control-workspaces.md) — Berechtigungsdurchsetzung (10 Min.)
+   - [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — Rechte- und Verteilungsmodell (15 Min.)
 
 **Wichtige Abschnitte:**
 - VISION: "Systemarchitektur" — Datenfluss
@@ -66,7 +66,7 @@ Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtige
 2. [VISION.md](./VISION.md) — Abschnitt Systemarchitektur (5 Min.)
 3. **Fokus auf:**
    - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — **Vertieft** (20 Min.)
-   - [Zugangskontrolle](./features/access-control-workspaces.md) — Sicherheit & Audit-Logging (10 Min.)
+   - [Zugangskontrolle](./features/access-control.md) — Sicherheit & Audit-Logging (10 Min.)
 4. Für Integrationspunkte überfliegen:
    - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Speicherung & Skalierung (5 Min.)
    - [LLM-Integration](./features/llm-integration.md) — Konfiguration & Kosten (5 Min.)
@@ -114,7 +114,7 @@ Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtige
 1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
 2. [VISION.md](./VISION.md) — Abschnitt Designprinzipien (5 Min.)
 3. **Vertiefen in:**
-   - [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) — **Vertieft** (15 Min.)
+   - [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — **Vertieft** (20 Min.)
    - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — Abschnitt Sicherheit (10 Min.)
 4. Prüfen:
    - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Berechtigungen & Datenverarbeitung (5 Min.)
@@ -141,7 +141,7 @@ Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtige
 3. **Vertiefen in:**
    - [Benutzer-Frontends](./features/user-frontends.md) — **Vertieft** (15 Min.)
 4. Kontext verstehen:
-   - [Zugangskontrolle](./features/access-control-workspaces.md) — Wie Berechtigungen UX beeinflussen (5 Min.)
+   - [Zugangskontrolle](./features/access-control.md) — Wie Berechtigungen UX beeinflussen (5 Min.)
    - [Daten-Indizierung](./features/data-indexing-rag.md) — Suche & Retrieval aus Benutzerperspektive (5 Min.)
 
 **Wichtige Abschnitte:**
@@ -251,7 +251,7 @@ Feature-Spezifikationen:
 ├── features/data-indexing-rag.md
 ├── features/llm-integration.md
 ├── features/deployment-infrastructure.md
-└── features/access-control-workspaces.md
+└── features/spaces-and-assets.md
 
 Navigation:
 ├── INDEX.md (vollständiger Index & Lesepfade)

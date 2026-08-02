@@ -84,18 +84,23 @@ Jede Feature-Spezifikation enthält:
 
 ---
 
-#### 5. Zugangskontrolle & Workspaces
-**[`features/access-control-workspaces.md`](./features/access-control-workspaces.md)** — Berechtigungen und Multi-Tenancy
+#### 5. Spaces, Assets & Zugangskontrolle
+**[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)** — das Rechte- und Verteilungsmodell
 
-- Workspace-Isolierung und -Verwaltung
-- Persönliche Workspaces ("Meine Dokumente") automatisch pro Benutzer erstellt
-- Workspace-übergreifendes Dokumenten-Teilen
-- Rollenbasierte Zugangskontrolle (Viewer, Editor, Admin, Owner)
-- Berechtigungen auf Dokumentenebene
+- Spaces als Arbeitsräume; Assets als eigenständige, teilbare Objekte
+- Assoziation gegen Enthaltensein — zwei Objektklassen mit unterschiedlicher Rechtelogik
+- Wissensbibliotheken als Dokumentencontainer und Anker der rechtebewussten Suche
+- Nutzer und Gruppen als Rechtesubjekt; Verteilungsstufen bis zum Fachbereich
+- Chats und Artefakte im Space, Ableitungsleck und seine Behandlung
+- Freigabekette beim Teilen eines Agenten
+- Mitbestimmung und Personalvertretung
+
+**Ergänzend: [`features/access-control.md`](./features/access-control.md)** — Systemverwaltung und Nachweis
+
+- System-Admin-Rolle und Dokumentenfluss
+- Benutzerverzeichnis- und Gruppensynchronisation, Offboarding
 - Berechtigungsdurchsetzung zur Abfragezeit
-- Benutzerverzeichnis-Synchronisation (Active Directory, Okta, usw.)
-- Audit-Logging & Compliance
-- Multi-Workspace-Strategien
+- Audit-Logging, Compliance, DSGVO
 
 **Für:** Sicherheits-Engineers, Compliance-Beauftragte, IT-Administratoren
 
@@ -120,7 +125,7 @@ Wie Features verbunden sind:
 Benutzer-Frontends (Web, Chat, API)
     ↓
 Orchestrierungsschicht
-    ├→ Zugangskontrolle & Workspaces (Berechtigungen prüfen)
+    ├→ Spaces, Assets & Zugangskontrolle (Berechtigungen prüfen)
     ├→ Daten-Indizierung & RAG (Dokumente abrufen)
     └→ LLM-Integration (Antwort generieren)
 
@@ -142,12 +147,12 @@ Deployment & Infrastruktur
 ### Ich bin Backend-/Full-Stack-Entwickler
 → Zuerst [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
 → Dann [VISION.md](./VISION.md) Abschnitt Systemarchitektur (5 Min.)
-→ Dann alle Feature-Spezifikationen in der Reihenfolge: [Benutzer-Frontends](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) → [LLM-Integration](./features/llm-integration.md) → [Deployment](./features/deployment-infrastructure.md) → [Zugangskontrolle](./features/access-control-workspaces.md)
+→ Dann alle Feature-Spezifikationen in der Reihenfolge: [Benutzer-Frontends](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) → [LLM-Integration](./features/llm-integration.md) → [Deployment](./features/deployment-infrastructure.md) → [Zugangskontrolle](./features/access-control.md)
 
 ### Ich bin DevOps-/Plattform-Engineer
 → [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
 → Dann [VISION.md](./VISION.md) Systemarchitektur (5 Min.)
-→ Fokus auf: [Deployment & Infrastruktur](./features/deployment-infrastructure.md) und [Zugangskontrolle](./features/access-control-workspaces.md)
+→ Fokus auf: [Deployment & Infrastruktur](./features/deployment-infrastructure.md) und [Zugangskontrolle](./features/access-control.md)
 → Überfliegen: Daten-Indizierung, LLM-Integration für Integrationspunkte
 
 ### Ich bin Data-/ML-Engineer
@@ -157,7 +162,7 @@ Deployment & Infrastruktur
 
 ### Ich bin Sicherheits-/Compliance-Beauftragter
 → [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Dann auf [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) fokussieren
+→ Dann auf [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) fokussieren
 → Auch lesen: Sicherheitsabschnitt in [Deployment & Infrastruktur](./features/deployment-infrastructure.md)
 → Prüfen: Datenverarbeitung in [Daten-Indizierung & RAG](./features/data-indexing-rag.md)
 
@@ -178,7 +183,7 @@ Deployment & Infrastruktur
 → [Deployment & Infrastruktur](./features/deployment-infrastructure.md) lesen
 
 **Wie kontrolliere ich, wer was sieht?**
-→ [Zugangskontrolle & Workspaces](./features/access-control-workspaces.md) lesen
+→ [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) lesen
 
 **Welche LLM-Modelle werden unterstützt?**
 → [LLM-Integration](./features/llm-integration.md) lesen — Abschnitt Unterstützte LLM-Anbieter
@@ -187,7 +192,7 @@ Deployment & Infrastruktur
 → [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Unterstützte Datenquellen
 
 **Können Benutzer eigene Dokumente hochladen?**
-→ Ja! [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Benutzer-Dokument-Upload und [Zugangskontrolle](./features/access-control-workspaces.md) — Abschnitt Persönliche Workspaces
+→ Ja! [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Benutzer-Dokument-Upload und [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — Abschnitt Dokumente und rechtebewusste Suche
 
 **Kann ich mein eigenes LLM verwenden?**
 → Ja! Siehe [LLM-Integration](./features/llm-integration.md) — Abschnitt OpenAI-kompatible APIs
