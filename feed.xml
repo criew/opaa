@@ -24,7 +24,7 @@ Ohne Epic-Bezug wurden 28 Tickets neu angelegt, 18 abgeschlossen und 21 gemergt.
     <title>Tagesreport Samstag, 1. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-01.html"/>
     <id>https://criew.github.io/opaa/reports/2026-08-01.html</id>
-    <updated>2026-08-02T21:33:36Z</updated>
-    <summary type="text">Projektsetup und Dokumentation wurden heute vorangetrieben. Drei Tickets wurden neu angelegt, darunter die Frontend-Dependency-Upgrades (#189) und die Umstellung der Projektsprache auf Deutsch (#186). Zwei Tickets wurden abgeschlossen und zwei gemergt: Die Backend-Migration zu Spring Boot 4.1 (#190) und die Übersetzung aller 50 Dokumentationsdateien ins Deutsche (#187).</summary>
+    <updated>2026-08-02T21:46:51Z</updated>
+    <summary type="text">Projektsetup und Dokumentation wurden heute vorangebracht. Drei neue Tickets wurden angelegt: die Frontend-Abhängigkeiten (#189) und Backend-Abhängigkeiten (#188) sollen auf aktuelle Versionen aktualisiert werden, und die Projektsprache soll auf Deutsch umgestellt werden (#186). Zwei dieser Vorgänge wurden bereits abgeschlossen und zwei weitere gemergt, darunter die Dokumentationsübersetzung (#187) mit 50 übersetzten Markdown-Dateien und die Backend-Migration zu Spring Boot 4.1 (#190).</summary>
   </entry>
 </feed>

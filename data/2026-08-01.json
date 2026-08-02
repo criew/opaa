@@ -1,7 +1,7 @@
 {
   "repo": "criew/opaa",
   "date": "2026-08-01",
-  "generated_at": "2026-08-02T23:33:36.185936+02:00",
+  "generated_at": "2026-08-02T23:46:51.324844+02:00",
   "closed_issues": [
     {
       "number": 188,
@@ -108,6 +108,32 @@
   ],
   "open_pull_requests": [
     {
+      "number": 292,
+      "title": "test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)",
+      "url": "https://github.com/criew/opaa/pull/292",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "evaluation"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 287,
+      "title": "fix(auth): Erstanmeldung nach #280 wieder funktionsfähig machen",
+      "url": "https://github.com/criew/opaa/pull/287",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
       "number": 283,
       "title": "Gruppen als Rechtesubjekt einfuehren",
       "url": "https://github.com/criew/opaa/pull/283",
@@ -120,9 +146,7 @@
         "auth"
       ],
       "body": "",
-      "closes": [
-        200
-      ]
+      "closes": []
     },
     {
       "number": 161,
@@ -139,12 +163,12 @@
     }
   ],
   "ci": {
-    "conclusion": "success",
-    "url": "https://github.com/criew/opaa/actions/runs/30768076806",
-    "title": "Merge pull request #286 from criew/feature/285_report-nach-epics",
-    "finished_at": "2026-08-02T21:33:29Z"
+    "conclusion": "in_progress",
+    "url": "https://github.com/criew/opaa/actions/runs/30768608350",
+    "title": "Merge pull request #291 from criew/feature/290_epic-zuordnung-korrigi…",
+    "finished_at": "2026-08-02T21:46:03Z"
   },
-  "summary": "Projektsetup und Dokumentation wurden heute vorangetrieben. Drei Tickets wurden neu angelegt, darunter die Frontend-Dependency-Upgrades (#189) und die Umstellung der Projektsprache auf Deutsch (#186). Zwei Tickets wurden abgeschlossen und zwei gemergt: Die Backend-Migration zu Spring Boot 4.1 (#190) und die Übersetzung aller 50 Dokumentationsdateien ins Deutsche (#187).",
+  "summary": "Projektsetup und Dokumentation wurden heute vorangebracht. Drei neue Tickets wurden angelegt: die Frontend-Abhängigkeiten (#189) und Backend-Abhängigkeiten (#188) sollen auf aktuelle Versionen aktualisiert werden, und die Projektsprache soll auf Deutsch umgestellt werden (#186). Zwei dieser Vorgänge wurden bereits abgeschlossen und zwei weitere gemergt, darunter die Dokumentationsübersetzung (#187) mit 50 übersetzten Markdown-Dateien und die Backend-Migration zu Spring Boot 4.1 (#190).",
   "epics": [],
   "ohne_epic": {
     "opened": [
