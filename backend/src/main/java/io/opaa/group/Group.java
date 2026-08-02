@@ -150,6 +150,16 @@ public class Group {
     this.dissolvedAt = null;
   }
 
+  /**
+   * Updates the parent organizational unit from directory synchronisation (#237). Applied in a
+   * second pass after every group in a sync run has a persisted id, so it works regardless of the
+   * order the directory reported groups in, and to existing groups (a reorganisation that reassigns
+   * a unit under a different parent), not only newly created ones.
+   */
+  public void updateParentGroup(UUID parentGroupId) {
+    this.parentGroupId = parentGroupId;
+  }
+
   public boolean isOrgUnit() {
     return this.kind == GroupKind.ORG_UNIT;
   }

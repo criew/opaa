@@ -12,6 +12,7 @@ import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -260,9 +261,25 @@ class DirectorySyncServiceIntegrationTest {
   void aGroupNoLongerReportedByTheDirectoryIsMarkedDissolvedWithMembershipFrozen() {
     UUID member = createUser(organizationId, "member-1");
     Group existing = persistOrgUnit("dir-guid-1", "Referat 50", member);
+    // A large, unrelated, unaffected group so the one dissolving membership stays well under the
+    // 30% threshold - this test is about the dissolution mechanics, not the threshold.
+    UUID[] bulkMembers = new UUID[9];
+    for (int i = 0; i < bulkMembers.length; i++) {
+      bulkMembers[i] = createUser(organizationId, "bulk-" + i);
+    }
+    persistOrgUnit("dir-guid-bulk", "Referat Bulk", bulkMembers);
 
-    // Directory no longer reports dir-guid-1 at all (merged into another unit).
-    directoryClient.respondWith(new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()));
+    // Directory no longer reports dir-guid-1 at all (merged into another unit); the bulk group is
+    // still reported unchanged.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()),
+        new DirectoryGroup(
+            "dir-guid-bulk",
+            "Referat Bulk",
+            null,
+            Set.of(
+                "bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4", "bulk-5", "bulk-6", "bulk-7",
+                "bulk-8")));
 
     DirectorySyncReportResponse report = directorySyncService.run(organizationId);
 
@@ -297,6 +314,156 @@ class DirectorySyncServiceIntegrationTest {
     assertThat(membershipRepository.findByGroupId(reloaded.getId()))
         .extracting(GroupMembership::getUserId)
         .containsExactlyInAnyOrder(member, newMember);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Combined mechanisms - review of PR #297: the plausibility threshold must catch a partial
+  // outage that manifests as mass dissolution, and must not lose its denominator when the
+  // affected group was already dissolved and is reactivating in the same run that changes it.
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void aPartialOutageThatDissolvesMostGroupsIsCaughtByThePlausibilityThreshold() {
+    // 10 org units, one member each. The directory - after a partial outage - only reports 2 of
+    // them; the other 8 would be marked dissolved. Before the fix, a dissolution contributed
+    // nothing to the numerator, so this run reported changedFraction = 0.0 and applied silently.
+    List<DirectoryGroup> stillReported = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      UUID member = createUser(organizationId, "unit-" + i);
+      persistOrgUnit("dir-guid-" + i, "Referat " + i, member);
+      if (i < 2) {
+        stillReported.add(
+            new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, Set.of("unit-" + i)));
+      }
+    }
+    directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
+
+    DirectorySyncReportResponse report = directorySyncService.run(organizationId);
+
+    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.getChangedFraction()).isEqualTo(0.8);
+    long dissolvedCount =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(Group::isDissolved)
+            .count();
+    assertThat(dissolvedCount).isZero();
+  }
+
+  @Test
+  void reactivatingAnAllDissolvedGroupWithMostOfItsFrozenMembershipMissingIsCaughtByTheThreshold() {
+    // Only one group exists in the organization, already dissolved from an earlier run, with a
+    // frozen membership of 4. Before the fix, existingMembershipCount excluded every dissolved
+    // group unconditionally, so the denominator was 0 and the run "passed" with changedFraction
+    // = 0.0 regardless of how much of the reactivated group's membership disappeared.
+    UUID keptMember = createUser(organizationId, "kept");
+    UUID lostA = createUser(organizationId, "lost-a");
+    UUID lostB = createUser(organizationId, "lost-b");
+    UUID lostC = createUser(organizationId, "lost-c");
+    Group group = persistOrgUnit("dir-guid-1", "Referat 50", keptMember, lostA, lostB, lostC);
+    group.dissolve(Instant.now());
+    groupRepository.save(group);
+
+    // The directory reports the unit again (reactivation) but with only 1 of its 4 frozen
+    // members - a 75% loss within the only group that exists.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("kept")));
+
+    DirectorySyncReportResponse report = directorySyncService.run(organizationId);
+
+    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.getChangedFraction()).isEqualTo(0.75);
+    Group reloaded = groupRepository.findById(group.getId()).orElseThrow();
+    // Aborted - still dissolved, membership untouched.
+    assertThat(reloaded.isDissolved()).isTrue();
+    assertThat(membershipRepository.findByGroupId(reloaded.getId())).hasSize(4);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Dry run persists its outcome - review of PR #297: under the class-level readOnly transaction
+  // dryRun used to run in, Hibernate's FlushMode.MANUAL silently dropped the status insert.
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void dryRunPersistsItsOutcomeEvenThoughItNeverWritesGroupData() {
+    UUID member = createUser(organizationId, "member-1");
+    persistOrgUnit("dir-guid-1", "Referat 50", member);
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
+
+    directorySyncService.dryRun(organizationId);
+
+    DirectorySyncStatus status =
+        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+    assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
+  }
+
+  @Test
+  void dryRunAgainstAnUnreachableDirectoryStillRecordsTheOutcomeDurably() {
+    directoryClient.failWith("timeout");
+
+    DirectorySyncReportResponse report = directorySyncService.dryRun(organizationId);
+
+    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
+    DirectorySyncStatus status =
+        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+    assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Parent group resolution - review of PR #297: must not depend on directory response order,
+  // and must apply to existing groups across separate runs, not only at creation time.
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void resolvesAParentLinkRegardlessOfWhetherTheChildOrTheParentIsReportedFirst() {
+    // The child is listed before the parent in the very same snapshot - a real LDAP response has
+    // no guaranteed order.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-child", "Unterabteilung", "dir-parent", Set.of()),
+        new DirectoryGroup("dir-parent", "Abteilung", null, Set.of()));
+
+    directorySyncService.run(organizationId);
+
+    Group parent =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(g -> "dir-parent".equals(g.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    Group child =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(g -> "dir-child".equals(g.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(child.getParentGroupId()).isEqualTo(parent.getId());
+  }
+
+  @Test
+  void aReorganisationReassignsAnExistingGroupsParentOnALaterRun() {
+    // Run 1: two independent, top-level groups.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-a", "Referat A", null, Set.of()),
+        new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
+    directorySyncService.run(organizationId);
+    Group groupA =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(g -> "dir-a".equals(g.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(groupA.getParentGroupId()).isNull();
+
+    // Run 2: a reorganisation puts A under B.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-a", "Referat A", "dir-b", Set.of()),
+        new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
+    directorySyncService.run(organizationId);
+
+    Group groupB =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(g -> "dir-b".equals(g.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    Group reloadedA = groupRepository.findById(groupA.getId()).orElseThrow();
+    assertThat(reloadedA.getParentGroupId()).isEqualTo(groupB.getId());
   }
 
   // ---------------------------------------------------------------------------------------

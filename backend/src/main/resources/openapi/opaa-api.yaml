@@ -1248,6 +1248,40 @@ components:
           nullable: true
           description: Only set for a renamed group
 
+    DirectorySyncUserRef:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+
+    DirectorySyncMembershipChange:
+      type: object
+      required: [externalId, name, added, removed]
+      description: >
+        Which users would gain or lose membership of one group - the level of detail an admin
+        needs to decide before a run that would revoke access is applied (see #237's acceptance
+        criteria: the dry-run report must show what would change, not only how much).
+      properties:
+        externalId:
+          type: string
+          example: directory-guid-1
+        name:
+          type: string
+          example: Referat 50
+        added:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        removed:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+
     DirectorySyncReportResponse:
       type: object
       required:
@@ -1256,6 +1290,7 @@ components:
         - groupsCreated
         - groupsRenamed
         - groupsDissolved
+        - membershipChanges
         - membershipsAdded
         - membershipsRemoved
         - changedFraction
@@ -1279,6 +1314,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DirectorySyncGroupChange"
+        membershipChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncMembershipChange"
         membershipsAdded:
           type: integer
           example: 4
@@ -1292,7 +1331,12 @@ components:
         changedFraction:
           type: number
           format: double
-          description: Fraction of pre-run memberships this run would remove (or removed)
+          description: >
+            Fraction of memberships at risk this run - removals plus the memberships of groups
+            that would be dissolved, since a dissolved group's reach is capped the same way a
+            revoked grant would be. Relative to the memberships of every group this run actually
+            touches (new, renamed, membership-changed, dissolved, reactivated); untouched groups
+            are excluded from both sides of the ratio.
           example: 0.05
         thresholdFraction:
           type: number
