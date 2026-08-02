@@ -37,7 +37,7 @@ Landing Page, Pitch, One-Pager und README-Messaging autonom aus der Quelle der W
 
 ## Ton: zwei verbindliche Spuren
 
-- **Community-Spur** (README, GitHub, Docs): Englisch, informell, entwicklerrespektierend — informieren, nicht überzeugen. Marketing-Vokabular wie `empower` oder `revolutionize` vermeiden; Quickstarts, Architektur und ehrliche Vergleiche sind das Marketing.
+- **Community-Spur** (README, GitHub, Docs): Deutsch, informell, entwicklerrespektierend — informieren, nicht überzeugen. Marketing-Vokabular wie `empower` oder `revolutionize` vermeiden; Quickstarts, Architektur und ehrliche Vergleiche sind das Marketing.
 - **Käufer-Spur** (Landing Page, Decks, One-Pager): Deutsch und Englisch, professionelles `Sie`. Prioritätssegmente sind Behörden, Gesundheitswesen und Anwaltskanzleien. Risiko, Compliance, TCO und Exit-Sicherheit betonen.
 
 ## Disziplin

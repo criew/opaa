@@ -5,6 +5,28 @@
 OPAA (Open Project AI Assistant) ist ein quelloffenes Projekt, das einen KI-gestützten Projektassistenten entwickelt.
 Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen.
 
+## Projektsprache
+
+Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcode vorbehalten.
+
+**Deutsch:**
+
+- GitHub-Issues (Titel und Beschreibung)
+- Pull Requests (Titel und Beschreibung)
+- Dokumentation (`README.md`, `docs/`, ADRs, Feature-Spezifikationen)
+- Templates unter `.github/`
+- Commit-Beschreibungen und -Body (der Conventional-Commit-Typ und -Scope bleiben englisch, z. B. `feat(workspace): Rollenverwaltung ergänzen`)
+- Alle in der Anwendung sichtbaren Texte — Frontend-UI, `aria-label`-Attribute und nutzerseitige API-Fehlermeldungen
+
+**Englisch:**
+
+- Bezeichner im Quellcode (Klassen, Methoden, Variablen, CSS-Klassen)
+- Datei- und Verzeichnisnamen
+- Code-Kommentare
+- Log-Ausgaben und entwicklerseitige Exception-Messages
+- Technische Konstanten, Enum-Werte, API-Feldnamen und die OpenAPI-Spezifikation
+- Labels und Branch-Namen
+
 ## Architektur
 
 - **Backend:** Java 21 + Spring Boot 4.1.0 + Spring AI 2.0.0 (Gradle 9.6.1, Kotlin DSL)
@@ -101,14 +123,14 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 
 - Beim Erstellen eines GitHub-Issues IMMER passende Labels basierend auf dem Inhalt zuweisen
 - Vorhandene Labels verwenden (z. B. `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, usw.)
-- Issue-Titel und -Beschreibungen MÜSSEN auf Englisch verfasst werden
+- Issue-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
 
 ### Pull Requests
 
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
 - PRs müssen vor dem Merge überprüft werden
 - Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
-- PR-Titel und -Beschreibungen MÜSSEN auf Englisch verfasst werden
+- PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
 - IMMER das PR-Template (Zusammenfassung, Zugehörige Issues, Art der Änderung, Checkliste, KI-Agenten-Offenlegung) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) für neue Pull Requests verwenden
 
 ### Pre-Push-Checkliste

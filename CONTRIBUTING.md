@@ -57,7 +57,7 @@ docs: update architecture decision records
 
 ## Issues
 
-- **Issues müssen auf Englisch verfasst werden**
+- **Issues müssen auf Deutsch verfasst werden** — ebenso Pull Requests und Dokumentation. Englisch bleibt dem Quellcode vorbehalten (Bezeichner, Dateinamen, Kommentare); Details in [AGENTS.md](AGENTS.md#projektsprache)
 - Bereitgestellte Issue-Templates für Bug-Reports und Feature-Requests verwenden
 - Für größere Features eine Feature-Spezifikation in `docs/features/` erstellen und vom Issue verlinken
 
