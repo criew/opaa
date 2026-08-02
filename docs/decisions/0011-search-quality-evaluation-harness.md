@@ -1,4 +1,4 @@
-# ADR-0008: Aufbau der Suchqualitäts-Evaluierung und Ablage des Testkorpus
+# ADR-0011: Aufbau der Suchqualitäts-Evaluierung und Ablage des Testkorpus
 
 ## Status
 
@@ -129,7 +129,7 @@ Prämisse lag nicht in diesem ADR, sondern in der Demo-Beschreibung der Spezifik
   von Kosten unabhängig. Hinzu kommt, dass ein Secret in Forks ohnehin nicht verfügbar ist — auch
   das ist keine Kostenfrage.
 
-Es besteht also **kein Anlass, ADR-0008 neu zu bewerten oder zu ersetzen.**
+Es besteht also **kein Anlass, ADR-0011 neu zu bewerten oder zu ersetzen.**
 
 ### Was sich dennoch ändert
 

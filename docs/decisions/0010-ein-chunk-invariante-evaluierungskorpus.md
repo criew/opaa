@@ -6,7 +6,7 @@ Vorgeschlagen
 
 ## Kontext
 
-Der gesamte Evaluierungskorpus (`eval/corpus/<domäne>/`, siehe ADR-0008 und
+Der gesamte Evaluierungskorpus (`eval/corpus/<domäne>/`, siehe ADR-0011 und
 `docs/features/search-quality-evaluation.md`) beruht auf einer einzigen Invariante: Ein generiertes
 Dokument entspricht beim Indizieren genau einem Chunk. Nur dadurch ist ein gefundener Chunk
 eindeutig einer Entität zuordenbar — die Voraussetzung für die Ground Truth des Golden Dataset
@@ -15,7 +15,7 @@ eindeutig einer Entität zuordenbar — die Voraussetzung für die Ground Truth 
 Diese Invariante koppelt zwei Komponenten, die sonst nichts miteinander verbindet:
 
 1. den Python-Generator unter `eval/generator/` (Issue #225, bewusst außerhalb von Gradle und CI,
-   siehe ADR-0008, Entscheidung 2), und
+   siehe ADR-0011, Entscheidung 2), und
 2. `opaa.indexing.chunk-size` im Backend, konfiguriert für Spring AIs `TokenTextSplitter`.
 
 Der `TokenTextSplitter` zählt **Tokens** in der `cl100k_base`-Kodierung, nicht Zeichen oder Bytes,
@@ -44,7 +44,7 @@ Drei Optionen standen zur Wahl:
   Backend-Konfiguration entkoppelt bleibt: Ändert sich das Embedding-Modell oder der Splitter im
   Backend künftig auf eine andere Tokenisierung, veraltet die Prüfung im Generator lautlos, während
   Option (c) automatisch mit der echten Konfiguration mitzieht. Zusätzlich kostet es die
-  Standardbibliothek-only-Eigenschaft, die ADR-0008 für den Generator bewusst festgelegt hat.
+  Standardbibliothek-only-Eigenschaft, die ADR-0011 für den Generator bewusst festgelegt hat.
   **Verworfen.**
 - **(b) Der Generator behält eine konservative Byte-Vorabprüfung** (`MAX_DOCUMENT_BYTES`, aktuell
   3.000 — unterhalb des gemessenen Kipppunkts von ~3.164 Bytes bei der höchsten im Korpus
@@ -76,11 +76,11 @@ ist nicht automatisch an `chunk-size` gekoppelt — sie ist eine manuell gepfleg
 Konstante. Wird `chunk-size` künftig geändert (kleiner oder größer), muss sie erneut gegen die
 dann gemessene Tokendichte des Korpus überprüft und ggf. angepasst werden; das ist keine
 automatische Ableitung, sondern ein bewusster, reviewter Schritt, denselben Charakter wie eine
-Baseline-Aktualisierung (siehe ADR-0008, Entscheidung 5). Der eingefrorene Korpus selbst
+Baseline-Aktualisierung (siehe ADR-0011, Entscheidung 5). Der eingefrorene Korpus selbst
 (Markdown-Dateien, Manifest) ändert sich durch eine `chunk-size`-Änderung nicht — nur ob die
 Ein-Chunk-Invariante für ihn noch hält, was ausschließlich der Java-Harness in #227 verbindlich
 beantwortet. Schlägt der Harness nach einer `chunk-size`-Änderung fehl, ist das kein Korpus-Bug,
-sondern der erwartete Signalweg: Baseline und `chunk-size` sind gekoppelt (ADR-0008, Konsequenzen),
+sondern der erwartete Signalweg: Baseline und `chunk-size` sind gekoppelt (ADR-0011, Konsequenzen),
 und eine Änderung an einem der beiden erfordert einen bewussten neuen Baseline-Lauf.
 
 ## Konsequenzen
