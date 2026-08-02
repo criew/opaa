@@ -53,7 +53,40 @@ docs: update architecture decision records
 - Alle Änderungen gehen über PRs — keine direkten Pushes zu `main`
 - PR-Template vollständig ausfüllen
 - Zugehörige GitHub-Issues mit `Closes #N` verknüpfen
-- Sicherstellen, dass Tests bestehen, bevor ein Review angefordert wird
+- Sicherstellen, dass Tests bestehen, bevor der PR zum Merge angeboten wird
+
+### Wie ein PR nach `main` kommt
+
+1. CI muss grün sein — die Prüfungen `backend`, `backend-integration` und `frontend` sind Voraussetzung für den Merge
+2. Der Code Reviewer prüft die Änderung; offene Befunde und Konversationen werden vorher aufgelöst
+3. Einer der Maintainer merged den PR
+
+Ein formales Approval in GitHub ist dafür nicht erforderlich. Maintainer mit Merge-Recht sind [@criew](https://github.com/criew) und [@bigpuritz](https://github.com/bigpuritz).
+
+## Wann einen E2E-Test schreiben?
+
+Die browserbasierte End-to-End-Suite liegt unter [`e2e/`](e2e/README.md) (Playwright) und ist laut
+[`docs/AGENT-ORGANIZATION.md`](docs/AGENT-ORGANIZATION.md) Sache des QA-Engineer-Agenten, der aus
+den Abnahmekriterien eines Feature-Issues dedizierte `test(e2e)`-Issues ableitet — nicht jeder PR
+braucht einen eigenen E2E-Test. Ein E2E-Test lohnt sich für:
+
+- **Kritische, nutzersichtbare Abläufe end-to-end** (Anmeldung, Dokument indizieren, Frage stellen
+  und Antwort erhalten) — Dinge, die durch Unit-/Integrationstests allein nicht abgedeckt sind,
+  weil sie Frontend, Backend und Datenbank gemeinsam durchlaufen.
+- **Regressionen, die nur im Zusammenspiel mehrerer Schichten auftreten** (z. B. CORS-Konfiguration,
+  Auth-Redirects, Routing).
+
+Kein E2E-Test nötig für:
+
+- Reine Komponentenlogik oder isolierte Backend-Logik — dafür Vitest (Frontend) bzw. JUnit
+  (Backend) verwenden.
+- Visuelle Details oder Layout-Feinheiten (explizit außerhalb des Scopes der Suite).
+- Fälle, die sich genauso zuverlässig und schneller mit einem Integrationstest abdecken lassen.
+
+Neue Szenarien nutzen die vorhandenen Fixtures (z. B. die Anmeldung aus `e2e/fixtures/auth.ts`)
+statt sie zu kopieren; siehe `e2e/README.md` für Details zum lokalen Ausführen, die
+Selektor-Konvention (`getByRole`/`getByLabel` vor `data-testid` vor Text-/Placeholder-Selektoren)
+und die Serialisierungs-Konvention für Specs, die gemeinsamen Zustand verändern.
 
 ## Issues
 
@@ -67,7 +100,7 @@ Dieses Projekt begrüßt ausdrücklich Beiträge von KI-Coding-Agenten (Claude C
 
 ### Erwartungen an KI-generierten Code
 
-- Alle KI-Beiträge durchlaufen denselben PR-Review-Prozess wie menschlicher Code
+- Alle KI-Beiträge durchlaufen denselben Weg nach `main` wie menschlicher Code: CI, Code Review, Merge durch einen Maintainer
 - Conventional-Commits-Format verwenden
 - `Co-Authored-By`-Trailer in Commits einfügen (z. B. `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`)
 - KI-Beteiligung im Abschnitt „AI Agent Disclosure" des PR-Templates kennzeichnen

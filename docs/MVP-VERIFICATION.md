@@ -82,7 +82,7 @@ Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei jedem Push u
    docker compose ps
    ```
 
-   Erwartet: `opaa-postgres` (healthy), `opaa-backend` (running), `opaa-frontend` (running)
+   Erwartet: `opaa-postgres-1` (healthy), `opaa-backend-1` (running), `opaa-frontend-1` (running)
 
 4. **Backend-Gesundheit prüfen:**
 

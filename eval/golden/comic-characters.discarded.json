@@ -1,0 +1,5337 @@
+[
+  {
+    "id": "comic-attr-002",
+    "domain": "comic-characters",
+    "query": "What eye color does Agent 13 have?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-003",
+    "domain": "comic-characters",
+    "query": "What eye color does Altaïr Ibn-La'Ahad have?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-005",
+    "domain": "comic-characters",
+    "query": "What eye color does Angel Salvadore (FOX) have?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-006",
+    "domain": "comic-characters",
+    "query": "What eye color does Ant-Man II have?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-007",
+    "domain": "comic-characters",
+    "query": "What eye color does Aquababy have?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-008",
+    "domain": "comic-characters",
+    "query": "What eye color does Aragorn have?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-009",
+    "domain": "comic-characters",
+    "query": "What eye color does Atom (CW) have?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-010",
+    "domain": "comic-characters",
+    "query": "What eye color does Atomica have?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-012",
+    "domain": "comic-characters",
+    "query": "What eye color does Batgirl (New 52) have?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-013",
+    "domain": "comic-characters",
+    "query": "What eye color does Batman (DC One Million) have?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-014",
+    "domain": "comic-characters",
+    "query": "What eye color does Batroc The Leaper (MCU) have?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-015",
+    "domain": "comic-characters",
+    "query": "What eye color does Beast Boy have?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-016",
+    "domain": "comic-characters",
+    "query": "What eye color does Big Barda have?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-017",
+    "domain": "comic-characters",
+    "query": "What eye color does Bizarro-Girl have?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-018",
+    "domain": "comic-characters",
+    "query": "What eye color does Black Bolt (MCU) have?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-019",
+    "domain": "comic-characters",
+    "query": "What eye color does Black Cat (Earth 65) have?",
+    "expected_documents": [
+      "comic-0183_black-cat-earth-65.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-020",
+    "domain": "comic-characters",
+    "query": "What eye color does Black Knight III have?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-021",
+    "domain": "comic-characters",
+    "query": "What hair color does Abin Sur have?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-022",
+    "domain": "comic-characters",
+    "query": "What hair color does Agent 13 have?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-023",
+    "domain": "comic-characters",
+    "query": "What hair color does Altaïr Ibn-La'Ahad have?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-025",
+    "domain": "comic-characters",
+    "query": "What hair color does Angel Salvadore (FOX) have?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-026",
+    "domain": "comic-characters",
+    "query": "What hair color does Ant-Man II have?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-027",
+    "domain": "comic-characters",
+    "query": "What hair color does Aquababy have?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-028",
+    "domain": "comic-characters",
+    "query": "What hair color does Aragorn have?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-029",
+    "domain": "comic-characters",
+    "query": "What hair color does Atom (CW) have?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-030",
+    "domain": "comic-characters",
+    "query": "What hair color does Atomica have?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-032",
+    "domain": "comic-characters",
+    "query": "What hair color does Batgirl (New 52) have?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-033",
+    "domain": "comic-characters",
+    "query": "What hair color does Batman (DC One Million) have?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-034",
+    "domain": "comic-characters",
+    "query": "What hair color does Batroc The Leaper (MCU) have?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-035",
+    "domain": "comic-characters",
+    "query": "What hair color does Beast Boy have?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-036",
+    "domain": "comic-characters",
+    "query": "What hair color does Big Barda have?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-037",
+    "domain": "comic-characters",
+    "query": "What hair color does Bizarro-Girl have?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-039",
+    "domain": "comic-characters",
+    "query": "What hair color does Black Cat (Earth 65) have?",
+    "expected_documents": [
+      "comic-0183_black-cat-earth-65.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-040",
+    "domain": "comic-characters",
+    "query": "What hair color does Black Knight III have?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-042",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Abin Sur?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-043",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Ace Morgan?",
+    "expected_documents": [
+      "comic-0015_ace-morgan.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-045",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Agent Zero?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-046",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Alex Mercer?",
+    "expected_documents": [
+      "comic-0036_alex-mercer.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-047",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Altaïr Ibn-La'Ahad?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-049",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Angel Salvadore (FOX)?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-050",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Ant-Man II?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-051",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Aquababy?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-052",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Aragorn?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-053",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Arizona Annie?",
+    "expected_documents": [
+      "comic-0085_arizona-annie.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-054",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Arsenal (CW)?",
+    "expected_documents": [
+      "comic-0092_arsenal-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-055",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Atom (CW)?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-056",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Atomica?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-057",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Bane (Dark Knight)?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-058",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Baron Mordo (MCU)?",
+    "expected_documents": [
+      "comic-0120_baron-mordo-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-059",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Batgirl (New 52)?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-060",
+    "domain": "comic-characters",
+    "query": "Which company or creator created Batman (DC One Million)?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-062",
+    "domain": "comic-characters",
+    "query": "What is Ace Morgan's real name?",
+    "expected_documents": [
+      "comic-0015_ace-morgan.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-063",
+    "domain": "comic-characters",
+    "query": "What is Agent 13's real name?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-065",
+    "domain": "comic-characters",
+    "query": "What is Alex Mercer's real name?",
+    "expected_documents": [
+      "comic-0036_alex-mercer.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-066",
+    "domain": "comic-characters",
+    "query": "What is Altaïr Ibn-La'Ahad's real name?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-068",
+    "domain": "comic-characters",
+    "query": "What is Angel Salvadore (FOX)'s real name?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-069",
+    "domain": "comic-characters",
+    "query": "What is Ant-Man II's real name?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-070",
+    "domain": "comic-characters",
+    "query": "What is Aquababy's real name?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-071",
+    "domain": "comic-characters",
+    "query": "What is Aragorn's real name?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-072",
+    "domain": "comic-characters",
+    "query": "What is Arsenal (CW)'s real name?",
+    "expected_documents": [
+      "comic-0092_arsenal-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-073",
+    "domain": "comic-characters",
+    "query": "What is Atom (CW)'s real name?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-074",
+    "domain": "comic-characters",
+    "query": "What is Atomica's real name?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-075",
+    "domain": "comic-characters",
+    "query": "What is Bane (Dark Knight)'s real name?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-076",
+    "domain": "comic-characters",
+    "query": "What is Baron Mordo (MCU)'s real name?",
+    "expected_documents": [
+      "comic-0120_baron-mordo-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-077",
+    "domain": "comic-characters",
+    "query": "What is Batgirl (New 52)'s real name?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-078",
+    "domain": "comic-characters",
+    "query": "What is Batroc The Leaper (MCU)'s real name?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-079",
+    "domain": "comic-characters",
+    "query": "What is Beast Boy's real name?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-080",
+    "domain": "comic-characters",
+    "query": "What is Big Barda's real name?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-082",
+    "domain": "comic-characters",
+    "query": "Where was Agent Zero born?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-083",
+    "domain": "comic-characters",
+    "query": "Where was Altaïr Ibn-La'Ahad born?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-085",
+    "domain": "comic-characters",
+    "query": "Where was Ant-Man II born?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-086",
+    "domain": "comic-characters",
+    "query": "Where was Aragorn born?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-088",
+    "domain": "comic-characters",
+    "query": "Where was Bane (Dark Knight) born?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-089",
+    "domain": "comic-characters",
+    "query": "Where was Batgirl (New 52) born?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-090",
+    "domain": "comic-characters",
+    "query": "Where was Batroc The Leaper (MCU) born?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-091",
+    "domain": "comic-characters",
+    "query": "Where was Black Bolt (MCU) born?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-092",
+    "domain": "comic-characters",
+    "query": "Where was Black Knight III born?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-093",
+    "domain": "comic-characters",
+    "query": "Where was Black Siren (CW) born?",
+    "expected_documents": [
+      "comic-0197_black-siren-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-094",
+    "domain": "comic-characters",
+    "query": "Where was Blink born?",
+    "expected_documents": [
+      "comic-0204_blink.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-095",
+    "domain": "comic-characters",
+    "query": "Where was Brainiac 5 (CW) born?",
+    "expected_documents": [
+      "comic-0225_brainiac-5-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-096",
+    "domain": "comic-characters",
+    "query": "Where was Captain Boomerang born?",
+    "expected_documents": [
+      "comic-0260_captain-boomerang.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-097",
+    "domain": "comic-characters",
+    "query": "Where was Castiel born?",
+    "expected_documents": [
+      "comic-0274_castiel.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-098",
+    "domain": "comic-characters",
+    "query": "Where was Cloak born?",
+    "expected_documents": [
+      "comic-0302_cloak.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-099",
+    "domain": "comic-characters",
+    "query": "Where was Collector born?",
+    "expected_documents": [
+      "comic-0309_collector.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-100",
+    "domain": "comic-characters",
+    "query": "Where was Crystal (MCU) born?",
+    "expected_documents": [
+      "comic-0330_crystal-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-102",
+    "domain": "comic-characters",
+    "query": "What is Agent 13's occupation?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-103",
+    "domain": "comic-characters",
+    "query": "What is Agent Zero's occupation?",
+    "expected_documents": [
+      "comic-0029_agent-zero.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-104",
+    "domain": "comic-characters",
+    "query": "What is Altaïr Ibn-La'Ahad's occupation?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-106",
+    "domain": "comic-characters",
+    "query": "What is Ant-Man II's occupation?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-107",
+    "domain": "comic-characters",
+    "query": "What is Aragorn's occupation?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-108",
+    "domain": "comic-characters",
+    "query": "What is Atom (CW)'s occupation?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-110",
+    "domain": "comic-characters",
+    "query": "What is Bane (Dark Knight)'s occupation?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-111",
+    "domain": "comic-characters",
+    "query": "What is Batgirl (New 52)'s occupation?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-112",
+    "domain": "comic-characters",
+    "query": "What is Batroc The Leaper (MCU)'s occupation?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-113",
+    "domain": "comic-characters",
+    "query": "What is Beast Boy's occupation?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-114",
+    "domain": "comic-characters",
+    "query": "What is Black Bolt (MCU)'s occupation?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-115",
+    "domain": "comic-characters",
+    "query": "What is Black Cat (Earth 65)'s occupation?",
+    "expected_documents": [
+      "comic-0183_black-cat-earth-65.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-116",
+    "domain": "comic-characters",
+    "query": "What is Black Knight III's occupation?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-117",
+    "domain": "comic-characters",
+    "query": "What is Black Siren (CW)'s occupation?",
+    "expected_documents": [
+      "comic-0197_black-siren-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-118",
+    "domain": "comic-characters",
+    "query": "What is Blink's occupation?",
+    "expected_documents": [
+      "comic-0204_blink.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-119",
+    "domain": "comic-characters",
+    "query": "What is Bloodaxe's occupation?",
+    "expected_documents": [
+      "comic-0211_bloodaxe.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-120",
+    "domain": "comic-characters",
+    "query": "What is Brainiac 5 (CW)'s occupation?",
+    "expected_documents": [
+      "comic-0225_brainiac-5-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-122",
+    "domain": "comic-characters",
+    "query": "In which comic did Agent 13 first appear?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-123",
+    "domain": "comic-characters",
+    "query": "In which comic did Altaïr Ibn-La'Ahad first appear?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-125",
+    "domain": "comic-characters",
+    "query": "In which comic did Angel Salvadore (FOX) first appear?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-126",
+    "domain": "comic-characters",
+    "query": "In which comic did Ant-Man II first appear?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-127",
+    "domain": "comic-characters",
+    "query": "In which comic did Aquababy first appear?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-129",
+    "domain": "comic-characters",
+    "query": "In which comic did Atomica first appear?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-130",
+    "domain": "comic-characters",
+    "query": "In which comic did Bane (Dark Knight) first appear?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-131",
+    "domain": "comic-characters",
+    "query": "In which comic did Baron Mordo (MCU) first appear?",
+    "expected_documents": [
+      "comic-0120_baron-mordo-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-132",
+    "domain": "comic-characters",
+    "query": "In which comic did Batgirl (New 52) first appear?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-133",
+    "domain": "comic-characters",
+    "query": "In which comic did Batroc The Leaper (MCU) first appear?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-134",
+    "domain": "comic-characters",
+    "query": "In which comic did Beast Boy first appear?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-135",
+    "domain": "comic-characters",
+    "query": "In which comic did Big Barda first appear?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-136",
+    "domain": "comic-characters",
+    "query": "In which comic did Bird-Brain first appear?",
+    "expected_documents": [
+      "comic-0162_bird-brain.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-137",
+    "domain": "comic-characters",
+    "query": "In which comic did Bizarro-Girl first appear?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-138",
+    "domain": "comic-characters",
+    "query": "In which comic did Black Bolt (MCU) first appear?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-139",
+    "domain": "comic-characters",
+    "query": "In which comic did Black Cat (Earth 65) first appear?",
+    "expected_documents": [
+      "comic-0183_black-cat-earth-65.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-140",
+    "domain": "comic-characters",
+    "query": "In which comic did Black Knight III first appear?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-142",
+    "domain": "comic-characters",
+    "query": "Is Abin Sur good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-143",
+    "domain": "comic-characters",
+    "query": "Is Agent 13 good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-145",
+    "domain": "comic-characters",
+    "query": "Is Alex Mercer good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0036_alex-mercer.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-146",
+    "domain": "comic-characters",
+    "query": "Is Altaïr Ibn-La'Ahad good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-148",
+    "domain": "comic-characters",
+    "query": "Is Angel Salvadore (FOX) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-149",
+    "domain": "comic-characters",
+    "query": "Is Ant-Man II good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-150",
+    "domain": "comic-characters",
+    "query": "Is Aquababy good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0071_aquababy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-151",
+    "domain": "comic-characters",
+    "query": "Is Aragorn good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-152",
+    "domain": "comic-characters",
+    "query": "Is Atom (CW) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-153",
+    "domain": "comic-characters",
+    "query": "Is Atomica good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-154",
+    "domain": "comic-characters",
+    "query": "Is Bane (Dark Knight) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-155",
+    "domain": "comic-characters",
+    "query": "Is Baron Mordo (MCU) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0120_baron-mordo-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-156",
+    "domain": "comic-characters",
+    "query": "Is Batgirl (New 52) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-157",
+    "domain": "comic-characters",
+    "query": "Is Batman (DC One Million) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-158",
+    "domain": "comic-characters",
+    "query": "Is Batroc The Leaper (MCU) good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-159",
+    "domain": "comic-characters",
+    "query": "Is Beast Boy good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-160",
+    "domain": "comic-characters",
+    "query": "Is Big Barda good, bad, or neutral?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-162",
+    "domain": "comic-characters",
+    "query": "What species or race is Abin Sur?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-164",
+    "domain": "comic-characters",
+    "query": "What species or race is Altaïr Ibn-La'Ahad?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-165",
+    "domain": "comic-characters",
+    "query": "What species or race is Angel Salvadore (FOX)?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-167",
+    "domain": "comic-characters",
+    "query": "What species or race is Aragorn?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-168",
+    "domain": "comic-characters",
+    "query": "What species or race is Atom (CW)?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-169",
+    "domain": "comic-characters",
+    "query": "What species or race is Atomica?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-170",
+    "domain": "comic-characters",
+    "query": "What species or race is Bane (Dark Knight)?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-171",
+    "domain": "comic-characters",
+    "query": "What species or race is Baron Mordo (MCU)?",
+    "expected_documents": [
+      "comic-0120_baron-mordo-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-172",
+    "domain": "comic-characters",
+    "query": "What species or race is Batgirl (New 52)?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-173",
+    "domain": "comic-characters",
+    "query": "What species or race is Batman (DC One Million)?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-174",
+    "domain": "comic-characters",
+    "query": "What species or race is Batroc The Leaper (MCU)?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-175",
+    "domain": "comic-characters",
+    "query": "What species or race is Beast Boy?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-176",
+    "domain": "comic-characters",
+    "query": "What species or race is Big Barda?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-177",
+    "domain": "comic-characters",
+    "query": "What species or race is Bizarro-Girl?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-178",
+    "domain": "comic-characters",
+    "query": "What species or race is Black Bolt (MCU)?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-179",
+    "domain": "comic-characters",
+    "query": "What species or race is Black Cat (Earth 65)?",
+    "expected_documents": [
+      "comic-0183_black-cat-earth-65.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-180",
+    "domain": "comic-characters",
+    "query": "What species or race is Black Knight III?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-182",
+    "domain": "comic-characters",
+    "query": "How tall is Agent 13, in centimeters?",
+    "expected_documents": [
+      "comic-0022_agent-13.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-184",
+    "domain": "comic-characters",
+    "query": "How tall is Altaïr Ibn-La'Ahad, in centimeters?",
+    "expected_documents": [
+      "comic-0043_alta-r-ibn-la-ahad.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-185",
+    "domain": "comic-characters",
+    "query": "How tall is Angel Salvadore (FOX), in centimeters?",
+    "expected_documents": [
+      "comic-0057_angel-salvadore-fox.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-187",
+    "domain": "comic-characters",
+    "query": "How tall is Aragorn, in centimeters?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-188",
+    "domain": "comic-characters",
+    "query": "How tall is Atom (CW), in centimeters?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-189",
+    "domain": "comic-characters",
+    "query": "How tall is Atomica, in centimeters?",
+    "expected_documents": [
+      "comic-0106_atomica.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-190",
+    "domain": "comic-characters",
+    "query": "How tall is Bane (Dark Knight), in centimeters?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-191",
+    "domain": "comic-characters",
+    "query": "How tall is Batgirl (New 52), in centimeters?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-192",
+    "domain": "comic-characters",
+    "query": "How tall is Batman (DC One Million), in centimeters?",
+    "expected_documents": [
+      "comic-0134_batman-dc-one-million.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-193",
+    "domain": "comic-characters",
+    "query": "How tall is Batroc The Leaper (MCU), in centimeters?",
+    "expected_documents": [
+      "comic-0141_batroc-the-leaper-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-194",
+    "domain": "comic-characters",
+    "query": "How tall is Beast Boy, in centimeters?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-195",
+    "domain": "comic-characters",
+    "query": "How tall is Big Barda, in centimeters?",
+    "expected_documents": [
+      "comic-0155_big-barda.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-196",
+    "domain": "comic-characters",
+    "query": "How tall is Bizarro-Girl, in centimeters?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-197",
+    "domain": "comic-characters",
+    "query": "How tall is Black Bolt (MCU), in centimeters?",
+    "expected_documents": [
+      "comic-0176_black-bolt-mcu.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-198",
+    "domain": "comic-characters",
+    "query": "How tall is Black Knight III, in centimeters?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-199",
+    "domain": "comic-characters",
+    "query": "How tall is Black Siren (CW), in centimeters?",
+    "expected_documents": [
+      "comic-0197_black-siren-cw.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-attr-200",
+    "domain": "comic-characters",
+    "query": "How tall is Blink, in centimeters?",
+    "expected_documents": [
+      "comic-0204_blink.md"
+    ],
+    "category": "attribute_lookup",
+    "difficulty": "easy",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-004",
+    "domain": "comic-characters",
+    "query": "Which character created by Wildstorm is good-aligned, has Green eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0274_castiel.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-006",
+    "domain": "comic-characters",
+    "query": "Which character created by Ubisoft is good-aligned, has Green eyes and can use Agility?",
+    "expected_documents": [
+      "comic-0428_edward-kenway.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-008",
+    "domain": "comic-characters",
+    "query": "Which character created by J. K. Rowling is good-aligned, has Green eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0568_harry-potter.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-010",
+    "domain": "comic-characters",
+    "query": "Which character created by George Lucas is good-aligned, has White eyes and can use Durability?",
+    "expected_documents": [
+      "comic-0708_k-2so.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-011",
+    "domain": "comic-characters",
+    "query": "Which character created by DC Comics is neutral-aligned, has Yellow eyes and can use Agility?",
+    "expected_documents": [
+      "comic-0778_lantern-bleez.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-013",
+    "domain": "comic-characters",
+    "query": "Which character created by Marvel Comics is bad-aligned, has Yellow (without irises) eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-0932_mystique.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-015",
+    "domain": "comic-characters",
+    "query": "Which character created by Team Epic TV is good-aligned, has Brown eyes and can use Intelligence?",
+    "expected_documents": [
+      "comic-0981_omniscient.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-016",
+    "domain": "comic-characters",
+    "query": "Which character created by George Lucas is good-aligned, has Hazel eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-1086_rey.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-017",
+    "domain": "comic-characters",
+    "query": "Which character created by DC Comics is neutral-aligned, has Green eyes and can use Agility?",
+    "expected_documents": [
+      "comic-1100_robin-vi.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-018",
+    "domain": "comic-characters",
+    "query": "Which character created by Shueisha is good-aligned, has Green eyes and can use Agility?",
+    "expected_documents": [
+      "comic-1121_sakura-haruno.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-019",
+    "domain": "comic-characters",
+    "query": "Which character created by Marvel Comics is good-aligned, has Yellow / Blue eyes and can use Energy Blasts?",
+    "expected_documents": [
+      "comic-1163_shriek.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-020",
+    "domain": "comic-characters",
+    "query": "Which character created by Dark Horse Comics is neutral-aligned, has Blue eyes and can use Accelerated Healing?",
+    "expected_documents": [
+      "comic-1212_spike.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-022",
+    "domain": "comic-characters",
+    "query": "Which good Human character is affiliated with Ravagers and has Green hair?",
+    "expected_documents": [
+      "comic-0148_beast-boy.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-024",
+    "domain": "comic-characters",
+    "query": "Which good Mutant character is affiliated with The Hand and has Magenta hair?",
+    "expected_documents": [
+      "comic-0204_blink.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-026",
+    "domain": "comic-characters",
+    "query": "Which bad Human character is affiliated with Villainy, Inc. and has Blond hair?",
+    "expected_documents": [
+      "comic-0288_cheetah.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-027",
+    "domain": "comic-characters",
+    "query": "Which bad Elder character is affiliated with Elders of the Universe and has White hair?",
+    "expected_documents": [
+      "comic-0309_collector.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-029",
+    "domain": "comic-characters",
+    "query": "Which bad Cyborg character is affiliated with Sinestro Corps and has Black hair?",
+    "expected_documents": [
+      "comic-0337_cyborg-superman.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-031",
+    "domain": "comic-characters",
+    "query": "Which good Mutant character is affiliated with Inhumans and has Red hair?",
+    "expected_documents": [
+      "comic-0477_firestar.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-032",
+    "domain": "comic-characters",
+    "query": "Which good Human character is affiliated with Gryffindor and has Black hair?",
+    "expected_documents": [
+      "comic-0568_harry-potter.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-034",
+    "domain": "comic-characters",
+    "query": "Which good God / Eternal character is affiliated with New Gods of Apokolips and has White hair?",
+    "expected_documents": [
+      "comic-0596_highfather.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-035",
+    "domain": "comic-characters",
+    "query": "Which good Symbiote character is affiliated with Guardsmen and has Black hair?",
+    "expected_documents": [
+      "comic-0624_hybrid.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-037",
+    "domain": "comic-characters",
+    "query": "Which good Mutant character is affiliated with X-Men and has Red hair?",
+    "expected_documents": [
+      "comic-0673_jean-grey.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-038",
+    "domain": "comic-characters",
+    "query": "Which good Human character is affiliated with Flash Family and has Red hair?",
+    "expected_documents": [
+      "comic-0736_kid-flash.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-040",
+    "domain": "comic-characters",
+    "query": "Which neutral Czarnian character is affiliated with Justice League Elite and has Black hair?",
+    "expected_documents": [
+      "comic-0813_lobo.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-041",
+    "domain": "comic-characters",
+    "query": "Which character born in Ungara works as green Lantern, former history professor and has Blue eyes?",
+    "expected_documents": [
+      "comic-0008_abin-sur.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-043",
+    "domain": "comic-characters",
+    "query": "Which character born in Coral Gables, Florida works as electronics Technician, and has Blue eyes?",
+    "expected_documents": [
+      "comic-0064_ant-man-ii.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-044",
+    "domain": "comic-characters",
+    "query": "Which character born in Eriador works as chieftain of the Dúnedain, King of the Reunited Kingdom and has Grey eyes?",
+    "expected_documents": [
+      "comic-0078_aragorn.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-045",
+    "domain": "comic-characters",
+    "query": "Which character born in Earth-1 works as CEO, Vigilante and has Brown eyes?",
+    "expected_documents": [
+      "comic-0099_atom-cw.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-046",
+    "domain": "comic-characters",
+    "query": "Which character born in Santa prisca works as mercenary and has Hazel eyes?",
+    "expected_documents": [
+      "comic-0113_bane-dark-knight.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-047",
+    "domain": "comic-characters",
+    "query": "Which character born in Gotham City works as vigilante, Businesswoman and has Green eyes?",
+    "expected_documents": [
+      "comic-0127_batgirl-new-52.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-049",
+    "domain": "comic-characters",
+    "query": "Which character born in Gloucester, Massachusetts works as adventurer, scientist; former crusader and has Brown eyes?",
+    "expected_documents": [
+      "comic-0190_black-knight-iii.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-050",
+    "domain": "comic-characters",
+    "query": "Which character born in Starling City, Earth-2 works as district Attorney of Star City, Vigilante and has Green eyes?",
+    "expected_documents": [
+      "comic-0197_black-siren-cw.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-051",
+    "domain": "comic-characters",
+    "query": "Which character born in Bahamas works as adventurer, freedom fighter and has Green eyes?",
+    "expected_documents": [
+      "comic-0204_blink.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-052",
+    "domain": "comic-characters",
+    "query": "Which character born in Colu, Earth-1 works as adventurer, Vigilante, Technician at the D.E.O. and has Brown eyes?",
+    "expected_documents": [
+      "comic-0225_brainiac-5-cw.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-053",
+    "domain": "comic-characters",
+    "query": "Which character born in Australia works as professional Criminal and has Brown eyes?",
+    "expected_documents": [
+      "comic-0260_captain-boomerang.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-055",
+    "domain": "comic-characters",
+    "query": "Which character born in South Boston, Massachusetts works as vigilante and has brown eyes?",
+    "expected_documents": [
+      "comic-0302_cloak.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-056",
+    "domain": "comic-characters",
+    "query": "Which character born in Cygnus X-1 works as collector; Cosmic Being and has White eyes?",
+    "expected_documents": [
+      "comic-0309_collector.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-057",
+    "domain": "comic-characters",
+    "query": "Which character born in Attilan works as princess of Attilan and has Green eyes?",
+    "expected_documents": [
+      "comic-0330_crystal-mcu.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-058",
+    "domain": "comic-characters",
+    "query": "Which character born in Shaker Heights, Ohio works as vigilante and has Blue eyes?",
+    "expected_documents": [
+      "comic-0344_dagger.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-desc-060",
+    "domain": "comic-characters",
+    "query": "Which character born in Black Hills, South Dakota, United States works as assassin and has Brown eyes?",
+    "expected_documents": [
+      "comic-0386_desmond-miles.md"
+    ],
+    "category": "entity_description",
+    "difficulty": "medium",
+    "language": "en",
+    "type": "factual",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-002",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Marvel Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0161_binary.md",
+      "comic-0301_clea.md",
+      "comic-0324_cosmic-king-thor.md",
+      "comic-0406_doctor-strange-classic.md",
+      "comic-0493_franklin-richards.md",
+      "comic-0514_ghost-rider-king-of-hell.md",
+      "comic-0592_hellstorm.md",
+      "comic-0614_hulk-stark-gauntlet-mcu.md",
+      "comic-0839_makkari.md",
+      "comic-0975_old-king-thor.md",
+      "comic-1271_the-beyonder-earth-1298.md",
+      "comic-1285_the-keeper.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-003",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Marvel Comics have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0161_binary.md",
+      "comic-0253_captain-america-2099.md",
+      "comic-0301_clea.md",
+      "comic-0360_darkstar.md",
+      "comic-0368_dazzler.md",
+      "comic-0871_meltdown.md",
+      "comic-1219_star-lord-celestial-power-mcu.md",
+      "comic-1271_the-beyonder-earth-1298.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-004",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Marvel Comics have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0045_amadeus-cho.md",
+      "comic-0269_captain-planet.md",
+      "comic-0324_cosmic-king-thor.md",
+      "comic-0328_crimson-dynamo.md",
+      "comic-0330_crystal-mcu.md",
+      "comic-0650_iron-man-wild-west.md",
+      "comic-0863_maverick.md",
+      "comic-0975_old-king-thor.md",
+      "comic-1015_polaris-fox.md",
+      "comic-1240_storm-fox.md",
+      "comic-1310_thor-odin-force.md",
+      "comic-1311_throg.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-005",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0175_black-alice.md",
+      "comic-0794_life-entity.md",
+      "comic-0876_merlin.md",
+      "comic-1201_spectre-oversoul.md",
+      "comic-1243_strange-visitor-superman.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-006",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0175_black-alice.md",
+      "comic-0478_firestorm-cw.md",
+      "comic-0479_firestorm-ii-cw.md",
+      "comic-0637_infinity-man.md",
+      "comic-0876_merlin.md",
+      "comic-0897_mister-miracle.md",
+      "comic-0911_monarch.md",
+      "comic-1201_spectre-oversoul.md",
+      "comic-1326_tomar-re.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-007",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0132_batman-arkham.md",
+      "comic-0175_black-alice.md",
+      "comic-0400_doctor-occult.md",
+      "comic-0577_hawkgirl.md",
+      "comic-0876_merlin.md",
+      "comic-0974_offspring.md",
+      "comic-1228_static.md",
+      "comic-1249_supergirl-injustice.md",
+      "comic-1254_superman-smallville.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-008",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0175_black-alice.md",
+      "comic-0400_doctor-occult.md",
+      "comic-0677_jesse-custer.md",
+      "comic-0689_john-constantine-power-of-shazam.md",
+      "comic-0853_martian-manhunter.md",
+      "comic-0876_merlin.md",
+      "comic-0911_monarch.md",
+      "comic-1192_solovar.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-010",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Illusions?",
+    "expected_documents": [
+      "comic-0111_aztar.md",
+      "comic-0134_batman-dc-one-million.md",
+      "comic-0175_black-alice.md",
+      "comic-0318_constantine-cw.md",
+      "comic-0400_doctor-occult.md",
+      "comic-0556_gypsy.md",
+      "comic-0689_john-constantine-power-of-shazam.md",
+      "comic-0690_john-constantine.md",
+      "comic-0853_martian-manhunter.md",
+      "comic-0876_merlin.md",
+      "comic-0897_mister-miracle.md",
+      "comic-1002_phantom-lady.md",
+      "comic-1060_raven-titans.md",
+      "comic-1131_saturn-girl-cw.md",
+      "comic-1201_spectre-oversoul.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-011",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by DC Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0132_batman-arkham.md",
+      "comic-0152_ben-10.md",
+      "comic-0175_black-alice.md",
+      "comic-0318_constantine-cw.md",
+      "comic-0400_doctor-occult.md",
+      "comic-0432_el-diablo-dceu.md",
+      "comic-0474_fire.md",
+      "comic-0478_firestorm-cw.md",
+      "comic-0479_firestorm-ii-cw.md",
+      "comic-0480_firestorm.md",
+      "comic-0689_john-constantine-power-of-shazam.md",
+      "comic-0876_merlin.md",
+      "comic-1223_starfire-titans.md",
+      "comic-1444_zatanna.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-012",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0728_kenshiro.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-013",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0728_kenshiro.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-014",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0728_kenshiro.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1121_sakura-haruno.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-015",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0571_hashirama-senju.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-0685_jiraiya.md",
+      "comic-0738_killer-bee.md",
+      "comic-0885_minato-namikaze.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1119_sai.md",
+      "comic-1324_tobirama-senju.md",
+      "comic-1337_tsunade.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-016",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0713_kakashi-hatake.md",
+      "comic-1130_sasuke-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-018",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Telepathy Resistance?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0983_one-punch-man.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-019",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Illusions?",
+    "expected_documents": [
+      "comic-0571_hashirama-senju.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-1130_sasuke-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-020",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0497_gaara.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-0713_kakashi-hatake.md",
+      "comic-0738_killer-bee.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1324_tobirama-senju.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-021",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Energy Beams?",
+    "expected_documents": [
+      "comic-0523_goku.md",
+      "comic-0738_killer-bee.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-022",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0597_hinata-hy-ga.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-0685_jiraiya.md",
+      "comic-0713_kakashi-hatake.md",
+      "comic-0738_killer-bee.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1159_shikamaru.md",
+      "comic-1324_tobirama-senju.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-023",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0728_kenshiro.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1159_shikamaru.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-024",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Element Control?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1159_shikamaru.md",
+      "comic-1337_tsunade.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-026",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Self-Sustenance?",
+    "expected_documents": [
+      "comic-0728_kenshiro.md",
+      "comic-0938_naruto-uzumaki.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-027",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0497_gaara.md",
+      "comic-0597_hinata-hy-ga.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1119_sai.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1324_tobirama-senju.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-028",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0713_kakashi-hatake.md",
+      "comic-0885_minato-namikaze.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1324_tobirama-senju.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-029",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Energy Absorption?",
+    "expected_documents": [
+      "comic-0523_goku.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0598_hiruzen-sarutobi.md",
+      "comic-0639_ino-yamanaka.md",
+      "comic-0738_killer-bee.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1324_tobirama-senju.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-030",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Immortality?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-1121_sakura-haruno.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-031",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0571_hashirama-senju.md",
+      "comic-0728_kenshiro.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-1121_sakura-haruno.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-032",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0523_goku.md",
+      "comic-0938_naruto-uzumaki.md",
+      "comic-0983_one-punch-man.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-034",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Shueisha have the ability Flight?",
+    "expected_documents": [
+      "comic-0393_devilman.md",
+      "comic-0497_gaara.md",
+      "comic-0523_goku.md",
+      "comic-0728_kenshiro.md",
+      "comic-1130_sasuke-uchiha.md",
+      "comic-1360_vegeta.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-035",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0809_liz-sherman.md",
+      "comic-1287_the-lobster.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-036",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0659_jack-jack.md",
+      "comic-0688_johann-krauss.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-037",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Magic?",
+    "expected_documents": [
+      "comic-0059_angel.md",
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md",
+      "comic-0688_johann-krauss.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-038",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0434_elastigirl.md",
+      "comic-0659_jack-jack.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-039",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0659_jack-jack.md",
+      "comic-1272_the-boy.md",
+      "comic-1287_the-lobster.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-040",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Immortality?",
+    "expected_documents": [
+      "comic-0007_abe-sapien.md",
+      "comic-0059_angel.md",
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md",
+      "comic-1287_the-lobster.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-042",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0007_abe-sapien.md",
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-043",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md",
+      "comic-0809_liz-sherman.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-044",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Super Speed?",
+    "expected_documents": [
+      "comic-0059_angel.md",
+      "comic-0233_buffy.md",
+      "comic-0365_dash.md",
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0589_hellboy.md",
+      "comic-0659_jack-jack.md",
+      "comic-0924_mr-incredible.md",
+      "comic-1272_the-boy.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-045",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Dark Horse Comics have the ability Flight?",
+    "expected_documents": [
+      "comic-0588_hellboy-injustice-2.md",
+      "comic-0659_jack-jack.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-046",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0526_golden-ninja.md",
+      "comic-0671_jay-the-lego-ninjago-movie.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-047",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0139_batman-lego.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0712_kai-the-lego-ninjago-movie.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-048",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Element Control?",
+    "expected_documents": [
+      "comic-0096_ash.md",
+      "comic-0306_cole-the-lego-ninjago-movie.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0671_jay-the-lego-ninjago-movie.md",
+      "comic-0712_kai-the-lego-ninjago-movie.md",
+      "comic-0811_lloyd-the-lego-ninjago-movie.md",
+      "comic-0967_nya-the-lego-ninjago-movie.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-050",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0526_golden-ninja.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-051",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0096_ash.md",
+      "comic-0526_golden-ninja.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-052",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0034_akita.md",
+      "comic-0096_ash.md",
+      "comic-0139_batman-lego.md",
+      "comic-0526_golden-ninja.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-053",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0096_ash.md",
+      "comic-0139_batman-lego.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0712_kai-the-lego-ninjago-movie.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-054",
+    "domain": "comic-characters",
+    "query": "Which good-aligned characters created by Lego have the ability Flight?",
+    "expected_documents": [
+      "comic-0139_batman-lego.md",
+      "comic-0526_golden-ninja.md",
+      "comic-0671_jay-the-lego-ninjago-movie.md",
+      "comic-1062_ray.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-055",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0012_abraxas.md",
+      "comic-0357_dark-phoenix-venomized.md",
+      "comic-0415_dormammu.md",
+      "comic-0521_goblin-force.md",
+      "comic-0872_mephisto.md",
+      "comic-0984_onslaught.md",
+      "comic-1289_the-one-below-all.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-056",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0309_collector.md",
+      "comic-0323_cosmic-hulk.md",
+      "comic-0357_dark-phoenix-venomized.md",
+      "comic-0415_dormammu.md",
+      "comic-0430_ego-mcu.md",
+      "comic-0521_goblin-force.md",
+      "comic-0749_king-thanos.md",
+      "comic-0840_malekith-mcu.md",
+      "comic-0872_mephisto.md",
+      "comic-0984_onslaught.md",
+      "comic-1269_thanos.md",
+      "comic-1344_ultimo.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-058",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0323_cosmic-hulk.md",
+      "comic-0521_goblin-force.md",
+      "comic-0710_kaecilius-mcu.md",
+      "comic-1246_super-adaptoid.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-059",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0012_abraxas.md",
+      "comic-0120_baron-mordo-mcu.md",
+      "comic-0415_dormammu.md",
+      "comic-0710_kaecilius-mcu.md",
+      "comic-0749_king-thanos.md",
+      "comic-0872_mephisto.md",
+      "comic-0984_onslaught.md",
+      "comic-1231_steel-serpent.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-060",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Illusions?",
+    "expected_documents": [
+      "comic-0193_black-mamba.md",
+      "comic-0357_dark-phoenix-venomized.md",
+      "comic-0415_dormammu.md",
+      "comic-0457_exodus.md",
+      "comic-0462_fallen-one-ii.md",
+      "comic-0587_hela.md",
+      "comic-0710_kaecilius-mcu.md",
+      "comic-0872_mephisto.md",
+      "comic-0905_modok.md",
+      "comic-0930_mysterio.md",
+      "comic-0984_onslaught.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-061",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0435_electro-sony.md",
+      "comic-0436_electro.md",
+      "comic-0557_hammer.md",
+      "comic-0715_kang.md",
+      "comic-0838_magus.md",
+      "comic-0847_mandarin.md",
+      "comic-1302_the-shocker-mcu.md",
+      "comic-1411_wizard.md",
+      "comic-1448_zzzax.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-062",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0150_beetle.md",
+      "comic-0211_bloodaxe.md",
+      "comic-0357_dark-phoenix-venomized.md",
+      "comic-0415_dormammu.md",
+      "comic-0591_hellfire-mcu.md",
+      "comic-1039_pyro-fox.md",
+      "comic-1040_pyro.md",
+      "comic-1289_the-one-below-all.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-063",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Magic?",
+    "expected_documents": [
+      "comic-0012_abraxas.md",
+      "comic-0120_baron-mordo-mcu.md",
+      "comic-0213_bloodwraith.md",
+      "comic-0384_demogoblin.md",
+      "comic-0415_dormammu.md",
+      "comic-0424_ebony-maw-mcu.md",
+      "comic-0521_goblin-force.md",
+      "comic-0587_hela.md",
+      "comic-0710_kaecilius-mcu.md",
+      "comic-0749_king-thanos.md",
+      "comic-0820_lorelei.md",
+      "comic-0872_mephisto.md",
+      "comic-0930_mysterio.md",
+      "comic-1269_thanos.md",
+      "comic-1350_utgard-loki.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-064",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Marvel Comics have the ability Element Control?",
+    "expected_documents": [
+      "comic-0150_beetle.md",
+      "comic-0243_cable-fox.md",
+      "comic-0424_ebony-maw-mcu.md",
+      "comic-0430_ego-mcu.md",
+      "comic-0557_hammer.md",
+      "comic-0782_laufey.md",
+      "comic-0931_mystique-fox.md",
+      "comic-0979_omega.md",
+      "comic-1039_pyro-fox.md",
+      "comic-1246_super-adaptoid.md",
+      "comic-1302_the-shocker-mcu.md",
+      "comic-1411_wizard.md",
+      "comic-1448_zzzax.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-066",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0010_abra-kadabra-cw.md",
+      "comic-0011_abra-kadabra.md",
+      "comic-0537_great-evil-beast.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-067",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0174_black-adam.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0529_gorilla-grodd-cw.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-068",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0010_abra-kadabra-cw.md",
+      "comic-0011_abra-kadabra.md",
+      "comic-0532_granny-goodness.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0755_knockout.md",
+      "comic-0889_mirror-master-cw.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-0945_nergal.md",
+      "comic-0946_neron.md",
+      "comic-1120_saint-of-killers.md",
+      "comic-1305_the-thinker-cw.md",
+      "comic-1333_trigon.md",
+      "comic-1368_vibe-cw.md",
+      "comic-1424_wotan.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-069",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0356_dark-kahn.md",
+      "comic-0385_desaad.md",
+      "comic-0529_gorilla-grodd-cw.md",
+      "comic-0610_hugo-strange.md",
+      "comic-0864_maxima.md",
+      "comic-0866_maxwell-lord.md",
+      "comic-1012_poison-ivy-arkham.md",
+      "comic-1013_poison-ivy-new-52.md",
+      "comic-1033_psimon.md",
+      "comic-1333_trigon.md",
+      "comic-1424_wotan.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-070",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Telepathy Resistance?",
+    "expected_documents": [
+      "comic-0174_black-adam.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0529_gorilla-grodd-cw.md",
+      "comic-0532_granny-goodness.md",
+      "comic-0716_kanto.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-071",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Size Changing?",
+    "expected_documents": [
+      "comic-0048_amazo.md",
+      "comic-0067_anti-monitor.md",
+      "comic-0104_atom-smasher-cw.md",
+      "comic-0106_atomica.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0517_giganta.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0630_imperiex.md",
+      "comic-0877_metallo.md",
+      "comic-0944_nekron.md",
+      "comic-0946_neron.md",
+      "comic-0992_parasite.md",
+      "comic-1256_swamp-thing.md",
+      "comic-1305_the-thinker-cw.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-072",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Illusions?",
+    "expected_documents": [
+      "comic-0010_abra-kadabra-cw.md",
+      "comic-0011_abra-kadabra.md",
+      "comic-0385_desaad.md",
+      "comic-0470_felix-faust.md",
+      "comic-0866_maxwell-lord.md",
+      "comic-0946_neron.md",
+      "comic-1033_psimon.md",
+      "comic-1256_swamp-thing.md",
+      "comic-1333_trigon.md",
+      "comic-1424_wotan.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-074",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0048_amazo.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-0944_nekron.md",
+      "comic-0946_neron.md",
+      "comic-0977_omac.md",
+      "comic-1333_trigon.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-075",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0172_black-adam-new-52.md",
+      "comic-0227_brainiac.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0445_enchantress-dceu.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0860_match.md",
+      "comic-0864_maxima.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-0912_mongul-the-elder.md",
+      "comic-0913_mongul.md",
+      "comic-0945_nergal.md",
+      "comic-0946_neron.md",
+      "comic-1033_psimon.md",
+      "comic-1333_trigon.md",
+      "comic-1446_zoom-new-52.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-076",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Element Control?",
+    "expected_documents": [
+      "comic-0173_black-adam-pre-crisis.md",
+      "comic-0202_blight.md",
+      "comic-0385_desaad.md",
+      "comic-0404_doctor-poison.md",
+      "comic-0445_enchantress-dceu.md",
+      "comic-0447_eradicator.md",
+      "comic-0849_mantis.md",
+      "comic-0977_omac.md",
+      "comic-1013_poison-ivy-new-52.md",
+      "comic-1020_power-ring.md",
+      "comic-1138_sea-king.md",
+      "comic-1446_zoom-new-52.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-077",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0048_amazo.md",
+      "comic-0287_cheetah-iii.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0877_metallo.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-0946_neron.md",
+      "comic-0990_parademon.md",
+      "comic-0992_parasite.md",
+      "comic-1333_trigon.md",
+      "comic-1424_wotan.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-078",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Self-Sustenance?",
+    "expected_documents": [
+      "comic-0172_black-adam-new-52.md",
+      "comic-0173_black-adam-pre-crisis.md",
+      "comic-0174_black-adam.md",
+      "comic-0227_brainiac.md",
+      "comic-0392_devastator.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0413_doomsday.md",
+      "comic-0532_granny-goodness.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0912_mongul-the-elder.md",
+      "comic-1066_red-death.md",
+      "comic-1190_solomon-grundy.md",
+      "comic-1256_swamp-thing.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-079",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0048_amazo.md",
+      "comic-0227_brainiac.md",
+      "comic-0356_dark-kahn.md",
+      "comic-0405_doctor-sivana.md",
+      "comic-0532_granny-goodness.md",
+      "comic-0537_great-evil-beast.md",
+      "comic-0630_imperiex.md",
+      "comic-0693_johnny-quick.md",
+      "comic-0793_lex-luthor.md",
+      "comic-0849_mantis.md",
+      "comic-0864_maxima.md",
+      "comic-0898_mister-mxyzptlk.md",
+      "comic-1020_power-ring.md",
+      "comic-1066_red-death.md",
+      "comic-1446_zoom-new-52.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-080",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by DC Comics have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0115_bane.md",
+      "comic-0392_devastator.md",
+      "comic-0412_doomsday-hunter-prey.md",
+      "comic-0413_doomsday.md",
+      "comic-0447_eradicator.md",
+      "comic-0748_king-shark.md",
+      "comic-0755_knockout.md",
+      "comic-0877_metallo.md",
+      "comic-0945_nergal.md",
+      "comic-0977_omac.md",
+      "comic-1333_trigon.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-082",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-083",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-084",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0752_kisame.md",
+      "comic-0833_madara-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-085",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-086",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-087",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Illusions?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-088",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md",
+      "comic-0986_orochimaru.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-090",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Element Control?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-091",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0752_kisame.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-092",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Self-Sustenance?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-093",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0752_kisame.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-094",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-095",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Energy Absorption?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-096",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Immortality?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-098",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Super Speed?",
+    "expected_documents": [
+      "comic-0709_kabuto-yakushi.md",
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0752_kisame.md",
+      "comic-0833_madara-uchiha.md",
+      "comic-0971_obito-uchiha.md",
+      "comic-0986_orochimaru.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-099",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Shueisha have the ability Flight?",
+    "expected_documents": [
+      "comic-0711_kaguya-tsutsuki.md",
+      "comic-0833_madara-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-100",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0044_alucard.md",
+      "comic-1261_t-1000.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-101",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Immortality?",
+    "expected_documents": [
+      "comic-0044_alucard.md",
+      "comic-0056_angel-of-death.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-102",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0044_alucard.md",
+      "comic-0056_angel-of-death.md",
+      "comic-1261_t-1000.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-103",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0039_alien.md",
+      "comic-1022_predator.md",
+      "comic-1261_t-1000.md",
+      "comic-1262_t-800.md",
+      "comic-1263_t-850.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-104",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Dark Horse Comics have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0039_alien.md",
+      "comic-1261_t-1000.md",
+      "comic-1262_t-800.md",
+      "comic-1263_t-850.md",
+      "comic-1264_t-x.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-106",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Lego have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0206_blizzard-samurai.md",
+      "comic-0507_general-kozu.md",
+      "comic-0508_general-vex.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-107",
+    "domain": "comic-characters",
+    "query": "Which bad-aligned characters created by Lego have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0228_brickster.md",
+      "comic-0507_general-kozu.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-108",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-109",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-110",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0370_deadpool.md",
+      "comic-0444_emma-frost.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0772_lady-deadpool.md",
+      "comic-1052_ragnarok.md",
+      "comic-1259_symbiote-wolverine.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-111",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-112",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Dimensional Travel?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0456_executioner.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0631_impossible-man.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-114",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Telepathy Resistance?",
+    "expected_documents": [
+      "comic-0370_deadpool.md",
+      "comic-0444_emma-frost.md",
+      "comic-0520_gladiator.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0772_lady-deadpool.md",
+      "comic-1259_symbiote-wolverine.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-115",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Size Changing?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0239_buri.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-116",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Illusions?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0444_emma-frost.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1052_ragnarok.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-117",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Electrokinesis?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0444_emma-frost.md",
+      "comic-1052_ragnarok.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-118",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Energy Beams?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-119",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-120",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0444_emma-frost.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-122",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Element Control?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0239_buri.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-123",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0320_copycat.md",
+      "comic-0444_emma-frost.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0631_impossible-man.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1259_symbiote-wolverine.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-124",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Self-Sustenance?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0377_death-seed-archangel.md",
+      "comic-0600_hit-monkey.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0631_impossible-man.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1259_symbiote-wolverine.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-125",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-126",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0184_black-cat-edge-of-time.md",
+      "comic-0370_deadpool.md",
+      "comic-0772_lady-deadpool.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-127",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Energy Absorption?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1069_red-hulk.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-128",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Immortality?",
+    "expected_documents": [
+      "comic-0060_angela.md",
+      "comic-0154_beyonder.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0370_deadpool.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0772_lady-deadpool.md",
+      "comic-0808_living-tribunal.md",
+      "comic-0982_one-above-all.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-130",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Cold Resistance?",
+    "expected_documents": [
+      "comic-0222_bor-burison.md",
+      "comic-0273_captain-universe.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0600_hit-monkey.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1259_symbiote-wolverine.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-131",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0154_beyonder.md",
+      "comic-0222_bor-burison.md",
+      "comic-0273_captain-universe.md",
+      "comic-0284_champion-of-the-universe.md",
+      "comic-0444_emma-frost.md",
+      "comic-0629_immortal-hulk.md",
+      "comic-0703_juggernaut.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1068_red-hulk-ghost-rider-venom.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1259_symbiote-wolverine.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-132",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Marvel Comics have the ability Flight?",
+    "expected_documents": [
+      "comic-0060_angela.md",
+      "comic-0154_beyonder.md",
+      "comic-0273_captain-universe.md",
+      "comic-0377_death-seed-archangel.md",
+      "comic-0520_gladiator.md",
+      "comic-0808_living-tribunal.md",
+      "comic-1052_ragnarok.md",
+      "comic-1126_sandman-sony.md",
+      "comic-1336_true-form-oblivion.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-133",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Reality Warping?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0989_pandora.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-134",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Matter Manipulation?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-135",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Mind Control Resistance?",
+    "expected_documents": [
+      "comic-0046_amanda-waller.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0821_lucifer-fox.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-136",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0247_calculator.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0635_indigo.md",
+      "comic-0776_laira.md",
+      "comic-0778_lantern-bleez.md",
+      "comic-1175_sinestro.md",
+      "comic-1196_soranik-natu.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-138",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0551_grifter.md",
+      "comic-0821_lucifer-fox.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-139",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Telepathy Resistance?",
+    "expected_documents": [
+      "comic-0046_amanda-waller.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0821_lucifer-fox.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-140",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Size Changing?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-141",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Illusions?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0551_grifter.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-142",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0433_el-diablo.md",
+      "comic-0776_laira.md",
+      "comic-0778_lantern-bleez.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-143",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Telekinesis?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0551_grifter.md",
+      "comic-0821_lucifer-fox.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-144",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Magic?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0451_etrigan.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0955_nightshade.md",
+      "comic-0989_pandora.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-146",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0821_lucifer-fox.md",
+      "comic-0843_man-bat.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-147",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Self-Sustenance?",
+    "expected_documents": [
+      "comic-0170_bizarro.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0813_lobo.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0989_pandora.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-148",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Force Fields?",
+    "expected_documents": [
+      "comic-0551_grifter.md",
+      "comic-0635_indigo.md",
+      "comic-0776_laira.md",
+      "comic-0778_lantern-bleez.md",
+      "comic-1175_sinestro.md",
+      "comic-1196_soranik-natu.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-149",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0635_indigo.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0929_music-meister-cw.md",
+      "comic-0955_nightshade.md",
+      "comic-0989_pandora.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-150",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Energy Absorption?",
+    "expected_documents": [
+      "comic-0169_bizarro-girl.md",
+      "comic-0170_bizarro.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-151",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Immortality?",
+    "expected_documents": [
+      "comic-0151_bekka.md",
+      "comic-0188_black-flash.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0382_deathstroke.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0433_el-diablo.md",
+      "comic-0451_etrigan.md",
+      "comic-0813_lobo.md",
+      "comic-0821_lucifer-fox.md",
+      "comic-0881_michael-demiurgos.md",
+      "comic-0989_pandora.md",
+      "comic-1418_wonder-woman-gam.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-152",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Regeneration?",
+    "expected_documents": [
+      "comic-0376_death-of-the-endless.md",
+      "comic-0380_deathstroke-injustice.md",
+      "comic-0389_destruction-of-the-endless.md",
+      "comic-0551_grifter.md",
+      "comic-0813_lobo.md",
+      "comic-0821_lucifer-fox.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-154",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by DC Comics have the ability Heat Resistance?",
+    "expected_documents": [
+      "comic-0151_bekka.md",
+      "comic-0376_death-of-the-endless.md",
+      "comic-0881_michael-demiurgos.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-155",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Energy Constructs?",
+    "expected_documents": [
+      "comic-0350_danz.md",
+      "comic-0655_itachi-uchiha.md",
+      "comic-0934_nagato-uzumaki.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-156",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Mind Control?",
+    "expected_documents": [
+      "comic-0655_itachi-uchiha.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-157",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Illusions?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0350_danz.md",
+      "comic-0655_itachi-uchiha.md",
+      "comic-0714_kale.md",
+      "comic-0726_kefla.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-158",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Energy Beams?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0714_kale.md",
+      "comic-0726_kefla.md",
+      "comic-0934_nagato-uzumaki.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-159",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Fire Control?",
+    "expected_documents": [
+      "comic-0655_itachi-uchiha.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-160",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Shapeshifting?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0655_itachi-uchiha.md",
+      "comic-0714_kale.md",
+      "comic-0726_kefla.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-162",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Teleportation?",
+    "expected_documents": [
+      "comic-0934_nagato-uzumaki.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-163",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Energy Absorption?",
+    "expected_documents": [
+      "comic-0934_nagato-uzumaki.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-164",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Super Speed?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0350_danz.md",
+      "comic-0655_itachi-uchiha.md",
+      "comic-0714_kale.md",
+      "comic-0726_kefla.md",
+      "comic-0934_nagato-uzumaki.md",
+      "comic-1161_shisui-uchiha.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-165",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Shueisha have the ability Flight?",
+    "expected_documents": [
+      "comic-0279_caulifla.md",
+      "comic-0934_nagato-uzumaki.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-166",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Dark Horse Comics have the ability Super Speed?",
+    "expected_documents": [
+      "comic-1212_spike.md",
+      "comic-1281_the-goon.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  },
+  {
+    "id": "comic-filter-167",
+    "domain": "comic-characters",
+    "query": "Which neutral-aligned characters created by Lego have the ability Element Control?",
+    "expected_documents": [
+      "comic-0503_garmadon-the-lego-ninjago-movie.md",
+      "comic-1112_ronin-ninjago.md"
+    ],
+    "category": "multi_attribute_filter",
+    "difficulty": "hard",
+    "language": "en",
+    "type": "filter",
+    "reason": "not selected in the manual curation round (see eval/golden/README.md)"
+  }
+]

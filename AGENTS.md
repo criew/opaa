@@ -56,6 +56,11 @@ npm run lint                            # Lint (ESLint)
 npm run test                            # Tests (Vitest)
 npm run format:check                    # Prettier-Formatierung prüfen
 npm run format                          # Automatisch mit Prettier formatieren
+
+# E2E-Suite (aus e2e/, siehe e2e/README.md)
+npm ci                                  # Abhängigkeiten installieren
+npx playwright install --with-deps chromium   # Browser installieren (einmalig)
+npm test                                # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 ```
 
 ## Abhängigkeitsverwaltung
@@ -128,7 +133,9 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 ### Pull Requests
 
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
-- PRs müssen vor dem Merge überprüft werden
+- Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
+- Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass einer der Maintainer (`criew` oder `bigpuritz`) den PR merged, sobald CI grün ist
+- Kein Agent merged jemals einen PR
 - Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
 - PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
 - IMMER das PR-Template (Zusammenfassung, Zugehörige Issues, Art der Änderung, Checkliste, KI-Agenten-Offenlegung) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) für neue Pull Requests verwenden
@@ -155,6 +162,7 @@ Bei reinen Dokumentationsänderungen überspringen. Vor jedem Push müssen alle 
 - `backend/` — Spring Boot Backend (Gradle-Projekt)
 - `frontend/` — React-Frontend (Vite-Projekt)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
+- `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 
 ## Contributor License Agreement
 
