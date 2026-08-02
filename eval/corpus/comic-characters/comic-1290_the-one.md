@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The One
 
-The One is a character created by DC Comics. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+The One is a character created by DC Comics. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

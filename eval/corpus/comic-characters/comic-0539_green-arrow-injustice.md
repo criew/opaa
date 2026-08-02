@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Green Arrow (Injustice)
 
-Green Arrow (Injustice), real name Oliver Queen, is a good-aligned male Human character created by DC Comics, first appearing in Injustice: Gods Among Us. He has Green eyes and Blond hair and stands 188 cm tall and weighs 88 kg. His notable abilities include Agility, Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 15 for strength, 40 for speed, 40 for durability and 85 for combat, giving an overall score of 6.
+Green Arrow (Injustice), real name Oliver Queen, is a good-aligned male Human character created by DC Comics, first appearing in Injustice: Gods Among Us. He has Green eyes and Blond hair and stands 188 cm tall and weighs 88 kg. His notable abilities include Agility, Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 15 for strength, 40 for speed, 40 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Purple Man
 
-Purple Man, real name Zebediah Killgrave, is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #4 (October, 1964). He works as a Professional criminal, Megalomaniac, Former spy. He has Purple eyes and Purple hair and stands 180 cm tall and weighs 74 kg. His notable abilities include Accelerated Healing, Mind Control and Telepathy. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 30 for durability and 10 for combat, giving an overall score of 6.
+Purple Man, real name Zebediah Killgrave, is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #4 (October, 1964). He works as a Professional criminal, Megalomaniac, Former spy. He has Purple eyes and Purple hair and stands 180 cm tall and weighs 74 kg. His notable abilities include Accelerated Healing, Mind Control and Telepathy. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 30 for durability and 10 for combat. On a separate overall ranking scale, his overall score is 6.

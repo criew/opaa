@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vanisher
 
-Vanisher is a bad-aligned male character created by Marvel Comics, born in Boston, Massachusetts and first appearing in X-Men (Vol 1) #2. He works as a Professional criminal, former subversive. He has Green eyes and No Hair hair and stands 165 cm tall and weighs 79 kg. His notable abilities include Teleportation. Rated across attributes, he scores 80 for intelligence, 10 for strength, 75 for speed, 55 for durability and 40 for combat, giving an overall score of 7.
+Vanisher is a bad-aligned male character created by Marvel Comics, born in Boston, Massachusetts and first appearing in X-Men (Vol 1) #2. He works as a Professional criminal, former subversive. He has Green eyes and is bald and stands 165 cm tall and weighs 79 kg. His notable abilities include Teleportation. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 75 for speed, 55 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 7.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Stephanie Powell
 
-Stephanie Powell, real name Stephanie Powell, is a good-aligned female character created by ABC Studios, first appearing in No Ordinary Family S01E01 (2010). She works as an Executive Vice President of Research at Global Tech. She has Blond hair. Her notable abilities include Accelerated Healing and Super Speed. Rated across attributes, she scores 85 for intelligence, 10 for strength, 55 for speed, 10 for durability and 10 for combat, giving an overall score of 6.
+Stephanie Powell, real name Stephanie Powell, is a good-aligned female character created by ABC Studios, first appearing in No Ordinary Family S01E01 (2010). She works as an Executive Vice President of Research at Global Tech. She has Blond hair. Her notable abilities include Accelerated Healing and Super Speed. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 10 for strength, 55 for speed, 10 for durability and 10 for combat. On a separate overall ranking scale, her overall score is 6.

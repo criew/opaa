@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Swamp Thing Vol 2 #37 (June, 1985)"
 occupation: null
-teams: "Justice Legion Alpha"
+teams: ["Justice Legion Alpha"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # John Constantine
 
-John Constantine, real name John Constantine, is a good-aligned male Human character created by DC Comics, first appearing in Swamp Thing Vol 2 #37 (June, 1985). He is affiliated with Justice Legion Alpha. He has Blue eyes and Blond hair and stands 183 cm tall. His notable abilities include Accelerated Healing, Illusions, Magic and Telepathy Resistance. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 40 for durability and 65 for combat, giving an overall score of 5.
+John Constantine, real name John Constantine, is a good-aligned male Human character created by DC Comics, first appearing in Swamp Thing Vol 2 #37 (June, 1985). He is affiliated with Justice Legion Alpha. He has Blue eyes and Blond hair and stands 183 cm tall. His notable abilities include Accelerated Healing, Illusions, Magic and Telepathy Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 40 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 5.

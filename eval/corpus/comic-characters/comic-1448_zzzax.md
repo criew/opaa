@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Consolidated Edison Power Plant, New York"
 first_appearance: "Incredible Hulk #166"
 occupation: "Purveyor of destruction"
-teams: "West Coast Avengers"
+teams: ["West Coast Avengers"]
 eye_color: "No eyes"
 hair_color: "No Hair"
 height_cm: 1220
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Zzzax
 
-Zzzax is a bad-aligned character created by Marvel Comics, born in Consolidated Edison Power Plant, New York and first appearing in Incredible Hulk #166. They work as a Purveyor of destruction and are affiliated with West Coast Avengers. They have No eyes eyes and No Hair hair and stand 1220 cm tall. Their notable abilities include Agility, Electrokinesis, Element Control, Energy Absorption, Flight, Super Speed and Super Strength. Rated across attributes, they score 45 for intelligence, 80 for strength, 75 for speed, 95 for durability and 50 for combat, giving an overall score of 5.
+Zzzax is a bad-aligned character created by Marvel Comics, born in Consolidated Edison Power Plant, New York and first appearing in Incredible Hulk #166. They work as a Purveyor of destruction and are affiliated with West Coast Avengers. They have No eyes eyes and are bald and stand 1220 cm tall. Their notable abilities include Agility, Electrokinesis, Element Control, Energy Absorption, Flight, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, they score 45 for intelligence, 80 for strength, 75 for speed, 95 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 5.

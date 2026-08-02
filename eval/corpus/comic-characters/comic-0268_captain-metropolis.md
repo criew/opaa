@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Watchmen #1 (September, 1986)"
 occupation: "U.S Marine, Vigilante, Military Consultant"
-teams: "Watchmen, The Crimebusters"
+teams: ["Watchmen", "The Crimebusters"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Metropolis
 
-Captain Metropolis, real name Nelson Gardner, is a good-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as an U.S Marine, Vigilante, Military Consultant and is affiliated with Watchmen and The Crimebusters. He has Blue eyes and Blond hair and stands 178 cm tall and weighs 81 kg. His notable abilities include Agility, Endurance, Flight, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 20 for strength, 25 for speed, 40 for durability and 80 for combat, giving an overall score of 6.
+Captain Metropolis, real name Nelson Gardner, is a good-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as an U.S Marine, Vigilante, Military Consultant and is affiliated with Watchmen and The Crimebusters. He has Blue eyes and Blond hair and stands 178 cm tall and weighs 81 kg. His notable abilities include Agility, Endurance, Flight, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 20 for strength, 25 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 6.

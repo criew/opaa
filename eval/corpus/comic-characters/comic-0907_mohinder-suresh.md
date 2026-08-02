@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mohinder Suresh
 
-Mohinder Suresh, real name Mohinder Suresh, is a good-aligned male character created by NBC - Heroes, born in India and first appearing in Heroes S01E01 - Genesis. He works as a Former agent of Pinehearst Company, former Company medical professional & agent, former taxi driver, former genetics professor. His notable abilities include Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Mohinder Suresh, real name Mohinder Suresh, is a good-aligned male character created by NBC - Heroes, born in India and first appearing in Heroes S01E01 - Genesis. He works as a Former agent of Pinehearst Company, former Company medical professional & agent, former taxi driver, former genetics professor. His notable abilities include Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

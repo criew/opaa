@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: "Brown"
 hair_color: "Black"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 95
 strength_score: 30
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Chipmunk Hunk
 
-Chipmunk Hunk, real name Tomas Lara-Perez, is a good-aligned Human character created by Marvel Comics, first appearing in Unbeatable Squirrel Girl #1. They have Brown eyes and Black hair. Their notable abilities include Jump and Super Strength. Rated across attributes, they score 95 for intelligence, 30 for strength, 35 for speed, 35 for durability and 65 for combat, giving an overall score of 8.
+Chipmunk Hunk, real name Tomas Lara-Perez, is a good-aligned Human character created by Marvel Comics, first appearing in Unbeatable Squirrel Girl #1. They have Brown eyes and Black hair. Their notable abilities include Jump and Super Strength. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 30 for strength, 35 for speed, 35 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 8.

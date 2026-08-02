@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Teen Titans/Legion Special #1 (2004)"
 occupation: null
-teams: "Legion of Super-Heroes"
+teams: ["Legion of Super-Heroes"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Phantom Girl
 
-Phantom Girl, real name Tinya Wazzo, is a good-aligned female character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). She is affiliated with Legion of Super-Heroes. She has Blue eyes and Black hair and stands 168 cm tall and weighs 54 kg. Rated across attributes, she scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat, giving an overall score of 4.
+Phantom Girl, real name Tinya Wazzo, is a good-aligned female character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). She is affiliated with Legion of Super-Heroes. She has Blue eyes and Black hair and stands 168 cm tall and weighs 54 kg. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 4.

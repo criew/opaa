@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Universe
 
-Captain Universe is a neutral-aligned Cosmic Entity character created by Marvel Comics, first appearing in Micronauts #8 (August, 1979). Their notable abilities include Cold Resistance, Energy Blasts, Energy Manipulation, Enhanced Senses, Flight and Heat Resistance. Rated across attributes, they score 80 for intelligence, 100 for strength, 100 for speed, 100 for durability and 60 for combat, giving an overall score of 20.
+Captain Universe is a neutral-aligned Cosmic Entity character created by Marvel Comics, first appearing in Micronauts #8 (August, 1979). Their notable abilities include Cold Resistance, Energy Blasts, Energy Manipulation, Enhanced Senses, Flight and Heat Resistance. Rated on a 0-100 scale across attributes, they score 80 for intelligence, 100 for strength, 100 for speed, 100 for durability and 60 for combat. On a separate overall ranking scale, their overall score is 20.

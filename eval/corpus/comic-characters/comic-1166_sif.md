@@ -10,7 +10,7 @@ type_race: "Asgardian"
 place_of_birth: null
 first_appearance: "Journey into Mystery #102 (March, 1964)"
 occupation: null
-teams: "Asgardians, Marvel Knights, Thor Corps"
+teams: ["Asgardians", "Marvel Knights", "Thor Corps"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sif
 
-Sif, real name Sif, is a good-aligned female Asgardian character created by Marvel Comics, first appearing in Journey into Mystery #102 (March, 1964). She is affiliated with Asgardians, Marvel Knights and Thor Corps. She has Blue eyes and Black hair and stands 188 cm tall and weighs 191 kg. Her notable abilities include Accelerated Healing, Agility, Dimensional Travel, Durability, Enhanced Senses, Longevity, Reflexes, Stamina, Super Speed, Super Strength, Teleportation and Weapons Master. Rated across attributes, she scores 80 for intelligence, 90 for strength, 65 for speed, 80 for durability and 70 for combat, giving an overall score of 12.
+Sif, real name Sif, is a good-aligned female Asgardian character created by Marvel Comics, first appearing in Journey into Mystery #102 (March, 1964). She is affiliated with Asgardians, Marvel Knights and Thor Corps. She has Blue eyes and Black hair and stands 188 cm tall and weighs 191 kg. Her notable abilities include Accelerated Healing, Agility, Dimensional Travel, Durability, Enhanced Senses, Longevity, Reflexes, Stamina, Super Speed, Super Strength, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 90 for strength, 65 for speed, 80 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 12.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Micah Sanders
 
-Micah Sanders, real name Micah Sanders, is a good-aligned male character created by NBC - Heroes. He works as an Elementary school student. He has Brown eyes and Black hair. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 6.
+Micah Sanders, real name Micah Sanders, is a good-aligned male character created by NBC - Heroes. He works as an Elementary school student. He has Brown eyes and Black hair. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 6.

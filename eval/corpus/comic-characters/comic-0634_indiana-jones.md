@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Indiana Jones
 
-Indiana Jones, real name Indiana Jones, is a good-aligned male Human character created by George Lucas, born in Princeton, New Jersey and first appearing in Raiders of the Lost Ark (1981). He works as an Archaeologist. He stands 183 cm tall and weighs 79 kg. His notable abilities include Intelligence, Reflexes and Stamina. Rated across attributes, he scores 85 for intelligence, 10 for strength, 15 for speed, 30 for durability and 30 for combat, giving an overall score of 6.
+Indiana Jones, real name Indiana Jones, is a good-aligned male Human character created by George Lucas, born in Princeton, New Jersey and first appearing in Raiders of the Lost Ark (1981). He works as an Archaeologist. He stands 183 cm tall and weighs 79 kg. His notable abilities include Intelligence, Reflexes and Stamina. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 10 for strength, 15 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 6.

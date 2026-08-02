@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: null
 hair_color: "No Hair"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 100
 strength_score: 60
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ancient One (MCU)
 
-Ancient One (MCU) is a good-aligned female Human character created by Marvel Comics, first appearing in Doctor strange. She has No Hair hair. Her notable abilities include Dimensional Travel, Element Control, Energy Manipulation, Immortality, Magic, Reality Warping and Teleportation. Rated across attributes, she scores 100 for intelligence, 60 for strength, 85 for speed, 85 for durability and 60 for combat, giving an overall score of 37.
+Ancient One (MCU) is a good-aligned female Human character created by Marvel Comics, first appearing in Doctor strange. She is bald. Her notable abilities include Dimensional Travel, Element Control, Energy Manipulation, Immortality, Magic, Reality Warping and Teleportation. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 60 for strength, 85 for speed, 85 for durability and 60 for combat. On a separate overall ranking scale, her overall score is 37.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tobias Whale (CW)
 
-Tobias Whale (CW), real name Tobias Whale, is a bad-aligned male Metahuman character, first appearing in Black Lightning Season 1: Episode 1. He works as a Crimelord. He has Blue eyes and No Hair hair. His notable abilities include Durability, Endurance, Longevity, Marksmanship, Stamina and Super Strength. Rated across attributes, he scores 80 for intelligence, 30 for strength, 30 for speed, 50 for durability and 85 for combat, giving an overall score of 5.
+Tobias Whale (CW), real name Tobias Whale, is a bad-aligned male Metahuman character, first appearing in Black Lightning Season 1: Episode 1. He works as a Crimelord. He has Blue eyes and is bald. His notable abilities include Durability, Endurance, Longevity, Marksmanship, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 30 for strength, 30 for speed, 50 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 5.

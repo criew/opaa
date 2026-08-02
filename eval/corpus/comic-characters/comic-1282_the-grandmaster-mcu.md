@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Grandmaster (MCU)
 
-The Grandmaster (MCU), real name En Dwi Gast, is a character created by Marvel Comics. Their notable abilities include Immortality and Telepathy. Rated across attributes, they score 100 for intelligence, 30 for strength, 25 for speed, 40 for durability and 55 for combat, giving an overall score of 11.
+The Grandmaster (MCU), real name En Dwi Gast, is a character created by Marvel Comics. Their notable abilities include Immortality and Telepathy. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 30 for strength, 25 for speed, 40 for durability and 55 for combat. On a separate overall ranking scale, their overall score is 11.

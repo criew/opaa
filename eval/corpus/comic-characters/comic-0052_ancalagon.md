@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ancalagon
 
-Ancalagon is a male character created by J. R. R. Tolkien, born in Angband and first appearing in Lord of the Rings; The Fellowship of the Ring. He has Orange eyes. His notable abilities include Durability, Enhanced Senses, Fire Control, Fire Resistance, Flight, Heat Resistance, Intelligence, Mind Control Resistance and Stamina. Rated across attributes, he scores 85 for intelligence, 100 for strength, 45 for speed, 80 for durability and 65 for combat, giving an overall score of 13.
+Ancalagon is a male character created by J. R. R. Tolkien, born in Angband and first appearing in Lord of the Rings; The Fellowship of the Ring. He has Orange eyes. His notable abilities include Durability, Enhanced Senses, Fire Control, Fire Resistance, Flight, Heat Resistance, Intelligence, Mind Control Resistance and Stamina. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 100 for strength, 45 for speed, 80 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 13.

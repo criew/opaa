@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wendigo
 
-Wendigo, real name Wendigo, is a character created by Marvel Comics, born in Canada and first appearing in Incredible Hulk #162. They have Green eyes and White hair. Their notable abilities include Cold Resistance, Fire Resistance, Heat Resistance, Jump, Regeneration, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 65 for intelligence, 80 for strength, 75 for speed, 75 for durability and 70 for combat, giving an overall score of 6.
+Wendigo, real name Wendigo, is a character created by Marvel Comics, born in Canada and first appearing in Incredible Hulk #162. They have Green eyes and White hair. Their notable abilities include Cold Resistance, Fire Resistance, Heat Resistance, Jump, Regeneration, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 65 for intelligence, 80 for strength, 75 for speed, 75 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 6.

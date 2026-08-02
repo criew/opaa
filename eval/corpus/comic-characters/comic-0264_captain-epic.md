@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Epic
 
-Captain Epic is a good-aligned male character created by Team Epic TV, born in Canada and first appearing in World War II. He works as a Superhero. He has Blue eyes and Brown hair and stands 188 cm tall. His notable abilities include Jump, Super Speed and Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Captain Epic is a good-aligned male character created by Team Epic TV, born in Canada and first appearing in World War II. He works as a Superhero. He has Blue eyes and Brown hair and stands 188 cm tall. His notable abilities include Jump, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kick-Ass
 
-Kick-Ass, real name Dave Lizewski, is a good-aligned male Human character created by Icon Comics, born in New York City and first appearing in Kick Ass #1. He works as a Student. He has Blue eyes and Blond hair. His notable abilities include Agility, Durability, Stamina and Weapon-Based Powers. Rated across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 35 for durability and 55 for combat, giving an overall score of 3.
+Kick-Ass, real name Dave Lizewski, is a good-aligned male Human character created by Icon Comics, born in New York City and first appearing in Kick Ass #1. He works as a Student. He has Blue eyes and Blond hair. His notable abilities include Agility, Durability, Stamina and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 35 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 3.

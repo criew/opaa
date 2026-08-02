@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "japan"
 first_appearance: "DC Sampler #1"
 occupation: "Vigilante"
-teams: "The Outsiders, Suicide Squad, Birds of Prey, Justice Legion Alpha, Outsiders, Super Buddies"
+teams: ["The Outsiders", "Suicide Squad", "Birds of Prey", "Justice Legion Alpha", "Outsiders", "Super Buddies"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 157
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Katana
 
-Katana, real name Tatsu Yamashiro, is a good-aligned female Human character created by DC Comics, born in japan and first appearing in DC Sampler #1. She works as a Vigilante and is affiliated with The Outsiders, Suicide Squad, Birds of Prey, Justice Legion Alpha, Outsiders and Super Buddies. She has Brown eyes and Black hair and stands 157 cm tall and weighs 44 kg. Her notable abilities include Agility, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 50 for speed, 40 for durability and 95 for combat, giving an overall score of 6.
+Katana, real name Tatsu Yamashiro, is a good-aligned female Human character created by DC Comics, born in japan and first appearing in DC Sampler #1. She works as a Vigilante and is affiliated with The Outsiders, Suicide Squad, Birds of Prey, Justice Legion Alpha, Outsiders and Super Buddies. She has Brown eyes and Black hair and stands 157 cm tall and weighs 44 kg. Her notable abilities include Agility, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 50 for speed, 40 for durability and 95 for combat. On a separate overall ranking scale, her overall score is 6.

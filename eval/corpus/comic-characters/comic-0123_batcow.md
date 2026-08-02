@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batcow
 
-Batcow, real name None, is a good-aligned Animal character created by DC Comics. Rated across attributes, they score 70 for intelligence, 10 for strength, 25 for speed, 20 for durability and 20 for combat, giving an overall score of 3.
+Batcow, real name None, is a good-aligned Animal character created by DC Comics. Rated on a 0-100 scale across attributes, they score 70 for intelligence, 10 for strength, 25 for speed, 20 for durability and 20 for combat. On a separate overall ranking scale, their overall score is 3.

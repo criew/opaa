@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # David Cain
 
-David Cain, real name David Cain, is a bad-aligned male character created by DC Comics, first appearing in Batman #567. He works as an Assassin. He has Blue eyes and Grey hair and stands 188 cm tall and weighs 110 kg. His notable abilities include Agility, Intelligence, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 15 for durability and 100 for combat, giving an overall score of 9.
+David Cain, real name David Cain, is a bad-aligned male character created by DC Comics, first appearing in Batman #567. He works as an Assassin. He has Blue eyes and Grey hair and stands 188 cm tall and weighs 110 kg. His notable abilities include Agility, Intelligence, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 15 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 9.

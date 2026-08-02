@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Edward Elric
 
-Edward Elric, real name Edward Elric, is a male Human character. He works as a State Alchemist. His notable abilities include Electrokinesis, Element Control, Energy Manipulation, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 25 for durability and 50 for combat, giving an overall score of 7.
+Edward Elric, real name Edward Elric, is a male Human character. He works as a State Alchemist. His notable abilities include Electrokinesis, Element Control, Energy Manipulation, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 25 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 7.

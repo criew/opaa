@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vibe (CW)
 
-Vibe (CW), real name Cisco Ramon, is a bad-aligned male Metahuman character created by DC Comics, first appearing in Arrow season 2. He works as a Mechanical engineer at S.T.A.R. Labs. He has Black eyes and Black hair and stands 157 cm tall and weighs 89 kg. His notable abilities include Agility, Dimensional Travel, Intelligence, Teleportation, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 45 for speed, 40 for durability and 65 for combat, giving an overall score of 10.
+Vibe (CW), real name Cisco Ramon, is a bad-aligned male Metahuman character created by DC Comics, first appearing in Arrow season 2. He works as a Mechanical engineer at S.T.A.R. Labs. He has Black eyes and Black hair and stands 157 cm tall and weighs 89 kg. His notable abilities include Agility, Dimensional Travel, Intelligence, Teleportation, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 45 for speed, 40 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 10.

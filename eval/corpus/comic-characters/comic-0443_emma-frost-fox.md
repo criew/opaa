@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Emma Frost (FOX)
 
-Emma Frost (FOX), real name Emma Grace Frost, is a good-aligned female Mutant character created by Marvel Comics, first appearing in X-Men: First Class. She has Blue eyes. Her notable abilities include Durability, Illusions, Invulnerability, Super Strength, Telepathy and Telepathy Resistance. Rated across attributes, she scores 95 for intelligence, 30 for strength, 50 for speed, 85 for durability and 85 for combat, giving an overall score of 11.
+Emma Frost (FOX), real name Emma Grace Frost, is a good-aligned female Mutant character created by Marvel Comics, first appearing in X-Men: First Class. She has Blue eyes. Her notable abilities include Durability, Illusions, Invulnerability, Super Strength, Telepathy and Telepathy Resistance. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 30 for strength, 50 for speed, 85 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 11.

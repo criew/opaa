@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Little Epic
 
-Little Epic, real name Eilliott Kipp, is a good-aligned male character created by Team Epic TV, born in Toronto, Canada and first appearing in Team Epic Episode 101. He works as a Sidekick. He has Brown eyes and Brown hair and stands 170 cm tall and weighs 83 kg. His notable abilities include Super Speed. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Little Epic, real name Eilliott Kipp, is a good-aligned male character created by Team Epic TV, born in Toronto, Canada and first appearing in Team Epic Episode 101. He works as a Sidekick. He has Brown eyes and Brown hair and stands 170 cm tall and weighs 83 kg. His notable abilities include Super Speed. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

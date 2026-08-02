@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Wonder Woman Vol1 #274 (Dec 1980)"
 occupation: null
-teams: "Secret Society of Super-Villains"
+teams: ["Secret Society of Super-Villains"]
 eye_color: "Green"
 hair_color: "Brown"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cheetah II
 
-Cheetah II, real name Deborah Domaine, is a bad-aligned female Human character created by DC Comics, first appearing in Wonder Woman Vol1 #274 (Dec 1980). She is affiliated with Secret Society of Super-Villains. She has Green eyes and Brown hair and stands 170 cm tall and weighs 55 kg. Her notable abilities include Agility, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, she scores 70 for intelligence, 20 for strength, 40 for speed, 20 for durability and 60 for combat, giving an overall score of 4.
+Cheetah II, real name Deborah Domaine, is a bad-aligned female Human character created by DC Comics, first appearing in Wonder Woman Vol1 #274 (Dec 1980). She is affiliated with Secret Society of Super-Villains. She has Green eyes and Brown hair and stands 170 cm tall and weighs 55 kg. Her notable abilities include Agility, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 20 for strength, 40 for speed, 20 for durability and 60 for combat. On a separate overall ranking scale, her overall score is 4.

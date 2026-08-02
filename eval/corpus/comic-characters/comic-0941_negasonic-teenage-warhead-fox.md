@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Negasonic Teenage Warhead (FOX
 
-Negasonic Teenage Warhead (FOX, real name Ellie Phimister, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Deadpool. She works as an Adventurer, Student. She has Brown eyes and Black hair and stands 160 cm tall and weighs 47 kg. Her notable abilities include Energy Beams, Force Fields and Jump. Rated across attributes, she scores 80 for intelligence, 10 for strength, 25 for speed, 15 for durability and 55 for combat, giving an overall score of 5.
+Negasonic Teenage Warhead (FOX, real name Ellie Phimister, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Deadpool. She works as an Adventurer, Student. She has Brown eyes and Black hair and stands 160 cm tall and weighs 47 kg. Her notable abilities include Energy Beams, Force Fields and Jump. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 25 for speed, 15 for durability and 55 for combat. On a separate overall ranking scale, her overall score is 5.

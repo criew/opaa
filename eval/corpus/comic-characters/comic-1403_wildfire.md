@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Legion of Super-Heroes"
+teams: ["Legion of Super-Heroes"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wildfire
 
-Wildfire, real name Drake Burroughs, is a good-aligned male character created by DC Comics. He is affiliated with Legion of Super-Heroes. His notable abilities include Energy Absorption, Energy Blasts, Energy Manipulation, Flight, Invulnerability, Size Changing and Super Strength. Rated across attributes, he scores 75 for intelligence, 30 for strength, 25 for speed, 100 for durability and 40 for combat, giving an overall score of 7.
+Wildfire, real name Drake Burroughs, is a good-aligned male character created by DC Comics. He is affiliated with Legion of Super-Heroes. His notable abilities include Energy Absorption, Energy Blasts, Energy Manipulation, Flight, Invulnerability, Size Changing and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 25 for speed, 100 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 7.

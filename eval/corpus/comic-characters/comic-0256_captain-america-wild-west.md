@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain America (Wild West)
 
-Captain America (Wild West), real name Steve Rogers, is a male character created by Marvel Comics. He has Black eyes. His notable abilities include Agility, Durability, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 20 for strength, 35 for speed, 50 for durability and 95 for combat, giving an overall score of 8.
+Captain America (Wild West), real name Steve Rogers, is a male character created by Marvel Comics. He has Black eyes. His notable abilities include Agility, Durability, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 20 for strength, 35 for speed, 50 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 8.

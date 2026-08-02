@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batroc The Leaper (MCU)
 
-Batroc The Leaper (MCU), real name Georges Batroc, is a bad-aligned male Human character created by Marvel Comics, born in Algeria and first appearing in Captain America: The Winter Soldier. He works as a Mercenary. He has Green eyes and Red hair and stands 178 cm tall and weighs 83 kg. His notable abilities include Agility, Durability, Marksmanship, Reflexes, Stamina and Stealth. Rated across attributes, he scores 75 for intelligence, 15 for strength, 45 for speed, 40 for durability and 100 for combat, giving an overall score of 4.
+Batroc The Leaper (MCU), real name Georges Batroc, is a bad-aligned male Human character created by Marvel Comics, born in Algeria and first appearing in Captain America: The Winter Soldier. He works as a Mercenary. He has Green eyes and Red hair and stands 178 cm tall and weighs 83 kg. His notable abilities include Agility, Durability, Marksmanship, Reflexes, Stamina and Stealth. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 15 for strength, 45 for speed, 40 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Hindsight
 
-Captain Hindsight, real name Jack Brolin, is a good-aligned male Human character created by South Park, first appearing in South Park S14 E11 "Coon 2: Hindsight". He works as a Former Superhero; News Reporter. He has Black hair. His notable abilities include Enhanced Senses, Flight and Super Speed. Rated across attributes, he scores 65 for intelligence, 10 for strength, 85 for speed, 30 for durability and 20 for combat, giving an overall score of 3.
+Captain Hindsight, real name Jack Brolin, is a good-aligned male Human character created by South Park, first appearing in South Park S14 E11 "Coon 2: Hindsight". He works as a Former Superhero; News Reporter. He has Black hair. His notable abilities include Enhanced Senses, Flight and Super Speed. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 10 for strength, 85 for speed, 30 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 3.

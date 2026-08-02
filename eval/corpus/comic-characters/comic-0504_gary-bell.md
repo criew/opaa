@@ -10,7 +10,7 @@ type_race: "Alpha"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Alphas"
+teams: ["Alphas"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gary Bell
 
-Gary Bell, real name Gary Bell, is a good-aligned male Alpha character created by SyFy. He is affiliated with Alphas. His notable abilities include Enhanced Senses and Intelligence. Rated across attributes, he scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 10 for combat, giving an overall score of 6.
+Gary Bell, real name Gary Bell, is a good-aligned male Alpha character created by SyFy. He is affiliated with Alphas. His notable abilities include Enhanced Senses and Intelligence. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 10 for combat. On a separate overall ranking scale, his overall score is 6.

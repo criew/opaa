@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "New York, New York"
 first_appearance: "X-Men #1 (September, 1963)"
 occupation: "Mutant leader, mutant rights activist, geneticist, teacher, adventurer, heir, formerly headmaster, soldier (US Army)"
-teams: "Cerebro's X-Men, Gods, X-Men, X-Men"
+teams: ["Cerebro's X-Men", "Gods", "X-Men", "X-Men"]
 eye_color: "Blue"
 hair_color: "No Hair"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Professor X
 
-Professor X, real name Charles Francis Xavier, is a good-aligned male Mutant character created by Marvel Comics, born in New York, New York and first appearing in X-Men #1 (September, 1963). He works as a Mutant leader, mutant rights activist, geneticist, teacher, adventurer, heir, formerly headmaster, soldier (US Army) and is affiliated with Cerebro's X-Men, Gods, X-Men and X-Men. He has Blue eyes and No Hair hair and stands 183 cm tall and weighs 86 kg. His notable abilities include Illusions, Intelligence, Mind Control and Telepathy. Rated across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat, giving an overall score of 11.
+Professor X, real name Charles Francis Xavier, is a good-aligned male Mutant character created by Marvel Comics, born in New York, New York and first appearing in X-Men #1 (September, 1963). He works as a Mutant leader, mutant rights activist, geneticist, teacher, adventurer, heir, formerly headmaster, soldier (US Army) and is affiliated with Cerebro's X-Men, Gods, X-Men and X-Men. He has Blue eyes and is bald and stands 183 cm tall and weighs 86 kg. His notable abilities include Illusions, Intelligence, Mind Control and Telepathy. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 11.

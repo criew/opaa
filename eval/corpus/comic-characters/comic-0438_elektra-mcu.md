@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Elektra (MCU)
 
-Elektra (MCU), real name Elektra Natchios, is a neutral-aligned female Human character created by Marvel Comics, born in Unknown and first appearing in Daredevil (show). She has Brown eyes and Brown hair. Her notable abilities include Agility, Dexterity, Durability, Intelligence, Reflexes, Stamina, Super Speed, Super Strength and Weapons Master. Rated across attributes, she scores 85 for intelligence, 15 for strength, 60 for speed, 40 for durability and 95 for combat, giving an overall score of 6.
+Elektra (MCU), real name Elektra Natchios, is a neutral-aligned female Human character created by Marvel Comics, born in Unknown and first appearing in Daredevil (show). She has Brown eyes and Brown hair. Her notable abilities include Agility, Dexterity, Durability, Intelligence, Reflexes, Stamina, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 15 for strength, 60 for speed, 40 for durability and 95 for combat. On a separate overall ranking scale, her overall score is 6.

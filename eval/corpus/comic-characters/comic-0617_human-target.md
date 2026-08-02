@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Action Comics #419"
 occupation: "Bodyguard, Private Detective"
-teams: "Justice Legion Alpha"
+teams: ["Justice Legion Alpha"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Human Target
 
-Human Target, real name Christopher Chance, is a good-aligned male Human character created by DC Comics, first appearing in Action Comics #419. He works as a Bodyguard, Private Detective and is affiliated with Justice Legion Alpha. He has Black eyes and Black hair and stands 183 cm tall and weighs 81 kg. His notable abilities include Agility, Dexterity, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 15 for strength, 30 for speed, 50 for durability and 95 for combat, giving an overall score of 10.
+Human Target, real name Christopher Chance, is a good-aligned male Human character created by DC Comics, first appearing in Action Comics #419. He works as a Bodyguard, Private Detective and is affiliated with Justice Legion Alpha. He has Black eyes and Black hair and stands 183 cm tall and weighs 81 kg. His notable abilities include Agility, Dexterity, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 15 for strength, 30 for speed, 50 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 10.

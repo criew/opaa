@@ -10,7 +10,7 @@ type_race: "Bizarro"
 place_of_birth: null
 first_appearance: "Superboy Vol. 1 #68 (1958)"
 occupation: null
-teams: "Outlaws"
+teams: ["Outlaws"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: 191
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bizarro
 
-Bizarro, real name Bizarro, is a neutral-aligned male Bizarro character created by DC Comics, first appearing in Superboy Vol. 1 #68 (1958). He is affiliated with Outlaws. He has Black eyes and Black hair and stands 191 cm tall and weighs 155 kg. His notable abilities include Accelerated Healing, Agility, Durability, Energy Absorption, Enhanced Hearing, Enhanced Senses, Flight, Invulnerability, Jump, Longevity, Marksmanship, Self-Sustenance, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 70 for intelligence, 95 for strength, 100 for speed, 100 for durability and 85 for combat, giving an overall score of 12.
+Bizarro, real name Bizarro, is a neutral-aligned male Bizarro character created by DC Comics, first appearing in Superboy Vol. 1 #68 (1958). He is affiliated with Outlaws. He has Black eyes and Black hair and stands 191 cm tall and weighs 155 kg. His notable abilities include Accelerated Healing, Agility, Durability, Energy Absorption, Enhanced Hearing, Enhanced Senses, Flight, Invulnerability, Jump, Longevity, Marksmanship, Self-Sustenance, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 95 for strength, 100 for speed, 100 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 12.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Batman #121 (Feb. 1959)"
 occupation: null
-teams: "The Society"
+teams: ["The Society"]
 eye_color: null
 hair_color: null
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mister Freeze
 
-Mister Freeze, real name Victor Fries, is a bad-aligned male Human character created by DC Comics, first appearing in Batman #121 (Feb. 1959). He is affiliated with The Society. He stands 183 cm tall and weighs 86 kg. His notable abilities include Cold Resistance, Durability, Intelligence, Longevity, Marksmanship and Super Strength. Rated across attributes, he scores 90 for intelligence, 30 for strength, 10 for speed, 70 for durability and 30 for combat, giving an overall score of 7.
+Mister Freeze, real name Victor Fries, is a bad-aligned male Human character created by DC Comics, first appearing in Batman #121 (Feb. 1959). He is affiliated with The Society. He stands 183 cm tall and weighs 86 kg. His notable abilities include Cold Resistance, Durability, Intelligence, Longevity, Marksmanship and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 10 for speed, 70 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 7.

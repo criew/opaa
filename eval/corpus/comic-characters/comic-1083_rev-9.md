@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rev-9
 
-Rev-9, real name Terminator, is a bad-aligned Android character created by Dark Horse Comics, first appearing in Terminator: Dark Fate (2019). Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Rev-9, real name Terminator, is a bad-aligned Android character created by Dark Horse Comics, first appearing in Terminator: Dark Fate (2019). Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

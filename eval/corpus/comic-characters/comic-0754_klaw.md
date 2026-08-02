@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Vlaardingen, Netherlands"
 first_appearance: "Fantastic Four #53 (August, 1966)"
 occupation: "Criminal, former Scientist"
-teams: "Masters of Evil, Frightful Four"
+teams: ["Masters of Evil", "Frightful Four"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Klaw
 
-Klaw, real name Ulysses Klaw, is a bad-aligned male Human character created by Marvel Comics, born in Vlaardingen, Netherlands and first appearing in Fantastic Four #53 (August, 1966). He works as a Criminal, former Scientist and is affiliated with Masters of Evil and Frightful Four. He has Red eyes and No Hair hair and stands 188 cm tall and weighs 97 kg. His notable abilities include Durability, Energy Blasts, Invulnerability, Self-Sustenance, Super Strength and Telepathy Resistance. Rated across attributes, he scores 80 for intelligence, 40 for strength, 35 for speed, 100 for durability and 60 for combat, giving an overall score of 7.
+Klaw, real name Ulysses Klaw, is a bad-aligned male Human character created by Marvel Comics, born in Vlaardingen, Netherlands and first appearing in Fantastic Four #53 (August, 1966). He works as a Criminal, former Scientist and is affiliated with Masters of Evil and Frightful Four. He has Red eyes and is bald and stands 188 cm tall and weighs 97 kg. His notable abilities include Durability, Energy Blasts, Invulnerability, Self-Sustenance, Super Strength and Telepathy Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 40 for strength, 35 for speed, 100 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 7.

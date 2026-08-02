@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kronos
 
-Kronos, real name Luke Castellan, is a male Titanian character. He has Gold eyes and Black hair. His notable abilities include Element Control, Energy Blasts, Energy Manipulation, Magic, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 65 for strength, 60 for speed, 60 for durability and 80 for combat, giving an overall score of 18.
+Kronos, real name Luke Castellan, is a male Titanian character. He has Gold eyes and Black hair. His notable abilities include Element Control, Energy Blasts, Energy Manipulation, Magic, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 65 for strength, 60 for speed, 60 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 18.

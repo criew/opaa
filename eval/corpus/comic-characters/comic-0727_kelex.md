@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kelex
 
-Kelex is a neutral-aligned Android character created by DC Comics, first appearing in The Man of Steel #1. They work as a Kryptonian Service Robot. Their notable abilities include Flight, Intelligence and Marksmanship. Rated across attributes, they score 100 for intelligence, 0 for strength, 30 for speed, 20 for durability and 25 for combat, giving an overall score of 9.
+Kelex is a neutral-aligned Android character created by DC Comics, first appearing in The Man of Steel #1. They work as a Kryptonian Service Robot. Their notable abilities include Flight, Intelligence and Marksmanship. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 0 for strength, 30 for speed, 20 for durability and 25 for combat. On a separate overall ranking scale, their overall score is 9.

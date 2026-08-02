@@ -10,7 +10,7 @@ type_race: "Cyborg"
 place_of_birth: "New York City, New York"
 first_appearance: "DC Comics Presents #26 (October, 1980)"
 occupation: "Adventurer, Teen Titan"
-teams: "Titans East, New Teen Titans, Superfriends, Justice League Antarctica, Teen Titans, Justice League of America, Justice League"
+teams: ["Titans East", "New Teen Titans", "Superfriends", "Justice League Antarctica", "Teen Titans", "Justice League of America", "Justice League"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 198
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cyborg
 
-Cyborg, real name Victor Stone, is a good-aligned male Cyborg character created by DC Comics, born in New York City, New York and first appearing in DC Comics Presents #26 (October, 1980). He works as an Adventurer, Teen Titan and is affiliated with Titans East, New Teen Titans, Superfriends, Justice League Antarctica, Teen Titans, Justice League of America and Justice League. He has Brown eyes and Black hair and stands 198 cm tall and weighs 173 kg. His notable abilities include Durability, Enhanced Hearing, Enhanced Senses, Flight, Stamina, Super Speed, Super Strength and Weapon-Based Powers. Rated across attributes, he scores 90 for intelligence, 55 for strength, 40 for speed, 85 for durability and 65 for combat, giving an overall score of 8.
+Cyborg, real name Victor Stone, is a good-aligned male Cyborg character created by DC Comics, born in New York City, New York and first appearing in DC Comics Presents #26 (October, 1980). He works as an Adventurer, Teen Titan and is affiliated with Titans East, New Teen Titans, Superfriends, Justice League Antarctica, Teen Titans, Justice League of America and Justice League. He has Brown eyes and Black hair and stands 198 cm tall and weighs 173 kg. His notable abilities include Durability, Enhanced Hearing, Enhanced Senses, Flight, Stamina, Super Speed, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 55 for strength, 40 for speed, 85 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 8.

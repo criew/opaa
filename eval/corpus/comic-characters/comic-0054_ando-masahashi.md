@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ando Masahashi
 
-Ando Masahashi, real name Ando Masahashi, is a good-aligned male character created by NBC - Heroes. He works as a Yamagato Industries computer programmer. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Ando Masahashi, real name Ando Masahashi, is a good-aligned male character created by NBC - Heroes. He works as a Yamagato Industries computer programmer. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

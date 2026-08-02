@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Eru Iluvatar
 
-Eru Iluvatar, real name Eru, is a good-aligned male God / Eternal character created by J. R. R. Tolkien. He has White hair. His notable abilities include Element Control, Energy Constructs, Energy Manipulation, Force Fields, Illusions, Immortality, Intelligence, Matter Manipulation, Mind Control and Telepathy. Rated across attributes, he scores 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of ∞.
+Eru Iluvatar, real name Eru, is a good-aligned male God / Eternal character created by J. R. R. Tolkien. He has White hair. His notable abilities include Element Control, Energy Constructs, Energy Manipulation, Force Fields, Illusions, Immortality, Intelligence, Matter Manipulation, Mind Control and Telepathy. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is ∞.

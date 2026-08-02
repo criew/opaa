@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Batman: Harley Quinn (October, 1999)"
 occupation: "Psychiatrist"
-teams: "Suicide Squad, Super Buddies, Quintets, Secret Six, Female Furies"
+teams: ["Suicide Squad", "Super Buddies", "Quintets", "Secret Six", "Female Furies"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Harley Quinn
 
-Harley Quinn, real name Harleen Quinzel, is a bad-aligned female Human character created by DC Comics, first appearing in Batman: Harley Quinn (October, 1999). She works as a Psychiatrist and is affiliated with Suicide Squad, Super Buddies, Quintets, Secret Six and Female Furies. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 63 kg. Her notable abilities include Accelerated Healing, Agility, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Strength and Toxin and Disease Resistance. Rated across attributes, she scores 95 for intelligence, 10 for strength, 35 for speed, 65 for durability and 80 for combat, giving an overall score of 8.
+Harley Quinn, real name Harleen Quinzel, is a bad-aligned female Human character created by DC Comics, first appearing in Batman: Harley Quinn (October, 1999). She works as a Psychiatrist and is affiliated with Suicide Squad, Super Buddies, Quintets, Secret Six and Female Furies. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 63 kg. Her notable abilities include Accelerated Healing, Agility, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 10 for strength, 35 for speed, 65 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 8.

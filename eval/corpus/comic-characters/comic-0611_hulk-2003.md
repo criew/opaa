@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hulk (2003)
 
-Hulk (2003), real name Bruce Banner, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Element Control, Endurance, Energy Manipulation, Heat Resistance, Intelligence, Invulnerability, Jump, Longevity, Regeneration, Size Changing, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 95 for intelligence, 100 for strength, 60 for speed, 80 for durability and 90 for combat, giving an overall score of 15.
+Hulk (2003), real name Bruce Banner, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Element Control, Endurance, Energy Manipulation, Heat Resistance, Intelligence, Invulnerability, Jump, Longevity, Regeneration, Size Changing, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 100 for strength, 60 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 15.

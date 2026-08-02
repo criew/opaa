@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "Place of birth unknown"
 first_appearance: "Uncanny X-Men #193 (May, 1985)"
 occupation: "Student"
-teams: "Inhumans, Avengers Resistance, Avengers"
+teams: ["Inhumans", "Avengers Resistance", "Avengers"]
 eye_color: "Green"
 hair_color: "Red"
 height_cm: 173
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Firestar
 
-Firestar, real name Angelica Jones, is a good-aligned female Mutant character created by Marvel Comics, born in Place of birth unknown and first appearing in Uncanny X-Men #193 (May, 1985). She works as a Student and is affiliated with Inhumans, Avengers Resistance and Avengers. She has Green eyes and Red hair and stands 173 cm tall and weighs 56 kg. Her notable abilities include Energy Blasts, Energy Manipulation, Enhanced Senses and Flight. Rated across attributes, she scores 75 for intelligence, 10 for strength, 55 for speed, 55 for durability and 30 for combat, giving an overall score of 6.
+Firestar, real name Angelica Jones, is a good-aligned female Mutant character created by Marvel Comics, born in Place of birth unknown and first appearing in Uncanny X-Men #193 (May, 1985). She works as a Student and is affiliated with Inhumans, Avengers Resistance and Avengers. She has Green eyes and Red hair and stands 173 cm tall and weighs 56 kg. Her notable abilities include Energy Blasts, Energy Manipulation, Enhanced Senses and Flight. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 55 for speed, 55 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 6.

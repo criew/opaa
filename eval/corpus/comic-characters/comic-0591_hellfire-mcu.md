@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hellfire (MCU)
 
-Hellfire (MCU), real name JT James, is a bad-aligned male Inhuman character created by Marvel Comics, born in Brisbane, Australia and first appearing in Agents of S.H.I.E.L.D. Season 3: Episode 16. He works as a Former Demolition Expert. He has Blue eyes and Brown hair and stands 183 cm tall. His notable abilities include Fire Control, Marksmanship and Weapon-Based Powers. Rated across attributes, he scores 75 for intelligence, 10 for strength, 20 for speed, 25 for durability and 75 for combat, giving an overall score of 4.
+Hellfire (MCU), real name JT James, is a bad-aligned male Inhuman character created by Marvel Comics, born in Brisbane, Australia and first appearing in Agents of S.H.I.E.L.D. Season 3: Episode 16. He works as a Former Demolition Expert. He has Blue eyes and Brown hair and stands 183 cm tall. His notable abilities include Fire Control, Marksmanship and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 20 for speed, 25 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Defenders, Squadron Supreme"
+teams: ["Defenders", "Squadron Supreme"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Nighthawk
 
-Nighthawk, real name Kyle Richmond, is a good-aligned male character created by Marvel Comics. He is affiliated with Defenders and Squadron Supreme. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Nighthawk, real name Kyle Richmond, is a good-aligned male character created by Marvel Comics. He is affiliated with Defenders and Squadron Supreme. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

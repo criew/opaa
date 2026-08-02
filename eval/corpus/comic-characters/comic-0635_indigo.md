@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: null
 first_appearance: "Green Lantern Vol 4 #25 (January, 2008)"
 occupation: "Leader of the Indigo Tribe"
-teams: "Indigo Tribe"
+teams: ["Indigo Tribe"]
 eye_color: null
 hair_color: "Purple"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Indigo
 
-Indigo, real name Iroque, is a neutral-aligned female Alien character created by DC Comics, first appearing in Green Lantern Vol 4 #25 (January, 2008). She works as a Leader of the Indigo Tribe and is affiliated with Indigo Tribe. She has Purple hair. Her notable abilities include Energy Constructs, Flight, Force Fields, Intelligence and Teleportation. Rated across attributes, she scores 90 for intelligence, 65 for strength, 50 for speed, 50 for durability and 50 for combat, giving an overall score of 11.
+Indigo, real name Iroque, is a neutral-aligned female Alien character created by DC Comics, first appearing in Green Lantern Vol 4 #25 (January, 2008). She works as a Leader of the Indigo Tribe and is affiliated with Indigo Tribe. She has Purple hair. Her notable abilities include Energy Constructs, Flight, Force Fields, Intelligence and Teleportation. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 65 for strength, 50 for speed, 50 for durability and 50 for combat. On a separate overall ranking scale, her overall score is 11.

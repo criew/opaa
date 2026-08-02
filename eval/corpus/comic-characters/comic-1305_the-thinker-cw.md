@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Thinker (CW)
 
-The Thinker (CW), real name Clifford DeVoe, is a bad-aligned male Metahuman character created by DC Comics, born in Earth-1 and first appearing in The Flash Season 4: Episode 1. He works as a Criminal; formerly Professor. He has Brown eyes and No Hair hair and stands 178 cm tall and weighs 74 kg. His notable abilities include Dimensional Travel, Intelligence, Size Changing and Telepathy. Rated across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 50 for combat, giving an overall score of 13.
+The Thinker (CW), real name Clifford DeVoe, is a bad-aligned male Metahuman character created by DC Comics, born in Earth-1 and first appearing in The Flash Season 4: Episode 1. He works as a Criminal; formerly Professor. He has Brown eyes and is bald and stands 178 cm tall and weighs 74 kg. His notable abilities include Dimensional Travel, Intelligence, Size Changing and Telepathy. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 13.

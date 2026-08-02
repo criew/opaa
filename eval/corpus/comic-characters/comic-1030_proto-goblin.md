@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Proto-Goblin
 
-Proto-Goblin, real name Nels Van Adder, is a bad-aligned male character created by Marvel Comics, first appearing in Spider-Man #-1 (1990). He works as a Scientist. He has Green eyes and Blond hair. His notable abilities include Agility, Durability and Super Strength. Rated across attributes, he scores 80 for intelligence, 40 for strength, 25 for speed, 50 for durability and 30 for combat, giving an overall score of 5.
+Proto-Goblin, real name Nels Van Adder, is a bad-aligned male character created by Marvel Comics, first appearing in Spider-Man #-1 (1990). He works as a Scientist. He has Green eyes and Blond hair. His notable abilities include Agility, Durability and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 40 for strength, 25 for speed, 50 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 5.

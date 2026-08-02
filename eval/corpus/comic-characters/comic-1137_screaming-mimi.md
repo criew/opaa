@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Screaming Mimi
 
-Screaming Mimi is a good-aligned character created by Marvel Comics. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Screaming Mimi is a good-aligned character created by Marvel Comics. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

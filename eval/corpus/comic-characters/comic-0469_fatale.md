@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fatale
 
-Fatale, real name Real name unknown, is a bad-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Uncanny X-Men #299. They work as an Assassin, spy. They have Yellow / Green eyes and Blue hair. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Fatale, real name Real name unknown, is a bad-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Uncanny X-Men #299. They work as an Assassin, spy. They have Yellow / Green eyes and Blue hair. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

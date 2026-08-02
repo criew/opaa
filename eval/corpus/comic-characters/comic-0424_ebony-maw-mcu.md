@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ebony Maw (MCU)
 
-Ebony Maw (MCU) is a bad-aligned male Alien character created by Marvel Comics. He has Blue eyes and No Hair hair and stands 178 cm tall and weighs 79 kg. His notable abilities include Element Control, Flight, Force Fields, Intelligence, Longevity, Magic, Marksmanship, Super Speed, Telekinesis and Teleportation. Rated across attributes, he scores 100 for intelligence, 10 for strength, 40 for speed, 35 for durability and 70 for combat, giving an overall score of 12.
+Ebony Maw (MCU) is a bad-aligned male Alien character created by Marvel Comics. He has Blue eyes and is bald and stands 178 cm tall and weighs 79 kg. His notable abilities include Element Control, Flight, Force Fields, Intelligence, Longevity, Magic, Marksmanship, Super Speed, Telekinesis and Teleportation. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 40 for speed, 35 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 12.

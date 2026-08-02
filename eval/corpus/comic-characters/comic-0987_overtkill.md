@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Overtkill
 
-Overtkill, real name Nicholas Rocca, is a bad-aligned male character created by Image Comics. His notable abilities include Enhanced Senses, Super Speed and Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Overtkill, real name Nicholas Rocca, is a bad-aligned male character created by Image Comics. His notable abilities include Enhanced Senses, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

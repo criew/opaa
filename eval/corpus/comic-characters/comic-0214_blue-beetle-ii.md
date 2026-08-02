@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Chicago, Illinois"
 first_appearance: "Captain Atom #83 (November 1966)"
 occupation: "Inventor, President of Kord Omniversal, Crimefighter"
-teams: "Black Lantern Corps"
+teams: ["Black Lantern Corps"]
 eye_color: "Blue"
 hair_color: "Auburn"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blue Beetle II
 
-Blue Beetle II, real name Theodore Kord, is a good-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Captain Atom #83 (November 1966). He works as an Inventor, President of Kord Omniversal, Crimefighter and is affiliated with Black Lantern Corps. He has Blue eyes and Auburn hair and stands 183 cm tall and weighs 83 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Energy Blasts, Enhanced Senses, Fire Resistance, Flight, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 55 for strength, 50 for speed, 60 for durability and 90 for combat, giving an overall score of 9.
+Blue Beetle II, real name Theodore Kord, is a good-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Captain Atom #83 (November 1966). He works as an Inventor, President of Kord Omniversal, Crimefighter and is affiliated with Black Lantern Corps. He has Blue eyes and Auburn hair and stands 183 cm tall and weighs 83 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Energy Blasts, Enhanced Senses, Fire Resistance, Flight, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 55 for strength, 50 for speed, 60 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 9.

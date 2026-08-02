@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cloud 9
 
-Cloud 9, real name Abigail "Abby" Boylen, is a good-aligned character created by Marvel Comics. They work as a Former Licensed super hero, sniper, instructor. Their notable abilities include Agility, Flight and Stealth. Rated across attributes, they score 90 for intelligence, 10 for strength, 60 for speed, 95 for durability and 50 for combat, giving an overall score of 9.
+Cloud 9, real name Abigail "Abby" Boylen, is a good-aligned character created by Marvel Comics. They work as a Former Licensed super hero, sniper, instructor. Their notable abilities include Agility, Flight and Stealth. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 60 for speed, 95 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 9.

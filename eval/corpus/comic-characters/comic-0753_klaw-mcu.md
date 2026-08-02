@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Klaw (MCU)
 
-Klaw (MCU), real name Ulysses Klaue, is a bad-aligned male Human character created by Marvel Comics, born in Wakanda and first appearing in Avengers Age Of Ultron. He has Blue eyes and Grey hair and stands 165 cm tall and weighs 69 kg. His notable abilities include Energy Manipulation, Marksmanship and Weapons Master. Rated across attributes, he scores 85 for intelligence, 15 for strength, 40 for speed, 40 for durability and 70 for combat, giving an overall score of 6.
+Klaw (MCU), real name Ulysses Klaue, is a bad-aligned male Human character created by Marvel Comics, born in Wakanda and first appearing in Avengers Age Of Ultron. He has Blue eyes and Grey hair and stands 165 cm tall and weighs 69 kg. His notable abilities include Energy Manipulation, Marksmanship and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 15 for strength, 40 for speed, 40 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

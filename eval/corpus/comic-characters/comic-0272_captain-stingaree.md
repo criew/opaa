@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Stingaree
 
-Captain Stingaree, real name Karl Courtney, is a bad-aligned male character created by DC Comics, first appearing in Detective Comics #460. He works as a Professional criminal. He has Blue eyes and No Hair hair and stands 188 cm tall and weighs 86 kg. His notable abilities include Agility, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 10 for durability and 75 for combat, giving an overall score of 7.
+Captain Stingaree, real name Karl Courtney, is a bad-aligned male character created by DC Comics, first appearing in Detective Comics #460. He works as a Professional criminal. He has Blue eyes and is bald and stands 188 cm tall and weighs 86 kg. His notable abilities include Agility, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 10 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 7.

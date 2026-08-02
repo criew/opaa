@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gru
 
-Gru, real name Felonius Gru, is a character created by Universal Studios. Their notable abilities include Agility, Endurance, Energy Blasts, Fire Control, Intelligence, Marksmanship, Peak Human Condition, Size Changing, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 100 for intelligence, 20 for strength, 50 for speed, 45 for durability and 90 for combat, giving an overall score of 10.
+Gru, real name Felonius Gru, is a character created by Universal Studios. Their notable abilities include Agility, Endurance, Energy Blasts, Fire Control, Intelligence, Marksmanship, Peak Human Condition, Size Changing, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 20 for strength, 50 for speed, 45 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 10.

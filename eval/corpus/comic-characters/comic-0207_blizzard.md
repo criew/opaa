@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blizzard
 
-Blizzard, real name Gregor Shapanka, is a bad-aligned male character created by Marvel Comics, first appearing in Tales of Suspense #45. He works as a Professional criminal, mercenary, engineer, former scientist. He has Brown hair. His notable abilities include Weapon-Based Powers. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Blizzard, real name Gregor Shapanka, is a bad-aligned male character created by Marvel Comics, first appearing in Tales of Suspense #45. He works as a Professional criminal, mercenary, engineer, former scientist. He has Brown hair. His notable abilities include Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

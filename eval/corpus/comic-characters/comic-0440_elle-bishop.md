@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Elle Bishop
 
-Elle Bishop is a bad-aligned female character created by NBC - Heroes, first appearing in Heroes S02E05 - Fight or Flight. She works as an Agent of the Company. She has Blue eyes and Blond hair. Her notable abilities include Electrokinesis. Rated across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 40 for durability and 40 for combat, giving an overall score of 5.
+Elle Bishop is a bad-aligned female character created by NBC - Heroes, first appearing in Heroes S02E05 - Fight or Flight. She works as an Agent of the Company. She has Blue eyes and Blond hair. Her notable abilities include Electrokinesis. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 40 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 5.

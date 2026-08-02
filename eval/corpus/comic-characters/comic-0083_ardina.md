@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: null
 first_appearance: "The Order #4"
 occupation: null
-teams: "Defenders, Heralds of Galactus"
+teams: ["Defenders", "Heralds of Galactus"]
 eye_color: "White"
 hair_color: "Orange"
 height_cm: 193
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ardina
 
-Ardina, real name Ardina, is a good-aligned female Alien character created by Marvel Comics, first appearing in The Order #4. She is affiliated with Defenders and Heralds of Galactus. She has White eyes and Orange hair and stands 193 cm tall and weighs 98 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Blasts, Energy Manipulation, Enhanced Senses, Flight, Heat Resistance, Invulnerability, Reflexes, Self-Sustenance, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 100 for strength, 100 for speed, 80 for durability and 25 for combat, giving an overall score of 21.
+Ardina, real name Ardina, is a good-aligned female Alien character created by Marvel Comics, first appearing in The Order #4. She is affiliated with Defenders and Heralds of Galactus. She has White eyes and Orange hair and stands 193 cm tall and weighs 98 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Blasts, Energy Manipulation, Enhanced Senses, Flight, Heat Resistance, Invulnerability, Reflexes, Self-Sustenance, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 100 for strength, 100 for speed, 80 for durability and 25 for combat. On a separate overall ranking scale, her overall score is 21.

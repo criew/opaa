@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fenris (MCU)
 
-Fenris (MCU), real name Fenris, is a female character created by Marvel Comics, first appearing in Thor: Ragnarok. Her notable abilities include Durability, Invulnerability and Super Strength. Rated across attributes, she scores 90 for intelligence, 65 for strength, 60 for speed, 65 for durability and 70 for combat, giving an overall score of 8.
+Fenris (MCU), real name Fenris, is a female character created by Marvel Comics, first appearing in Thor: Ragnarok. Her notable abilities include Durability, Invulnerability and Super Strength. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 65 for strength, 60 for speed, 65 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maximus (MCU)
 
-Maximus (MCU), real name Maximus Boltagon, is a bad-aligned male Human character created by Marvel Comics, born in Attilan and first appearing in Inhumans Season 1: Episode 1. He works as a King of Attilan. He has Blue eyes and Brown hair and stands 170 cm tall and weighs 68 kg. His notable abilities include Intelligence. Rated across attributes, he scores 95 for intelligence, 10 for strength, 20 for speed, 20 for durability and 75 for combat, giving an overall score of 8.
+Maximus (MCU), real name Maximus Boltagon, is a bad-aligned male Human character created by Marvel Comics, born in Attilan and first appearing in Inhumans Season 1: Episode 1. He works as a King of Attilan. He has Blue eyes and Brown hair and stands 170 cm tall and weighs 68 kg. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 20 for speed, 20 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 8.

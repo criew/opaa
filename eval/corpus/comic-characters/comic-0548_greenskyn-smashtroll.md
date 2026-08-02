@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Greenskyn Smashtroll
 
-Greenskyn Smashtroll, real name Unknown, is a good-aligned character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Invulnerability, Jump, Super Speed and Super Strength. Rated across attributes, they score 80 for intelligence, 100 for strength, 55 for speed, 60 for durability and 90 for combat, giving an overall score of 11.
+Greenskyn Smashtroll, real name Unknown, is a good-aligned character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Invulnerability, Jump, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, they score 80 for intelligence, 100 for strength, 55 for speed, 60 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 11.

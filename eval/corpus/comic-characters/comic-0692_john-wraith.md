@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # John Wraith
 
-John Wraith, real name John Wraith, is a good-aligned male character created by Marvel Comics, first appearing in Wolverine Vol 2 #60 (September, 1992). He works as a Former Spy, Government Operative, Mercenary, Soldier. He has Brown eyes and Black hair and stands 183 cm tall and weighs 88 kg. His notable abilities include Longevity and Teleportation. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 80 for combat, giving an overall score of 8.
+John Wraith, real name John Wraith, is a good-aligned male character created by Marvel Comics, first appearing in Wolverine Vol 2 #60 (September, 1992). He works as a Former Spy, Government Operative, Mercenary, Soldier. He has Brown eyes and Black hair and stands 183 cm tall and weighs 88 kg. His notable abilities include Longevity and Teleportation. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 8.

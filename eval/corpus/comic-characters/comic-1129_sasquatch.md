@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Edmonton, Alberta, Canada"
 first_appearance: null
 occupation: "Adventurer, bio-physicist, government operative; former college lecturer, professional football player"
-teams: "Alpha Flight"
+teams: ["Alpha Flight"]
 eye_color: "Red"
 hair_color: "Orange"
 height_cm: 305
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sasquatch
 
-Sasquatch, real name Walter Langkowski, is a good-aligned male character created by Marvel Comics, born in Edmonton, Alberta, Canada. He works as an Adventurer, bio-physicist, government operative; former college lecturer, professional football player and is affiliated with Alpha Flight. He has Red eyes and Orange hair and stands 305 cm tall and weighs 900 kg. His notable abilities include Agility, Durability, Enhanced Senses, Jump, Stamina and Super Strength. Rated across attributes, he scores 90 for intelligence, 80 for strength, 25 for speed, 55 for durability and 40 for combat, giving an overall score of 8.
+Sasquatch, real name Walter Langkowski, is a good-aligned male character created by Marvel Comics, born in Edmonton, Alberta, Canada. He works as an Adventurer, bio-physicist, government operative; former college lecturer, professional football player and is affiliated with Alpha Flight. He has Red eyes and Orange hair and stands 305 cm tall and weighs 900 kg. His notable abilities include Agility, Durability, Enhanced Senses, Jump, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 80 for strength, 25 for speed, 55 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 8.

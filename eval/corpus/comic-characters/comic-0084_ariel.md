@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ariel
 
-Ariel, real name Ariel, is a good-aligned female character created by Marvel Comics, first appearing in Fallen Angels #1 (1987). She works as a Leader, refugee alien; former alien mutant-hunter and hedonist. She has Purple eyes and Pink hair and stands 165 cm tall and weighs 59 kg. Her notable abilities include Telepathy and Teleportation. Rated across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat, giving an overall score of 6.
+Ariel, real name Ariel, is a good-aligned female character created by Marvel Comics, first appearing in Fallen Angels #1 (1987). She works as a Leader, refugee alien; former alien mutant-hunter and hedonist. She has Purple eyes and Pink hair and stands 165 cm tall and weighs 59 kg. Her notable abilities include Telepathy and Teleportation. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 6.

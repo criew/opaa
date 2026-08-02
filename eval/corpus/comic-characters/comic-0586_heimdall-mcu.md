@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Heimdall (MCU)
 
-Heimdall (MCU), real name Heimdall, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard and first appearing in Thor. He has Brown / Black hair and stands 178 cm tall and weighs 64 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Enhanced Hearing, Enhanced Senses, Longevity, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 100 for intelligence, 35 for strength, 85 for speed, 90 for durability and 90 for combat, giving an overall score of 20.
+Heimdall (MCU), real name Heimdall, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard and first appearing in Thor. He has Brown / Black hair and stands 178 cm tall and weighs 64 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Enhanced Hearing, Enhanced Senses, Longevity, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 35 for strength, 85 for speed, 90 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 20.

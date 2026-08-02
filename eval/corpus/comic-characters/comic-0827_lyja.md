@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lyja
 
-Lyja, real name Lyja, is a good-aligned female character created by Marvel Comics, first appearing in Fantastic Four #265 (as Alicia), Fantastic Four #357 (as Lyja). She works as a Former Skrull Liason Officer. She has Green eyes and Green hair. Her notable abilities include Energy Blasts, Shapeshifting and Size Changing. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Lyja, real name Lyja, is a good-aligned female character created by Marvel Comics, first appearing in Fantastic Four #265 (as Alicia), Fantastic Four #357 (as Lyja). She works as a Former Skrull Liason Officer. She has Green eyes and Green hair. Her notable abilities include Energy Blasts, Shapeshifting and Size Changing. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

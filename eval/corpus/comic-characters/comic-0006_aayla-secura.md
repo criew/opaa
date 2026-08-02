@@ -10,7 +10,7 @@ type_race: "Twi'lek"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Jedi Order"
+teams: ["Jedi Order"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Aayla Secura
 
-Aayla Secura, real name Aayla Secura, is a good-aligned female Twi'lek character created by George Lucas. She is affiliated with Jedi Order. Her notable abilities include Accelerated Healing and Agility. Rated across attributes, she scores 90 for intelligence, 40 for strength, 45 for speed, 55 for durability and 85 for combat, giving an overall score of 8.
+Aayla Secura, real name Aayla Secura, is a good-aligned female Twi'lek character created by George Lucas. She is affiliated with Jedi Order. Her notable abilities include Accelerated Healing and Agility. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 40 for strength, 45 for speed, 55 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 8.

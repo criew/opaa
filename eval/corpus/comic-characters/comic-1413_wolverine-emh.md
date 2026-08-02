@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wolverine (EMH)
 
-Wolverine (EMH), real name James Howlett, is a good-aligned male Human character created by Marvel Comics, first appearing in Meet Captain America. He has Blue eyes and Black hair. His notable abilities include Accelerated Healing, Agility, Durability, Longevity, Reflexes, Super Speed and Super Strength. Rated across attributes, he scores 85 for intelligence, 30 for strength, 50 for speed, 100 for durability and 100 for combat, giving an overall score of 7.
+Wolverine (EMH), real name James Howlett, is a good-aligned male Human character created by Marvel Comics, first appearing in Meet Captain America. He has Blue eyes and Black hair. His notable abilities include Accelerated Healing, Agility, Durability, Longevity, Reflexes, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 30 for strength, 50 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 7.

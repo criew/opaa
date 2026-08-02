@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Tornado
 
-Red Tornado, real name Lois Lane, is a good-aligned female Robot character created by DC Comics, first appearing in Worlds' Finest #0. She works as a Journalist. She has Gold eyes and No Hair hair. Her notable abilities include Agility, Durability, Element Control, Energy Constructs, Energy Manipulation, Flight, Intelligence, Invulnerability, Magic and Self-Sustenance. Rated across attributes, she scores 100 for intelligence, 100 for strength, 100 for speed, 85 for durability and 70 for combat, giving an overall score of 19.
+Red Tornado, real name Lois Lane, is a good-aligned female Robot character created by DC Comics, first appearing in Worlds' Finest #0. She works as a Journalist. She has Gold eyes and is bald. Her notable abilities include Agility, Durability, Element Control, Energy Constructs, Energy Manipulation, Flight, Intelligence, Invulnerability, Magic and Self-Sustenance. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 100 for strength, 100 for speed, 85 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 19.

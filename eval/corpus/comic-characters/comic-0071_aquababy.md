@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Aquaman #23 (October, 1965)"
 occupation: null
-teams: "Aquaman Family, Justice League Atlantis"
+teams: ["Aquaman Family", "Justice League Atlantis"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Aquababy
 
-Aquababy, real name Arthur Curry, Jr., is a good-aligned male character created by DC Comics, first appearing in Aquaman #23 (October, 1965). He is affiliated with Aquaman Family and Justice League Atlantis. He has Blue eyes and Blond hair. His notable abilities include Super Strength. Rated across attributes, he scores 60 for intelligence, 15 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 2.
+Aquababy, real name Arthur Curry, Jr., is a good-aligned male character created by DC Comics, first appearing in Aquaman #23 (October, 1965). He is affiliated with Aquaman Family and Justice League Atlantis. He has Blue eyes and Blond hair. His notable abilities include Super Strength. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 15 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 2.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arclight
 
-Arclight, real name Philippa Sontag, is a bad-aligned female character created by Marvel Comics, born in Vietnam and first appearing in (In shadow) Uncanny X-Men #210 (1986), (fully) X-Factor #10 (1986). She works as a Terrorist. She has Violet eyes and Purple hair and stands 173 cm tall and weighs 57 kg. Her notable abilities include Durability, Stamina and Super Strength. Rated across attributes, she scores 70 for intelligence, 65 for strength, 25 for speed, 40 for durability and 70 for combat, giving an overall score of 4.
+Arclight, real name Philippa Sontag, is a bad-aligned female character created by Marvel Comics, born in Vietnam and first appearing in (In shadow) Uncanny X-Men #210 (1986), (fully) X-Factor #10 (1986). She works as a Terrorist. She has Violet eyes and Purple hair and stands 173 cm tall and weighs 57 kg. Her notable abilities include Durability, Stamina and Super Strength. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 65 for strength, 25 for speed, 40 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 4.

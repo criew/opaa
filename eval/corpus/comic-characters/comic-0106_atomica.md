@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Atomica
 
-Atomica, real name Rhonda Pineda, is a bad-aligned female Human character created by DC Comics, first appearing in Aquaman Vol 7 #16. She works as a Student, criminal. She has Brown eyes and Brown hair and stands 157 cm tall and weighs 48 kg. Her notable abilities include Agility, Intelligence, Size Changing and Stealth. Rated across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 20 for durability and 70 for combat, giving an overall score of 5.
+Atomica, real name Rhonda Pineda, is a bad-aligned female Human character created by DC Comics, first appearing in Aquaman Vol 7 #16. She works as a Student, criminal. She has Brown eyes and Brown hair and stands 157 cm tall and weighs 48 kg. Her notable abilities include Agility, Intelligence, Size Changing and Stealth. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 20 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 5.

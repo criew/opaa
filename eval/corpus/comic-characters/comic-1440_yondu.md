@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: "Centauri-IV"
 first_appearance: "Marvel Super-Heroes #18 - Origin of the Guardians of the Galaxy"
 occupation: "Space Pirate,Adventurer"
-teams: "Marvel Knights, Guardians of the Galaxy, Defenders"
+teams: ["Marvel Knights", "Guardians of the Galaxy", "Defenders"]
 eye_color: "Red"
 hair_color: "Red"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Yondu
 
-Yondu, real name Yondu Udonta, is a neutral-aligned male Alien character created by Marvel Comics, born in Centauri-IV and first appearing in Marvel Super-Heroes #18 - Origin of the Guardians of the Galaxy. He works as a Space Pirate,Adventurer and is affiliated with Marvel Knights, Guardians of the Galaxy and Defenders. He has Red eyes and Red hair and stands 188 cm tall and weighs 95 kg. His notable abilities include Agility, Durability, Intelligence, Marksmanship, Stamina, Stealth, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 75 for intelligence, 15 for strength, 30 for speed, 50 for durability and 80 for combat, giving an overall score of 5.
+Yondu, real name Yondu Udonta, is a neutral-aligned male Alien character created by Marvel Comics, born in Centauri-IV and first appearing in Marvel Super-Heroes #18 - Origin of the Guardians of the Galaxy. He works as a Space Pirate,Adventurer and is affiliated with Marvel Knights, Guardians of the Galaxy and Defenders. He has Red eyes and Red hair and stands 188 cm tall and weighs 95 kg. His notable abilities include Agility, Durability, Intelligence, Marksmanship, Stamina, Stealth, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 15 for strength, 30 for speed, 50 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 5.

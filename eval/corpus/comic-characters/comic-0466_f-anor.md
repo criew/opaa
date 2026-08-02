@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fëanor
 
-Fëanor is a good-aligned male Elf character created by J. R. R. Tolkien, born in Valinor and first appearing in The Silmarillion. He has Black hair. His notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Fire Resistance, Immortality, Intelligence, Magic, Reflexes, Stamina, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 100 for intelligence, 95 for strength, 80 for speed, 70 for durability and 100 for combat, giving an overall score of 18.
+Fëanor is a good-aligned male Elf character created by J. R. R. Tolkien, born in Valinor and first appearing in The Silmarillion. He has Black hair. His notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Fire Resistance, Immortality, Intelligence, Magic, Reflexes, Stamina, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 95 for strength, 80 for speed, 70 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 18.

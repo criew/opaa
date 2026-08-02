@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arthur Dayne
 
-Arthur Dayne is a good-aligned male Mutant character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 1: A Game of Thrones. He works as a Kingsguard. His notable abilities include Dexterity, Reflexes, Stamina and Weapons Master. Rated across attributes, he scores 70 for intelligence, 10 for strength, 50 for speed, 35 for durability and 100 for combat, giving an overall score of 4.
+Arthur Dayne is a good-aligned male Mutant character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 1: A Game of Thrones. He works as a Kingsguard. His notable abilities include Dexterity, Reflexes, Stamina and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 50 for speed, 35 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 4.

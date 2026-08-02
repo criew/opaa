@@ -10,7 +10,7 @@ type_race: "Bolovaxian"
 place_of_birth: "Bolovax Vik"
 first_appearance: "Green Lantern Corps #201 (June, 1986)"
 occupation: null
-teams: "Green Lantern Corps"
+teams: ["Green Lantern Corps"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: 234
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kilowog
 
-Kilowog is a good-aligned male Bolovaxian character created by DC Comics, born in Bolovax Vik and first appearing in Green Lantern Corps #201 (June, 1986). He is affiliated with Green Lantern Corps. He has Red eyes and No Hair hair and stands 234 cm tall and weighs 324 kg. His notable abilities include Accelerated Healing, Durability, Stamina, Super Strength and Telepathy. Rated across attributes, he scores 90 for intelligence, 90 for strength, 55 for speed, 40 for durability and 80 for combat, giving an overall score of 15.
+Kilowog is a good-aligned male Bolovaxian character created by DC Comics, born in Bolovax Vik and first appearing in Green Lantern Corps #201 (June, 1986). He is affiliated with Green Lantern Corps. He has Red eyes and is bald and stands 234 cm tall and weighs 324 kg. His notable abilities include Accelerated Healing, Durability, Stamina, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 90 for strength, 55 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 15.

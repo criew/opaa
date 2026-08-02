@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Darkman
 
-Darkman, real name Peyton Westlake, is a good-aligned male Human character created by Universal Studios, first appearing in Darkman (August 24, 1990). He works as a Scientist. His notable abilities include Durability, Intelligence, Stamina and Super Strength. Rated across attributes, he scores 95 for intelligence, 15 for strength, 20 for speed, 60 for durability and 30 for combat, giving an overall score of 8.
+Darkman, real name Peyton Westlake, is a good-aligned male Human character created by Universal Studios, first appearing in Darkman (August 24, 1990). He works as a Scientist. His notable abilities include Durability, Intelligence, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 15 for strength, 20 for speed, 60 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 8.

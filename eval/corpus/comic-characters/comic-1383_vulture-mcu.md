@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vulture (MCU)
 
-Vulture (MCU), real name Adrian Toomes, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spiderman homecoming. He has Black eyes and No Hair hair and stands 168 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Endurance, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Peak Human Condition and Super Strength. Rated across attributes, he scores 85 for intelligence, 45 for strength, 60 for speed, 55 for durability and 75 for combat, giving an overall score of 7.
+Vulture (MCU), real name Adrian Toomes, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spiderman homecoming. He has Black eyes and is bald and stands 168 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Endurance, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Peak Human Condition and Super Strength. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 45 for strength, 60 for speed, 55 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 7.

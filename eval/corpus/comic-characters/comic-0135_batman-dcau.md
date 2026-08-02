@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batman (DCAU)
 
-Batman (DCAU), real name Bruce Wayne, is a good-aligned male Human character created by DC Comics, born in Gotham city and first appearing in "The Cat and the Claw, Part I". He works as a Businessman. He has Blue eyes and Black hair and stands 168 cm tall and weighs 50 kg. His notable abilities include Intelligence, Peak Human Condition, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 100 for combat, giving an overall score of 9.
+Batman (DCAU), real name Bruce Wayne, is a good-aligned male Human character created by DC Comics, born in Gotham city and first appearing in "The Cat and the Claw, Part I". He works as a Businessman. He has Blue eyes and Black hair and stands 168 cm tall and weighs 50 kg. His notable abilities include Intelligence, Peak Human Condition, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 9.

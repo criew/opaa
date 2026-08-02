@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Curse
 
-Curse, real name Phillip Krahn, is a bad-aligned male character created by Image Comics, first appearing in Spawn #25. His notable abilities include Energy Blasts, Intelligence and Magic. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Curse, real name Phillip Krahn, is a bad-aligned male character created by Image Comics, first appearing in Spawn #25. His notable abilities include Energy Blasts, Intelligence and Magic. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

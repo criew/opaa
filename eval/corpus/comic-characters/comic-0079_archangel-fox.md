@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Archangel (FOX)
 
-Archangel (FOX), real name Warren Kenneth Worthington III, is a character created by Marvel Comics. Their notable abilities include Flight. Rated across attributes, they score 95 for intelligence, 20 for strength, 60 for speed, 75 for durability and 70 for combat, giving an overall score of 10.
+Archangel (FOX), real name Warren Kenneth Worthington III, is a character created by Marvel Comics. Their notable abilities include Flight. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 20 for strength, 60 for speed, 75 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 10.

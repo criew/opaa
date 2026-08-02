@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Attuma
 
-Attuma, real name Attuma, is a character created by Marvel Comics. Their notable abilities include Agility, Cold Resistance, Durability, Endurance, Enhanced Hearing, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Reflexes, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 95 for intelligence, 65 for strength, 55 for speed, 75 for durability and 80 for combat, giving an overall score of 12.
+Attuma, real name Attuma, is a character created by Marvel Comics. Their notable abilities include Agility, Cold Resistance, Durability, Endurance, Enhanced Hearing, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Reflexes, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 65 for strength, 55 for speed, 75 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 12.

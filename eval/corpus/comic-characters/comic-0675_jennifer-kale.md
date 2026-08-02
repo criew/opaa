@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Citrusville, Florida"
 first_appearance: "(Adventures into) Fear#11 (1972)"
 occupation: "Sorceress, student"
-teams: "Midnight Sons"
+teams: ["Midnight Sons"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jennifer Kale
 
-Jennifer Kale, real name Jennifer Kale, is a good-aligned female character created by Marvel Comics, born in Citrusville, Florida and first appearing in (Adventures into) Fear#11 (1972). She works as a Sorceress, student and is affiliated with Midnight Sons. She has Blue eyes and Blond hair and stands 168 cm tall and weighs 55 kg. Her notable abilities include Force Fields and Magic. Rated across attributes, she scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat, giving an overall score of 8.
+Jennifer Kale, real name Jennifer Kale, is a good-aligned female character created by Marvel Comics, born in Citrusville, Florida and first appearing in (Adventures into) Fear#11 (1972). She works as a Sorceress, student and is affiliated with Midnight Sons. She has Blue eyes and Blond hair and stands 168 cm tall and weighs 55 kg. Her notable abilities include Force Fields and Magic. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Music Meister (CW)
 
-Music Meister (CW), real name Unknown, is a neutral-aligned male character created by DC Comics, first appearing in Supergirl Season 2: Episode 16. He works as an Interdimensional Do-gooder, Author. He has Brown eyes and Brown hair and stands 173 cm tall and weighs 68 kg. His notable abilities include Intelligence and Teleportation. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 60 for combat, giving an overall score of 15.
+Music Meister (CW), real name Unknown, is a neutral-aligned male character created by DC Comics, first appearing in Supergirl Season 2: Episode 16. He works as an Interdimensional Do-gooder, Author. He has Brown eyes and Brown hair and stands 173 cm tall and weighs 68 kg. His notable abilities include Intelligence and Teleportation. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 15.

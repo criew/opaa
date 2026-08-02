@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Parasite (CW)
 
-Parasite (CW), real name Rudy Jones, is a bad-aligned male character, born in Earth-38 and first appearing in Supergirl Season 2: Episode 6. He works as a Scientist. He has No Hair hair. His notable abilities include Durability, Energy Absorption, Intelligence, Invulnerability, Jump, Size Changing, Stamina and Super Strength. Rated across attributes, he scores 85 for intelligence, 80 for strength, 60 for speed, 95 for durability and 70 for combat, giving an overall score of 10.
+Parasite (CW), real name Rudy Jones, is a bad-aligned male character, born in Earth-38 and first appearing in Supergirl Season 2: Episode 6. He works as a Scientist. He is bald. His notable abilities include Durability, Energy Absorption, Intelligence, Invulnerability, Jump, Size Changing, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 80 for strength, 60 for speed, 95 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 10.

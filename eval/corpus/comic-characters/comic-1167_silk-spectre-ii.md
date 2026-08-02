@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Watchmen, The Crimebusters"
+teams: ["Watchmen", "The Crimebusters"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Silk Spectre II
 
-Silk Spectre II, real name Laurel Juspeczyk, is a good-aligned female character created by DC Comics. She is affiliated with Watchmen and The Crimebusters. Her notable abilities include Agility, Dexterity, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 75 for intelligence, 35 for strength, 45 for speed, 35 for durability and 95 for combat, giving an overall score of 5.
+Silk Spectre II, real name Laurel Juspeczyk, is a good-aligned female character created by DC Comics. She is affiliated with Watchmen and The Crimebusters. Her notable abilities include Agility, Dexterity, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 35 for strength, 45 for speed, 35 for durability and 95 for combat. On a separate overall ranking scale, her overall score is 5.

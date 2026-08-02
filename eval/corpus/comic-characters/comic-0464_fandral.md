@@ -10,7 +10,7 @@ type_race: "Asgardian"
 place_of_birth: "Asgard"
 first_appearance: "Journey into Mystery #119 (August, 1965)"
 occupation: "Adventurer, warrior, swordsman, former bodyguard"
-teams: "Warriors Three"
+teams: ["Warriors Three"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 193
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fandral
 
-Fandral is a male Asgardian character created by Marvel Comics, born in Asgard and first appearing in Journey into Mystery #119 (August, 1965). He works as an Adventurer, warrior, swordsman, former bodyguard and is affiliated with Warriors Three. He has Blue eyes and Blond hair and stands 193 cm tall and weighs 263 kg. His notable abilities include Accelerated Healing, Agility, Heat Resistance, Longevity, Regeneration, Stamina, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 95 for intelligence, 55 for strength, 55 for speed, 50 for durability and 95 for combat, giving an overall score of 10.
+Fandral is a male Asgardian character created by Marvel Comics, born in Asgard and first appearing in Journey into Mystery #119 (August, 1965). He works as an Adventurer, warrior, swordsman, former bodyguard and is affiliated with Warriors Three. He has Blue eyes and Blond hair and stands 193 cm tall and weighs 263 kg. His notable abilities include Accelerated Healing, Agility, Heat Resistance, Longevity, Regeneration, Stamina, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 55 for strength, 55 for speed, 50 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 10.

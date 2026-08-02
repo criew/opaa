@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Anti-Spawn
 
-Anti-Spawn, real name The Redeemer, is a bad-aligned male character created by Image Comics, born in Orbital Angel Station and first appearing in Spawn #16. His notable abilities include Agility, Durability, Element Control, Energy Blasts, Energy Manipulation, Fire Control, Invulnerability, Magic, Mind Control, Reflexes, Stamina, Super Speed, Super Strength and Teleportation. Rated across attributes, he scores 95 for intelligence, 100 for strength, 55 for speed, 100 for durability and 100 for combat, giving an overall score of 20.
+Anti-Spawn, real name The Redeemer, is a bad-aligned male character created by Image Comics, born in Orbital Angel Station and first appearing in Spawn #16. His notable abilities include Agility, Durability, Element Control, Energy Blasts, Energy Manipulation, Fire Control, Invulnerability, Magic, Mind Control, Reflexes, Stamina, Super Speed, Super Strength and Teleportation. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 100 for strength, 55 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 20.

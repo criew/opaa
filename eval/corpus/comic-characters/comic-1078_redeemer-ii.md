@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Redeemer II
 
-Redeemer II, real name Phil Timper, is a bad-aligned male character created by Image Comics, first appearing in Spawn #31. His notable abilities include Durability, Energy Blasts, Energy Manipulation, Stamina, Super Strength and Teleportation. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Redeemer II, real name Phil Timper, is a bad-aligned male character created by Image Comics, first appearing in Spawn #31. His notable abilities include Durability, Energy Blasts, Energy Manipulation, Stamina, Super Strength and Teleportation. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

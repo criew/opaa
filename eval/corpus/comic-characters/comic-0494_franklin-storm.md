@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Franklin Storm
 
-Franklin Storm, real name Dr. Franklin Storm, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in FANTASTIC FOUR #31. They work as a Surgeon. They have Blue eyes and Grey hair and stand 188 cm tall and weigh 92 kg. Rated across attributes, they score 70 for intelligence, 10 for strength, 0 for speed, 0 for durability and 10 for combat, giving an overall score of 3.
+Franklin Storm, real name Dr. Franklin Storm, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in FANTASTIC FOUR #31. They work as a Surgeon. They have Blue eyes and Grey hair and stand 188 cm tall and weigh 92 kg. Rated on a 0-100 scale across attributes, they score 70 for intelligence, 10 for strength, 0 for speed, 0 for durability and 10 for combat. On a separate overall ranking scale, their overall score is 3.

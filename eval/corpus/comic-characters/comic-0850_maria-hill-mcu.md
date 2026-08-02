@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maria Hill (MCU)
 
-Maria Hill (MCU), real name Maria Hill, is a good-aligned female Human character created by Marvel Comics, first appearing in Agents of S.H.I.E.L.D. She works as a S.H.i.E.L.D agent. She has Green eyes and Brown hair and stands 163 cm tall and weighs 69 kg. Her notable abilities include Agility, Intelligence, Marksmanship and Weapons Master. Rated across attributes, she scores 90 for intelligence, 20 for strength, 20 for speed, 25 for durability and 70 for combat, giving an overall score of 7.
+Maria Hill (MCU), real name Maria Hill, is a good-aligned female Human character created by Marvel Comics, first appearing in Agents of S.H.I.E.L.D. She works as a S.H.i.E.L.D agent. She has Green eyes and Brown hair and stands 163 cm tall and weighs 69 kg. Her notable abilities include Agility, Intelligence, Marksmanship and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 20 for strength, 20 for speed, 25 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 7.

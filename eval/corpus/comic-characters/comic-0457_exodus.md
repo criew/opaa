@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: null
 first_appearance: "X-Factor #92 (July, 1993)"
 occupation: "Terrorist, would-be conqueror, Former leader of the Acolytes, Crusader"
-teams: "Acolytes"
+teams: ["Acolytes"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Exodus
 
-Exodus, real name Bennet du Paris, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Factor #92 (July, 1993). He works as a Terrorist, would-be conqueror, Former leader of the Acolytes, Crusader and is affiliated with Acolytes. He has Blue eyes and Black hair and stands 183 cm tall and weighs 88 kg. His notable abilities include Accelerated Healing, Energy Blasts, Flight, Illusions, Regeneration, Telekinesis, Telepathy and Teleportation. Rated across attributes, he scores 80 for intelligence, 80 for strength, 30 for speed, 30 for durability and 70 for combat, giving an overall score of 13.
+Exodus, real name Bennet du Paris, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Factor #92 (July, 1993). He works as a Terrorist, would-be conqueror, Former leader of the Acolytes, Crusader and is affiliated with Acolytes. He has Blue eyes and Black hair and stands 183 cm tall and weighs 88 kg. His notable abilities include Accelerated Healing, Energy Blasts, Flight, Illusions, Regeneration, Telekinesis, Telepathy and Teleportation. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 80 for strength, 30 for speed, 30 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 13.

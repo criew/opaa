@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Niki Sanders
 
-Niki Sanders, real name Nicole Sanders, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S01E01 - Genesis. She works as a Former casino worker and online webcam operator; currently an agent of the Company. She has Blue eyes and Blond hair. Her notable abilities include Super Strength. Rated across attributes, she scores 80 for intelligence, 50 for strength, 35 for speed, 30 for durability and 55 for combat, giving an overall score of 6.
+Niki Sanders, real name Nicole Sanders, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S01E01 - Genesis. She works as a Former casino worker and online webcam operator; currently an agent of the Company. She has Blue eyes and Blond hair. Her notable abilities include Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 50 for strength, 35 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, her overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Doctor Double X
 
-Doctor Double X, real name Dr. Simon Ecks, is a bad-aligned character created by DC Comics. Their notable abilities include Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Intelligence, Super Speed and Super Strength. Rated across attributes, they score 85 for intelligence, 40 for strength, 65 for speed, 60 for durability and 65 for combat, giving an overall score of 7.
+Doctor Double X, real name Dr. Simon Ecks, is a bad-aligned character created by DC Comics. Their notable abilities include Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Intelligence, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 40 for strength, 65 for speed, 60 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 7.

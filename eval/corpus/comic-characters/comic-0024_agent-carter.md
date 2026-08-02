@@ -13,7 +13,7 @@ occupation: "Shield agent"
 teams: null
 eye_color: "Blue"
 hair_color: "Blond"
-height_cm: 0
+height_cm: null
 weight_kg: 45
 intelligence_score: 95
 strength_score: 10
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Agent Carter
 
-Agent Carter, real name Carter, is a good-aligned male Human character created by Marvel Comics, born in Richmond, Virginia, USA and first appearing in Tales of Suspense #75 (March, 1966). He works as a Shield agent. He has Blue eyes and Blond hair and weighs 45 kg. His notable abilities include Agility and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 20 for durability and 75 for combat, giving an overall score of 8.
+Agent Carter, real name Carter, is a good-aligned male Human character created by Marvel Comics, born in Richmond, Virginia, USA and first appearing in Tales of Suspense #75 (March, 1966). He works as a Shield agent. He has Blue eyes and Blond hair and weighs 45 kg. His notable abilities include Agility and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 20 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 8.

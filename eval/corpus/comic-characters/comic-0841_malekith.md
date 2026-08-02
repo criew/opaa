@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Malekith
 
-Malekith, real name Malekith, is a bad-aligned male character created by Marvel Comics, born in Svartalfheim. His notable abilities include Force Fields, Regeneration, Super Speed and Super Strength. Rated across attributes, he scores 95 for intelligence, 85 for strength, 50 for speed, 80 for durability and 50 for combat, giving an overall score of 15.
+Malekith, real name Malekith, is a bad-aligned male character created by Marvel Comics, born in Svartalfheim. His notable abilities include Force Fields, Regeneration, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 85 for strength, 50 for speed, 80 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 15.

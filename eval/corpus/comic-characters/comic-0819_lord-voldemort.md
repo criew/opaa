@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Harry Potter and the Philosopher Stone"
 occupation: null
-teams: "Slytherin"
+teams: ["Slytherin"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lord Voldemort
 
-Lord Voldemort, real name Tom Riddle, is a bad-aligned male Human character created by J. K. Rowling, first appearing in Harry Potter and the Philosopher Stone. He is affiliated with Slytherin. He has Red eyes and No Hair hair. His notable abilities include Accelerated Healing, Energy Blasts, Energy Constructs, Fire Control, Flight, Force Fields, Intelligence, Magic, Reality Warping, Telekinesis, Telepathy and Teleportation. Rated across attributes, he scores 100 for intelligence, 5 for strength, 15 for speed, 15 for durability and 85 for combat, giving an overall score of 23.
+Lord Voldemort, real name Tom Riddle, is a bad-aligned male Human character created by J. K. Rowling, first appearing in Harry Potter and the Philosopher Stone. He is affiliated with Slytherin. He has Red eyes and is bald. His notable abilities include Accelerated Healing, Energy Blasts, Energy Constructs, Fire Control, Flight, Force Fields, Intelligence, Magic, Reality Warping, Telekinesis, Telepathy and Teleportation. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 5 for strength, 15 for speed, 15 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 23.

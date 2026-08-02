@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Neji
 
-Neji, real name Neji Hyuga, is a good-aligned male Human character created by Shueisha, born in Konohagakure and first appearing in Volume #4, Naruto Chapter #36. He works as a Ninja. He has White eyes and Brown hair and stands 170 cm tall and weighs 54 kg. His notable abilities include Agility, Marksmanship, Reflexes, Stamina and Stealth. Rated across attributes, he scores 90 for intelligence, 10 for strength, 60 for speed, 35 for durability and 100 for combat, giving an overall score of 8.
+Neji, real name Neji Hyuga, is a good-aligned male Human character created by Shueisha, born in Konohagakure and first appearing in Volume #4, Naruto Chapter #36. He works as a Ninja. He has White eyes and Brown hair and stands 170 cm tall and weighs 54 kg. His notable abilities include Agility, Marksmanship, Reflexes, Stamina and Stealth. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 60 for speed, 35 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 8.

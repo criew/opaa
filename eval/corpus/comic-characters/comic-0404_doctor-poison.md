@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: null
 occupation: "Military · Mercenary · Scientist · Terrorist"
-teams: "Villainy, Inc."
+teams: ["Villainy, Inc."]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Doctor Poison
 
-Doctor Poison, real name Marina Maru, is a bad-aligned female Human character created by DC Comics. She works as a Military · Mercenary · Scientist · Terrorist and is affiliated with Villainy, Inc.. Her notable abilities include Element Control, Intelligence, Toxin and Disease Resistance and Weapons Master. Rated across attributes, she scores 100 for intelligence, 10 for strength, 20 for speed, 20 for durability and 70 for combat, giving an overall score of 9.
+Doctor Poison, real name Marina Maru, is a bad-aligned female Human character created by DC Comics. She works as a Military · Mercenary · Scientist · Terrorist and is affiliated with Villainy, Inc. Her notable abilities include Element Control, Intelligence, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 10 for strength, 20 for speed, 20 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 9.

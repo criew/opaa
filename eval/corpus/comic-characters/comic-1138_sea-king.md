@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sea King
 
-Sea King, real name Unknown, is a bad-aligned male Atlantean character created by DC Comics, first appearing in Justice League Vol 2 #23. He works as a Criminal. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Agility, Element Control, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 75 for strength, 80 for speed, 80 for durability and 100 for combat, giving an overall score of 12.
+Sea King, real name Unknown, is a bad-aligned male Atlantean character created by DC Comics, first appearing in Justice League Vol 2 #23. He works as a Criminal. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Agility, Element Control, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 75 for strength, 80 for speed, 80 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 12.

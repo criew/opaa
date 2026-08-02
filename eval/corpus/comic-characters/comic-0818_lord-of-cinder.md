@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lord Of Cinder
 
-Lord Of Cinder, real name Gwyn, is a character created by Namco. Their notable abilities include Agility, Dexterity, Durability, Electrokinesis, Element Control, Energy Manipulation, Fire Control, Fire Resistance, Heat Resistance, Immortality, Intelligence, Invulnerability, Magic, Peak Human Condition, Stamina, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 85 for intelligence, 60 for strength, 50 for speed, 75 for durability and 80 for combat, giving an overall score of 12.
+Lord Of Cinder, real name Gwyn, is a character created by Namco. Their notable abilities include Agility, Dexterity, Durability, Electrokinesis, Element Control, Energy Manipulation, Fire Control, Fire Resistance, Heat Resistance, Immortality, Intelligence, Invulnerability, Magic, Peak Human Condition, Stamina, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 60 for strength, 50 for speed, 75 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 12.

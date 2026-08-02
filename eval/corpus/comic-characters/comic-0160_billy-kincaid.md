@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Billy Kincaid
 
-Billy Kincaid, real name Billy Kincaid, is a bad-aligned male character created by Image Comics, first appearing in Spawn #5 (October 1992). Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Billy Kincaid, real name Billy Kincaid, is a bad-aligned male character created by Image Comics, first appearing in Spawn #5 (October 1992). Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

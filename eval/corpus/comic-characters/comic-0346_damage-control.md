@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Damage Control
 
-Damage Control is a good-aligned character created by Marvel Comics. Their notable abilities include Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 80 for intelligence, 5 for strength, 15 for speed, 30 for durability and 30 for combat, giving an overall score of 5.
+Damage Control is a good-aligned character created by Marvel Comics. Their notable abilities include Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 80 for intelligence, 5 for strength, 15 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, their overall score is 5.

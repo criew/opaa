@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Heroes For Hire"
+teams: ["Heroes For Hire"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # All-father Hercules
 
-All-father Hercules, real name Hercules, is a character created by Marvel Comics. They are affiliated with Heroes For Hire. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Electrokinesis, Element Control, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Heat Resistance, Immortality, Intelligence, Invulnerability, Jump, Marksmanship, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Size Changing, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of 50.
+All-father Hercules, real name Hercules, is a character created by Marvel Comics. They are affiliated with Heroes For Hire. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Electrokinesis, Element Control, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Heat Resistance, Immortality, Intelligence, Invulnerability, Jump, Marksmanship, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Size Changing, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 50.

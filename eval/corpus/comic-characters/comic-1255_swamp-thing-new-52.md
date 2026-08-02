@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Swamp Thing (New 52)
 
-Swamp Thing (New 52), real name Alec Holland, is a good-aligned character created by DC Comics, first appearing in Flashpoint Vol 2 #5. They have Red eyes and No Hair hair. Their notable abilities include Accelerated Healing, Durability, Element Control, Immortality, Intelligence, Longevity, Regeneration, Self-Sustenance, Size Changing, Stealth and Super Strength. Rated across attributes, they score 60 for intelligence, 95 for strength, 30 for speed, 100 for durability and 55 for combat, giving an overall score of 19.
+Swamp Thing (New 52), real name Alec Holland, is a good-aligned character created by DC Comics, first appearing in Flashpoint Vol 2 #5. They have Red eyes and are bald. Their notable abilities include Accelerated Healing, Durability, Element Control, Immortality, Intelligence, Longevity, Regeneration, Self-Sustenance, Size Changing, Stealth and Super Strength. Rated on a 0-100 scale across attributes, they score 60 for intelligence, 95 for strength, 30 for speed, 100 for durability and 55 for combat. On a separate overall ranking scale, their overall score is 19.

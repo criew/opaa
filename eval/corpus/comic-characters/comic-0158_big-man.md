@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Big Man
 
-Big Man, real name Frederick Foswell, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man # 10 (1964). He works as a Reporter, professional criminal. He has Blue eyes and Brown hair and stands 165 cm tall and weighs 71 kg. His notable abilities include Marksmanship. Rated across attributes, he scores 90 for intelligence, 10 for strength, 25 for speed, 30 for durability and 70 for combat, giving an overall score of 6.
+Big Man, real name Frederick Foswell, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man # 10 (1964). He works as a Reporter, professional criminal. He has Blue eyes and Brown hair and stands 165 cm tall and weighs 71 kg. His notable abilities include Marksmanship. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 25 for speed, 30 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

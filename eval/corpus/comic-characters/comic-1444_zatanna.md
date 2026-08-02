@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Hawkman #4"
 occupation: null
-teams: "Seven Soldiers of Victory, Sentinels of Magic, Young Justice, Justice League, Justice League of America"
+teams: ["Seven Soldiers of Victory", "Sentinels of Magic", "Young Justice", "Justice League", "Justice League of America"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Zatanna
 
-Zatanna, real name Zatanna Zatara, is a good-aligned female Human character created by DC Comics, first appearing in Hawkman #4. She is affiliated with Seven Soldiers of Victory, Sentinels of Magic, Young Justice, Justice League and Justice League of America. She has Blue eyes and Black hair and stands 170 cm tall and weighs 57 kg. Her notable abilities include Fire Control, Magic and Telepathy. Rated across attributes, she scores 90 for intelligence, 10 for strength, 25 for speed, 30 for durability and 55 for combat, giving an overall score of 10.
+Zatanna, real name Zatanna Zatara, is a good-aligned female Human character created by DC Comics, first appearing in Hawkman #4. She is affiliated with Seven Soldiers of Victory, Sentinels of Magic, Young Justice, Justice League and Justice League of America. She has Blue eyes and Black hair and stands 170 cm tall and weighs 57 kg. Her notable abilities include Fire Control, Magic and Telepathy. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 25 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, her overall score is 10.

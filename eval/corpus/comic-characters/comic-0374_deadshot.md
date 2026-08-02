@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Batman #59 (June, 1950)"
 occupation: null
-teams: "Super Buddies, Extreme Justice, Living Assault Weapons, Minutemen, Suicide Squad, The Society, Secret Six"
+teams: ["Super Buddies", "Extreme Justice", "Living Assault Weapons", "Minutemen", "Suicide Squad", "The Society", "Secret Six"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Deadshot
 
-Deadshot, real name Floyd Lawton, is a bad-aligned male Human character created by DC Comics, first appearing in Batman #59 (June, 1950). He is affiliated with Super Buddies, Extreme Justice, Living Assault Weapons, Minutemen, Suicide Squad, The Society and Secret Six. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 91 kg. His notable abilities include Marksmanship, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 75 for intelligence, 10 for strength, 25 for speed, 30 for durability and 80 for combat, giving an overall score of 5.
+Deadshot, real name Floyd Lawton, is a bad-aligned male Human character created by DC Comics, first appearing in Batman #59 (June, 1950). He is affiliated with Super Buddies, Extreme Justice, Living Assault Weapons, Minutemen, Suicide Squad, The Society and Secret Six. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 91 kg. His notable abilities include Marksmanship, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 25 for speed, 30 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 5.

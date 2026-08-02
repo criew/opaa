@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Laufey (MCU)
 
-Laufey (MCU), real name Laufey, is a bad-aligned male Frost Giant character created by Marvel Comics, first appearing in Thor. He has Red eyes and stands 300 cm tall and weighs 89 kg. His notable abilities include Cold Resistance, Durability, Invulnerability, Longevity and Super Strength. Rated across attributes, he scores 80 for intelligence, 30 for strength, 60 for speed, 80 for durability and 75 for combat, giving an overall score of 7.
+Laufey (MCU), real name Laufey, is a bad-aligned male Frost Giant character created by Marvel Comics, first appearing in Thor. He has Red eyes and stands 300 cm tall and weighs 89 kg. His notable abilities include Cold Resistance, Durability, Invulnerability, Longevity and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 30 for strength, 60 for speed, 80 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 7.

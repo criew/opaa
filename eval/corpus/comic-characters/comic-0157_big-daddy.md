@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Big Daddy
 
-Big Daddy, real name Damon Macready, is a good-aligned male character created by Icon Comics, first appearing in Kick-Ass #4. His notable abilities include Stamina. Rated across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 30 for durability and 65 for combat, giving an overall score of 3.
+Big Daddy, real name Damon Macready, is a good-aligned male character created by Icon Comics, first appearing in Kick-Ass #4. His notable abilities include Stamina. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 30 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 3.

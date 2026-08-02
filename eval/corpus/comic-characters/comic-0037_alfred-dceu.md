@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Alfred (DCEU)
 
-Alfred (DCEU), real name Alfred Pennyworth, is a good-aligned male Human character created by DC Comics, born in Gotham City and first appearing in Batman vs Superman - Dawn of Justice. His notable abilities include Intelligence, Marksmanship and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 20 for combat, giving an overall score of 7.
+Alfred (DCEU), real name Alfred Pennyworth, is a good-aligned male Human character created by DC Comics, born in Gotham City and first appearing in Batman vs Superman - Dawn of Justice. His notable abilities include Intelligence, Marksmanship and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 7.

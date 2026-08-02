@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bullseye (Wild West)
 
-Bullseye (Wild West), real name Lester, is a bad-aligned character created by Marvel Comics. Their notable abilities include Agility, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 85 for intelligence, 10 for strength, 20 for speed, 15 for durability and 85 for combat, giving an overall score of 5.
+Bullseye (Wild West), real name Lester, is a bad-aligned character created by Marvel Comics. Their notable abilities include Agility, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 10 for strength, 20 for speed, 15 for durability and 85 for combat. On a separate overall ranking scale, their overall score is 5.

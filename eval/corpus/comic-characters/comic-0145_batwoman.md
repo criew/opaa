@@ -10,10 +10,10 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Huntress Vol 3 #1 (December, 2011)"
 occupation: "Adventurer"
-teams: "Batman Family"
+teams: ["Batman Family"]
 eye_color: "Blue"
 hair_color: "Black"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 90
 strength_score: 15
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batwoman
 
-Batwoman, real name Helena Wayne, is a good-aligned female Human character created by DC Comics, first appearing in Huntress Vol 3 #1 (December, 2011). She works as an Adventurer and is affiliated with Batman Family. She has Blue eyes and Black hair. Her notable abilities include Dexterity, Marksmanship, Toxin and Disease Resistance and Weapons Master. Rated across attributes, she scores 90 for intelligence, 15 for strength, 30 for speed, 30 for durability and 85 for combat, giving an overall score of 7.
+Batwoman, real name Helena Wayne, is a good-aligned female Human character created by DC Comics, first appearing in Huntress Vol 3 #1 (December, 2011). She works as an Adventurer and is affiliated with Batman Family. She has Blue eyes and Black hair. Her notable abilities include Dexterity, Marksmanship, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 15 for strength, 30 for speed, 30 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 7.

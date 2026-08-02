@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Snake-Eyes
 
-Snake-Eyes is a bad-aligned male Animal character created by Marvel Comics, first appearing in Marvel Team-Up Annual Vol 1 #7 October, 1984. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Snake-Eyes is a bad-aligned male Animal character created by Marvel Comics, first appearing in Marvel Team-Up Annual Vol 1 #7 October, 1984. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Daredevil #10 (October, 1965)"
 occupation: null
-teams: "Ani-Men"
+teams: ["Ani-Men"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bird-Man
 
-Bird-Man, real name Henry Hawk, is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #10 (October, 1965). He is affiliated with Ani-Men. His notable abilities include Flight and Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Bird-Man, real name Henry Hawk, is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #10 (October, 1965). He is affiliated with Ani-Men. His notable abilities include Flight and Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

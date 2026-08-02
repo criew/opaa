@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tracy Strauss
 
-Tracy Strauss, real name Tracy Strauss, is a good-aligned female character created by NBC - Heroes, born in Beverly Hills, CA. She works as a Former aide to Senator Nathan Petrelli, Former Pinehearst consultant, former political adviser to Governor Robert Malden. Her notable abilities include Cold Resistance. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Tracy Strauss, real name Tracy Strauss, is a good-aligned female character created by NBC - Heroes, born in Beverly Hills, CA. She works as a Former aide to Senator Nathan Petrelli, Former Pinehearst consultant, former political adviser to Governor Robert Malden. Her notable abilities include Cold Resistance. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

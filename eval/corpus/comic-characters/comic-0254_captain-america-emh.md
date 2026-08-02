@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: "Blue"
 hair_color: "Blond"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 85
 strength_score: 20
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain America (EMH)
 
-Captain America (EMH), real name Steve Rogers, is a good-aligned male Human character created by Marvel Comics, born in Brooklyn, USA and first appearing in Meet Captain America. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Agility, Durability, Longevity, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 20 for strength, 50 for speed, 60 for durability and 100 for combat, giving an overall score of 7.
+Captain America (EMH), real name Steve Rogers, is a good-aligned male Human character created by Marvel Comics, born in Brooklyn, USA and first appearing in Meet Captain America. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Agility, Durability, Longevity, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 20 for strength, 50 for speed, 60 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 7.

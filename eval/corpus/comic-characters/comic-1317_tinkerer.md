@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tinkerer
 
-Tinkerer, real name Phineas Mason, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #2 (1963). He works as an Inventor and technician serving the underworld. He has Brown eyes and White hair and stands 163 cm tall and weighs 54 kg. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 15 for durability and 15 for combat, giving an overall score of 9.
+Tinkerer, real name Phineas Mason, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #2 (1963). He works as an Inventor and technician serving the underworld. He has Brown eyes and White hair and stands 163 cm tall and weighs 54 kg. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 9.

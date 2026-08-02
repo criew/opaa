@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Shazam (DCEU)
 
-Shazam (DCEU), real name Billy Batson, is a good-aligned Human character created by DC Comics, first appearing in Shazam (2019). Their notable abilities include Agility, Cold Resistance, Durability, Electrokinesis, Element Control, Fire Resistance, Flight, Heat Resistance, Invulnerability, Jump, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 95 for combat, giving an overall score of 18.
+Shazam (DCEU), real name Billy Batson, is a good-aligned Human character created by DC Comics, first appearing in Shazam (2019). Their notable abilities include Agility, Cold Resistance, Durability, Electrokinesis, Element Control, Fire Resistance, Flight, Heat Resistance, Invulnerability, Jump, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 95 for combat. On a separate overall ranking scale, their overall score is 18.

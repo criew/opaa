@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hulk 2099
 
-Hulk 2099, real name John Eisenhart, is a male Human / Radiation character created by Marvel Comics, born in Hollywood, California and first appearing in 2099 Unlimited #1. He works as a Concept hunter, lawyer. He stands 366 cm tall. His notable abilities include Cold Resistance, Durability, Endurance, Heat Resistance, Invulnerability, Jump, Regeneration, Stamina and Super Strength. Rated across attributes, he scores 95 for intelligence, 100 for strength, 70 for speed, 80 for durability and 60 for combat, giving an overall score of 16.
+Hulk 2099, real name John Eisenhart, is a male Human / Radiation character created by Marvel Comics, born in Hollywood, California and first appearing in 2099 Unlimited #1. He works as a Concept hunter, lawyer. He stands 366 cm tall. His notable abilities include Cold Resistance, Durability, Endurance, Heat Resistance, Invulnerability, Jump, Regeneration, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 100 for strength, 70 for speed, 80 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 16.

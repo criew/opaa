@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Black Lightning #1 (April 1977)"
 occupation: "Crime Fighter, High School teacher, Former gold-medal-winning Olympic Decathlete, formerly Secretary of Education under Presidents Pete Ross and Lex Luthor."
-teams: "The Outsiders, Superfriends, Outsiders, Justice League"
+teams: ["The Outsiders", "Superfriends", "Outsiders", "Justice League"]
 eye_color: "Brown"
 hair_color: "No Hair"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Lightning
 
-Black Lightning, real name Jefferson Pierce, is a good-aligned male character created by DC Comics, first appearing in Black Lightning #1 (April 1977). He works as a Crime Fighter, High School teacher, Former gold-medal-winning Olympic Decathlete, formerly Secretary of Education under Presidents Pete Ross and Lex Luthor and is affiliated with The Outsiders, Superfriends, Outsiders and Justice League. He has Brown eyes and No Hair hair and stands 185 cm tall and weighs 90 kg. His notable abilities include Electrokinesis, Energy Absorption, Energy Blasts, Energy Manipulation, Flight, Force Fields and Peak Human Condition. Rated across attributes, he scores 75 for intelligence, 10 for strength, 55 for speed, 30 for durability and 75 for combat, giving an overall score of 5.
+Black Lightning, real name Jefferson Pierce, is a good-aligned male character created by DC Comics, first appearing in Black Lightning #1 (April 1977). He works as a Crime Fighter, High School teacher, Former gold-medal-winning Olympic Decathlete, formerly Secretary of Education under Presidents Pete Ross and Lex Luthor and is affiliated with The Outsiders, Superfriends, Outsiders and Justice League. He has Brown eyes and is bald and stands 185 cm tall and weighs 90 kg. His notable abilities include Electrokinesis, Energy Absorption, Energy Blasts, Energy Manipulation, Flight, Force Fields and Peak Human Condition. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 55 for speed, 30 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 5.

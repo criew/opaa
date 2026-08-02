@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Place of birth unknown"
 first_appearance: "New Warriors # 32"
 occupation: "Superhero / Hanger-on"
-teams: "Avengers Resistance"
+teams: ["Avengers Resistance"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Turbo II
 
-Turbo II, real name Mike Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in New Warriors # 32. They work as a Superhero / Hanger-on and are affiliated with Avengers Resistance. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Turbo II, real name Mike Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in New Warriors # 32. They work as a Superhero / Hanger-on and are affiliated with Avengers Resistance. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

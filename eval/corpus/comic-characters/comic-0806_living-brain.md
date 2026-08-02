@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Living Brain
 
-Living Brain is a bad-aligned character created by Marvel Comics, first appearing in Amazing Spider-Man #8 (1964). They work as a Robot. They have Yellow eyes and stand 198 cm tall and weigh 360 kg. Their notable abilities include Durability, Flight, Intelligence and Super Strength. Rated across attributes, they score 90 for intelligence, 55 for strength, 35 for speed, 55 for durability and 30 for combat, giving an overall score of 7.
+Living Brain is a bad-aligned character created by Marvel Comics, first appearing in Amazing Spider-Man #8 (1964). They work as a Robot. They have Yellow eyes and stand 198 cm tall and weigh 360 kg. Their notable abilities include Durability, Flight, Intelligence and Super Strength. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 55 for strength, 35 for speed, 55 for durability and 30 for combat. On a separate overall ranking scale, their overall score is 7.

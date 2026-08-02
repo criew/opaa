@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dark Elf Soldier
 
-Dark Elf Soldier, real name Dark Elf Soldier, is a character, born in Svartalfheim and first appearing in Thor: The Dark World. Their notable abilities include Weapon-Based Powers and Weapons Master. Rated across attributes, they score 70 for intelligence, 10 for strength, 25 for speed, 25 for durability and 50 for combat, giving an overall score of 3.
+Dark Elf Soldier, real name Dark Elf Soldier, is a character, born in Svartalfheim and first appearing in Thor: The Dark World. Their notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 70 for intelligence, 10 for strength, 25 for speed, 25 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 3.

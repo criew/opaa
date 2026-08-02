@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ghost (MCU)
 
-Ghost (MCU), real name Ava Starr, is a female Human character created by Marvel Comics, first appearing in Ant-Man and the Wasp. Her notable abilities include Super Strength. Rated across attributes, she scores 85 for intelligence, 40 for strength, 60 for speed, 85 for durability and 90 for combat, giving an overall score of 8.
+Ghost (MCU), real name Ava Starr, is a female Human character created by Marvel Comics, first appearing in Ant-Man and the Wasp. Her notable abilities include Super Strength. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 40 for strength, 60 for speed, 85 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 8.

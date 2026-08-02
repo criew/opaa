@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Parademon
 
-Parademon is a bad-aligned Parademon character created by DC Comics, born in Apokalips and first appearing in New Gods #1. Their notable abilities include Fire Resistance, Flight, Shapeshifting and Super Strength. Rated across attributes, they score 55 for intelligence, 30 for strength, 15 for speed, 50 for durability and 25 for combat, giving an overall score of 2.
+Parademon is a bad-aligned Parademon character created by DC Comics, born in Apokalips and first appearing in New Gods #1. Their notable abilities include Fire Resistance, Flight, Shapeshifting and Super Strength. Rated on a 0-100 scale across attributes, they score 55 for intelligence, 30 for strength, 15 for speed, 50 for durability and 25 for combat. On a separate overall ranking scale, their overall score is 2.

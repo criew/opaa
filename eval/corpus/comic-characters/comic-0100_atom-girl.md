@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Atom Girl
 
-Atom Girl, real name Salu Digby, is a good-aligned female character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). She has Black eyes and Black hair and stands 168 cm tall and weighs 54 kg. Her notable abilities include Size Changing. Rated across attributes, she scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat, giving an overall score of 3.
+Atom Girl, real name Salu Digby, is a good-aligned female character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). She has Black eyes and Black hair and stands 168 cm tall and weighs 54 kg. Her notable abilities include Size Changing. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 3.

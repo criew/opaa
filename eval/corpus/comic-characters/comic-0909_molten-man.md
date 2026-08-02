@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Amazing Spider-Man #28 (1965)"
 occupation: "Security guard for Osborn industries, former criminal, lab assistant"
-teams: "Frightful Four, A.R.M.O.R."
+teams: ["Frightful Four", "A.R.M.O.R."]
 eye_color: "Gold"
 hair_color: "Gold"
 height_cm: 196
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Molten Man
 
-Molten Man, real name Mark Raxton, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #28 (1965). He works as a Security guard for Osborn industries, former criminal, lab assistant and is affiliated with Frightful Four and A.R.M.O.R.. He has Gold eyes and Gold hair and stands 196 cm tall and weighs 248 kg. His notable abilities include Durability, Heat Resistance and Super Strength. Rated across attributes, he scores 75 for intelligence, 75 for strength, 25 for speed, 85 for durability and 55 for combat, giving an overall score of 6.
+Molten Man, real name Mark Raxton, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #28 (1965). He works as a Security guard for Osborn industries, former criminal, lab assistant and is affiliated with Frightful Four and A.R.M.O.R. He has Gold eyes and Gold hair and stands 196 cm tall and weighs 248 kg. His notable abilities include Durability, Heat Resistance and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 75 for strength, 25 for speed, 85 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 6.

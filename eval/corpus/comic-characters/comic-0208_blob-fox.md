@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: "Brown"
 hair_color: "Brown"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 80
 strength_score: 30
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blob (FOX)
 
-Blob (FOX), real name Fred Dukes, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X2 xmen united. He has Brown eyes and Brown hair. His notable abilities include Durability, Invulnerability and Super Strength. Rated across attributes, he scores 80 for intelligence, 30 for strength, 30 for speed, 85 for durability and 50 for combat, giving an overall score of 6.
+Blob (FOX), real name Fred Dukes, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X2 xmen united. He has Brown eyes and Brown hair. His notable abilities include Durability, Invulnerability and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 30 for strength, 30 for speed, 85 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Chuck Norris
 
-Chuck Norris, real name Carlos Ray Norris, is a good-aligned male character, born in Ryan, Oklahoma, United States. He stands 178 cm tall. His notable abilities include Peak Human Condition. Rated across attributes, he scores 75 for intelligence, 80 for strength, 45 for speed, 55 for durability and 100 for combat, giving an overall score of 6.
+Chuck Norris, real name Carlos Ray Norris, is a good-aligned male character, born in Ryan, Oklahoma, United States. He stands 178 cm tall. His notable abilities include Peak Human Condition. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 80 for strength, 45 for speed, 55 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 6.

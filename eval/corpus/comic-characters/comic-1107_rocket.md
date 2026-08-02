@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rocket
 
-Rocket, real name Raquel Ervin, is a female Human character created by DC Comics, born in Paris Island, Dakota City and first appearing in Icon #1. She works as a Student. She has Brown eyes and Brown hair and stands 168 cm tall. Her notable abilities include Agility, Durability, Energy Blasts, Flight, Force Fields, Intelligence and Super Strength. Rated across attributes, she scores 80 for intelligence, 30 for strength, 35 for speed, 65 for durability and 85 for combat, giving an overall score of 6.
+Rocket, real name Raquel Ervin, is a female Human character created by DC Comics, born in Paris Island, Dakota City and first appearing in Icon #1. She works as a Student. She has Brown eyes and Brown hair and stands 168 cm tall. Her notable abilities include Agility, Durability, Energy Blasts, Flight, Force Fields, Intelligence and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 30 for strength, 35 for speed, 65 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 6.

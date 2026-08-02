@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Agent Zero (FOX)
 
-Agent Zero (FOX), real name David North, is a Mutant character created by Marvel Comics. Their notable abilities include Agility, Energy Absorption, Marksmanship and Reflexes. Rated across attributes, they score 90 for intelligence, 10 for strength, 25 for speed, 25 for durability and 80 for combat, giving an overall score of 6.
+Agent Zero (FOX), real name David North, is a Mutant character created by Marvel Comics. Their notable abilities include Agility, Energy Absorption, Marksmanship and Reflexes. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 25 for speed, 25 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 6.

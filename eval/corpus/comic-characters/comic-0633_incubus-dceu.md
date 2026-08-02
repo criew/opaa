@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Incubus (DCEU)
 
-Incubus (DCEU), real name Incubus, is a bad-aligned male Metahuman character, first appearing in Suicide Squad (2016). He works as a Deity. His notable abilities include Accelerated Healing, Durability, Invulnerability, Longevity, Magic, Regeneration, Stamina, Super Strength and Telekinesis. Rated across attributes, he scores 65 for intelligence, 80 for strength, 50 for speed, 95 for durability and 80 for combat, giving an overall score of 11.
+Incubus (DCEU), real name Incubus, is a bad-aligned male Metahuman character, first appearing in Suicide Squad (2016). He works as a Deity. His notable abilities include Accelerated Healing, Durability, Invulnerability, Longevity, Magic, Regeneration, Stamina, Super Strength and Telekinesis. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 80 for strength, 50 for speed, 95 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 11.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "New Haven, Connecticut"
 first_appearance: "Deadly Hands of Kung Fu #22 (March, 1976)"
 occupation: "Adventurer"
-teams: "Avengers, Heroes For Hire"
+teams: ["Avengers", "Heroes For Hire"]
 eye_color: "Blue / White"
 hair_color: "Brown"
 height_cm: 155
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jack of Hearts
 
-Jack of Hearts, real name Jonathan Hart, is a good-aligned male Human character created by Marvel Comics, born in New Haven, Connecticut and first appearing in Deadly Hands of Kung Fu #22 (March, 1976). He works as an Adventurer and is affiliated with Avengers and Heroes For Hire. He has Blue / White eyes and Brown hair and stands 155 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Energy Blasts, Flight, Heat Resistance, Intelligence, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 80 for intelligence, 55 for strength, 100 for speed, 30 for durability and 30 for combat, giving an overall score of 8.
+Jack of Hearts, real name Jonathan Hart, is a good-aligned male Human character created by Marvel Comics, born in New Haven, Connecticut and first appearing in Deadly Hands of Kung Fu #22 (March, 1976). He works as an Adventurer and is affiliated with Avengers and Heroes For Hire. He has Blue / White eyes and Brown hair and stands 155 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Energy Blasts, Flight, Heat Resistance, Intelligence, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 55 for strength, 100 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 8.

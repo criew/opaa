@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Laufey
 
-Laufey, real name Laufey, is a bad-aligned male Frost Giant character created by Marvel Comics, born in Vanaheim and first appearing in Journey into Mystery issue 112. His notable abilities include Element Control and Regeneration. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 60 for durability and 50 for combat, giving an overall score of 8.
+Laufey, real name Laufey, is a bad-aligned male Frost Giant character created by Marvel Comics, born in Vanaheim and first appearing in Journey into Mystery issue 112. His notable abilities include Element Control and Regeneration. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 60 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 8.

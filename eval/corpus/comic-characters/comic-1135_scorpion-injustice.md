@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Scorpion (injustice)
 
-Scorpion (injustice), real name Hanzo Hasashi, is a character created by Mortal Kombat. Their notable abilities include Agility, Cold Resistance, Durability, Element Control, Fire Control, Fire Resistance, Heat Resistance, Immortality, Invulnerability, Stamina, Teleportation and Weapons Master. Rated across attributes, they score 90 for intelligence, 30 for strength, 80 for speed, 65 for durability and 100 for combat, giving an overall score of 13.
+Scorpion (injustice), real name Hanzo Hasashi, is a character created by Mortal Kombat. Their notable abilities include Agility, Cold Resistance, Durability, Element Control, Fire Control, Fire Resistance, Heat Resistance, Immortality, Invulnerability, Stamina, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 30 for strength, 80 for speed, 65 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 13.

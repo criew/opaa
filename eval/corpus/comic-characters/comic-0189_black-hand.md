@@ -10,7 +10,7 @@ type_race: "Zombie"
 place_of_birth: "Coastville , California"
 first_appearance: "Green Lantern (vol. 2) #29 (June 1964)"
 occupation: "Leader of Black Lanterns"
-teams: "Black Lantern Corps, Black Lantern Corps"
+teams: ["Black Lantern Corps", "Black Lantern Corps"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Hand
 
-Black Hand, real name William Hand, is a male Zombie character created by DC Comics, born in Coastville , California and first appearing in Green Lantern (vol. 2) #29 (June 1964). He works as a Leader of Black Lanterns and is affiliated with Black Lantern Corps and Black Lantern Corps. He has Brown eyes and Black hair and stands 170 cm tall and weighs 74 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Flight, Force Fields, Heat Resistance, Immortality, Intelligence, Mind Control Resistance, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength and Teleportation. Rated across attributes, he scores 95 for intelligence, 90 for strength, 85 for speed, 75 for durability and 75 for combat, giving an overall score of 80.
+Black Hand, real name William Hand, is a male Zombie character created by DC Comics, born in Coastville , California and first appearing in Green Lantern (vol. 2) #29 (June 1964). He works as a Leader of Black Lanterns and is affiliated with Black Lantern Corps and Black Lantern Corps. He has Brown eyes and Black hair and stands 170 cm tall and weighs 74 kg. His notable abilities include Accelerated Healing, Cold Resistance, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Flight, Force Fields, Heat Resistance, Immortality, Intelligence, Mind Control Resistance, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength and Teleportation. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 90 for strength, 85 for speed, 75 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 80.

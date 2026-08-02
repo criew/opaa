@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Piper McLean
 
-Piper McLean, real name Piper McLean, is a female Demi-God character. She has Brown hair. Her notable abilities include Agility, Cold Resistance, Dexterity, Durability, Endurance, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Reflexes, Super Strength, Telepathy, Toxin and Disease Resistance and Weapons Master. Rated across attributes, she scores 95 for intelligence, 65 for strength, 85 for speed, 80 for durability and 90 for combat, giving an overall score of 12.
+Piper McLean, real name Piper McLean, is a female Demi-God character. She has Brown hair. Her notable abilities include Agility, Cold Resistance, Dexterity, Durability, Endurance, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Reflexes, Super Strength, Telepathy, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 65 for strength, 85 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 12.

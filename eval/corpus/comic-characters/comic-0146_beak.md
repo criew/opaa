@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Cheverly, Maryland"
 first_appearance: null
 occupation: null
-teams: "X-Men, New Warriors"
+teams: ["X-Men", "New Warriors"]
 eye_color: "Black"
 hair_color: "White"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Beak
 
-Beak, real name Barnell Bohusk, is a good-aligned male character created by Marvel Comics, born in Cheverly, Maryland. He is affiliated with X-Men and New Warriors. He has Black eyes and White hair and stands 175 cm tall and weighs 63 kg. His notable abilities include Flight. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Beak, real name Barnell Bohusk, is a good-aligned male character created by Marvel Comics, born in Cheverly, Maryland. He is affiliated with X-Men and New Warriors. He has Black eyes and White hair and stands 175 cm tall and weighs 63 kg. His notable abilities include Flight. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

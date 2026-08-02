@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: "Black"
 hair_color: "Brown"
-height_cm: 0
+height_cm: null
 weight_kg: 78
 intelligence_score: 90
 strength_score: 10
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jango Fett
 
-Jango Fett is a bad-aligned male Human character created by George Lucas, born in Concord Dawn. He has Black eyes and Brown hair and weighs 78 kg. His notable abilities include Element Control, Fire Control, Flight, Peak Human Condition and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 80 for speed, 50 for durability and 100 for combat, giving an overall score of 8.
+Jango Fett is a bad-aligned male Human character created by George Lucas, born in Concord Dawn. He has Black eyes and Brown hair and weighs 78 kg. His notable abilities include Element Control, Fire Control, Flight, Peak Human Condition and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 80 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 8.

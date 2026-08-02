@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Magnus Labs"
 first_appearance: "Showcase #37"
 occupation: null
-teams: "Metal Men"
+teams: ["Metal Men"]
 eye_color: null
 hair_color: "No Hair"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Platinum
 
-Platinum, real name Platinum, is a good-aligned female character created by DC Comics, born in Magnus Labs and first appearing in Showcase #37. She is affiliated with Metal Men. She has No Hair hair. Her notable abilities include Agility, Durability, Invulnerability and Toxin and Disease Resistance. Rated across attributes, she scores 95 for intelligence, 20 for strength, 20 for speed, 70 for durability and 50 for combat, giving an overall score of 9.
+Platinum, real name Platinum, is a good-aligned female character created by DC Comics, born in Magnus Labs and first appearing in Showcase #37. She is affiliated with Metal Men. She is bald. Her notable abilities include Agility, Durability, Invulnerability and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 20 for strength, 20 for speed, 70 for durability and 50 for combat. On a separate overall ranking scale, her overall score is 9.

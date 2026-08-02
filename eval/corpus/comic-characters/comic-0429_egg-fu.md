@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Egg Fu
 
-Egg Fu, real name Chang Tzu, is a bad-aligned male character created by DC Comics, first appearing in 52 #6. He works as a Mad Scientist. He has Red eyes and No Hair hair. His notable abilities include Cold Resistance, Intelligence, Jump, Super Strength, Toxin and Disease Resistance and Weapon-Based Powers. Rated across attributes, he scores 100 for intelligence, 40 for strength, 50 for speed, 60 for durability and 50 for combat, giving an overall score of 11.
+Egg Fu, real name Chang Tzu, is a bad-aligned male character created by DC Comics, first appearing in 52 #6. He works as a Mad Scientist. He has Red eyes and is bald. His notable abilities include Cold Resistance, Intelligence, Jump, Super Strength, Toxin and Disease Resistance and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 40 for strength, 50 for speed, 60 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 11.

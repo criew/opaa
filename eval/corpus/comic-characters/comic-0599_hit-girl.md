@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hit-Girl
 
-Hit-Girl, real name Mindy McCready, is a good-aligned female Human character created by Icon Comics. Her notable abilities include Agility, Intelligence, Reflexes, Stamina, Stealth and Weapon-Based Powers. Rated across attributes, she scores 80 for intelligence, 5 for strength, 30 for speed, 20 for durability and 65 for combat, giving an overall score of 5.
+Hit-Girl, real name Mindy McCready, is a good-aligned female Human character created by Icon Comics. Her notable abilities include Agility, Intelligence, Reflexes, Stamina, Stealth and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 5 for strength, 30 for speed, 20 for durability and 65 for combat. On a separate overall ranking scale, her overall score is 5.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Morlun
 
-Morlun, real name Morlun, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #30 (2001). He has White / Red eyes and Black hair and stands 188 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Immortality, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 80 for intelligence, 60 for strength, 35 for speed, 40 for durability and 55 for combat, giving an overall score of 6.
+Morlun, real name Morlun, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spider-Man #30 (2001). He has White / Red eyes and Black hair and stands 188 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Immortality, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 60 for strength, 35 for speed, 40 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 6.

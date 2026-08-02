@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Watchmen #1 (September, 1986)"
 occupation: "Former Adventurer; Government Agent"
-teams: "Watchmen, The Crimebusters"
+teams: ["Watchmen", "The Crimebusters"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Comedian
 
-The Comedian, real name Edward Morgen Blake, is a neutral-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as a Former Adventurer; Government Agent and is affiliated with Watchmen and The Crimebusters. He has Brown eyes and Black hair and stands 188 cm tall and weighs 101 kg. His notable abilities include Weapons Master. Rated across attributes, he scores 80 for intelligence, 15 for strength, 15 for speed, 10 for durability and 80 for combat, giving an overall score of 5.
+The Comedian, real name Edward Morgen Blake, is a neutral-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as a Former Adventurer; Government Agent and is affiliated with Watchmen and The Crimebusters. He has Brown eyes and Black hair and stands 188 cm tall and weighs 101 kg. His notable abilities include Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 15 for strength, 15 for speed, 10 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 5.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hearthstone
 
-Hearthstone, real name Hearthstone, is a character. Their notable abilities include Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Force Fields, Magic, Marksmanship, Mind Control Resistance, Telepathy Resistance, Teleportation and Weapons Master. Rated across attributes, they score 100 for intelligence, 30 for strength, 60 for speed, 75 for durability and 80 for combat, giving an overall score of 16.
+Hearthstone, real name Hearthstone, is a character. Their notable abilities include Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Force Fields, Magic, Marksmanship, Mind Control Resistance, Telepathy Resistance, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 30 for strength, 60 for speed, 75 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 16.

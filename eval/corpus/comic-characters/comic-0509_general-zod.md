@@ -10,7 +10,7 @@ type_race: "Kryptonian"
 place_of_birth: "Krypton"
 first_appearance: "Action Comics #845"
 occupation: null
-teams: "Superman Revenge Squad"
+teams: ["Superman Revenge Squad"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # General Zod
 
-General Zod, real name Dru-Zod, is a bad-aligned male Kryptonian character created by DC Comics, born in Krypton and first appearing in Action Comics #845. He is affiliated with Superman Revenge Squad. He has Black eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Energy Absorption, Enhanced Hearing, Enhanced Senses, Flight, Intelligence, Invulnerability, Jump, Longevity, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 95 for combat, giving an overall score of 18.
+General Zod, real name Dru-Zod, is a bad-aligned male Kryptonian character created by DC Comics, born in Krypton and first appearing in Action Comics #845. He is affiliated with Superman Revenge Squad. He has Black eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Energy Absorption, Enhanced Hearing, Enhanced Senses, Flight, Intelligence, Invulnerability, Jump, Longevity, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 18.

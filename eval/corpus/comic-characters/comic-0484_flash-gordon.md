@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Flash Gordon
 
-Flash Gordon, real name Steven Gordon, is a good-aligned male character, first appearing in Flash Gordon #1 (september 1966). His notable abilities include Agility, Intelligence, Marksmanship, Stamina and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 25 for combat, giving an overall score of 9.
+Flash Gordon, real name Steven Gordon, is a good-aligned male character, first appearing in Flash Gordon #1 (september 1966). His notable abilities include Agility, Intelligence, Marksmanship, Stamina and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 25 for combat. On a separate overall ranking scale, his overall score is 9.

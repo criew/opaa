@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "Honolulu, Hawaii"
 first_appearance: "X-MEN #58"
 occupation: "Currently Adventurer, formerly Graduate student in geophysics"
-teams: "Cerebro's X-Men, X-Factor, Avengers, X-Men"
+teams: ["Cerebro's X-Men", "X-Factor", "Avengers", "X-Men"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Havok
 
-Havok, real name Alexander Summers, is a good-aligned male Mutant character created by Marvel Comics, born in Honolulu, Hawaii and first appearing in X-MEN #58. He works as a Currently Adventurer, formerly Graduate student in geophysics and is affiliated with Cerebro's X-Men, X-Factor, Avengers and X-Men. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 79 kg. His notable abilities include Energy Absorption, Energy Blasts, Flight and Heat Resistance. Rated across attributes, he scores 80 for intelligence, 10 for strength, 25 for speed, 60 for durability and 45 for combat, giving an overall score of 6.
+Havok, real name Alexander Summers, is a good-aligned male Mutant character created by Marvel Comics, born in Honolulu, Hawaii and first appearing in X-MEN #58. He works as a Currently Adventurer, formerly Graduate student in geophysics and is affiliated with Cerebro's X-Men, X-Factor, Avengers and X-Men. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 79 kg. His notable abilities include Energy Absorption, Energy Blasts, Flight and Heat Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 25 for speed, 60 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 6.

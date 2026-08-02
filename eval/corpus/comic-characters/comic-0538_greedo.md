@@ -10,7 +10,7 @@ type_race: "Rodian"
 place_of_birth: "Rodia"
 first_appearance: null
 occupation: "Bounty Hunter"
-teams: "Trade Federation"
+teams: ["Trade Federation"]
 eye_color: "Purple"
 hair_color: null
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Greedo
 
-Greedo, real name Greedo, is a bad-aligned male Rodian character created by George Lucas, born in Rodia. He works as a Bounty Hunter and is affiliated with Trade Federation. He has Purple eyes and stands 170 cm tall. His notable abilities include Weapons Master. Rated across attributes, he scores 70 for intelligence, 10 for strength, 15 for speed, 15 for durability and 40 for combat, giving an overall score of 3.
+Greedo, real name Greedo, is a bad-aligned male Rodian character created by George Lucas, born in Rodia. He works as a Bounty Hunter and is affiliated with Trade Federation. He has Purple eyes and stands 170 cm tall. His notable abilities include Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 15 for speed, 15 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 3.

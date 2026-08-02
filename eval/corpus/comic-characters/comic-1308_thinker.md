@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Thinker
 
-Thinker, real name Clifford DeVoe, is a male Human character created by DC Comics, first appearing in All-Flash Quarterly #12. He works as a Lawyer. He has Brown eyes and Black hair and stands 185 cm tall and weighs 78 kg. His notable abilities include Intelligence, Longevity, Stamina, Stealth and Weapon-Based Powers. Rated across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 80 for durability and 65 for combat, giving an overall score of 11.
+Thinker, real name Clifford DeVoe, is a male Human character created by DC Comics, first appearing in All-Flash Quarterly #12. He works as a Lawyer. He has Brown eyes and Black hair and stands 185 cm tall and weighs 78 kg. His notable abilities include Intelligence, Longevity, Stamina, Stealth and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 80 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 11.

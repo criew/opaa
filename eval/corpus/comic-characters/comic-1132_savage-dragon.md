@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Savage Dragon
 
-Savage Dragon, real name Kurr, is a good-aligned male character created by Image Comics. His notable abilities include Accelerated Healing, Durability, Fire Resistance, Jump, Regeneration and Super Strength. Rated across attributes, he scores 80 for intelligence, 70 for strength, 55 for speed, 85 for durability and 70 for combat, giving an overall score of 7.
+Savage Dragon, real name Kurr, is a good-aligned male character created by Image Comics. His notable abilities include Accelerated Healing, Durability, Fire Resistance, Jump, Regeneration and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 70 for strength, 55 for speed, 85 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Alex Mercer
 
-Alex Mercer, real name Alexander J. Mercer, is a bad-aligned male Human character created by Wildstorm. His notable abilities include Accelerated Healing, Agility, Energy Absorption, Energy Blasts, Enhanced Hearing, Enhanced Senses, Immortality, Invulnerability, Jump, Longevity, Marksmanship, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 75 for intelligence, 80 for strength, 40 for speed, 90 for durability and 50 for combat, giving an overall score of 14.
+Alex Mercer, real name Alexander J. Mercer, is a bad-aligned male Human character created by Wildstorm. His notable abilities include Accelerated Healing, Agility, Energy Absorption, Energy Blasts, Enhanced Hearing, Enhanced Senses, Immortality, Invulnerability, Jump, Longevity, Marksmanship, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 80 for strength, 40 for speed, 90 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 14.

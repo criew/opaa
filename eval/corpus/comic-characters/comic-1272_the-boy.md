@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Boy
 
-The Boy, real name Number Five, is a good-aligned male Human / Altered character created by Dark Horse Comics. He has Brown eyes and Brown hair and stands 155 cm tall and weighs 50 kg. His notable abilities include Marksmanship, Reflexes, Super Speed, Teleportation and Weapons Master. Rated across attributes, he scores 85 for intelligence, 5 for strength, 10 for speed, 10 for durability and 85 for combat, giving an overall score of 11.
+The Boy, real name Number Five, is a good-aligned male Human / Altered character created by Dark Horse Comics. He has Brown eyes and Brown hair and stands 155 cm tall and weighs 50 kg. His notable abilities include Marksmanship, Reflexes, Super Speed, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 5 for strength, 10 for speed, 10 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 11.

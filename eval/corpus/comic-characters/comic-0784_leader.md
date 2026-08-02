@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Boise, Idaho"
 first_appearance: null
 occupation: null
-teams: "Superiour Six"
+teams: ["Superiour Six"]
 eye_color: "Green"
 hair_color: "No Hair"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Leader
 
-Leader, real name Samuel Sterns, is a bad-aligned male character created by Marvel Comics, born in Boise, Idaho. He is affiliated with Superiour Six. He has Green eyes and No Hair hair and stands 178 cm tall and weighs 63 kg. His notable abilities include Intelligence, Telekinesis and Telepathy. Rated across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 40 for combat, giving an overall score of 10.
+Leader, real name Samuel Sterns, is a bad-aligned male character created by Marvel Comics, born in Boise, Idaho. He is affiliated with Superiour Six. He has Green eyes and is bald and stands 178 cm tall and weighs 63 kg. His notable abilities include Intelligence, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 10.

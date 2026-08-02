@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kraven II
 
-Kraven II, real name Alyosha Kravinoff, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spectacular Spider-Man #243 (1997). He has Brown eyes and Black hair and stands 191 cm tall and weighs 99 kg. His notable abilities include Accelerated Healing, Agility, Enhanced Senses, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 35 for strength, 25 for speed, 30 for durability and 85 for combat, giving an overall score of 4.
+Kraven II, real name Alyosha Kravinoff, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spectacular Spider-Man #243 (1997). He has Brown eyes and Black hair and stands 191 cm tall and weighs 99 kg. His notable abilities include Accelerated Healing, Agility, Enhanced Senses, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 35 for strength, 25 for speed, 30 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 4.

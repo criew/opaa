@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Box IV
 
-Box IV, real name Madison Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Alpha Flight #16. They work as an Inventor, former soldier. They have Brown eyes and Brown / Black hair. Their notable abilities include Telekinesis. Rated across attributes, they score 75 for intelligence, 75 for strength, 25 for speed, 30 for durability and 55 for combat, giving an overall score of 5.
+Box IV, real name Madison Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Alpha Flight #16. They work as an Inventor, former soldier. They have Brown eyes and Brown / Black hair. Their notable abilities include Telekinesis. Rated on a 0-100 scale across attributes, they score 75 for intelligence, 75 for strength, 25 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, their overall score is 5.

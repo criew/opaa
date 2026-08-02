@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Walrus
 
-Walrus, real name Hubert Carpent, is a bad-aligned male Human character created by Marvel Comics, born in Brooklyn, New York and first appearing in Defenders #131 (May, 1984). He works as a Cab driver. He has Blue eyes and Black hair and stands 183 cm tall and weighs 162 kg. His notable abilities include Durability and Super Strength. Rated across attributes, he scores 75 for intelligence, 30 for strength, 10 for speed, 50 for durability and 20 for combat, giving an overall score of 4.
+Walrus, real name Hubert Carpent, is a bad-aligned male Human character created by Marvel Comics, born in Brooklyn, New York and first appearing in Defenders #131 (May, 1984). He works as a Cab driver. He has Blue eyes and Black hair and stands 183 cm tall and weighs 162 kg. His notable abilities include Durability and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 10 for speed, 50 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 4.

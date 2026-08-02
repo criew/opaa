@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Melinda May (MCU)
 
-Melinda May (MCU), real name Melinda May, is a good-aligned female Human character created by Marvel Comics, first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D agent. She has Black eyes and Black hair and stands 173 cm tall and weighs 64 kg. Her notable abilities include Agility, Intelligence, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 100 for intelligence, 10 for strength, 20 for speed, 20 for durability and 100 for combat, giving an overall score of 9.
+Melinda May (MCU), real name Melinda May, is a good-aligned female Human character created by Marvel Comics, first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D agent. She has Black eyes and Black hair and stands 173 cm tall and weighs 64 kg. Her notable abilities include Agility, Intelligence, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 10 for strength, 20 for speed, 20 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 9.

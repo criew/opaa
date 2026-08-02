@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Stick (MCU)
 
-Stick (MCU), real name Unknown, is a neutral-aligned male Human character created by Marvel Comics, first appearing in Daredevil Season 1: Episode 7. He has Blue eyes and Grey hair and stands 183 cm tall and weighs 71 kg. His notable abilities include Agility, Dexterity, Durability, Enhanced Hearing, Enhanced Senses, Marksmanship, Reflexes, Stealth and Weapons Master. Rated across attributes, he scores 85 for intelligence, 10 for strength, 40 for speed, 40 for durability and 100 for combat, giving an overall score of 6.
+Stick (MCU), real name Unknown, is a neutral-aligned male Human character created by Marvel Comics, first appearing in Daredevil Season 1: Episode 7. He has Blue eyes and Grey hair and stands 183 cm tall and weighs 71 kg. His notable abilities include Agility, Dexterity, Durability, Enhanced Hearing, Enhanced Senses, Marksmanship, Reflexes, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 10 for strength, 40 for speed, 40 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 6.

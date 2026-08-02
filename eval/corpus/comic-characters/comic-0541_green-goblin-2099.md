@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Green Goblin (2099)
 
-Green Goblin (2099), real name Jennifer D'Angelo, is a bad-aligned character created by Marvel Comics. They work as a Priest. Their notable abilities include Flight, Intelligence, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 95 for intelligence, 40 for strength, 45 for speed, 55 for durability and 70 for combat, giving an overall score of 9.
+Green Goblin (2099), real name Jennifer D'Angelo, is a bad-aligned character created by Marvel Comics. They work as a Priest. Their notable abilities include Flight, Intelligence, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 40 for strength, 45 for speed, 55 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 9.

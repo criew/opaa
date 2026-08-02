@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: "Krypton"
 first_appearance: "Superman: The Man of Steel #17 (Nov 1992)"
 occupation: "Destroyer"
-teams: "Secret Society of Super-Villains, Justice League Elite"
+teams: ["Secret Society of Super-Villains", "Justice League Elite"]
 eye_color: "Red"
 hair_color: "White"
 height_cm: 244
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Doomsday
 
-Doomsday, real name Doomsday, is a bad-aligned male Alien character created by DC Comics, born in Krypton and first appearing in Superman: The Man of Steel #17 (Nov 1992). He works as a Destroyer and is affiliated with Secret Society of Super-Villains and Justice League Elite. He has Red eyes and White hair and stands 244 cm tall and weighs 412 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Absorption, Heat Resistance, Invulnerability, Jump, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 90 for intelligence, 100 for strength, 65 for speed, 100 for durability and 90 for combat, giving an overall score of 20.
+Doomsday, real name Doomsday, is a bad-aligned male Alien character created by DC Comics, born in Krypton and first appearing in Superman: The Man of Steel #17 (Nov 1992). He works as a Destroyer and is affiliated with Secret Society of Super-Villains and Justice League Elite. He has Red eyes and White hair and stands 244 cm tall and weighs 412 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Absorption, Heat Resistance, Invulnerability, Jump, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 100 for strength, 65 for speed, 100 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 20.

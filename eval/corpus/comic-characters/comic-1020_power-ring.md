@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Power Ring
 
-Power Ring, real name Harold Jordan, is a bad-aligned male character created by DC Comics, first appearing in Justice League of America #29. He has Brown eyes and Brown hair. His notable abilities include Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Magic and Weapon-Based Powers. Rated across attributes, he scores 90 for intelligence, 100 for strength, 100 for speed, 100 for durability and 70 for combat, giving an overall score of 15.
+Power Ring, real name Harold Jordan, is a bad-aligned male character created by DC Comics, first appearing in Justice League of America #29. He has Brown eyes and Brown hair. His notable abilities include Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Magic and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 100 for strength, 100 for speed, 100 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 15.

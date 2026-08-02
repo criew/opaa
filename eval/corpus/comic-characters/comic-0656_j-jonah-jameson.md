@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # J. Jonah Jameson
 
-J. Jonah Jameson, real name John Jonah Jameson, Jr., is a character created by Marvel Comics. Rated across attributes, they score 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 5 for combat, giving an overall score of 7.
+J. Jonah Jameson, real name John Jonah Jameson, Jr., is a character created by Marvel Comics. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 5 for combat. On a separate overall ranking scale, their overall score is 7.

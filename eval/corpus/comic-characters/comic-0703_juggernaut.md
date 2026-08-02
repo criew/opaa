@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Berkeley, California"
 first_appearance: "X-Men #12 (July, 1965)"
 occupation: "Adventurer formerly Professional criminal, mercenary, soldier"
-teams: "Brotherhood of Evil Mutants, Brotherhood of Mutants, Wrecking Crew, X-Men, Excalibur, Thunderbolts"
+teams: ["Brotherhood of Evil Mutants", "Brotherhood of Mutants", "Wrecking Crew", "X-Men", "Excalibur", "Thunderbolts"]
 eye_color: "Blue"
 hair_color: "Red"
 height_cm: 287
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Juggernaut
 
-Juggernaut, real name Cain Marko, is a neutral-aligned male Human character created by Marvel Comics, born in Berkeley, California and first appearing in X-Men #12 (July, 1965). He works as an Adventurer formerly Professional criminal, mercenary, soldier and is affiliated with Brotherhood of Evil Mutants, Brotherhood of Mutants, Wrecking Crew, X-Men, Excalibur and Thunderbolts. He has Blue eyes and Red hair and stands 287 cm tall and weighs 855 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Endurance, Energy Absorption, Fire Resistance, Force Fields, Heat Resistance, Immortality, Intelligence, Invulnerability, Magic, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated across attributes, he scores 70 for intelligence, 100 for strength, 65 for speed, 100 for durability and 75 for combat, giving an overall score of 28.
+Juggernaut, real name Cain Marko, is a neutral-aligned male Human character created by Marvel Comics, born in Berkeley, California and first appearing in X-Men #12 (July, 1965). He works as an Adventurer formerly Professional criminal, mercenary, soldier and is affiliated with Brotherhood of Evil Mutants, Brotherhood of Mutants, Wrecking Crew, X-Men, Excalibur and Thunderbolts. He has Blue eyes and Red hair and stands 287 cm tall and weighs 855 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Endurance, Energy Absorption, Fire Resistance, Force Fields, Heat Resistance, Immortality, Intelligence, Invulnerability, Magic, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 100 for strength, 65 for speed, 100 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 28.

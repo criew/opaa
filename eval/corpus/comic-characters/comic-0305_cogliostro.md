@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cogliostro
 
-Cogliostro, real name Cain, is a bad-aligned male character created by Image Comics, first appearing in Spawn #9. His notable abilities include Immortality and Invulnerability. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Cogliostro, real name Cain, is a bad-aligned male character created by Image Comics, first appearing in Spawn #9. His notable abilities include Immortality and Invulnerability. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Steel (1997)
 
-Steel (1997), real name John Irons, is a good-aligned Human character created by DC Comics. They work as a Hero, Vigilante. They have No Hair hair and stand 216 cm tall and weigh 174 kg. Their notable abilities include Dexterity, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Jump, Stamina, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 85 for intelligence, 30 for strength, 30 for speed, 75 for durability and 65 for combat, giving an overall score of 7.
+Steel (1997), real name John Irons, is a good-aligned Human character created by DC Comics. They work as a Hero, Vigilante. They are bald and stand 216 cm tall and weigh 174 kg. Their notable abilities include Dexterity, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Jump, Stamina, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 30 for strength, 30 for speed, 75 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 7.

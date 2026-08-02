@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Cat (earth 1610)
 
-Black Cat (earth 1610), real name Felicia Hardy, is a neutral-aligned female Human character created by Marvel Comics, first appearing in Ultimate Spider-Man #50. She works as a Burglar, accountant. She has Blue eyes and Black hair and stands 168 cm tall and weighs 53 kg. Her notable abilities include Agility and Enhanced Senses. Rated across attributes, she scores 85 for intelligence, 10 for strength, 80 for speed, 80 for durability and 90 for combat, giving an overall score of 8.
+Black Cat (earth 1610), real name Felicia Hardy, is a neutral-aligned female Human character created by Marvel Comics, first appearing in Ultimate Spider-Man #50. She works as a Burglar, accountant. She has Blue eyes and Black hair and stands 168 cm tall and weighs 53 kg. Her notable abilities include Agility and Enhanced Senses. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 10 for strength, 80 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 8.

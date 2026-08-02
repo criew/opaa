@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Spitfire
 
-Spitfire, real name Jacqueline Falsworth, is a good-aligned female Human character created by Marvel Comics. She works as a MI13 Agent, adventurer, CEO of Falsworth Industries, formerly Women's Voluntary Service officer, Special Operations Executive agent. She stands 163 cm tall and weighs 50 kg. Her notable abilities include Agility and Super Speed. Rated across attributes, she scores 90 for intelligence, 30 for strength, 90 for speed, 60 for durability and 100 for combat, giving an overall score of 9.
+Spitfire, real name Jacqueline Falsworth, is a good-aligned female Human character created by Marvel Comics. She works as a MI13 Agent, adventurer, CEO of Falsworth Industries, formerly Women's Voluntary Service officer, Special Operations Executive agent. She stands 163 cm tall and weighs 50 kg. Her notable abilities include Agility and Super Speed. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 30 for strength, 90 for speed, 60 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 9.

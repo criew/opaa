@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Deacons Of The Deep
 
-Deacons Of The Deep is a character created by Namco. Their notable abilities include Energy Blasts, Fire Control, Magic, Regeneration, Self-Sustenance, Stamina and Toxin and Disease Resistance. Rated across attributes, they score 75 for intelligence, 10 for strength, 35 for speed, 20 for durability and 30 for combat, giving an overall score of 7.
+Deacons Of The Deep is a character created by Namco. Their notable abilities include Energy Blasts, Fire Control, Magic, Regeneration, Self-Sustenance, Stamina and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 75 for intelligence, 10 for strength, 35 for speed, 20 for durability and 30 for combat. On a separate overall ranking scale, their overall score is 7.

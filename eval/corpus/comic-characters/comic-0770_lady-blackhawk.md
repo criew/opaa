@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "United States"
 first_appearance: "Blackhawk #133"
 occupation: "Adventurer, Pilot"
-teams: "Birds of Prey"
+teams: ["Birds of Prey"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lady Blackhawk
 
-Lady Blackhawk, real name Zinda Blake, is a good-aligned female Human character created by DC Comics, born in United States and first appearing in Blackhawk #133. She works as an Adventurer, Pilot and is affiliated with Birds of Prey. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 53 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Stamina, Stealth and Weapons Master. Rated across attributes, she scores 90 for intelligence, 10 for strength, 25 for speed, 35 for durability and 90 for combat, giving an overall score of 7.
+Lady Blackhawk, real name Zinda Blake, is a good-aligned female Human character created by DC Comics, born in United States and first appearing in Blackhawk #133. She works as an Adventurer, Pilot and is affiliated with Birds of Prey. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 53 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 25 for speed, 35 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 7.

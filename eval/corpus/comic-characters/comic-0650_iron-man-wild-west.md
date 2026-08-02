@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Man (Wild West)
 
-Iron Man (Wild West), real name Tony Stark, is a good-aligned male Human character created by Marvel Comics. He has Black eyes and Black hair. His notable abilities include Electrokinesis, Energy Beams, Energy Blasts, Flight, Intelligence, Jump and Weapon-Based Powers. Rated across attributes, he scores 100 for intelligence, 60 for strength, 60 for speed, 65 for durability and 55 for combat, giving an overall score of 11.
+Iron Man (Wild West), real name Tony Stark, is a good-aligned male Human character created by Marvel Comics. He has Black eyes and Black hair. His notable abilities include Electrokinesis, Energy Beams, Energy Blasts, Flight, Intelligence, Jump and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 60 for strength, 60 for speed, 65 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 11.

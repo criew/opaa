@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Offspring
 
-Offspring, real name Luke O'Brian, is a good-aligned male character created by DC Comics. His notable abilities include Cold Resistance, Heat Resistance, Immortality, Invulnerability, Mind Control Resistance, Shapeshifting, Size Changing and Telepathy Resistance. Rated across attributes, he scores 75 for intelligence, 10 for strength, 35 for speed, 100 for durability and 55 for combat, giving an overall score of 9.
+Offspring, real name Luke O'Brian, is a good-aligned male character created by DC Comics. His notable abilities include Cold Resistance, Heat Resistance, Immortality, Invulnerability, Mind Control Resistance, Shapeshifting, Size Changing and Telepathy Resistance. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 35 for speed, 100 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 9.

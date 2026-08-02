@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Joker (Gotham)
 
-Joker (Gotham), real name Jeremiah Valeska, is a character created by DC Comics, first appearing in A Dark Knight: Mandatory Brunch Meeting". They work as a Cult leader (formerly) Criminal mastermind Terrorist Structural Engineer (formerly). Their notable abilities include Agility, Durability, Intelligence, Marksmanship, Stealth and Weapons Master. Rated across attributes, they score 100 for intelligence, 10 for strength, 15 for speed, 60 for durability and 70 for combat, giving an overall score of 10.
+Joker (Gotham), real name Jeremiah Valeska, is a character created by DC Comics, first appearing in A Dark Knight: Mandatory Brunch Meeting". They work as a Cult leader (formerly) Criminal mastermind Terrorist Structural Engineer (formerly). Their notable abilities include Agility, Durability, Intelligence, Marksmanship, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 10 for strength, 15 for speed, 60 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 10.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jane Foster (MCU)
 
-Jane Foster (MCU), real name Jane Foster, is a good-aligned female Human character created by Marvel Comics, first appearing in Thor (2011). She works as a Particle Physicist, Postdoctoral Researcher in Atrophysics at Culver University. She has Brown eyes and Brown hair and stands 160 cm tall and weighs 53 kg. Her notable abilities include Intelligence. Rated across attributes, she scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 40 for combat, giving an overall score of 9.
+Jane Foster (MCU), real name Jane Foster, is a good-aligned female Human character created by Marvel Comics, first appearing in Thor (2011). She works as a Particle Physicist, Postdoctoral Researcher in Atrophysics at Culver University. She has Brown eyes and Brown hair and stands 160 cm tall and weighs 53 kg. Her notable abilities include Intelligence. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 9.

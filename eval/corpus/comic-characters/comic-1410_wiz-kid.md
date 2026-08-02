@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wiz Kid
 
-Wiz Kid, real name Takashi Matsuya, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in X-TERMINATORS # 1. They work as a Student. They have Brown eyes and Black hair and stand 140 cm tall and weigh 39 kg. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Wiz Kid, real name Takashi Matsuya, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in X-TERMINATORS # 1. They work as a Student. They have Brown eyes and Black hair and stand 140 cm tall and weigh 39 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

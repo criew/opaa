@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cat
 
-Cat, real name Shirlee Bryant, is a good-aligned female character created by Marvel Comics, born in Chicago, Illinois and first appearing in The Cat #1. She works as a Model. She has Blue eyes and Blond hair and stands 173 cm tall and weighs 61 kg. Her notable abilities include Agility, Enhanced Senses, Jump, Stamina and Super Strength. Rated across attributes, she scores 70 for intelligence, 10 for strength, 40 for speed, 15 for durability and 90 for combat, giving an overall score of 4.
+Cat, real name Shirlee Bryant, is a good-aligned female character created by Marvel Comics, born in Chicago, Illinois and first appearing in The Cat #1. She works as a Model. She has Blue eyes and Blond hair and stands 173 cm tall and weighs 61 kg. Her notable abilities include Agility, Enhanced Senses, Jump, Stamina and Super Strength. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 40 for speed, 15 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 4.

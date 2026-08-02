@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Negasonic Teenage Warhead
 
-Negasonic Teenage Warhead, real name Ellie Phimister, is a good-aligned female Mutant character created by Marvel Comics, first appearing in New X-Men #115. She has Black eyes and Black hair. Her notable abilities include Telepathy. Rated across attributes, she scores 75 for intelligence, 5 for strength, 10 for speed, 10 for durability and 35 for combat, giving an overall score of 4.
+Negasonic Teenage Warhead, real name Ellie Phimister, is a good-aligned female Mutant character created by Marvel Comics, first appearing in New X-Men #115. She has Black eyes and Black hair. Her notable abilities include Telepathy. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 5 for strength, 10 for speed, 10 for durability and 35 for combat. On a separate overall ranking scale, her overall score is 4.

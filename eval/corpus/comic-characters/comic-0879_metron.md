@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Metron
 
-Metron, real name Metron, is a good-aligned male character created by DC Comics, first appearing in New Gods vol. 1 #1 (February-March, 1971). He works as a Scientist, seeker of knowledge. He has Blue eyes and Black hair and stands 185 cm tall and weighs 86 kg. His notable abilities include Flight, Intelligence, Longevity and Teleportation. Rated across attributes, he scores 95 for intelligence, 10 for strength, 45 for speed, 55 for durability and 30 for combat, giving an overall score of 11.
+Metron, real name Metron, is a good-aligned male character created by DC Comics, first appearing in New Gods vol. 1 #1 (February-March, 1971). He works as a Scientist, seeker of knowledge. He has Blue eyes and Black hair and stands 185 cm tall and weighs 86 kg. His notable abilities include Flight, Intelligence, Longevity and Teleportation. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 45 for speed, 55 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 11.

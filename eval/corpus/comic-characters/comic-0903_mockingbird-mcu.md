@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mockingbird (MCU)
 
-Mockingbird (MCU), real name Barbara Morse, is a good-aligned female Human character created by Marvel Comics, born in America and first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D Agent. She has Gold eyes and Blond hair and stands 168 cm tall and weighs 595 kg. Her notable abilities include Agility, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 100 for intelligence, 10 for strength, 55 for speed, 55 for durability and 100 for combat, giving an overall score of 10.
+Mockingbird (MCU), real name Barbara Morse, is a good-aligned female Human character created by Marvel Comics, born in America and first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D Agent. She has Gold eyes and Blond hair and stands 168 cm tall and weighs 595 kg. Her notable abilities include Agility, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 10 for strength, 55 for speed, 55 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 10.

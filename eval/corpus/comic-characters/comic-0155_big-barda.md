@@ -10,7 +10,7 @@ type_race: "New God"
 place_of_birth: null
 first_appearance: "Mister Miracle (Volume 1) #4"
 occupation: null
-teams: "Justice League Elite, New Gods of Apokolips, Justice League, Female Furies"
+teams: ["Justice League Elite", "New Gods of Apokolips", "Justice League", "Female Furies"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Big Barda
 
-Big Barda, real name Barda Free, is a bad-aligned female New God character created by DC Comics, first appearing in Mister Miracle (Volume 1) #4. She is affiliated with Justice League Elite, New Gods of Apokolips, Justice League and Female Furies. She has Blue eyes and Black hair and stands 188 cm tall and weighs 135 kg. Her notable abilities include Agility, Durability, Flight, Immortality, Invulnerability, Longevity, Reflexes, Stamina, Super Strength and Toxin and Disease Resistance. Rated across attributes, she scores 95 for intelligence, 100 for strength, 80 for speed, 100 for durability and 100 for combat, giving an overall score of 16.
+Big Barda, real name Barda Free, is a bad-aligned female New God character created by DC Comics, first appearing in Mister Miracle (Volume 1) #4. She is affiliated with Justice League Elite, New Gods of Apokolips, Justice League and Female Furies. She has Blue eyes and Black hair and stands 188 cm tall and weighs 135 kg. Her notable abilities include Agility, Durability, Flight, Immortality, Invulnerability, Longevity, Reflexes, Stamina, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 100 for strength, 80 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 16.

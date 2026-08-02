@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Morty Smith
 
-Morty Smith, real name Morty Smith, is a good-aligned male Human character created by Cartoon Network, born in Earth (Dimension C-137) and first appearing in Rick and Morty S01E01. He works as a Student, Space Adventurer. He has Black eyes and Brown hair. His notable abilities include Energy Beams, Energy Blasts, Teleportation, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 65 for intelligence, 10 for strength, 25 for speed, 40 for durability and 40 for combat, giving an overall score of 3.
+Morty Smith, real name Morty Smith, is a good-aligned male Human character created by Cartoon Network, born in Earth (Dimension C-137) and first appearing in Rick and Morty S01E01. He works as a Student, Space Adventurer. He has Black eyes and Brown hair. His notable abilities include Energy Beams, Energy Blasts, Teleportation, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 10 for strength, 25 for speed, 40 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 3.

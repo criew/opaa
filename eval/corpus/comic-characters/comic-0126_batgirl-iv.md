@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "League of Assassins (exact base is unknown)"
 first_appearance: "Batman: Legends of the Dark Knight #120"
 occupation: null
-teams: "Batman Family, The Outsiders, League of Assassins"
+teams: ["Batman Family", "The Outsiders", "League of Assassins"]
 eye_color: "Green"
 hair_color: "Black"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batgirl IV
 
-Batgirl IV, real name Cassandra Cain, is a good-aligned female Human character created by DC Comics, born in League of Assassins (exact base is unknown) and first appearing in Batman: Legends of the Dark Knight #120. She is affiliated with Batman Family, The Outsiders and League of Assassins. She has Green eyes and Black hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Agility, Peak Human Condition, Stealth, Toxin and Disease Resistance and Weapons Master. Rated across attributes, she scores 85 for intelligence, 10 for strength, 25 for speed, 55 for durability and 100 for combat, giving an overall score of 6.
+Batgirl IV, real name Cassandra Cain, is a good-aligned female Human character created by DC Comics, born in League of Assassins (exact base is unknown) and first appearing in Batman: Legends of the Dark Knight #120. She is affiliated with Batman Family, The Outsiders and League of Assassins. She has Green eyes and Black hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Agility, Peak Human Condition, Stealth, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 10 for strength, 25 for speed, 55 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 6.

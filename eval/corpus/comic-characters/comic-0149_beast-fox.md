@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: null
 first_appearance: "X men 2"
 occupation: null
-teams: "X-Men"
+teams: ["X-Men"]
 eye_color: "Orange"
 hair_color: "Blue"
 height_cm: 157
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Beast (FOX)
 
-Beast (FOX), real name Henry Philip McCoy, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men 2. He is affiliated with X-Men. He has Orange eyes and Blue hair and stands 157 cm tall and weighs 94 kg. His notable abilities include Agility, Dexterity, Endurance, Intelligence, Super Speed and Super Strength. Rated across attributes, he scores 100 for intelligence, 50 for strength, 70 for speed, 50 for durability and 100 for combat, giving an overall score of 10.
+Beast (FOX), real name Henry Philip McCoy, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men 2. He is affiliated with X-Men. He has Orange eyes and Blue hair and stands 157 cm tall and weighs 94 kg. His notable abilities include Agility, Dexterity, Endurance, Intelligence, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 50 for strength, 70 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 10.

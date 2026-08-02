@@ -81,6 +81,36 @@ Datensatz-Versionen dokumentiert, nicht weil sie heute etwas ausschließt.
 - `height`/`weight` liegen als gemischte Zeichenketten vor (z. B. `6'11 • 211 cm` oder für sehr
   große Figuren `100'0 • 30.5 meters` / `40,000 lb • 18.0 tons`). Der Generator extrahiert den
   metrischen Wert per Regex und normalisiert Meter/Tonnen zu cm/kg.
+- Die Quelle kodiert „unbekannt" bei `height` doppelt: als `-` **und** als `0'0 • 0 cm` (16 Zeilen
+  im aktuellen Snapshot). Beide Formen werden zu `height_cm: null`; kein Dokument behauptet eine
+  Körpergröße von 0 cm. Dieselbe Normalisierung gilt vorsorglich auch für `weight_kg`, auch wenn im
+  aktuellen Snapshot keine `0 kg`-Zeile auftritt.
+- `hair_color` enthält bei 190 Zeilen (13 %) `No Hair`/`None` statt einer Farbe. Der Fließtext
+  formuliert das als eigene Klausel ("is bald"/"are bald") statt der unsinnigen „has No Hair hair".
+- Die sechs Bewertungsfelder liegen auf **zwei verschiedenen Skalen**: die fünf Attributwerte
+  (`intelligence_score`, `strength_score`, `speed_score`, `durability_score`, `combat_score`) auf
+  0–100, `overall_score` unabhängig davon auf 1–237 (plus 18-mal die Zeichenkette `∞` bei
+  omnipotenten Figuren). `overall_score` ist **keine** Ableitung aus den fünf Attributwerten — der
+  Fließtext formuliert das absichtlich als eigenständigen Satz, um keine Kausalität zu suggerieren,
+  die es in den Quelldaten nicht gibt.
+- `0` bei den fünf Attributwerten wird als echter Wert behandelt, nicht als „fehlend" — mit einer
+  dokumentierten Einschränkung zu einer 104-Zeilen-Korrelation zwischen „alle fünf Werte 0" und
+  „`overall_score` leer"; Details im Kommentar auf `parse_score()` und in
+  [`../corpus/comic-characters/SOURCE.md`](../corpus/comic-characters/SOURCE.md).
+- `teams` kann Namen mit eingebettetem Komma enthalten (z. B. „Villainy, Inc."). Im Frontmatter
+  daher als echte YAML-Sequenz (`teams: ["Villainy, Inc."]`) statt als kommagetrennter String
+  abgebildet — anders als `superpowers`, dessen Werte nie ein Komma enthalten und deshalb bewusst
+  als kommagetrennter String bleiben (siehe Kommentar auf `yaml_sequence()`).
+- Fehlende Werte werden durchgängig als YAML `null` abgebildet — mit den oben genannten,
+  dokumentierten Ausnahmen bei den fünf Attributwerten (wo `0` ein echter Wert ist).
 - `overall_score` enthält bei einigen wenigen (18 von 1.448) omnipotenten Figuren den Wert `∞`
   statt einer Zahl; er wird unverändert als Zeichenkette übernommen.
-- Fehlende Werte (`-` oder leer) werden als YAML `null` abgebildet, nie als „0" oder Platzhaltertext.
+
+## Größenbegrenzung je Dokument
+
+`MAX_DOCUMENT_BYTES` (3.000 Bytes) ist eine **konservative Byte-Annäherung** an ein
+Token-Limit — siehe den ausführlichen Kommentar auf der Konstanten in `generate_corpus.py` und
+[ADR-0010](../../docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md). Die Ein-Chunk-Invariante
+selbst ist eine Aussage über Tokens im `TokenTextSplitter` (`opaa.indexing.chunk-size`), nicht über
+Bytes; die endgültige Absicherung ist der Java-Integrationstest in #227, der den echten Splitter
+verwendet.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Titan
 
-Titan is a good-aligned male character created by HarperCollins. His notable abilities include Flight, Super Speed and Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Titan is a good-aligned male character created by HarperCollins. His notable abilities include Flight, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

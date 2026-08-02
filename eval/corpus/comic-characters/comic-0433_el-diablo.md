@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "El Diablo #1 - Chapter One: The Handshake"
 occupation: "Formerly Professional Criminal"
-teams: "Suicide Squad, Super Buddies"
+teams: ["Suicide Squad", "Super Buddies"]
 eye_color: "Black"
 hair_color: "No Hair"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # El Diablo
 
-El Diablo, real name Chato Santana, is a neutral-aligned male Human character created by DC Comics, first appearing in El Diablo #1 - Chapter One: The Handshake. He works as a Formerly Professional Criminal and is affiliated with Suicide Squad and Super Buddies. He has Black eyes and No Hair hair. His notable abilities include Fire Control and Immortality. Rated across attributes, he scores 60 for intelligence, 20 for strength, 30 for speed, 80 for durability and 70 for combat, giving an overall score of 8.
+El Diablo, real name Chato Santana, is a neutral-aligned male Human character created by DC Comics, first appearing in El Diablo #1 - Chapter One: The Handshake. He works as a Formerly Professional Criminal and is affiliated with Suicide Squad and Super Buddies. He has Black eyes and is bald. His notable abilities include Fire Control and Immortality. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 20 for strength, 30 for speed, 80 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Flash #112 (1960)"
 occupation: "Detective"
-teams: "Justice Legion Alpha, Justice League Europe, Justice League of America, Justice League, Secret Six"
+teams: ["Justice Legion Alpha", "Justice League Europe", "Justice League of America", "Justice League", "Secret Six"]
 eye_color: "Blue"
 hair_color: "Red"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Elongated Man
 
-Elongated Man, real name Ralph Dibny, is a good-aligned male character created by DC Comics, first appearing in Flash #112 (1960). He works as a Detective and is affiliated with Justice Legion Alpha, Justice League Europe, Justice League of America, Justice League and Secret Six. He has Blue eyes and Red hair and stands 185 cm tall and weighs 80 kg. His notable abilities include Agility, Durability, Shapeshifting and Size Changing. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 90 for durability and 40 for combat, giving an overall score of 8.
+Elongated Man, real name Ralph Dibny, is a good-aligned male character created by DC Comics, first appearing in Flash #112 (1960). He works as a Detective and is affiliated with Justice Legion Alpha, Justice League Europe, Justice League of America, Justice League and Secret Six. He has Blue eyes and Red hair and stands 185 cm tall and weighs 80 kg. His notable abilities include Agility, Durability, Shapeshifting and Size Changing. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 90 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 8.

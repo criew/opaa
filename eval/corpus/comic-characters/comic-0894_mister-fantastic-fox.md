@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mister Fantastic (FOX)
 
-Mister Fantastic (FOX), real name Reed Richards, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Manhattan and first appearing in Fantastic four. He works as a Hero. He has Brown eyes and Black hair and stands 178 cm tall and weighs 89 kg. His notable abilities include Agility, Intelligence, Peak Human Condition and Shapeshifting. Rated across attributes, he scores 100 for intelligence, 20 for strength, 35 for speed, 55 for durability and 65 for combat, giving an overall score of 11.
+Mister Fantastic (FOX), real name Reed Richards, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Manhattan and first appearing in Fantastic four. He works as a Hero. He has Brown eyes and Black hair and stands 178 cm tall and weighs 89 kg. His notable abilities include Agility, Intelligence, Peak Human Condition and Shapeshifting. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 20 for strength, 35 for speed, 55 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 11.

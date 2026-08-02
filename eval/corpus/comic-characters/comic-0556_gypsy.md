@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Birds of Prey, Justice League, Justice Legion Alpha"
+teams: ["Birds of Prey", "Justice League", "Justice Legion Alpha"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gypsy
 
-Gypsy is a good-aligned character created by DC Comics. They are affiliated with Birds of Prey, Justice League and Justice Legion Alpha. Their notable abilities include Illusions and Telepathy. Rated across attributes, they score 90 for intelligence, 10 for strength, 15 for speed, 30 for durability and 70 for combat, giving an overall score of 7.
+Gypsy is a good-aligned character created by DC Comics. They are affiliated with Birds of Prey, Justice League and Justice Legion Alpha. Their notable abilities include Illusions and Telepathy. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 15 for speed, 30 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 7.

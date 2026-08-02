@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Unknown"
 first_appearance: "X-Men #104"
 occupation: null
-teams: "X-Men"
+teams: ["X-Men"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hepzibah
 
-Hepzibah, real name Hepzibah, is a good-aligned character created by Marvel Comics, born in Unknown and first appearing in X-Men #104. They are affiliated with X-Men. They have Blue eyes and Black hair. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Hepzibah, real name Hepzibah, is a good-aligned character created by Marvel Comics, born in Unknown and first appearing in X-Men #104. They are affiliated with X-Men. They have Blue eyes and Black hair. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

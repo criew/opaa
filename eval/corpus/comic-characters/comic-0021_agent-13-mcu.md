@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Agent 13 (MCU)
 
-Agent 13 (MCU), real name Sharon Carter, is a good-aligned female Human character created by Marvel Comics, born in America and first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D agent. She has Black eyes and Blond hair and stands 168 cm tall and weighs 89 kg. Her notable abilities include Intelligence, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 95 for intelligence, 20 for strength, 70 for speed, 50 for durability and 100 for combat, giving an overall score of 9.
+Agent 13 (MCU), real name Sharon Carter, is a good-aligned female Human character created by Marvel Comics, born in America and first appearing in Agents of S.H.I.E.L.D. She works as a S.H.I.E.L.D agent. She has Black eyes and Blond hair and stands 168 cm tall and weighs 89 kg. Her notable abilities include Intelligence, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 20 for strength, 70 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 9.

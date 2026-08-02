@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Harvey Bullock
 
-Harvey Bullock is a character created by DC Comics. Their notable abilities include Agility, Enhanced Senses, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 90 for intelligence, 15 for strength, 40 for speed, 45 for durability and 90 for combat, giving an overall score of 8.
+Harvey Bullock is a character created by DC Comics. Their notable abilities include Agility, Enhanced Senses, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 15 for strength, 40 for speed, 45 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 8.

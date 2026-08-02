@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain America 2099
 
-Captain America 2099, real name Roberta Mendez, is a good-aligned female Human character created by Marvel Comics, first appearing in Secret Wars 2099 #1. She works as an Adventurer, Alchemax employee, government agent. She has Brown eyes and Blond hair. Her notable abilities include Energy Constructs, Flight, Force Fields and Jump. Rated across attributes, she scores 95 for intelligence, 20 for strength, 55 for speed, 45 for durability and 100 for combat, giving an overall score of 8.
+Captain America 2099, real name Roberta Mendez, is a good-aligned female Human character created by Marvel Comics, first appearing in Secret Wars 2099 #1. She works as an Adventurer, Alchemax employee, government agent. She has Brown eyes and Blond hair. Her notable abilities include Energy Constructs, Flight, Force Fields and Jump. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 20 for strength, 55 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 8.

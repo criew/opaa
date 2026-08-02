@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Avengers #264"
 occupation: "Adventurer; former criminal, electronics engineer"
-teams: "Masters of Evil"
+teams: ["Masters of Evil"]
 eye_color: "Blue"
 hair_color: "Strawberry Blond"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Yellowjacket II
 
-Yellowjacket II, real name Rita DeMara, is a good-aligned female Human character created by Marvel Comics, first appearing in Avengers #264. She works as an Adventurer; former criminal, electronics engineer and is affiliated with Masters of Evil. She has Blue eyes and Strawberry Blond hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Energy Blasts, Flight and Size Changing. Rated across attributes, she scores 75 for intelligence, 10 for strength, 35 for speed, 30 for durability and 30 for combat, giving an overall score of 4.
+Yellowjacket II, real name Rita DeMara, is a good-aligned female Human character created by Marvel Comics, first appearing in Avengers #264. She works as an Adventurer; former criminal, electronics engineer and is affiliated with Masters of Evil. She has Blue eyes and Strawberry Blond hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Energy Blasts, Flight and Size Changing. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 35 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 4.

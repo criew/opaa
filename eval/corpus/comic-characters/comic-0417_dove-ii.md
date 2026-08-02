@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dove II
 
-Dove II, real name Dawn Granger, is a good-aligned female character created by DC Comics, first appearing in Hawk and Dove Vol 2 #1. She has Blue eyes and White hair and stands 175 cm tall and weighs 54 kg. Her notable abilities include Durability, Element Control and Flight. Rated across attributes, she scores 75 for intelligence, 10 for strength, 30 for speed, 55 for durability and 75 for combat, giving an overall score of 4.
+Dove II, real name Dawn Granger, is a good-aligned female character created by DC Comics, first appearing in Hawk and Dove Vol 2 #1. She has Blue eyes and White hair and stands 175 cm tall and weighs 54 kg. Her notable abilities include Durability, Element Control and Flight. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 30 for speed, 55 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 4.

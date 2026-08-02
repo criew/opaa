@@ -10,7 +10,7 @@ type_race: "Cyborg"
 place_of_birth: null
 first_appearance: "Adventures of Superman #466 (May, 1990)"
 occupation: null
-teams: "Sinestro Corps, Superman Revenge Squad"
+teams: ["Sinestro Corps", "Superman Revenge Squad"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cyborg Superman
 
-Cyborg Superman, real name Henry Henshaw, is a bad-aligned male Cyborg character created by DC Comics, first appearing in Adventures of Superman #466 (May, 1990). He is affiliated with Sinestro Corps and Superman Revenge Squad. He has Blue eyes and Black hair. His notable abilities include Durability, Energy Absorption, Energy Constructs, Energy Manipulation, Enhanced Hearing, Flight, Immortality, Invulnerability, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 90 for intelligence, 95 for strength, 90 for speed, 100 for durability and 80 for combat, giving an overall score of 21.
+Cyborg Superman, real name Henry Henshaw, is a bad-aligned male Cyborg character created by DC Comics, first appearing in Adventures of Superman #466 (May, 1990). He is affiliated with Sinestro Corps and Superman Revenge Squad. He has Blue eyes and Black hair. His notable abilities include Durability, Energy Absorption, Energy Constructs, Energy Manipulation, Enhanced Hearing, Flight, Immortality, Invulnerability, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 95 for strength, 90 for speed, 100 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 21.

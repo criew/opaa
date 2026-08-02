@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Yondu (MCU)
 
-Yondu (MCU), real name Yondu, is a male character created by Marvel Comics, first appearing in Guardians of the Galaxy. He has Red eyes and Red hair and stands 168 cm tall and weighs 59 kg. His notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 25 for strength, 40 for speed, 40 for durability and 80 for combat, giving an overall score of 7.
+Yondu (MCU), real name Yondu, is a male character created by Marvel Comics, first appearing in Guardians of the Galaxy. He has Red eyes and Red hair and stands 168 cm tall and weighs 59 kg. His notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 25 for strength, 40 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 7.

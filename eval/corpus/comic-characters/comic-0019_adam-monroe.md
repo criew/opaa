@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Adam Monroe
 
-Adam Monroe is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S02E01 - Four Months Later.... He works as a former samurai swordsman, former British mercenary commander, former soldier in the Confederate Army. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Immortality and Regeneration. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 100 for durability and 65 for combat, giving an overall score of 8.
+Adam Monroe is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S02E01 - Four Months Later. He works as a former samurai swordsman, former British mercenary commander, former soldier in the Confederate Army. He has Blue eyes and Blond hair. His notable abilities include Accelerated Healing, Immortality and Regeneration. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 100 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 8.

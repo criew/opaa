@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Cresskill, New Jersey"
 first_appearance: "TALES TO ASTONISH #44"
 occupation: "Adventurer, fashion designer, independently wealthy socialite"
-teams: "Defenders, Avengers West Coast, Mighty Avengers, The Ultimates, Avengers"
+teams: ["Defenders", "Avengers West Coast", "Mighty Avengers", "The Ultimates", "Avengers"]
 eye_color: "Blue"
 hair_color: "Auburn"
 height_cm: 163
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Wasp
 
-The Wasp, real name Janet van Dyne, is a good-aligned female Human character created by Marvel Comics, born in Cresskill, New Jersey and first appearing in TALES TO ASTONISH #44. She works as an Adventurer, fashion designer, independently wealthy socialite and is affiliated with Defenders, Avengers West Coast, Mighty Avengers, The Ultimates and Avengers. She has Blue eyes and Auburn hair and stands 163 cm tall and weighs 50 kg. Her notable abilities include Agility, Energy Blasts, Flight, Intelligence, Size Changing, Stealth, Super Strength and Weapon-Based Powers. Rated across attributes, she scores 80 for intelligence, 15 for strength, 60 for speed, 50 for durability and 40 for combat, giving an overall score of 6.
+The Wasp, real name Janet van Dyne, is a good-aligned female Human character created by Marvel Comics, born in Cresskill, New Jersey and first appearing in TALES TO ASTONISH #44. She works as an Adventurer, fashion designer, independently wealthy socialite and is affiliated with Defenders, Avengers West Coast, Mighty Avengers, The Ultimates and Avengers. She has Blue eyes and Auburn hair and stands 163 cm tall and weighs 50 kg. Her notable abilities include Agility, Energy Blasts, Flight, Intelligence, Size Changing, Stealth, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 15 for strength, 60 for speed, 50 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 6.

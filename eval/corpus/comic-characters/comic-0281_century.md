@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Century
 
-Century is a good-aligned male Alien character created by Marvel Comics, first appearing in Force Works #1 (July, 1994). He works as a Tracker, adventurer. He has White eyes and White hair and stands 201 cm tall and weighs 97 kg. His notable abilities include Dimensional Travel, Regeneration and Teleportation. Rated across attributes, he scores 95 for intelligence, 80 for strength, 55 for speed, 65 for durability and 100 for combat, giving an overall score of 11.
+Century is a good-aligned male Alien character created by Marvel Comics, first appearing in Force Works #1 (July, 1994). He works as a Tracker, adventurer. He has White eyes and White hair and stands 201 cm tall and weighs 97 kg. His notable abilities include Dimensional Travel, Regeneration and Teleportation. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 80 for strength, 55 for speed, 65 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 11.

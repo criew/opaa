@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # A.I.M. Agent
 
-A.I.M. Agent is a bad-aligned male Human character created by Marvel Comics. His notable abilities include Marksmanship, Stealth and Weapons Master. Rated across attributes, he scores 90 for intelligence, 5 for strength, 20 for speed, 25 for durability and 70 for combat, giving an overall score of 7.
+A.I.M. Agent is a bad-aligned male Human character created by Marvel Comics. His notable abilities include Marksmanship, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 5 for strength, 20 for speed, 25 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

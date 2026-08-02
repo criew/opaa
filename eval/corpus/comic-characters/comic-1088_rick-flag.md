@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Brave and the Bold #25 (September 1959)"
 occupation: "Government Agent, Covert Ops field Commander"
-teams: "Super Buddies"
+teams: ["Super Buddies"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rick Flag
 
-Rick Flag, real name Richard Rogers Flag, is a bad-aligned male character created by DC Comics, first appearing in Brave and the Bold #25 (September 1959). He works as a Government Agent, Covert Ops field Commander and is affiliated with Super Buddies. He has Blue eyes and Brown hair and stands 185 cm tall and weighs 85 kg. His notable abilities include Weapon-Based Powers. Rated across attributes, he scores 95 for intelligence, 10 for strength, 25 for speed, 30 for durability and 95 for combat, giving an overall score of 8.
+Rick Flag, real name Richard Rogers Flag, is a bad-aligned male character created by DC Comics, first appearing in Brave and the Bold #25 (September 1959). He works as a Government Agent, Covert Ops field Commander and is affiliated with Super Buddies. He has Blue eyes and Brown hair and stands 185 cm tall and weighs 85 kg. His notable abilities include Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 25 for speed, 30 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 8.

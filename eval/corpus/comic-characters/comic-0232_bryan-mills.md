@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bryan Mills
 
-Bryan Mills is a good-aligned male Human character, first appearing in Taken (2008). He has Grey eyes and Brown / White hair and stands 193 cm tall and weighs 104 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 15 for strength, 30 for speed, 60 for durability and 100 for combat, giving an overall score of 10.
+Bryan Mills is a good-aligned male Human character, first appearing in Taken (2008). He has Grey eyes and Brown / White hair and stands 193 cm tall and weighs 104 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 15 for strength, 30 for speed, 60 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 10.

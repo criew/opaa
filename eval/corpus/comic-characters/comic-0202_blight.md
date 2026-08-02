@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blight
 
-Blight, real name Derek Powers, is a bad-aligned character created by DC Comics. Their notable abilities include Durability, Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Manipulation, Invulnerability, Marksmanship and Toxin and Disease Resistance. Rated across attributes, they score 90 for intelligence, 10 for strength, 30 for speed, 100 for durability and 50 for combat, giving an overall score of 11.
+Blight, real name Derek Powers, is a bad-aligned character created by DC Comics. Their notable abilities include Durability, Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Manipulation, Invulnerability, Marksmanship and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 30 for speed, 100 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 11.

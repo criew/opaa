@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Luke Campbell
 
-Luke Campbell, real name Luke Campbell, is a bad-aligned male character created by NBC - Heroes. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Luke Campbell, real name Luke Campbell, is a bad-aligned male character created by NBC - Heroes. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

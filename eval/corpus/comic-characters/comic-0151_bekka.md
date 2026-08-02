@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bekka
 
-Bekka, real name Bekka, is a neutral-aligned New God character created by DC Comics. They work as a Warlord. Their notable abilities include Cold Resistance, Flight, Heat Resistance, Immortality, Invulnerability, Longevity, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 95 for intelligence, 100 for strength, 90 for speed, 100 for durability and 100 for combat, giving an overall score of 20.
+Bekka, real name Bekka, is a neutral-aligned New God character created by DC Comics. They work as a Warlord. Their notable abilities include Cold Resistance, Flight, Heat Resistance, Immortality, Invulnerability, Longevity, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 100 for strength, 90 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 20.

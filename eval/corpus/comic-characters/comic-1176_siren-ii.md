@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Siren II
 
-Siren II, real name La Sirene la Bailene, is a bad-aligned female character created by DC Comics, born in Atlantis and first appearing in The Titans #5 (1999). She has Black eyes. Her notable abilities include Stamina and Super Strength. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Siren II, real name La Sirene la Bailene, is a bad-aligned female character created by DC Comics, born in Atlantis and first appearing in The Titans #5 (1999). She has Black eyes. Her notable abilities include Stamina and Super Strength. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Fist (MCU)
 
-Iron Fist (MCU), real name Danny Rand, is a good-aligned male Human character created by Marvel Comics. He has Brown eyes and Blond hair and stands 183 cm tall and weighs 67 kg. His notable abilities include Agility, Durability, Endurance, Energy Absorption, Energy Blasts, Energy Manipulation, Marksmanship, Reflexes, Stamina, Super Strength and Weapons Master. Rated across attributes, he scores 70 for intelligence, 35 for strength, 60 for speed, 45 for durability and 100 for combat, giving an overall score of 4.
+Iron Fist (MCU), real name Danny Rand, is a good-aligned male Human character created by Marvel Comics. He has Brown eyes and Blond hair and stands 183 cm tall and weighs 67 kg. His notable abilities include Agility, Durability, Endurance, Energy Absorption, Energy Blasts, Energy Manipulation, Marksmanship, Reflexes, Stamina, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 35 for strength, 60 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 4.

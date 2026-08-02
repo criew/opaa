@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kilgrave (MCU)
 
-Kilgrave (MCU), real name Kevin Thompson, is a bad-aligned male Human character created by Marvel Comics, first appearing in Jessica Jones Season 1: Episode 1. He works as a Criminal. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 72 kg. His notable abilities include Mind Control. Rated across attributes, he scores 80 for intelligence, 10 for strength, 15 for speed, 20 for durability and 40 for combat, giving an overall score of 6.
+Kilgrave (MCU), real name Kevin Thompson, is a bad-aligned male Human character created by Marvel Comics, first appearing in Jessica Jones Season 1: Episode 1. He works as a Criminal. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 72 kg. His notable abilities include Mind Control. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 15 for speed, 20 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 6.

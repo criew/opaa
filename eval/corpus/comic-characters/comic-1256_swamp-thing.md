@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Swamp Thing
 
-Swamp Thing, real name Alec Holland, is a bad-aligned male God / Eternal character created by DC Comics, first appearing in Swamp Thing #1 (November, 1972). He works as a Planet Elemental, former Biochemist. He has Red eyes and No Hair hair. His notable abilities include Flight, Illusions, Immortality, Intelligence, Longevity, Self-Sustenance, Size Changing, Stealth and Super Strength. Rated across attributes, he scores 95 for intelligence, 95 for strength, 25 for speed, 100 for durability and 55 for combat, giving an overall score of 15.
+Swamp Thing, real name Alec Holland, is a bad-aligned male God / Eternal character created by DC Comics, first appearing in Swamp Thing #1 (November, 1972). He works as a Planet Elemental, former Biochemist. He has Red eyes and is bald. His notable abilities include Flight, Illusions, Immortality, Intelligence, Longevity, Self-Sustenance, Size Changing, Stealth and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 95 for strength, 25 for speed, 100 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 15.

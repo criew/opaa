@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: "Terminus"
 first_appearance: "Icon #1 - By Their Own Bootstraps"
 occupation: "Lawyer, soldier"
-teams: "Justice League"
+teams: ["Justice League"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 203
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Icon
 
-Icon, real name Arnus, is a good-aligned male Alien character created by DC Comics, born in Terminus and first appearing in Icon #1 - By Their Own Bootstraps. He works as a Lawyer, soldier and is affiliated with Justice League. He has Brown eyes and Black hair and stands 203 cm tall and weighs 131 kg. His notable abilities include Accelerated Healing, Agility, Durability, Electrokinesis, Energy Blasts, Energy Constructs, Energy Manipulation, Enhanced Hearing, Enhanced Senses, Flight, Force Fields, Intelligence, Invulnerability, Longevity, Marksmanship, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated across attributes, he scores 95 for intelligence, 100 for strength, 100 for speed, 100 for durability and 90 for combat, giving an overall score of 21.
+Icon, real name Arnus, is a good-aligned male Alien character created by DC Comics, born in Terminus and first appearing in Icon #1 - By Their Own Bootstraps. He works as a Lawyer, soldier and is affiliated with Justice League. He has Brown eyes and Black hair and stands 203 cm tall and weighs 131 kg. His notable abilities include Accelerated Healing, Agility, Durability, Electrokinesis, Energy Blasts, Energy Constructs, Energy Manipulation, Enhanced Hearing, Enhanced Senses, Flight, Force Fields, Intelligence, Invulnerability, Longevity, Marksmanship, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 100 for strength, 100 for speed, 100 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 21.

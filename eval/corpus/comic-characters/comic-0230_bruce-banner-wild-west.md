@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bruce Banner (Wild West)
 
-Bruce Banner (Wild West), real name Bruce Banner, is a male character created by Marvel Comics. He works as a Scientist, apothecary. He has Brown hair. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 20 for combat, giving an overall score of 9.
+Bruce Banner (Wild West), real name Bruce Banner, is a male character created by Marvel Comics. He works as a Scientist, apothecary. He has Brown hair. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 9.

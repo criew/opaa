@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: null
 occupation: "Professional Criminal"
-teams: "Rogues, Minutemen"
+teams: ["Rogues", "Minutemen"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Trickster II
 
-Trickster II, real name Axel Walker, is a bad-aligned male Human character created by DC Comics. He works as a Professional Criminal and is affiliated with Rogues and Minutemen. He has Blue eyes and Blond hair and weighs 68 kg. His notable abilities include Agility, Flight, Intelligence, Jump, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 15 for durability and 100 for combat, giving an overall score of 9.
+Trickster II, real name Axel Walker, is a bad-aligned male Human character created by DC Comics. He works as a Professional Criminal and is affiliated with Rogues and Minutemen. He has Blue eyes and Blond hair and weighs 68 kg. His notable abilities include Agility, Flight, Intelligence, Jump, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 15 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 9.

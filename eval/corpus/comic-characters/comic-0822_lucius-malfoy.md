@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lucius Malfoy
 
-Lucius Malfoy is a bad-aligned male character created by J. K. Rowling, first appearing in Harry Potter and the Chamber of Secrets. He works as a Death Eater. He has White hair. His notable abilities include Accelerated Healing, Energy Blasts, Energy Constructs, Fire Control, Force Fields, Illusions, Intelligence, Magic, Reality Warping, Telekinesis and Teleportation. Rated across attributes, he scores 90 for intelligence, 10 for strength, 20 for speed, 20 for durability and 85 for combat, giving an overall score of 14.
+Lucius Malfoy is a bad-aligned male character created by J. K. Rowling, first appearing in Harry Potter and the Chamber of Secrets. He works as a Death Eater. He has White hair. His notable abilities include Accelerated Healing, Energy Blasts, Energy Constructs, Fire Control, Force Fields, Illusions, Intelligence, Magic, Reality Warping, Telekinesis and Teleportation. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 20 for speed, 20 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 14.

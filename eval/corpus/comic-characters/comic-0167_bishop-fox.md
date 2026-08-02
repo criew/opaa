@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bishop (Fox)
 
-Bishop (Fox), real name Lucas Bishop, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X-Men: Days of Future Past. He has Red eyes and Black hair and stands 191 cm tall. His notable abilities include Accelerated Healing, Energy Absorption, Marksmanship, Stamina and Super Strength. Rated across attributes, he scores 80 for intelligence, 15 for strength, 30 for speed, 70 for durability and 70 for combat, giving an overall score of 7.
+Bishop (Fox), real name Lucas Bishop, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X-Men: Days of Future Past. He has Red eyes and Black hair and stands 191 cm tall. His notable abilities include Accelerated Healing, Energy Absorption, Marksmanship, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 15 for strength, 30 for speed, 70 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

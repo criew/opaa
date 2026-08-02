@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kurse (MCU)
 
-Kurse (MCU), real name Algrim, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Element Control, Fire Resistance, Heat Resistance, Invulnerability, Longevity, Regeneration, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated across attributes, they score 65 for intelligence, 100 for strength, 55 for speed, 95 for durability and 95 for combat, giving an overall score of 13.
+Kurse (MCU), real name Algrim, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Element Control, Fire Resistance, Heat Resistance, Invulnerability, Longevity, Regeneration, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, they score 65 for intelligence, 100 for strength, 55 for speed, 95 for durability and 95 for combat. On a separate overall ranking scale, their overall score is 13.

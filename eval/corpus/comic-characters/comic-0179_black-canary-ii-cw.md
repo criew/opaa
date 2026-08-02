@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Canary II (CW)
 
-Black Canary II (CW), real name Dinah Drake, is a good-aligned female Human character created by DC Comics, born in Earth-1 and first appearing in Arrow season 5. She works as a Police captain. She has Blue / White eyes and Blond hair and stands 157 cm tall and weighs 79 kg. Her notable abilities include Agility and Peak Human Condition. Rated across attributes, she scores 90 for intelligence, 20 for strength, 50 for speed, 45 for durability and 100 for combat, giving an overall score of 7.
+Black Canary II (CW), real name Dinah Drake, is a good-aligned female Human character created by DC Comics, born in Earth-1 and first appearing in Arrow season 5. She works as a Police captain. She has Blue / White eyes and Blond hair and stands 157 cm tall and weighs 79 kg. Her notable abilities include Agility and Peak Human Condition. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 20 for strength, 50 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 7.

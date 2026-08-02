@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Luna
 
-Luna, real name Luna Maximoff, is a good-aligned female Human character created by Marvel Comics, born in Attilan, Blue Area of the Moon. Rated across attributes, she scores 70 for intelligence, 5 for strength, 85 for speed, 15 for durability and 15 for combat, giving an overall score of 5.
+Luna, real name Luna Maximoff, is a good-aligned female Human character created by Marvel Comics, born in Attilan, Blue Area of the Moon. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 5 for strength, 85 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, her overall score is 5.

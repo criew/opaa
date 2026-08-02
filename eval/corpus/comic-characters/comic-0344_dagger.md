@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Shaker Heights, Ohio"
 first_appearance: "Spectacular Spiderman #64"
 occupation: "Vigilante"
-teams: "Cloak and Dagger, Secret Defenders, Avengers Resistance, X-Men, New Warriors, Dark X-Men"
+teams: ["Cloak and Dagger", "Secret Defenders", "Avengers Resistance", "X-Men", "New Warriors", "Dark X-Men"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dagger
 
-Dagger, real name Tandy Bowen, is a good-aligned female character created by Marvel Comics, born in Shaker Heights, Ohio and first appearing in Spectacular Spiderman #64. She works as a Vigilante and is affiliated with Cloak and Dagger, Secret Defenders, Avengers Resistance, X-Men, New Warriors and Dark X-Men. She has Blue eyes and Blond hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Energy Blasts. Rated across attributes, she scores 80 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat, giving an overall score of 6.
+Dagger, real name Tandy Bowen, is a good-aligned female character created by Marvel Comics, born in Shaker Heights, Ohio and first appearing in Spectacular Spiderman #64. She works as a Vigilante and is affiliated with Cloak and Dagger, Secret Defenders, Avengers Resistance, X-Men, New Warriors and Dark X-Men. She has Blue eyes and Blond hair and stands 165 cm tall and weighs 52 kg. Her notable abilities include Energy Blasts. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 6.

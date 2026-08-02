@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Place of birth unknown"
 first_appearance: "First appearance unknown"
 occupation: "Bouncer, adventurer, former mercenary"
-teams: "Alpha Flight"
+teams: ["Alpha Flight"]
 eye_color: "Brown"
 hair_color: "black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Puck
 
-Puck, real name Eugene Milton Judd, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in First appearance unknown. They work as a Bouncer, adventurer, former mercenary and are affiliated with Alpha Flight. They have Brown eyes and black hair. Their notable abilities include Agility, Durability, Endurance, Invulnerability, Longevity, Magic, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 85 for intelligence, 50 for strength, 65 for speed, 90 for durability and 100 for combat, giving an overall score of 10.
+Puck, real name Eugene Milton Judd, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in First appearance unknown. They work as a Bouncer, adventurer, former mercenary and are affiliated with Alpha Flight. They have Brown eyes and black hair. Their notable abilities include Agility, Durability, Endurance, Invulnerability, Longevity, Magic, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 50 for strength, 65 for speed, 90 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 10.

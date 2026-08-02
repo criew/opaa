@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ray
 
-Ray, real name Ray, is a good-aligned male Human character created by Lego, born in Ninjago and first appearing in Way of the Ninja (pictured). He works as a Smith. He has Black eyes and Black hair and stands 157 cm tall and weighs 50 kg. His notable abilities include Element Control, Fire Control, Fire Resistance, Flight, Force Fields and Heat Resistance. Rated across attributes, he scores 90 for intelligence, 15 for strength, 25 for speed, 30 for durability and 100 for combat, giving an overall score of 8.
+Ray, real name Ray, is a good-aligned male Human character created by Lego, born in Ninjago and first appearing in Way of the Ninja (pictured). He works as a Smith. He has Black eyes and Black hair and stands 157 cm tall and weighs 50 kg. His notable abilities include Element Control, Fire Control, Fire Resistance, Flight, Force Fields and Heat Resistance. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 15 for strength, 25 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Detroit Steel
 
-Detroit Steel, real name Lt. Doug Johnson III, is a bad-aligned male Human character created by Marvel Comics, first appearing in Invincible Iron Man Vol 2 #25. He works as a Soldier. He has Blue eyes and Blond hair. His notable abilities include Fire Resistance, Flight, Heat Resistance, Intelligence, Jump, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 100 for intelligence, 90 for strength, 60 for speed, 60 for durability and 65 for combat, giving an overall score of 13.
+Detroit Steel, real name Lt. Doug Johnson III, is a bad-aligned male Human character created by Marvel Comics, first appearing in Invincible Iron Man Vol 2 #25. He works as a Soldier. He has Blue eyes and Blond hair. His notable abilities include Fire Resistance, Flight, Heat Resistance, Intelligence, Jump, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 90 for strength, 60 for speed, 60 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 13.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "DETECTIVE COMICS #58 (December, 1941)"
 occupation: "Trader"
-teams: "The Society, Secret Six"
+teams: ["The Society", "Secret Six"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 157
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Penguin
 
-Penguin, real name Oswald Cobblepot, is a bad-aligned male Human character created by DC Comics, first appearing in DETECTIVE COMICS #58 (December, 1941). He works as a Trader and is affiliated with The Society and Secret Six. He has Blue eyes and Black hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Agility, Cold Resistance, Intelligence, Stealth and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 35 for durability and 45 for combat, giving an overall score of 8.
+Penguin, real name Oswald Cobblepot, is a bad-aligned male Human character created by DC Comics, first appearing in DETECTIVE COMICS #58 (December, 1941). He works as a Trader and is affiliated with The Society and Secret Six. He has Blue eyes and Black hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Agility, Cold Resistance, Intelligence, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 35 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 8.

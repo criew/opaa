@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Golden Glider (CW)
 
-Golden Glider (CW), real name Lisa Snart, is a neutral-aligned female Human character, born in Earth-1 and first appearing in The Flash Season 1: Episode 16. She works as a Thief, Criminal. She has Blue eyes and Brown hair and stands 170 cm tall and weighs 52 kg. Her notable abilities include Marksmanship, Reflexes, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 25 for durability and 70 for combat, giving an overall score of 5.
+Golden Glider (CW), real name Lisa Snart, is a neutral-aligned female Human character, born in Earth-1 and first appearing in The Flash Season 1: Episode 16. She works as a Thief, Criminal. She has Blue eyes and Brown hair and stands 170 cm tall and weighs 52 kg. Her notable abilities include Marksmanship, Reflexes, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 25 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 5.

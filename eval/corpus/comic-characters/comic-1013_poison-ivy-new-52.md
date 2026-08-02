@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Poison Ivy (New 52)
 
-Poison Ivy (New 52), real name Pamela Isley, is a bad-aligned female Human character created by DC Comics, born in Seattle, Washington and first appearing in Birds of Prey Vol 3 #1. She works as a Criminal,Botanist. She has Red hair. Her notable abilities include Accelerated Healing, Agility, Element Control, Mind Control and Toxin and Disease Resistance. Rated across attributes, she scores 95 for intelligence, 30 for strength, 30 for speed, 30 for durability and 100 for combat, giving an overall score of 10.
+Poison Ivy (New 52), real name Pamela Isley, is a bad-aligned female Human character created by DC Comics, born in Seattle, Washington and first appearing in Birds of Prey Vol 3 #1. She works as a Criminal,Botanist. She has Red hair. Her notable abilities include Accelerated Healing, Agility, Element Control, Mind Control and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 30 for strength, 30 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 10.

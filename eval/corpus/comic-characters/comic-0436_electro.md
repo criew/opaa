@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Amazing Spider-Man #9 (1964)"
 occupation: "Professional criminal"
-teams: "The FIRM, Superiour Six, Sinister Seven, Secret Empire, Sinister Six, Black Cat's Gang, Frightful Four"
+teams: ["The FIRM", "Superiour Six", "Sinister Seven", "Secret Empire", "Sinister Six", "Black Cat's Gang", "Frightful Four"]
 eye_color: "Blue"
 hair_color: "Auburn"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Electro
 
-Electro, real name Maxwell Dillon, is a bad-aligned male Human character created by Marvel Comics, first appearing in Amazing Spider-Man #9 (1964). He works as a Professional criminal and is affiliated with The FIRM, Superiour Six, Sinister Seven, Secret Empire, Sinister Six, Black Cat's Gang and Frightful Four. He has Blue eyes and Auburn hair and stands 180 cm tall and weighs 74 kg. His notable abilities include Electrokinesis and Super Speed. Rated across attributes, he scores 85 for intelligence, 10 for strength, 50 for speed, 55 for durability and 65 for combat, giving an overall score of 7.
+Electro, real name Maxwell Dillon, is a bad-aligned male Human character created by Marvel Comics, first appearing in Amazing Spider-Man #9 (1964). He works as a Professional criminal and is affiliated with The FIRM, Superiour Six, Sinister Seven, Secret Empire, Sinister Six, Black Cat's Gang and Frightful Four. He has Blue eyes and Auburn hair and stands 180 cm tall and weighs 74 kg. His notable abilities include Electrokinesis and Super Speed. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 10 for strength, 50 for speed, 55 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 7.

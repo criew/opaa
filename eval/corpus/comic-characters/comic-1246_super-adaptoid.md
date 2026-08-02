@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Super Adaptoid
 
-Super Adaptoid is a bad-aligned character created by Marvel Comics. Their notable abilities include Agility, Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Size Changing, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 100 for intelligence, 65 for strength, 60 for speed, 65 for durability and 70 for combat, giving an overall score of 12.
+Super Adaptoid is a bad-aligned character created by Marvel Comics. Their notable abilities include Agility, Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Size Changing, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 65 for strength, 60 for speed, 65 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 12.

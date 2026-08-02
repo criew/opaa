@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cyclops (FOX)
 
-Cyclops (FOX), real name Scott Summers, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Brown eyes and No Hair hair and stands 157 cm tall and weighs 69 kg. His notable abilities include Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Manipulation and Marksmanship. Rated across attributes, he scores 65 for intelligence, 15 for strength, 30 for speed, 30 for durability and 55 for combat, giving an overall score of 3.
+Cyclops (FOX), real name Scott Summers, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Brown eyes and is bald and stands 157 cm tall and weighs 69 kg. His notable abilities include Element Control, Energy Absorption, Energy Beams, Energy Blasts, Energy Manipulation and Marksmanship. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 15 for strength, 30 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 3.

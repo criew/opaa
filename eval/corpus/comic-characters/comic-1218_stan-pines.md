@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Stan Pines
 
-Stan Pines, real name Stanley Pines, is a good-aligned male Human character created by Disney, first appearing in Gravity Falls-Episode 1. He works as an Owner of Mystery Shack, Adventurer. He has Black eyes and Grey hair. His notable abilities include Agility, Durability, Intelligence, Marksmanship, Reflexes and Stealth. Rated across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 60 for durability and 75 for combat, giving an overall score of 10.
+Stan Pines, real name Stanley Pines, is a good-aligned male Human character created by Disney, first appearing in Gravity Falls-Episode 1. He works as an Owner of Mystery Shack, Adventurer. He has Black eyes and Grey hair. His notable abilities include Agility, Durability, Intelligence, Marksmanship, Reflexes and Stealth. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 60 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 10.

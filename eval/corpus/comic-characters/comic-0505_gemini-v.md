@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gemini V
 
-Gemini V, real name Madison Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Alpha Flight #16. They work as an Inventor, former soldier. They have Brown eyes and Brown / Black hair. Rated across attributes, they score 0 for intelligence, 10 for strength, 0 for speed, 0 for durability and 0 for combat.
+Gemini V, real name Madison Jeffries, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Alpha Flight #16. They work as an Inventor, former soldier. They have Brown eyes and Brown / Black hair. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 10 for strength, 0 for speed, 0 for durability and 0 for combat.

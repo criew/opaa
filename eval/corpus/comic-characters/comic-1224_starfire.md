@@ -10,7 +10,7 @@ type_race: "Tamaranean"
 place_of_birth: "Tamaran"
 first_appearance: "DC Comics Presents #26 (October, 1980)"
 occupation: "Model"
-teams: "Teen Titans, New Teen Titans, Justice League, Outlaws"
+teams: ["Teen Titans", "New Teen Titans", "Justice League", "Outlaws"]
 eye_color: "Green"
 hair_color: "Auburn"
 height_cm: 193
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Starfire
 
-Starfire, real name Koriand'r, is a good-aligned female Tamaranean character created by DC Comics, born in Tamaran and first appearing in DC Comics Presents #26 (October, 1980). She works as a Model and is affiliated with Teen Titans, New Teen Titans, Justice League and Outlaws. She has Green eyes and Auburn hair and stands 193 cm tall and weighs 71 kg. Her notable abilities include Agility, Cold Resistance, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Fire Resistance, Flight, Force Fields, Invulnerability, Jump, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 90 for strength, 100 for speed, 85 for durability and 75 for combat, giving an overall score of 13.
+Starfire, real name Koriand'r, is a good-aligned female Tamaranean character created by DC Comics, born in Tamaran and first appearing in DC Comics Presents #26 (October, 1980). She works as a Model and is affiliated with Teen Titans, New Teen Titans, Justice League and Outlaws. She has Green eyes and Auburn hair and stands 193 cm tall and weighs 71 kg. Her notable abilities include Agility, Cold Resistance, Durability, Endurance, Energy Absorption, Energy Beams, Energy Blasts, Fire Resistance, Flight, Force Fields, Invulnerability, Jump, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 90 for strength, 100 for speed, 85 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 13.

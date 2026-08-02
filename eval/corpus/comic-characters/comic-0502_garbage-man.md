@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Garbage Man
 
-Garbage Man, real name Richard Ethan Morse, is a good-aligned male Mutant character created by DC Comics, first appearing in Weird Worlds #1 (2011). His notable abilities include Accelerated Healing. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Garbage Man, real name Richard Ethan Morse, is a good-aligned male Mutant character created by DC Comics, first appearing in Weird Worlds #1 (2011). His notable abilities include Accelerated Healing. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

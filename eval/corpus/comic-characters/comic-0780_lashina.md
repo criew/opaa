@@ -10,7 +10,7 @@ type_race: "New God"
 place_of_birth: "Apokolips"
 first_appearance: "Mister Miracle #6"
 occupation: "Soldier"
-teams: "Female Furies"
+teams: ["Female Furies"]
 eye_color: "Purple"
 hair_color: "Black"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lashina
 
-Lashina is a bad-aligned female New God character created by DC Comics, born in Apokolips and first appearing in Mister Miracle #6. She works as a Soldier and is affiliated with Female Furies. She has Purple eyes and Black hair and stands 188 cm tall and weighs 101 kg. Her notable abilities include Agility, Dexterity, Durability, Endurance, Immortality, Intelligence, Invulnerability, Jump, Longevity, Marksmanship, Reflexes, Stamina, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 100 for combat, giving an overall score of 20.
+Lashina is a bad-aligned female New God character created by DC Comics, born in Apokolips and first appearing in Mister Miracle #6. She works as a Soldier and is affiliated with Female Furies. She has Purple eyes and Black hair and stands 188 cm tall and weighs 101 kg. Her notable abilities include Agility, Dexterity, Durability, Endurance, Immortality, Intelligence, Invulnerability, Jump, Longevity, Marksmanship, Reflexes, Stamina, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 20.

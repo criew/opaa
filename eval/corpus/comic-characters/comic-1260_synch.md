@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "X-Men #36 (1994)"
 occupation: "Student"
-teams: "Generation X"
+teams: ["Generation X"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Synch
 
-Synch, real name Everett Thomas, is a good-aligned male character created by Marvel Comics, first appearing in X-Men #36 (1994). He works as a Student and is affiliated with Generation X. He has Brown eyes and Black hair and stands 180 cm tall and weighs 74 kg. Rated across attributes, he scores 90 for intelligence, 65 for strength, 25 for speed, 30 for durability and 55 for combat, giving an overall score of 8.
+Synch, real name Everett Thomas, is a good-aligned male character created by Marvel Comics, first appearing in X-Men #36 (1994). He works as a Student and is affiliated with Generation X. He has Brown eyes and Black hair and stands 180 cm tall and weighs 74 kg. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 65 for strength, 25 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 8.

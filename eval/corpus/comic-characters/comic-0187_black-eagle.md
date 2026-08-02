@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Eagle
 
-Black Eagle, real name Cassius Bannister, is a good-aligned male Human character created by DC Comics. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Black Eagle, real name Cassius Bannister, is a good-aligned male Human character created by DC Comics. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

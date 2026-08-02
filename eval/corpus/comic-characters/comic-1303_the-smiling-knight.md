@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Smiling Knight
 
-The Smiling Knight is a bad-aligned male Human character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 3: A Storm of Swords. His notable abilities include Dexterity, Endurance, Stamina and Weapons Master. Rated across attributes, he scores 75 for intelligence, 10 for strength, 40 for speed, 40 for durability and 95 for combat, giving an overall score of 4.
+The Smiling Knight is a bad-aligned male Human character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 3: A Storm of Swords. His notable abilities include Dexterity, Endurance, Stamina and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 40 for speed, 40 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Corvus Glaive (MCU)
 
-Corvus Glaive (MCU), real name Corvus Glaive, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Avengers: Infinity War. He has Red eyes. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 70 for intelligence, 65 for strength, 65 for speed, 70 for durability and 90 for combat, giving an overall score of 5.
+Corvus Glaive (MCU), real name Corvus Glaive, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Avengers: Infinity War. He has Red eyes. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 65 for strength, 65 for speed, 70 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 5.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Birds of Prey #1"
 occupation: null
-teams: "Justice Legion Alpha, League of Assassins, Extreme Justice, Living Assault Weapons"
+teams: ["Justice Legion Alpha", "League of Assassins", "Extreme Justice", "Living Assault Weapons"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # White Canary
 
-White Canary is a bad-aligned female Human character created by DC Comics, first appearing in Birds of Prey #1. She is affiliated with Justice Legion Alpha, League of Assassins, Extreme Justice and Living Assault Weapons. She has Brown eyes and Black hair. Her notable abilities include Agility, Reflexes, Stamina, Stealth and Weapons Master. Rated across attributes, she scores 80 for intelligence, 5 for strength, 35 for speed, 15 for durability and 90 for combat, giving an overall score of 5.
+White Canary is a bad-aligned female Human character created by DC Comics, first appearing in Birds of Prey #1. She is affiliated with Justice Legion Alpha, League of Assassins, Extreme Justice and Living Assault Weapons. She has Brown eyes and Black hair. Her notable abilities include Agility, Reflexes, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 5 for strength, 35 for speed, 15 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 5.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Coruscant"
 first_appearance: null
 occupation: null
-teams: "Jedi Council, Jedi Order"
+teams: ["Jedi Council", "Jedi Order"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: 191
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Qui-Gon Jinn
 
-Qui-Gon Jinn is a good-aligned male Human character created by George Lucas, born in Coruscant. He is affiliated with Jedi Council and Jedi Order. He has Blue eyes and Brown hair and stands 191 cm tall. His notable abilities include Accelerated Healing, Agility, Durability, Electrokinesis, Energy Blasts, Enhanced Hearing, Intelligence, Jump, Reflexes, Stamina, Stealth, Super Strength, Telekinesis, Telepathy and Weapons Master. Rated across attributes, he scores 90 for intelligence, 55 for strength, 35 for speed, 45 for durability and 100 for combat, giving an overall score of 13.
+Qui-Gon Jinn is a good-aligned male Human character created by George Lucas, born in Coruscant. He is affiliated with Jedi Council and Jedi Order. He has Blue eyes and Brown hair and stands 191 cm tall. His notable abilities include Accelerated Healing, Agility, Durability, Electrokinesis, Energy Blasts, Enhanced Hearing, Intelligence, Jump, Reflexes, Stamina, Stealth, Super Strength, Telekinesis, Telepathy and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 55 for strength, 35 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 13.

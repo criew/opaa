@@ -10,7 +10,7 @@ type_race: "Demi-God"
 place_of_birth: null
 first_appearance: "Moana"
 occupation: null
-teams: "Incredible Family"
+teams: ["Incredible Family"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maui
 
-Maui, real name Maui, is a good-aligned male Demi-God character created by Disney, first appearing in Moana. He is affiliated with Incredible Family. He has Brown eyes and Black hair. His notable abilities include Agility, Durability, Illusions, Immortality, Invulnerability, Longevity, Shapeshifting, Super Speed, Super Strength and Weapon-Based Powers. Rated across attributes, he scores 80 for intelligence, 100 for strength, 40 for speed, 100 for durability and 40 for combat, giving an overall score of 13.
+Maui, real name Maui, is a good-aligned male Demi-God character created by Disney, first appearing in Moana. He is affiliated with Incredible Family. He has Brown eyes and Black hair. His notable abilities include Agility, Durability, Illusions, Immortality, Invulnerability, Longevity, Shapeshifting, Super Speed, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 100 for strength, 40 for speed, 100 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 13.

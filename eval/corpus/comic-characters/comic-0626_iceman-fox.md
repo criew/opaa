@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iceman (FOX)
 
-Iceman (FOX), real name Bobby Drake, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Blue eyes and Blue hair and stands 163 cm tall and weighs 89 kg. His notable abilities include Cold Resistance, Durability, Element Control, Endurance, Invulnerability and Super Strength. Rated across attributes, he scores 80 for intelligence, 35 for strength, 50 for speed, 60 for durability and 65 for combat, giving an overall score of 6.
+Iceman (FOX), real name Bobby Drake, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Blue eyes and Blue hair and stands 163 cm tall and weighs 89 kg. His notable abilities include Cold Resistance, Durability, Element Control, Endurance, Invulnerability and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 35 for strength, 50 for speed, 60 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Toad (FOX)
 
-Toad (FOX), real name Mortimer Toynbee, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Men (2000). He works as a Member of the Brotherhood of Mutants. He has Yellow eyes and Green hair and stands 175 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Agility, Durability, Jump, Reflexes, Stamina and Super Strength. Rated across attributes, he scores 80 for intelligence, 30 for strength, 60 for speed, 55 for durability and 80 for combat, giving an overall score of 6.
+Toad (FOX), real name Mortimer Toynbee, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Men (2000). He works as a Member of the Brotherhood of Mutants. He has Yellow eyes and Green hair and stands 175 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Agility, Durability, Jump, Reflexes, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 30 for strength, 60 for speed, 55 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 6.

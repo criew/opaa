@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mr.Krabs
 
-Mr.Krabs, real name Eugene Krabs, is a neutral-aligned male Animal character, born in Bikini Bottom and first appearing in Spongebob Sqarepants, Ep1 S01 (May, 1999). He works as a Businessman, Manager, Co-Cashier. He has Black eyes and No Hair hair and stands 13 cm tall and weighs 3 kg. His notable abilities include Durability, Intelligence, Regeneration, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 95 for intelligence, 55 for strength, 10 for speed, 100 for durability and 75 for combat, giving an overall score of 9.
+Mr.Krabs, real name Eugene Krabs, is a neutral-aligned male Animal character, born in Bikini Bottom and first appearing in Spongebob Sqarepants, Ep1 S01 (May, 1999). He works as a Businessman, Manager, Co-Cashier. He has Black eyes and is bald and stands 13 cm tall and weighs 3 kg. His notable abilities include Durability, Intelligence, Regeneration, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 55 for strength, 10 for speed, 100 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 9.

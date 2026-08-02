@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Steel Serpent
 
-Steel Serpent, real name Davos, is a bad-aligned male character created by Marvel Comics. He works as a Warrior. His notable abilities include Accelerated Healing, Dimensional Travel, Durability, Energy Absorption, Energy Manipulation, Enhanced Senses, Reflexes and Toxin and Disease Resistance. Rated across attributes, he scores 80 for intelligence, 30 for strength, 65 for speed, 50 for durability and 70 for combat, giving an overall score of 6.
+Steel Serpent, real name Davos, is a bad-aligned male character created by Marvel Comics. He works as a Warrior. His notable abilities include Accelerated Healing, Dimensional Travel, Durability, Energy Absorption, Energy Manipulation, Enhanced Senses, Reflexes and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 30 for strength, 65 for speed, 50 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

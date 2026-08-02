@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Quill
 
-Quill, real name Maxwell Jordan, is a good-aligned male character created by Marvel Comics, first appearing in New X-Men: Academy X #1. He has Brown eyes and Brown hair and stands 163 cm tall and weighs 56 kg. His notable abilities include Weapon-Based Powers. Rated across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 3.
+Quill, real name Maxwell Jordan, is a good-aligned male character created by Marvel Comics, first appearing in New X-Men: Academy X #1. He has Brown eyes and Brown hair and stands 163 cm tall and weighs 56 kg. His notable abilities include Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 3.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Professional Criminal"
 first_appearance: "Daredevil #118 (February, 1975)"
 occupation: null
-teams: "Avengers Resistance"
+teams: ["Avengers Resistance"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blackwing
 
-Blackwing, real name Joseph Manfredi, is a bad-aligned male character created by Marvel Comics, born in Professional Criminal and first appearing in Daredevil #118 (February, 1975). He is affiliated with Avengers Resistance. He has Blue eyes and Black hair and stands 185 cm tall and weighs 86 kg. His notable abilities include Flight and Telepathy. Rated across attributes, he scores 70 for intelligence, 10 for strength, 35 for speed, 30 for durability and 55 for combat, giving an overall score of 3.
+Blackwing, real name Joseph Manfredi, is a bad-aligned male character created by Marvel Comics, born in Professional Criminal and first appearing in Daredevil #118 (February, 1975). He is affiliated with Avengers Resistance. He has Blue eyes and Black hair and stands 185 cm tall and weighs 86 kg. His notable abilities include Flight and Telepathy. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 35 for speed, 30 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 3.

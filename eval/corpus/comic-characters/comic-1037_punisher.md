@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Queens, New York"
 first_appearance: "AMAZING SPIDER-MAN #129"
 occupation: "Former United States Marine turned professional vigilante"
-teams: "Marvel Knights, Secret Defenders, Deep Six, Midnight Sons, Thunderbolts, Heroes For Hire"
+teams: ["Marvel Knights", "Secret Defenders", "Deep Six", "Midnight Sons", "Thunderbolts", "Heroes For Hire"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Punisher
 
-Punisher, real name Frank Castle, is a good-aligned male Human character created by Marvel Comics, born in Queens, New York and first appearing in AMAZING SPIDER-MAN #129. He works as a Former United States Marine turned professional vigilante and is affiliated with Marvel Knights, Secret Defenders, Deep Six, Midnight Sons, Thunderbolts and Heroes For Hire. He has Blue eyes and Black hair and stands 183 cm tall and weighs 90 kg. His notable abilities include Agility, Durability, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 15 for strength, 20 for speed, 45 for durability and 100 for combat, giving an overall score of 6.
+Punisher, real name Frank Castle, is a good-aligned male Human character created by Marvel Comics, born in Queens, New York and first appearing in AMAZING SPIDER-MAN #129. He works as a Former United States Marine turned professional vigilante and is affiliated with Marvel Knights, Secret Defenders, Deep Six, Midnight Sons, Thunderbolts and Heroes For Hire. He has Blue eyes and Black hair and stands 183 cm tall and weighs 90 kg. His notable abilities include Agility, Durability, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 15 for strength, 20 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Phantom Rider
 
-Phantom Rider, real name Carter Slade, is a good-aligned male character created by Marvel Comics. He works as a Crime-fighter, schoolteacher. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 89 kg. His notable abilities include Agility, Element Control, Energy Beams, Energy Blasts, Energy Manipulation, Jump, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 75 for combat, giving an overall score of 8.
+Phantom Rider, real name Carter Slade, is a good-aligned male character created by Marvel Comics. He works as a Crime-fighter, schoolteacher. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 89 kg. His notable abilities include Agility, Element Control, Energy Beams, Energy Blasts, Energy Manipulation, Jump, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 8.

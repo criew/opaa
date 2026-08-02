@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Scarsdale, Arizona"
 first_appearance: "Hulk Vol 2 #2 (April, 2008) (as A-Bomb)"
 occupation: "Musician, adventurer, author; formerly talk show host"
-teams: "Teen Brigade, Ultimate Fantastic Four, U-Men, Gods, Thor Corps, Avengers, Loners, U-Men, S.H.I.E.L.D., Fantastic Four"
+teams: ["Teen Brigade", "Ultimate Fantastic Four", "U-Men", "Gods", "Thor Corps", "Avengers", "Loners", "U-Men", "S.H.I.E.L.D.", "Fantastic Four"]
 eye_color: "Yellow"
 hair_color: "No Hair"
 height_cm: 203
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # A-Bomb
 
-A-Bomb, real name Richard Milhouse Jones, is a good-aligned male Human character created by Marvel Comics, born in Scarsdale, Arizona and first appearing in Hulk Vol 2 #2 (April, 2008) (as A-Bomb). He works as a Musician, adventurer, author; formerly talk show host and is affiliated with Teen Brigade, Ultimate Fantastic Four, U-Men, Gods, Thor Corps, Avengers, Loners, U-Men, S.H.I.E.L.D. and Fantastic Four. He has Yellow eyes and No Hair hair and stands 203 cm tall and weighs 441 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Endurance, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Jump, Longevity, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Size Changing, Stamina, Stealth, Super Speed, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated across attributes, he scores 80 for intelligence, 100 for strength, 80 for speed, 100 for durability and 80 for combat, giving an overall score of 20.
+A-Bomb, real name Richard Milhouse Jones, is a good-aligned male Human character created by Marvel Comics, born in Scarsdale, Arizona and first appearing in Hulk Vol 2 #2 (April, 2008) (as A-Bomb). He works as a Musician, adventurer, author; formerly talk show host and is affiliated with Teen Brigade, Ultimate Fantastic Four, U-Men, Gods, Thor Corps, Avengers, Loners, U-Men, S.H.I.E.L.D and Fantastic Four. He has Yellow eyes and is bald and stands 203 cm tall and weighs 441 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Endurance, Enhanced Senses, Fire Resistance, Heat Resistance, Invulnerability, Jump, Longevity, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Size Changing, Stamina, Stealth, Super Speed, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 100 for strength, 80 for speed, 100 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 20.

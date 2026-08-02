@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Midnight Sons"
+teams: ["Midnight Sons"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Morbius
 
-Morbius, real name Michael Morbius, is a good-aligned character created by Marvel Comics. They are affiliated with Midnight Sons. Their notable abilities include Accelerated Healing, Agility, Durability, Endurance, Enhanced Hearing, Enhanced Senses, Flight, Immortality, Intelligence, Mind Control, Regeneration, Self-Sustenance, Shapeshifting, Stamina, Super Speed, Super Strength and Telepathy. Rated across attributes, they score 100 for intelligence, 20 for strength, 50 for speed, 60 for durability and 65 for combat, giving an overall score of 25.
+Morbius, real name Michael Morbius, is a good-aligned character created by Marvel Comics. They are affiliated with Midnight Sons. Their notable abilities include Accelerated Healing, Agility, Durability, Endurance, Enhanced Hearing, Enhanced Senses, Flight, Immortality, Intelligence, Mind Control, Regeneration, Self-Sustenance, Shapeshifting, Stamina, Super Speed, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 20 for strength, 50 for speed, 60 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 25.

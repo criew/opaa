@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Brickster
 
-Brickster, real name Unknown, is a bad-aligned male character created by Lego, born in Nexo knights and first appearing in 2017. He works as a Warrior. He has Yellow eyes and No Hair hair and stands 10 cm tall and weighs 11 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Heat Resistance, Stamina and Weapons Master. Rated across attributes, he scores 75 for intelligence, 10 for strength, 25 for speed, 30 for durability and 65 for combat, giving an overall score of 4.
+Brickster, real name Unknown, is a bad-aligned male character created by Lego, born in Nexo knights and first appearing in 2017. He works as a Warrior. He has Yellow eyes and is bald and stands 10 cm tall and weighs 11 kg. His notable abilities include Agility, Dexterity, Durability, Endurance, Heat Resistance, Stamina and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 25 for speed, 30 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 4.

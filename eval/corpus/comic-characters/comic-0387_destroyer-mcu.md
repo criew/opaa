@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Destroyer (MCU)
 
-Destroyer (MCU) is a Robot character created by Marvel Comics, first appearing in Thor (2011). Their notable abilities include Cold Resistance, Durability, Energy Beams, Energy Blasts, Fire Resistance, Heat Resistance, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated across attributes, they score 30 for intelligence, 90 for strength, 55 for speed, 90 for durability and 60 for combat, giving an overall score of 6.
+Destroyer (MCU) is a Robot character created by Marvel Comics, first appearing in Thor (2011). Their notable abilities include Cold Resistance, Durability, Energy Beams, Energy Blasts, Fire Resistance, Heat Resistance, Super Strength, Telepathy Resistance and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 30 for intelligence, 90 for strength, 55 for speed, 90 for durability and 60 for combat. On a separate overall ranking scale, their overall score is 6.

@@ -10,7 +10,7 @@ type_race: "Cyborg"
 place_of_birth: null
 first_appearance: null
 occupation: "Assassin / Genesis Overseer"
-teams: "Skynet"
+teams: ["Skynet"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # T-X
 
-T-X, real name Cyberdyne Systems Series X Terminator, is a bad-aligned female Cyborg character created by Dark Horse Comics. She works as an Assassin / Genesis Overseer and is affiliated with Skynet. She weighs 149 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Beams, Energy Blasts, Enhanced Hearing, Enhanced Senses, Fire Resistance, Heat Resistance, Intelligence, Invulnerability, Longevity, Marksmanship, Reflexes, Regeneration, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength and Weapons Master. Rated across attributes, she scores 90 for intelligence, 65 for strength, 30 for speed, 85 for durability and 80 for combat, giving an overall score of 12.
+T-X, real name Cyberdyne Systems Series X Terminator, is a bad-aligned female Cyborg character created by Dark Horse Comics. She works as an Assassin / Genesis Overseer and is affiliated with Skynet. She weighs 149 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Beams, Energy Blasts, Enhanced Hearing, Enhanced Senses, Fire Resistance, Heat Resistance, Intelligence, Invulnerability, Longevity, Marksmanship, Reflexes, Regeneration, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 65 for strength, 30 for speed, 85 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 12.

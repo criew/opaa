@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Brainiac
 
-Brainiac, real name Vril Dox, is a bad-aligned male Android character created by DC Comics, first appearing in Action Comics #242 (July 1958). He has Green eyes and No Hair hair and stands 198 cm tall and weighs 135 kg. His notable abilities include Durability, Flight, Force Fields, Intelligence, Longevity, Self-Sustenance, Super Speed, Super Strength, Telekinesis and Telepathy. Rated across attributes, he scores 100 for intelligence, 95 for strength, 65 for speed, 90 for durability and 75 for combat, giving an overall score of 15.
+Brainiac, real name Vril Dox, is a bad-aligned male Android character created by DC Comics, first appearing in Action Comics #242 (July 1958). He has Green eyes and is bald and stands 198 cm tall and weighs 135 kg. His notable abilities include Durability, Flight, Force Fields, Intelligence, Longevity, Self-Sustenance, Super Speed, Super Strength, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 95 for strength, 65 for speed, 90 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 15.

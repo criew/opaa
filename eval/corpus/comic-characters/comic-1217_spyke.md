@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Spyke
 
-Spyke, real name Evan Daniels, is a good-aligned male Mutant character created by Marvel Comics, first appearing in "Speed & Spyke" (December 9, 2000). He has Brown eyes and Blond hair and stands 183 cm tall and weighs 83 kg. His notable abilities include Accelerated Healing and Stamina. Rated across attributes, he scores 75 for intelligence, 10 for strength, 15 for speed, 60 for durability and 30 for combat, giving an overall score of 5.
+Spyke, real name Evan Daniels, is a good-aligned male Mutant character created by Marvel Comics, first appearing in "Speed & Spyke" (December 9, 2000). He has Brown eyes and Blond hair and stands 183 cm tall and weighs 83 kg. His notable abilities include Accelerated Healing and Stamina. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 15 for speed, 60 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 5.

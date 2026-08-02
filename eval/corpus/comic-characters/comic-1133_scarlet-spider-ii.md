@@ -10,7 +10,7 @@ type_race: "Clone"
 place_of_birth: null
 first_appearance: "Web of Spider-Man #119 (December, 1994)"
 occupation: "Fugitive"
-teams: "The Spider Society, Avengers Resistance, A-Force"
+teams: ["The Spider Society", "Avengers Resistance", "A-Force"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 193
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Scarlet Spider II
 
-Scarlet Spider II, real name Kaine Parker, is a good-aligned male Clone character created by Marvel Comics, first appearing in Web of Spider-Man #119 (December, 1994). He works as a Fugitive and is affiliated with The Spider Society, Avengers Resistance and A-Force. He has Brown eyes and Brown hair and stands 193 cm tall and weighs 113 kg. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 95 for intelligence, 55 for strength, 60 for speed, 40 for durability and 55 for combat, giving an overall score of 8.
+Scarlet Spider II, real name Kaine Parker, is a good-aligned male Clone character created by Marvel Comics, first appearing in Web of Spider-Man #119 (December, 1994). He works as a Fugitive and is affiliated with The Spider Society, Avengers Resistance and A-Force. He has Brown eyes and Brown hair and stands 193 cm tall and weighs 113 kg. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 55 for strength, 60 for speed, 40 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 8.

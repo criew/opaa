@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # HK-47
 
-HK-47, real name HK-47, is a male Android character created by George Lucas, first appearing in Star Wars: Knights of the Old Republic (2003). He works as a Hunter-Killer assassin, Jedi Hunter. He has Orange eyes and No Hair hair and stands 178 cm tall. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+HK-47, real name HK-47, is a male Android character created by George Lucas, first appearing in Star Wars: Knights of the Old Republic (2003). He works as a Hunter-Killer assassin, Jedi Hunter. He has Orange eyes and is bald and stands 178 cm tall. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

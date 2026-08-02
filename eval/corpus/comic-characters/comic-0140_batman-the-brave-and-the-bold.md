@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batman (The Brave And The Bold)
 
-Batman (The Brave And The Bold), real name Bruce Wayne, is a good-aligned male character created by DC Comics, born in Gotham City and first appearing in Rise of the Blue Beetle!. He works as an Adventurer, Detective. He has Blue eyes and Black hair. His notable abilities include Agility, Flight, Intelligence, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 15 for strength, 25 for speed, 25 for durability and 100 for combat, giving an overall score of 9.
+Batman (The Brave And The Bold), real name Bruce Wayne, is a good-aligned male character created by DC Comics, born in Gotham City and first appearing in Rise of the Blue Beetle!. He works as an Adventurer, Detective. He has Blue eyes and Black hair. His notable abilities include Agility, Flight, Intelligence, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 15 for strength, 25 for speed, 25 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 9.

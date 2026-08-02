@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Aracnido Jr.
 
-Aracnido Jr. is a character created by Marvel Comics. Their notable abilities include Agility. Rated across attributes, they score 90 for intelligence, 65 for strength, 60 for speed, 55 for durability and 80 for combat, giving an overall score of 8.
+Aracnido Jr. is a character created by Marvel Comics. Their notable abilities include Agility. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 65 for strength, 60 for speed, 55 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 8.

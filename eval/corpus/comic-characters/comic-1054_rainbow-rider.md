@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rainbow Rider
 
-Rainbow Rider, real name Roy G. Bivolo, is a bad-aligned male character created by DC Comics, first appearing in The Flash #286. He works as a Professional Criminal · Artist. He has Grey eyes and Black hair and stands 178 cm tall and weighs 74 kg. His notable abilities include Energy Beams and Marksmanship. Rated across attributes, he scores 90 for intelligence, 10 for strength, 70 for speed, 35 for durability and 45 for combat, giving an overall score of 7.
+Rainbow Rider, real name Roy G. Bivolo, is a bad-aligned male character created by DC Comics, first appearing in The Flash #286. He works as a Professional Criminal · Artist. He has Grey eyes and Black hair and stands 178 cm tall and weighs 74 kg. His notable abilities include Energy Beams and Marksmanship. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 70 for speed, 35 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 7.

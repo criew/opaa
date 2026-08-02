@@ -10,7 +10,7 @@ type_race: "Animal"
 place_of_birth: "Gotham"
 first_appearance: "Batman #462"
 occupation: null
-teams: "Batman Family"
+teams: ["Batman Family"]
 eye_color: "Black"
 hair_color: "Brown"
 height_cm: 109
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bathound
 
-Bathound, real name Ace, is a good-aligned male Animal character created by DC Comics, born in Gotham and first appearing in Batman #462. He is affiliated with Batman Family. He has Black eyes and Brown hair and stands 109 cm tall and weighs 40 kg. His notable abilities include Enhanced Hearing and Enhanced Senses. Rated across attributes, he scores 50 for intelligence, 10 for strength, 15 for speed, 30 for durability and 35 for combat, giving an overall score of 1.
+Bathound, real name Ace, is a good-aligned male Animal character created by DC Comics, born in Gotham and first appearing in Batman #462. He is affiliated with Batman Family. He has Black eyes and Brown hair and stands 109 cm tall and weighs 40 kg. His notable abilities include Enhanced Hearing and Enhanced Senses. Rated on a 0-100 scale across attributes, he scores 50 for intelligence, 10 for strength, 15 for speed, 30 for durability and 35 for combat. On a separate overall ranking scale, his overall score is 1.

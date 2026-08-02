@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Morph
 
-Morph, real name Kevin Sydney, is a good-aligned male character created by Marvel Comics, born in Pittsburgh, Pennsylvania and first appearing in Exiles #1. He works as an Adventurer, reality traveler. He has White eyes and No Hair hair and stands 178 cm tall and weighs 79 kg. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Morph, real name Kevin Sydney, is a good-aligned male character created by Marvel Comics, born in Pittsburgh, Pennsylvania and first appearing in Exiles #1. He works as an Adventurer, reality traveler. He has White eyes and is bald and stands 178 cm tall and weighs 79 kg. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

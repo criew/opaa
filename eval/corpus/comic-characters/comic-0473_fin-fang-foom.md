@@ -10,7 +10,7 @@ type_race: "Kakarantharaian"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "National Force"
+teams: ["National Force"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: 975
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fin Fang Foom
 
-Fin Fang Foom is a good-aligned male Kakarantharaian character created by Marvel Comics. He is affiliated with National Force. He has Red eyes and No Hair hair and stands 975 cm tall and weighs 18000 kg. His notable abilities include Accelerated Healing, Durability, Flight, Longevity, Shapeshifting, Stamina, Super Strength and Telepathy. Rated across attributes, he scores 75 for intelligence, 80 for strength, 25 for speed, 100 for durability and 70 for combat, giving an overall score of 7.
+Fin Fang Foom is a good-aligned male Kakarantharaian character created by Marvel Comics. He is affiliated with National Force. He has Red eyes and is bald and stands 975 cm tall and weighs 18000 kg. His notable abilities include Accelerated Healing, Durability, Flight, Longevity, Shapeshifting, Stamina, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 80 for strength, 25 for speed, 100 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

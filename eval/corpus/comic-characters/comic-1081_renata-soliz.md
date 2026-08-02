@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Renata Soliz
 
-Renata Soliz is a good-aligned female character created by HarperCollins. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Renata Soliz is a good-aligned female character created by HarperCollins. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

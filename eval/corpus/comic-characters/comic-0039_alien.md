@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Alien
 
-Alien, real name Xenomorph, is a bad-aligned male Xenomorph XX121 character created by Dark Horse Comics, born in Your chest :) and first appearing in Alien (1979). He has No Hair hair and stands 244 cm tall and weighs 169 kg. His notable abilities include Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Jump, Stealth, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 30 for strength, 40 for speed, 90 for durability and 60 for combat, giving an overall score of 6.
+Alien, real name Xenomorph, is a bad-aligned male Xenomorph XX121 character created by Dark Horse Comics, born in Your chest :) and first appearing in Alien (1979). He is bald and stands 244 cm tall and weighs 169 kg. His notable abilities include Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Jump, Stealth, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 40 for speed, 90 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 6.

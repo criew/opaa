@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Rumor
 
-The Rumor, real name Allison Hargreeves, is a good-aligned female Human character created by Dark Horse Comics. She has Blue / White eyes and Purple hair. Her notable abilities include Dexterity, Intelligence, Reality Warping, Stamina and Stealth. Rated across attributes, she scores 80 for intelligence, 0 for strength, 25 for speed, 30 for durability and 45 for combat, giving an overall score of 8.
+The Rumor, real name Allison Hargreeves, is a good-aligned female Human character created by Dark Horse Comics. She has Blue / White eyes and Purple hair. Her notable abilities include Dexterity, Intelligence, Reality Warping, Stamina and Stealth. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 0 for strength, 25 for speed, 30 for durability and 45 for combat. On a separate overall ranking scale, her overall score is 8.

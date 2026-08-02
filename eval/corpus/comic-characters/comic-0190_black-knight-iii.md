@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Gloucester, Massachusetts"
 first_appearance: "Avengers #47 (1967)"
 occupation: "Adventurer, scientist; former crusader"
-teams: "Heroes For Hire, Avengers, Excalibur"
+teams: ["Heroes For Hire", "Avengers", "Excalibur"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Knight III
 
-Black Knight III, real name Dane Whitman, is a good-aligned male Human character created by Marvel Comics, born in Gloucester, Massachusetts and first appearing in Avengers #47 (1967). He works as an Adventurer, scientist; former crusader and is affiliated with Heroes For Hire, Avengers and Excalibur. He has Brown eyes and Brown hair and stands 183 cm tall and weighs 86 kg. His notable abilities include Weapon-Based Powers. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 70 for durability and 70 for combat, giving an overall score of 6.
+Black Knight III, real name Dane Whitman, is a good-aligned male Human character created by Marvel Comics, born in Gloucester, Massachusetts and first appearing in Avengers #47 (1967). He works as an Adventurer, scientist; former crusader and is affiliated with Heroes For Hire, Avengers and Excalibur. He has Brown eyes and Brown hair and stands 183 cm tall and weighs 86 kg. His notable abilities include Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 70 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

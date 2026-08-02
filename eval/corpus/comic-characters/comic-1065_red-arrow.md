@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "(as Speedy) More Fun Comics # 73(Nov. 1941); (as Arsenal) The New Titans # 99 (July 1993); (as Red Arrow) Justice League of America Vol. 2 # 7 (May 2007)"
 occupation: "Adventurer; intelligence agent; musician"
-teams: "Young Justice, Justice Legion Alpha, Living Assault Weapons"
+teams: ["Young Justice", "Justice Legion Alpha", "Living Assault Weapons"]
 eye_color: "Green"
 hair_color: "Red"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Arrow
 
-Red Arrow, real name Roy Harper, is a good-aligned male Human character created by DC Comics, first appearing in (as Speedy) More Fun Comics # 73(Nov. 1941); (as Arsenal) The New Titans # 99 (July 1993); (as Red Arrow) Justice League of America Vol. 2 # 7 (May 2007). He works as an Adventurer; intelligence agent; musician and is affiliated with Young Justice, Justice Legion Alpha and Living Assault Weapons. He has Green eyes and Red hair and stands 180 cm tall and weighs 83 kg. His notable abilities include Agility, Marksmanship, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 80 for intelligence, 15 for strength, 25 for speed, 20 for durability and 80 for combat, giving an overall score of 5.
+Red Arrow, real name Roy Harper, is a good-aligned male Human character created by DC Comics, first appearing in (as Speedy) More Fun Comics # 73(Nov. 1941); (as Arsenal) The New Titans # 99 (July 1993); (as Red Arrow) Justice League of America Vol. 2 # 7 (May 2007). He works as an Adventurer; intelligence agent; musician and is affiliated with Young Justice, Justice Legion Alpha and Living Assault Weapons. He has Green eyes and Red hair and stands 180 cm tall and weighs 83 kg. His notable abilities include Agility, Marksmanship, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 15 for strength, 25 for speed, 20 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 5.

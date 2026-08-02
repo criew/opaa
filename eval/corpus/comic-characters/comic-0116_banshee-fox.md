@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Banshee (FOX)
 
-Banshee (FOX), real name Sean Cassidy, is a character created by Marvel Comics. Their notable abilities include Enhanced Hearing and Flight. Rated across attributes, they score 90 for intelligence, 10 for strength, 25 for speed, 35 for durability and 70 for combat, giving an overall score of 7.
+Banshee (FOX), real name Sean Cassidy, is a character created by Marvel Comics. Their notable abilities include Enhanced Hearing and Flight. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 25 for speed, 35 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 7.

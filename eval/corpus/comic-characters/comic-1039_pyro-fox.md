@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: "Black"
 hair_color: "Brown"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 75
 strength_score: 10
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Pyro (FOX)
 
-Pyro (FOX), real name St. John Allerdyce, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Black eyes and Brown hair. His notable abilities include Element Control, Fire Control, Fire Resistance and Heat Resistance. Rated across attributes, he scores 75 for intelligence, 10 for strength, 15 for speed, 15 for durability and 30 for combat, giving an overall score of 4.
+Pyro (FOX), real name St. John Allerdyce, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Black eyes and Brown hair. His notable abilities include Element Control, Fire Control, Fire Resistance and Heat Resistance. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 15 for speed, 15 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Beverly Hills, California"
 first_appearance: "Stars and S.T.R.I.P.E. #0"
 occupation: null
-teams: "Justice Society of America, Justice Legion Alpha"
+teams: ["Justice Society of America", "Justice Legion Alpha"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Stargirl
 
-Stargirl, real name Courtney Whitmore, is a good-aligned female Human character created by DC Comics, born in Beverly Hills, California and first appearing in Stars and S.T.R.I.P.E. #0. She is affiliated with Justice Society of America and Justice Legion Alpha. She has Blue eyes and Blond hair and stands 165 cm tall and weighs 62 kg. Her notable abilities include Agility, Durability, Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Invulnerability, Reflexes, Stamina, Super Speed, Super Strength and Weapon-Based Powers. Rated across attributes, she scores 80 for intelligence, 80 for strength, 50 for speed, 90 for durability and 70 for combat, giving an overall score of 9.
+Stargirl, real name Courtney Whitmore, is a good-aligned female Human character created by DC Comics, born in Beverly Hills, California and first appearing in Stars and S.T.R.I.P.E. #0. She is affiliated with Justice Society of America and Justice Legion Alpha. She has Blue eyes and Blond hair and stands 165 cm tall and weighs 62 kg. Her notable abilities include Agility, Durability, Energy Absorption, Energy Blasts, Energy Constructs, Energy Manipulation, Flight, Force Fields, Invulnerability, Reflexes, Stamina, Super Speed, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 80 for strength, 50 for speed, 90 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 9.

@@ -10,7 +10,7 @@ type_race: "Human / Altered"
 place_of_birth: "Burbank, California"
 first_appearance: "Iron Man #55 (February, 1973)"
 occupation: null
-teams: "Guardians of the Galaxy, Marvel Knights, The Mighty Avengers"
+teams: ["Guardians of the Galaxy", "Marvel Knights", "The Mighty Avengers"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: 193
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Drax the Destroyer
 
-Drax the Destroyer, real name Arthur Sampson Douglas, is a good-aligned male Human / Altered character created by Marvel Comics, born in Burbank, California and first appearing in Iron Man #55 (February, 1973). He is affiliated with Guardians of the Galaxy, Marvel Knights and The Mighty Avengers. He has Red eyes and No Hair hair and stands 193 cm tall and weighs 306 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Self-Sustenance, Stamina, Super Strength and Weapons Master. Rated across attributes, he scores 80 for intelligence, 80 for strength, 25 for speed, 85 for durability and 65 for combat, giving an overall score of 7.
+Drax the Destroyer, real name Arthur Sampson Douglas, is a good-aligned male Human / Altered character created by Marvel Comics, born in Burbank, California and first appearing in Iron Man #55 (February, 1973). He is affiliated with Guardians of the Galaxy, Marvel Knights and The Mighty Avengers. He has Red eyes and is bald and stands 193 cm tall and weighs 306 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Self-Sustenance, Stamina, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 80 for strength, 25 for speed, 85 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 7.

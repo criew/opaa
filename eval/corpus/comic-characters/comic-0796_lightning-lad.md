@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Teen Titans/Legion Special #1"
 occupation: "Legionnaire"
-teams: "Legion of Super-Heroes"
+teams: ["Legion of Super-Heroes"]
 eye_color: "Blue"
 hair_color: "Red"
 height_cm: 155
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lightning Lad
 
-Lightning Lad, real name Garth Ranzz, is a good-aligned male character created by DC Comics, first appearing in Teen Titans/Legion Special #1. He works as a Legionnaire and is affiliated with Legion of Super-Heroes. He has Blue eyes and Red hair and stands 155 cm tall and weighs 65 kg. His notable abilities include Electrokinesis. Rated across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat, giving an overall score of 4.
+Lightning Lad, real name Garth Ranzz, is a good-aligned male character created by DC Comics, first appearing in Teen Titans/Legion Special #1. He works as a Legionnaire and is affiliated with Legion of Super-Heroes. He has Blue eyes and Red hair and stands 155 cm tall and weighs 65 kg. His notable abilities include Electrokinesis. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 4.

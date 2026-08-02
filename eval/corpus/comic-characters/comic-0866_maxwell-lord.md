@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "New York"
 first_appearance: "Justice League #1"
 occupation: "Government Agent, Businessman, Terrorist"
-teams: "Justice League of America"
+teams: ["Justice League of America"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maxwell Lord
 
-Maxwell Lord is a bad-aligned male Human character created by DC Comics, born in New York and first appearing in Justice League #1. He works as a Government Agent, Businessman, Terrorist and is affiliated with Justice League of America. He has Brown eyes and Brown hair and stands 188 cm tall and weighs 83 kg. His notable abilities include Illusions, Intelligence, Marksmanship, Mind Control, Telepathy and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 50 for durability and 75 for combat, giving an overall score of 11.
+Maxwell Lord is a bad-aligned male Human character created by DC Comics, born in New York and first appearing in Justice League #1. He works as a Government Agent, Businessman, Terrorist and is affiliated with Justice League of America. He has Brown eyes and Brown hair and stands 188 cm tall and weighs 83 kg. His notable abilities include Illusions, Intelligence, Marksmanship, Mind Control, Telepathy and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 50 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 11.

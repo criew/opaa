@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Grid
 
-Grid is a bad-aligned Cyborg character created by DC Comics, first appearing in Justice League Vol 2 #23 (October, 2013). They have Green eyes and No Hair hair and stand 198 cm tall and weigh 173 kg. Their notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Flight, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated across attributes, they score 100 for intelligence, 55 for strength, 50 for speed, 65 for durability and 75 for combat, giving an overall score of 11.
+Grid is a bad-aligned Cyborg character created by DC Comics, first appearing in Justice League Vol 2 #23 (October, 2013). They have Green eyes and are bald and stand 198 cm tall and weigh 173 kg. Their notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Flight, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 55 for strength, 50 for speed, 65 for durability and 75 for combat. On a separate overall ranking scale, their overall score is 11.

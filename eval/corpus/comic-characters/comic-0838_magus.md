@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Magus
 
-Magus is a bad-aligned male character created by Marvel Comics, born in Kvch (Technarchy’s home planet) and first appearing in New Mutants #18 (1984). He works as a Ruler of the Technarchy. He has Black eyes and stands 183 cm tall. His notable abilities include Electrokinesis, Energy Absorption, Flight, Immortality, Shapeshifting, Size Changing and Super Strength. Rated across attributes, he scores 95 for intelligence, 100 for strength, 70 for speed, 100 for durability and 75 for combat, giving an overall score of 17.
+Magus is a bad-aligned male character created by Marvel Comics, born in Kvch (Technarchy’s home planet) and first appearing in New Mutants #18 (1984). He works as a Ruler of the Technarchy. He has Black eyes and stands 183 cm tall. His notable abilities include Electrokinesis, Energy Absorption, Flight, Immortality, Shapeshifting, Size Changing and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 100 for strength, 70 for speed, 100 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 17.

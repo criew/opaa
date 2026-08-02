@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Leo Valdez
 
-Leo Valdez, real name Leo Valdez, is a good-aligned male Demi-God character. He has Brown eyes and Brown hair and stands 168 cm tall. His notable abilities include Agility, Durability, Element Control, Endurance, Fire Control, Fire Resistance, Intelligence, Invulnerability, Reflexes and Super Strength. Rated across attributes, he scores 100 for intelligence, 40 for strength, 75 for speed, 95 for durability and 100 for combat, giving an overall score of 12.
+Leo Valdez, real name Leo Valdez, is a good-aligned male Demi-God character. He has Brown eyes and Brown hair and stands 168 cm tall. His notable abilities include Agility, Durability, Element Control, Endurance, Fire Control, Fire Resistance, Intelligence, Invulnerability, Reflexes and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 40 for strength, 75 for speed, 95 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 12.

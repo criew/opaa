@@ -10,7 +10,7 @@ type_race: "New God"
 place_of_birth: "Apokolips"
 first_appearance: "Mister Miracle #6 (February, 1972) Cou"
 occupation: null
-teams: "Female Furies"
+teams: ["Female Furies"]
 eye_color: "Black"
 hair_color: "Green"
 height_cm: 3
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mad Harriet
 
-Mad Harriet is a bad-aligned female New God character created by DC Comics, born in Apokolips and first appearing in Mister Miracle #6 (February, 1972) Cou. She is affiliated with Female Furies. She has Black eyes and Green hair and stands 3 cm tall and weighs 145 kg. Her notable abilities include Cold Resistance, Durability, Fire Resistance, Heat Resistance, Immortality, Invulnerability, Reflexes, Super Speed and Super Strength. Rated across attributes, she scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 100 for combat, giving an overall score of 19.
+Mad Harriet is a bad-aligned female New God character created by DC Comics, born in Apokolips and first appearing in Mister Miracle #6 (February, 1972) Cou. She is affiliated with Female Furies. She has Black eyes and Green hair and stands 3 cm tall and weighs 145 kg. Her notable abilities include Cold Resistance, Durability, Fire Resistance, Heat Resistance, Immortality, Invulnerability, Reflexes, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 100 for strength, 95 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 19.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Cold (CW)
 
-Captain Cold (CW), real name Leonard Snart, is a neutral-aligned male Human character created by DC Comics, born in Unknown. He works as a Thief. Rated across attributes, he scores 40 for intelligence, 10 for strength, 60 for speed, 45 for durability and 80 for combat, giving an overall score of 2.
+Captain Cold (CW), real name Leonard Snart, is a neutral-aligned male Human character created by DC Comics, born in Unknown. He works as a Thief. Rated on a 0-100 scale across attributes, he scores 40 for intelligence, 10 for strength, 60 for speed, 45 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 2.

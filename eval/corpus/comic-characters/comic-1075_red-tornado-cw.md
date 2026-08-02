@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Tornado (CW)
 
-Red Tornado (CW) is a character created by DC Comics. They work as a Combat android. Their notable abilities include Durability, Flight, Stealth and Super Strength. Rated across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 90 for durability and 70 for combat, giving an overall score of 17.
+Red Tornado (CW) is a character created by DC Comics. They work as a Combat android. Their notable abilities include Durability, Flight, Stealth and Super Strength. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 90 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 17.

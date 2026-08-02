@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wong (MCU)
 
-Wong (MCU), real name Wong, is a good-aligned male Human character created by Marvel Comics, first appearing in Doctor strange. His notable abilities include Dimensional Travel, Force Fields, Illusions, Magic and Teleportation. Rated across attributes, he scores 70 for intelligence, 60 for strength, 40 for speed, 45 for durability and 70 for combat, giving an overall score of 7.
+Wong (MCU), real name Wong, is a good-aligned male Human character created by Marvel Comics, first appearing in Doctor strange. His notable abilities include Dimensional Travel, Force Fields, Illusions, Magic and Teleportation. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 60 for strength, 40 for speed, 45 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

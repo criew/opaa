@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The False Mandarin
 
-The False Mandarin, real name Trevor Slattery, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron man 3. He works as a Terrorist. He has Black eyes and Black hair and stands 168 cm tall and weighs 84 kg. His notable abilities include Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 0 for strength, 20 for speed, 15 for durability and 20 for combat, giving an overall score of 6.
+The False Mandarin, real name Trevor Slattery, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron man 3. He works as a Terrorist. He has Black eyes and Black hair and stands 168 cm tall and weighs 84 kg. His notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 0 for strength, 20 for speed, 15 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 6.

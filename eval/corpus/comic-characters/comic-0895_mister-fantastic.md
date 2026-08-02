@@ -10,7 +10,7 @@ type_race: "Human / Radiation"
 place_of_birth: "Central City, California"
 first_appearance: "FANTASTIC FOUR #1"
 occupation: "Scientist, adventurer"
-teams: "Fantastic Four, Fantastic Four Incorporated, Contingency, Fantastic Five, Future Foundation, Illuminati, Avengers"
+teams: ["Fantastic Four", "Fantastic Four Incorporated", "Contingency", "Fantastic Five", "Future Foundation", "Illuminati", "Avengers"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mister Fantastic
 
-Mister Fantastic, real name Reed Richards, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Central City, California and first appearing in FANTASTIC FOUR #1. He works as a Scientist, adventurer and is affiliated with Fantastic Four, Fantastic Four Incorporated, Contingency, Fantastic Five, Future Foundation, Illuminati and Avengers. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Durability, Intelligence, Shapeshifting and Size Changing. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 85 for durability and 65 for combat, giving an overall score of 10.
+Mister Fantastic, real name Reed Richards, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Central City, California and first appearing in FANTASTIC FOUR #1. He works as a Scientist, adventurer and is affiliated with Fantastic Four, Fantastic Four Incorporated, Contingency, Fantastic Five, Future Foundation, Illuminati and Avengers. He has Brown eyes and Brown hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Durability, Intelligence, Shapeshifting and Size Changing. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 85 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 10.

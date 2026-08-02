@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jack Bauer
 
-Jack Bauer, real name Kiefer Sutherland, is a good-aligned male character, born in Enola, Pennsylvania and first appearing in 24: Season 1. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Jack Bauer, real name Kiefer Sutherland, is a good-aligned male character, born in Enola, Pennsylvania and first appearing in 24: Season 1. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

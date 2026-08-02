@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hawkwoman III
 
-Hawkwoman III, real name Shayera Thal, is a good-aligned female character created by DC Comics. She works as a Police Officer. She has Blue eyes and Red hair and stands 170 cm tall and weighs 65 kg. Her notable abilities include Flight and Super Strength. Rated across attributes, she scores 80 for intelligence, 30 for strength, 65 for speed, 55 for durability and 75 for combat, giving an overall score of 6.
+Hawkwoman III, real name Shayera Thal, is a good-aligned female character created by DC Comics. She works as a Police Officer. She has Blue eyes and Red hair and stands 170 cm tall and weighs 65 kg. Her notable abilities include Flight and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 30 for strength, 65 for speed, 55 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 6.

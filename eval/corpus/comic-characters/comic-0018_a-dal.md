@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # A'dal
 
-A'dal is a character created by Blizzard Entertainment, born in Terrace of Light, Shattrath City. Their notable abilities include Element Control and Matter Manipulation. Rated across attributes, they score 85 for intelligence, 30 for strength, 70 for speed, 55 for durability and 100 for combat, giving an overall score of 7.
+A'dal is a character created by Blizzard Entertainment, born in Terrace of Light, Shattrath City. Their notable abilities include Element Control and Matter Manipulation. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 30 for strength, 70 for speed, 55 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 7.

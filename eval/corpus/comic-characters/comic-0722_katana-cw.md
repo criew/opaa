@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Katana (CW)
 
-Katana (CW), real name Tatsu Yamashiro, is a good-aligned female Human character, born in Earth-1 and first appearing in Arrow Season 3: Episode 1. She has Brown eyes and Brown hair and stands 170 cm tall and weighs 53 kg. Her notable abilities include Agility, Dexterity, Endurance, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 35 for durability and 100 for combat, giving an overall score of 4.
+Katana (CW), real name Tatsu Yamashiro, is a good-aligned female Human character, born in Earth-1 and first appearing in Arrow Season 3: Episode 1. She has Brown eyes and Brown hair and stands 170 cm tall and weighs 53 kg. Her notable abilities include Agility, Dexterity, Endurance, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 35 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 4.

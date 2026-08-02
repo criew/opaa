@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arizona Annie
 
-Arizona Annie is a character created by Marvel Comics. Their notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 90 for intelligence, 10 for strength, 15 for speed, 20 for durability and 65 for combat, giving an overall score of 7.
+Arizona Annie is a character created by Marvel Comics. Their notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 15 for speed, 20 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 7.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lodestone
 
-Lodestone, real name Unknown, is a bad-aligned character created by Marvel Comics, first appearing in Darkhawk #8. They work as a Super-Villain. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Lodestone, real name Unknown, is a bad-aligned character created by Marvel Comics, first appearing in Darkhawk #8. They work as a Super-Villain. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

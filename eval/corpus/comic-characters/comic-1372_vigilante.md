@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vigilante
 
-Vigilante, real name Adrian Chase, is a neutral-aligned male Human character created by DC Comics, first appearing in The New Teen Titans #23 - Kidnapped!. He works as a Judge, Lawyer, Mercenary. He has Blue eyes and Blond hair and stands 188 cm tall and weighs 89 kg. His notable abilities include Agility, Marksmanship, Reflexes, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 85 for intelligence, 10 for strength, 30 for speed, 50 for durability and 90 for combat, giving an overall score of 6.
+Vigilante, real name Adrian Chase, is a neutral-aligned male Human character created by DC Comics, first appearing in The New Teen Titans #23 - Kidnapped!. He works as a Judge, Lawyer, Mercenary. He has Blue eyes and Blond hair and stands 188 cm tall and weighs 89 kg. His notable abilities include Agility, Marksmanship, Reflexes, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 10 for strength, 30 for speed, 50 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Master Brood
 
-Master Brood, real name Currently Colin Wood, is a good-aligned male character created by Team Epic TV, born in Perhaps England and first appearing in Team Epic Episode 101. He has Blue eyes and Black hair and stands 183 cm tall and weighs 81 kg. His notable abilities include Accelerated Healing, Immortality and Longevity. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Master Brood, real name Currently Colin Wood, is a good-aligned male character created by Team Epic TV, born in Perhaps England and first appearing in Team Epic Episode 101. He has Blue eyes and Black hair and stands 183 cm tall and weighs 81 kg. His notable abilities include Accelerated Healing, Immortality and Longevity. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

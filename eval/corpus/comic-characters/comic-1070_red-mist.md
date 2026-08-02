@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Mist
 
-Red Mist, real name Chris Genovese, is a bad-aligned male character created by Icon Comics, first appearing in Kick-Ass #5. His notable abilities include Agility and Stamina. Rated across attributes, he scores 65 for intelligence, 10 for strength, 25 for speed, 15 for durability and 55 for combat, giving an overall score of 3.
+Red Mist, real name Chris Genovese, is a bad-aligned male character created by Icon Comics, first appearing in Kick-Ass #5. His notable abilities include Agility and Stamina. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 10 for strength, 25 for speed, 15 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 3.

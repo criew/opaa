@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Moses Magnum
 
-Moses Magnum, real name Moses Magnum, is a bad-aligned male character created by Marvel Comics, first appearing in Giant-Size Spider-Man #4 (1975). He works as a Terrorist, president of Magnum Munitions; former ruler of Canaan. He has Brown eyes and Black hair and stands 175 cm tall and weighs 72 kg. Rated across attributes, he scores 90 for intelligence, 30 for strength, 10 for speed, 40 for durability and 55 for combat, giving an overall score of 7.
+Moses Magnum, real name Moses Magnum, is a bad-aligned male character created by Marvel Comics, first appearing in Giant-Size Spider-Man #4 (1975). He works as a Terrorist, president of Magnum Munitions; former ruler of Canaan. He has Brown eyes and Black hair and stands 175 cm tall and weighs 72 kg. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 10 for speed, 40 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 7.

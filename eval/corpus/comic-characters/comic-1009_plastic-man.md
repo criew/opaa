@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Police Comics #1 (August, 1941)"
 occupation: "Government Agent"
-teams: "All-Star Squadron, Justice League of America"
+teams: ["All-Star Squadron", "Justice League of America"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Plastic Man
 
-Plastic Man, real name Patrick O'Brian, is a good-aligned male Human character created by DC Comics, first appearing in Police Comics #1 (August, 1941). He works as a Government Agent and is affiliated with All-Star Squadron and Justice League of America. He has Blue eyes and Black hair and stands 185 cm tall and weighs 80 kg. His notable abilities include Accelerated Healing, Agility, Durability, Immortality, Invulnerability, Shapeshifting, Size Changing, Stealth, Super Strength and Telepathy Resistance. Rated across attributes, he scores 75 for intelligence, 65 for strength, 25 for speed, 100 for durability and 55 for combat, giving an overall score of 10.
+Plastic Man, real name Patrick O'Brian, is a good-aligned male Human character created by DC Comics, first appearing in Police Comics #1 (August, 1941). He works as a Government Agent and is affiliated with All-Star Squadron and Justice League of America. He has Blue eyes and Black hair and stands 185 cm tall and weighs 80 kg. His notable abilities include Accelerated Healing, Agility, Durability, Immortality, Invulnerability, Shapeshifting, Size Changing, Stealth, Super Strength and Telepathy Resistance. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 65 for strength, 25 for speed, 100 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 10.

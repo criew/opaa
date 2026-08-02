@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Konohagakure"
 first_appearance: "Naruto, Volume #1, Chapter #1"
 occupation: "Hokage"
-teams: "Team 7"
+teams: ["Team 7"]
 eye_color: "Blue"
 hair_color: "Yellow"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Naruto Uzumaki
 
-Naruto Uzumaki, real name Uzumaki Naruto, is a good-aligned male Human character created by Shueisha, born in Konohagakure and first appearing in Naruto, Volume #1, Chapter #1. He works as a Hokage and is affiliated with Team 7. He has Blue eyes and Yellow hair and stands 180 cm tall and weighs 54 kg. His notable abilities include Agility, Cold Resistance, Durability, Element Control, Energy Absorption, Energy Constructs, Energy Manipulation, Enhanced Senses, Force Fields, Longevity, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength, Telepathy and Weapons Master. Rated across attributes, he scores 70 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of 27.
+Naruto Uzumaki, real name Uzumaki Naruto, is a good-aligned male Human character created by Shueisha, born in Konohagakure and first appearing in Naruto, Volume #1, Chapter #1. He works as a Hokage and is affiliated with Team 7. He has Blue eyes and Yellow hair and stands 180 cm tall and weighs 54 kg. His notable abilities include Agility, Cold Resistance, Durability, Element Control, Energy Absorption, Energy Constructs, Energy Manipulation, Enhanced Senses, Force Fields, Longevity, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Shapeshifting, Stamina, Stealth, Super Speed, Super Strength, Telepathy and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 27.

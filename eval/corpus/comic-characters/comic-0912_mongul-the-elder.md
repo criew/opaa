@@ -10,7 +10,7 @@ type_race: "Alien"
 place_of_birth: "Debstam IV"
 first_appearance: "Adventures of Superman #454"
 occupation: "Alien dictator, Tyrant"
-teams: "Superman Revenge Squad, Sinestro Corps"
+teams: ["Superman Revenge Squad", "Sinestro Corps"]
 eye_color: "Red"
 hair_color: "No Hair"
 height_cm: 244
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mongul The Elder
 
-Mongul The Elder, real name Mongul, is a bad-aligned male Alien character created by DC Comics, born in Debstam IV and first appearing in Adventures of Superman #454. He works as an Alien dictator, Tyrant and is affiliated with Superman Revenge Squad and Sinestro Corps. He has Red eyes and No Hair hair and stands 244 cm tall and weighs 506 kg. His notable abilities include Accelerated Healing, Agility, Durability, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Enhanced Hearing, Enhanced Senses, Intelligence, Invulnerability, Jump, Longevity, Marksmanship, Reflexes, Self-Sustenance, Stamina, Stealth, Super Speed, Super Strength, Telekinesis, Telepathy, Teleportation, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 100 for strength, 60 for speed, 100 for durability and 100 for combat, giving an overall score of 20.
+Mongul The Elder, real name Mongul, is a bad-aligned male Alien character created by DC Comics, born in Debstam IV and first appearing in Adventures of Superman #454. He works as an Alien dictator, Tyrant and is affiliated with Superman Revenge Squad and Sinestro Corps. He has Red eyes and is bald and stands 244 cm tall and weighs 506 kg. His notable abilities include Accelerated Healing, Agility, Durability, Energy Beams, Energy Blasts, Energy Constructs, Energy Manipulation, Enhanced Hearing, Enhanced Senses, Intelligence, Invulnerability, Jump, Longevity, Marksmanship, Reflexes, Self-Sustenance, Stamina, Stealth, Super Speed, Super Strength, Telekinesis, Telepathy, Teleportation, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 100 for strength, 60 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 20.

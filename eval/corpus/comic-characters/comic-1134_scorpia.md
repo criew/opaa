@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Scorpia
 
-Scorpia, real name Elaine Coll, is a bad-aligned female character created by Marvel Comics, first appearing in Spider-Man: Power of Terror limited series #2 (1995). She works as a Professional criminal. She has Green eyes and Red hair. Her notable abilities include Energy Blasts, Force Fields, Super Speed, Super Strength and Weapon-Based Powers. Rated across attributes, she scores 70 for intelligence, 30 for strength, 40 for speed, 30 for durability and 30 for combat, giving an overall score of 4.
+Scorpia, real name Elaine Coll, is a bad-aligned female character created by Marvel Comics, first appearing in Spider-Man: Power of Terror limited series #2 (1995). She works as a Professional criminal. She has Green eyes and Red hair. Her notable abilities include Energy Blasts, Force Fields, Super Speed, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 30 for strength, 40 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 4.

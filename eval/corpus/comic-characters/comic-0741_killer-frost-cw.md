@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Killer Frost (CW)
 
-Killer Frost (CW), real name Caitlin Snow, is a bad-aligned Metahuman character created by DC Comics, first appearing in Flash episode 1. They work as a Scientists, Vigilante (in sectret) criminal (formerly). They have Blue eyes and White hair. Their notable abilities include Cold Resistance, Energy Absorption and Reflexes. Rated across attributes, they score 70 for intelligence, 15 for strength, 65 for speed, 35 for durability and 55 for combat, giving an overall score of 4.
+Killer Frost (CW), real name Caitlin Snow, is a bad-aligned Metahuman character created by DC Comics, first appearing in Flash episode 1. They work as a Scientists, Vigilante (in sectret) criminal (formerly). They have Blue eyes and White hair. Their notable abilities include Cold Resistance, Energy Absorption and Reflexes. Rated on a 0-100 scale across attributes, they score 70 for intelligence, 15 for strength, 65 for speed, 35 for durability and 55 for combat. On a separate overall ranking scale, their overall score is 4.

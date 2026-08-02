@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Peter Petrelli
 
-Peter Petrelli, real name Peter Petrelli, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E01. He works as a former home hospice nurse. His notable abilities include Accelerated Healing, Electrokinesis, Fire Control, Flight, Immortality, Regeneration, Super Speed, Super Strength, Telekinesis, Telepathy and Teleportation. Rated across attributes, he scores 70 for intelligence, 55 for strength, 100 for speed, 100 for durability and 95 for combat, giving an overall score of 40.
+Peter Petrelli, real name Peter Petrelli, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E01. He works as a former home hospice nurse. His notable abilities include Accelerated Healing, Electrokinesis, Fire Control, Flight, Immortality, Regeneration, Super Speed, Super Strength, Telekinesis, Telepathy and Teleportation. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 55 for strength, 100 for speed, 100 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 40.

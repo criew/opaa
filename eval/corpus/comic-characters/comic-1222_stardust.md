@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Stardust
 
-Stardust is a good-aligned male character created by Marvel Comics. He works as a Herald of Galactus. His notable abilities include Durability, Energy Absorption, Energy Beams, Energy Blasts, Flight, Force Fields, Invulnerability, Longevity, Self-Sustenance, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 95 for intelligence, 85 for strength, 100 for speed, 100 for durability and 85 for combat, giving an overall score of 22.
+Stardust is a good-aligned male character created by Marvel Comics. He works as a Herald of Galactus. His notable abilities include Durability, Energy Absorption, Energy Beams, Energy Blasts, Flight, Force Fields, Invulnerability, Longevity, Self-Sustenance, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 85 for strength, 100 for speed, 100 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 22.

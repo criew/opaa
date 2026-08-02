@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "Jasmine Falls, Japan"
 first_appearance: "Wolverine: Origins #5"
 occupation: "Former adventurer, assassin, criminal, Horseman of Death, government operative"
-teams: "Apocalypse's Horsemen, Dark Avengers, Brotherhood of Evil Mutants, Dark X-Men, X-Men"
+teams: ["Apocalypse's Horsemen", "Dark Avengers", "Brotherhood of Evil Mutants", "Dark X-Men", "X-Men"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Daken
 
-Daken, real name Akihiro, is a bad-aligned male Mutant character created by Marvel Comics, born in Jasmine Falls, Japan and first appearing in Wolverine: Origins #5. He works as a Former adventurer, assassin, criminal, Horseman of Death, government operative and is affiliated with Apocalypse's Horsemen, Dark Avengers, Brotherhood of Evil Mutants, Dark X-Men and X-Men. He has Blue eyes and Black hair and stands 175 cm tall and weighs 75 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Longevity, Peak Human Condition, Reflexes, Regeneration, Stamina, Super Speed, Telepathy, Telepathy Resistance and Toxin and Disease Resistance. Rated across attributes, he scores 85 for intelligence, 15 for strength, 50 for speed, 80 for durability and 100 for combat, giving an overall score of 12.
+Daken, real name Akihiro, is a bad-aligned male Mutant character created by Marvel Comics, born in Jasmine Falls, Japan and first appearing in Wolverine: Origins #5. He works as a Former adventurer, assassin, criminal, Horseman of Death, government operative and is affiliated with Apocalypse's Horsemen, Dark Avengers, Brotherhood of Evil Mutants, Dark X-Men and X-Men. He has Blue eyes and Black hair and stands 175 cm tall and weighs 75 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Longevity, Peak Human Condition, Reflexes, Regeneration, Stamina, Super Speed, Telepathy, Telepathy Resistance and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 15 for strength, 50 for speed, 80 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 12.

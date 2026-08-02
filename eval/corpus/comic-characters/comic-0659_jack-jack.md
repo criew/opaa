@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "The Incredibles (Movie, 2004)"
 occupation: null
-teams: "Incredible Family"
+teams: ["Incredible Family"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: 71
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jack-Jack
 
-Jack-Jack, real name Jack-Jack Parr, is a good-aligned male Human character created by Dark Horse Comics, first appearing in The Incredibles (Movie, 2004). He is affiliated with Incredible Family. He has Blue eyes and Brown hair and stands 71 cm tall and weighs 14 kg. His notable abilities include Agility, Enhanced Senses, Flight, Invulnerability, Shapeshifting, Super Speed, Super Strength, Telekinesis and Teleportation. Rated across attributes, he scores 35 for intelligence, 35 for strength, 65 for speed, 80 for durability and 5 for combat, giving an overall score of 4.
+Jack-Jack, real name Jack-Jack Parr, is a good-aligned male Human character created by Dark Horse Comics, first appearing in The Incredibles (Movie, 2004). He is affiliated with Incredible Family. He has Blue eyes and Brown hair and stands 71 cm tall and weighs 14 kg. His notable abilities include Agility, Enhanced Senses, Flight, Invulnerability, Shapeshifting, Super Speed, Super Strength, Telekinesis and Teleportation. Rated on a 0-100 scale across attributes, he scores 35 for intelligence, 35 for strength, 65 for speed, 80 for durability and 5 for combat. On a separate overall ranking scale, his overall score is 4.

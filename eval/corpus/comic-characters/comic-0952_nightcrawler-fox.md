@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Nightcrawler (FOX)
 
-Nightcrawler (FOX), real name Kurt Wagner, is a good-aligned male Mutant character created by Marvel Comics, born in Germany and first appearing in X2. He works as an Adventurer; former circus performer. He has Yellow eyes and Black hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Agility, Dexterity, Reflexes, Stamina, Stealth and Teleportation. Rated across attributes, he scores 70 for intelligence, 10 for strength, 60 for speed, 20 for durability and 85 for combat, giving an overall score of 4.
+Nightcrawler (FOX), real name Kurt Wagner, is a good-aligned male Mutant character created by Marvel Comics, born in Germany and first appearing in X2. He works as an Adventurer; former circus performer. He has Yellow eyes and Black hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Agility, Dexterity, Reflexes, Stamina, Stealth and Teleportation. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 60 for speed, 20 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 4.

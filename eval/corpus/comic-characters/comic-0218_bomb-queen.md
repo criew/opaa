@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bomb Queen
 
-Bomb Queen is a bad-aligned female character created by Image Comics, first appearing in Bomb Queen (2006) #1. Her notable abilities include Accelerated Healing and Energy Blasts. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Bomb Queen is a bad-aligned female character created by Image Comics, first appearing in Bomb Queen (2006) #1. Her notable abilities include Accelerated Healing and Energy Blasts. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

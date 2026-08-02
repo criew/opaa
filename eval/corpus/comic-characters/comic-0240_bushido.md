@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bushido
 
-Bushido, real name Ryuko Orsono, is a good-aligned male Human character created by DC Comics, first appearing in Titans: Secret Files & Origins #2. His notable abilities include Agility and Weapons Master. Rated across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 10 for durability and 70 for combat, giving an overall score of 3.
+Bushido, real name Ryuko Orsono, is a good-aligned male Human character created by DC Comics, first appearing in Titans: Secret Files & Origins #2. His notable abilities include Agility and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 10 for speed, 10 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 3.

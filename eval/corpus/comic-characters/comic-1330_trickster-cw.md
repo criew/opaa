@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Trickster (CW)
 
-Trickster (CW), real name James Jesse, is a bad-aligned male Human character, born in Earth-1 and first appearing in The Flash Season 1: Episode 17. He works as an Anarchist, Terrorist. He has Blue eyes and Blond hair and stands 178 cm tall and weighs 74 kg. His notable abilities include Intelligence and Weapon-Based Powers. Rated across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 20 for durability and 35 for combat, giving an overall score of 9.
+Trickster (CW), real name James Jesse, is a bad-aligned male Human character, born in Earth-1 and first appearing in The Flash Season 1: Episode 17. He works as an Anarchist, Terrorist. He has Blue eyes and Blond hair and stands 178 cm tall and weighs 74 kg. His notable abilities include Intelligence and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 20 for durability and 35 for combat. On a separate overall ranking scale, his overall score is 9.

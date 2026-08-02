@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Yukio
 
-Yukio, real name Yukio (full name unrevealed), is a good-aligned character created by Marvel Comics, born in Unrevealed location in Japan and first appearing in Wolverine Vol. 1 #1 (1982). They work as an Adventurer, formerly assassin, mercenary. They have Brown eyes and Black hair and stand 170 cm tall and weigh 59 kg. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Yukio, real name Yukio (full name unrevealed), is a good-aligned character created by Marvel Comics, born in Unrevealed location in Japan and first appearing in Wolverine Vol. 1 #1 (1982). They work as an Adventurer, formerly assassin, mercenary. They have Brown eyes and Black hair and stand 170 cm tall and weigh 59 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

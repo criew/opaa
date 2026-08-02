@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bane (Injustice)
 
-Bane (Injustice), real name Dorrance, is a bad-aligned male Human character created by DC Comics. He has Brown eyes and Brown hair and stands 201 cm tall and weighs 158 kg. His notable abilities include Durability, Intelligence, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 95 for intelligence, 55 for strength, 75 for speed, 65 for durability and 85 for combat, giving an overall score of 10.
+Bane (Injustice), real name Dorrance, is a bad-aligned male Human character created by DC Comics. He has Brown eyes and Brown hair and stands 201 cm tall and weighs 158 kg. His notable abilities include Durability, Intelligence, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 55 for strength, 75 for speed, 65 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 10.

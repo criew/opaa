@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Watchmen #1 (September, 1986)"
 occupation: "Vigilante, former garment worker"
-teams: "Watchmen, The Crimebusters"
+teams: ["Watchmen", "The Crimebusters"]
 eye_color: "Blue"
 hair_color: "Red"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rorschach
 
-Rorschach, real name Walter Joseph Kovacs, is a good-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as a Vigilante, former garment worker and is affiliated with Watchmen and The Crimebusters. He has Blue eyes and Red hair and stands 168 cm tall and weighs 63 kg. His notable abilities include Agility, Intelligence, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 30 for speed, 20 for durability and 80 for combat, giving an overall score of 6.
+Rorschach, real name Walter Joseph Kovacs, is a good-aligned male Human character created by DC Comics, first appearing in Watchmen #1 (September, 1986). He works as a Vigilante, former garment worker and is affiliated with Watchmen and The Crimebusters. He has Blue eyes and Red hair and stands 168 cm tall and weighs 63 kg. His notable abilities include Agility, Intelligence, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 30 for speed, 20 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 6.

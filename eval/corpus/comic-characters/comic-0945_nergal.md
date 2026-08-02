@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Nergal
 
-Nergal is a bad-aligned male Demon character created by DC Comics, first appearing in Hellblazer #6 - Extreme Prejudice. He has Yellow eyes and No Hair hair. His notable abilities include Accelerated Healing, Dimensional Travel, Durability, Energy Manipulation, Flight, Immortality, Invulnerability, Magic, Reality Warping, Regeneration, Super Strength and Telekinesis. Rated across attributes, he scores 90 for intelligence, 20 for strength, 50 for speed, 100 for durability and 70 for combat, giving an overall score of 24.
+Nergal is a bad-aligned male Demon character created by DC Comics, first appearing in Hellblazer #6 - Extreme Prejudice. He has Yellow eyes and is bald. His notable abilities include Accelerated Healing, Dimensional Travel, Durability, Energy Manipulation, Flight, Immortality, Invulnerability, Magic, Reality Warping, Regeneration, Super Strength and Telekinesis. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 20 for strength, 50 for speed, 100 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 24.

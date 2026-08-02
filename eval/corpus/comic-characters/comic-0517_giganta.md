@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Wonder Woman (Volume 1) #9 (1944)"
 occupation: "Criminal, former Scientist, Professor at Ivy University"
-teams: "The Society, Secret Six, Female Furies"
+teams: ["The Society", "Secret Six", "Female Furies"]
 eye_color: "Green"
 hair_color: "Red"
 height_cm: 6250
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Giganta
 
-Giganta, real name Doris Zuel, is a bad-aligned female character created by DC Comics, first appearing in Wonder Woman (Volume 1) #9 (1944). She works as a Criminal, former Scientist, Professor at Ivy University and is affiliated with The Society, Secret Six and Female Furies. She has Green eyes and Red hair and stands 6250 cm tall and weighs 630 kg. Her notable abilities include Durability, Intelligence, Size Changing and Super Strength. Rated across attributes, she scores 90 for intelligence, 90 for strength, 25 for speed, 85 for durability and 40 for combat, giving an overall score of 10.
+Giganta, real name Doris Zuel, is a bad-aligned female character created by DC Comics, first appearing in Wonder Woman (Volume 1) #9 (1944). She works as a Criminal, former Scientist, Professor at Ivy University and is affiliated with The Society, Secret Six and Female Furies. She has Green eyes and Red hair and stands 6250 cm tall and weighs 630 kg. Her notable abilities include Durability, Intelligence, Size Changing and Super Strength. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 90 for strength, 25 for speed, 85 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 10.

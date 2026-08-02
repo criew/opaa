@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Gotham City"
 first_appearance: "Batman #404"
 occupation: "Detective · Police Commissioner"
-teams: "Batman Family"
+teams: ["Batman Family"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # James Gordon
 
-James Gordon is a good-aligned male Human character created by DC Comics, born in Gotham City and first appearing in Batman #404. He works as a Detective · Police Commissioner and is affiliated with Batman Family. He has Brown eyes and Brown hair and stands 175 cm tall and weighs 76 kg. His notable abilities include Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 20 for durability and 45 for combat, giving an overall score of 8.
+James Gordon is a good-aligned male Human character created by DC Comics, born in Gotham City and first appearing in Batman #404. He works as a Detective · Police Commissioner and is affiliated with Batman Family. He has Brown eyes and Brown hair and stands 175 cm tall and weighs 76 kg. His notable abilities include Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 20 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 8.

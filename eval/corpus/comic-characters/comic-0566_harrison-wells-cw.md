@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Harrison Wells (CW)
 
-Harrison Wells (CW), real name Harrison Wells, is a good-aligned male Human character created by DC Comics, born in Earth-2 and first appearing in The Flash Season 2: Episode 2. He works as a Scientist, Businessman. He has Blue eyes and Brown hair and stands 183 cm tall and weighs 77 kg. His notable abilities include Agility, Intelligence and Marksmanship. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 70 for combat, giving an overall score of 9.
+Harrison Wells (CW), real name Harrison Wells, is a good-aligned male Human character created by DC Comics, born in Earth-2 and first appearing in The Flash Season 2: Episode 2. He works as a Scientist, Businessman. He has Blue eyes and Brown hair and stands 183 cm tall and weighs 77 kg. His notable abilities include Agility, Intelligence and Marksmanship. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 20 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 9.

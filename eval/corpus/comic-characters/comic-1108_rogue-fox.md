@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rogue (FOX)
 
-Rogue (FOX), real name Anna Marie, is a good-aligned female Mutant character created by Marvel Comics, first appearing in X men. She has Brown eyes and stands 157 cm tall and weighs 89 kg. Her notable abilities include Energy Absorption. Rated across attributes, she scores 90 for intelligence, 20 for strength, 45 for speed, 45 for durability and 85 for combat, giving an overall score of 9.
+Rogue (FOX), real name Anna Marie, is a good-aligned female Mutant character created by Marvel Comics, first appearing in X men. She has Brown eyes and stands 157 cm tall and weighs 89 kg. Her notable abilities include Energy Absorption. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 20 for strength, 45 for speed, 45 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 9.

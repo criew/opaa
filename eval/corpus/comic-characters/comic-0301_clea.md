@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "The Dark Dimension"
 first_appearance: null
 occupation: "Former ruler and Sorceress Supreme of the Dark Dimension; former apprentice of Doctor Strange"
-teams: "Defenders"
+teams: ["Defenders"]
 eye_color: null
 hair_color: "White"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Clea
 
-Clea, real name Clea, is a good-aligned character created by Marvel Comics, born in The Dark Dimension. They work as a Former ruler and Sorceress Supreme of the Dark Dimension; former apprentice of Doctor Strange and are affiliated with Defenders. They have White hair. Their notable abilities include Dimensional Travel, Durability, Energy Blasts, Energy Constructs, Energy Manipulation, Force Fields, Illusions, Intelligence, Invulnerability, Longevity, Magic, Matter Manipulation, Reality Warping, Stamina, Super Strength, Telekinesis and Teleportation. Rated across attributes, they score 100 for intelligence, 35 for strength, 75 for speed, 90 for durability and 70 for combat, giving an overall score of 32.
+Clea, real name Clea, is a good-aligned character created by Marvel Comics, born in The Dark Dimension. They work as a Former ruler and Sorceress Supreme of the Dark Dimension; former apprentice of Doctor Strange and are affiliated with Defenders. They have White hair. Their notable abilities include Dimensional Travel, Durability, Energy Blasts, Energy Constructs, Energy Manipulation, Force Fields, Illusions, Intelligence, Invulnerability, Longevity, Magic, Matter Manipulation, Reality Warping, Stamina, Super Strength, Telekinesis and Teleportation. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 35 for strength, 75 for speed, 90 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 32.

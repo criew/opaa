@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ocean Master (DCEU)
 
-Ocean Master (DCEU), real name Orm Marius, is a bad-aligned Atlantean character created by DC Comics, born in Somewhere in Atlantis. They work as a King. Their notable abilities include Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Invulnerability, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 85 for intelligence, 50 for strength, 85 for speed, 80 for durability and 90 for combat, giving an overall score of 9.
+Ocean Master (DCEU), real name Orm Marius, is a bad-aligned Atlantean character created by DC Comics, born in Somewhere in Atlantis. They work as a King. Their notable abilities include Cold Resistance, Durability, Enhanced Senses, Heat Resistance, Invulnerability, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 50 for strength, 85 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 9.

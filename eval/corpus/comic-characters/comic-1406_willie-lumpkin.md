@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Willie Lumpkin
 
-Willie Lumpkin, real name William Lumpkin, is a good-aligned character created by Marvel Comics, born in Glenvilie, Nebraska and first appearing in Fantastic Four #11. They work as an United States Postal Courier. They have Blue eyes and White hair and stand 173 cm tall and weigh 74 kg. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Willie Lumpkin, real name William Lumpkin, is a good-aligned character created by Marvel Comics, born in Glenvilie, Nebraska and first appearing in Fantastic Four #11. They work as a United States Postal Courier. They have Blue eyes and White hair and stand 173 cm tall and weigh 74 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

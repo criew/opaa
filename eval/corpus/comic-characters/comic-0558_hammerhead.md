@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: "Crimelord, criminal, hit-man"
-teams: "Maggia"
+teams: ["Maggia"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hammerhead
 
-Hammerhead, real name Joseph, is a bad-aligned character created by Marvel Comics. They work as a Crimelord, criminal, hit-man and are affiliated with Maggia. Their notable abilities include Durability, Invulnerability, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 90 for intelligence, 10 for strength, 20 for speed, 40 for durability and 40 for combat, giving an overall score of 7.
+Hammerhead, real name Joseph, is a bad-aligned character created by Marvel Comics. They work as a Crimelord, criminal, hit-man and are affiliated with Maggia. Their notable abilities include Durability, Invulnerability, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 10 for strength, 20 for speed, 40 for durability and 40 for combat. On a separate overall ranking scale, their overall score is 7.

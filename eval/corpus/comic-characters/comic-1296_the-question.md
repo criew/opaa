@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Question
 
-The Question, real name Renee Montoya, is a good-aligned female Human character created by DC Comics, first appearing in Batman #475 - The Return of Scarface, Part One: Mustache Pete is Dead!. She works as a Detective,Vigilante,Police Officer Characteristics. She has Brown eyes and Black hair and stands 173 cm tall and weighs 65 kg. Her notable abilities include Agility and Intelligence. Rated across attributes, she scores 95 for intelligence, 10 for strength, 25 for speed, 30 for durability and 80 for combat, giving an overall score of 8.
+The Question, real name Renee Montoya, is a good-aligned female Human character created by DC Comics, first appearing in Batman #475 - The Return of Scarface, Part One: Mustache Pete is Dead!. She works as a Detective,Vigilante,Police Officer Characteristics. She has Brown eyes and Black hair and stands 173 cm tall and weighs 65 kg. Her notable abilities include Agility and Intelligence. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 10 for strength, 25 for speed, 30 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Harley Keener
 
-Harley Keener is a good-aligned male Human character created by Marvel Comics, first appearing in Iron Man 3. His notable abilities include Weapons Master. Rated across attributes, he scores 90 for intelligence, 0 for strength, 10 for speed, 5 for durability and 10 for combat, giving an overall score of 7.
+Harley Keener is a good-aligned male Human character created by Marvel Comics, first appearing in Iron Man 3. His notable abilities include Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 0 for strength, 10 for speed, 5 for durability and 10 for combat. On a separate overall ranking scale, his overall score is 7.

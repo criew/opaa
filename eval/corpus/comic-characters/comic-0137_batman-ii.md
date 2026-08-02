@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batman II
 
-Batman II, real name Dick Grayson, is a good-aligned male Human character created by DC Comics. He has Blue eyes and Black hair and stands 178 cm tall and weighs 79 kg. His notable abilities include Agility, Intelligence, Marksmanship, Peak Human Condition, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 35 for speed, 30 for durability and 100 for combat, giving an overall score of 8.
+Batman II, real name Dick Grayson, is a good-aligned male Human character created by DC Comics. He has Blue eyes and Black hair and stands 178 cm tall and weighs 79 kg. His notable abilities include Agility, Intelligence, Marksmanship, Peak Human Condition, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 35 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 8.

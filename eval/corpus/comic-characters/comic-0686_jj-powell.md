@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # JJ Powell
 
-JJ Powell, real name JJ Powell, is a good-aligned male character created by ABC Studios, first appearing in No Ordinary Family S01E01 (2010). He works as a Student. His notable abilities include Intelligence. Rated across attributes, he scores 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 10 for combat, giving an overall score of 7.
+JJ Powell, real name JJ Powell, is a good-aligned male character created by ABC Studios, first appearing in No Ordinary Family S01E01 (2010). He works as a Student. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 10 for speed, 10 for durability and 10 for combat. On a separate overall ranking scale, his overall score is 7.

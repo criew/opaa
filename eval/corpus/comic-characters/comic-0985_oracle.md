@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Suicide Squad #23 (Jan.1989)"
 occupation: "Computer hacker and Coordinator of the Birds of Prey; Former student; former librarian; former vigilante"
-teams: "Birds of Prey, Batman Family"
+teams: ["Birds of Prey", "Batman Family"]
 eye_color: "Blue"
 hair_color: "Red"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Oracle
 
-Oracle, real name Barbara Gordon, is a good-aligned female Human character created by DC Comics, first appearing in Suicide Squad #23 (Jan.1989). She works as a Computer hacker and Coordinator of the Birds of Prey; Former student; former librarian; former vigilante and is affiliated with Birds of Prey and Batman Family. She has Blue eyes and Red hair and stands 178 cm tall and weighs 59 kg. Her notable abilities include Intelligence. Rated across attributes, she scores 90 for intelligence, 10 for strength, 20 for speed, 25 for durability and 75 for combat, giving an overall score of 7.
+Oracle, real name Barbara Gordon, is a good-aligned female Human character created by DC Comics, first appearing in Suicide Squad #23 (Jan.1989). She works as a Computer hacker and Coordinator of the Birds of Prey; Former student; former librarian; former vigilante and is affiliated with Birds of Prey and Batman Family. She has Blue eyes and Red hair and stands 178 cm tall and weighs 59 kg. Her notable abilities include Intelligence. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 20 for speed, 25 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 7.

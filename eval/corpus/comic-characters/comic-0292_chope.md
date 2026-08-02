@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Chope
 
-Chope, real name Chope, is a bad-aligned male Human character, born in Chen island and first appearing in Season 4, Episode 2. He works as an Anacondrai Cultist. He has Red eyes and Auburn hair and stands 157 cm tall and weighs 45 kg. His notable abilities include Agility, Dexterity, Marksmanship, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 60 for intelligence, 10 for strength, 15 for speed, 10 for durability and 50 for combat, giving an overall score of 2.
+Chope, real name Chope, is a bad-aligned male Human character, born in Chen island and first appearing in Season 4, Episode 2. He works as an Anacondrai Cultist. He has Red eyes and Auburn hair and stands 157 cm tall and weighs 45 kg. His notable abilities include Agility, Dexterity, Marksmanship, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 10 for strength, 15 for speed, 10 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 2.

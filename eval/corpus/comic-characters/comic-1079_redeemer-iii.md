@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Redeemer III
 
-Redeemer III, real name Eddie Frank, is a bad-aligned male character created by Image Comics. His notable abilities include Durability, Energy Manipulation, Flight, Stamina and Super Strength. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Redeemer III, real name Eddie Frank, is a bad-aligned male character created by Image Comics. His notable abilities include Durability, Energy Manipulation, Flight, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

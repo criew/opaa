@@ -10,7 +10,7 @@ type_race: "Symbiote"
 place_of_birth: null
 first_appearance: "(As Gargan) Amazing Spider-Man #19 (1964); (as Scorpion) Amazing Spider-Man #20 (1965); (as Venom) Marvel Knights: Spider-Man #10 (2005)"
 occupation: "Government operative; former professional criminal, private eye"
-teams: "Dark Avengers, Thunderbolts"
+teams: ["Dark Avengers", "Thunderbolts"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 229
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Venom III
 
-Venom III, real name MacDonald Gargan, is a bad-aligned male Symbiote character created by Marvel Comics, first appearing in (As Gargan) Amazing Spider-Man #19 (1964); (as Scorpion) Amazing Spider-Man #20 (1965); (as Venom) Marvel Knights: Spider-Man #10 (2005). He works as a Government operative; former professional criminal, private eye and is affiliated with Dark Avengers and Thunderbolts. He has Brown eyes and Brown hair and stands 229 cm tall and weighs 334 kg. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 80 for intelligence, 75 for strength, 35 for speed, 90 for durability and 55 for combat, giving an overall score of 8.
+Venom III, real name MacDonald Gargan, is a bad-aligned male Symbiote character created by Marvel Comics, first appearing in (As Gargan) Amazing Spider-Man #19 (1964); (as Scorpion) Amazing Spider-Man #20 (1965); (as Venom) Marvel Knights: Spider-Man #10 (2005). He works as a Government operative; former professional criminal, private eye and is affiliated with Dark Avengers and Thunderbolts. He has Brown eyes and Brown hair and stands 229 cm tall and weighs 334 kg. His notable abilities include Accelerated Healing, Agility, Durability, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 75 for strength, 35 for speed, 90 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # DL Hawkins
 
-DL Hawkins, real name Daniel Lawrence Hawkins, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E05 - Hiros. He works as a Construction worker, Firefighter. Rated across attributes, he scores 75 for intelligence, 10 for strength, 10 for speed, 55 for durability and 55 for combat, giving an overall score of 5.
+DL Hawkins, real name Daniel Lawrence Hawkins, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E05 - Hiros. He works as a Construction worker, Firefighter. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 10 for speed, 55 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 5.

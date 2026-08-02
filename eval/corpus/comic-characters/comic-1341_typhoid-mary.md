@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Daredevil #254 (May, 1988)"
 occupation: "Adventurer; former mercenary, assassin, professional criminal, actress, teacher"
-teams: "Black Cat's Gang, The Hand"
+teams: ["Black Cat's Gang", "The Hand"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Typhoid Mary
 
-Typhoid Mary, real name Mary Walker, is a female character created by Marvel Comics, first appearing in Daredevil #254 (May, 1988). She works as an Adventurer; former mercenary, assassin, professional criminal, actress, teacher and is affiliated with Black Cat's Gang and The Hand. She has Brown eyes and Brown hair and stands 178 cm tall and weighs 63 kg. Her notable abilities include Element Control, Fire Control, Mind Control, Telekinesis and Telepathy. Rated across attributes, she scores 80 for intelligence, 30 for strength, 45 for speed, 60 for durability and 65 for combat, giving an overall score of 6.
+Typhoid Mary, real name Mary Walker, is a female character created by Marvel Comics, first appearing in Daredevil #254 (May, 1988). She works as an Adventurer; former mercenary, assassin, professional criminal, actress, teacher and is affiliated with Black Cat's Gang and The Hand. She has Brown eyes and Brown hair and stands 178 cm tall and weighs 63 kg. Her notable abilities include Element Control, Fire Control, Mind Control, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 30 for strength, 45 for speed, 60 for durability and 65 for combat. On a separate overall ranking scale, her overall score is 6.

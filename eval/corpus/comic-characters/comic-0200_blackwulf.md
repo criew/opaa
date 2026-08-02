@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blackwulf
 
-Blackwulf, real name Lucian, is a male Alien character created by Marvel Comics, born in Armechadon and first appearing in Thunderstrike #6 (March, 1994). He works as a Freedom Fighter. He has Red eyes and White hair and stands 188 cm tall and weighs 88 kg. His notable abilities include Durability, Energy Blasts and Super Strength. Rated across attributes, he scores 75 for intelligence, 30 for strength, 10 for speed, 30 for durability and 25 for combat, giving an overall score of 5.
+Blackwulf, real name Lucian, is a male Alien character created by Marvel Comics, born in Armechadon and first appearing in Thunderstrike #6 (March, 1994). He works as a Freedom Fighter. He has Red eyes and White hair and stands 188 cm tall and weighs 88 kg. His notable abilities include Durability, Energy Blasts and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 10 for speed, 30 for durability and 25 for combat. On a separate overall ranking scale, his overall score is 5.

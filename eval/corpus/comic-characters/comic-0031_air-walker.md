@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Xandar, a planet in the Tranta system, Andromeda galaxy"
 first_appearance: "Fantastic Four #120"
 occupation: "Former starship captain, Herald of Galactus"
-teams: "Agency X, Team X, Heralds of Galactus"
+teams: ["Agency X", "Team X", "Heralds of Galactus"]
 eye_color: "Blue"
 hair_color: "White"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Air-Walker
 
-Air-Walker, real name Gabriel Lan, is a bad-aligned male character created by Marvel Comics, born in Xandar, a planet in the Tranta system, Andromeda galaxy and first appearing in Fantastic Four #120. He works as a Former starship captain, Herald of Galactus and is affiliated with Agency X, Team X and Heralds of Galactus. He has Blue eyes and White hair and stands 188 cm tall and weighs 108 kg. His notable abilities include Flight, Self-Sustenance, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 85 for strength, 100 for speed, 85 for durability and 40 for combat, giving an overall score of 15.
+Air-Walker, real name Gabriel Lan, is a bad-aligned male character created by Marvel Comics, born in Xandar, a planet in the Tranta system, Andromeda galaxy and first appearing in Fantastic Four #120. He works as a Former starship captain, Herald of Galactus and is affiliated with Agency X, Team X and Heralds of Galactus. He has Blue eyes and White hair and stands 188 cm tall and weighs 108 kg. His notable abilities include Flight, Self-Sustenance, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 85 for strength, 100 for speed, 85 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 15.

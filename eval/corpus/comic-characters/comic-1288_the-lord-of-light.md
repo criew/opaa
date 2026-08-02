@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Lord Of Light
 
-The Lord Of Light, real name R'hllor, is a good-aligned character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 2: A Clash of Kings. They work as a Supreme Being. Their notable abilities include Heat Resistance, Illusions, Immortality, Intelligence, Invulnerability, Magic, Reality Warping, Stealth and Telepathy. Rated across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of ∞.
+The Lord Of Light, real name R'hllor, is a good-aligned character created by George R. R. Martin, first appearing in A Song of Ice & Fire; Book 2: A Clash of Kings. They work as a Supreme Being. Their notable abilities include Heat Resistance, Illusions, Immortality, Intelligence, Invulnerability, Magic, Reality Warping, Stealth and Telepathy. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, their overall score is ∞.

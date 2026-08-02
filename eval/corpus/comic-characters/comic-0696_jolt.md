@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Ojai, California"
 first_appearance: "Thunderbolts #1 (1997)"
 occupation: "Adventurer"
-teams: "America Redeemers, Thunderbolts"
+teams: ["America Redeemers", "Thunderbolts"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jolt
 
-Jolt, real name Helen Takahama, is a good-aligned female character created by Marvel Comics, born in Ojai, California and first appearing in Thunderbolts #1 (1997). She works as an Adventurer and is affiliated with America Redeemers and Thunderbolts. She has Blue eyes and Black hair and stands 165 cm tall and weighs 49 kg. Her notable abilities include Energy Blasts, Reflexes, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat, giving an overall score of 5.
+Jolt, real name Helen Takahama, is a good-aligned female character created by Marvel Comics, born in Ojai, California and first appearing in Thunderbolts #1 (1997). She works as an Adventurer and is affiliated with America Redeemers and Thunderbolts. She has Blue eyes and Black hair and stands 165 cm tall and weighs 49 kg. Her notable abilities include Energy Blasts, Reflexes, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 25 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 5.

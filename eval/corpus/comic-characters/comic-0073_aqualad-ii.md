@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Brightest Day #4 (June 2010)"
 occupation: null
-teams: "Justice League Atlantis, Justice League"
+teams: ["Justice League Atlantis", "Justice League"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Aqualad II
 
-Aqualad II, real name Jackson Hyde, is a good-aligned male character created by DC Comics, first appearing in Brightest Day #4 (June 2010). He is affiliated with Justice League Atlantis and Justice League. His notable abilities include Durability, Electrokinesis, Element Control, Enhanced Hearing, Enhanced Senses, Invulnerability, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 85 for intelligence, 35 for strength, 90 for speed, 90 for durability and 75 for combat, giving an overall score of 9.
+Aqualad II, real name Jackson Hyde, is a good-aligned male character created by DC Comics, first appearing in Brightest Day #4 (June 2010). He is affiliated with Justice League Atlantis and Justice League. His notable abilities include Durability, Electrokinesis, Element Control, Enhanced Hearing, Enhanced Senses, Invulnerability, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 35 for strength, 90 for speed, 90 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 9.

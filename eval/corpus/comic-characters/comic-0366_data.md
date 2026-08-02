@@ -10,7 +10,7 @@ type_race: "Android"
 place_of_birth: null
 first_appearance: null
 occupation: "Lieutenant commander"
-teams: "Starfleet, Federation"
+teams: ["Starfleet", "Federation"]
 eye_color: "Yellow"
 hair_color: "Brown"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Data
 
-Data, real name Data, is a good-aligned male Android character created by Star Trek. He works as a Lieutenant commander and is affiliated with Starfleet and Federation. He has Yellow eyes and Brown hair. His notable abilities include Agility, Cold Resistance, Durability, Enhanced Hearing, Enhanced Senses, Heat Resistance, Intelligence, Longevity, Reflexes, Super Speed and Super Strength. Rated across attributes, he scores 100 for intelligence, 30 for strength, 20 for speed, 40 for durability and 50 for combat, giving an overall score of 10.
+Data, real name Data, is a good-aligned male Android character created by Star Trek. He works as a Lieutenant commander and is affiliated with Starfleet and Federation. He has Yellow eyes and Brown hair. His notable abilities include Agility, Cold Resistance, Durability, Enhanced Hearing, Enhanced Senses, Heat Resistance, Intelligence, Longevity, Reflexes, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 20 for speed, 40 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 10.

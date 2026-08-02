@@ -10,7 +10,7 @@ type_race: "Saiyan"
 place_of_birth: "Planet Vegeta"
 first_appearance: "Dragon Ball #204"
 occupation: "Martial Artist"
-teams: "Z-Fighters"
+teams: ["Z-Fighters"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vegeta
 
-Vegeta, real name Vegeta IV, is a good-aligned male Saiyan character created by Shueisha, born in Planet Vegeta and first appearing in Dragon Ball #204. He works as a Martial Artist and is affiliated with Z-Fighters. He has Brown eyes and Black hair and stands 165 cm tall and weighs 73 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Enhanced Senses, Fire Control, Flight, Force Fields, Heat Resistance, Longevity, Mind Control Resistance, Reflexes, Shapeshifting, Stamina, Super Speed, Super Strength, Telekinesis and Toxin and Disease Resistance. Rated across attributes, he scores 80 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of 25.
+Vegeta, real name Vegeta IV, is a good-aligned male Saiyan character created by Shueisha, born in Planet Vegeta and first appearing in Dragon Ball #204. He works as a Martial Artist and is affiliated with Z-Fighters. He has Brown eyes and Black hair and stands 165 cm tall and weighs 73 kg. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Durability, Energy Absorption, Energy Beams, Energy Blasts, Energy Constructs, Enhanced Senses, Fire Control, Flight, Force Fields, Heat Resistance, Longevity, Mind Control Resistance, Reflexes, Shapeshifting, Stamina, Super Speed, Super Strength, Telekinesis and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 25.

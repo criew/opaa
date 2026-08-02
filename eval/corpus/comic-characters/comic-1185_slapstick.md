@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Place of birth unknown"
 first_appearance: "Slapstick #1 (1992)"
 occupation: "Student"
-teams: "Avengers Resistance"
+teams: ["Avengers Resistance"]
 eye_color: "Yellow"
 hair_color: "Purple"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Slapstick
 
-Slapstick, real name Steve Harmon, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Slapstick #1 (1992). They work as a Student and are affiliated with Avengers Resistance. They have Yellow eyes and Purple hair and stand 170 cm tall and weigh 65 kg. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Slapstick, real name Steve Harmon, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in Slapstick #1 (1992). They work as a Student and are affiliated with Avengers Resistance. They have Yellow eyes and Purple hair and stand 170 cm tall and weigh 65 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

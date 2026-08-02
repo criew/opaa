@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: null
 first_appearance: "New Mutants #98 (February, 1991)"
 occupation: null
-teams: "Weapon X, X-Force, New Mutants, X-Men"
+teams: ["Weapon X", "X-Force", "New Mutants", "X-Men"]
 eye_color: "Red"
 hair_color: "White"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Copycat
 
-Copycat, real name Vanessa Carlysle, is a neutral-aligned female Mutant character created by Marvel Comics, first appearing in New Mutants #98 (February, 1991). She is affiliated with Weapon X, X-Force, New Mutants and X-Men. She has Red eyes and White hair and stands 183 cm tall and weighs 67 kg. Her notable abilities include Shapeshifting, Stealth and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 20 for speed, 25 for durability and 60 for combat, giving an overall score of 5.
+Copycat, real name Vanessa Carlysle, is a neutral-aligned female Mutant character created by Marvel Comics, first appearing in New Mutants #98 (February, 1991). She is affiliated with Weapon X, X-Force, New Mutants and X-Men. She has Red eyes and White hair and stands 183 cm tall and weighs 67 kg. Her notable abilities include Shapeshifting, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 20 for speed, 25 for durability and 60 for combat. On a separate overall ranking scale, her overall score is 5.

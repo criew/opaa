@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ed
 
-Ed, real name Ed, is a good-aligned male Human character, born in Dump and first appearing in Season 1 episode 3. He works as a Father. He has Black eyes and White hair and stands 163 cm tall and weighs 69 kg. His notable abilities include Flight, Intelligence, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 15 for combat, giving an overall score of 5.
+Ed, real name Ed, is a good-aligned male Human character, born in Dump and first appearing in Season 1 episode 3. He works as a Father. He has Black eyes and White hair and stands 163 cm tall and weighs 69 kg. His notable abilities include Flight, Intelligence, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 5.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # V
 
-V is a neutral-aligned male Human character created by DC Comics, born in England and first appearing in Warrior #1. He works as an anarchist,vigilante,freedom fighter. He stands 180 cm tall and weighs 77 kg. His notable abilities include Agility, Intelligence, Marksmanship, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 15 for strength, 50 for speed, 55 for durability and 95 for combat, giving an overall score of 7.
+V is a neutral-aligned male Human character created by DC Comics, born in England and first appearing in Warrior #1. He works as an anarchist,vigilante,freedom fighter. He stands 180 cm tall and weighs 77 kg. His notable abilities include Agility, Intelligence, Marksmanship, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 15 for strength, 50 for speed, 55 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 7.

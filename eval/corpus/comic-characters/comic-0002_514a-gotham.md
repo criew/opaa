@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # 514A (Gotham)
 
-514A (Gotham), real name Bruce Wayne, is a character created by DC Comics. Their notable abilities include Durability, Reflexes and Super Strength. Rated across attributes, they score 100 for intelligence, 20 for strength, 30 for speed, 50 for durability and 100 for combat, giving an overall score of 10.
+514A (Gotham), real name Bruce Wayne, is a character created by DC Comics. Their notable abilities include Durability, Reflexes and Super Strength. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 20 for strength, 30 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 10.

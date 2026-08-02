@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wyatt Wingfoot
 
-Wyatt Wingfoot, real name Wyatt Wingfoot, is a good-aligned male character created by Marvel Comics, born in Keewazi Reservation, Oklahoma and first appearing in FANTASTIC FOUR #50. He works as an Occasional adventurer. He has Brown eyes and Black hair and stands 196 cm tall and weighs 117 kg. Rated across attributes, he scores 60 for intelligence, 10 for strength, 10 for speed, 0 for durability and 55 for combat, giving an overall score of 2.
+Wyatt Wingfoot, real name Wyatt Wingfoot, is a good-aligned male character created by Marvel Comics, born in Keewazi Reservation, Oklahoma and first appearing in FANTASTIC FOUR #50. He works as an Occasional adventurer. He has Brown eyes and Black hair and stands 196 cm tall and weighs 117 kg. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 10 for strength, 10 for speed, 0 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 2.

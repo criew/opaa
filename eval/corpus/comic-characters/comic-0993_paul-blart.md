@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Paul Blart
 
-Paul Blart, real name Paul Blart, is a good-aligned male Human character created by Sony Pictures. He stands 170 cm tall and weighs 117 kg. Rated across attributes, he scores 45 for intelligence, 10 for strength, 20 for speed, 50 for durability and 5 for combat, giving an overall score of 1.
+Paul Blart, real name Paul Blart, is a good-aligned male Human character created by Sony Pictures. He stands 170 cm tall and weighs 117 kg. Rated on a 0-100 scale across attributes, he scores 45 for intelligence, 10 for strength, 20 for speed, 50 for durability and 5 for combat. On a separate overall ranking scale, his overall score is 1.

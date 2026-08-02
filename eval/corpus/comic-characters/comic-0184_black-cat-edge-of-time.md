@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Cat (Edge of Time)
 
-Black Cat (Edge of Time), real name Felicia Hardy, is a neutral-aligned female Human character created by Marvel Comics. She works as a Security guard. She has Green eyes and Blond hair and stands 178 cm tall and weighs 54 kg. Her notable abilities include Enhanced Senses and Teleportation. Rated across attributes, she scores 85 for intelligence, 10 for strength, 75 for speed, 40 for durability and 85 for combat, giving an overall score of 7.
+Black Cat (Edge of Time), real name Felicia Hardy, is a neutral-aligned female Human character created by Marvel Comics. She works as a Security guard. She has Green eyes and Blond hair and stands 178 cm tall and weighs 54 kg. Her notable abilities include Enhanced Senses and Teleportation. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 10 for strength, 75 for speed, 40 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 7.

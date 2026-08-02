@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "New York City, New York"
 first_appearance: "Young Avengers #1 (April, 2005)"
 occupation: "Student; Adventurer; Fugitive"
-teams: "Avengers, Young Avengers"
+teams: ["Avengers", "Young Avengers"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 165
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hawkeye II
 
-Hawkeye II, real name Katherine Elizabeth Bishop, is a good-aligned female Human character created by Marvel Comics, born in New York City, New York and first appearing in Young Avengers #1 (April, 2005). She works as a Student; Adventurer; Fugitive and is affiliated with Avengers and Young Avengers. She has Blue eyes and Black hair and stands 165 cm tall and weighs 57 kg. Her notable abilities include Stamina and Weapons Master. Rated across attributes, she scores 75 for intelligence, 5 for strength, 10 for speed, 10 for durability and 50 for combat, giving an overall score of 4.
+Hawkeye II, real name Katherine Elizabeth Bishop, is a good-aligned female Human character created by Marvel Comics, born in New York City, New York and first appearing in Young Avengers #1 (April, 2005). She works as a Student; Adventurer; Fugitive and is affiliated with Avengers and Young Avengers. She has Blue eyes and Black hair and stands 165 cm tall and weighs 57 kg. Her notable abilities include Stamina and Weapons Master. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 5 for strength, 10 for speed, 10 for durability and 50 for combat. On a separate overall ranking scale, her overall score is 4.

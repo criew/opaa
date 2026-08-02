@@ -10,7 +10,7 @@ type_race: "God / Eternal"
 place_of_birth: null
 first_appearance: "Flash Vol 2 #138"
 occupation: null
-teams: "Living Assault Weapons, Flash Family"
+teams: ["Living Assault Weapons", "Flash Family"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Flash
 
-Black Flash is a neutral-aligned male God / Eternal character created by DC Comics, first appearing in Flash Vol 2 #138. He is affiliated with Living Assault Weapons and Flash Family. His notable abilities include Agility, Dimensional Travel, Enhanced Senses, Flight, Immortality, Stamina, Stealth, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 10 for strength, 100 for speed, 80 for durability and 30 for combat, giving an overall score of 18.
+Black Flash is a neutral-aligned male God / Eternal character created by DC Comics, first appearing in Flash Vol 2 #138. He is affiliated with Living Assault Weapons and Flash Family. His notable abilities include Agility, Dimensional Travel, Enhanced Senses, Flight, Immortality, Stamina, Stealth, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 100 for speed, 80 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 18.

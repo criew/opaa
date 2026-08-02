@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Daredevil #168"
 occupation: "Assassin, adventurer, mercenary, former student, dancer"
-teams: "The Hand, Thunderbolts, Marvel Knights, Chaste, Code Red, Avengers, Heroes For Hire"
+teams: ["The Hand", "Thunderbolts", "Marvel Knights", "Chaste", "Code Red", "Avengers", "Heroes For Hire"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Elektra
 
-Elektra, real name Elektra Natchios, is a good-aligned female Human character created by Marvel Comics, first appearing in Daredevil #168. She works as an Assassin, adventurer, mercenary, former student, dancer and is affiliated with The Hand, Thunderbolts, Marvel Knights, Chaste, Code Red, Avengers and Heroes For Hire. She has Blue eyes and Black hair and stands 175 cm tall and weighs 59 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Peak Human Condition, Stealth, Telepathy, Telepathy Resistance and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 30 for durability and 100 for combat, giving an overall score of 6.
+Elektra, real name Elektra Natchios, is a good-aligned female Human character created by Marvel Comics, first appearing in Daredevil #168. She works as an Assassin, adventurer, mercenary, former student, dancer and is affiliated with The Hand, Thunderbolts, Marvel Knights, Chaste, Code Red, Avengers and Heroes For Hire. She has Blue eyes and Black hair and stands 175 cm tall and weighs 59 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Peak Human Condition, Stealth, Telepathy, Telepathy Resistance and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 6.

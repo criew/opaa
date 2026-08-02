@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Brave New World #1"
 occupation: "Professor of nuclear physics at Ivy University"
-teams: "Justice League of America"
+teams: ["Justice League of America"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Atom IV
 
-Atom IV, real name Ryan Choi, is a good-aligned male character created by DC Comics, first appearing in Brave New World #1. He works as a Professor of nuclear physics at Ivy University and is affiliated with Justice League of America. He has Brown eyes and Black hair and weighs 72 kg. His notable abilities include Intelligence and Size Changing. Rated across attributes, he scores 100 for intelligence, 10 for strength, 45 for speed, 35 for durability and 95 for combat, giving an overall score of 9.
+Atom IV, real name Ryan Choi, is a good-aligned male character created by DC Comics, first appearing in Brave New World #1. He works as a Professor of nuclear physics at Ivy University and is affiliated with Justice League of America. He has Brown eyes and Black hair and weighs 72 kg. His notable abilities include Intelligence and Size Changing. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 45 for speed, 35 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 9.

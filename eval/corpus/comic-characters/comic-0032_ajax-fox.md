@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ajax (FOX)
 
-Ajax (FOX), real name Francis, is a male Mutant character created by Marvel Comics. His notable abilities include Dexterity, Durability, Intelligence, Invulnerability, Reflexes, Super Strength and Weapons Master. Rated across attributes, he scores 85 for intelligence, 25 for strength, 45 for speed, 75 for durability and 65 for combat, giving an overall score of 7.
+Ajax (FOX), real name Francis, is a male Mutant character created by Marvel Comics. His notable abilities include Dexterity, Durability, Intelligence, Invulnerability, Reflexes, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 25 for strength, 45 for speed, 75 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 7.

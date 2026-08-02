@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Thing (FOX)
 
-The Thing (FOX), real name Ben Grimm, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Manhattan and first appearing in Fantastic four. He has Blue eyes and No Hair hair and stands 178 cm tall and weighs 89 kg. His notable abilities include Agility, Durability, Invulnerability and Peak Human Condition. Rated across attributes, he scores 70 for intelligence, 80 for strength, 50 for speed, 90 for durability and 95 for combat, giving an overall score of 6.
+The Thing (FOX), real name Ben Grimm, is a good-aligned male Human / Radiation character created by Marvel Comics, born in Manhattan and first appearing in Fantastic four. He has Blue eyes and is bald and stands 178 cm tall and weighs 89 kg. His notable abilities include Agility, Durability, Invulnerability and Peak Human Condition. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 80 for strength, 50 for speed, 90 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 6.

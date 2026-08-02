@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jar Jar Binks
 
-Jar Jar Binks, real name Jar Jar Binks, is a good-aligned male Gungan character created by George Lucas, born in Naboo. He has Yellow eyes and stands 193 cm tall. His notable abilities include Agility and Stealth. Rated across attributes, he scores 60 for intelligence, 5 for strength, 35 for speed, 10 for durability and 15 for combat, giving an overall score of 2.
+Jar Jar Binks, real name Jar Jar Binks, is a good-aligned male Gungan character created by George Lucas, born in Naboo. He has Yellow eyes and stands 193 cm tall. His notable abilities include Agility and Stealth. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 5 for strength, 35 for speed, 10 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 2.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Match
 
-Match, real name Kent Connor, is a bad-aligned male character created by DC Comics, first appearing in Superboy Vol 4 #35 (January, 1997). He has Black eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Energy Absorption, Energy Blasts, Enhanced Hearing, Flight, Invulnerability, Jump, Super Speed, Super Strength and Telekinesis. Rated across attributes, he scores 90 for intelligence, 95 for strength, 85 for speed, 85 for durability and 70 for combat, giving an overall score of 14.
+Match, real name Kent Connor, is a bad-aligned male character created by DC Comics, first appearing in Superboy Vol 4 #35 (January, 1997). He has Black eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Energy Absorption, Energy Blasts, Enhanced Hearing, Flight, Invulnerability, Jump, Super Speed, Super Strength and Telekinesis. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 95 for strength, 85 for speed, 85 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 14.

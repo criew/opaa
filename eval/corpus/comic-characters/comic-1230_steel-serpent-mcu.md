@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Steel Serpent (MCU)
 
-Steel Serpent (MCU), real name Davos, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron Fist Season 1: Episode 9. He works as a Warrior Monk. He has Brown eyes and Black hair and stands 170 cm tall. His notable abilities include Agility, Endurance, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth and Weapons Master. Rated across attributes, he scores 70 for intelligence, 15 for strength, 50 for speed, 40 for durability and 100 for combat, giving an overall score of 4.
+Steel Serpent (MCU), real name Davos, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron Fist Season 1: Episode 9. He works as a Warrior Monk. He has Brown eyes and Black hair and stands 170 cm tall. His notable abilities include Agility, Endurance, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 15 for strength, 50 for speed, 40 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dementor
 
-Dementor is a bad-aligned character created by J. K. Rowling, first appearing in Harry Potter and the prisoner of azkaban. They have Black eyes and No Hair hair. Their notable abilities include Accelerated Healing, Flight, Immortality, Invulnerability, Magic, Telepathy and Teleportation. Rated across attributes, they score 70 for intelligence, 10 for strength, 50 for speed, 85 for durability and 90 for combat, giving an overall score of 23.
+Dementor is a bad-aligned character created by J. K. Rowling, first appearing in Harry Potter and the prisoner of azkaban. They have Black eyes and are bald. Their notable abilities include Accelerated Healing, Flight, Immortality, Invulnerability, Magic, Telepathy and Teleportation. Rated on a 0-100 scale across attributes, they score 70 for intelligence, 10 for strength, 50 for speed, 85 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 23.

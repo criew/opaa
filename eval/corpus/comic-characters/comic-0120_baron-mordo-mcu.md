@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Baron Mordo (MCU)
 
-Baron Mordo (MCU), real name Karl Mordo, is a bad-aligned male Human character created by Marvel Comics, first appearing in Doctor strange. His notable abilities include Dimensional Travel, Force Fields, Magic and Teleportation. Rated across attributes, he scores 100 for intelligence, 30 for strength, 65 for speed, 60 for durability and 90 for combat, giving an overall score of 12.
+Baron Mordo (MCU), real name Karl Mordo, is a bad-aligned male Human character created by Marvel Comics, first appearing in Doctor strange. His notable abilities include Dimensional Travel, Force Fields, Magic and Teleportation. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 65 for speed, 60 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 12.

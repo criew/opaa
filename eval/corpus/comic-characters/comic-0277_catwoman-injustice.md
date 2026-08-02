@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Catwoman (Injustice)
 
-Catwoman (Injustice), real name Selina Kyle, is a bad-aligned female Human character created by DC Comics, first appearing in Injustice: Gods Among Us. She has Green eyes and Black hair and stands 173 cm tall and weighs 60 kg. Her notable abilities include Agility, Dexterity, Peak Human Condition, Reflexes, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 95 for intelligence, 10 for strength, 50 for speed, 45 for durability and 100 for combat, giving an overall score of 9.
+Catwoman (Injustice), real name Selina Kyle, is a bad-aligned female Human character created by DC Comics, first appearing in Injustice: Gods Among Us. She has Green eyes and Black hair and stands 173 cm tall and weighs 60 kg. Her notable abilities include Agility, Dexterity, Peak Human Condition, Reflexes, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 10 for strength, 50 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 9.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Herald
 
-Herald, real name Mal Duncan, is a good-aligned male Human character created by DC Comics, first appearing in Teen Titans #26 - A Penny For A Black Star. He works as an Adventurer, Composer. He has Brown eyes and Black hair and stands 185 cm tall and weighs 95 kg. His notable abilities include Agility, Marksmanship, Stamina, Super Strength, Teleportation and Weapons Master. Rated across attributes, he scores 80 for intelligence, 20 for strength, 25 for speed, 50 for durability and 80 for combat, giving an overall score of 7.
+Herald, real name Mal Duncan, is a good-aligned male Human character created by DC Comics, first appearing in Teen Titans #26 - A Penny For A Black Star. He works as an Adventurer, Composer. He has Brown eyes and Black hair and stands 185 cm tall and weighs 95 kg. His notable abilities include Agility, Marksmanship, Stamina, Super Strength, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 20 for strength, 25 for speed, 50 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 7.

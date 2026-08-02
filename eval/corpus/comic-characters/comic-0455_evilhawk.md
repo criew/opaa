@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Evilhawk
 
-Evilhawk, real name Dargin Bokk, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Darkhawk #20 (October, 1992). He works as a Crimelord. He has Red eyes and Black hair and stands 191 cm tall and weighs 106 kg. His notable abilities include Accelerated Healing, Durability, Energy Blasts, Flight, Force Fields, Super Strength and Weapon-Based Powers. Rated across attributes, he scores 75 for intelligence, 30 for strength, 35 for speed, 70 for durability and 65 for combat, giving an overall score of 6.
+Evilhawk, real name Dargin Bokk, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Darkhawk #20 (October, 1992). He works as a Crimelord. He has Red eyes and Black hair and stands 191 cm tall and weighs 106 kg. His notable abilities include Accelerated Healing, Durability, Energy Blasts, Flight, Force Fields, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 35 for speed, 70 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 6.

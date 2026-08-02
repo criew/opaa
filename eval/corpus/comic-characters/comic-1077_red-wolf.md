@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Wolf
 
-Red Wolf, real name William Talltrees, is a character created by Marvel Comics. Their notable abilities include Durability, Enhanced Hearing, Enhanced Senses, Reflexes, Stamina, Super Speed, Super Strength and Telepathy Resistance. Rated across attributes, they score 90 for intelligence, 35 for strength, 25 for speed, 50 for durability and 50 for combat, giving an overall score of 8.
+Red Wolf, real name William Talltrees, is a character created by Marvel Comics. Their notable abilities include Durability, Enhanced Hearing, Enhanced Senses, Reflexes, Stamina, Super Speed, Super Strength and Telepathy Resistance. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 35 for strength, 25 for speed, 50 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 8.

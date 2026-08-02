@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: "CEO Stane International"
-teams: "Superiour Six, National Force"
+teams: ["Superiour Six", "National Force"]
 eye_color: "Blue"
 hair_color: "No Hair"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Monger
 
-Iron Monger, real name Obadiah Stane, is a bad-aligned male character created by Marvel Comics. He works as a CEO Stane International and is affiliated with Superiour Six and National Force. He has Blue eyes and No Hair hair and weighs 1900 kg. His notable abilities include Durability, Energy Beams, Flight, Intelligence and Super Strength. Rated across attributes, he scores 95 for intelligence, 65 for strength, 25 for speed, 90 for durability and 55 for combat, giving an overall score of 10.
+Iron Monger, real name Obadiah Stane, is a bad-aligned male character created by Marvel Comics. He works as a CEO Stane International and is affiliated with Superiour Six and National Force. He has Blue eyes and is bald and weighs 1900 kg. His notable abilities include Durability, Energy Beams, Flight, Intelligence and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 65 for strength, 25 for speed, 90 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 10.

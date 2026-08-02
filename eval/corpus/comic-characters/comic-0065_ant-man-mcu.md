@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Ant-Man Prelude Vol 1 #1"
 occupation: "former Scientist, C.E.O., S.H.I.E.L.D. Research and Development Consultant"
-teams: "Avengers"
+teams: ["Avengers"]
 eye_color: "Grey"
 hair_color: "White"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ant-Man (MCU)
 
-Ant-Man (MCU), real name Hank Pym, is a good-aligned male Human character created by Marvel Comics, first appearing in Ant-Man Prelude Vol 1 #1. He works as a former Scientist, C.E.O., S.H.I.E.L.D. Research and Development Consultant and is affiliated with Avengers. He has Grey eyes and White hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Agility, Durability, Intelligence, Size Changing, Stamina, Stealth and Super Strength. Rated across attributes, he scores 100 for intelligence, 35 for strength, 50 for speed, 60 for durability and 80 for combat, giving an overall score of 10.
+Ant-Man (MCU), real name Hank Pym, is a good-aligned male Human character created by Marvel Comics, first appearing in Ant-Man Prelude Vol 1 #1. He works as a former Scientist, C.E.O., S.H.I.E.L.D. Research and Development Consultant and is affiliated with Avengers. He has Grey eyes and White hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Agility, Durability, Intelligence, Size Changing, Stamina, Stealth and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 35 for strength, 50 for speed, 60 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 10.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Challengers of the Unknown"
+teams: ["Challengers of the Unknown"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ace Morgan
 
-Ace Morgan, real name Kyle Morgan, is a character created by DC Comics. They are affiliated with Challengers of the Unknown. Their notable abilities include Agility, Energy Blasts, Intelligence, Magic, Marksmanship, Peak Human Condition, Reflexes, Stamina, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 85 for intelligence, 20 for strength, 65 for speed, 55 for durability and 90 for combat, giving an overall score of 7.
+Ace Morgan, real name Kyle Morgan, is a character created by DC Comics. They are affiliated with Challengers of the Unknown. Their notable abilities include Agility, Energy Blasts, Intelligence, Magic, Marksmanship, Peak Human Condition, Reflexes, Stamina, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 20 for strength, 65 for speed, 55 for durability and 90 for combat. On a separate overall ranking scale, their overall score is 7.

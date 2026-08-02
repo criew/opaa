@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arnold Flass
 
-Arnold Flass, real name Arnold Flass, is a bad-aligned male Human character created by DC Comics, born in The Cheetah Room, Gotham City and first appearing in Batman #404. He works as a Soldier · Detective · Police Officer. He has Blue eyes and Blond hair and weighs 113 kg. His notable abilities include Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 60 for intelligence, 10 for strength, 20 for speed, 10 for durability and 50 for combat, giving an overall score of 2.
+Arnold Flass, real name Arnold Flass, is a bad-aligned male Human character created by DC Comics, born in The Cheetah Room, Gotham City and first appearing in Batman #404. He works as a Soldier · Detective · Police Officer. He has Blue eyes and Blond hair and weighs 113 kg. His notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 10 for strength, 20 for speed, 10 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 2.

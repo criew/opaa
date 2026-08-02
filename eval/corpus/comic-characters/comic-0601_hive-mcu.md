@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hive (MCU)
 
-Hive (MCU), real name Unknown, is a bad-aligned male Inhuman character created by Marvel Comics, first appearing in Marvel's Agents of S.H.I.E.L.D. Season 3: Episode 5. He has Red eyes and No Hair hair. His notable abilities include Accelerated Healing, Agility, Durability, Endurance, Longevity, Marksmanship, Mind Control, Reflexes, Regeneration, Stamina and Super Strength. Rated across attributes, he scores 90 for intelligence, 30 for strength, 40 for speed, 100 for durability and 100 for combat, giving an overall score of 16.
+Hive (MCU), real name Unknown, is a bad-aligned male Inhuman character created by Marvel Comics, first appearing in Marvel's Agents of S.H.I.E.L.D. Season 3: Episode 5. He has Red eyes and is bald. His notable abilities include Accelerated Healing, Agility, Durability, Endurance, Longevity, Marksmanship, Mind Control, Reflexes, Regeneration, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 40 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 16.

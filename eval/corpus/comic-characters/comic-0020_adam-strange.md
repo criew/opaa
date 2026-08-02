@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Chicago, Illinois"
 first_appearance: "Outsiders #6 (April, 1986)"
 occupation: "Adventurer, archaelogist, ambassador"
-teams: "Omega Men"
+teams: ["Omega Men"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 183
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Adam Strange
 
-Adam Strange, real name Adam Strange, is a good-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Outsiders #6 (April, 1986). He works as an Adventurer, archaelogist, ambassador and is affiliated with Omega Men. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Fire Resistance, Flight, Intelligence, Marksmanship, Reflexes, Stamina, Stealth, Super Speed and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat, giving an overall score of 7.
+Adam Strange, real name Adam Strange, is a good-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Outsiders #6 (April, 1986). He works as an Adventurer, archaelogist, ambassador and is affiliated with Omega Men. He has Blue eyes and Blond hair and stands 183 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Fire Resistance, Flight, Intelligence, Marksmanship, Reflexes, Stamina, Stealth, Super Speed and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 40 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

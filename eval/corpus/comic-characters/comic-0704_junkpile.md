@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Junkpile
 
-Junkpile is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Men 2099 #1 (October, 1993). He works as a Mercenary; Former member of S.H.I.E.L.D. His notable abilities include Durability, Invulnerability, Regeneration, Stamina, Super Strength and Telekinesis. Rated across attributes, he scores 75 for intelligence, 40 for strength, 15 for speed, 90 for durability and 30 for combat, giving an overall score of 6.
+Junkpile is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X-Men 2099 #1 (October, 1993). He works as a Mercenary; Former member of S.H.I.E.L.D. His notable abilities include Durability, Invulnerability, Regeneration, Stamina, Super Strength and Telekinesis. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 40 for strength, 15 for speed, 90 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 6.

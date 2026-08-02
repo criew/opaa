@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Mister Miracle #5"
 occupation: "Soldier"
-teams: "New Gods of Apokolips"
+teams: ["New Gods of Apokolips"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Virman Vundabar
 
-Virman Vundabar is a bad-aligned male character created by DC Comics, first appearing in Mister Miracle #5. He works as a Soldier and is affiliated with New Gods of Apokolips. He has Blue eyes and Black hair. His notable abilities include Agility, Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 20 for speed, 20 for durability and 100 for combat, giving an overall score of 8.
+Virman Vundabar is a bad-aligned male character created by DC Comics, first appearing in Mister Miracle #5. He works as a Soldier and is affiliated with New Gods of Apokolips. He has Blue eyes and Black hair. His notable abilities include Agility, Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 20 for speed, 20 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # El Diablo (DCEU)
 
-El Diablo (DCEU), real name Chato Santana, is a good-aligned male Metahuman character created by DC Comics, born in Los Angeles and first appearing in Suicide Squad. He has Black eyes and No Hair hair and stands 157 cm tall and weighs 129 kg. His notable abilities include Element Control, Fire Control, Fire Resistance and Super Strength. Rated across attributes, he scores 90 for intelligence, 25 for strength, 80 for speed, 70 for durability and 80 for combat, giving an overall score of 8.
+El Diablo (DCEU), real name Chato Santana, is a good-aligned male Metahuman character created by DC Comics, born in Los Angeles and first appearing in Suicide Squad. He has Black eyes and is bald and stands 157 cm tall and weighs 129 kg. His notable abilities include Element Control, Fire Control, Fire Resistance and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 25 for strength, 80 for speed, 70 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 8.

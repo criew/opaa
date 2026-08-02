@@ -10,7 +10,7 @@ type_race: "Metahuman"
 place_of_birth: null
 first_appearance: "Injustice gods among us"
 occupation: null
-teams: "Flash Family"
+teams: ["Flash Family"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Flash (Injustice)
 
-Flash (Injustice), real name Barry Allen, is a good-aligned male Metahuman character created by DC Comics, first appearing in Injustice gods among us. He is affiliated with Flash Family. He has Blue eyes and Brown hair and stands 168 cm tall and weighs 89 kg. His notable abilities include Accelerated Healing, Agility, Dimensional Travel, Electrokinesis, Peak Human Condition, Reflexes, Regeneration and Super Speed. Rated across attributes, he scores 90 for intelligence, 30 for strength, 100 for speed, 95 for durability and 45 for combat, giving an overall score of 12.
+Flash (Injustice), real name Barry Allen, is a good-aligned male Metahuman character created by DC Comics, first appearing in Injustice gods among us. He is affiliated with Flash Family. He has Blue eyes and Brown hair and stands 168 cm tall and weighs 89 kg. His notable abilities include Accelerated Healing, Agility, Dimensional Travel, Electrokinesis, Peak Human Condition, Reflexes, Regeneration and Super Speed. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 100 for speed, 95 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 12.

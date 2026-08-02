@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # X-23 (FOX)
 
-X-23 (FOX), real name Laura Kinney, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Logan. She has Black eyes and Brown hair and stands 150 cm tall and weighs 45 kg. Her notable abilities include Accelerated Healing, Agility, Durability, Regeneration and Super Strength. Rated across attributes, she scores 90 for intelligence, 65 for strength, 70 for speed, 85 for durability and 80 for combat, giving an overall score of 9.
+X-23 (FOX), real name Laura Kinney, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Logan. She has Black eyes and Brown hair and stands 150 cm tall and weighs 45 kg. Her notable abilities include Accelerated Healing, Agility, Durability, Regeneration and Super Strength. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 65 for strength, 70 for speed, 85 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 9.

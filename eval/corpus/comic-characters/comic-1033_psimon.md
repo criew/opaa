@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Psimon
 
-Psimon, real name Simon Jones, is a bad-aligned male character created by DC Comics, first appearing in New Teen Titans #3. He works as a Physicist. He has White eyes and No Hair hair and stands 180 cm tall and weighs 65 kg. His notable abilities include Illusions, Intelligence, Mind Control, Telekinesis, Telepathy and Teleportation. Rated across attributes, he scores 95 for intelligence, 30 for strength, 40 for speed, 35 for durability and 65 for combat, giving an overall score of 11.
+Psimon, real name Simon Jones, is a bad-aligned male character created by DC Comics, first appearing in New Teen Titans #3. He works as a Physicist. He has White eyes and is bald and stands 180 cm tall and weighs 65 kg. His notable abilities include Illusions, Intelligence, Mind Control, Telekinesis, Telepathy and Teleportation. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 30 for strength, 40 for speed, 35 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 11.

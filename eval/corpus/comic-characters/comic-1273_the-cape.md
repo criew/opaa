@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Cape
 
-The Cape, real name Vince Faraday, is a good-aligned male character, first appearing in The Cape S01E01 (2011). His notable abilities include Weapon-Based Powers. Rated across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 65 for combat, giving an overall score of 3.
+The Cape, real name Vince Faraday, is a good-aligned male character, first appearing in The Cape S01E01 (2011). His notable abilities include Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 3.

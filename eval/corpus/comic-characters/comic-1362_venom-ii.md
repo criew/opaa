@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Venom II
 
-Venom II, real name Angelo Fortunato, is a bad-aligned male character created by Marvel Comics, first appearing in Marvel Knights Spider-Man #7 (2005). He has Brown eyes and Black hair and stands 175 cm tall and weighs 50 kg. His notable abilities include Agility, Durability, Reflexes, Shapeshifting, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 55 for strength, 45 for speed, 70 for durability and 55 for combat, giving an overall score of 6.
+Venom II, real name Angelo Fortunato, is a bad-aligned male character created by Marvel Comics, first appearing in Marvel Knights Spider-Man #7 (2005). He has Brown eyes and Black hair and stands 175 cm tall and weighs 50 kg. His notable abilities include Agility, Durability, Reflexes, Shapeshifting, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 55 for strength, 45 for speed, 70 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 6.

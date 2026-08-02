@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Valerie Hart
 
-Valerie Hart is a good-aligned female character created by Team Epic TV, born in East Coast, Canada and first appearing in Team Epic Episode 101. She works as a Vigilante, Superhero. She has Hazel eyes and Black hair and stands 175 cm tall and weighs 56 kg. Her notable abilities include Agility, Reflexes, Super Strength and Weapon-Based Powers. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Valerie Hart is a good-aligned female character created by Team Epic TV, born in East Coast, Canada and first appearing in Team Epic Episode 101. She works as a Vigilante, Superhero. She has Hazel eyes and Black hair and stands 175 cm tall and weighs 56 kg. Her notable abilities include Agility, Reflexes, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

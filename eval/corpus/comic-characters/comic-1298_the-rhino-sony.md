@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Rhino (SONY)
 
-The Rhino (SONY), real name Aleksei Sytsevich, is a male character created by Marvel Comics, first appearing in The Amazing Spider-Man 2. His notable abilities include Durability, Super Speed, Super Strength and Weapon-Based Powers. Rated across attributes, he scores 70 for intelligence, 35 for strength, 55 for speed, 45 for durability and 55 for combat, giving an overall score of 4.
+The Rhino (SONY), real name Aleksei Sytsevich, is a male character created by Marvel Comics, first appearing in The Amazing Spider-Man 2. His notable abilities include Durability, Super Speed, Super Strength and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 35 for strength, 55 for speed, 45 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kool-Aid Man
 
-Kool-Aid Man is a good-aligned male character, first appearing in As Pitcher-Man in 1954. He has Black eyes and No Hair hair. His notable abilities include Durability. Rated across attributes, he scores 65 for intelligence, 20 for strength, 10 for speed, 10 for durability and 15 for combat, giving an overall score of 2.
+Kool-Aid Man is a good-aligned male character, first appearing in As Pitcher-Man in 1954. He has Black eyes and is bald. His notable abilities include Durability. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 20 for strength, 10 for speed, 10 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 2.

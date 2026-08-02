@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # A.M.A.Z.O. (CW)
 
-A.M.A.Z.O. (CW) is a character. Their notable abilities include Cold Resistance, Electrokinesis, Element Control, Energy Absorption, Enhanced Hearing, Flight, Heat Resistance, Mind Control Resistance, Shapeshifting, Telepathy Resistance, Toxin and Disease Resistance and Weapons Master. Rated across attributes, they score 90 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat, giving an overall score of 22.
+A.M.A.Z.O. (CW) is a character. Their notable abilities include Cold Resistance, Electrokinesis, Element Control, Energy Absorption, Enhanced Hearing, Flight, Heat Resistance, Mind Control Resistance, Shapeshifting, Telepathy Resistance, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 100 for strength, 100 for speed, 100 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 22.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Lubbock, Texas"
 first_appearance: "X-Men #3 (1964)"
 occupation: "Former criminal, terrorist, government agent, carnival performer"
-teams: "Brotherhood of Evil Mutants, Frightful Four, Brotherhood of Mutants, Nasty Boys"
+teams: ["Brotherhood of Evil Mutants", "Frightful Four", "Brotherhood of Mutants", "Nasty Boys"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 178
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blob
 
-Blob, real name Frederick J. Dukes, is a bad-aligned male character created by Marvel Comics, born in Lubbock, Texas and first appearing in X-Men #3 (1964). He works as a Former criminal, terrorist, government agent, carnival performer and is affiliated with Brotherhood of Evil Mutants, Frightful Four, Brotherhood of Mutants and Nasty Boys. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 230 kg. His notable abilities include Durability and Super Strength. Rated across attributes, he scores 55 for intelligence, 85 for strength, 25 for speed, 95 for durability and 70 for combat, giving an overall score of 4.
+Blob, real name Frederick J. Dukes, is a bad-aligned male character created by Marvel Comics, born in Lubbock, Texas and first appearing in X-Men #3 (1964). He works as a Former criminal, terrorist, government agent, carnival performer and is affiliated with Brotherhood of Evil Mutants, Frightful Four, Brotherhood of Mutants and Nasty Boys. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 230 kg. His notable abilities include Durability and Super Strength. Rated on a 0-100 scale across attributes, he scores 55 for intelligence, 85 for strength, 25 for speed, 95 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Watchmen"
+teams: ["Watchmen"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Moloch
 
-Moloch, real name Edgar William Jacobi, is a bad-aligned male character created by DC Comics. He is affiliated with Watchmen. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Moloch, real name Edgar William Jacobi, is a bad-aligned male character created by DC Comics. He is affiliated with Watchmen. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

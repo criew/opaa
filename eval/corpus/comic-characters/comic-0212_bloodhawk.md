@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bloodhawk
 
-Bloodhawk, real name Lemuel Krug, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X-Men (2099) #1. He has Black eyes and No Hair hair. His notable abilities include Enhanced Senses, Flight, Regeneration, Shapeshifting and Toxin and Disease Resistance. Rated across attributes, he scores 75 for intelligence, 10 for strength, 50 for speed, 80 for durability and 65 for combat, giving an overall score of 6.
+Bloodhawk, real name Lemuel Krug, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X-Men (2099) #1. He has Black eyes and is bald. His notable abilities include Enhanced Senses, Flight, Regeneration, Shapeshifting and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 50 for speed, 80 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Leo Fitz (MCU)
 
-Leo Fitz (MCU), real name Leopold Fitz, is a good-aligned male Human character created by Marvel Comics, born in Scotland and first appearing in Agents of S.H.I.E.L.D. Season 1: Episode 1. He works as an Engineer. He has Blue eyes and Brown hair and stands 173 cm tall and weighs 64 kg. His notable abilities include Endurance, Intelligence, Marksmanship and Stealth. Rated across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 25 for durability and 80 for combat, giving an overall score of 9.
+Leo Fitz (MCU), real name Leopold Fitz, is a good-aligned male Human character created by Marvel Comics, born in Scotland and first appearing in Agents of S.H.I.E.L.D. Season 1: Episode 1. He works as an Engineer. He has Blue eyes and Brown hair and stands 173 cm tall and weighs 64 kg. His notable abilities include Endurance, Intelligence, Marksmanship and Stealth. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 25 for speed, 25 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 9.

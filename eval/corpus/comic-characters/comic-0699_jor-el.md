@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Jor-El
 
-Jor-El, real name Jor-El, is a good-aligned male character created by DC Comics, first appearing in The Man of Steel #1. He works as a Scientist. He has Blue eyes and Black hair and stands 188 cm tall and weighs 86 kg. His notable abilities include Energy Beams, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 30 for combat, giving an overall score of 9.
+Jor-El, real name Jor-El, is a good-aligned male character created by DC Comics, first appearing in The Man of Steel #1. He works as a Scientist. He has Blue eyes and Black hair and stands 188 cm tall and weighs 86 kg. His notable abilities include Energy Beams, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 9.

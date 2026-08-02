@@ -10,7 +10,7 @@ type_race: "Android"
 place_of_birth: "Brooklyn, New York"
 first_appearance: "Marvel Comics #1"
 occupation: null
-teams: "Heroes For Hire, Fantastic Four Incorporated"
+teams: ["Heroes For Hire", "Fantastic Four Incorporated"]
 eye_color: null
 hair_color: null
 height_cm: 191
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Human Torch II
 
-Human Torch II, real name Jim Hammond, is a good-aligned male Android character created by Marvel Comics, born in Brooklyn, New York and first appearing in Marvel Comics #1. He is affiliated with Heroes For Hire and Fantastic Four Incorporated. He stands 191 cm tall and weighs 135 kg. His notable abilities include Element Control, Fire Control, Fire Resistance, Flight and Heat Resistance. Rated across attributes, he scores 90 for intelligence, 15 for strength, 35 for speed, 60 for durability and 45 for combat, giving an overall score of 8.
+Human Torch II, real name Jim Hammond, is a good-aligned male Android character created by Marvel Comics, born in Brooklyn, New York and first appearing in Marvel Comics #1. He is affiliated with Heroes For Hire and Fantastic Four Incorporated. He stands 191 cm tall and weighs 135 kg. His notable abilities include Element Control, Fire Control, Fire Resistance, Flight and Heat Resistance. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 15 for strength, 35 for speed, 60 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Current incarnation: (As Freddy Freeman) The Power of Shazam #3 (May, 1995)"
 occupation: "Adventurer"
-teams: "The Outsiders"
+teams: ["The Outsiders"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Captain Marvel II
 
-Captain Marvel II, real name Frederick Christopher Freeman, is a good-aligned male Human character created by DC Comics, first appearing in Current incarnation: (As Freddy Freeman) The Power of Shazam #3 (May, 1995). He works as an Adventurer and is affiliated with The Outsiders. He has Blue eyes and Black hair and stands 175 cm tall and weighs 74 kg. His notable abilities include Intelligence, Invulnerability and Super Strength. Rated across attributes, he scores 90 for intelligence, 80 for strength, 25 for speed, 90 for durability and 55 for combat, giving an overall score of 8.
+Captain Marvel II, real name Frederick Christopher Freeman, is a good-aligned male Human character created by DC Comics, first appearing in Current incarnation: (As Freddy Freeman) The Power of Shazam #3 (May, 1995). He works as an Adventurer and is affiliated with The Outsiders. He has Blue eyes and Black hair and stands 175 cm tall and weighs 74 kg. His notable abilities include Intelligence, Invulnerability and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 80 for strength, 25 for speed, 90 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Amygdala
 
-Amygdala, real name Aaron Helzinger, is a bad-aligned male character created by DC Comics, born in Gotham City and first appearing in Batman: Shadow of the Bat #3. He has Black eyes and No Hair hair. His notable abilities include Durability, Invulnerability, Peak Human Condition and Super Strength. Rated across attributes, he scores 70 for intelligence, 30 for strength, 45 for speed, 60 for durability and 35 for combat, giving an overall score of 4.
+Amygdala, real name Aaron Helzinger, is a bad-aligned male character created by DC Comics, born in Gotham City and first appearing in Batman: Shadow of the Bat #3. He has Black eyes and is bald. His notable abilities include Durability, Invulnerability, Peak Human Condition and Super Strength. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 30 for strength, 45 for speed, 60 for durability and 35 for combat. On a separate overall ranking scale, his overall score is 4.

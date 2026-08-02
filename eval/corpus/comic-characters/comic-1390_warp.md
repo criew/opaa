@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Warp
 
-Warp, real name Emil LaSalle, is a bad-aligned male character created by DC Comics, first appearing in The New Teen Titans #14 (December 1981). He has Brown eyes and Black hair and stands 173 cm tall and weighs 67 kg. His notable abilities include Flight and Teleportation. Rated across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 50 for combat, giving an overall score of 5.
+Warp, real name Emil LaSalle, is a bad-aligned male character created by DC Comics, first appearing in The New Teen Titans #14 (December 1981). He has Brown eyes and Black hair and stands 173 cm tall and weighs 67 kg. His notable abilities include Flight and Teleportation. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 10 for strength, 25 for speed, 30 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 5.

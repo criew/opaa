@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Cat (Earth 65)
 
-Black Cat (Earth 65), real name Felicia Hardy, is a female Human character created by Marvel Comics, first appearing in Spider-Gwen #5. She works as a Musician, thief. She has Blue eyes and White hair. Her notable abilities include Enhanced Senses, Stealth and Weapons Master. Rated across attributes, she scores 90 for intelligence, 15 for strength, 35 for speed, 25 for durability and 90 for combat, giving an overall score of 7.
+Black Cat (Earth 65), real name Felicia Hardy, is a female Human character created by Marvel Comics, first appearing in Spider-Gwen #5. She works as a Musician, thief. She has Blue eyes and White hair. Her notable abilities include Enhanced Senses, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 15 for strength, 35 for speed, 25 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 7.

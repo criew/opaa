@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Matt Parkman
 
-Matt Parkman, real name Matthew Parkman, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E02 - Don't Look Back. He works as a NYPD detective. His notable abilities include Telepathy. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 15 for durability and 55 for combat, giving an overall score of 6.
+Matt Parkman, real name Matthew Parkman, is a good-aligned male character created by NBC - Heroes, first appearing in Heroes S01E02 - Don't Look Back. He works as a NYPD detective. His notable abilities include Telepathy. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 15 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -10,7 +10,7 @@ type_race: "Alpha"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Alphas"
+teams: ["Alphas"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bill Harken
 
-Bill Harken is a good-aligned male Alpha character created by SyFy. He is affiliated with Alphas. His notable abilities include Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 80 for intelligence, 35 for strength, 35 for speed, 60 for durability and 40 for combat, giving an overall score of 6.
+Bill Harken is a good-aligned male Alpha character created by SyFy. He is affiliated with Alphas. His notable abilities include Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 35 for strength, 35 for speed, 60 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 6.

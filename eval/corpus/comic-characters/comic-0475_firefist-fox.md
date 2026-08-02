@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Firefist (FOX)
 
-Firefist (FOX), real name Russell Collins, is a Mutant character created by Marvel Comics, first appearing in Deadpool 2. Their notable abilities include Element Control and Fire Control. Rated across attributes, they score 90 for intelligence, 20 for strength, 30 for speed, 35 for durability and 50 for combat, giving an overall score of 7.
+Firefist (FOX), real name Russell Collins, is a Mutant character created by Marvel Comics, first appearing in Deadpool 2. Their notable abilities include Element Control and Fire Control. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 20 for strength, 30 for speed, 35 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 7.

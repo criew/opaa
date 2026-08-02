@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Reactron
 
-Reactron, real name Ben Krullen, is a bad-aligned male Metahuman character created by DC Comics, first appearing in Supergirl Vol 2 #8. He has Black eyes and Black hair. His notable abilities include Energy Absorption and Energy Beams. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Reactron, real name Ben Krullen, is a bad-aligned male Metahuman character created by DC Comics, first appearing in Supergirl Vol 2 #8. He has Black eyes and Black hair. His notable abilities include Energy Absorption and Energy Beams. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

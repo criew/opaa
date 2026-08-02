@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Presence
 
-The Presence, real name Sergei Krylov, is a character created by Marvel Comics. They work as a Nuclear physicist, adventurer,. Their notable abilities include Durability, Energy Constructs, Energy Manipulation, Flight, Force Fields, Matter Manipulation, Mind Control, Self-Sustenance, Size Changing, Stamina, Super Strength, Telekinesis and Telepathy. Rated across attributes, they score 100 for intelligence, 30 for strength, 20 for speed, 60 for durability and 50 for combat, giving an overall score of 13.
+The Presence, real name Sergei Krylov, is a character created by Marvel Comics. They work as a Nuclear physicist, adventurer,. Their notable abilities include Durability, Energy Constructs, Energy Manipulation, Flight, Force Fields, Matter Manipulation, Mind Control, Self-Sustenance, Size Changing, Stamina, Super Strength, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, they score 100 for intelligence, 30 for strength, 20 for speed, 60 for durability and 50 for combat. On a separate overall ranking scale, their overall score is 13.

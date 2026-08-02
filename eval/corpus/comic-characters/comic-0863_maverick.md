@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maverick
 
-Maverick, real name Christopher Bradley, is a good-aligned male character created by Marvel Comics, first appearing in X-Men Unlimited #8 (1995). He works as a Mercenary; former adventurer, student. He has Blue eyes and Black hair and stands 193 cm tall and weighs 110 kg. His notable abilities include Electrokinesis. Rated across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 40 for durability and 85 for combat, giving an overall score of 6.
+Maverick, real name Christopher Bradley, is a good-aligned male character created by Marvel Comics, first appearing in X-Men Unlimited #8 (1995). He works as a Mercenary; former adventurer, student. He has Blue eyes and Black hair and stands 193 cm tall and weighs 110 kg. His notable abilities include Electrokinesis. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 10 for strength, 10 for speed, 40 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 6.

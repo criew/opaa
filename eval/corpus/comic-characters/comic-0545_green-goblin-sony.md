@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Green Goblin (SONY)
 
-Green Goblin (SONY), real name Norman Osborn, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Intelligence, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, they score 95 for intelligence, 55 for strength, 60 for speed, 65 for durability and 85 for combat, giving an overall score of 9.
+Green Goblin (SONY), real name Norman Osborn, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Intelligence, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 55 for strength, 60 for speed, 65 for durability and 85 for combat. On a separate overall ranking scale, their overall score is 9.

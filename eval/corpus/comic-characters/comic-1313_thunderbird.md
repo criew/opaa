@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Thunderbird
 
-Thunderbird, real name John Proudstar, is a good-aligned male character created by Marvel Comics, born in Camp Verde, Arizona and first appearing in Giant-Size X-Men #1 (1975). He works as a Former adventurer, student, Marine. He has Brown eyes and Black hair and stands 185 cm tall and weighs 101 kg. His notable abilities include Durability, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 30 for strength, 25 for speed, 30 for durability and 70 for combat, giving an overall score of 4.
+Thunderbird, real name John Proudstar, is a good-aligned male character created by Marvel Comics, born in Camp Verde, Arizona and first appearing in Giant-Size X-Men #1 (1975). He works as a Former adventurer, student, Marine. He has Brown eyes and Black hair and stands 185 cm tall and weighs 101 kg. His notable abilities include Durability, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 30 for strength, 25 for speed, 30 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 4.

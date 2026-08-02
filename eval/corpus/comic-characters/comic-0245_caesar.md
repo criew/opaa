@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Caesar
 
-Caesar, real name Caesar, is a neutral-aligned male Animal character, first appearing in Rise of the Planet of the Apes (2011). His notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Intelligence, Jump, Longevity, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 30 for strength, 40 for speed, 65 for durability and 100 for combat, giving an overall score of 11.
+Caesar, real name Caesar, is a neutral-aligned male Animal character, first appearing in Rise of the Planet of the Apes (2011). His notable abilities include Agility, Dexterity, Durability, Endurance, Enhanced Senses, Intelligence, Jump, Longevity, Marksmanship, Peak Human Condition, Reflexes, Stamina, Stealth, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 40 for speed, 65 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 11.

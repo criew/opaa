@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Toymaster
 
-Toymaster, real name Hiro Okamura, is a good-aligned male Human character created by DC Comics, born in Japan and first appearing in Superman #177 - Metropolis E-Mailbag. He has Black eyes and Black hair. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 50 for durability and 40 for combat, giving an overall score of 10.
+Toymaster, real name Hiro Okamura, is a good-aligned male Human character created by DC Comics, born in Japan and first appearing in Superman #177 - Metropolis E-Mailbag. He has Black eyes and Black hair. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 20 for speed, 50 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 10.

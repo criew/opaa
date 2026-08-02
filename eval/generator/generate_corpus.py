@@ -18,8 +18,10 @@ and ADR-0008):
   before sequential corpus IDs (`comic-0001`, ...) are assigned, and no
   wall-clock timestamps are embedded into generated files. Two runs against
   the same cached raw files produce byte-identical output.
-- Documents stay well under the 4 KB ceiling that keeps the
-  "one entity = one chunk" property described in the feature spec intact.
+- Documents stay under a conservative byte ceiling chosen to keep the
+  "one entity = one chunk" property intact. See the comment on
+  MAX_DOCUMENT_BYTES below for how that number was derived and why it is a
+  byte, not token, limit.
 
 Usage:
     python eval/generator/generate_corpus.py
@@ -61,6 +63,22 @@ RAW_SOURCE_DIR = Path(__file__).resolve().parent / "raw-source"
 CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "comic-characters"
 DOMAIN = "comic-characters"
 
+# The default field size limit (131072 bytes) is close to the largest
+# `history_text` value observed in this snapshot (129594 chars, 1.1% margin)
+# even though that column is never read here. Raised defensively so a future
+# domain (#234) with denser free text doesn't hit a hard `csv.Error` here.
+# `sys.maxsize` alone overflows the C `long` `_csv` uses on 32-bit builds
+# (notably still the case for CPython's `_csv` module on Windows even in a
+# 64-bit interpreter); halving down avoids that platform pitfall instead of
+# hard-coding a guessed safe constant.
+_field_size_limit = sys.maxsize
+while True:
+    try:
+        csv.field_size_limit(_field_size_limit)
+        break
+    except OverflowError:
+        _field_size_limit //= 10
+
 # Frontmatter field order, matching docs/features/search-quality-evaluation.md.
 FRONTMATTER_FIELDS = [
     "id",
@@ -90,7 +108,33 @@ FRONTMATTER_FIELDS = [
     "license",
 ]
 
-MAX_DOCUMENT_BYTES = 4096
+# The "one entity = one chunk" property that the whole corpus exists for is a
+# statement about TOKENS, not bytes: `opaa.indexing` chunks with a Spring AI
+# `TokenTextSplitter` whose `chunkSize` counts cl100k_base tokens, and that
+# splitter has no overlap, so any document at or above the configured
+# chunk-size (1000 tokens) becomes two-plus chunks. A byte ceiling is only a
+# proxy for that; it holds exactly as long as no document's token density
+# exceeds what this constant assumes.
+#
+# Decision (see docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md
+# for the alternatives and full reasoning): keep this generator standard
+# library only rather than adding a `tiktoken` dependency just to measure
+# bytes-per-token here. Instead, this ceiling is set conservatively below the
+# worst token density actually measured across the current corpus (the
+# densest document, comic-0295_chroma.md, sits at ~0.3146 tokens/byte, which
+# would cross 1000 tokens at ~3178 bytes) and is deliberately re-verified
+# whenever the corpus is regenerated — this check catches "prose got denser",
+# it does not prove "no chunking regression", which is why the real proof
+# lives in the Java retrieval-harness integration test (#227): it runs the
+# actual TokenTextSplitter and can assert chunk-count-per-document == 1
+# directly.
+#
+# NOTE for the Product Manager: the "4 KB" ceiling in issue #225's acceptance
+# criteria is itself the source of this imprecision — it should be corrected
+# there and in the #234 follow-up issue (the other three domains) to either
+# reference a token budget, or explicitly document that any byte ceiling is a
+# conservative proxy, not a guarantee.
+MAX_DOCUMENT_BYTES = 3000
 SMALL_WORDS = {"and", "of", "the"}
 
 
@@ -150,29 +194,60 @@ def parse_height_cm(value: str) -> int | None:
     value = clean(value)
     if value is None:
         return None
+    parsed: int | None = None
     match = re.search(r"([\d.]+)\s*cm", value)
     if match:
-        return round(float(match.group(1)))
-    match = re.search(r"([\d.]+)\s*meters", value)
-    if match:
-        return round(float(match.group(1)) * 100)
-    return None
+        parsed = round(float(match.group(1)))
+    else:
+        match = re.search(r"([\d.]+)\s*meters", value)
+        if match:
+            parsed = round(float(match.group(1)) * 100)
+    # The source encodes "unknown" both as "-" (handled by clean()) and as a
+    # literal zero measurement (e.g. "0'0 • 0 cm", 16 rows in the current
+    # snapshot). No character is genuinely 0 cm tall, so this is a second,
+    # undocumented sentinel for missing data and is normalized to None too.
+    if parsed == 0:
+        return None
+    return parsed
 
 
 def parse_weight_kg(value: str) -> int | None:
     value = clean(value)
     if value is None:
         return None
+    parsed: int | None = None
     match = re.search(r"([\d.]+)\s*kg", value)
     if match:
-        return round(float(match.group(1)))
-    match = re.search(r"([\d,.]+)\s*tons", value)
-    if match:
-        return round(float(match.group(1).replace(",", "")) * 1000)
-    return None
+        parsed = round(float(match.group(1)))
+    else:
+        match = re.search(r"([\d,.]+)\s*tons", value)
+        if match:
+            parsed = round(float(match.group(1).replace(",", "")) * 1000)
+    # No zero-weight rows exist in the current snapshot, but apply the same
+    # sentinel normalization as parse_height_cm for symmetry and in case a
+    # future dataset refresh introduces one (0 kg is not a real measurement).
+    if parsed == 0:
+        return None
+    return parsed
 
 
 def parse_score(value: str) -> int | str | None:
+    """Parse one of the six 0-100-ish attribute/overall score fields.
+
+    Unlike height/weight, a `0` here is kept as a genuine value, not
+    normalized to missing. Rationale (documented, not silently decided): in
+    the current snapshot, 104 of the 105 rows whose `overall_score` is empty
+    also have all five attribute scores at exactly 0 — that correlation
+    suggests the dataset's "unrated character" sentinel is an empty
+    `overall_score`, not a zero attribute score. Coercing 0 to null across
+    the board would instead destroy the individual, plausible zero scores
+    that exist on partially-rated characters (e.g. a purely physical
+    character genuinely rated 0 for intelligence while other attributes are
+    non-zero). Downstream consumers building numeric-range golden queries
+    (#226) should be aware of this correlation and may want to additionally
+    filter on `overall_score is not null` where an "unrated" semantic is
+    needed.
+    """
     value = clean(value)
     if value is None:
         return None
@@ -237,10 +312,27 @@ def yaml_scalar(value) -> str:
     return f'"{text}"'
 
 
+def yaml_sequence(items: list[str]) -> str:
+    """Render a real YAML flow sequence, each item safely double-quoted.
+
+    Used for `teams` only: unlike ability labels (which never contain a
+    comma), team names sometimes do (e.g. "Villainy, Inc."). Joining team
+    names into a single comma-separated string, as done for `superpowers`,
+    would make that comma indistinguishable from a separator and silently
+    corrupt downstream parsing (e.g. the golden-query derivation in #226).
+    """
+    if not items:
+        return "null"
+    return "[" + ", ".join(yaml_scalar(item) for item in items) + "]"
+
+
 def render_frontmatter(fields: dict) -> str:
     lines = ["---"]
     for key in FRONTMATTER_FIELDS:
-        lines.append(f"{key}: {yaml_scalar(fields[key])}")
+        if key == "teams":
+            lines.append(f"{key}: {yaml_sequence(fields[key])}")
+        else:
+            lines.append(f"{key}: {yaml_scalar(fields[key])}")
     lines.append("---")
     return "\n".join(lines)
 
@@ -261,10 +353,34 @@ def possessive_pronouns(gender: str | None) -> tuple[str, str, str]:
     return "They", "Their", "them"
 
 
+# Vowel-letter word starts that are nonetheless pronounced with a leading
+# consonant sound ("yoo-", "wun-"), where "a" is correct despite the letter:
+# "university"/"united" (yoo-), "US"/"user" (yoo-), "European" (yoo-),
+# "one-off" (wun-). A pure vowel-letter heuristic gets these wrong ("an
+# University student"); this is not a full CMU-dictionary-grade solution,
+# just the specific false positives observed in this corpus.
+CONSONANT_SOUND_PREFIXES = ("uni", "us", "eu", "one")
+
+
 def indefinite_article(phrase: str) -> str:
-    """Pick "a" or "an" for the first word of `phrase` (simple vowel-letter heuristic)."""
+    """Pick "a" or "an" for the first word of `phrase` (vowel-sound heuristic)."""
     first_word = phrase.strip().split(" ", 1)[0] if phrase.strip() else ""
-    return "an" if first_word[:1].lower() in "aeiou" else "a"
+    lowered = first_word.lower()
+    if lowered.startswith(CONSONANT_SOUND_PREFIXES):
+        return "a"
+    return "an" if lowered[:1] in "aeiou" else "a"
+
+
+# Hair-color values that mean "no hair", not a color. Left verbatim as the
+# genuinely reported value in the frontmatter, but the prose gets a "is bald"
+# clause instead of the nonsensical "has No Hair hair" (13% of the corpus).
+BALD_HAIR_VALUES = {"no hair", "none", "bald"}
+
+
+def strip_trailing_period(text: str) -> str:
+    """Drop a single trailing '.' so the field can be embedded mid-sentence
+    without producing '..' or '. and ...' when more text follows."""
+    return text.rstrip(".")
 
 
 def join_natural(items: list[str]) -> str:
@@ -306,9 +422,11 @@ def build_prose(fields: dict) -> str:
         intro += f" created by {fields['creator']}"
     origin_bits = []
     if fields["place_of_birth"]:
-        origin_bits.append(f"born in {fields['place_of_birth']}")
+        origin_bits.append(f"born in {strip_trailing_period(fields['place_of_birth'])}")
     if fields["first_appearance"]:
-        origin_bits.append(f"first appearing in {fields['first_appearance']}")
+        origin_bits.append(
+            f"first appearing in {strip_trailing_period(fields['first_appearance'])}"
+        )
     if origin_bits:
         intro += f", {' and '.join(origin_bits)}"
     intro += "."
@@ -316,32 +434,37 @@ def build_prose(fields: dict) -> str:
 
     role_bits = []
     if fields["occupation"]:
-        occupation = fields["occupation"].rstrip(".")
+        occupation = strip_trailing_period(fields["occupation"])
         role_bits.append(f"{verb('works', 'work')} as {indefinite_article(occupation)} {occupation}")
     teams = fields["teams"]
     if teams:
-        role_bits.append(f"{verb('is', 'are')} affiliated with {join_natural(teams)}")
+        team_names = [strip_trailing_period(team) for team in teams]
+        role_bits.append(f"{verb('is', 'are')} affiliated with {join_natural(team_names)}")
     if role_bits:
         sentences.append(f"{subject} {' and '.join(role_bits)}.")
 
+    hair_color = fields["hair_color"]
+    is_bald = bool(hair_color) and hair_color.strip().lower() in BALD_HAIR_VALUES
+    hair_for_prose = None if is_bald else hair_color
+
     has_verb = verb("has", "have")
     physical_bits = []
-    if fields["eye_color"] and fields["hair_color"]:
-        physical_bits.append(
-            f"{has_verb} {fields['eye_color']} eyes and {fields['hair_color']} hair"
-        )
+    if fields["eye_color"] and hair_for_prose:
+        physical_bits.append(f"{has_verb} {fields['eye_color']} eyes and {hair_for_prose} hair")
     elif fields["eye_color"]:
         physical_bits.append(f"{has_verb} {fields['eye_color']} eyes")
-    elif fields["hair_color"]:
-        physical_bits.append(f"{has_verb} {fields['hair_color']} hair")
-    if fields["height_cm"] and fields["weight_kg"]:
+    elif hair_for_prose:
+        physical_bits.append(f"{has_verb} {hair_for_prose} hair")
+    if is_bald:
+        physical_bits.append(f"{verb('is', 'are')} bald")
+    if fields["height_cm"] is not None and fields["weight_kg"] is not None:
         physical_bits.append(
             f"{verb('stands', 'stand')} {fields['height_cm']} cm tall and "
             f"{verb('weighs', 'weigh')} {fields['weight_kg']} kg"
         )
-    elif fields["height_cm"]:
+    elif fields["height_cm"] is not None:
         physical_bits.append(f"{verb('stands', 'stand')} {fields['height_cm']} cm tall")
-    elif fields["weight_kg"]:
+    elif fields["weight_kg"] is not None:
         physical_bits.append(f"{verb('weighs', 'weigh')} {fields['weight_kg']} kg")
     if physical_bits:
         sentences.append(f"{subject} {' and '.join(physical_bits)}.")
@@ -362,14 +485,20 @@ def build_prose(fields: dict) -> str:
         if fields[key] is not None:
             score_bits.append(f"{fields[key]} for {label}")
     if score_bits:
-        sentence = (
-            f"Rated across attributes, {subject.lower()} {verb('scores', 'score')} "
-            f"{join_natural(score_bits)}"
+        sentences.append(
+            f"Rated on a 0-100 scale across attributes, {subject.lower()} "
+            f"{verb('scores', 'score')} {join_natural(score_bits)}."
         )
-        if fields["overall_score"] is not None:
-            sentence += f", giving an overall score of {fields['overall_score']}"
-        sentence += "."
-        sentences.append(sentence)
+    # overall_score is reported on its own scale (observed range in this
+    # snapshot: 1-237, plus the literal string "∞" for a handful of
+    # omnipotent characters) — not an average or otherwise derived from the
+    # five 0-100 attribute scores above. Phrased as an independent sentence
+    # so the prose doesn't imply a computation that doesn't exist.
+    if fields["overall_score"] is not None:
+        sentences.append(
+            f"On a separate overall ranking scale, {possessive.lower()} overall score is "
+            f"{fields['overall_score']}."
+        )
 
     return " ".join(sentences)
 
@@ -496,8 +625,11 @@ def write_corpus(entities: list[Entity]) -> list[Path]:
 
     if oversized:
         raise SystemExit(
-            f"{len(oversized)} document(s) exceed {MAX_DOCUMENT_BYTES} bytes, breaking the "
-            f"one-entity-one-chunk property: {oversized[:10]}"
+            f"{len(oversized)} document(s) exceed the {MAX_DOCUMENT_BYTES}-byte proxy ceiling "
+            f"for the one-entity-one-chunk property: {oversized[:10]}. This byte ceiling is a "
+            "conservative proxy for a token limit (see the comment on MAX_DOCUMENT_BYTES) — "
+            "verify with the Java retrieval-harness integration test (#227) before assuming the "
+            "invariant actually holds."
         )
     return written
 
@@ -511,11 +643,29 @@ def write_manifest(paths: list[Path]) -> None:
     manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
+def verify_manifest_completeness(paths: list[Path]) -> None:
+    """`sha256sum -c MANIFEST.sha256` only checks that listed files match their
+    hash; it does not notice *extra* .md files sitting in the directory
+    without a corresponding manifest entry (e.g. added by hand later, outside
+    a regeneration run). Guard against that divergence here, immediately
+    after a fresh write where the directory listing and `paths` must agree by
+    construction."""
+    on_disk = {path.name for path in CORPUS_DIR.glob("comic-*.md")}
+    written = {path.name for path in paths}
+    if on_disk != written:
+        raise SystemExit(
+            "Corpus directory and written-file list diverge after generation: "
+            f"only on disk: {sorted(on_disk - written)[:5]}, "
+            f"only in manifest: {sorted(written - on_disk)[:5]}"
+        )
+
+
 def main() -> None:
     download_raw_files()
     verify_raw_files()
     entities = load_entities()
     written = write_corpus(entities)
+    verify_manifest_completeness(written)
     write_manifest(written)
     total_bytes = sum(path.stat().st_size for path in written)
     print(

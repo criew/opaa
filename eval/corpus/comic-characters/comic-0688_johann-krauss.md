@@ -10,10 +10,10 @@ type_race: "Energy"
 place_of_birth: "Stuggart, West Germany"
 first_appearance: "B.P.R.D. - Hollow Earth and Other Stories (2003)"
 occupation: "Former Occultist, Scientist"
-teams: "Bureau for Paranormal Research and Defense"
+teams: ["Bureau for Paranormal Research and Defense"]
 eye_color: "No eyes"
 hair_color: "No Hair"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 85
 strength_score: 20
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Johann Krauss
 
-Johann Krauss, real name Johann Krauss, is a good-aligned male Energy character created by Dark Horse Comics, born in Stuggart, West Germany and first appearing in B.P.R.D. - Hollow Earth and Other Stories (2003). He works as a Former Occultist, Scientist and is affiliated with Bureau for Paranormal Research and Defense. He has No eyes eyes and No Hair hair. His notable abilities include Intelligence, Magic, Marksmanship, Self-Sustenance, Telekinesis, Telepathy and Telepathy Resistance. Rated across attributes, he scores 85 for intelligence, 20 for strength, 70 for speed, 60 for durability and 50 for combat, giving an overall score of 9.
+Johann Krauss, real name Johann Krauss, is a good-aligned male Energy character created by Dark Horse Comics, born in Stuggart, West Germany and first appearing in B.P.R.D. - Hollow Earth and Other Stories (2003). He works as a Former Occultist, Scientist and is affiliated with Bureau for Paranormal Research and Defense. He has No eyes eyes and is bald. His notable abilities include Intelligence, Magic, Marksmanship, Self-Sustenance, Telekinesis, Telepathy and Telepathy Resistance. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 20 for strength, 70 for speed, 60 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 9.

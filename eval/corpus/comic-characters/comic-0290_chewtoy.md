@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Chewtoy
 
-Chewtoy, real name Unknown, is a neutral-aligned male character created by Lego, born in First realm and first appearing in Iron & Stone /70653 Firstbourne. He works as a Dragon Hunter. He has Red eyes and Black hair and stands 168 cm tall and weighs 49 kg. His notable abilities include Agility, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat, giving an overall score of 4.
+Chewtoy, real name Unknown, is a neutral-aligned male character created by Lego, born in First realm and first appearing in Iron & Stone /70653 Firstbourne. He works as a Dragon Hunter. He has Red eyes and Black hair and stands 168 cm tall and weighs 49 kg. His notable abilities include Agility, Marksmanship, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 4.

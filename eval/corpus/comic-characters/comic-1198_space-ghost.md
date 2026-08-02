@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Space Ghost
 
-Space Ghost, real name Thaddeus Bach, is a good-aligned male Human character created by DC Comics, first appearing in Space Ghost (1966). He stands 188 cm tall and weighs 113 kg. His notable abilities include Agility, Energy Blasts, Flight, Force Fields, Intelligence, Invulnerability, Stamina, Super Strength and Weapons Master. Rated across attributes, he scores 70 for intelligence, 20 for strength, 35 for speed, 40 for durability and 80 for combat, giving an overall score of 5.
+Space Ghost, real name Thaddeus Bach, is a good-aligned male Human character created by DC Comics, first appearing in Space Ghost (1966). He stands 188 cm tall and weighs 113 kg. His notable abilities include Agility, Energy Blasts, Flight, Force Fields, Intelligence, Invulnerability, Stamina, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 20 for strength, 35 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 5.

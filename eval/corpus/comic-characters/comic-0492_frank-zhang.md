@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Frank Zhang
 
-Frank Zhang, real name Frank Zhang, is a good-aligned male Demi-God character. He has Brown eyes and Black hair and stands 191 cm tall and weighs 45 kg. His notable abilities include Agility, Durability, Endurance, Invulnerability, Magic, Shapeshifting, Super Strength and Weapons Master. Rated across attributes, he scores 95 for intelligence, 65 for strength, 70 for speed, 85 for durability and 100 for combat, giving an overall score of 12.
+Frank Zhang, real name Frank Zhang, is a good-aligned male Demi-God character. He has Brown eyes and Black hair and stands 191 cm tall and weighs 45 kg. His notable abilities include Agility, Durability, Endurance, Invulnerability, Magic, Shapeshifting, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 65 for strength, 70 for speed, 85 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 12.

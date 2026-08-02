@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arnim Zola (MCU)
 
-Arnim Zola (MCU), real name Arnim Zola, is a bad-aligned male Human character created by Marvel Comics, born in Switzerland and first appearing in Captain America: First Vengeance Vol 1 #2. He works as a Criminal, Scientist, Nazi Biochemist. He has Blue eyes and Brown hair and stands 165 cm tall and weighs 69 kg. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 5 for strength, 10 for speed, 15 for durability and 20 for combat, giving an overall score of 9.
+Arnim Zola (MCU), real name Arnim Zola, is a bad-aligned male Human character created by Marvel Comics, born in Switzerland and first appearing in Captain America: First Vengeance Vol 1 #2. He works as a Criminal, Scientist, Nazi Biochemist. He has Blue eyes and Brown hair and stands 165 cm tall and weighs 69 kg. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 5 for strength, 10 for speed, 15 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 9.

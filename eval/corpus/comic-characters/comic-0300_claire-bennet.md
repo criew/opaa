@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Claire Bennet
 
-Claire Bennet, real name Claire Bennet, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S01E01. She works as a High school student, cheerleader. She has Blue eyes and Blond hair. Her notable abilities include Accelerated Healing and Regeneration. Rated across attributes, she scores 70 for intelligence, 10 for strength, 10 for speed, 100 for durability and 30 for combat, giving an overall score of 6.
+Claire Bennet, real name Claire Bennet, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S01E01. She works as a High school student, cheerleader. She has Blue eyes and Blond hair. Her notable abilities include Accelerated Healing and Regeneration. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 10 for speed, 100 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 6.

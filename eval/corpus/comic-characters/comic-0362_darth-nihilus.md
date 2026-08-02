@@ -10,7 +10,7 @@ type_race: "Human / Altered"
 place_of_birth: null
 first_appearance: "Knights of the Old Republic II: The Sith Lords"
 occupation: "Dark Lord of the Sith"
-teams: "Sith Order, Galactic Empire"
+teams: ["Sith Order", "Galactic Empire"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Darth Nihilus
 
-Darth Nihilus, real name Unknown, is a bad-aligned Human / Altered character created by George Lucas, first appearing in Knights of the Old Republic II: The Sith Lords. They work as a Dark Lord of the Sith and are affiliated with Sith Order and Galactic Empire. They have Black eyes and Black hair. Their notable abilities include Agility, Electrokinesis, Energy Absorption, Energy Blasts, Energy Manipulation, Enhanced Senses, Force Fields, Illusions, Immortality, Invulnerability, Matter Manipulation, Mind Control, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength, Telekinesis, Telepathy and Telepathy Resistance. Rated across attributes, they score 65 for intelligence, 30 for strength, 100 for speed, 30 for durability and 45 for combat, giving an overall score of 84.
+Darth Nihilus, real name Unknown, is a bad-aligned Human / Altered character created by George Lucas, first appearing in Knights of the Old Republic II: The Sith Lords. They work as a Dark Lord of the Sith and are affiliated with Sith Order and Galactic Empire. They have Black eyes and Black hair. Their notable abilities include Agility, Electrokinesis, Energy Absorption, Energy Blasts, Energy Manipulation, Enhanced Senses, Force Fields, Illusions, Immortality, Invulnerability, Matter Manipulation, Mind Control, Mind Control Resistance, Reflexes, Regeneration, Self-Sustenance, Stamina, Super Speed, Super Strength, Telekinesis, Telepathy and Telepathy Resistance. Rated on a 0-100 scale across attributes, they score 65 for intelligence, 30 for strength, 100 for speed, 30 for durability and 45 for combat. On a separate overall ranking scale, their overall score is 84.

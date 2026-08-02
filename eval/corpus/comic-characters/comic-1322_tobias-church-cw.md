@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tobias Church (CW)
 
-Tobias Church (CW), real name Tobias Church, is a bad-aligned male Human character, born in Earth-1 and first appearing in Arrow Season 5: Episode 1. He works as a Crime Lord. He has Brown eyes and Black hair and stands 180 cm tall and weighs 90 kg. His notable abilities include Durability, Intelligence, Marksmanship, Peak Human Condition, Stamina and Weapon-Based Powers. Rated across attributes, he scores 85 for intelligence, 15 for strength, 30 for speed, 45 for durability and 90 for combat, giving an overall score of 6.
+Tobias Church (CW), real name Tobias Church, is a bad-aligned male Human character, born in Earth-1 and first appearing in Arrow Season 5: Episode 1. He works as a Crime Lord. He has Brown eyes and Black hair and stands 180 cm tall and weighs 90 kg. His notable abilities include Durability, Intelligence, Marksmanship, Peak Human Condition, Stamina and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 15 for strength, 30 for speed, 45 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 6.

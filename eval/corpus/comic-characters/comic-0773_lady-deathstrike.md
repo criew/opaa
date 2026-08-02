@@ -10,7 +10,7 @@ type_race: "Cyborg"
 place_of_birth: "Osaka, Japan"
 first_appearance: "Alpha Flight Vol. 1 #33 (1985)"
 occupation: null
-teams: "The Hand"
+teams: ["The Hand"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lady Deathstrike
 
-Lady Deathstrike, real name Yuriko Oyama, is a bad-aligned female Cyborg character created by Marvel Comics, born in Osaka, Japan and first appearing in Alpha Flight Vol. 1 #33 (1985). She is affiliated with The Hand. She has Brown eyes and Black hair and stands 175 cm tall and weighs 58 kg. Her notable abilities include Accelerated Healing, Agility, Durability, Intelligence, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 30 for strength, 40 for speed, 85 for durability and 90 for combat, giving an overall score of 6.
+Lady Deathstrike, real name Yuriko Oyama, is a bad-aligned female Cyborg character created by Marvel Comics, born in Osaka, Japan and first appearing in Alpha Flight Vol. 1 #33 (1985). She is affiliated with The Hand. She has Brown eyes and Black hair and stands 175 cm tall and weighs 58 kg. Her notable abilities include Accelerated Healing, Agility, Durability, Intelligence, Reflexes, Stamina, Stealth, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 30 for strength, 40 for speed, 85 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 6.

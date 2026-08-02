@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ammo
 
-Ammo is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #252 (March, 1988). He works as a Gang leader , criminal , former soldier. He has Brown eyes and Black hair and stands 188 cm tall and weighs 101 kg. His notable abilities include Weapons Master. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Ammo is a bad-aligned male Human character created by Marvel Comics, first appearing in Daredevil #252 (March, 1988). He works as a Gang leader , criminal , former soldier. He has Brown eyes and Black hair and stands 188 cm tall and weighs 101 kg. His notable abilities include Weapons Master. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

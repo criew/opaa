@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Flash Secret Files #3"
 occupation: null
-teams: "Rogues, The Society, Flash Family, Justice League, Suicide Squad"
+teams: ["Rogues", "The Society", "Flash Family", "Justice League", "Suicide Squad"]
 eye_color: "Red"
 hair_color: "Brown"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Zoom
 
-Zoom, real name Hunter Zolomon, is a bad-aligned male character created by DC Comics, first appearing in Flash Secret Files #3. He is affiliated with Rogues, The Society, Flash Family, Justice League and Suicide Squad. He has Red eyes and Brown hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Super Speed. Rated across attributes, he scores 75 for intelligence, 10 for strength, 100 for speed, 30 for durability and 30 for combat, giving an overall score of 9.
+Zoom, real name Hunter Zolomon, is a bad-aligned male character created by DC Comics, first appearing in Flash Secret Files #3. He is affiliated with Rogues, The Society, Flash Family, Justice League and Suicide Squad. He has Red eyes and Brown hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Super Speed. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 100 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 9.

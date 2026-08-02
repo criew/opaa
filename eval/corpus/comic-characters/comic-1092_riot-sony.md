@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Riot (SONY)
 
-Riot (SONY), real name Carlton Drake, is a bad-aligned male Symbiote character created by Marvel Comics, first appearing in Venom. He stands 157 cm tall and weighs 89 kg. His notable abilities include Durability, Invulnerability, Regeneration, Shapeshifting, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 80 for intelligence, 70 for strength, 60 for speed, 90 for durability and 85 for combat, giving an overall score of 10.
+Riot (SONY), real name Carlton Drake, is a bad-aligned male Symbiote character created by Marvel Comics, first appearing in Venom. He stands 157 cm tall and weighs 89 kg. His notable abilities include Durability, Invulnerability, Regeneration, Shapeshifting, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 70 for strength, 60 for speed, 90 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 10.

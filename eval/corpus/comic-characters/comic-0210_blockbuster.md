@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Blockbuster
 
-Blockbuster, real name Mark Desmond, is a bad-aligned male character created by Marvel Comics, first appearing in Hawk and Dove Vol 5 #6. He has Brown eyes and Brown hair and stands 244 cm tall and weighs 371 kg. His notable abilities include Durability, Invulnerability, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 75 for intelligence, 65 for strength, 50 for speed, 55 for durability and 45 for combat, giving an overall score of 5.
+Blockbuster, real name Mark Desmond, is a bad-aligned male character created by Marvel Comics, first appearing in Hawk and Dove Vol 5 #6. He has Brown eyes and Brown hair and stands 244 cm tall and weighs 371 kg. His notable abilities include Durability, Invulnerability, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 65 for strength, 50 for speed, 55 for durability and 45 for combat. On a separate overall ranking scale, his overall score is 5.

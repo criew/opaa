@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Scarecrow (Gotham)
 
-The Scarecrow (Gotham), real name Jonathan Crane, is a bad-aligned male Human character created by DC Comics, first appearing in Gotham Season 1: Episode 14. He works as an Anarchist, Criminal, Gang Leader. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Intelligence, Stealth and Weapon-Based Powers. Rated across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 80 for combat, giving an overall score of 7.
+The Scarecrow (Gotham), real name Jonathan Crane, is a bad-aligned male Human character created by DC Comics, first appearing in Gotham Season 1: Episode 14. He works as an Anarchist, Criminal, Gang Leader. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 72 kg. His notable abilities include Intelligence, Stealth and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 7.

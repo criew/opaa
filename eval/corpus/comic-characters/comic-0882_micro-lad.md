@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Micro Lad
 
-Micro Lad, real name Gim Allon, is a good-aligned male character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). He has Grey eyes and Brown hair and stands 183 cm tall and weighs 77 kg. His notable abilities include Size Changing. Rated across attributes, he scores 70 for intelligence, 30 for strength, 25 for speed, 30 for durability and 30 for combat, giving an overall score of 4.
+Micro Lad, real name Gim Allon, is a good-aligned male character created by DC Comics, first appearing in Teen Titans/Legion Special #1 (2004). He has Grey eyes and Brown hair and stands 183 cm tall and weighs 77 kg. His notable abilities include Size Changing. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 30 for strength, 25 for speed, 30 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 4.

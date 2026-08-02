@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Maya Herrera
 
-Maya Herrera, real name Maya Herrera, is a good-aligned female character created by NBC - Heroes, born in Dominican Republic. Rated across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 5.
+Maya Herrera, real name Maya Herrera, is a good-aligned female character created by NBC - Heroes, born in Dominican Republic. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, her overall score is 5.

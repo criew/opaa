@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Manta (DCEU)
 
-Black Manta (DCEU), real name David Kane, is a bad-aligned male Human character created by DC Comics, first appearing in Aquaman (2018). He has Black eyes and Black hair and stands 193 cm tall and weighs 108 kg. His notable abilities include Electrokinesis, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Peak Human Condition, Super Strength and Weapons Master. Rated across attributes, he scores 85 for intelligence, 45 for strength, 55 for speed, 55 for durability and 85 for combat, giving an overall score of 7.
+Black Manta (DCEU), real name David Kane, is a bad-aligned male Human character created by DC Comics, first appearing in Aquaman (2018). He has Black eyes and Black hair and stands 193 cm tall and weighs 108 kg. His notable abilities include Electrokinesis, Energy Beams, Energy Blasts, Energy Manipulation, Flight, Peak Human Condition, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 45 for strength, 55 for speed, 55 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 7.

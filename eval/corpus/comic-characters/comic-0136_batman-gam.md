@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Batman (GAM)
 
-Batman (GAM), real name Kirk Langstrom, is a good-aligned male Vampire character created by DC Comics, first appearing in "Twisted". He works as a Vigilante. He has Red eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Enhanced Senses, Flight, Intelligence, Invulnerability, Stealth and Super Strength. Rated across attributes, he scores 100 for intelligence, 30 for strength, 60 for speed, 75 for durability and 85 for combat, giving an overall score of 11.
+Batman (GAM), real name Kirk Langstrom, is a good-aligned male Vampire character created by DC Comics, first appearing in "Twisted". He works as a Vigilante. He has Red eyes and Black hair. His notable abilities include Accelerated Healing, Durability, Enhanced Senses, Flight, Intelligence, Invulnerability, Stealth and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 60 for speed, 75 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 11.

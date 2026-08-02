@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Hellboy: Box Full of Evil #1 - Box Full of Evil; The Killer in My Skull"
 occupation: null
-teams: "Bureau for Paranormal Research and Defense"
+teams: ["Bureau for Paranormal Research and Defense"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Lobster
 
-The Lobster, real name Lobster Johnson, is a good-aligned male Human character created by Dark Horse Comics, first appearing in Hellboy: Box Full of Evil #1 - Box Full of Evil; The Killer in My Skull. He is affiliated with Bureau for Paranormal Research and Defense. His notable abilities include Accelerated Healing, Agility, Dexterity, Durability, Endurance, Enhanced Senses, Fire Control, Immortality, Intelligence, Jump, Longevity, Marksmanship, Reflexes, Stamina, Stealth, Teleportation, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 15 for strength, 50 for speed, 50 for durability and 100 for combat, giving an overall score of 19.
+The Lobster, real name Lobster Johnson, is a good-aligned male Human character created by Dark Horse Comics, first appearing in Hellboy: Box Full of Evil #1 - Box Full of Evil; The Killer in My Skull. He is affiliated with Bureau for Paranormal Research and Defense. His notable abilities include Accelerated Healing, Agility, Dexterity, Durability, Endurance, Enhanced Senses, Fire Control, Immortality, Intelligence, Jump, Longevity, Marksmanship, Reflexes, Stamina, Stealth, Teleportation, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 15 for strength, 50 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 19.

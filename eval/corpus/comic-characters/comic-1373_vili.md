@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vili
 
-Vili, real name Vili, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard. His notable abilities include Accelerated Healing, Agility, Dexterity, Durability, Endurance, Enhanced Senses, Intelligence, Invulnerability, Longevity, Magic, Reflexes, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated across attributes, he scores 100 for intelligence, 55 for strength, 70 for speed, 85 for durability and 100 for combat, giving an overall score of 14.
+Vili, real name Vili, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard. His notable abilities include Accelerated Healing, Agility, Dexterity, Durability, Endurance, Enhanced Senses, Intelligence, Invulnerability, Longevity, Magic, Reflexes, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 55 for strength, 70 for speed, 85 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 14.

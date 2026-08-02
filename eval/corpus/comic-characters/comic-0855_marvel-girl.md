@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "UNCANNY X-MEN #141"
 occupation: "Adventurer"
-teams: "X-Men"
+teams: ["X-Men"]
 eye_color: "Green"
 hair_color: "Red"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Marvel Girl
 
-Marvel Girl, real name Rachel Anne Summers, is a good-aligned female character created by Marvel Comics, first appearing in UNCANNY X-MEN #141. She works as an Adventurer and is affiliated with X-Men. She has Green eyes and Red hair and stands 170 cm tall and weighs 56 kg. Her notable abilities include Energy Absorption, Energy Blasts, Energy Manipulation, Fire Control, Flight, Force Fields, Telekinesis and Telepathy. Rated across attributes, she scores 80 for intelligence, 85 for strength, 45 for speed, 40 for durability and 80 for combat, giving an overall score of 12.
+Marvel Girl, real name Rachel Anne Summers, is a good-aligned female character created by Marvel Comics, first appearing in UNCANNY X-MEN #141. She works as an Adventurer and is affiliated with X-Men. She has Green eyes and Red hair and stands 170 cm tall and weighs 56 kg. Her notable abilities include Energy Absorption, Energy Blasts, Energy Manipulation, Fire Control, Flight, Force Fields, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 85 for strength, 45 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 12.

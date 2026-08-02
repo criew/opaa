@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Man (Thorbuster)
 
-Iron Man (Thorbuster), real name Tony Stark, is a male Human character created by Marvel Comics. He works as an Avenger, Iron Man. His notable abilities include Accelerated Healing, Agility, Durability, Energy Absorption, Energy Beams, Energy Blasts, Flight, Force Fields, Intelligence, Magic, Marksmanship, Stamina, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 100 for intelligence, 100 for strength, 85 for speed, 100 for durability and 75 for combat, giving an overall score of 22.
+Iron Man (Thorbuster), real name Tony Stark, is a male Human character created by Marvel Comics. He works as an Avenger, Iron Man. His notable abilities include Accelerated Healing, Agility, Durability, Energy Absorption, Energy Beams, Energy Blasts, Flight, Force Fields, Intelligence, Magic, Marksmanship, Stamina, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 100 for strength, 85 for speed, 100 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 22.

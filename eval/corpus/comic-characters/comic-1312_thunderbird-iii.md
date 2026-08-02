@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Thunderbird III
 
-Thunderbird III, real name Neal Shaara, is a good-aligned male character created by Marvel Comics, born in Bangladesh. He works as an Adventurer. He has Brown eyes and Black hair and stands 175 cm tall and weighs 74 kg. His notable abilities include Energy Absorption, Energy Blasts and Flight. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Thunderbird III, real name Neal Shaara, is a good-aligned male character created by Marvel Comics, born in Bangladesh. He works as an Adventurer. He has Brown eyes and Black hair and stands 175 cm tall and weighs 74 kg. His notable abilities include Energy Absorption, Energy Blasts and Flight. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

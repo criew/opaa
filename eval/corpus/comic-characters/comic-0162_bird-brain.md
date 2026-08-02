@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "The New Mutants #56 (October, 1987)"
 occupation: null
-teams: "New Mutants"
+teams: ["New Mutants"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bird-Brain
 
-Bird-Brain is a good-aligned character created by Marvel Comics, first appearing in The New Mutants #56 (October, 1987). They are affiliated with New Mutants. Their notable abilities include Flight. Rated across attributes, they score 65 for intelligence, 10 for strength, 35 for speed, 30 for durability and 40 for combat, giving an overall score of 3.
+Bird-Brain is a good-aligned character created by Marvel Comics, first appearing in The New Mutants #56 (October, 1987). They are affiliated with New Mutants. Their notable abilities include Flight. Rated on a 0-100 scale across attributes, they score 65 for intelligence, 10 for strength, 35 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, their overall score is 3.

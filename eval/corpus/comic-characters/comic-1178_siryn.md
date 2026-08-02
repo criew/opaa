@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Cassidy Keep, County Mayo, Ireland"
 first_appearance: "Spider-Woman (first series) #37"
 occupation: "(current) Adventurer (former) Professional Criminal"
-teams: "X-Factor"
+teams: ["X-Factor"]
 eye_color: "Blue"
 hair_color: "Strawberry Blond"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Siryn
 
-Siryn, real name Theresa Rourke Cassidy, is a bad-aligned female character created by Marvel Comics, born in Cassidy Keep, County Mayo, Ireland and first appearing in Spider-Woman (first series) #37. She works as a (current) Adventurer (former) Professional Criminal and is affiliated with X-Factor. She has Blue eyes and Strawberry Blond hair and stands 168 cm tall and weighs 52 kg. Her notable abilities include Enhanced Hearing and Flight. Rated across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 30 for durability and 40 for combat, giving an overall score of 4.
+Siryn, real name Theresa Rourke Cassidy, is a bad-aligned female character created by Marvel Comics, born in Cassidy Keep, County Mayo, Ireland and first appearing in Spider-Woman (first series) #37. She works as a (current) Adventurer (former) Professional Criminal and is affiliated with X-Factor. She has Blue eyes and Strawberry Blond hair and stands 168 cm tall and weighs 52 kg. Her notable abilities include Enhanced Hearing and Flight. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 30 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 4.

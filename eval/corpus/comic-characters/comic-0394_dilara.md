@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dilara
 
-Dilara, real name Dilara, is a bad-aligned female Human character, born in Ninjago and first appearing in The Way Back. She works as a Pirate. She has Black eyes and Black hair and stands 168 cm tall and weighs 45 kg. Her notable abilities include Agility, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Stamina, Stealth and Weapons Master. Rated across attributes, she scores 90 for intelligence, 15 for strength, 25 for speed, 25 for durability and 50 for combat, giving an overall score of 8.
+Dilara, real name Dilara, is a bad-aligned female Human character, born in Ninjago and first appearing in The Way Back. She works as a Pirate. She has Black eyes and Black hair and stands 168 cm tall and weighs 45 kg. Her notable abilities include Agility, Durability, Endurance, Intelligence, Marksmanship, Peak Human Condition, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 15 for strength, 25 for speed, 25 for durability and 50 for combat. On a separate overall ranking scale, her overall score is 8.

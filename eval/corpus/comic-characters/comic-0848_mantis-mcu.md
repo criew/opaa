@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Guardians of the Galaxy vol 2"
 occupation: null
-teams: "Guardians of the Galaxy"
+teams: ["Guardians of the Galaxy"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 155
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mantis (MCU)
 
-Mantis (MCU), real name Mantis, is a good-aligned female character created by Marvel Comics, first appearing in Guardians of the Galaxy vol 2. She is affiliated with Guardians of the Galaxy. She has Brown eyes and Black hair and stands 155 cm tall and weighs 59 kg. Her notable abilities include Durability, Enhanced Senses and Stamina. Rated across attributes, she scores 75 for intelligence, 15 for strength, 40 for speed, 35 for durability and 70 for combat, giving an overall score of 5.
+Mantis (MCU), real name Mantis, is a good-aligned female character created by Marvel Comics, first appearing in Guardians of the Galaxy vol 2. She is affiliated with Guardians of the Galaxy. She has Brown eyes and Black hair and stands 155 cm tall and weighs 59 kg. Her notable abilities include Durability, Enhanced Senses and Stamina. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 15 for strength, 40 for speed, 35 for durability and 70 for combat. On a separate overall ranking scale, her overall score is 5.

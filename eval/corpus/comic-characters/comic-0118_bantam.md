@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bantam
 
-Bantam, real name Roberto Velasquez, is a good-aligned male character created by Marvel Comics, first appearing in Civil War: Front Line #3 (September, 2006). He works as an Adventurer, boxing trainer, former boxer. He has Brown eyes and Black hair and stands 165 cm tall and weighs 54 kg. His notable abilities include Durability, Stamina and Super Strength. Rated across attributes, he scores 65 for intelligence, 55 for strength, 25 for speed, 55 for durability and 55 for combat, giving an overall score of 3.
+Bantam, real name Roberto Velasquez, is a good-aligned male character created by Marvel Comics, first appearing in Civil War: Front Line #3 (September, 2006). He works as an Adventurer, boxing trainer, former boxer. He has Brown eyes and Black hair and stands 165 cm tall and weighs 54 kg. His notable abilities include Durability, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 55 for strength, 25 for speed, 55 for durability and 55 for combat. On a separate overall ranking scale, his overall score is 3.

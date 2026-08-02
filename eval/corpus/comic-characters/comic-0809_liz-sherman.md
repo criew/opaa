@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Bureau for Paranormal Research and Defense"
+teams: ["Bureau for Paranormal Research and Defense"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Liz Sherman
 
-Liz Sherman, real name Elizabeth Anne Sherman, is a good-aligned female character created by Dark Horse Comics. She is affiliated with Bureau for Paranormal Research and Defense. Her notable abilities include Fire Control, Fire Resistance and Heat Resistance. Rated across attributes, she scores 70 for intelligence, 10 for strength, 35 for speed, 30 for durability and 75 for combat, giving an overall score of 4.
+Liz Sherman, real name Elizabeth Anne Sherman, is a good-aligned female character created by Dark Horse Comics. She is affiliated with Bureau for Paranormal Research and Defense. Her notable abilities include Fire Control, Fire Resistance and Heat Resistance. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 35 for speed, 30 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 4.

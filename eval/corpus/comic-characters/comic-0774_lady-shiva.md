@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "China"
 first_appearance: "Richard Dragon, Kung Fu Fighter #5 - The Arena of No Exit"
 occupation: "Assassin"
-teams: "League of Assassins, Birds of Prey"
+teams: ["League of Assassins", "Birds of Prey"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 173
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lady Shiva
 
-Lady Shiva, real name Sandra Wu-San, is a neutral-aligned female Human character created by DC Comics, born in China and first appearing in Richard Dragon, Kung Fu Fighter #5 - The Arena of No Exit. She works as an Assassin and is affiliated with League of Assassins and Birds of Prey. She has Brown eyes and Black hair and stands 173 cm tall and weighs 63 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Reflexes, Stamina, Stealth and Weapons Master. Rated across attributes, she scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 100 for combat, giving an overall score of 7.
+Lady Shiva, real name Sandra Wu-San, is a neutral-aligned female Human character created by DC Comics, born in China and first appearing in Richard Dragon, Kung Fu Fighter #5 - The Arena of No Exit. She works as an Assassin and is affiliated with League of Assassins and Birds of Prey. She has Brown eyes and Black hair and stands 173 cm tall and weighs 63 kg. Her notable abilities include Agility, Intelligence, Marksmanship, Reflexes, Stamina, Stealth and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 35 for speed, 30 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 7.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Happy Hogan
 
-Happy Hogan, real name Happy Hogan, is a good-aligned male Human character created by Marvel Comics, first appearing in Tales of Suspense #45. He works as a cab driver. His notable abilities include Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 85 for intelligence, 10 for strength, 10 for speed, 10 for durability and 50 for combat, giving an overall score of 6.
+Happy Hogan, real name Happy Hogan, is a good-aligned male Human character created by Marvel Comics, first appearing in Tales of Suspense #45. He works as a cab driver. His notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 10 for strength, 10 for speed, 10 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -10,7 +10,7 @@ type_race: "Maiar"
 place_of_birth: null
 first_appearance: null
 occupation: "Istar (Wizard), Servant of the Secret Fire, Wielder of the Flame of Anor"
-teams: "Fellowship of the Ring"
+teams: ["Fellowship of the Ring"]
 eye_color: "Black"
 hair_color: "Grey"
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gandalf
 
-Gandalf, real name Olórin, is a good-aligned male Maiar character created by J. R. R. Tolkien. He works as an Istar (Wizard), Servant of the Secret Fire, Wielder of the Flame of Anor and is affiliated with Fellowship of the Ring. He has Black eyes and Grey hair and stands 168 cm tall. His notable abilities include Energy Blasts, Energy Manipulation, Fire Control, Fire Resistance, Intelligence, Longevity, Magic, Mind Control, Stamina, Telepathy, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 60 for speed, 70 for durability and 100 for combat, giving an overall score of 14.
+Gandalf, real name Olórin, is a good-aligned male Maiar character created by J. R. R. Tolkien. He works as an Istar (Wizard), Servant of the Secret Fire, Wielder of the Flame of Anor and is affiliated with Fellowship of the Ring. He has Black eyes and Grey hair and stands 168 cm tall. His notable abilities include Energy Blasts, Energy Manipulation, Fire Control, Fire Resistance, Intelligence, Longevity, Magic, Mind Control, Stamina, Telepathy, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 60 for speed, 70 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 14.

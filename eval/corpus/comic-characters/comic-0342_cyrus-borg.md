@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cyrus Borg
 
-Cyrus Borg, real name Cyrus Borg, is a good-aligned male Human character, born in Ninjago city and first appearing in The Surge /70722 OverBorg Attack. He works as a Proffessor. He has Black eyes and Black hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Intelligence, Marksmanship, Size Changing, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 5 for strength, 50 for speed, 15 for durability and 15 for combat, giving an overall score of 9.
+Cyrus Borg, real name Cyrus Borg, is a good-aligned male Human character, born in Ninjago city and first appearing in The Surge /70722 OverBorg Attack. He works as a Proffessor. He has Black eyes and Black hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Intelligence, Marksmanship, Size Changing, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 5 for strength, 50 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 9.

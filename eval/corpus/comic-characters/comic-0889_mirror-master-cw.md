@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mirror Master (CW)
 
-Mirror Master (CW), real name Sam Scudder, is a bad-aligned male Metahuman character created by DC Comics, born in Earth-1 and first appearing in The Flash Season 3: Episode 4. He works as a Thief, Criminal. He has Green eyes and Brown hair and stands 188 cm tall and weighs 80 kg. His notable abilities include Dimensional Travel, Durability and Teleportation. Rated across attributes, he scores 70 for intelligence, 15 for strength, 25 for speed, 35 for durability and 75 for combat, giving an overall score of 4.
+Mirror Master (CW), real name Sam Scudder, is a bad-aligned male Metahuman character created by DC Comics, born in Earth-1 and first appearing in The Flash Season 3: Episode 4. He works as a Thief, Criminal. He has Green eyes and Brown hair and stands 188 cm tall and weighs 80 kg. His notable abilities include Dimensional Travel, Durability and Teleportation. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 15 for strength, 25 for speed, 35 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 4.

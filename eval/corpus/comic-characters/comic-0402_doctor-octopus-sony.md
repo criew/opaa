@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Doctor Octopus (SONY)
 
-Doctor Octopus (SONY), real name Otto Octavius, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spider-Man 2. He works as a Scientist, Atomic Researcher, Inventor. He has Brown eyes and Brown hair and stands 188 cm tall and weighs 110 kg. His notable abilities include Agility, Durability, Intelligence, Reflexes, Stamina and Super Strength. Rated across attributes, he scores 100 for intelligence, 50 for strength, 40 for speed, 40 for durability and 75 for combat, giving an overall score of 10.
+Doctor Octopus (SONY), real name Otto Octavius, is a bad-aligned male Human character created by Marvel Comics, first appearing in Spider-Man 2. He works as a Scientist, Atomic Researcher, Inventor. He has Brown eyes and Brown hair and stands 188 cm tall and weighs 110 kg. His notable abilities include Agility, Durability, Intelligence, Reflexes, Stamina and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 50 for strength, 40 for speed, 40 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 10.

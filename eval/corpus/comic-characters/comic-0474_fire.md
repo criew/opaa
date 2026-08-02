@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Fire
 
-Fire is a good-aligned female character created by DC Comics, born in Rio de Janeiro and first appearing in DC Comics Presents #46. She works as a Formerly Black Knight, Detective, Model. She has Green eyes and Green hair and stands 150 cm tall and weighs 63 kg. Her notable abilities include Element Control, Fire Control, Fire Resistance and Flight. Rated across attributes, she scores 90 for intelligence, 40 for strength, 65 for speed, 70 for durability and 85 for combat, giving an overall score of 9.
+Fire is a good-aligned female character created by DC Comics, born in Rio de Janeiro and first appearing in DC Comics Presents #46. She works as a Formerly Black Knight, Detective, Model. She has Green eyes and Green hair and stands 150 cm tall and weighs 63 kg. Her notable abilities include Element Control, Fire Control, Fire Resistance and Flight. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 40 for strength, 65 for speed, 70 for durability and 85 for combat. On a separate overall ranking scale, her overall score is 9.

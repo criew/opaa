@@ -10,10 +10,10 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: null
 occupation: "Professional criminal, scientist, inventor, criminal mastermind, terrorist, arms dealer, occasional underworld technology supplier; former stage magician, escape artist, chess champion"
-teams: "Frightful Four"
+teams: ["Frightful Four"]
 eye_color: null
 hair_color: null
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 100
 strength_score: 10
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Wizard
 
-Wizard, real name Bentley Wittman, is a bad-aligned male Human character created by Marvel Comics. He works as a Professional criminal, scientist, inventor, criminal mastermind, terrorist, arms dealer, occasional underworld technology supplier; former stage magician, escape artist, chess champion and is affiliated with Frightful Four. His notable abilities include Electrokinesis, Element Control, Flight, Force Fields, Intelligence, Mind Control and Telekinesis. Rated across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 25 for combat, giving an overall score of 11.
+Wizard, real name Bentley Wittman, is a bad-aligned male Human character created by Marvel Comics. He works as a Professional criminal, scientist, inventor, criminal mastermind, terrorist, arms dealer, occasional underworld technology supplier; former stage magician, escape artist, chess champion and is affiliated with Frightful Four. His notable abilities include Electrokinesis, Element Control, Flight, Force Fields, Intelligence, Mind Control and Telekinesis. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 30 for speed, 30 for durability and 25 for combat. On a separate overall ranking scale, his overall score is 11.

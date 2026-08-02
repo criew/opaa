@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Keystone City"
 first_appearance: "The Flash Vol 4 #0 (November, 2012) New Suicide Squad"
 occupation: null
-teams: "Flash Family"
+teams: ["Flash Family"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Reverse Flash (New 52)
 
-Reverse Flash (New 52), real name Daniel West, is a good-aligned male character created by DC Comics, born in Keystone City and first appearing in The Flash Vol 4 #0 (November, 2012) New Suicide Squad. He is affiliated with Flash Family. He has Blue eyes and Brown hair. His notable abilities include Agility, Durability, Electrokinesis, Element Control, Invulnerability, Reflexes, Stamina, Super Speed and Super Strength. Rated across attributes, he scores 95 for intelligence, 35 for strength, 100 for speed, 80 for durability and 90 for combat, giving an overall score of 16.
+Reverse Flash (New 52), real name Daniel West, is a good-aligned male character created by DC Comics, born in Keystone City and first appearing in The Flash Vol 4 #0 (November, 2012) New Suicide Squad. He is affiliated with Flash Family. He has Blue eyes and Brown hair. His notable abilities include Agility, Durability, Electrokinesis, Element Control, Invulnerability, Reflexes, Stamina, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 35 for strength, 100 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 16.

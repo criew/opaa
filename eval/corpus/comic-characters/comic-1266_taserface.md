@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Taserface
 
-Taserface is a male character created by Marvel Comics, first appearing in Guardians of the Galaxy #1. He works as an Advanced Scout; Conqueror. His notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 15 for durability and 20 for combat, giving an overall score of 7.
+Taserface is a male character created by Marvel Comics, first appearing in Guardians of the Galaxy #1. He works as an Advanced Scout; Conqueror. His notable abilities include Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 15 for durability and 20 for combat. On a separate overall ranking scale, his overall score is 7.

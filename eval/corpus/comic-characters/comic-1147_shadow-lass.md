@@ -10,7 +10,7 @@ type_race: "Talokite"
 place_of_birth: "Talok VIII"
 first_appearance: "Adventure Comics #365"
 occupation: null
-teams: "Legion of Super-Heroes"
+teams: ["Legion of Super-Heroes"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: 173
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Shadow Lass
 
-Shadow Lass, real name Tasmia Mallor, is a good-aligned female Talokite character created by DC Comics, born in Talok VIII and first appearing in Adventure Comics #365. She is affiliated with Legion of Super-Heroes. She has Black eyes and Black hair and stands 173 cm tall and weighs 54 kg. Her notable abilities include Agility, Flight, Intelligence, Stealth and Super Speed. Rated across attributes, she scores 80 for intelligence, 10 for strength, 65 for speed, 20 for durability and 80 for combat, giving an overall score of 6.
+Shadow Lass, real name Tasmia Mallor, is a good-aligned female Talokite character created by DC Comics, born in Talok VIII and first appearing in Adventure Comics #365. She is affiliated with Legion of Super-Heroes. She has Black eyes and Black hair and stands 173 cm tall and weighs 54 kg. Her notable abilities include Agility, Flight, Intelligence, Stealth and Super Speed. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 65 for speed, 20 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 6.

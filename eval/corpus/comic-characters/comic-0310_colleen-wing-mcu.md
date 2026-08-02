@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Colleen Wing (MCU)
 
-Colleen Wing (MCU), real name Colleen Wing, is a character created by Marvel Comics. Their notable abilities include Agility, Intelligence and Peak Human Condition. Rated across attributes, they score 95 for intelligence, 15 for strength, 50 for speed, 95 for durability and 100 for combat, giving an overall score of 9.
+Colleen Wing (MCU), real name Colleen Wing, is a character created by Marvel Comics. Their notable abilities include Agility, Intelligence and Peak Human Condition. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 15 for strength, 50 for speed, 95 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 9.

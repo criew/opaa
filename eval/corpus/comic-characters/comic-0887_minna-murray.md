@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Minna Murray
 
-Minna Murray, real name Wilhelmina Harker, is a good-aligned female character created by Wildstorm. Her notable abilities include Durability, Immortality, Jump, Super Speed and Super Strength. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Minna Murray, real name Wilhelmina Harker, is a good-aligned female character created by Wildstorm. Her notable abilities include Durability, Immortality, Jump, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "X-Men #171 (2005)"
 occupation: null
-teams: "X-Men"
+teams: ["X-Men"]
 eye_color: null
 hair_color: null
 height_cm: 168
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bling!
 
-Bling!, real name Roxanne Washington, is a good-aligned female character created by Marvel Comics, first appearing in X-Men #171 (2005). She is affiliated with X-Men. She stands 168 cm tall and weighs 68 kg. Her notable abilities include Durability. Rated across attributes, she scores 85 for intelligence, 15 for strength, 10 for speed, 90 for durability and 30 for combat, giving an overall score of 7.
+Bling!, real name Roxanne Washington, is a good-aligned female character created by Marvel Comics, first appearing in X-Men #171 (2005). She is affiliated with X-Men. She stands 168 cm tall and weighs 68 kg. Her notable abilities include Durability. Rated on a 0-100 scale across attributes, she scores 85 for intelligence, 15 for strength, 10 for speed, 90 for durability and 30 for combat. On a separate overall ranking scale, her overall score is 7.

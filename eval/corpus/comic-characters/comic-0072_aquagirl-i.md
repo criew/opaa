@@ -10,7 +10,7 @@ type_race: "Atlantean"
 place_of_birth: "Atlantis"
 first_appearance: "Aquaman #33 (May, 1967)"
 occupation: null
-teams: "Black Marvel Family, Justice League Atlantis"
+teams: ["Black Marvel Family", "Justice League Atlantis"]
 eye_color: "Blue"
 hair_color: "Brown"
 height_cm: 3
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Aquagirl I
 
-Aquagirl I, real name Tula, is a good-aligned female Atlantean character created by DC Comics, born in Atlantis and first appearing in Aquaman #33 (May, 1967). She is affiliated with Black Marvel Family and Justice League Atlantis. She has Blue eyes and Brown hair and stands 3 cm tall and weighs 118 kg. Her notable abilities include Durability, Invulnerability, Self-Sustenance, Super Speed, Super Strength and Telepathy. Rated across attributes, she scores 90 for intelligence, 55 for strength, 85 for speed, 70 for durability and 75 for combat, giving an overall score of 8.
+Aquagirl I, real name Tula, is a good-aligned female Atlantean character created by DC Comics, born in Atlantis and first appearing in Aquaman #33 (May, 1967). She is affiliated with Black Marvel Family and Justice League Atlantis. She has Blue eyes and Brown hair and stands 3 cm tall and weighs 118 kg. Her notable abilities include Durability, Invulnerability, Self-Sustenance, Super Speed, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 55 for strength, 85 for speed, 70 for durability and 75 for combat. On a separate overall ranking scale, her overall score is 8.

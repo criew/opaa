@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cull Obsidian (MCU)
 
-Cull Obsidian (MCU), real name Cull Obsidian, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Avengers: Infinity War. He works as a Warrior. He has Red eyes and Blue hair. His notable abilities include Accelerated Healing, Agility, Durability, Jump, Marksmanship, Reflexes, Stamina, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 60 for intelligence, 90 for strength, 60 for speed, 85 for durability and 95 for combat, giving an overall score of 7.
+Cull Obsidian (MCU), real name Cull Obsidian, is a bad-aligned male Alien character created by Marvel Comics, first appearing in Avengers: Infinity War. He works as a Warrior. He has Red eyes and Blue hair. His notable abilities include Accelerated Healing, Agility, Durability, Jump, Marksmanship, Reflexes, Stamina, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 60 for intelligence, 90 for strength, 60 for speed, 85 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 7.

@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "Cumberland, Kentucky"
 first_appearance: "Rom Annual #3 (November, 1984)"
 occupation: "Adventurer; formerly student, activist"
-teams: "Generation X, X-Men"
+teams: ["Generation X", "X-Men"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 170
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Husk
 
-Husk, real name Paige Elisabeth Guthrie, is a good-aligned female Mutant character created by Marvel Comics, born in Cumberland, Kentucky and first appearing in Rom Annual #3 (November, 1984). She works as an Adventurer; formerly student, activist and is affiliated with Generation X and X-Men. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 58 kg. Her notable abilities include Durability, Shapeshifting, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 65 for strength, 35 for speed, 80 for durability and 65 for combat, giving an overall score of 7.
+Husk, real name Paige Elisabeth Guthrie, is a good-aligned female Mutant character created by Marvel Comics, born in Cumberland, Kentucky and first appearing in Rom Annual #3 (November, 1984). She works as an Adventurer; formerly student, activist and is affiliated with Generation X and X-Men. She has Blue eyes and Blond hair and stands 170 cm tall and weighs 58 kg. Her notable abilities include Durability, Shapeshifting, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 65 for strength, 35 for speed, 80 for durability and 65 for combat. On a separate overall ranking scale, her overall score is 7.

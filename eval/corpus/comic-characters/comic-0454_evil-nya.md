@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Evil Nya
 
-Evil Nya, real name Nya, is a bad-aligned female character, born in Ninjago city and first appearing in Season 2 episode 12. She works as a Horseman of Overlord. She has Purple eyes and Black hair and stands 150 cm tall and weighs 45 kg. Her notable abilities include Agility, Dimensional Travel, Durability, Element Control, Endurance, Peak Human Condition, Reflexes and Telekinesis. Rated across attributes, she scores 90 for intelligence, 35 for strength, 25 for speed, 40 for durability and 100 for combat, giving an overall score of 10.
+Evil Nya, real name Nya, is a bad-aligned female character, born in Ninjago city and first appearing in Season 2 episode 12. She works as a Horseman of Overlord. She has Purple eyes and Black hair and stands 150 cm tall and weighs 45 kg. Her notable abilities include Agility, Dimensional Travel, Durability, Element Control, Endurance, Peak Human Condition, Reflexes and Telekinesis. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 35 for strength, 25 for speed, 40 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 10.

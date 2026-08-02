@@ -10,7 +10,7 @@ type_race: "Alpha"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Alphas"
+teams: ["Alphas"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Nina Theroux
 
-Nina Theroux is a good-aligned female Alpha character created by SyFy. She is affiliated with Alphas. Her notable abilities include Mind Control. Rated across attributes, she scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 20 for combat, giving an overall score of 6.
+Nina Theroux is a good-aligned female Alpha character created by SyFy. She is affiliated with Alphas. Her notable abilities include Mind Control. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 5 for strength, 10 for speed, 10 for durability and 20 for combat. On a separate overall ranking scale, her overall score is 6.

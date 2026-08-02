@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Arsenal (CW)
 
-Arsenal (CW), real name Roy Harper, is a character created by DC Comics. Their notable abilities include Agility, Marksmanship, Peak Human Condition, Reflexes, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 75 for intelligence, 20 for strength, 40 for speed, 40 for durability and 80 for combat, giving an overall score of 4.
+Arsenal (CW), real name Roy Harper, is a character created by DC Comics. Their notable abilities include Agility, Marksmanship, Peak Human Condition, Reflexes, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 75 for intelligence, 20 for strength, 40 for speed, 40 for durability and 80 for combat. On a separate overall ranking scale, their overall score is 4.

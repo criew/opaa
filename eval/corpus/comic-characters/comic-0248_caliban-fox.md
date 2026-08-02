@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Caliban (FOX)
 
-Caliban (FOX) is a male Mutant character created by Marvel Comics, first appearing in X-Men: Apocalypse. His notable abilities include Agility, Enhanced Senses and Intelligence. Rated across attributes, he scores 90 for intelligence, 30 for strength, 45 for speed, 55 for durability and 70 for combat, giving an overall score of 8.
+Caliban (FOX) is a male Mutant character created by Marvel Comics, first appearing in X-Men: Apocalypse. His notable abilities include Agility, Enhanced Senses and Intelligence. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 45 for speed, 55 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 8.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mercy Graves
 
-Mercy Graves, real name Mercedes Graves, is a bad-aligned female Human character created by DC Comics, first appearing in Superman & Batman Magazine #1. She works as an Operative, Bodyguard. She has Blue eyes and Blond hair and stands 183 cm tall and weighs 68 kg. Her notable abilities include Agility, Intelligence, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 95 for intelligence, 10 for strength, 35 for speed, 50 for durability and 95 for combat, giving an overall score of 9.
+Mercy Graves, real name Mercedes Graves, is a bad-aligned female Human character created by DC Comics, first appearing in Superman & Batman Magazine #1. She works as an Operative, Bodyguard. She has Blue eyes and Blond hair and stands 183 cm tall and weighs 68 kg. Her notable abilities include Agility, Intelligence, Reflexes, Stamina, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 10 for strength, 35 for speed, 50 for durability and 95 for combat. On a separate overall ranking scale, her overall score is 9.

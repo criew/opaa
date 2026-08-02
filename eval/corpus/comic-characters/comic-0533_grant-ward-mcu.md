@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Grant Ward (MCU)
 
-Grant Ward (MCU), real name Grant Ward, is a bad-aligned male Human character created by Marvel Comics, born in Massachusetts and first appearing in Agents of S.H.I.E.L.D season 1. He works as a HYDRA soldier. He has Brown eyes and Brown hair and stands 168 cm tall and weighs 79 kg. His notable abilities include Intelligence, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 20 for durability and 40 for combat, giving an overall score of 7.
+Grant Ward (MCU), real name Grant Ward, is a bad-aligned male Human character created by Marvel Comics, born in Massachusetts and first appearing in Agents of S.H.I.E.L.D season 1. He works as a HYDRA soldier. He has Brown eyes and Brown hair and stands 168 cm tall and weighs 79 kg. His notable abilities include Intelligence, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 15 for speed, 20 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 7.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Detective Comics #140 (1948)"
 occupation: null
-teams: "The Society, Secret Six"
+teams: ["The Society", "Secret Six"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Riddler
 
-Riddler, real name Edward Nigma, is a bad-aligned male character created by DC Comics, first appearing in Detective Comics #140 (1948). He is affiliated with The Society and Secret Six. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 9.
+Riddler, real name Edward Nigma, is a bad-aligned male character created by DC Comics, first appearing in Detective Comics #140 (1948). He is affiliated with The Society and Secret Six. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 9.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Silk Spectre
 
-Silk Spectre, real name Sally Juspeczyk, is a good-aligned female character created by DC Comics. Her notable abilities include Peak Human Condition. Rated across attributes, she scores 75 for intelligence, 25 for strength, 45 for speed, 40 for durability and 90 for combat, giving an overall score of 4.
+Silk Spectre, real name Sally Juspeczyk, is a good-aligned female character created by DC Comics. Her notable abilities include Peak Human Condition. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 25 for strength, 45 for speed, 40 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 4.

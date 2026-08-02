@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Justin Hammer
 
-Justin Hammer, real name Justin Hammer, is a bad-aligned male Human character created by Marvel Comics, born in British and first appearing in Iron Man #120. He works as a CEO of Hammer Industries. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 59 kg. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 15 for combat, giving an overall score of 9.
+Justin Hammer, real name Justin Hammer, is a bad-aligned male Human character created by Marvel Comics, born in British and first appearing in Iron Man #120. He works as a CEO of Hammer Industries. He has Brown eyes and Brown hair and stands 178 cm tall and weighs 59 kg. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 10 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 9.

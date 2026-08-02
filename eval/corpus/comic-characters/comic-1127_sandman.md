@@ -10,7 +10,7 @@ type_race: "Metahuman"
 place_of_birth: "New York City"
 first_appearance: "New York World's Fair Comics #1 (January 1939)"
 occupation: "Millionaire Playboy, Mystery-man, Detective"
-teams: "Justice Society of America"
+teams: ["Justice Society of America"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sandman
 
-Sandman, real name Wesley Dodds, is a good-aligned male Metahuman character created by DC Comics, born in New York City and first appearing in New York World's Fair Comics #1 (January 1939). He works as a Millionaire Playboy, Mystery-man, Detective and is affiliated with Justice Society of America. He has Blue eyes and Blond hair and stands 180 cm tall and weighs 81 kg. His notable abilities include Agility, Enhanced Senses, Intelligence, Longevity, Peak Human Condition, Reflexes, Stealth, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 40 for strength, 35 for speed, 45 for durability and 95 for combat, giving an overall score of 8.
+Sandman, real name Wesley Dodds, is a good-aligned male Metahuman character created by DC Comics, born in New York City and first appearing in New York World's Fair Comics #1 (January 1939). He works as a Millionaire Playboy, Mystery-man, Detective and is affiliated with Justice Society of America. He has Blue eyes and Blond hair and stands 180 cm tall and weighs 81 kg. His notable abilities include Agility, Enhanced Senses, Intelligence, Longevity, Peak Human Condition, Reflexes, Stealth, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 40 for strength, 35 for speed, 45 for durability and 95 for combat. On a separate overall ranking scale, his overall score is 8.

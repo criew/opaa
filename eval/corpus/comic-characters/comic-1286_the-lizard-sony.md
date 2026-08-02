@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: null
 hair_color: "No Hair"
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 90
 strength_score: 85
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # The Lizard (SONY)
 
-The Lizard (SONY), real name Curtis Connors, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spiderman. He has No Hair hair. His notable abilities include Agility, Dexterity, Endurance, Jump, Reflexes, Super Speed and Super Strength. Rated across attributes, he scores 90 for intelligence, 85 for strength, 75 for speed, 85 for durability and 80 for combat, giving an overall score of 11.
+The Lizard (SONY), real name Curtis Connors, is a bad-aligned male character created by Marvel Comics, first appearing in Amazing Spiderman. He is bald. His notable abilities include Agility, Dexterity, Endurance, Jump, Reflexes, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 85 for strength, 75 for speed, 85 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 11.

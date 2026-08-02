@@ -13,7 +13,7 @@ occupation: null
 teams: null
 eye_color: null
 hair_color: null
-height_cm: 0
+height_cm: null
 weight_kg: null
 intelligence_score: 100
 strength_score: 65
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Monger (MCU)
 
-Iron Monger (MCU), real name Obadiah Stane, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron man. His notable abilities include Durability, Flight, Invulnerability, Jump and Super Strength. Rated across attributes, he scores 100 for intelligence, 65 for strength, 70 for speed, 70 for durability and 80 for combat, giving an overall score of 11.
+Iron Monger (MCU), real name Obadiah Stane, is a bad-aligned male Human character created by Marvel Comics, first appearing in Iron man. His notable abilities include Durability, Flight, Invulnerability, Jump and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 65 for strength, 70 for speed, 70 for durability and 80 for combat. On a separate overall ranking scale, his overall score is 11.

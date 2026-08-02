@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ghost Rider (SONY)
 
-Ghost Rider (SONY), real name Johnny Blaze, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Cold Resistance, Durability, Element Control, Endurance, Fire Control, Fire Resistance, Heat Resistance, Invulnerability, Regeneration, Super Strength, Teleportation and Toxin and Disease Resistance. Rated across attributes, they score 85 for intelligence, 50 for strength, 50 for speed, 100 for durability and 70 for combat, giving an overall score of 19.
+Ghost Rider (SONY), real name Johnny Blaze, is a character created by Marvel Comics. Their notable abilities include Accelerated Healing, Cold Resistance, Durability, Element Control, Endurance, Fire Control, Fire Resistance, Heat Resistance, Invulnerability, Regeneration, Super Strength, Teleportation and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 85 for intelligence, 50 for strength, 50 for speed, 100 for durability and 70 for combat. On a separate overall ranking scale, their overall score is 19.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Montreal, Québec, Canada"
 first_appearance: "X-Men #120 (1979)"
 occupation: "Former terrorist, adventurer, teacher, businessman, novelist, professional skier, trapeze artist, thief"
-teams: "Alpha Squadron, Alpha Flight, Secret Defenders, X-Men"
+teams: ["Alpha Squadron", "Alpha Flight", "Secret Defenders", "X-Men"]
 eye_color: "Blue"
 hair_color: "Black"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Northstar
 
-Northstar, real name Jean-Paul Beaubier, is a good-aligned male character created by Marvel Comics, born in Montreal, Québec, Canada and first appearing in X-Men #120 (1979). He works as a Former terrorist, adventurer, teacher, businessman, novelist, professional skier, trapeze artist, thief and is affiliated with Alpha Squadron, Alpha Flight, Secret Defenders and X-Men. He has Blue eyes and Black hair and stands 180 cm tall and weighs 83 kg. His notable abilities include Durability, Reflexes and Super Speed. Rated across attributes, he scores 75 for intelligence, 20 for strength, 85 for speed, 55 for durability and 70 for combat, giving an overall score of 6.
+Northstar, real name Jean-Paul Beaubier, is a good-aligned male character created by Marvel Comics, born in Montreal, Québec, Canada and first appearing in X-Men #120 (1979). He works as a Former terrorist, adventurer, teacher, businessman, novelist, professional skier, trapeze artist, thief and is affiliated with Alpha Squadron, Alpha Flight, Secret Defenders and X-Men. He has Blue eyes and Black hair and stands 180 cm tall and weighs 83 kg. His notable abilities include Durability, Reflexes and Super Speed. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 20 for strength, 85 for speed, 55 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

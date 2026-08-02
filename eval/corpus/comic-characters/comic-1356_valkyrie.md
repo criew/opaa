@@ -10,7 +10,7 @@ type_race: "Asgardian"
 place_of_birth: "Aesheim"
 first_appearance: "(Enchantress in Valkyrie's form) AVENGERS #87, (Samantha Parrington in Valkyrie's form) INCREDIBLE HULK #142, (Brunnhilde in Barbara Norriss's body) DEFENDERS #3, (Brunnhilde in her own body) DEFENDERS #109"
 occupation: "Chooser of the Slain, Adventurer"
-teams: "Defenders, The Mighty Avengers, Asgardians"
+teams: ["Defenders", "The Mighty Avengers", "Asgardians"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 191
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Valkyrie
 
-Valkyrie, real name Brunnhilde, is a good-aligned female Asgardian character created by Marvel Comics, born in Aesheim and first appearing in (Enchantress in Valkyrie's form) AVENGERS #87, (Samantha Parrington in Valkyrie's form) INCREDIBLE HULK #142, (Brunnhilde in Barbara Norriss's body) DEFENDERS #3, (Brunnhilde in her own body) DEFENDERS #109. She works as a Chooser of the Slain, Adventurer and is affiliated with Defenders, The Mighty Avengers and Asgardians. She has Blue eyes and Blond hair and stands 191 cm tall and weighs 214 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Dimensional Travel, Durability, Endurance, Enhanced Senses, Fire Resistance, Invulnerability, Longevity, Mind Control Resistance, Stamina, Super Speed, Super Strength, Teleportation, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 80 for intelligence, 60 for strength, 70 for speed, 80 for durability and 90 for combat, giving an overall score of 12.
+Valkyrie, real name Brunnhilde, is a good-aligned female Asgardian character created by Marvel Comics, born in Aesheim and first appearing in (Enchantress in Valkyrie's form) AVENGERS #87, (Samantha Parrington in Valkyrie's form) INCREDIBLE HULK #142, (Brunnhilde in Barbara Norriss's body) DEFENDERS #3, (Brunnhilde in her own body) DEFENDERS #109. She works as a Chooser of the Slain, Adventurer and is affiliated with Defenders, The Mighty Avengers and Asgardians. She has Blue eyes and Blond hair and stands 191 cm tall and weighs 214 kg. Her notable abilities include Accelerated Healing, Agility, Cold Resistance, Dimensional Travel, Durability, Endurance, Enhanced Senses, Fire Resistance, Invulnerability, Longevity, Mind Control Resistance, Stamina, Super Speed, Super Strength, Teleportation, Toxin and Disease Resistance, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 60 for strength, 70 for speed, 80 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 12.

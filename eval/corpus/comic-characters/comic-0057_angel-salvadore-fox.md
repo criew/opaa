@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Angel Salvadore (FOX)
 
-Angel Salvadore (FOX), real name Angel Salvadore, is a bad-aligned female Mutant character created by Marvel Comics, first appearing in X Men: First Class. She works as an Exotic Dancer. She has Brown eyes and Black hair and stands 157 cm tall and weighs 50 kg. Her notable abilities include Energy Blasts, Flight and Regeneration. Rated across attributes, she scores 65 for intelligence, 10 for strength, 60 for speed, 20 for durability and 55 for combat, giving an overall score of 3.
+Angel Salvadore (FOX), real name Angel Salvadore, is a bad-aligned female Mutant character created by Marvel Comics, first appearing in X Men: First Class. She works as an Exotic Dancer. She has Brown eyes and Black hair and stands 157 cm tall and weighs 50 kg. Her notable abilities include Energy Blasts, Flight and Regeneration. Rated on a 0-100 scale across attributes, she scores 65 for intelligence, 10 for strength, 60 for speed, 20 for durability and 55 for combat. On a separate overall ranking scale, her overall score is 3.

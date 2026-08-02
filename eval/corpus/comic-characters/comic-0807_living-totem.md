@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Living Totem
 
-Living Totem is a character created by Marvel Comics. Their notable abilities include Durability, Invulnerability, Jump, Self-Sustenance, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, they score 95 for intelligence, 100 for strength, 75 for speed, 100 for durability and 65 for combat, giving an overall score of 15.
+Living Totem is a character created by Marvel Comics. Their notable abilities include Durability, Invulnerability, Jump, Self-Sustenance, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, they score 95 for intelligence, 100 for strength, 75 for speed, 100 for durability and 65 for combat. On a separate overall ranking scale, their overall score is 15.

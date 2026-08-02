@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Red Sonja
 
-Red Sonja, real name Sonja, is a female Human character created by Marvel Comics, first appearing in Conan the Barbarian #23 (February, 1973). She works as a Warrior. She has Brown eyes and Red hair and stands 180 cm tall and weighs 59 kg. Her notable abilities include Dexterity, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 40 for durability and 100 for combat, giving an overall score of 5.
+Red Sonja, real name Sonja, is a female Human character created by Marvel Comics, first appearing in Conan the Barbarian #23 (February, 1973). She works as a Warrior. She has Brown eyes and Red hair and stands 180 cm tall and weighs 59 kg. Her notable abilities include Dexterity, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 30 for speed, 40 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 5.

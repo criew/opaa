@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Weapon Hex
 
-Weapon Hex, real name Laura Kinney, is a female Mutant character created by Marvel Comics, born in Transia and first appearing in Infinity Wars #3. She works as an Adventurer. She has Blue eyes and Red hair. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Weapon Hex, real name Laura Kinney, is a female Mutant character created by Marvel Comics, born in Transia and first appearing in Infinity Wars #3. She works as an Adventurer. She has Blue eyes and Red hair. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

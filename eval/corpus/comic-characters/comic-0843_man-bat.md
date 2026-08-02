@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: "Chicago, Illinois"
 first_appearance: "Detective Comics #400 (June, 1970)"
 occupation: "Zoologist"
-teams: "The Society"
+teams: ["The Society"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Man-Bat
 
-Man-Bat, real name Robert Kirkland Langstrom, is a neutral-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Detective Comics #400 (June, 1970). He works as a Zoologist and is affiliated with The Society. He has Brown eyes and Brown hair. His notable abilities include Agility, Enhanced Hearing, Flight, Reflexes, Shapeshifting, Super Speed and Super Strength. Rated across attributes, he scores 70 for intelligence, 20 for strength, 50 for speed, 70 for durability and 30 for combat, giving an overall score of 4.
+Man-Bat, real name Robert Kirkland Langstrom, is a neutral-aligned male Human character created by DC Comics, born in Chicago, Illinois and first appearing in Detective Comics #400 (June, 1970). He works as a Zoologist and is affiliated with The Society. He has Brown eyes and Brown hair. His notable abilities include Agility, Enhanced Hearing, Flight, Reflexes, Shapeshifting, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 20 for strength, 50 for speed, 70 for durability and 30 for combat. On a separate overall ranking scale, his overall score is 4.

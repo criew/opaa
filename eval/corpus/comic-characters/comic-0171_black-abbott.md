@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Abbott
 
-Black Abbott is a bad-aligned male character created by Marvel Comics, first appearing in Marvel Team Up #146 (1984). He works as a Cult leader, former monk. He has Red eyes and Black hair. His notable abilities include Energy Blasts, Mind Control, Telekinesis and Telepathy. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Black Abbott is a bad-aligned male character created by Marvel Comics, first appearing in Marvel Team Up #146 (1984). He works as a Cult leader, former monk. He has Red eyes and Black hair. His notable abilities include Energy Blasts, Mind Control, Telekinesis and Telepathy. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

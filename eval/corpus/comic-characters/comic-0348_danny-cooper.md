@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Danny Cooper
 
-Danny Cooper is a good-aligned male character created by HarperCollins. He has Brown eyes and Blond hair. Rated across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Danny Cooper is a good-aligned male character created by HarperCollins. He has Brown eyes and Blond hair. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

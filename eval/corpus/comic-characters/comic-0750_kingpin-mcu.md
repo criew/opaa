@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kingpin (MCU)
 
-Kingpin (MCU), real name Wilson Grant Fisk, is a neutral-aligned male Human character created by Marvel Comics, born in New York City and first appearing in Daredevil, Season 1, Episode 3. He works as a Mob Boss. He has No Hair hair. His notable abilities include Durability, Intelligence, Peak Human Condition and Stamina. Rated across attributes, he scores 80 for intelligence, 20 for strength, 50 for speed, 65 for durability and 60 for combat, giving an overall score of 5.
+Kingpin (MCU), real name Wilson Grant Fisk, is a neutral-aligned male Human character created by Marvel Comics, born in New York City and first appearing in Daredevil, Season 1, Episode 3. He works as a Mob Boss. He is bald. His notable abilities include Durability, Intelligence, Peak Human Condition and Stamina. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 20 for strength, 50 for speed, 65 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 5.

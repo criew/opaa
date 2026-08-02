@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tom Corsi
 
-Tom Corsi, real name Thomas Corsi, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in New Mutants (Vol. 1) #19. They work as a Teacher; formerly police officer. They have Black hair. Rated across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Tom Corsi, real name Thomas Corsi, is a good-aligned character created by Marvel Comics, born in Place of birth unknown and first appearing in New Mutants (Vol. 1) #19. They work as a Teacher; formerly police officer. They have Black hair. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

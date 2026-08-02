@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Domino (FOX)
 
-Domino (FOX), real name Neena Thurman, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Deadpool 2. She has Brown eyes and Brown hair and stands 178 cm tall and weighs 69 kg. Her notable abilities include Enhanced Senses, Marksmanship, Reflexes and Weapons Master. Rated across attributes, she scores 80 for intelligence, 10 for strength, 50 for speed, 30 for durability and 60 for combat, giving an overall score of 5.
+Domino (FOX), real name Neena Thurman, is a good-aligned female Mutant character created by Marvel Comics, first appearing in Deadpool 2. She has Brown eyes and Brown hair and stands 178 cm tall and weighs 69 kg. Her notable abilities include Enhanced Senses, Marksmanship, Reflexes and Weapons Master. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 10 for strength, 50 for speed, 30 for durability and 60 for combat. On a separate overall ranking scale, her overall score is 5.

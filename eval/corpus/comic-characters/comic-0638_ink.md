@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: null
 first_appearance: "Young X-Men #1 (May, 2008)"
 occupation: null
-teams: "Young X-Men"
+teams: ["Young X-Men"]
 eye_color: "Blue"
 hair_color: "No Hair"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Ink
 
-Ink, real name Eric Gitter, is a good-aligned male Mutant character created by Marvel Comics, first appearing in Young X-Men #1 (May, 2008). He is affiliated with Young X-Men. He has Blue eyes and No Hair hair and stands 180 cm tall and weighs 81 kg. His notable abilities include Accelerated Healing, Flight, Super Strength and Telepathy. Rated across attributes, he scores 70 for intelligence, 30 for strength, 15 for speed, 40 for durability and 50 for combat, giving an overall score of 4.
+Ink, real name Eric Gitter, is a good-aligned male Mutant character created by Marvel Comics, first appearing in Young X-Men #1 (May, 2008). He is affiliated with Young X-Men. He has Blue eyes and is bald and stands 180 cm tall and weighs 81 kg. His notable abilities include Accelerated Healing, Flight, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 30 for strength, 15 for speed, 40 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 4.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Tales of Suspense #46 (Oct 1963)"
 occupation: "Scientist"
-teams: "Winter Guard, Masters of Evil"
+teams: ["Winter Guard", "Masters of Evil"]
 eye_color: "Brown"
 hair_color: "No Hair"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Crimson Dynamo
 
-Crimson Dynamo, real name Anton Vanko, is a good-aligned male character created by Marvel Comics, first appearing in Tales of Suspense #46 (Oct 1963). He works as a Scientist and is affiliated with Winter Guard and Masters of Evil. He has Brown eyes and No Hair hair and stands 180 cm tall and weighs 104 kg. His notable abilities include Durability, Electrokinesis, Element Control, Energy Blasts, Flight, Intelligence and Super Strength. Rated across attributes, he scores 100 for intelligence, 30 for strength, 55 for speed, 60 for durability and 60 for combat, giving an overall score of 10.
+Crimson Dynamo, real name Anton Vanko, is a good-aligned male character created by Marvel Comics, first appearing in Tales of Suspense #46 (Oct 1963). He works as a Scientist and is affiliated with Winter Guard and Masters of Evil. He has Brown eyes and is bald and stands 180 cm tall and weighs 104 kg. His notable abilities include Durability, Electrokinesis, Element Control, Energy Blasts, Flight, Intelligence and Super Strength. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 55 for speed, 60 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 10.

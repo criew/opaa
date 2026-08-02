@@ -10,7 +10,7 @@ type_race: "Human-Spartoi"
 place_of_birth: null
 first_appearance: "Marvel Preview #4 (January, 1976)"
 occupation: "Adventurer; Royal Prince of Spartax"
-teams: "Guardians of the Galaxy, Marvel Knights, Gods, The Mighty Avengers"
+teams: ["Guardians of the Galaxy", "Marvel Knights", "Gods", "The Mighty Avengers"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 188
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Star-Lord
 
-Star-Lord, real name Peter Quill, is a good-aligned male Human-Spartoi character created by Marvel Comics, first appearing in Marvel Preview #4 (January, 1976). He works as an Adventurer; Royal Prince of Spartax and is affiliated with Guardians of the Galaxy, Marvel Knights, Gods and The Mighty Avengers. He has Blue eyes and Blond hair and stands 188 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Intelligence, Longevity, Marksmanship, Peak Human Condition, Stamina and Weapons Master. Rated across attributes, he scores 85 for intelligence, 20 for strength, 35 for speed, 50 for durability and 70 for combat, giving an overall score of 6.
+Star-Lord, real name Peter Quill, is a good-aligned male Human-Spartoi character created by Marvel Comics, first appearing in Marvel Preview #4 (January, 1976). He works as an Adventurer; Royal Prince of Spartax and is affiliated with Guardians of the Galaxy, Marvel Knights, Gods and The Mighty Avengers. He has Blue eyes and Blond hair and stands 188 cm tall and weighs 79 kg. His notable abilities include Agility, Durability, Intelligence, Longevity, Marksmanship, Peak Human Condition, Stamina and Weapons Master. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 20 for strength, 35 for speed, 50 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

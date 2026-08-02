@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Baron Zemo (MCU)
 
-Baron Zemo (MCU), real name Helmut J. Zemo, is a bad-aligned male Human character created by Marvel Comics, first appearing in Captain America civil war. He has Brown eyes and Brown hair. His notable abilities include Agility, Intelligence, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 30 for strength, 50 for speed, 50 for durability and 100 for combat, giving an overall score of 10.
+Baron Zemo (MCU), real name Helmut J. Zemo, is a bad-aligned male Human character created by Marvel Comics, first appearing in Captain America civil war. He has Brown eyes and Brown hair. His notable abilities include Agility, Intelligence, Peak Human Condition, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 30 for strength, 50 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 10.

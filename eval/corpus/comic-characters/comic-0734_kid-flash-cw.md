@@ -10,7 +10,7 @@ type_race: "Metahuman"
 place_of_birth: null
 first_appearance: "The flash season 1"
 occupation: "Student Vigilante (in secret) Member of the Legends (in secret; formerly) Member of Team Flash (in secret; formerly) Drag racer (formerly)"
-teams: "Flash Family"
+teams: ["Flash Family"]
 eye_color: "Black"
 hair_color: "Black"
 height_cm: 157
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kid Flash (CW)
 
-Kid Flash (CW), real name Wally West, is a good-aligned male Metahuman character created by DC Comics, first appearing in The flash season 1. He works as a Student Vigilante (in secret) Member of the Legends (in secret; formerly) Member of Team Flash (in secret; formerly) Drag racer (formerly) and is affiliated with Flash Family. He has Black eyes and Black hair and stands 157 cm tall and weighs 69 kg. His notable abilities include Accelerated Healing, Agility, Dimensional Travel, Durability, Electrokinesis, Reflexes, Stamina and Super Speed. Rated across attributes, he scores 70 for intelligence, 40 for strength, 90 for speed, 65 for durability and 70 for combat, giving an overall score of 6.
+Kid Flash (CW), real name Wally West, is a good-aligned male Metahuman character created by DC Comics, first appearing in The flash season 1. He works as a Student Vigilante (in secret) Member of the Legends (in secret; formerly) Member of Team Flash (in secret; formerly) Drag racer (formerly) and is affiliated with Flash Family. He has Black eyes and Black hair and stands 157 cm tall and weighs 69 kg. His notable abilities include Accelerated Healing, Agility, Dimensional Travel, Durability, Electrokinesis, Reflexes, Stamina and Super Speed. Rated on a 0-100 scale across attributes, he scores 70 for intelligence, 40 for strength, 90 for speed, 65 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sabretooth (FOX)
 
-Sabretooth (FOX), real name Victor Creed, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Blue eyes and Black hair and stands 168 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Agility, Enhanced Senses, Longevity, Reflexes, Regeneration, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 80 for intelligence, 70 for strength, 65 for speed, 90 for durability and 90 for combat, giving an overall score of 9.
+Sabretooth (FOX), real name Victor Creed, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Blue eyes and Black hair and stands 168 cm tall and weighs 79 kg. His notable abilities include Accelerated Healing, Agility, Enhanced Senses, Longevity, Reflexes, Regeneration, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 70 for strength, 65 for speed, 90 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 9.

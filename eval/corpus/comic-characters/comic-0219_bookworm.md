@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Bookworm
 
-Bookworm, real name A.S. Scarlet, is a bad-aligned male character created by DC Comics, first appearing in Gotham Academy #2. He works as a Teacher. He has Blond hair. His notable abilities include Intelligence. Rated across attributes, he scores 90 for intelligence, 0 for strength, 5 for speed, 5 for durability and 5 for combat, giving an overall score of 7.
+Bookworm, real name A.S. Scarlet, is a bad-aligned male character created by DC Comics, first appearing in Gotham Academy #2. He works as a Teacher. He has Blond hair. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 0 for strength, 5 for speed, 5 for durability and 5 for combat. On a separate overall ranking scale, his overall score is 7.

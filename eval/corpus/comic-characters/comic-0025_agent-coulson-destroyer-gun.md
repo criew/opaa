@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Agent Coulson (Destroyer Gun)
 
-Agent Coulson (Destroyer Gun), real name Coulson, is a good-aligned male Human character created by Marvel Comics, born in America and first appearing in Avengers. He works as an Agent of SHIELD. He has Black eyes and Brown hair and stands 168 cm tall and weighs 44 kg. His notable abilities include Energy Beams, Fire Control, Intelligence, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 10 for durability and 50 for combat, giving an overall score of 10.
+Agent Coulson (Destroyer Gun), real name Coulson, is a good-aligned male Human character created by Marvel Comics, born in America and first appearing in Avengers. He works as an Agent of SHIELD. He has Black eyes and Brown hair and stands 168 cm tall and weighs 44 kg. His notable abilities include Energy Beams, Fire Control, Intelligence, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 10 for speed, 10 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 10.

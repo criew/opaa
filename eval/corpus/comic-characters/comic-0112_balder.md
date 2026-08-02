@@ -10,7 +10,7 @@ type_race: "Asgardian"
 place_of_birth: "Asgard"
 first_appearance: null
 occupation: "Warrior"
-teams: "Gods, God Squad, Asgardians"
+teams: ["Gods", "God Squad", "Asgardians"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Balder
 
-Balder, real name Balder Odinson, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard. He works as a Warrior and is affiliated with Gods, God Squad and Asgardians. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Dexterity, Durability, Endurance, Enhanced Senses, Invulnerability, Longevity, Reflexes, Regeneration, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated across attributes, he scores 80 for intelligence, 65 for strength, 75 for speed, 80 for durability and 100 for combat, giving an overall score of 10.
+Balder, real name Balder Odinson, is a good-aligned male Asgardian character created by Marvel Comics, born in Asgard. He works as a Warrior and is affiliated with Gods, God Squad and Asgardians. His notable abilities include Accelerated Healing, Agility, Cold Resistance, Dexterity, Durability, Endurance, Enhanced Senses, Invulnerability, Longevity, Reflexes, Regeneration, Stamina, Super Speed, Super Strength, Toxin and Disease Resistance and Weapons Master. Rated on a 0-100 scale across attributes, he scores 80 for intelligence, 65 for strength, 75 for speed, 80 for durability and 100 for combat. On a separate overall ranking scale, his overall score is 10.

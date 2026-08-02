@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Pinhead
 
-Pinhead, real name Elliott Spencer, is a bad-aligned male Cenobite character created by Clive Barker. He has None hair. His notable abilities include Dimensional Travel, Durability, Fire Control, Illusions, Immortality, Invulnerability, Magic, Reality Warping, Super Strength, Telekinesis, Teleportation and Weapons Master. Rated across attributes, he scores 90 for intelligence, 30 for strength, 15 for speed, 80 for durability and 25 for combat, giving an overall score of 21.
+Pinhead, real name Elliott Spencer, is a bad-aligned male Cenobite character created by Clive Barker. He is bald. His notable abilities include Dimensional Travel, Durability, Fire Control, Illusions, Immortality, Invulnerability, Magic, Reality Warping, Super Strength, Telekinesis, Teleportation and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 15 for speed, 80 for durability and 25 for combat. On a separate overall ranking scale, his overall score is 21.

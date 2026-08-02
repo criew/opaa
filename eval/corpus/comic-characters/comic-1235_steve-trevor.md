@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Steve Trevor
 
-Steve Trevor, real name Steve Trevor, is a good-aligned male Human character created by DC Comics, born in Enid, Oklahoma and first appearing in Wonder Woman Vol 2 #2. He works as a Politician, commercial pilot, former Air Force Pilot. He has Blue eyes and Blond hair and stands 185 cm tall and weighs 88 kg. His notable abilities include Agility, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 10 for durability and 70 for combat, giving an overall score of 8.
+Steve Trevor, real name Steve Trevor, is a good-aligned male Human character created by DC Comics, born in Enid, Oklahoma and first appearing in Wonder Woman Vol 2 #2. He works as a Politician, commercial pilot, former Air Force Pilot. He has Blue eyes and Blond hair and stands 185 cm tall and weighs 88 kg. His notable abilities include Agility, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 95 for intelligence, 10 for strength, 15 for speed, 10 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 8.

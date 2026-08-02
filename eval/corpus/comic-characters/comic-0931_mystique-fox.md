@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Mystique (FOX)
 
-Mystique (FOX), real name Raven Darkhölme, is a bad-aligned female Mutant character created by Marvel Comics, first appearing in X men. She has Yellow eyes and Red hair and stands 163 cm tall and weighs 79 kg. Her notable abilities include Accelerated Healing, Agility, Element Control, Longevity, Marksmanship, Regeneration, Shapeshifting and Weapons Master. Rated across attributes, she scores 95 for intelligence, 25 for strength, 50 for speed, 50 for durability and 100 for combat, giving an overall score of 10.
+Mystique (FOX), real name Raven Darkhölme, is a bad-aligned female Mutant character created by Marvel Comics, first appearing in X men. She has Yellow eyes and Red hair and stands 163 cm tall and weighs 79 kg. Her notable abilities include Accelerated Healing, Agility, Element Control, Longevity, Marksmanship, Regeneration, Shapeshifting and Weapons Master. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 25 for strength, 50 for speed, 50 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 10.

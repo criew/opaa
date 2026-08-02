@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vagabond
 
-Vagabond, real name Priscilla Lyons, is a good-aligned female character created by Marvel Comics, first appearing in (as Lyons) CAPTAIN AMERICA #325, (as Vagabond) CAPTAIN AMERICA #342. She works as an Adventurer. She has Blue eyes and Strawberry Blond hair and stands 168 cm tall and weighs 54 kg. Rated across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Vagabond, real name Priscilla Lyons, is a good-aligned female character created by Marvel Comics, first appearing in (as Lyons) CAPTAIN AMERICA #325, (as Vagabond) CAPTAIN AMERICA #342. She works as an Adventurer. She has Blue eyes and Strawberry Blond hair and stands 168 cm tall and weighs 54 kg. Rated on a 0-100 scale across attributes, she scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

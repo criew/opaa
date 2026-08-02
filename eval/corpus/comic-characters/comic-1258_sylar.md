@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Sylar
 
-Sylar, real name Gabriel Gray, is a bad-aligned male character created by NBC - Heroes. He works as a Timepiece restorer. His notable abilities include Accelerated Healing, Electrokinesis, Flight, Illusions, Regeneration, Shapeshifting and Telekinesis. Rated across attributes, he scores 90 for intelligence, 10 for strength, 45 for speed, 25 for durability and 85 for combat, giving an overall score of 7.
+Sylar, real name Gabriel Gray, is a bad-aligned male character created by NBC - Heroes. He works as a Timepiece restorer. His notable abilities include Accelerated Healing, Electrokinesis, Flight, Illusions, Regeneration, Shapeshifting and Telekinesis. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 45 for speed, 25 for durability and 85 for combat. On a separate overall ranking scale, his overall score is 7.

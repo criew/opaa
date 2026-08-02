@@ -10,7 +10,7 @@ type_race: "Human-Vulcan"
 place_of_birth: null
 first_appearance: "Star Trek S01E01: The Man Trap"
 occupation: null
-teams: "Federation, Starfleet"
+teams: ["Federation", "Starfleet"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 185
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Spock
 
-Spock, real name S'chn T'gai Spock, is a good-aligned male Human-Vulcan character created by Star Trek, first appearing in Star Trek S01E01: The Man Trap. He is affiliated with Federation and Starfleet. He has Brown eyes and Black hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Enhanced Hearing, Intelligence, Longevity, Stamina, Stealth, Super Strength and Telepathy. Rated across attributes, he scores 90 for intelligence, 20 for strength, 15 for speed, 40 for durability and 40 for combat, giving an overall score of 7.
+Spock, real name S'chn T'gai Spock, is a good-aligned male Human-Vulcan character created by Star Trek, first appearing in Star Trek S01E01: The Man Trap. He is affiliated with Federation and Starfleet. He has Brown eyes and Black hair and stands 185 cm tall and weighs 81 kg. His notable abilities include Enhanced Hearing, Intelligence, Longevity, Stamina, Stealth, Super Strength and Telepathy. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 20 for strength, 15 for speed, 40 for durability and 40 for combat. On a separate overall ranking scale, his overall score is 7.

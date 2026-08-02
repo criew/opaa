@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Gorilla Girl
 
-Gorilla Girl, real name Fahnbullah Eddy, is a character created by Marvel Comics. Their notable abilities include Agility, Jump and Super Strength. Rated across attributes, they score 90 for intelligence, 35 for strength, 60 for speed, 60 for durability and 100 for combat, giving an overall score of 7.
+Gorilla Girl, real name Fahnbullah Eddy, is a character created by Marvel Comics. Their notable abilities include Agility, Jump and Super Strength. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 35 for strength, 60 for speed, 60 for durability and 100 for combat. On a separate overall ranking scale, their overall score is 7.

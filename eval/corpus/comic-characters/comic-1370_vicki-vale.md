@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Vicki Vale
 
-Vicki Vale, real name Vicki Vale, is a good-aligned female Human character created by DC Comics, first appearing in Batman #49. She has Blue eyes and Red hair and stands 157 cm tall and weighs 69 kg. Her notable abilities include Intelligence. Rated across attributes, she scores 80 for intelligence, 5 for strength, 15 for speed, 10 for durability and 10 for combat, giving an overall score of 5.
+Vicki Vale, real name Vicki Vale, is a good-aligned female Human character created by DC Comics, first appearing in Batman #49. She has Blue eyes and Red hair and stands 157 cm tall and weighs 69 kg. Her notable abilities include Intelligence. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 5 for strength, 15 for speed, 10 for durability and 10 for combat. On a separate overall ranking scale, her overall score is 5.

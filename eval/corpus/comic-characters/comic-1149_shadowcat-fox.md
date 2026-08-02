@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Shadowcat (FOX)
 
-Shadowcat (FOX), real name Katherine Anne Pryde, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Brown eyes and Brown hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Intelligence. Rated across attributes, he scores 100 for intelligence, 20 for strength, 45 for speed, 55 for durability and 90 for combat, giving an overall score of 10.
+Shadowcat (FOX), real name Katherine Anne Pryde, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men. He has Brown eyes and Brown hair and stands 157 cm tall and weighs 79 kg. His notable abilities include Intelligence. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 20 for strength, 45 for speed, 55 for durability and 90 for combat. On a separate overall ranking scale, his overall score is 10.

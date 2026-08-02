@@ -10,7 +10,7 @@ type_race: "Mutant"
 place_of_birth: "United Kingdom"
 first_appearance: "Generation X #1 (November, 1994)"
 occupation: "Adventurer"
-teams: "X-Men, Generation X"
+teams: ["X-Men", "Generation X"]
 eye_color: "Brown"
 hair_color: "Brown"
 height_cm: 175
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Chamber
 
-Chamber, real name Jonothon Evan Starsmore, is a good-aligned male Mutant character created by Marvel Comics, born in United Kingdom and first appearing in Generation X #1 (November, 1994). He works as an Adventurer and is affiliated with X-Men and Generation X. He has Brown eyes and Brown hair and stands 175 cm tall and weighs 63 kg. His notable abilities include Energy Beams and Telepathy. Rated across attributes, he scores 75 for intelligence, 10 for strength, 20 for speed, 80 for durability and 65 for combat, giving an overall score of 5.
+Chamber, real name Jonothon Evan Starsmore, is a good-aligned male Mutant character created by Marvel Comics, born in United Kingdom and first appearing in Generation X #1 (November, 1994). He works as an Adventurer and is affiliated with X-Men and Generation X. He has Brown eyes and Brown hair and stands 175 cm tall and weighs 63 kg. His notable abilities include Energy Beams and Telepathy. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 10 for strength, 20 for speed, 80 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 5.

@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Phantom Lady
 
-Phantom Lady, real name Stormy Knight, is a good-aligned female character created by DC Comics, first appearing in Battle for Blüdhaven #2. She works as a Government Agent · Scientist · Actress. She has Blue eyes and Black hair. Her notable abilities include Agility, Illusions, Intelligence, Teleportation and Weapon-Based Powers. Rated across attributes, she scores 100 for intelligence, 10 for strength, 30 for speed, 35 for durability and 100 for combat, giving an overall score of 10.
+Phantom Lady, real name Stormy Knight, is a good-aligned female character created by DC Comics, first appearing in Battle for Blüdhaven #2. She works as a Government Agent · Scientist · Actress. She has Blue eyes and Black hair. Her notable abilities include Agility, Illusions, Intelligence, Teleportation and Weapon-Based Powers. Rated on a 0-100 scale across attributes, she scores 100 for intelligence, 10 for strength, 30 for speed, 35 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 10.

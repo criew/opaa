@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Havok (FOX)
 
-Havok (FOX), real name Alexander Summers, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men first class. He has Brown eyes and Brown hair. His notable abilities include Energy Absorption, Energy Beams and Energy Blasts. Rated across attributes, he scores 90 for intelligence, 30 for strength, 50 for speed, 60 for durability and 75 for combat, giving an overall score of 8.
+Havok (FOX), real name Alexander Summers, is a good-aligned male Mutant character created by Marvel Comics, first appearing in X men first class. He has Brown eyes and Brown hair. His notable abilities include Energy Absorption, Energy Beams and Energy Blasts. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 30 for strength, 50 for speed, 60 for durability and 75 for combat. On a separate overall ranking scale, his overall score is 8.

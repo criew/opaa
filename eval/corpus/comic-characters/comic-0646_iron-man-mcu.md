@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: "Iron Man (2008)"
 occupation: null
-teams: "Avengers"
+teams: ["Avengers"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Iron Man (MCU)
 
-Iron Man (MCU), real name Tony Stark, is a good-aligned male Human character created by Marvel Comics, first appearing in Iron Man (2008). He is affiliated with Avengers. His notable abilities include Cold Resistance, Energy Beams, Energy Blasts, Fire Control, Fire Resistance, Flight, Intelligence, Super Speed, Super Strength and Weapons Master. Rated across attributes, he scores 100 for intelligence, 80 for strength, 55 for speed, 80 for durability and 70 for combat, giving an overall score of 13.
+Iron Man (MCU), real name Tony Stark, is a good-aligned male Human character created by Marvel Comics, first appearing in Iron Man (2008). He is affiliated with Avengers. His notable abilities include Cold Resistance, Energy Beams, Energy Blasts, Fire Control, Fire Resistance, Flight, Intelligence, Super Speed, Super Strength and Weapons Master. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 80 for strength, 55 for speed, 80 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 13.

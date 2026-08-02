@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Magog
 
-Magog, real name David Reid, is a good-aligned male character created by DC Comics. He has Blue eyes and Blond hair. His notable abilities include Durability, Energy Beams, Energy Blasts and Super Strength. Rated across attributes, he scores 75 for intelligence, 50 for strength, 25 for speed, 65 for durability and 70 for combat, giving an overall score of 6.
+Magog, real name David Reid, is a good-aligned male character created by DC Comics. He has Blue eyes and Blond hair. His notable abilities include Durability, Energy Beams, Energy Blasts and Super Strength. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 50 for strength, 25 for speed, 65 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "New X-Men #118 (November, 2001)"
 occupation: null
-teams: "Imperial Guard, Avengers Resistance, New Warriors"
+teams: ["Imperial Guard", "Avengers Resistance", "New Warriors"]
 eye_color: "Brown"
 hair_color: "Black"
 height_cm: 163
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Tempest
 
-Tempest, real name Angel Salvadore Bohusk, is a good-aligned female character created by Marvel Comics, first appearing in New X-Men #118 (November, 2001). She is affiliated with Imperial Guard, Avengers Resistance and New Warriors. She has Brown eyes and Black hair and stands 163 cm tall and weighs 54 kg. Her notable abilities include Fire Control, Flight and Force Fields. Rated across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 30 for durability and 60 for combat, giving an overall score of 4.
+Tempest, real name Angel Salvadore Bohusk, is a good-aligned female character created by Marvel Comics, first appearing in New X-Men #118 (November, 2001). She is affiliated with Imperial Guard, Avengers Resistance and New Warriors. She has Brown eyes and Black hair and stands 163 cm tall and weighs 54 kg. Her notable abilities include Fire Control, Flight and Force Fields. Rated on a 0-100 scale across attributes, she scores 70 for intelligence, 10 for strength, 45 for speed, 30 for durability and 60 for combat. On a separate overall ranking scale, her overall score is 4.

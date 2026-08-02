@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Hancock
 
-Hancock, real name John Hancock, is a good-aligned male Human character created by Sony Pictures. He has Brown eyes and Black hair and stands 188 cm tall. His notable abilities include Accelerated Healing, Agility, Durability, Enhanced Hearing, Flight, Immortality, Invulnerability, Longevity, Reflexes, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated across attributes, he scores 75 for intelligence, 90 for strength, 65 for speed, 100 for durability and 50 for combat, giving an overall score of 12.
+Hancock, real name John Hancock, is a good-aligned male Human character created by Sony Pictures. He has Brown eyes and Black hair and stands 188 cm tall. His notable abilities include Accelerated Healing, Agility, Durability, Enhanced Hearing, Flight, Immortality, Invulnerability, Longevity, Reflexes, Stamina, Super Speed, Super Strength and Toxin and Disease Resistance. Rated on a 0-100 scale across attributes, he scores 75 for intelligence, 90 for strength, 65 for speed, 100 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 12.

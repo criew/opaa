@@ -10,7 +10,7 @@ type_race: "Human"
 place_of_birth: null
 first_appearance: null
 occupation: null
-teams: "Annihilators, Asgardians, Avengers, New Avengers"
+teams: ["Annihilators", "Asgardians", "Avengers", "New Avengers"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # 3-D Man
 
-3-D Man, real name Delroy Garrett, Jr., is a good-aligned male Human character created by Marvel Comics. He is affiliated with Annihilators, Asgardians, Avengers and New Avengers. His notable abilities include Super Speed and Super Strength. Rated across attributes, he scores 85 for intelligence, 30 for strength, 60 for speed, 60 for durability and 70 for combat, giving an overall score of 6.
+3-D Man, real name Delroy Garrett, Jr., is a good-aligned male Human character created by Marvel Comics. He is affiliated with Annihilators, Asgardians, Avengers and New Avengers. His notable abilities include Super Speed and Super Strength. Rated on a 0-100 scale across attributes, he scores 85 for intelligence, 30 for strength, 60 for speed, 60 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 6.

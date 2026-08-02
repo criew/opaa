@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Shuri (MCU)
 
-Shuri (MCU), real name Shuri, is a good-aligned female Human character created by Marvel Comics, born in Wakanda and first appearing in Black panther. She has Black eyes and Black hair and stands 157 cm tall and weighs 89 kg. Her notable abilities include Agility, Intelligence and Weapons Master. Rated across attributes, she scores 90 for intelligence, 10 for strength, 45 for speed, 100 for durability and 95 for combat, giving an overall score of 8.
+Shuri (MCU), real name Shuri, is a good-aligned female Human character created by Marvel Comics, born in Wakanda and first appearing in Black panther. She has Black eyes and Black hair and stands 157 cm tall and weighs 89 kg. Her notable abilities include Agility, Intelligence and Weapons Master. Rated on a 0-100 scale across attributes, she scores 90 for intelligence, 10 for strength, 45 for speed, 100 for durability and 95 for combat. On a separate overall ranking scale, her overall score is 8.

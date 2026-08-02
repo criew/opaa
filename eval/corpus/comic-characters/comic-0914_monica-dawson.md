@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Monica Dawson
 
-Monica Dawson, real name Monica Dawson, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S02E04 - The Kindness of Strangers. She works as a Fast food service. Rated across attributes, she scores 75 for intelligence, 10 for strength, 35 for speed, 15 for durability and 90 for combat, giving an overall score of 5.
+Monica Dawson, real name Monica Dawson, is a good-aligned female character created by NBC - Heroes, first appearing in Heroes S02E04 - The Kindness of Strangers. She works as a Fast food service. Rated on a 0-100 scale across attributes, she scores 75 for intelligence, 10 for strength, 35 for speed, 15 for durability and 90 for combat. On a separate overall ranking scale, her overall score is 5.

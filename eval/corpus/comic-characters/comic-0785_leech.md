@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: null
 first_appearance: "Uncanny X-Men #179"
 occupation: "Survivor, former student"
-teams: "Future Foundation, X-Factor, Generation X, X-Men"
+teams: ["Future Foundation", "X-Factor", "Generation X", "X-Men"]
 eye_color: null
 hair_color: null
 height_cm: null
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Leech
 
-Leech is a good-aligned male character created by Marvel Comics, first appearing in Uncanny X-Men #179. He works as a Survivor, former student and is affiliated with Future Foundation, X-Factor, Generation X and X-Men. Rated across attributes, he scores 65 for intelligence, 5 for strength, 10 for speed, 15 for durability and 15 for combat, giving an overall score of 3.
+Leech is a good-aligned male character created by Marvel Comics, first appearing in Uncanny X-Men #179. He works as a Survivor, former student and is affiliated with Future Foundation, X-Factor, Generation X and X-Men. Rated on a 0-100 scale across attributes, he scores 65 for intelligence, 5 for strength, 10 for speed, 15 for durability and 15 for combat. On a separate overall ranking scale, his overall score is 3.

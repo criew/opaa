@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Canary (Injustice)
 
-Black Canary (Injustice), real name Dinah Laurel Lance, is a good-aligned female Metahuman character created by DC Comics, first appearing in Injustice 2. She has Blue eyes and Blond hair and stands 168 cm tall and weighs 59 kg. Her notable abilities include Peak Human Condition and Stealth. Rated across attributes, she scores 95 for intelligence, 20 for strength, 50 for speed, 45 for durability and 100 for combat, giving an overall score of 9.
+Black Canary (Injustice), real name Dinah Laurel Lance, is a good-aligned female Metahuman character created by DC Comics, first appearing in Injustice 2. She has Blue eyes and Blond hair and stands 168 cm tall and weighs 59 kg. Her notable abilities include Peak Human Condition and Stealth. Rated on a 0-100 scale across attributes, she scores 95 for intelligence, 20 for strength, 50 for speed, 45 for durability and 100 for combat. On a separate overall ranking scale, her overall score is 9.

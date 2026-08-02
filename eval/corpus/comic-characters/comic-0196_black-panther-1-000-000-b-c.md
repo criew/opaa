@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Black Panther (1,000,000 B.C.)
 
-Black Panther (1,000,000 B.C.), real name Unknown, is a character created by Marvel Comics. Their notable abilities include Durability, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated across attributes, they score 90 for intelligence, 30 for strength, 45 for speed, 55 for durability and 75 for combat, giving an overall score of 7.
+Black Panther (1,000,000 B.C.), real name Unknown, is a character created by Marvel Comics. Their notable abilities include Durability, Super Speed, Super Strength, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, they score 90 for intelligence, 30 for strength, 45 for speed, 55 for durability and 75 for combat. On a separate overall ranking scale, their overall score is 7.

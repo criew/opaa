@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Cyborg (Sonar Suit)
 
-Cyborg (Sonar Suit), real name Victor Stone, is a good-aligned male Cyborg character created by Lego, born in New york and first appearing in Lego Batman 3 bestond Gotham. He works as a Cyborg. He has Brown eyes and Black hair and stands 168 cm tall and weighs 45 kg. His notable abilities include Intelligence, Marksmanship and Weapon-Based Powers. Rated across attributes, he scores 100 for intelligence, 55 for strength, 55 for speed, 60 for durability and 60 for combat, giving an overall score of 10.
+Cyborg (Sonar Suit), real name Victor Stone, is a good-aligned male Cyborg character created by Lego, born in New york and first appearing in Lego Batman 3 bestond Gotham. He works as a Cyborg. He has Brown eyes and Black hair and stands 168 cm tall and weighs 45 kg. His notable abilities include Intelligence, Marksmanship and Weapon-Based Powers. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 55 for strength, 55 for speed, 60 for durability and 60 for combat. On a separate overall ranking scale, his overall score is 10.

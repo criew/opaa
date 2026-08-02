@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Misfit
 
-Misfit, real name Charlotte Gage-Radcliffe, is a good-aligned female character created by DC Comics, first appearing in Birds of Prey #96. She has Blue eyes and Red hair. Her notable abilities include Accelerated Healing, Super Strength and Teleportation. Rated across attributes, she scores 80 for intelligence, 30 for strength, 25 for speed, 80 for durability and 40 for combat, giving an overall score of 8.
+Misfit, real name Charlotte Gage-Radcliffe, is a good-aligned female character created by DC Comics, first appearing in Birds of Prey #96. She has Blue eyes and Red hair. Her notable abilities include Accelerated Healing, Super Strength and Teleportation. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 30 for strength, 25 for speed, 80 for durability and 40 for combat. On a separate overall ranking scale, her overall score is 8.

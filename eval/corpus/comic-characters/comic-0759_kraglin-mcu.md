@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Kraglin (MCU)
 
-Kraglin (MCU), real name Kraglin Obfonteri, is a bad-aligned male character created by Marvel Comics, first appearing in Guardians of the Galaxy. He has Blue eyes and Brown hair. His notable abilities include Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated across attributes, he scores 90 for intelligence, 10 for strength, 30 for speed, 25 for durability and 70 for combat, giving an overall score of 7.
+Kraglin (MCU), real name Kraglin Obfonteri, is a bad-aligned male character created by Marvel Comics, first appearing in Guardians of the Galaxy. He has Blue eyes and Brown hair. His notable abilities include Intelligence, Marksmanship, Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 10 for strength, 30 for speed, 25 for durability and 70 for combat. On a separate overall ranking scale, his overall score is 7.

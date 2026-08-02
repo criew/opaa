@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Lex Luthor (DCEU)
 
-Lex Luthor (DCEU), real name Alexander Joseph Luthor, is a bad-aligned male Human character created by DC Comics, born in Metropolis and first appearing in Batman v Superman: Dawn of Justice. He works as a Businessman, Scientist. He has Green eyes and Red hair and stands 170 cm tall and weighs 71 kg. His notable abilities include Intelligence and Marksmanship. Rated across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 20 for durability and 50 for combat, giving an overall score of 9.
+Lex Luthor (DCEU), real name Alexander Joseph Luthor, is a bad-aligned male Human character created by DC Comics, born in Metropolis and first appearing in Batman v Superman: Dawn of Justice. He works as a Businessman, Scientist. He has Green eyes and Red hair and stands 170 cm tall and weighs 71 kg. His notable abilities include Intelligence and Marksmanship. Rated on a 0-100 scale across attributes, he scores 100 for intelligence, 10 for strength, 15 for speed, 20 for durability and 50 for combat. On a separate overall ranking scale, his overall score is 9.

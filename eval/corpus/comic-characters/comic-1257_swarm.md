@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Swarm
 
-Swarm, real name Fritz von Meyer, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in Champions #14 (July, 1977). He works as a Ph.D. in toxicology & entomology. He has Yellow eyes and No Hair hair and stands 196 cm tall and weighs 47 kg. His notable abilities include Durability, Flight, Intelligence, Longevity, Shapeshifting, Size Changing and Super Strength. Rated across attributes, he scores 90 for intelligence, 20 for strength, 50 for speed, 90 for durability and 35 for combat, giving an overall score of 8.
+Swarm, real name Fritz von Meyer, is a bad-aligned male Mutant character created by Marvel Comics, first appearing in Champions #14 (July, 1977). He works as a Ph.D. in toxicology & entomology. He has Yellow eyes and is bald and stands 196 cm tall and weighs 47 kg. His notable abilities include Durability, Flight, Intelligence, Longevity, Shapeshifting, Size Changing and Super Strength. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 20 for strength, 50 for speed, 90 for durability and 35 for combat. On a separate overall ranking scale, his overall score is 8.

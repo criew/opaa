@@ -10,7 +10,7 @@ type_race: null
 place_of_birth: "Van Nuys, California"
 first_appearance: "Captain America Vol. 1 #192 (December, 1975)"
 occupation: "former Adventurer, Psychiatrist"
-teams: "Thunderbolts, Dark Avengers"
+teams: ["Thunderbolts", "Dark Avengers"]
 eye_color: "Blue"
 hair_color: "Blond"
 height_cm: 180
@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Moonstone
 
-Moonstone, real name Karla Sofen, is a bad-aligned female character created by Marvel Comics, born in Van Nuys, California and first appearing in Captain America Vol. 1 #192 (December, 1975). She works as a former Adventurer, Psychiatrist and is affiliated with Thunderbolts and Dark Avengers. She has Blue eyes and Blond hair and stands 180 cm tall and weighs 59 kg. Her notable abilities include Durability, Energy Blasts, Flight, Super Speed and Super Strength. Rated across attributes, she scores 80 for intelligence, 65 for strength, 45 for speed, 50 for durability and 80 for combat, giving an overall score of 7.
+Moonstone, real name Karla Sofen, is a bad-aligned female character created by Marvel Comics, born in Van Nuys, California and first appearing in Captain America Vol. 1 #192 (December, 1975). She works as a former Adventurer, Psychiatrist and is affiliated with Thunderbolts and Dark Avengers. She has Blue eyes and Blond hair and stands 180 cm tall and weighs 59 kg. Her notable abilities include Durability, Energy Blasts, Flight, Super Speed and Super Strength. Rated on a 0-100 scale across attributes, she scores 80 for intelligence, 65 for strength, 45 for speed, 50 for durability and 80 for combat. On a separate overall ranking scale, her overall score is 7.
