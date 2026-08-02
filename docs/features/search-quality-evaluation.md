@@ -357,28 +357,40 @@ Entwicklungsumgebung ihn nicht startet.
 **Sie existiert bereits: `opaa.ewerlin.com`.** Es ist also kein Hosting aufzubauen, sondern der
 Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 
-> **Korrektur (aus dem Review zu PR #247).** Zwei Aussagen in diesem Abschnitt waren falsch und
-> sind nachfolgend berichtigt: Die Instanz läuft **nicht** auf Ollama, sondern auf **OpenAI**, und
-> es wird **kein anonymer Lesezugriff** eingeführt. Beide Punkte hat der Maintainer klargestellt.
+> **Korrektur (aus dem Review zu PR #247), zweite Fassung (2026-08-02).** Dieser Abschnitt wurde
+> zweimal berichtigt. Aus dem Review zu #247 stammt, dass **kein anonymer Lesezugriff** eingeführt
+> wird und dass die Instanz nicht mit dem Ollama-Anwendungsdefault läuft. Die damalige Ersatzangabe
+> „die Instanz läuft auf **OpenAI**" war jedoch selbst ungenau und ist inzwischen präzisiert:
+> **Das Chat-Modell stammt von Anthropic, die Einbettung läuft lokal über Ollama.** Alle Punkte hat
+> der Maintainer klargestellt.
 > Was das für die Begründung von ADR-0011 bedeutet, steht dort im
 > [Nachtrag](../decisions/0011-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
 
 Drei Folgerungen:
 
-- **Die Instanz läuft auf OpenAI.** Der Maintainer hat bestätigt, dass `opaa.ewerlin.com` ein
-  kommerzielles Modell über OpenAI nutzt. Das deckt sich mit `.env.example`, das für den
-  Compose-Betrieb `OPAA_AI_CHAT_PROVIDER=openai` und `OPAA_AI_EMBEDDING_PROVIDER=openai` setzt;
-  lediglich der *Anwendungs-Default* in `application.yml` lautet `ollama`. Die frühere Aussage
-  („bestehende Ollama-Konfiguration mit `phi3:mini`, kein Kostenrisiko") verwechselte diese beiden
-  Ebenen und ist zurückgezogen.
-- **Damit besteht ein echtes Kostenrisiko.** Jede Demo-Anfrage erzeugt Token-Kosten beim Anbieter.
-  Der Zugriff ist zwar account-gebunden (siehe unten), anonymer Massenzugriff also ausgeschlossen —
-  aber ein einzelnes berechtigtes Konto kann laufende Kosten in unbegrenzter Höhe auslösen, und die
-  Zahl der Konten wächst mit dem Erfolg der Demo. Kostenbegrenzung ist deshalb eine
-  Betriebsanforderung, kein optionaler Schutz.
-- **Die Instanz ist nirgends dokumentiert.** Weder `docs/deployment.md` noch `docker-compose.yml`
-  erwähnen sie. Das ist eine eigenständige Lücke und wird als eigenes Dokumentations-Issue geführt
-  (#244); ohne diese Beschreibung kann ein Entwickler den Rollout gar nicht durchführen.
+- **Das Chat-Modell ist ein kommerzielles Modell von Anthropic** (`claude-haiku-4-5`), angebunden
+  über Anthropics OpenAI-kompatible Schicht. Deshalb steht `OPAA_AI_CHAT_PROVIDER` formal auf
+  `openai`, obwohl kein OpenAI-Modell im Spiel ist — der Wert bezeichnet hier das Protokoll, nicht
+  den Anbieter. Genau daraus entstand die frühere Fehllesart. Zurückgezogen sind damit **beide**
+  bisherigen Angaben: die ursprüngliche („bestehende Ollama-Konfiguration mit `phi3:mini`, kein
+  Kostenrisiko") und die erste Korrektur („die Instanz läuft auf OpenAI"). Anthropic bezeichnet die
+  Kompatibilitätsschicht selbst als Werkzeug zum Testen und Vergleichen, nicht als produktionsreifen
+  Zugang; für eine Testinstanz ist das vertretbar, für einen Dauerbetrieb wäre die native Anbindung
+  zu wählen.
+- **Die Einbettung läuft lokal über Ollama mit `nomic-embed-text`** (768 Dimensionen,
+  `OPAA_PGVECTOR_DIMENSIONS=768`). Das ist keine Übergangslösung: Anthropic bietet keine
+  Embeddings-API an, die Zweiteilung Chat-Anbieter / lokales Embedding-Modell ist deshalb dauerhaft.
+- **Das Kostenrisiko besteht, betrifft aber nur den Chat.** Jede Demo-Anfrage erzeugt Token-Kosten
+  beim Chat-Anbieter. Der Zugriff ist zwar account-gebunden (siehe unten), anonymer Massenzugriff
+  also ausgeschlossen — aber ein einzelnes berechtigtes Konto kann laufende Kosten in unbegrenzter
+  Höhe auslösen, und die Zahl der Konten wächst mit dem Erfolg der Demo. Kostenbegrenzung bleibt
+  eine Betriebsanforderung. Die **Indizierung ist dagegen kostenlos**, weil sie lokal einbettet; ein
+  Rollout oder eine Neuindizierung des Korpus kostet unabhängig von seiner Größe nichts.
+- **Der CI-Harness und die Instanz betten identisch ein.** Beide verwenden `nomic-embed-text` über
+  Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
+  auf `opaa.ewerlin.com` erlebt — siehe den Nachtrag im ADR.
+- **Die Instanz ist inzwischen dokumentiert.** `docs/deployment.md` beschreibt sie seit #244; die
+  Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind mit #269 ergänzt.
 
 ### Zugangsmodell: account-gebunden, kein Gastzugang
 
@@ -401,8 +413,8 @@ Anforderungen an den Betrieb der Instanz:
 - **Zugriff nur mit Konto.** Authentifizierung über Keycloak für alle Endpunkte, auch für die
   Suche; keine anonymen Lesepfade. Der Indizierungs-Endpunkt ist bereits auf `SYSTEM_ADMIN`
   beschränkt und bleibt es.
-- **Harter Kostendeckel beim Anbieter.** Ein Ausgabenlimit auf dem OpenAI-Konto, damit ein Fehler
-  oder Missbrauch nicht in eine offene Rechnung läuft. Ein Deckel wirkt auch dann, wenn das Rate
+- **Harter Kostendeckel beim Anbieter.** Ein Ausgabenlimit auf dem Konto des Chat-Anbieters, damit
+  ein Fehler oder Missbrauch nicht in eine offene Rechnung läuft. Ein Deckel wirkt auch dann, wenn das Rate
   Limiting falsch konfiguriert ist — deshalb beides, nicht eines davon.
 - **Rate Limiting** ist vorhanden (`opaa.rate-limit`) und muss für die Demo scharf gestellt sein —
   pro Konto *und* global. Es ist jetzt die primäre Kostenbremse und nicht mehr nur der Schutz einer
@@ -450,7 +462,7 @@ Vom Maintainer entschieden:
 |---|---|
 | 1 | **Phase-1-Quelle:** `jrtec/Superheroes` (CC0-1.0). Der FiveThirtyEight-Datensatz entfällt. |
 | 2 | **Multi-Tenancy:** ein gemeinsamer Index, Domänentrennung über Dateinamen-Präfix. Die Workspace-Variante wartet auf #115/#117, nicht auf Epic #198. |
-| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. Sie läuft auf **OpenAI**, nicht auf Ollama — *korrigiert am 2026-08-02; die vorherige Angabe „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" war falsch.* Daraus folgt ein reales Kostenrisiko pro Anfrage, das über Ausgabenlimit und Rate Limiting begrenzt wird. |
+| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. **Chat: `claude-haiku-4-5` von Anthropic** über dessen OpenAI-kompatible Schicht (`OPAA_AI_CHAT_PROVIDER=openai` bezeichnet das Protokoll, nicht den Anbieter). **Einbettung: `nomic-embed-text` lokal über Ollama**, 768 Dimensionen. *Zweimal korrigiert am 2026-08-02: zuerst war „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" falsch, dann die Ersatzangabe „läuft auf OpenAI" ungenau.* Ein reales Kostenrisiko pro Anfrage besteht nur beim Chat und wird über Ausgabenlimit und Rate Limiting begrenzt; die Indizierung ist kostenlos. |
 | 4 | **Korpus-Ablage:** Hauptrepository mit SHA-256-Manifest; Neubewertung bei der Ausweitung auf vier Domänen. |
 | 5 | **ADR-0011** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
 | 6 | **Zugangsmodell der Demo:** account-gebunden hinter Keycloak. Kein Gast- und kein Read-only-Zugang. *Korrigiert am 2026-08-02; die vorherige Anforderung „anonymer Lesezugriff" ist gestrichen.* Für diese Entscheidung wird ausdrücklich **kein ADR** angelegt. |
@@ -477,11 +489,13 @@ Vom Product Manager gesetzt, mangels Rückfrage, weiterhin widerrufbar:
 Die Fragen zu Lizenz, Demo-Hosting, Korpus-Ablage und Multi-Tenancy sind entschieden und stehen
 oben unter [Festlegungen](#festlegungen). Offen bleibt:
 
-1. **Laufende Kosten der Demo:** Die Instanz nutzt OpenAI, jede Anfrage kostet Geld. Wie hoch die
-   Kosten pro Monat tatsächlich ausfallen, lässt sich erst beziffern, wenn der Korpus dort liegt
-   und Anfragen laufen. Offen bleibt, ab welchem Betrag der Maintainer gegensteuert und womit —
-   engeres Rate Limit, kleineres Modell (z. B. `gpt-4o-mini`) oder ein Wechsel der Demo auf ein
-   lokales Modell. Erst messen, dann entscheiden.
+1. **Laufende Kosten der Demo:** Jede Chat-Anfrage kostet Geld beim Anbieter des Chat-Modells; die
+   Einbettung ist kostenlos, weil sie lokal läuft. Wie hoch die Kosten pro Monat tatsächlich
+   ausfallen, lässt sich erst beziffern, wenn der Korpus dort liegt und Anfragen laufen. Offen
+   bleibt, ab welchem Betrag der Maintainer gegensteuert und womit — engeres Rate Limit, ein
+   nochmals kleineres Chat-Modell oder ein Wechsel der Demo auf ein lokales Chat-Modell. Mit
+   `claude-haiku-4-5` ist bereits das kleinste Modell seiner Familie im Einsatz, der Spielraum nach
+   unten ist also begrenzt. Erst messen, dann entscheiden.
 2. **Niedrigschwelliger Zugang:** Die Anmeldepflicht kostet die Demo ihren stärksten Effekt. Ein
    Gastzugang bliebe die wirksamste Variante, ist aber vom Maintainer abgelehnt, solange die
    Kostenfrage nicht geklärt ist. Falls sie geklärt wird, wäre der Punkt neu zu bewerten — mit
