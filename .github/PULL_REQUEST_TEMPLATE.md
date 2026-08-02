@@ -17,6 +17,7 @@ Closes #
 ## Checkliste
 
 - [ ] Tests bestehen lokal
+- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)
 - [ ] Dokumentation aktualisiert (falls zutreffend)
 - [ ] Keine Secrets oder Anmeldeinformationen committet
 - [ ] Commit-Nachrichten folgen Conventional Commits

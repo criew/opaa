@@ -182,8 +182,21 @@ Die Unterschrift wird automatisch erfasst und muss nur einmal pro GitHub-Account
 - Code nicht umstrukturieren, sofern nicht ausdrücklich verlangt
 - Vor dem Erstellen neuer Dateien prüfen, ob ähnliche Muster oder Hilfsfunktionen bereits existieren
 - Kleine, fokussierte Commits gegenüber großen bevorzugen
-- Bei der Behebung eines Bugs zuerst einen Test schreiben, der den Bug reproduziert
+- Bei der Behebung eines Bugs zuerst einen Test schreiben, der den Bug reproduziert — und **nachweisen, dass er auf dem fehlerhaften Stand tatsächlich fehlschlägt** (siehe [Reproduktionsnachweis](#reproduktionsnachweis))
 - `docs/decisions/` für Architecture Decision Records vor größeren strukturellen Änderungen lesen
+
+### Reproduktionsnachweis
+
+Ein Test, der den Fehler nicht fangen würde, ist wertlos — und das fällt am Ergebnis nicht auf, weil er ja grün ist.
+
+Deshalb gilt bei jeder Fehlerbehebung: Den Fix vorübergehend zurücknehmen, den Test laufen lassen, das Fehlschlagen belegen, den Fix wiederherstellen, erneut laufen lassen. **Beide Ergebnisse gehören in die PR-Beschreibung**, mit der konkreten Fehlermeldung des roten Laufs.
+
+Typische Ursachen dafür, dass ein Test den Fehler verfehlt:
+
+- **Er prüft eine Bedingung, die vor und nach dem Fix gilt** — etwa „irgendwann wurde invalidiert" statt „zum richtigen Zeitpunkt".
+- **Er läuft gegen ein anderes Schema als die Produktion.** Mit `ddl-auto=create-drop` erzeugt Hibernate keine Fremdschlüssel für einfache `UUID`-Spalten ohne `@ManyToOne`, Liquibase dagegen schon. Für alles FK-abhängige gehört `spring.liquibase.enabled=true` und `ddl-auto=none` in den Test.
+- **Er führt den geänderten Code gar nicht aus** — etwa Liquibase-Changelogs, die in den regulären Integrationstests nicht angewendet werden. Dafür gibt es das Muster in `backend/src/test/java/io/opaa/migration/`.
+- **Er mockt genau die Stelle weg, um die es geht** — ein gemockter `PlatformTransactionManager` führt keine Propagation aus, ein gemockter API-Client validiert keinen Request-Body.
 
 ## Sicherheit
 

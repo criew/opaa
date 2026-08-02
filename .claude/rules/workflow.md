@@ -6,6 +6,7 @@
 - Das PR-Template verwenden
 - PRs fokussiert halten: eine logische Änderung pro PR
 - Bei der Behebung eines Issues im PR-Body mit „Closes #N" referenzieren
+- Bei Fehlerbehebungen den **Reproduktionsnachweis** in die PR-Beschreibung aufnehmen: Test gegen den fehlerhaften Stand laufen lassen und das Fehlschlagen mit Fehlermeldung belegen, dann mit dem Fix erneut. Ein grüner Test allein beweist nicht, dass er den Fehler gefangen hätte (siehe `AGENTS.md`, Abschnitt „Reproduktionsnachweis")
 
 ## Git Worktrees für parallele Sessions
 
