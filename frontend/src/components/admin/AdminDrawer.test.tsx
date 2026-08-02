@@ -41,6 +41,18 @@ describe('AdminDrawer', () => {
     expect(useIndexingStore.getState().drawerOpen).toBe(false)
   })
 
+  it('labels the URL source fields for assistive technology', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AdminDrawer />)
+
+    await user.click(screen.getByText('URL Source (optional)'))
+
+    expect(screen.getByLabelText('URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('Proxy')).toBeInTheDocument()
+    expect(screen.getByLabelText('Credentials')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Skip SSL verification' })).toBeInTheDocument()
+  })
+
   it('disables button when indexing is running', () => {
     useIndexingStore.setState({ status: 'RUNNING' })
     renderWithProviders(<AdminDrawer />)
