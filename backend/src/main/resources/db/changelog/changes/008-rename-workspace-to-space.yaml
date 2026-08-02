@@ -258,7 +258,14 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_spaces_organization
             onDelete: RESTRICT
+        - addUniqueConstraint:
+            tableName: spaces
+            columnNames: id, organization_id
+            constraintName: uk_spaces_id_organization
       rollback:
+        - dropUniqueConstraint:
+            tableName: spaces
+            constraintName: uk_spaces_id_organization
         - dropForeignKeyConstraint:
             baseTableName: spaces
             constraintName: fk_spaces_organization
@@ -348,8 +355,16 @@ databaseChangeLog:
       author: opaa
       comment: >
         Remap membership roles: VIEWER->MEMBER, EDITOR->CURATOR, ADMIN->ADMIN, OWNER->ADMIN.
-        No data is lost - the actual owner remains recorded in spaces.owner_id.
+        No data is lost - the actual owner remains recorded in spaces.owner_id. The old check
+        constraint is dropped BEFORE the UPDATE (and the new one only added after), because the
+        old constraint only allows VIEWER/EDITOR/ADMIN/OWNER and would reject the very rows this
+        changeSet is remapping to MEMBER/CURATOR on any non-empty membership table.
       changes:
+        - sql:
+            comment: "Drop the old check constraint for workspace membership role values first"
+            sql: >
+              ALTER TABLE space_memberships
+              DROP CONSTRAINT IF EXISTS chk_workspace_memberships_role;
         - sql:
             comment: "Remap workspace roles onto the three space roles"
             sql: >
@@ -360,26 +375,17 @@ databaseChangeLog:
                 ELSE role
               END;
         - sql:
-            comment: "Drop the old check constraint for workspace membership role values"
-            sql: >
-              ALTER TABLE space_memberships
-              DROP CONSTRAINT IF EXISTS chk_workspace_memberships_role;
-        - sql:
-            comment: "Add check constraint for space membership role values"
+            comment: "Add check constraint for space membership role values only after the remap"
             sql: >
               ALTER TABLE space_memberships
               ADD CONSTRAINT chk_space_memberships_role
               CHECK (role IN ('MEMBER', 'CURATOR', 'ADMIN'));
       rollback:
         - sql:
+            comment: "Drop the new check constraint before reversing the remap, for the same reason"
             sql: >
               ALTER TABLE space_memberships
               DROP CONSTRAINT IF EXISTS chk_space_memberships_role;
-        - sql:
-            sql: >
-              ALTER TABLE space_memberships
-              ADD CONSTRAINT chk_workspace_memberships_role
-              CHECK (role IN ('VIEWER', 'EDITOR', 'ADMIN', 'OWNER'));
         - sql:
             comment: >
               The reverse mapping is lossy by construction (ADMIN no longer distinguishes
@@ -391,6 +397,12 @@ databaseChangeLog:
                 WHEN 'CURATOR' THEN 'EDITOR'
                 ELSE role
               END;
+        - sql:
+            comment: "Restore the old check constraint only after the reverse remap has completed"
+            sql: >
+              ALTER TABLE space_memberships
+              ADD CONSTRAINT chk_workspace_memberships_role
+              CHECK (role IN ('VIEWER', 'EDITOR', 'ADMIN', 'OWNER'));
 
   - changeSet:
       id: 008-add-space-memberships-organization
@@ -419,7 +431,17 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_space_memberships_organization
             onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: space_memberships
+            baseColumnNames: space_id, organization_id
+            referencedTableName: spaces
+            referencedColumnNames: id, organization_id
+            constraintName: fk_space_memberships_space_organization
+            onDelete: CASCADE
       rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: space_memberships
+            constraintName: fk_space_memberships_space_organization
         - dropForeignKeyConstraint:
             baseTableName: space_memberships
             constraintName: fk_space_memberships_organization

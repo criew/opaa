@@ -103,9 +103,30 @@ Da dieses Projekt keinen eigenständigen Liquibase-Gradle-Plugin-Task besitzt, l
 3. Das Mengengerüst (siehe unten) vor und nach dem Start vergleichen.
 4. Den Wegwerf-Container verwerfen — die echte Umgebung wurde zu keinem Zeitpunkt berührt.
 
-Dasselbe Verfahren deckt `OpaaApplicationTests` (`@SpringBootTest` mit Testcontainers) automatisiert für
+`OpaaApplicationTests` (`@SpringBootTest` mit Testcontainers) deckt einen Teil davon automatisiert für
 jeden CI-Lauf ab: Der Kontextstart schlägt fehl, wenn irgendein Changeset in diesem Changelog nicht
-sauber gegen eine frische PostgreSQL/pgvector-Instanz anwendbar ist.
+sauber anwendbar ist. **Das beweist aber nur, dass die DDL syntaktisch korrekt ist — nicht, dass eine
+Datenmigration einen nicht-leeren Bestand übersteht**, weil diese Datenbank beim Kontextstart leer ist.
+Ein reiner Umbenennungs-Changelog ohne UPDATE-Anweisungen wäre damit ausreichend getestet; ein
+Changeset, das bestehende Zeilen umschreibt (wie `008-remap-space-membership-roles`), ist es nicht —
+genau ein solches Changeset enthielt den Blocker, der leeres CI passierte, aber gegen jede Datenbank mit
+mindestens einer `VIEWER`- oder `EDITOR`-Mitgliedschaft eine Constraint-Verletzung geworfen hätte.
+
+Ebenso decken `SpaceServiceIntegrationTest` und `SpaceRepositoryTest` diesen Changelog **nicht** ab:
+Beide laufen mit `spring.liquibase.enabled=false` und `spring.jpa.hibernate.ddl-auto=create-drop`: Ihr
+Schema kommt direkt von Hibernate und kennt weder `organizations` noch irgendeine der in Migration 008
+angelegten CHECK-Constraints. Sie sind wertvolle Tests für `SpaceService`, aber kein Beleg für die
+Anwendbarkeit der Migration.
+
+Die tatsächliche Prüfung der Datenmigration gegen einen nicht-leeren, realistischen Altbestand liegt in
+`backend/src/test/java/io/opaa/migration/Migration008RenameWorkspaceToSpaceTest.java`: Der Test wendet
+die echten, versionierten Changesets 001–007 auf eine frische Testcontainer-Datenbank an, säht
+Alt-Zeilen mit beiden historischen Workspace-Typen und allen vier historischen Rollen, wendet
+Changelog 008 in Isolation an und prüft anschließend das Mengengerüst sowie die Rollen- und
+Typabbildung. Dieser Test ist als Muster für künftige Datenmigrationen gedacht (siehe #237, #238):
+eine kleine Fixture-Changelog-Datei mit den Changesets bis unmittelbar vor der neuen Migration
+(analog `test-master-through-007.yaml`), Alt-Zeilen per JDBC einfügen, die neue Changelog-Datei
+isoliert anwenden, Mengengerüst und Wertabbildung prüfen.
 
 **Mengengerüst vor/nach:** Vor der Migration:
 
@@ -131,7 +152,8 @@ Migration keine Zeile verliert.
 
 **Einschränkung dieses PRs:** Ein Abgleich gegen eine echte Kopie eines produktiven Datenbestands war
 im Rahmen dieser Änderung nicht möglich, weil das Projekt vor 1.0 steht und kein produktiver
-Datenbestand existiert. Der Trockenlauf wurde stattdessen gegen die lokale Testcontainer-Datenbank mit
-über die Integrationstests erzeugten Beispieldaten durchgeführt (siehe `SpaceServiceIntegrationTest`,
-`SpaceRepositoryTest`). Sobald ein produktiver Datenbestand existiert, ist dieses Verfahren unverändert
-darauf anzuwenden.
+Datenbestand existiert. Der Trockenlauf wurde stattdessen gegen eine lokale Testcontainer-Datenbank mit
+synthetischen, aber realistischen Alt-Zeilen durchgeführt (`Migration008RenameWorkspaceToSpaceTest`,
+siehe oben) — nicht gegen leere Tabellen, und nicht über Tests, die den Changelog gar nicht ausführen.
+Sobald ein produktiver Datenbestand existiert, ist das dort beschriebene Verfahren (Schritte 1–4 dieses
+Abschnitts) unverändert darauf anzuwenden.

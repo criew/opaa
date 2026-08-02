@@ -5,9 +5,11 @@ import io.opaa.api.dto.SpaceMemberRequest;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
+import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,6 +53,11 @@ public class SpaceService {
           HttpStatus.FORBIDDEN,
           "Nur Systemadministratoren können beim Erstellen einen anderen Eigentümer festlegen");
     }
+    if (!ownerId.equals(currentUserId)) {
+      // The organization boundary is checked even for system admins - a user from another
+      // organization must not become owner of a space in this one.
+      requireUserInOrganization(ownerId, currentUser.getOrganizationId());
+    }
 
     SpaceVisibility visibility =
         request.getVisibility() != null ? request.getVisibility() : SpaceVisibility.PRIVATE;
@@ -88,9 +95,12 @@ public class SpaceService {
     return toSpaceResponse(space, currentUserId);
   }
 
-  public List<SpaceMemberResponse> listMembers(UUID spaceId, UUID currentUserId) {
+  public List<SpaceMemberResponse> listMembers(
+      UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
-    requireMembership(space, currentUserId);
+    if (!systemAdmin) {
+      requireMembership(space, currentUserId);
+    }
 
     List<UUID> userIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
     Map<UUID, String> displayNames = resolveDisplayNames(userIds);
@@ -109,6 +119,9 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
     rejectPersonalSpaceMemberChanges(space);
+    // Resolving the target user first also turns a non-existent userId into a clean 404 instead
+    // of a raw foreign-key violation from the membership insert below.
+    requireUserInOrganization(memberUserId, space.getOrganizationId());
 
     if (userMembership(space, memberUserId) != null) {
       throw new ResponseStatusException(
@@ -138,6 +151,12 @@ public class SpaceService {
     SpaceMembership target = userMembership(space, memberUserId);
     if (target == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Mitglied des Space nicht gefunden");
+    }
+    if (space.getOwnerId().equals(memberUserId) && newRole != SpaceRole.ADMIN) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "Die Rolle des Eigentümers kann nicht geändert werden; übertragen Sie zuerst die"
+              + " Verantwortung");
     }
 
     target.setRole(newRole);
@@ -187,7 +206,7 @@ public class SpaceService {
 
   @Transactional
   public SpaceResponse updateSpace(
-      UUID spaceId, SpaceRequest request, UUID currentUserId, boolean systemAdmin) {
+      UUID spaceId, SpaceUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
 
     SpaceMembership membership = userMembership(space, currentUserId);
@@ -202,7 +221,7 @@ public class SpaceService {
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
-    space.updateDetails(normalizedName, request.getDescription());
+    space.updateDetails(normalizedName, request.getDescription(), request.getVisibility());
     Space updated = spaceRepository.save(space);
     return toSpaceResponse(updated, currentUserId);
   }
@@ -288,6 +307,22 @@ public class SpaceService {
   }
 
   /**
+   * Resolves a user and enforces the organization boundary for it. Used for every foreign userId
+   * that a request body can supply (owner, initial members, added members) - without this, a
+   * request could reference a user from another organization and the resulting membership row would
+   * silently violate the organization invariant. Returns 404 rather than 403 both when the user
+   * does not exist and when it belongs to a different organization, so that a caller cannot
+   * distinguish "no such user" from "user in another organization".
+   */
+  private User requireUserInOrganization(UUID userId, UUID organizationId) {
+    User user = requireUser(userId);
+    if (!user.getOrganizationId().equals(organizationId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden");
+    }
+    return user;
+  }
+
+  /**
    * Loads a space and enforces the organization boundary. A space belonging to a different
    * organization than the caller is treated as not found - the boundary is not overstepped even to
    * reveal existence, and this applies to system administrators as well.
@@ -350,7 +385,7 @@ public class SpaceService {
 
   private void appendInitialMemberships(
       Space space, UUID ownerId, List<SpaceMemberRequest> initialMembers) {
-    Map<UUID, SpaceRole> resolvedRoles = new java.util.LinkedHashMap<>();
+    Map<UUID, SpaceRole> resolvedRoles = new LinkedHashMap<>();
     if (initialMembers != null) {
       for (SpaceMemberRequest member : initialMembers) {
         if (member == null) {
@@ -361,8 +396,14 @@ public class SpaceService {
     }
     resolvedRoles.put(ownerId, SpaceRole.ADMIN);
     resolvedRoles.forEach(
-        (userId, role) ->
-            space.addMembership(new SpaceMembership(userId, role, space.getOrganizationId())));
+        (userId, role) -> {
+          // Every initial member - not just the owner - must belong to the same organization as
+          // the space being created; otherwise any user could be added to a space without ever
+          // being validated as an admin action, and the membership would violate the
+          // organization invariant.
+          requireUserInOrganization(userId, space.getOrganizationId());
+          space.addMembership(new SpaceMembership(userId, role, space.getOrganizationId()));
+        });
   }
 
   private SpaceMembership userMembership(Space space, UUID userId) {

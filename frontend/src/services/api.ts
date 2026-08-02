@@ -10,6 +10,8 @@ import type {
   SpaceMemberResponse,
   SpaceRole,
   SpaceResponse,
+  SpaceUpdateRequest,
+  SpaceVisibility,
   UserInfo,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
@@ -136,14 +138,11 @@ export async function updateSpaceDetails(
   spaceId: string,
   name: string,
   description: string,
+  visibility?: SpaceVisibility,
 ): Promise<SpaceResponse> {
   try {
-    const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, {
-      name,
-      description,
-      ownerId: null,
-      initialMembers: [],
-    })
+    const body: SpaceUpdateRequest = { name, description, visibility }
+    const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, body)
     return data
   } catch (err) {
     normalizeError(err)

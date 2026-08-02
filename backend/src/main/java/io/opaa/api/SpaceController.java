@@ -7,6 +7,7 @@ import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceRoleUpdateRequest;
 import io.opaa.api.dto.SpaceTransferOwnershipRequest;
+import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -70,7 +71,7 @@ public class SpaceController {
   @PutMapping("/{spaceId}")
   public SpaceResponse updateSpace(
       @PathVariable UUID spaceId,
-      @Valid @RequestBody SpaceRequest request,
+      @Valid @RequestBody SpaceUpdateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     return spaceService.updateSpace(
@@ -93,7 +94,8 @@ public class SpaceController {
   public List<SpaceMemberResponse> listMembers(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.listMembers(spaceId, currentUser.getId());
+    return spaceService.listMembers(
+        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @PostMapping("/{spaceId}/members")

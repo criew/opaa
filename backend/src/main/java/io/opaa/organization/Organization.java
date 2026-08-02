@@ -3,6 +3,7 @@ package io.opaa.organization;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -37,6 +38,13 @@ public class Organization {
   public Organization(UUID id, String name) {
     this.id = id;
     this.name = name;
+  }
+
+  @PrePersist
+  void onCreate() {
+    if (this.createdAt == null) {
+      this.createdAt = Instant.now();
+    }
   }
 
   public UUID getId() {

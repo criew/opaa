@@ -91,9 +91,12 @@ public class Space {
     membership.assignSpace(null);
   }
 
-  public void updateDetails(String name, String description) {
+  public void updateDetails(String name, String description, SpaceVisibility visibility) {
     this.name = name;
     this.description = description;
+    if (visibility != null) {
+      this.visibility = visibility;
+    }
   }
 
   public void transferOwnershipTo(UUID newOwnerId) {

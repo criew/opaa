@@ -7,6 +7,7 @@ import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberRequest;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
+import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.List;
@@ -438,6 +439,173 @@ class SpaceServiceIntegrationTest {
 
     List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(userId);
     assertThat(spaces).hasSize(1);
+  }
+
+  @Test
+  void addMemberRejectsAUserFromAnotherOrganization() {
+    UUID owner = createUser(organizationA);
+    UUID outsider = createUser(organizationB);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(
+            () -> spaceService.addMember(saved.getId(), outsider, SpaceRole.MEMBER, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
+  }
+
+  @Test
+  void addMemberRejectsANonExistentUserWithNotFoundInsteadOfAServerError() {
+    UUID owner = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(
+            () -> spaceService.addMember(saved.getId(), UUID.randomUUID(), SpaceRole.MEMBER, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void createSpaceRejectsAnOwnerFromAnotherOrganizationEvenForSystemAdmin() {
+    UUID admin = createUser(organizationA);
+    UUID outsider = createUser(organizationB);
+    SpaceRequest request =
+        new SpaceRequest("Engineering", SpaceKind.TEAM).ownerId(outsider).initialMembers(List.of());
+
+    assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThat(spaceRepository.findAll()).isEmpty();
+  }
+
+  @Test
+  void createSpaceRejectsAnInitialMemberFromAnotherOrganization() {
+    UUID admin = createUser(organizationA);
+    UUID outsider = createUser(organizationB);
+    SpaceRequest request =
+        new SpaceRequest("Engineering", SpaceKind.TEAM)
+            .initialMembers(List.of(new SpaceMemberRequest(outsider, SpaceRole.MEMBER)));
+
+    assertThatThrownBy(() -> spaceService.createSpace(request, admin, true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThat(spaceRepository.findAll()).isEmpty();
+  }
+
+  @Test
+  void adminCannotChangeTheOwnersRoleAwayFromAdmin() {
+    UUID owner = createUser(organizationA);
+    UUID admin = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(admin, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(
+            () -> spaceService.updateMemberRole(saved.getId(), owner, SpaceRole.MEMBER, admin))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+
+    Space reloaded = spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow();
+    assertThat(reloaded.getMemberships())
+        .filteredOn(m -> m.getUserId().equals(owner))
+        .extracting(SpaceMembership::getRole)
+        .containsExactly(SpaceRole.ADMIN);
+  }
+
+  @Test
+  void systemAdminCanListMembersWithoutBeingAMember() {
+    UUID owner = createUser(organizationA);
+    UUID admin = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThat(spaceService.listMembers(saved.getId(), admin, true)).hasSize(1);
+  }
+
+  @Test
+  void nonMemberCannotListMembers() {
+    UUID owner = createUser(organizationA);
+    UUID outsider = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), outsider, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void updateSpaceAppliesVisibilityInsteadOfSilentlyIgnoringIt() {
+    UUID owner = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team", "Team docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    SpaceUpdateRequest request =
+        new SpaceUpdateRequest("Team").description("Team docs").visibility(SpaceVisibility.OPEN);
+    SpaceResponse response = spaceService.updateSpace(saved.getId(), request, owner, false);
+
+    assertThat(response.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
+    Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
+    assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.OPEN);
+  }
+
+  @Test
+  void updateSpaceKeepsVisibilityWhenNotProvided() {
+    UUID owner = createUser(organizationA);
+    Space space =
+        new Space(
+            "Team",
+            "Team docs",
+            SpaceKind.TEAM,
+            SpaceVisibility.DISCOVERABLE,
+            owner,
+            organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    SpaceUpdateRequest request = new SpaceUpdateRequest("Team").description("Team docs");
+    spaceService.updateSpace(saved.getId(), request, owner, false);
+
+    Space reloaded = spaceRepository.findById(saved.getId()).orElseThrow();
+    assertThat(reloaded.getVisibility()).isEqualTo(SpaceVisibility.DISCOVERABLE);
   }
 
   @Test

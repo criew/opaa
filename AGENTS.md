@@ -70,7 +70,7 @@ npm run format                          # Automatisch mit Prettier formatieren
 
 - **Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden** (`backend/src/main/resources/openapi/opaa-api.yaml`) — niemals DTO-Klassen in `io.opaa.api.dto` manuell schreiben
 - Änderungen an Request-/Response-Schemas beginnen mit einer Spec-Änderung, dann werden die generierten DTOs verwendet
-- Domain-Enums in DTOs (z. B. `WorkspaceRole`, `WorkspaceType`) werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt
+- Domain-Enums in DTOs (z. B. `SpaceRole`, `SpaceKind`) werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt
 - Beim Hinzufügen neuer Domain-Enums zur API `typeMappings`, `importMappings` und den `doLast`-Cleanup-Block in `build.gradle.kts` aktualisieren
 - Frontend-Typen werden aus derselben Spezifikation über `openapi-typescript` generiert
 

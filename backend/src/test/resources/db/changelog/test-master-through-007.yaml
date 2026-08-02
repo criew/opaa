@@ -1,0 +1,23 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 007 - i.e. the schema exactly as it existed immediately before migration 008.
+#
+# Used by Migration008RenameWorkspaceToSpaceTest to build a realistic pre-migration database
+# (via the real, versioned changelog files, not a hand-rolled schema) and then seed legacy data
+# before applying 008 in isolation. When a later migration changelog needs the same kind of test
+# (see #237, #238), add an analogous "test-master-through-0NN.yaml" fixture listing everything up
+# to the changeSet immediately preceding it.
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-enable-pgvector-extension.yaml
+  - include:
+      file: db/changelog/changes/002-create-documents-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-indexing-jobs-table.yaml
+  - include:
+      file: db/changelog/changes/004-add-source-type-to-documents.yaml
+  - include:
+      file: db/changelog/changes/005-create-users-table.yaml
+  - include:
+      file: db/changelog/changes/006-add-system-role-to-users.yaml
+  - include:
+      file: db/changelog/changes/007-create-workspaces-and-memberships.yaml

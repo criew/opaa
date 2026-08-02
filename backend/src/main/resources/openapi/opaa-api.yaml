@@ -257,13 +257,13 @@ paths:
     put:
       operationId: updateSpace
       tags: [space]
-      summary: Update space name and description (admin or owner only)
+      summary: Update space name, description and visibility (admin or owner only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SpaceRequest"
+              $ref: "#/components/schemas/SpaceUpdateRequest"
       responses:
         "200":
           description: Space updated
@@ -703,6 +703,28 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/SpaceMemberRequest"
+
+    SpaceUpdateRequest:
+      type: object
+      required: [name]
+      description: >
+        Body for updating an existing space. Deliberately narrower than SpaceRequest: kind and
+        ownerId cannot be changed here (kind is fixed at creation, ownership changes go through
+        the dedicated transfer-ownership endpoint), and initialMembers has no meaning for an
+        update.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Engineering
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Engineering project space
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
 
     SpaceMemberRequest:
       type: object
