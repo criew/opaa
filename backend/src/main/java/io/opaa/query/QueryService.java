@@ -218,7 +218,7 @@ public class QueryService {
       return UUID.randomUUID().toString();
     }
     if (!VALID_CONVERSATION_ID.matcher(conversationId).matches()) {
-      throw new IllegalArgumentException("Invalid conversationId format");
+      throw new IllegalArgumentException("Ungültiges Format der conversationId");
     }
     return conversationId;
   }

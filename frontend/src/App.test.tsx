@@ -26,7 +26,7 @@ describe('App', () => {
   it('redirects to chat page by default', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText('How can I help you today?')).toBeInTheDocument()
+      expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
     })
   })
 
@@ -35,7 +35,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('Workspaces')).toBeInTheDocument()
       expect(screen.getByText('Chats')).toBeInTheDocument()
-      expect(screen.getByText('Settings')).toBeInTheDocument()
+      expect(screen.getByText('Einstellungen')).toBeInTheDocument()
     })
   })
 })

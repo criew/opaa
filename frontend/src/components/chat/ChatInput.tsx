@@ -12,6 +12,7 @@ import FilterListIcon from '@mui/icons-material/FilterList'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import type { WorkspaceListResponse } from '../../types/api'
+import { workspaceRoleLabel } from '../../utils/labels'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -46,7 +47,7 @@ export default function ChatInput({
   )
 
   const filterSummary =
-    selectedWorkspaces.length === 0 ? 'All Workspaces' : `${selectedWorkspaces.length} selected`
+    selectedWorkspaces.length === 0 ? 'Alle Workspaces' : `${selectedWorkspaces.length} ausgewählt`
 
   const handleSend = () => {
     const trimmed = value.trim()
@@ -90,7 +91,7 @@ export default function ChatInput({
           fullWidth
           multiline
           maxRows={6}
-          placeholder="Ask a question..."
+          placeholder="Stellen Sie eine Frage …"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -116,7 +117,7 @@ export default function ChatInput({
           color="primary"
           onClick={handleSend}
           disabled={disabled || !value.trim()}
-          aria-label="send message"
+          aria-label="Nachricht senden"
           sx={{
             bgcolor: 'primary.main',
             color: 'white',
@@ -146,10 +147,10 @@ export default function ChatInput({
           disabled={disabled}
           sx={{ textTransform: 'none' }}
         >
-          Search scope: {filterSummary}
+          Suchbereich: {filterSummary}
         </Button>
         <Typography variant="caption" color="text.secondary">
-          Enter to send, Shift+Enter for new line
+          Enter zum Senden, Umschalt+Enter für eine neue Zeile
         </Typography>
       </Box>
 
@@ -176,20 +177,20 @@ export default function ChatInput({
                   <Box>
                     <Typography variant="body2">{option.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {option.userRole}
+                      {workspaceRoleLabel(option.userRole)}
                     </Typography>
                   </Box>
                 </li>
               )
             }}
-            renderInput={(params) => <TextField {...params} label="Select workspaces" />}
+            renderInput={(params) => <TextField {...params} label="Workspaces auswählen" />}
           />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
             <Button size="small" onClick={() => onWorkspaceFilterChange?.([])}>
-              Clear
+              Zurücksetzen
             </Button>
             <Button size="small" variant="contained" onClick={handleCloseFilter}>
-              Done
+              Fertig
             </Button>
           </Box>
         </Box>

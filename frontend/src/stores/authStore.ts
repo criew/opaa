@@ -161,7 +161,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err) {
       clearBasicSession()
       set({
-        error: err instanceof Error ? err.message : 'Login failed',
+        error: err instanceof Error ? err.message : 'Anmeldung fehlgeschlagen',
         isLoading: false,
       })
     }
@@ -188,7 +188,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       })
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : 'OIDC callback failed',
+        error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
         isLoading: false,
       })
     }

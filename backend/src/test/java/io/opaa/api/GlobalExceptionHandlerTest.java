@@ -19,7 +19,7 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals(500, body.getStatus());
-    assertEquals("Internal server error", body.getError());
+    assertEquals("Interner Serverfehler", body.getError());
     assertNotNull(body.getTimestamp());
   }
 
@@ -29,7 +29,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(503, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service temporarily unavailable", body.getError());
+    assertEquals("KI-Dienst vorübergehend nicht verfügbar", body.getError());
   }
 
   @Test
@@ -39,7 +39,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(502, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service error", body.getError());
+    assertEquals("Fehler im KI-Dienst", body.getError());
   }
 
   @Test
@@ -51,7 +51,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(502, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("AI service error", body.getError());
+    assertEquals("Fehler im KI-Dienst", body.getError());
   }
 
   @Test

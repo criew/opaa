@@ -6,6 +6,11 @@ spring:
     name: opaa
   profiles:
     default: local
+  # Feste deutsche Locale, damit Bean-Validation-Meldungen in API-Antworten
+  # unabhängig vom Accept-Language-Header des Clients deutsch sind.
+  web:
+    locale: de_DE
+    locale-resolver: fixed
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration

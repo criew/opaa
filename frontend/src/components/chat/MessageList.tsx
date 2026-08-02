@@ -43,8 +43,8 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
         }}
       >
         <SmartToyIcon sx={{ fontSize: 48 }} />
-        <Typography variant="h6">How can I help you today?</Typography>
-        <Typography variant="body2">Ask a question about your project documents.</Typography>
+        <Typography variant="h6">Womit kann ich Ihnen heute helfen?</Typography>
+        <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
       </Box>
     )
   }
@@ -63,7 +63,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" color="text.secondary">
-              Thinking...
+              Denkt nach …
             </Typography>
           </Box>
         )}

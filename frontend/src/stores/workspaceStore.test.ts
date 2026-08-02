@@ -17,7 +17,7 @@ vi.mock('../services/api', () => ({
     },
     {
       id: 'ws-personal',
-      name: 'My Documents',
+      name: 'Meine Dokumente',
       description: 'Private',
       type: 'PERSONAL',
       memberCount: 1,
@@ -28,7 +28,7 @@ vi.mock('../services/api', () => ({
   ]),
   getWorkspace: vi.fn(async (workspaceId: string) => ({
     id: workspaceId,
-    name: 'My Documents',
+    name: 'Meine Dokumente',
     description: 'Private',
     type: 'PERSONAL',
     ownerId: 'u1',
@@ -60,7 +60,7 @@ describe('workspaceStore', () => {
   it('sorts personal workspace first', async () => {
     await useWorkspaceStore.getState().loadWorkspaces()
     const names = useWorkspaceStore.getState().workspaces.map((workspace) => workspace.name)
-    expect(names[0]).toBe('My Documents')
+    expect(names[0]).toBe('Meine Dokumente')
   })
 
   it('updates chat filter selection', () => {

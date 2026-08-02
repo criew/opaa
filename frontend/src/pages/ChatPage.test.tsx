@@ -11,15 +11,15 @@ describe('ChatPage', () => {
 
   it('renders empty state', () => {
     renderWithProviders(<ChatPage />)
-    expect(screen.getByText('How can I help you today?')).toBeInTheDocument()
+    expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
   })
 
   it('sends a message and displays response with sources', async () => {
     renderWithProviders(<ChatPage />)
 
-    const input = screen.getByPlaceholderText('Ask a question...')
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
     fireEvent.change(input, { target: { value: 'What is the architecture?' } })
-    fireEvent.click(screen.getByLabelText('send message'))
+    fireEvent.click(screen.getByLabelText('Nachricht senden'))
 
     // User message should appear immediately
     expect(screen.getByText('What is the architecture?')).toBeInTheDocument()
@@ -27,7 +27,7 @@ describe('ChatPage', () => {
     // Wait for MSW response — loading indicator should disappear and assistant reply should appear
     await waitFor(
       () => {
-        expect(screen.queryByText('Thinking...')).not.toBeInTheDocument()
+        expect(screen.queryByText('Denkt nach …')).not.toBeInTheDocument()
       },
       { timeout: 10000 },
     )
@@ -37,8 +37,8 @@ describe('ChatPage', () => {
   }, 15000)
 
   it('shows error alert when present', () => {
-    useChatStore.setState({ error: 'Something went wrong' })
+    useChatStore.setState({ error: 'Etwas ist schiefgelaufen' })
     renderWithProviders(<ChatPage />)
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByText('Etwas ist schiefgelaufen')).toBeInTheDocument()
   })
 })

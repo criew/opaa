@@ -29,7 +29,7 @@ public class DocumentIndexingService {
       throw new IndexingAlreadyRunningException("An indexing job is already running");
     }
     if (request.url() == null || request.url().isBlank()) {
-      throw new IllegalArgumentException("URL must not be blank");
+      throw new IllegalArgumentException("Die URL darf nicht leer sein");
     }
     var job = indexingJobService.startJob();
     urlIndexingExecutor.execute(job.getId(), request);

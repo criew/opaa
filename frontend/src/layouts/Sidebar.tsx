@@ -25,6 +25,7 @@ import CreateWorkspaceDialog from '../components/CreateWorkspaceDialog'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { workspaceRoleLabel } from '../utils/labels'
 import { useState } from 'react'
 
 const SIDEBAR_WIDTH = 300
@@ -74,7 +75,7 @@ export default function Sidebar() {
           OPAA
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          AI Project Assistant
+          KI-Projektassistent
         </Typography>
       </Box>
 
@@ -90,7 +91,7 @@ export default function Sidebar() {
               <IconButton
                 size="small"
                 onClick={() => setCreateDialogOpen(true)}
-                aria-label="create workspace"
+                aria-label="Workspace erstellen"
               >
                 <AddIcon fontSize="small" />
               </IconButton>
@@ -98,7 +99,7 @@ export default function Sidebar() {
             <IconButton
               size="small"
               onClick={() => setWorkspacesOpen((open) => !open)}
-              aria-label="toggle workspaces"
+              aria-label="Workspaces ein- oder ausklappen"
             >
               {workspacesOpen ? (
                 <ExpandLessIcon fontSize="small" />
@@ -133,10 +134,14 @@ export default function Sidebar() {
                     </ListItemIcon>
                     <ListItemText
                       primary={workspace.name}
-                      secondary={`${workspace.memberCount} member${workspace.memberCount === 1 ? '' : 's'}`}
+                      secondary={`${workspace.memberCount} ${workspace.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
                       slotProps={{ primary: { noWrap: true } }}
                     />
-                    <Chip label={workspace.userRole} size="small" variant="outlined" />
+                    <Chip
+                      label={workspaceRoleLabel(workspace.userRole)}
+                      size="small"
+                      variant="outlined"
+                    />
                   </ListItemButton>
                 )
               })}
@@ -154,7 +159,7 @@ export default function Sidebar() {
           <IconButton
             size="small"
             onClick={() => setChatsOpen((open) => !open)}
-            aria-label="toggle chats"
+            aria-label="Chats ein- oder ausklappen"
           >
             {chatsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
           </IconButton>
@@ -168,7 +173,7 @@ export default function Sidebar() {
               onClick={handleNewChat}
               sx={{ mt: 1, borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }}
             >
-              New Chat
+              Neuer Chat
             </Button>
             <List sx={{ px: 0, pt: 1 }}>
               <ListItemButton
@@ -179,7 +184,7 @@ export default function Sidebar() {
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <ChatIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText primary="Current Chat" />
+                <ListItemText primary="Aktueller Chat" />
               </ListItemButton>
             </List>
           </>
@@ -197,7 +202,7 @@ export default function Sidebar() {
           <ListItemIcon sx={{ minWidth: 36 }}>
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Settings" />
+          <ListItemText primary="Einstellungen" />
         </ListItemButton>
         <ListItemButton
           component={NavLink}
@@ -208,7 +213,7 @@ export default function Sidebar() {
           <ListItemIcon sx={{ minWidth: 36 }}>
             <DescriptionIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Documents" />
+          <ListItemText primary="Dokumente" />
         </ListItemButton>
       </List>
 
@@ -223,10 +228,10 @@ export default function Sidebar() {
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" noWrap>
-                {user.displayName ?? user.email ?? 'User'}
+                {user.displayName ?? user.email ?? 'Benutzer'}
               </Typography>
             </Box>
-            <IconButton size="small" onClick={logout} aria-label="sign out">
+            <IconButton size="small" onClick={logout} aria-label="Abmelden">
               <LogoutIcon fontSize="small" />
             </IconButton>
           </Box>

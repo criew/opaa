@@ -6,7 +6,7 @@ import type { ChatMessage } from '../../types/chat'
 describe('MessageList', () => {
   it('renders empty state when no messages', () => {
     render(<MessageList messages={[]} isLoading={false} />)
-    expect(screen.getByText('How can I help you today?')).toBeInTheDocument()
+    expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
   })
 
   it('renders messages', () => {
@@ -21,6 +21,6 @@ describe('MessageList', () => {
 
   it('shows loading indicator', () => {
     render(<MessageList messages={[]} isLoading={true} />)
-    expect(screen.getByText('Thinking...')).toBeInTheDocument()
+    expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
   })
 })

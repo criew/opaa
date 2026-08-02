@@ -19,10 +19,10 @@ export default function FeedbackButtons() {
 
   return (
     <Box sx={{ display: 'flex', gap: 0.5 }}>
-      <Tooltip title="Feedback coming soon">
+      <Tooltip title="Feedback folgt in Kürze">
         <IconButton
           size="small"
-          aria-label="thumbs up"
+          aria-label="Daumen hoch"
           onClick={() => handleFeedback('up')}
           color={feedback === 'up' ? 'primary' : 'default'}
         >
@@ -33,10 +33,10 @@ export default function FeedbackButtons() {
           )}
         </IconButton>
       </Tooltip>
-      <Tooltip title="Feedback coming soon">
+      <Tooltip title="Feedback folgt in Kürze">
         <IconButton
           size="small"
-          aria-label="thumbs down"
+          aria-label="Daumen runter"
           onClick={() => handleFeedback('down')}
           color={feedback === 'down' ? 'error' : 'default'}
         >

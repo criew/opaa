@@ -81,7 +81,7 @@ class AdminControllerTest {
   void changeRoleForNonexistentUserReturns404() throws Exception {
     UUID userId = UUID.randomUUID();
     when(userService.updateRole(userId, SystemRole.SYSTEM_ADMIN))
-        .thenThrow(new UserNotFoundException("User not found: " + userId));
+        .thenThrow(new UserNotFoundException("Benutzer nicht gefunden: " + userId));
 
     mockMvc
         .perform(

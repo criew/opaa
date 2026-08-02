@@ -6,14 +6,14 @@ import FeedbackButtons from './FeedbackButtons'
 describe('FeedbackButtons', () => {
   it('renders thumbs up and down buttons', () => {
     render(<FeedbackButtons />)
-    expect(screen.getByLabelText('thumbs up')).toBeInTheDocument()
-    expect(screen.getByLabelText('thumbs down')).toBeInTheDocument()
+    expect(screen.getByLabelText('Daumen hoch')).toBeInTheDocument()
+    expect(screen.getByLabelText('Daumen runter')).toBeInTheDocument()
   })
 
   it('toggles thumbs up on click', async () => {
     const user = userEvent.setup()
     render(<FeedbackButtons />)
-    const button = screen.getByLabelText('thumbs up')
+    const button = screen.getByLabelText('Daumen hoch')
 
     // Initially no primary color
     expect(button).not.toHaveClass('MuiIconButton-colorPrimary')

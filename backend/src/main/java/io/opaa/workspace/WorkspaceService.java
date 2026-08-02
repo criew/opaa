@@ -33,17 +33,18 @@ public class WorkspaceService {
       WorkspaceRequest request, UUID currentUserId, boolean systemAdmin) {
     if (!systemAdmin) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Only system admins can create workspaces");
+          HttpStatus.FORBIDDEN, "Nur Systemadministratoren können Workspaces erstellen");
     }
 
     UUID ownerId = request.getOwnerId();
     if (ownerId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ownerId is required");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ownerId ist erforderlich");
     }
 
     String normalizedName = request.getName().trim();
     if (workspaceRepository.existsByNameIgnoreCase(normalizedName)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Workspace name already exists");
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Ein Workspace mit diesem Namen existiert bereits");
     }
 
     Workspace workspace =
@@ -67,11 +68,12 @@ public class WorkspaceService {
         workspaceRepository
             .findByIdWithMemberships(workspaceId)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
+                () ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace nicht gefunden"));
 
     if (!systemAdmin && userMembership(workspace, currentUserId) == null) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "You are not a member of this workspace");
+          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Workspace");
     }
 
     return toWorkspaceResponse(workspace, currentUserId);
@@ -101,13 +103,15 @@ public class WorkspaceService {
     rejectPersonalWorkspaceMemberChanges(workspace);
 
     if (userMembership(workspace, memberUserId) != null) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already a workspace member");
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Der Benutzer ist bereits Mitglied dieses Workspace");
     }
 
     WorkspaceRole roleToAssign = requestedRole == null ? WorkspaceRole.VIEWER : requestedRole;
     if (roleToAssign == WorkspaceRole.OWNER) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Use transfer ownership endpoint to assign OWNER role");
+          HttpStatus.BAD_REQUEST,
+          "Die Rolle Eigentümer wird über die Eigentumsübertragung vergeben");
     }
     ensureCanManageRole(actor.getRole(), roleToAssign);
 
@@ -126,25 +130,27 @@ public class WorkspaceService {
     Workspace workspace = loadWorkspace(workspaceId);
     WorkspaceMembership actor = requireManager(workspace, currentUserId);
     if (newRole == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role is required");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role ist erforderlich");
     }
 
     WorkspaceMembership target = userMembership(workspace, memberUserId);
     if (target == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace member not found");
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Mitglied des Workspace nicht gefunden");
     }
     if (target.getRole() == WorkspaceRole.OWNER) {
       if (actor.getRole() != WorkspaceRole.OWNER) {
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN, "Only owners can manage owner role assignments");
+            HttpStatus.FORBIDDEN, "Nur Eigentümer können die Eigentümerrolle vergeben");
       }
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Owner role changes require ownership transfer");
+          HttpStatus.BAD_REQUEST,
+          "Änderungen an der Eigentümerrolle erfordern eine Eigentumsübertragung");
     }
     if (newRole == WorkspaceRole.OWNER) {
       if (actor.getRole() != WorkspaceRole.OWNER) {
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN, "Only owners can promote members to OWNER");
+            HttpStatus.FORBIDDEN, "Nur Eigentümer können Mitglieder zum Eigentümer machen");
       }
       actor.setRole(WorkspaceRole.ADMIN);
       target.setRole(WorkspaceRole.OWNER);
@@ -169,11 +175,12 @@ public class WorkspaceService {
 
     WorkspaceMembership target = userMembership(workspace, memberUserId);
     if (target == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace member not found");
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Mitglied des Workspace nicht gefunden");
     }
     if (target.getRole() == WorkspaceRole.OWNER) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Workspace owner cannot be removed");
+          HttpStatus.BAD_REQUEST, "Der Eigentümer des Workspace kann nicht entfernt werden");
     }
 
     ensureCanManageRole(actor.getRole(), target.getRole());
@@ -187,13 +194,13 @@ public class WorkspaceService {
     WorkspaceMembership actor = userMembership(workspace, currentUserId);
     if (actor == null || actor.getRole() != WorkspaceRole.OWNER) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Only workspace owners can transfer ownership");
+          HttpStatus.FORBIDDEN, "Nur Eigentümer können das Eigentum übertragen");
     }
 
     WorkspaceMembership newOwnerMembership = userMembership(workspace, newOwnerUserId);
     if (newOwnerMembership == null) {
       throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Target user is not a workspace member");
+          HttpStatus.NOT_FOUND, "Der ausgewählte Benutzer ist kein Mitglied dieses Workspace");
     }
     if (newOwnerMembership.getRole() == WorkspaceRole.OWNER) {
       return;
@@ -211,7 +218,8 @@ public class WorkspaceService {
         workspaceRepository
             .findByIdWithMemberships(workspaceId)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
+                () ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace nicht gefunden"));
 
     WorkspaceMembership membership = userMembership(workspace, currentUserId);
     boolean adminOrOwner =
@@ -220,13 +228,15 @@ public class WorkspaceService {
                 || membership.getRole() == WorkspaceRole.OWNER);
     if (!systemAdmin && !adminOrOwner) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Only admins or owners can update a workspace");
+          HttpStatus.FORBIDDEN,
+          "Nur Administratoren oder Eigentümer können einen Workspace ändern");
     }
 
     String normalizedName = request.getName().trim();
     if (!workspace.getName().equalsIgnoreCase(normalizedName)
         && workspaceRepository.existsByNameIgnoreCase(normalizedName)) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Workspace name already exists");
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Ein Workspace mit diesem Namen existiert bereits");
     }
 
     workspace.updateDetails(normalizedName, request.getDescription());
@@ -240,14 +250,15 @@ public class WorkspaceService {
 
     if (workspace.isPersonal()) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Personal workspaces cannot be deleted");
+          HttpStatus.BAD_REQUEST, "Persönliche Workspaces können nicht gelöscht werden");
     }
 
     WorkspaceMembership membership = userMembership(workspace, currentUserId);
     boolean owner = membership != null && membership.getRole() == WorkspaceRole.OWNER;
     if (!systemAdmin && !owner) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Only the owner or system admin can delete a workspace");
+          HttpStatus.FORBIDDEN,
+          "Nur der Eigentümer oder ein Systemadministrator kann einen Workspace löschen");
     }
 
     workspaceRepository.delete(workspace);
@@ -257,14 +268,14 @@ public class WorkspaceService {
     return workspaceRepository
         .findByIdWithMemberships(workspaceId)
         .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace not found"));
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace nicht gefunden"));
   }
 
   private WorkspaceMembership requireMembership(Workspace workspace, UUID userId) {
     WorkspaceMembership membership = userMembership(workspace, userId);
     if (membership == null) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "You are not a member of this workspace");
+          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Workspace");
     }
     return membership;
   }
@@ -274,7 +285,7 @@ public class WorkspaceService {
     if (membership.getRole() != WorkspaceRole.ADMIN
         && membership.getRole() != WorkspaceRole.OWNER) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Only admins or owners can manage workspace members");
+          HttpStatus.FORBIDDEN, "Nur Administratoren oder Eigentümer können Mitglieder verwalten");
     }
     return membership;
   }
@@ -282,7 +293,8 @@ public class WorkspaceService {
   private void rejectPersonalWorkspaceMemberChanges(Workspace workspace) {
     if (workspace.isPersonal()) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Members cannot be added to personal workspaces");
+          HttpStatus.BAD_REQUEST,
+          "Zu persönlichen Workspaces können keine Mitglieder hinzugefügt werden");
     }
   }
 
@@ -295,7 +307,7 @@ public class WorkspaceService {
       return;
     }
     throw new ResponseStatusException(
-        HttpStatus.FORBIDDEN, "Insufficient role permissions for this member change");
+        HttpStatus.FORBIDDEN, "Unzureichende Berechtigung für diese Änderung am Mitglied");
   }
 
   private int roleRank(WorkspaceRole role) {

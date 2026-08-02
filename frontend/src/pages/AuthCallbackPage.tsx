@@ -40,7 +40,7 @@ export default function AuthCallbackPage() {
       ) : (
         <>
           <CircularProgress />
-          <Typography sx={{ mt: 2 }}>Completing sign in...</Typography>
+          <Typography sx={{ mt: 2 }}>Anmeldung wird abgeschlossen …</Typography>
         </>
       )}
     </Box>

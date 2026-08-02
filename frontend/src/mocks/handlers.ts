@@ -70,7 +70,7 @@ export const handlers = [
         documentCount: 0,
         totalDocuments: 0,
         documentsSkipped: 0,
-        message: 'Indexing started',
+        message: 'Indizierung gestartet',
         timestamp: new Date().toISOString(),
       } satisfies IndexingStatusResponse,
       { status: 202 },
@@ -121,10 +121,16 @@ export const handlers = [
   http.post('/api/v1/workspaces', async ({ request }) => {
     const body = (await request.json()) as { name: string; description?: string }
     if (!body.name || body.name.trim() === '') {
-      return HttpResponse.json({ error: 'Workspace name is required' }, { status: 400 })
+      return HttpResponse.json(
+        { error: 'Der Name des Workspace ist erforderlich' },
+        { status: 400 },
+      )
     }
     if (mockWorkspaces.some((ws) => ws.name.toLowerCase() === body.name.trim().toLowerCase())) {
-      return HttpResponse.json({ error: 'Workspace name already exists' }, { status: 409 })
+      return HttpResponse.json(
+        { error: 'Ein Workspace mit diesem Namen existiert bereits' },
+        { status: 409 },
+      )
     }
     const id = `ws-${crypto.randomUUID().slice(0, 8)}`
     const now = new Date().toISOString()
@@ -158,7 +164,7 @@ export const handlers = [
     const workspaceId = String(params.workspaceId)
     const workspace = mockWorkspaceDetails[workspaceId]
     if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
     return HttpResponse.json(workspace)
   }),
@@ -172,7 +178,7 @@ export const handlers = [
     const workspaceId = String(params.workspaceId)
     const workspace = mockWorkspaceDetails[workspaceId]
     if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
 
     const body = (await request.json()) as { userId: string; role?: 'VIEWER' | 'EDITOR' | 'ADMIN' }
@@ -180,7 +186,10 @@ export const handlers = [
       return HttpResponse.json({ error: 'userId is required' }, { status: 400 })
     }
     if (workspace.members.some((member) => member.userId === body.userId)) {
-      return HttpResponse.json({ error: 'Member already exists' }, { status: 409 })
+      return HttpResponse.json(
+        { error: 'Der Benutzer ist bereits Mitglied dieses Workspace' },
+        { status: 409 },
+      )
     }
 
     const role = body.role ?? 'VIEWER'
@@ -195,7 +204,7 @@ export const handlers = [
     const userId = String(params.userId)
     const workspace = mockWorkspaceDetails[workspaceId]
     if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
     workspace.members = workspace.members.filter((member) => member.userId !== userId)
     recalculateRoleCounts(workspaceId)
@@ -207,11 +216,11 @@ export const handlers = [
     const userId = String(params.userId)
     const workspace = mockWorkspaceDetails[workspaceId]
     if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
     const target = workspace.members.find((member) => member.userId === userId)
     if (!target) {
-      return HttpResponse.json({ error: 'Member not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Mitglied des Workspace nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { role: 'VIEWER' | 'EDITOR' | 'ADMIN' }
     target.role = body.role
@@ -223,13 +232,13 @@ export const handlers = [
     const workspaceId = String(params.workspaceId)
     const workspace = mockWorkspaceDetails[workspaceId]
     if (!workspace) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { userId: string }
     const currentOwner = workspace.members.find((member) => member.role === 'OWNER')
     const newOwner = workspace.members.find((member) => member.userId === body.userId)
     if (!currentOwner || !newOwner) {
-      return HttpResponse.json({ error: 'Member not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Mitglied des Workspace nicht gefunden' }, { status: 404 })
     }
     currentOwner.role = 'ADMIN'
     newOwner.role = 'OWNER'
@@ -242,7 +251,7 @@ export const handlers = [
     const workspace = mockWorkspaceDetails[workspaceId]
     const listEntry = mockWorkspaces.find((item) => item.id === workspaceId)
     if (!workspace || !listEntry) {
-      return HttpResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      return HttpResponse.json({ error: 'Workspace nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { name: string; description: string }
     workspace.name = body.name
@@ -276,7 +285,7 @@ export const handlers = [
     if (body.username === 'admin' && body.password === 'admin') {
       return HttpResponse.json(mockLoginResponse)
     }
-    return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    return HttpResponse.json({ error: 'Ungültige Anmeldedaten' }, { status: 401 })
   }),
 
   http.get('/api/v1/auth/me', () => {

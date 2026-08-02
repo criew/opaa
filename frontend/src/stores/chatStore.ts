@@ -51,7 +51,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }))
     } catch (err) {
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+      const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
       set({ error: message, isLoading: false })
     }
   },

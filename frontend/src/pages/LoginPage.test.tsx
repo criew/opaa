@@ -27,21 +27,21 @@ describe('LoginPage', () => {
   it('renders login form for basic mode', () => {
     useAuthStore.setState({ mode: 'basic' })
     renderWithProviders(<LoginPage />, { withRouter: true })
-    expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/benutzername/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/passwort/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /anmelden/i })).toBeInTheDocument()
   })
 
   it('renders SSO button for oidc mode', () => {
     useAuthStore.setState({ mode: 'oidc' })
     renderWithProviders(<LoginPage />, { withRouter: true })
-    expect(screen.getByRole('button', { name: /sign in with sso/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mit sso anmelden/i })).toBeInTheDocument()
   })
 
   it('displays error message', () => {
-    useAuthStore.setState({ mode: 'basic', error: 'Invalid credentials' })
+    useAuthStore.setState({ mode: 'basic', error: 'Ungültige Anmeldedaten' })
     renderWithProviders(<LoginPage />, { withRouter: true })
-    expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+    expect(screen.getByText('Ungültige Anmeldedaten')).toBeInTheDocument()
   })
 
   it('submits basic login form', async () => {
@@ -49,9 +49,9 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText(/username/i), 'admin')
-    await user.type(screen.getByLabelText(/password/i), 'admin')
-    await user.click(screen.getByRole('button', { name: /sign in/i }))
+    await user.type(screen.getByLabelText(/benutzername/i), 'admin')
+    await user.type(screen.getByLabelText(/passwort/i), 'admin')
+    await user.click(screen.getByRole('button', { name: /anmelden/i }))
 
     // After successful login via MSW, user should be authenticated
     const state = useAuthStore.getState()
@@ -61,6 +61,6 @@ describe('LoginPage', () => {
   it('redirects away from login when already authenticated', () => {
     useAuthStore.setState({ mode: 'basic', isAuthenticated: true })
     renderWithProviders(<LoginPage />, { withRouter: true, initialRoute: '/login' })
-    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /anmelden/i })).not.toBeInTheDocument()
   })
 })

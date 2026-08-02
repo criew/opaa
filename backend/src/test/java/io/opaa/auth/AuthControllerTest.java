@@ -69,7 +69,7 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\": \"admin\", \"password\": \"wrong\"}"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.error").value("Invalid credentials"))
+        .andExpect(jsonPath("$.error").value("Ungültige Anmeldedaten"))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.timestamp").isNotEmpty());
   }

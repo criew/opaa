@@ -140,6 +140,6 @@ class QueryIntegrationTest {
   void queryRejectsInvalidConversationId() {
     assertThatThrownBy(() -> queryService.query("Test question", "<script>alert(1)</script>"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Invalid conversationId format");
+        .hasMessage("Ungültiges Format der conversationId");
   }
 }

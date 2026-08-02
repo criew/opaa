@@ -27,7 +27,7 @@ export const mockIndexingCompleted: IndexingStatusResponse = {
   documentCount: 37,
   totalDocuments: 42,
   documentsSkipped: 5,
-  message: 'Indexing completed: 37 processed, 5 skipped, 0 failed',
+  message: 'Indizierung abgeschlossen: 37 verarbeitet, 5 übersprungen, 0 fehlgeschlagen',
   timestamp: '2025-01-15T10:30:00Z',
 }
 
@@ -37,10 +37,10 @@ export const mockIndexingStatus = mockIndexingCompleted
 export const mockQueryResponses: QueryResponse[] = [
   {
     answer:
-      'The project uses a modular monolith architecture with three main modules: ' +
-      'api, indexing, and query. The api module handles REST endpoints and DTOs, ' +
-      'the indexing module manages document ingestion, and the query module ' +
-      'handles question answering via RAG.',
+      'Das Projekt nutzt eine modulare Monolith-Architektur mit drei Hauptmodulen: ' +
+      'api, indexing und query. Das Modul api stellt die REST-Endpunkte und DTOs bereit, ' +
+      'das Modul indexing verwaltet die Dokumentenaufnahme und das Modul query ' +
+      'beantwortet Fragen über RAG.',
     sources: [
       {
         fileName: 'architecture-overview.md',
@@ -52,7 +52,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'getting-started.pdf',
-        workspaceName: 'My Documents',
+        workspaceName: 'Meine Dokumente',
         relevanceScore: 0.85,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -76,10 +76,10 @@ export const mockQueryResponses: QueryResponse[] = [
   },
   {
     answer:
-      'To add a new REST endpoint, create a controller class in the api module ' +
-      'annotated with @RestController. Define your request/response DTOs as Java records ' +
-      'and use Jakarta Bean Validation for input validation. The endpoint will be ' +
-      'automatically documented via the OpenAPI specification.',
+      'Für einen neuen REST-Endpunkt legen Sie im Modul api eine Controller-Klasse mit der ' +
+      'Annotation @RestController an. Request- und Response-DTOs werden als Java-Records ' +
+      'definiert, die Eingabevalidierung erfolgt über Jakarta Bean Validation. Der Endpunkt ' +
+      'wird automatisch über die OpenAPI-Spezifikation dokumentiert.',
     sources: [
       {
         fileName: 'contributing-guide.md',
@@ -99,10 +99,10 @@ export const mockQueryResponses: QueryResponse[] = [
   },
   {
     answer:
-      'The deployment pipeline uses Docker Compose to orchestrate all services. ' +
-      'PostgreSQL with pgvector handles vector storage for embeddings, while Liquibase ' +
-      'manages database migrations. The CI/CD pipeline runs on GitHub Actions with ' +
-      'separate jobs for backend and frontend builds, linting, and test execution.',
+      'Die Deployment-Pipeline orchestriert alle Dienste über Docker Compose. ' +
+      'PostgreSQL mit pgvector speichert die Vektoren der Embeddings, Liquibase verwaltet ' +
+      'die Datenbankmigrationen. Die CI/CD-Pipeline läuft auf GitHub Actions mit getrennten ' +
+      'Jobs für Backend- und Frontend-Build, Linting und Testausführung.',
     sources: [
       {
         fileName: 'docker-compose.yml',
@@ -138,7 +138,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'liquibase-changelog.xml',
-        workspaceName: 'My Documents',
+        workspaceName: 'Meine Dokumente',
         relevanceScore: 0.82,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
@@ -146,7 +146,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'postgres-setup.md',
-        workspaceName: 'My Documents',
+        workspaceName: 'Meine Dokumente',
         relevanceScore: 0.79,
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
@@ -199,7 +199,7 @@ export function getRandomMockResponse(): QueryResponse {
 }
 
 export const mockErrorResponse = {
-  error: 'question: Question must not be blank',
+  error: 'question: darf nicht leer sein',
   status: 400,
   timestamp: '2025-01-15T10:30:00Z',
 }
@@ -221,8 +221,8 @@ export const mockUser: AuthUser = {
 export const mockWorkspaces: WorkspaceListResponse[] = [
   {
     id: 'ws-personal',
-    name: 'My Documents',
-    description: 'Private docs',
+    name: 'Meine Dokumente',
+    description: 'Private Dokumente',
     type: 'PERSONAL',
     memberCount: 1,
     userRole: 'OWNER',
@@ -232,7 +232,7 @@ export const mockWorkspaces: WorkspaceListResponse[] = [
   {
     id: 'ws-engineering',
     name: 'Engineering',
-    description: 'Engineering docs',
+    description: 'Dokumente der Entwicklung',
     type: 'SHARED',
     memberCount: 3,
     userRole: 'ADMIN',
@@ -242,7 +242,7 @@ export const mockWorkspaces: WorkspaceListResponse[] = [
   {
     id: 'ws-phoenix',
     name: 'Phoenix',
-    description: 'Project docs',
+    description: 'Projektdokumente',
     type: 'SHARED',
     memberCount: 2,
     userRole: 'EDITOR',
@@ -254,8 +254,8 @@ export const mockWorkspaces: WorkspaceListResponse[] = [
 export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
   'ws-personal': {
     id: 'ws-personal',
-    name: 'My Documents',
-    description: 'Private docs',
+    name: 'Meine Dokumente',
+    description: 'Private Dokumente',
     type: 'PERSONAL',
     ownerId: 'mock-user-id',
     memberCount: 1,
@@ -275,7 +275,7 @@ export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
   'ws-engineering': {
     id: 'ws-engineering',
     name: 'Engineering',
-    description: 'Engineering docs',
+    description: 'Dokumente der Entwicklung',
     type: 'SHARED',
     ownerId: 'owner-1',
     memberCount: 3,
@@ -297,7 +297,7 @@ export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
   'ws-phoenix': {
     id: 'ws-phoenix',
     name: 'Phoenix',
-    description: 'Project docs',
+    description: 'Projektdokumente',
     type: 'SHARED',
     ownerId: 'owner-2',
     memberCount: 2,
@@ -364,5 +364,5 @@ export const mockUsers: UserInfo[] = [
   { id: 'owner-1', email: 'alice@opaa.local', displayName: 'Alice', systemRole: 'USER' },
   { id: 'owner-2', email: 'chris@opaa.local', displayName: 'Chris', systemRole: 'USER' },
   { id: 'editor-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
-  { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo User', systemRole: 'USER' },
+  { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo-Benutzer', systemRole: 'USER' },
 ]
