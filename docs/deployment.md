@@ -1,5 +1,32 @@
 # Deployment
 
+## Deployment aus vorgebauten Images (GHCR)
+
+Für Zielsysteme, auf denen nicht aus dem Quellcode gebaut werden soll, veröffentlicht CI bei jedem Push auf `main` fertige Container-Images:
+
+| Image | Tags |
+|-------|------|
+| `ghcr.io/criew/opaa-backend` | `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-frontend` | `main`, `sha-<commit>` |
+
+Auf dem Zielsystem wird kein Repository-Checkout benötigt — es genügt eine `docker-compose.yml`, die `image:` statt `build:` verwendet:
+
+```yaml
+services:
+  backend:
+    image: ghcr.io/criew/opaa-backend:main
+  frontend:
+    image: ghcr.io/criew/opaa-frontend:main
+```
+
+Aktualisieren auf den neuesten `main`-Stand:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+`main` folgt dem jeweils letzten Stand; für reproduzierbare Deployments stattdessen einen `sha-<commit>`-Tag pinnen.
+
 ## Schnellstart
 
 ```bash
