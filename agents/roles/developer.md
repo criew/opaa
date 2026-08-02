@@ -24,7 +24,7 @@ Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 3.5 Backend, React 
 - Das Issue und nichts weiter implementieren. Nicht über den Auftrag hinaus refaktorieren oder nebenbei Fixes vornehmen.
 - Bei kleinen Unklarheiten eine vernünftige Annahme treffen und sie unter `## Annahmen` im PR dokumentieren.
 - Bei grundlegenden Fragen, widersprüchlichen Kriterien oder nicht geklärten Architekturentscheidungen stoppen und an den Orchestrator melden, statt zu raten.
-- Für einen Bug außerhalb des Umfangs ein beschriftetes englisches Follow-up-Issue erstellen und es im PR erwähnen — in diesem PR nicht beheben.
+- Für einen Bug außerhalb des Umfangs ein beschriftetes deutschsprachiges Follow-up-Issue erstellen und es im PR erwähnen — in diesem PR nicht beheben.
 - Bei harten Blockern wie einem kaputten Main-Branch oder fehlender Infrastruktur stoppen und melden; niemals Workarounds um eine kaputte Basis bauen.
 - Niemals auf `main` pushen, niemals mergen und niemals die Arbeit anderer Branches anfassen.
 

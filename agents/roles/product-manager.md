@@ -42,16 +42,16 @@ Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issue
 
 ## Hausmuster
 
-**Feature-Spezifikationen** in `docs/features/` folgen `TEMPLATE.md` und `access-control-workspaces.md`: `# Title`, ein optionaler Draft-Status-Block, `## Motivation`, `## Overview` mit nummerierten Kernpunkten, domänenspezifische Kapitel, `## Integration Points`, `## Open Questions / Future Enhancements` und optionale `## Success Metrics`. Auf Englisch auf dem Produkt-Konzeptlevel schreiben: Verhalten, Optionen mit Abwägungen und Abläufe — keine Klassen oder Dateien. Konfigurationsausschnitte, Tabellen und ASCII-Diagramme verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
+**Feature-Spezifikationen** in `docs/features/` folgen `TEMPLATE.md` und `access-control-workspaces.md`: `# Title`, ein optionaler Draft-Status-Block, `## Motivation`, `## Überblick` mit nummerierten Kernpunkten, domänenspezifische Kapitel, `## Integrationspunkte`, `## Offene Fragen / Zukünftige Erweiterungen` und optionale `## Erfolgs-Metriken`. Auf Deutsch auf dem Produkt-Konzeptlevel schreiben: Verhalten, Optionen mit Abwägungen und Abläufe — keine Klassen oder Dateien. Konfigurationsausschnitte, Tabellen und ASCII-Diagramme verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
 
-**Epics** folgen Issue #107: eine Einleitung, `### Background`, `### Tickets` gruppiert nach Phase, `### Dependencies`, `### Acceptance Criteria (Epic Level)`, `### Out of Scope (separate epics)` und `### References`.
+**Epics** folgen `.github/ISSUE_TEMPLATE/epic.md`: eine Einleitung, `### Hintergrund`, `### Tickets` gruppiert nach Phase, `### Abhängigkeiten`, `### Abnahmekriterien (Epic-Ebene)`, `### Außerhalb des Umfangs (separate Epics)` und `### Referenzen`.
 
-**Child-Issues** folgen Issues #112 und #108: `## Summary`, `## Motivation`, `## Scope`, `## Acceptance Criteria`, `## Dependencies` und `## Part of Epic`; `## Technical Notes` und `## UI Reference` hinzufügen, wenn sinnvoll. Die Issue-Templates in `.github/ISSUE_TEMPLATE/` verwenden.
+**Child-Issues** folgen `.github/ISSUE_TEMPLATE/feature_request.md`: `## Zusammenfassung`, `## Motivation`, `## Umfang`, `## Außerhalb des Umfangs`, `## Abnahmekriterien`, `## Abhängigkeiten` und `## Teil von Epic`; `## Technische Hinweise` und einen UI-Referenzabschnitt hinzufügen, wenn sinnvoll. Die Issue-Templates in `.github/ISSUE_TEMPLATE/` verwenden.
 
 ## Issue-Konventionen
 
 - Titel verwenden Conventional-Commit-Stil: `feat(scope): ...`, `fix(...): ...`.
-- Alles auf Englisch, auch wenn das Gespräch auf Deutsch ist.
+- Alles auf Deutsch verfassen; nur der Conventional-Commit-Typ und -Scope im Titel sowie Label- und Branch-Namen bleiben englisch.
 - Immer Typ (`enhancement` oder `bug`), Bereich (`backend`, `frontend`, `setup` oder `ci`), Domäne (`auth`, `workspace`, `security` usw.) und `size:S`, `size:M` oder `size:L` Labels zuweisen.
 - Größen-Kalibrierung: S ist eine Migration oder Konfigurationsänderung; M ist ein API- oder Feature-Baustein; L ist querschnittlich oder mehrstufig.
 - Issues so schneiden, dass ein Entwickler, Mensch oder Agent, jeden unabhängig abschließen kann: eine Schicht oder ein Baustein pro Issue und explizite Abhängigkeiten.

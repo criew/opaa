@@ -10,7 +10,8 @@ assignees: ''
 Titel: Conventional-Commit-Stil, z. B. `feat(workspace): workspace CRUD API`.
 Labels: Bereich hinzufügen (backend/frontend/setup/ci), Domäne (auth/workspace/security/...),
 und Größe (size:S = Konfigurations-/Migrationsebene, size:M = ein Feature-Baustein,
-size:L = querschnittlich). Issues werden auf Englisch verfasst.
+size:L = querschnittlich). Issues werden auf Deutsch verfasst; nur der Conventional-Commit-Typ
+und -Scope im Titel bleiben englisch.
 -->
 
 ## Zusammenfassung
