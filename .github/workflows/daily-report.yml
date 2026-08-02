@@ -53,6 +53,7 @@ jobs:
           # OpenAI-Integrationstests laufen. Beides zu koppeln würde das
           # Aktivieren der Zusammenfassung zu einer Änderung an der CI machen.
           OPAA_REPORT_API_KEY: ${{ secrets.OPAA_REPORT_API_KEY }}
+          OPAA_REPORT_PROVIDER: ${{ vars.OPAA_REPORT_PROVIDER }}
           OPAA_REPORT_MODEL: ${{ vars.OPAA_REPORT_MODEL }}
           OPAA_REPORT_BASE_URL: ${{ vars.OPAA_REPORT_BASE_URL }}
         run: |

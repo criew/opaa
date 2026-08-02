@@ -8,7 +8,7 @@ character with a YAML frontmatter of structured facts plus a short,
 generator-authored prose paragraph.
 
 Design goals (see docs/features/search-quality-evaluation.md, "Der Testkorpus",
-and ADR-0008):
+and ADR-0011):
 
 - No sampling: the full dataset (train + test splits) is used.
 - No network access is required to reproduce a run once the raw CSV files are

@@ -13,9 +13,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -27,10 +31,17 @@ public class SpaceService {
 
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
+  private final TransactionTemplate requiresNewTransactionTemplate;
 
-  public SpaceService(SpaceRepository spaceRepository, UserRepository userRepository) {
+  public SpaceService(
+      SpaceRepository spaceRepository,
+      UserRepository userRepository,
+      PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.userRepository = userRepository;
+    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+    this.requiresNewTransactionTemplate.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
   }
 
   @Transactional
@@ -248,13 +259,44 @@ public class SpaceService {
   /**
    * Creates the automatic personal space for a user if it does not exist yet. Shares the same
    * validation path as {@link #createSpace}, so personal space creation no longer bypasses it.
+   *
+   * <p>Two concurrent first logins of the same user can both pass the {@code existsBy} check below
+   * before either has inserted a row - the check alone cannot prevent that. The partial unique
+   * index {@code uk_spaces_personal_owner} (migration 010) is the actual guard: it lets exactly one
+   * of the two inserts succeed and makes the other fail with a {@link
+   * DataIntegrityViolationException}. The insert attempt runs in its own {@code REQUIRES_NEW}
+   * transaction so that a failure there rolls back only that attempt - on Postgres, a failed
+   * statement aborts the entire enclosing transaction, so catching the violation inside the same
+   * transaction that performed the insert would leave every subsequent statement in that
+   * transaction failing too. The loser then simply reads the space the winner created instead of
+   * surfacing a 500.
+   *
+   * <p><b>Caller requirement:</b> because the insert runs on its own connection, {@code userId}
+   * must already be committed and visible to other connections when this method is called - not
+   * merely persisted in a still-open transaction. Calling this from inside the same transaction
+   * that first creates the user row will fail with a {@code fk_spaces_owner} violation, because the
+   * {@code REQUIRES_NEW} connection cannot see the uncommitted row (regression fixed as a follow-up
+   * to #265/#280; see {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to
+   * a post-commit hook for exactly this reason).
    */
-  @Transactional
   public void ensurePersonalSpace(UUID userId, UUID organizationId) {
     if (spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
       return;
     }
 
+    try {
+      requiresNewTransactionTemplate.executeWithoutResult(
+          status -> createPersonalSpace(userId, organizationId));
+    } catch (DataIntegrityViolationException raceLost) {
+      if (!spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
+        // Some other constraint was violated, not the personal-space uniqueness index - do not
+        // swallow an unrelated failure.
+        throw raceLost;
+      }
+    }
+  }
+
+  private void createPersonalSpace(UUID userId, UUID organizationId) {
     Space personalSpace =
         buildValidatedSpace(
             "Meine Dokumente",
@@ -264,7 +306,9 @@ public class SpaceService {
             userId,
             organizationId);
     personalSpace.addMembership(new SpaceMembership(userId, SpaceRole.ADMIN, organizationId));
-    spaceRepository.save(personalSpace);
+    // saveAndFlush forces the INSERT to execute (and thus to fail, if it must) inside this
+    // REQUIRES_NEW transaction, instead of being deferred to a later flush point outside of it.
+    spaceRepository.saveAndFlush(personalSpace);
   }
 
   private Space buildValidatedSpace(

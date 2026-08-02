@@ -23,6 +23,7 @@ import argparse
 import html
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -131,6 +132,13 @@ def search_issues(repo: str, qualifier: str) -> list[dict]:
     return items
 
 
+# Ticketlisten in Epics folgen der Vorlage "- [ ] #123 titel". Die Nummer muss
+# unmittelbar auf die Checkbox folgen. Epic #60 nummeriert seine Befunde dagegen
+# als "- [ ] **#1 CORS Wildcard Headers**" — solche Marker sind keine
+# Issue-Referenzen und werden durch diese Bedingung ausgeschlossen.
+TICKET_MUSTER = re.compile(r"^\s*[-*]\s*\[[ xX]\]\s*#(\d+)\b", re.MULTILINE)
+
+
 def simplify_issue(item: dict) -> dict:
     return {
         "number": item["number"],
@@ -139,7 +147,52 @@ def simplify_issue(item: dict) -> dict:
         "author": (item.get("user") or {}).get("login", ""),
         "labels": [label["name"] for label in item.get("labels", [])],
         "body": (item.get("body") or "").strip(),
+        # Wird für Pull Requests aus der von GitHub gepflegten Verknüpfung
+        # nachgetragen, siehe `add_closing_references`.
+        "closes": [],
     }
+
+
+def add_closing_references(repo: str, pull_requests: list[dict]) -> None:
+    """Trägt die von GitHub verknüpften Issues in die Pull Requests ein.
+
+    Ein Ausdruck auf `Closes #N` im Body ist dafür untauglich: PR-Beschreibungen
+    enthalten solche Zeichenfolgen auch als Beispiel oder Zitat. GitHub pflegt
+    die tatsächliche Verknüpfung selbst; sie wird hier in einer einzigen Abfrage
+    für alle Pull Requests des Tages geholt.
+    """
+    if not pull_requests:
+        return
+
+    besitzer, name = repo.split("/", 1)
+    felder = "\n".join(
+        f'    p{pr["number"]}: pullRequest(number: {pr["number"]}) '
+        "{ closingIssuesReferences(first: 20) { nodes { number } } }"
+        for pr in pull_requests
+    )
+    query = f'{{ repository(owner: "{besitzer}", name: "{name}") {{\n{felder}\n}} }}'
+
+    try:
+        antwort = json.loads(
+            subprocess.run(
+                ["gh", "api", "graphql", "-f", f"query={query}"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            ).stdout
+        )
+        daten = (antwort.get("data") or {}).get("repository") or {}
+    except (json.JSONDecodeError, ValueError) as error:
+        print(f"Verknüpfte Issues nicht abrufbar: {error}", file=sys.stderr)
+        return
+
+    for pull_request in pull_requests:
+        knoten = (daten.get(f"p{pull_request['number']}") or {}).get(
+            "closingIssuesReferences"
+        ) or {}
+        pull_request["closes"] = sorted(
+            eintrag["number"] for eintrag in knoten.get("nodes", [])
+        )
 
 
 def pull_request_stats(repo: str, number: int) -> dict:
@@ -175,6 +228,127 @@ def ci_status(repo: str) -> dict | None:
     }
 
 
+def collect_epics(repo: str) -> list[dict]:
+    """Erhebt die Epics samt Ticketliste und Fortschritt.
+
+    Native Sub-Issues werden im Repository nicht verwendet — die Zuordnung
+    steht als Ticketliste im Body des Epic-Issues. Der Status aller Tickets
+    wird über einen einzigen Abruf aller Issues ermittelt statt über eine
+    Abfrage je Ticket.
+    """
+    try:
+        alle = gh_api(
+            f"repos/{repo}/issues?state=all&per_page=100&labels=", paginate=True
+        )
+    except RuntimeError as error:
+        print(f"Epics konnten nicht erhoben werden: {error}", file=sys.stderr)
+        return []
+
+    # Die Issue-Liste enthält auch Pull Requests; diese sind keine Tickets.
+    nur_issues = [
+        item
+        for item in alle
+        if isinstance(item, dict) and "number" in item and "pull_request" not in item
+    ]
+    status_je_nummer = {item["number"]: item.get("state", "open") for item in nur_issues}
+    bekannte_issues = set(status_je_nummer)
+    epic_nummern = {
+        item["number"]
+        for item in nur_issues
+        if "epic" in {label["name"] for label in item.get("labels", [])}
+    }
+
+    epics: list[dict] = []
+    for item in nur_issues:
+        labels = {label["name"] for label in item.get("labels", [])}
+        if "epic" not in labels:
+            continue
+        tickets = sorted(
+            {
+                int(nummer)
+                for nummer in TICKET_MUSTER.findall(item.get("body") or "")
+                # Ein Epic ist kein Ticket eines anderen Epics, und eine Nummer
+                # ohne zugehöriges Issue ist ein Aufzählungsmarker.
+                if int(nummer) != item["number"]
+                and int(nummer) in bekannte_issues
+                and int(nummer) not in epic_nummern
+            }
+        )
+        if not tickets:
+            continue
+        erledigt = sum(
+            1 for nummer in tickets if status_je_nummer.get(nummer) == "closed"
+        )
+        epics.append(
+            {
+                "number": item["number"],
+                "title": item["title"],
+                "url": item["html_url"],
+                "state": item.get("state", "open"),
+                "tickets": tickets,
+                "tickets_total": len(tickets),
+                "tickets_closed": erledigt,
+            }
+        )
+    return epics
+
+
+def assign_to_epics(data: dict, epics: list[dict]) -> dict:
+    """Ordnet die Bewegungen des Tages den Epics zu.
+
+    Ein Vorgang gehört zu einem Epic, wenn seine Nummer in dessen Ticketliste
+    steht. Pull Requests werden über die von ihnen geschlossenen Issues
+    zugeordnet. Was sich nicht zuordnen lässt, bleibt bewusst ungruppiert
+    statt geraten zu werden.
+    """
+    zuordnung: dict[int, int] = {}
+    for epic in epics:
+        for nummer in epic["tickets"]:
+            zuordnung.setdefault(nummer, epic["number"])
+
+    gruppen: dict[int, dict] = {
+        epic["number"]: {
+            "number": epic["number"],
+            "title": epic["title"],
+            "tickets_total": epic["tickets_total"],
+            "tickets_closed": epic["tickets_closed"],
+            "opened": [],
+            "closed": [],
+            "merged": [],
+        }
+        for epic in epics
+    }
+    ohne = {"opened": [], "closed": [], "merged": []}
+
+    def einsortieren(schluessel: str, eintraege: list[dict]) -> None:
+        for eintrag in eintraege:
+            epic_nummer = zuordnung.get(eintrag["number"])
+            if epic_nummer is None:
+                # Pull Requests tragen ihre Issue-Nummer im Body ("Closes #N").
+                for referenz in eintrag.get("closes", []):
+                    if referenz in zuordnung:
+                        epic_nummer = zuordnung[referenz]
+                        break
+            ziel = gruppen[epic_nummer] if epic_nummer in gruppen else ohne
+            ziel[schluessel].append(eintrag)
+
+    einsortieren("opened", data["opened_issues"])
+    einsortieren("closed", data["closed_issues"])
+    einsortieren("merged", data["merged_pull_requests"])
+
+    aktiv = [
+        gruppe
+        for gruppe in gruppen.values()
+        if gruppe["opened"] or gruppe["closed"] or gruppe["merged"]
+    ]
+    # Die stärkste Tagesbewegung zuerst, damit der Absatz dazu oben steht.
+    aktiv.sort(
+        key=lambda g: len(g["opened"]) + len(g["closed"]) + len(g["merged"]),
+        reverse=True,
+    )
+    return {"epics": aktiv, "ohne_epic": ohne}
+
+
 def collect(repo: str, day: Date) -> dict:
     """Trägt alle Daten für einen Tag zusammen."""
     start, end = day_bounds(day)
@@ -202,7 +376,7 @@ def collect(repo: str, day: Date) -> dict:
     for pull_request in open_pulls:
         pull_request["body"] = ""
 
-    return {
+    ergebnis = {
         "repo": repo,
         "date": day.isoformat(),
         "generated_at": datetime.now(tz=TIMEZONE).isoformat(),
@@ -213,6 +387,9 @@ def collect(repo: str, day: Date) -> dict:
         "ci": ci_status(repo),
         "summary": "",
     }
+    add_closing_references(repo, merged)
+    ergebnis.update(assign_to_epics(ergebnis, collect_epics(repo)))
+    return ergebnis
 
 
 def has_activity(data: dict) -> bool:
@@ -231,17 +408,31 @@ def has_activity(data: dict) -> bool:
 SUMMARY_SYSTEM_PROMPT = """\
 Du schreibst die Zusammenfassung eines Tagesreports für ein Softwareprojekt.
 
-Schreibe zwei bis vier Absätze in schlichtem, sachlichem Deutsch. Beschreibe,
-was sich inhaltlich geändert hat und was neu angesetzt wurde — nicht, wie viele
-Issues bewegt wurden. Der Leser sieht die Listen ohnehin.
+Die Eingabe ist bereits nach Epics gegliedert. Ein Epic bündelt thematisch
+zusammenhängende Arbeit. Übernimm diese Gliederung unverändert.
 
-Regeln:
-- Beziehe dich auf Issues und Pull Requests mit ihrer Nummer, etwa "#221".
-- Gruppiere nach Thema, nicht nach Issue-Reihenfolge.
-- Keine Aufzählungszeichen, keine Überschriften, kein Markdown, reiner Fließtext.
-- Keine Werbesprache und keine Bewertung der Arbeitsleistung.
-- Wenn ein Vorhaben erkennbar über mehrere Issues zusammenhängt, benenne den
-  gemeinsamen Faden.
+Aufbau:
+- Ein Absatz je Epic, in der vorgegebenen Reihenfolge. Kein Epic auslassen,
+  keines hinzuerfinden, keine zwei Epics in einem Absatz zusammenfassen.
+- Danach höchstens ein Absatz für die Vorgänge ohne Epic-Bezug. Fasse ihn
+  nach Themen zusammen, etwa Projektsetup, Sicherheit oder Dokumentation,
+  und halte ihn kürzer als die Epic-Absätze.
+- Jeder Absatz höchstens drei Sätze, und jeder Satz höchstens 25 Wörter.
+
+Inhalt je Absatz:
+- Nenne das Epic beim Namen und sage, was an diesem Tag darin geschehen ist:
+  überwiegend Definition neuer Tickets, überwiegend Umsetzung, oder beides.
+- Ordne es in den Gesamtfortschritt ein. Jede Zahl, die du nennst, muss
+  wörtlich in der Eingabe stehen. Zähle nichts selbst ab, rechne nichts aus
+  und schätze nichts. Im Zweifel nenne gar keine Zahl.
+- Nenne höchstens zwei Vorgänge beispielhaft mit Nummer, und nur solche, die
+  den Schwerpunkt des Tages tragen. Zähle nicht alles auf; der Leser sieht
+  die Listen darunter.
+
+Sprache:
+- Schlichtes, sachliches Deutsch. Reiner Fließtext.
+- Keine Aufzählungszeichen, keine Überschriften, kein Markdown.
+- Keine Werbesprache, keine Bewertung der Arbeitsleistung.
 - Technische Begriffe und Bezeichner bleiben in ihrer Originalform.
 """
 
@@ -254,25 +445,130 @@ def truncate(text: str, limit: int) -> str:
 
 
 def build_summary_prompt(data: dict) -> str:
+    """Baut den Prompt entlang der Epic-Gliederung.
+
+    Die Struktur wird hier festgelegt und nicht dem Modell überlassen, damit
+    die Gliederung von Tag zu Tag gleich bleibt und die Fortschrittszahlen aus
+    den Daten stammen statt aus einer Schätzung.
+    """
     lines: list[str] = [f"Datum: {german_date(Date.fromisoformat(data['date']))}", ""]
 
-    def section(title: str, items: list[dict], *, body_limit: int) -> None:
+    def eintraege(titel: str, items: list[dict], *, body_limit: int) -> None:
         if not items:
             return
-        lines.append(f"## {title}")
+        lines.append(f"{titel}:")
         for item in items[:PROMPT_MAX_ITEMS]:
-            labels = ", ".join(item["labels"]) if item["labels"] else "ohne Label"
-            lines.append(f"- #{item['number']} {item['title']} [{labels}]")
+            lines.append(f"- #{item['number']} {item['title']}")
             if body_limit and item.get("body"):
                 lines.append(f"  {truncate(item['body'], body_limit)}")
         if len(items) > PROMPT_MAX_ITEMS:
             lines.append(f"- … und {len(items) - PROMPT_MAX_ITEMS} weitere")
         lines.append("")
 
-    section("Abgeschlossene Issues", data["closed_issues"], body_limit=600)
-    section("Gemergte Pull Requests", data["merged_pull_requests"], body_limit=900)
-    section("Neu angelegte Issues", data["opened_issues"], body_limit=600)
+    def kennzahlen(gruppe: dict) -> str:
+        return (
+            f"Heute: {len(gruppe.get('opened', []))} neu angelegt, "
+            f"{len(gruppe.get('closed', []))} abgeschlossen, "
+            f"{len(gruppe.get('merged', []))} gemergt."
+        )
+
+    for epic in data.get("epics", []):
+        lines.append(f"## Epic #{epic['number']}: {epic['title']}")
+        lines.append(
+            f"Gesamtfortschritt: {epic['tickets_closed']} von "
+            f"{epic['tickets_total']} Tickets erledigt."
+        )
+        lines.append(kennzahlen(epic))
+        lines.append("")
+        eintraege("Heute neu angelegt", epic["opened"], body_limit=300)
+        eintraege("Heute abgeschlossen", epic["closed"], body_limit=300)
+        eintraege("Heute gemergt", epic["merged"], body_limit=500)
+
+    ohne = data.get("ohne_epic") or {}
+    if any(ohne.get(k) for k in ("opened", "closed", "merged")):
+        lines.append("## Ohne Epic-Bezug")
+        lines.append(kennzahlen(ohne))
+        lines.append("")
+        eintraege("Heute neu angelegt", ohne.get("opened", []), body_limit=300)
+        eintraege("Heute abgeschlossen", ohne.get("closed", []), body_limit=300)
+        eintraege("Heute gemergt", ohne.get("merged", []), body_limit=500)
+
     return "\n".join(lines)
+
+
+ANTHROPIC_VERSION = "2023-06-01"
+DEFAULT_MODELS = {
+    "anthropic": "claude-haiku-4-5-20251001",
+    "openai": "gpt-4o",
+}
+DEFAULT_BASE_URLS = {
+    "anthropic": "https://api.anthropic.com",
+    "openai": "https://api.openai.com",
+}
+
+
+def detect_provider(api_key: str) -> str:
+    """Bestimmt den Anbieter, vorrangig aus der Konfiguration.
+
+    Ohne gesetzte Variable entscheidet das Präfix des Schlüssels. Anthropic
+    vergibt Schlüssel mit `sk-ant-`, alles andere wird als OpenAI-kompatibel
+    behandelt.
+    """
+    configured = os.environ.get("OPAA_REPORT_PROVIDER", "").strip().lower()
+    if configured in DEFAULT_MODELS:
+        return configured
+    if configured:
+        print(
+            f"Unbekannter Anbieter '{configured}' — erkenne anhand des Schlüssels.",
+            file=sys.stderr,
+        )
+    return "anthropic" if api_key.startswith("sk-ant-") else "openai"
+
+
+def build_request(provider: str, api_key: str, base_url: str, model: str, prompt: str):
+    """Baut die Anfrage im Format des jeweiligen Anbieters."""
+    if provider == "anthropic":
+        payload = {
+            "model": model,
+            "max_tokens": 900,
+            "temperature": 0.3,
+            "system": SUMMARY_SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "content-type": "application/json",
+        }
+        path = "/v1/messages"
+    else:
+        payload = {
+            "model": model,
+            "max_tokens": 900,
+            "temperature": 0.3,
+            "messages": [
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        path = "/v1/chat/completions"
+
+    return urllib.request.Request(
+        f"{base_url}{path}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+    )
+
+
+def extract_text(provider: str, body: dict) -> str:
+    """Liest den Antworttext aus der Struktur des jeweiligen Anbieters."""
+    if provider == "anthropic":
+        return body["content"][0]["text"].strip()
+    return body["choices"][0]["message"]["content"].strip()
 
 
 def summarize(data: dict) -> str:
@@ -282,34 +578,30 @@ def summarize(data: dict) -> str:
         print("Kein API-Schlüssel gesetzt — Report ohne Zusammenfassung.", file=sys.stderr)
         return ""
 
+    provider = detect_provider(api_key)
     # Nicht gesetzte Repository-Variablen erreichen den Prozess als leerer
     # String, nicht als fehlender Eintrag. Der Vorgabewert von `get` würde
     # deshalb nie greifen.
-    model = os.environ.get("OPAA_REPORT_MODEL", "").strip() or "gpt-4o"
+    model = os.environ.get("OPAA_REPORT_MODEL", "").strip() or DEFAULT_MODELS[provider]
     base_url = (
-        os.environ.get("OPAA_REPORT_BASE_URL", "").strip() or "https://api.openai.com"
+        os.environ.get("OPAA_REPORT_BASE_URL", "").strip() or DEFAULT_BASE_URLS[provider]
     ).rstrip("/")
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-            {"role": "user", "content": build_summary_prompt(data)},
-        ],
-        "temperature": 0.3,
-        "max_tokens": 900,
-    }
-    request = urllib.request.Request(
-        f"{base_url}/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+
+    print(f"Zusammenfassung über {provider}, Modell {model}.", file=sys.stderr)
+    request = build_request(
+        provider, api_key, base_url, model, build_summary_prompt(data)
     )
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             body = json.loads(response.read().decode("utf-8"))
-        return body["choices"][0]["message"]["content"].strip()
+        return extract_text(provider, body)
+    except urllib.error.HTTPError as error:
+        # Der Fehlertext des Anbieters nennt die Ursache, etwa ein unbekanntes
+        # Modell oder einen abgelaufenen Schlüssel. Er enthält den Schlüssel
+        # selbst nicht und kann daher protokolliert werden.
+        detail = error.read().decode("utf-8", errors="replace")[:400]
+        print(f"Zusammenfassung fehlgeschlagen ({error.code}): {detail}", file=sys.stderr)
+        return ""
     except (urllib.error.URLError, KeyError, IndexError, TimeoutError) as error:
         print(f"Zusammenfassung fehlgeschlagen: {error}", file=sys.stderr)
         return ""
