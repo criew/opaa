@@ -1,0 +1,16 @@
+# Overlay applied only by scripts/run-e2e.mjs (`-f docker-compose.yml -f
+# e2e/docker-compose.e2e.yml`), never by a developer's own `docker compose
+# up`.
+services:
+  backend:
+    environment:
+      # Per-run JWT signing secret: never persisted to any file. run-e2e.mjs
+      # generates it fresh for every run and passes it through the host
+      # process environment only. The ":?" form fails loudly instead of
+      # silently starting the backend with an empty secret if this overlay
+      # is ever invoked manually without going through run-e2e.mjs.
+      OPAA_AUTH_BASIC_SECRET: ${OPAA_AUTH_BASIC_SECRET:?OPAA_AUTH_BASIC_SECRET must be set (see scripts/run-e2e.mjs)}
+      # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
+      # run alongside a developer's own docker-compose.yml stack; the
+      # allowed CORS origin must match the frontend's actual port.
+      OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}

@@ -55,6 +55,31 @@ docs: update architecture decision records
 - Zugehörige GitHub-Issues mit `Closes #N` verknüpfen
 - Sicherstellen, dass Tests bestehen, bevor ein Review angefordert wird
 
+## Wann einen E2E-Test schreiben?
+
+Die browserbasierte End-to-End-Suite liegt unter [`e2e/`](e2e/README.md) (Playwright) und ist laut
+[`docs/AGENT-ORGANIZATION.md`](docs/AGENT-ORGANIZATION.md) Sache des QA-Engineer-Agenten, der aus
+den Abnahmekriterien eines Feature-Issues dedizierte `test(e2e)`-Issues ableitet — nicht jeder PR
+braucht einen eigenen E2E-Test. Ein E2E-Test lohnt sich für:
+
+- **Kritische, nutzersichtbare Abläufe end-to-end** (Anmeldung, Dokument indizieren, Frage stellen
+  und Antwort erhalten) — Dinge, die durch Unit-/Integrationstests allein nicht abgedeckt sind,
+  weil sie Frontend, Backend und Datenbank gemeinsam durchlaufen.
+- **Regressionen, die nur im Zusammenspiel mehrerer Schichten auftreten** (z. B. CORS-Konfiguration,
+  Auth-Redirects, Routing).
+
+Kein E2E-Test nötig für:
+
+- Reine Komponentenlogik oder isolierte Backend-Logik — dafür Vitest (Frontend) bzw. JUnit
+  (Backend) verwenden.
+- Visuelle Details oder Layout-Feinheiten (explizit außerhalb des Scopes der Suite).
+- Fälle, die sich genauso zuverlässig und schneller mit einem Integrationstest abdecken lassen.
+
+Neue Szenarien nutzen die vorhandenen Fixtures (z. B. die Anmeldung aus `e2e/fixtures/auth.ts`)
+statt sie zu kopieren; siehe `e2e/README.md` für Details zum lokalen Ausführen, die
+Selektor-Konvention (`getByRole`/`getByLabel` vor `data-testid` vor Text-/Placeholder-Selektoren)
+und die Serialisierungs-Konvention für Specs, die gemeinsamen Zustand verändern.
+
 ## Issues
 
 - **Issues müssen auf Deutsch verfasst werden** — ebenso Pull Requests und Dokumentation. Englisch bleibt dem Quellcode vorbehalten (Bezeichner, Dateinamen, Kommentare); Details in [AGENTS.md](AGENTS.md#projektsprache)

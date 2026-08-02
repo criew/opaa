@@ -1,0 +1,117 @@
+name: E2E
+
+on:
+  pull_request:
+    branches: [main]
+    # Building the full stack is the expensive part of this workflow (see
+    # "Build backend/frontend images" below); skip it for changes that can't
+    # affect the running app, matching the AGENTS.md pre-push rule of
+    # skipping checks for pure documentation changes.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+  push:
+    branches: [main]
+  schedule:
+    # Post-merge QA loop (see docs/AGENT-ORGANIZATION.md): catches
+    # regressions from base image updates etc. even without a new PR.
+    - cron: '17 3 * * *'
+
+env:
+  COMPOSE_PROJECT_NAME: opaa-e2e
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    # Suite budget from #231 is 10 minutes for the *test run*; the image
+    # build below is intentionally outside that budget (see e2e/README.md)
+    # and sped up with a GitHub Actions layer cache, but still needs its own
+    # margin. Re-evaluate this number as the suite grows.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Pre-build the images with a GitHub Actions layer cache and load them
+      # into the local Docker daemon, tagged exactly as Compose would name
+      # them for project "opaa-e2e" (<project>-<service>:latest). run-e2e.mjs
+      # then runs with E2E_SKIP_BUILD=true and reuses these images instead of
+      # rebuilding, which is what keeps the actual `docker compose up`
+      # (and thus the suite run) fast and within the #231 time budget.
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          tags: opaa-e2e-backend:latest
+          load: true
+          cache-from: type=gha,scope=e2e-backend
+          cache-to: type=gha,mode=max,scope=e2e-backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-e2e-frontend:latest
+          load: true
+          cache-from: type=gha,scope=e2e-frontend
+          cache-to: type=gha,mode=max,scope=e2e-frontend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Type-check E2E suite
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E suite
+        working-directory: e2e
+        run: npm test
+        env:
+          E2E_SKIP_BUILD: 'true'
+
+      # if: !cancelled() (not failure()) on purpose: when the job hits
+      # timeout-minutes, GitHub marks it cancelled, not failed, and
+      # if: failure() would silently skip artifact upload in exactly the
+      # case investigators need it most.
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload traces & screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload container logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-logs
+          path: e2e/docker-compose.log
+          if-no-files-found: ignore
+          retention-days: 14
