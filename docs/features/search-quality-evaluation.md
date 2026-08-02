@@ -297,7 +297,7 @@ Kein LLM ist beteiligt. Retrieval-Metriken sind reine Ranking-Metriken; die Gene
 
 | Option | Für | Gegen |
 |---|---|---|
-| 1. Ollama-Container mit `nomic-embed-text` | kostenlos, kein Secret, entspricht der Standardkonfiguration von OPAA, über die Modellversion reproduzierbar | Modell-Pull (~275 MB) und Einbettung von ~1.450 Dokumenten kosten Laufzeit |
+| 1. Ollama-Container mit `nomic-embed-text` | kostenlos, kein Secret, entspricht dem Anwendungs-Default von OPAA (`application.yml`), über die Modellversion reproduzierbar | Modell-Pull (~275 MB) und Einbettung von ~1.450 Dokumenten kosten Laufzeit |
 | 2. OpenAI `text-embedding-3-small` | schnell, folgt dem bestehenden `backend-integration`-Job | kostet Geld, braucht ein Secret (in Forks nicht verfügbar), Anbieter kann das Modell still ändern → Baseline driftet ohne Code-Änderung |
 | 3. Vorberechnete Embeddings im Repo | schnell und deterministisch | misst nur noch den Ranking-Code, nicht die Pipeline — nutzlos für Modellvergleiche |
 
@@ -357,23 +357,56 @@ Entwicklungsumgebung ihn nicht startet.
 **Sie existiert bereits: `opaa.ewerlin.com`.** Es ist also kein Hosting aufzubauen, sondern der
 Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 
-Zwei Folgerungen:
+> **Korrektur (aus dem Review zu PR #247).** Zwei Aussagen in diesem Abschnitt waren falsch und
+> sind nachfolgend berichtigt: Die Instanz läuft **nicht** auf Ollama, sondern auf **OpenAI**, und
+> es wird **kein anonymer Lesezugriff** eingeführt. Beide Punkte hat der Maintainer klargestellt.
+> Was das für die Begründung von ADR-0008 bedeutet, steht dort im
+> [Nachtrag](../decisions/0008-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
 
-- **Kein kommerzielles Modell.** Der Stack nutzt `OPAA_AI_CHAT_PROVIDER` mit Vorgabe `ollama` und
-  `phi3:mini`; die bestehende Konfiguration der Instanz gilt unverändert. Damit ist das
-  Kostenrisiko einer öffentlich erreichbaren Suche vom Tisch, und die Demo zeigt OPAA in genau der
-  selbstgehosteten Betriebsart, für die es gebaut ist.
+Drei Folgerungen:
+
+- **Die Instanz läuft auf OpenAI.** Der Maintainer hat bestätigt, dass `opaa.ewerlin.com` ein
+  kommerzielles Modell über OpenAI nutzt. Das deckt sich mit `.env.example`, das für den
+  Compose-Betrieb `OPAA_AI_CHAT_PROVIDER=openai` und `OPAA_AI_EMBEDDING_PROVIDER=openai` setzt;
+  lediglich der *Anwendungs-Default* in `application.yml` lautet `ollama`. Die frühere Aussage
+  („bestehende Ollama-Konfiguration mit `phi3:mini`, kein Kostenrisiko") verwechselte diese beiden
+  Ebenen und ist zurückgezogen.
+- **Damit besteht ein echtes Kostenrisiko.** Jede Demo-Anfrage erzeugt Token-Kosten beim Anbieter.
+  Der Zugriff ist zwar account-gebunden (siehe unten), anonymer Massenzugriff also ausgeschlossen —
+  aber ein einzelnes berechtigtes Konto kann laufende Kosten in unbegrenzter Höhe auslösen, und die
+  Zahl der Konten wächst mit dem Erfolg der Demo. Kostenbegrenzung ist deshalb eine
+  Betriebsanforderung, kein optionaler Schutz.
 - **Die Instanz ist nirgends dokumentiert.** Weder `docs/deployment.md` noch `docker-compose.yml`
-  erwähnen sie. Das ist eine eigenständige Lücke und wird als eigenes Dokumentations-Issue geführt;
-  ohne diese Beschreibung kann ein Entwickler den Rollout gar nicht durchführen.
+  erwähnen sie. Das ist eine eigenständige Lücke und wird als eigenes Dokumentations-Issue geführt
+  (#244); ohne diese Beschreibung kann ein Entwickler den Rollout gar nicht durchführen.
+
+### Zugangsmodell: account-gebunden, kein Gastzugang
+
+**Entscheidung des Maintainers:** Die Instanz bleibt hinter Keycloak; jeder Zugriff setzt ein Konto
+voraus. Ein Gast- oder Read-only-Zugang wird **nicht** eingeführt. Der Maintainer hat außerdem
+ausdrücklich entschieden, dafür **keinen ADR anzulegen** (der Review zu PR #247 hatte ein ADR-0009
+vorgeschlagen); die Entscheidung wird stattdessen hier festgehalten und gilt für Epic #224 als
+verbindlich.
+
+Der damit verbundene Zielkonflikt wird nicht verdeckt: Die Demo verliert ihren stärksten Effekt,
+das Ausprobieren ohne jede Hürde. Übrig bleibt eine Instanz, die man Interessenten gezielt
+zugänglich macht — der Nutzen ist real, tritt aber erst nach einer Kontoanlage ein, nicht beim
+ersten Klick. Die Begründung „ohne Installation ausprobieren" trägt entsprechend nur eingeschränkt:
+ohne *Installation* ja, ohne *Anmeldung* nein. Wer den niedrigschwelligen Effekt später doch will,
+braucht dafür eine neue Entscheidung samt Kosten- und Missbrauchsbetrachtung; als Idee bleibt sie
+unter [Offene Fragen](#offene-fragen--zukünftige-erweiterungen) stehen.
 
 Anforderungen an den Betrieb der Instanz:
 
-- **Anonymer Lesezugriff** auf die Suche, keine Schreib- oder Admin-Endpunkte von außen. Der
-  Indizierungs-Endpunkt ist bereits auf `SYSTEM_ADMIN` beschränkt und darf so bleiben.
-- **Rate Limiting** ist vorhanden (`opaa.rate-limit`) und muss für die Demo scharf gestellt sein.
-  Auch ohne Token-Kosten bleibt es nötig: Ein selbstgehostetes Modell ist die knappere Ressource,
-  nicht die billigere.
+- **Zugriff nur mit Konto.** Authentifizierung über Keycloak für alle Endpunkte, auch für die
+  Suche; keine anonymen Lesepfade. Der Indizierungs-Endpunkt ist bereits auf `SYSTEM_ADMIN`
+  beschränkt und bleibt es.
+- **Harter Kostendeckel beim Anbieter.** Ein Ausgabenlimit auf dem OpenAI-Konto, damit ein Fehler
+  oder Missbrauch nicht in eine offene Rechnung läuft. Ein Deckel wirkt auch dann, wenn das Rate
+  Limiting falsch konfiguriert ist — deshalb beides, nicht eines davon.
+- **Rate Limiting** ist vorhanden (`opaa.rate-limit`) und muss für die Demo scharf gestellt sein —
+  pro Konto *und* global. Es ist jetzt die primäre Kostenbremse und nicht mehr nur der Schutz einer
+  knappen lokalen Rechenressource.
 - **Quellenhinweis** sichtbar in der Oberfläche. CC0 verlangt ihn nicht; er wird trotzdem geführt,
   weil ein Besucher wissen soll, woher die Daten stammen.
 - **Hinweis auf den Demo-Charakter**: synthetisch formulierte Texte, keine Faktenautorität.
@@ -417,9 +450,10 @@ Vom Maintainer entschieden:
 |---|---|
 | 1 | **Phase-1-Quelle:** `jrtec/Superheroes` (CC0-1.0). Der FiveThirtyEight-Datensatz entfällt. |
 | 2 | **Multi-Tenancy:** ein gemeinsamer Index, Domänentrennung über Dateinamen-Präfix. Die Workspace-Variante wartet auf #115/#117, nicht auf Epic #198. |
-| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`, mit ihrer bestehenden Ollama-Konfiguration (`phi3:mini`). Kein kommerzielles Modell. |
+| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. Sie läuft auf **OpenAI**, nicht auf Ollama — *korrigiert am 2026-08-02; die vorherige Angabe „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" war falsch.* Daraus folgt ein reales Kostenrisiko pro Anfrage, das über Ausgabenlimit und Rate Limiting begrenzt wird. |
 | 4 | **Korpus-Ablage:** Hauptrepository mit SHA-256-Manifest; Neubewertung bei der Ausweitung auf vier Domänen. |
-| 5 | **ADR-0008** ist akzeptiert. |
+| 5 | **ADR-0008** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
+| 6 | **Zugangsmodell der Demo:** account-gebunden hinter Keycloak. Kein Gast- und kein Read-only-Zugang. *Korrigiert am 2026-08-02; die vorherige Anforderung „anonymer Lesezugriff" ist gestrichen.* Für diese Entscheidung wird ausdrücklich **kein ADR** angelegt. |
 
 Vom Product Manager gesetzt, mangels Rückfrage, weiterhin widerrufbar:
 
@@ -443,16 +477,21 @@ Vom Product Manager gesetzt, mangels Rückfrage, weiterhin widerrufbar:
 Die Fragen zu Lizenz, Demo-Hosting, Korpus-Ablage und Multi-Tenancy sind entschieden und stehen
 oben unter [Festlegungen](#festlegungen). Offen bleibt:
 
-1. **Antwortqualität mit `phi3:mini`:** Das Modell ist klein. Für Retrieval-Metriken spielt es
-   keine Rolle (der Harness nutzt kein LLM), für den Eindruck der öffentlichen Demo schon. Falls
-   die Antworten auf dem Korpus zu schwach ausfallen, ist ein größeres lokales Modell auf der
-   Instanz die naheliegende Reaktion — zu bewerten, sobald der Korpus dort liegt.
-2. **Ablage bei vier Domänen:** Prüfpunkt in der Ausweitung — bleibt das Repository auch bei
+1. **Laufende Kosten der Demo:** Die Instanz nutzt OpenAI, jede Anfrage kostet Geld. Wie hoch die
+   Kosten pro Monat tatsächlich ausfallen, lässt sich erst beziffern, wenn der Korpus dort liegt
+   und Anfragen laufen. Offen bleibt, ab welchem Betrag der Maintainer gegensteuert und womit —
+   engeres Rate Limit, kleineres Modell (z. B. `gpt-4o-mini`) oder ein Wechsel der Demo auf ein
+   lokales Modell. Erst messen, dann entscheiden.
+2. **Niedrigschwelliger Zugang:** Die Anmeldepflicht kostet die Demo ihren stärksten Effekt. Ein
+   Gastzugang bliebe die wirksamste Variante, ist aber vom Maintainer abgelehnt, solange die
+   Kostenfrage nicht geklärt ist. Falls sie geklärt wird, wäre der Punkt neu zu bewerten — mit
+   Kostendeckel, engem Rate Limit und ggf. einem eigenen, günstigeren Modell für den Gastpfad.
+3. **Ablage bei vier Domänen:** Prüfpunkt in der Ausweitung — bleibt das Repository auch bei
    10–20 MB die richtige Ablage?
-3. **Zurückgestellt:** Generationsmetriken (`RelevancyEvaluator`, `FactCheckingEvaluator`),
+4. **Zurückgestellt:** Generationsmetriken (`RelevancyEvaluator`, `FactCheckingEvaluator`),
    RAGAS-Sidecar, Paired-Bootstrap-Vergleichsläufe, ein eigener deutscher Benchmark. Alles bereits
    in `discussion-rag-evaluation.md` beschrieben; kommt in Phase 4.
-4. **Zurückgestellt:** Ein Nutzer-Feedback-Kanal in der Demo („war das hilfreich?") wäre eine
+5. **Zurückgestellt:** Ein Nutzer-Feedback-Kanal in der Demo („war das hilfreich?") wäre eine
    billige Quelle für echte Anfragen und damit für ein besseres Golden Dataset. Eigenes Feature.
 
 ---
@@ -463,5 +502,9 @@ oben unter [Festlegungen](#festlegungen). Offen bleibt:
   Mensch danach sucht.
 - Die Frage „ist Konfiguration A besser als B?" wird mit einer Zahl und einem Verfahren
   beantwortet, nicht mit einer Meinung.
-- Ein Interessent kann OPAA ohne Installation ausprobieren und bekommt auf eine Anfrage an den
-  Demo-Korpus eine belegte Antwort mit Quellenangabe.
+- Ein Interessent mit einem Konto auf der Demo-Instanz kann OPAA ohne eigene Installation
+  ausprobieren und bekommt auf eine Anfrage an den Demo-Korpus eine belegte Antwort mit
+  Quellenangabe. Der Wegfall der Installationshürde bleibt; die Anmeldehürde bleibt bestehen und
+  begrenzt die Reichweite dieser Metrik bewusst.
+- Die laufenden Modellkosten der Demo sind bekannt und gedeckelt: Es gibt ein Ausgabenlimit beim
+  Anbieter und ein wirksames Rate Limit pro Konto.
