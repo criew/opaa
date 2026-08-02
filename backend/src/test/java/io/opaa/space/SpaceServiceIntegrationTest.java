@@ -3,6 +3,7 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberRequest;
 import io.opaa.api.dto.SpaceRequest;
@@ -10,56 +11,60 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
-@DataJpaTest
-@Import(SpaceService.class)
-@Testcontainers(disabledWithoutDocker = true)
+/**
+ * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
+ * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288.
+ * {@code Space.ownerId}, {@code SpaceMembership.userId} and every {@code organizationId} are plain
+ * {@code UUID} columns without {@code @ManyToOne}; Hibernate does not create foreign keys for
+ * those, Liquibase does ({@code fk_spaces_owner}, {@code fk_space_memberships_user}, {@code
+ * fk_spaces_organization}, {@code fk_space_memberships_organization}). Every test therefore creates
+ * real {@link Organization} and {@link User} rows instead of using bare random UUIDs.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfiguration.class)
+@ActiveProfiles({"local", "basic"})
 @TestPropertySource(
-    properties = {"spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
+    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
+@Testcontainers(disabledWithoutDocker = true)
 class SpaceServiceIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
-  @DynamicPropertySource
-  static void configureDataSource(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
 
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository membershipRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private OrganizationRepository organizationRepository;
 
   private UUID organizationA;
   private UUID organizationB;
 
   @BeforeEach
   void cleanUp() {
+    // Deliberately does not delete all organizations: Organization.DEFAULT_ID is seeded once by
+    // Liquibase and other tests sharing this Spring context (e.g.
+    // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
+    // Each test creates its own throwaway organizations instead, scoped by random ids.
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     userRepository.deleteAll();
-    organizationA = UUID.randomUUID();
-    organizationB = UUID.randomUUID();
+    organizationA =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
+    organizationB =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org B")).getId();
   }
 
   private UUID createUser(UUID organizationId) {
