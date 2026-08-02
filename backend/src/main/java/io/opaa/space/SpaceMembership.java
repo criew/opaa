@@ -1,4 +1,4 @@
-package io.opaa.workspace;
+package io.opaa.space;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,8 +14,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "workspace_memberships")
-public class WorkspaceMembership {
+@Table(name = "space_memberships")
+public class SpaceMembership {
 
   @Id private UUID id;
 
@@ -23,22 +23,26 @@ public class WorkspaceMembership {
   private UUID userId;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "workspace_id", nullable = false)
-  private Workspace workspace;
+  @JoinColumn(name = "space_id", nullable = false)
+  private Space space;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
-  private WorkspaceRole role;
+  private SpaceRole role;
+
+  @Column(name = "organization_id", nullable = false)
+  private UUID organizationId;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
-  protected WorkspaceMembership() {}
+  protected SpaceMembership() {}
 
-  public WorkspaceMembership(UUID userId, WorkspaceRole role) {
+  public SpaceMembership(UUID userId, SpaceRole role, UUID organizationId) {
     this.id = UUID.randomUUID();
     this.userId = userId;
     this.role = role;
+    this.organizationId = organizationId;
   }
 
   @PrePersist
@@ -46,8 +50,8 @@ public class WorkspaceMembership {
     this.createdAt = Instant.now();
   }
 
-  void assignWorkspace(Workspace workspace) {
-    this.workspace = workspace;
+  void assignSpace(Space space) {
+    this.space = space;
   }
 
   public UUID getId() {
@@ -58,16 +62,20 @@ public class WorkspaceMembership {
     return userId;
   }
 
-  public Workspace getWorkspace() {
-    return workspace;
+  public Space getSpace() {
+    return space;
   }
 
-  public WorkspaceRole getRole() {
+  public SpaceRole getRole() {
     return role;
   }
 
-  public void setRole(WorkspaceRole role) {
+  public void setRole(SpaceRole role) {
     this.role = role;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
   }
 
   public Instant getCreatedAt() {

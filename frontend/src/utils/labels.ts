@@ -1,26 +1,26 @@
-import type { WorkspaceRole, WorkspaceType } from '../types/api'
+import type { SpaceKind, SpaceRole } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
-const workspaceRoleLabels: Record<WorkspaceRole, string> = {
-  VIEWER: 'Leser',
-  EDITOR: 'Bearbeiter',
+const spaceRoleLabels: Record<SpaceRole, string> = {
+  MEMBER: 'Mitglied',
+  CURATOR: 'Kurator',
   ADMIN: 'Administrator',
-  OWNER: 'Eigentümer',
 }
 
-const workspaceTypeLabels: Record<WorkspaceType, string> = {
+const spaceKindLabels: Record<SpaceKind, string> = {
   PERSONAL: 'Persönlich',
-  SHARED: 'Geteilt',
+  PROJECT: 'Projekt',
+  TEAM: 'Team',
 }
 
-export function workspaceRoleLabel(role: WorkspaceRole | string | undefined): string {
+export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
   if (!role) return ''
-  return workspaceRoleLabels[role as WorkspaceRole] ?? role
+  return spaceRoleLabels[role as SpaceRole] ?? role
 }
 
-export function workspaceTypeLabel(type: WorkspaceType | string | undefined): string {
-  if (!type) return ''
-  return workspaceTypeLabels[type as WorkspaceType] ?? type
+export function spaceKindLabel(kind: SpaceKind | string | undefined): string {
+  if (!kind) return ''
+  return spaceKindLabels[kind as SpaceKind] ?? kind
 }
 
 const accessLevelLabels: Record<AccessLevel, string> = {

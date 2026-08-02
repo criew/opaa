@@ -4,20 +4,21 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import Sidebar from './Sidebar'
 import { useChatStore } from '../stores/chatStore'
-import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useSpaceStore } from '../stores/spaceStore'
 
 describe('Sidebar', () => {
   beforeEach(() => {
     useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
-    useWorkspaceStore.setState({
-      workspaces: [
+    useSpaceStore.setState({
+      spaces: [
         {
-          id: 'ws-personal',
+          id: 'space-personal',
           name: 'Meine Dokumente',
           description: 'Private',
-          type: 'PERSONAL',
+          kind: 'PERSONAL',
+          visibility: 'PRIVATE',
           memberCount: 1,
-          userRole: 'OWNER',
+          userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
         },
@@ -28,7 +29,7 @@ describe('Sidebar', () => {
 
   it('renders navigation items', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
-    expect(screen.getByText('Workspaces')).toBeInTheDocument()
+    expect(screen.getByText('Spaces')).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
     expect(screen.getByText('Meine Dokumente')).toBeInTheDocument()
     expect(screen.getByText('Einstellungen')).toBeInTheDocument()

@@ -4,23 +4,23 @@ import Box from '@mui/material/Box'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
 import { useChatStore } from '../stores/chatStore'
-import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useSpaceStore } from '../stores/spaceStore'
 
 export default function ChatPage() {
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
   const error = useChatStore((s) => s.error)
   const sendMessage = useChatStore((s) => s.sendMessage)
-  const workspaces = useWorkspaceStore((s) => s.workspaces)
-  const chatFilterWorkspaceIds = useWorkspaceStore((s) => s.chatFilterWorkspaceIds)
-  const setChatFilterWorkspaceIds = useWorkspaceStore((s) => s.setChatFilterWorkspaceIds)
-  const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces)
+  const spaces = useSpaceStore((s) => s.spaces)
+  const chatFilterSpaceIds = useSpaceStore((s) => s.chatFilterSpaceIds)
+  const setChatFilterSpaceIds = useSpaceStore((s) => s.setChatFilterSpaceIds)
+  const loadSpaces = useSpaceStore((s) => s.loadSpaces)
 
   useEffect(() => {
-    if (workspaces.length === 0) {
-      void loadWorkspaces()
+    if (spaces.length === 0) {
+      void loadSpaces()
     }
-  }, [loadWorkspaces, workspaces.length])
+  }, [loadSpaces, spaces.length])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
@@ -31,11 +31,11 @@ export default function ChatPage() {
       )}
       <MessageList messages={messages} isLoading={isLoading} />
       <ChatInput
-        onSend={(message) => sendMessage(message, chatFilterWorkspaceIds)}
+        onSend={(message) => sendMessage(message, chatFilterSpaceIds)}
         disabled={isLoading}
-        workspaces={workspaces}
-        selectedWorkspaceIds={chatFilterWorkspaceIds}
-        onWorkspaceFilterChange={setChatFilterWorkspaceIds}
+        spaces={spaces}
+        selectedSpaceIds={chatFilterSpaceIds}
+        onSpaceFilterChange={setChatFilterSpaceIds}
       />
     </Box>
   )

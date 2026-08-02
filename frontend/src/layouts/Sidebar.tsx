@@ -21,11 +21,11 @@ import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate } from 'react-router'
-import CreateWorkspaceDialog from '../components/CreateWorkspaceDialog'
+import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
-import { useWorkspaceStore } from '../stores/workspaceStore'
-import { workspaceRoleLabel } from '../utils/labels'
+import { useSpaceStore } from '../stores/spaceStore'
+import { spaceRoleLabel } from '../utils/labels'
 import { useState } from 'react'
 
 const SIDEBAR_WIDTH = 300
@@ -39,19 +39,18 @@ export default function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const mode = useAuthStore((s) => s.mode)
   const logout = useAuthStore((s) => s.logout)
-  const workspaces = useWorkspaceStore((s) => s.workspaces)
-  const isLoadingWorkspaces = useWorkspaceStore((s) => s.isLoadingList)
-  const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces)
-  const [workspacesOpen, setWorkspacesOpen] = useState(true)
+  const spaces = useSpaceStore((s) => s.spaces)
+  const isLoadingSpaces = useSpaceStore((s) => s.isLoadingList)
+  const loadSpaces = useSpaceStore((s) => s.loadSpaces)
+  const [spacesOpen, setSpacesOpen] = useState(true)
   const [chatsOpen, setChatsOpen] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
 
   useEffect(() => {
-    if (workspaces.length === 0) {
-      void loadWorkspaces()
+    if (spaces.length === 0) {
+      void loadSpaces()
     }
-  }, [loadWorkspaces, workspaces.length])
+  }, [loadSpaces, spaces.length])
 
   function handleNewChat() {
     clearMessages()
@@ -84,24 +83,22 @@ export default function Sidebar() {
       <Box sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
-            Workspaces
+            Spaces
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {isSystemAdmin && (
-              <IconButton
-                size="small"
-                onClick={() => setCreateDialogOpen(true)}
-                aria-label="Workspace erstellen"
-              >
-                <AddIcon fontSize="small" />
-              </IconButton>
-            )}
             <IconButton
               size="small"
-              onClick={() => setWorkspacesOpen((open) => !open)}
-              aria-label="Workspaces ein- oder ausklappen"
+              onClick={() => setCreateDialogOpen(true)}
+              aria-label="Space erstellen"
             >
-              {workspacesOpen ? (
+              <AddIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setSpacesOpen((open) => !open)}
+              aria-label="Spaces ein- oder ausklappen"
+            >
+              {spacesOpen ? (
                 <ExpandLessIcon fontSize="small" />
               ) : (
                 <ExpandMoreIcon fontSize="small" />
@@ -109,39 +106,35 @@ export default function Sidebar() {
             </IconButton>
           </Box>
         </Box>
-        {workspacesOpen &&
-          (isLoadingWorkspaces ? (
+        {spacesOpen &&
+          (isLoadingSpaces ? (
             <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
               <CircularProgress size={20} />
             </Box>
           ) : (
             <List sx={{ px: 0, py: 1 }}>
-              {workspaces.map((workspace) => {
-                const active = location.pathname === `/workspaces/${workspace.id}`
+              {spaces.map((space) => {
+                const active = location.pathname === `/spaces/${space.id}`
                 return (
                   <ListItemButton
-                    key={workspace.id}
-                    onClick={() => navigate(`/workspaces/${workspace.id}`)}
+                    key={space.id}
+                    onClick={() => navigate(`/spaces/${space.id}`)}
                     selected={active}
                     sx={{ borderRadius: 2, mb: 0.5 }}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>
-                      {workspace.type === 'PERSONAL' ? (
+                      {space.kind === 'PERSONAL' ? (
                         <PersonIcon color="primary" fontSize="small" />
                       ) : (
                         <WorkspacesIcon fontSize="small" />
                       )}
                     </ListItemIcon>
                     <ListItemText
-                      primary={workspace.name}
-                      secondary={`${workspace.memberCount} ${workspace.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
+                      primary={space.name}
+                      secondary={`${space.memberCount} ${space.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
                       slotProps={{ primary: { noWrap: true } }}
                     />
-                    <Chip
-                      label={workspaceRoleLabel(workspace.userRole)}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Chip label={spaceRoleLabel(space.userRole)} size="small" variant="outlined" />
                   </ListItemButton>
                 )
               })}
@@ -245,12 +238,12 @@ export default function Sidebar() {
         </Typography>
       </Box>
 
-      <CreateWorkspaceDialog
+      <CreateSpaceDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
-        onCreated={(workspaceId) => {
+        onCreated={(spaceId) => {
           setCreateDialogOpen(false)
-          navigate(`/workspaces/${workspaceId}`)
+          navigate(`/spaces/${spaceId}`)
         }}
       />
     </Box>

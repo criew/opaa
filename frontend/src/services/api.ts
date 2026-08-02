@@ -5,12 +5,12 @@ import type {
   IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
+  SpaceKind,
+  SpaceListResponse,
+  SpaceMemberResponse,
+  SpaceRole,
+  SpaceResponse,
   UserInfo,
-  WorkspaceDocumentResponse,
-  WorkspaceListResponse,
-  WorkspaceMemberResponse,
-  WorkspaceRole,
-  WorkspaceResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -55,10 +55,10 @@ export async function getHealth(): Promise<HealthResponse> {
 export async function sendQuery(
   question: string,
   conversationId?: string,
-  workspaceIds?: string[],
+  spaceIds?: string[],
 ): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question, conversationId, workspaceIds }
+    const request: QueryRequest = { question, conversationId, spaceIds }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
   } catch (err) {
@@ -66,72 +66,56 @@ export async function sendQuery(
   }
 }
 
-export async function getWorkspaces(): Promise<WorkspaceListResponse[]> {
+export async function getSpaces(): Promise<SpaceListResponse[]> {
   try {
-    const { data } = await client.get<WorkspaceListResponse[]>('/v1/workspaces')
+    const { data } = await client.get<SpaceListResponse[]>('/v1/spaces')
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function getWorkspace(workspaceId: string): Promise<WorkspaceResponse> {
+export async function getSpace(spaceId: string): Promise<SpaceResponse> {
   try {
-    const { data } = await client.get<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`)
+    const { data } = await client.get<SpaceResponse>(`/v1/spaces/${spaceId}`)
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function getWorkspaceDocuments(
-  workspaceId: string,
-): Promise<WorkspaceDocumentResponse[]> {
-  try {
-    const { data } = await client.get<WorkspaceDocumentResponse[]>(
-      `/v1/workspaces/${workspaceId}/documents`,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-export async function addWorkspaceMember(
-  workspaceId: string,
+export async function addSpaceMember(
+  spaceId: string,
   userId: string,
-  role?: WorkspaceRole,
-): Promise<WorkspaceMemberResponse> {
+  role?: SpaceRole,
+): Promise<SpaceMemberResponse> {
   try {
-    const { data } = await client.post<WorkspaceMemberResponse>(
-      `/v1/workspaces/${workspaceId}/members`,
-      {
-        userId,
-        role,
-      },
-    )
+    const { data } = await client.post<SpaceMemberResponse>(`/v1/spaces/${spaceId}/members`, {
+      userId,
+      role,
+    })
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+export async function removeSpaceMember(spaceId: string, userId: string): Promise<void> {
   try {
-    await client.delete(`/v1/workspaces/${workspaceId}/members/${userId}`)
+    await client.delete(`/v1/spaces/${spaceId}/members/${userId}`)
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function updateWorkspaceMemberRole(
-  workspaceId: string,
+export async function updateSpaceMemberRole(
+  spaceId: string,
   userId: string,
-  role: WorkspaceRole,
-): Promise<WorkspaceMemberResponse> {
+  role: SpaceRole,
+): Promise<SpaceMemberResponse> {
   try {
-    const { data } = await client.put<WorkspaceMemberResponse>(
-      `/v1/workspaces/${workspaceId}/members/${userId}/role`,
+    const { data } = await client.put<SpaceMemberResponse>(
+      `/v1/spaces/${spaceId}/members/${userId}/role`,
       { role },
     )
     return data
@@ -140,24 +124,21 @@ export async function updateWorkspaceMemberRole(
   }
 }
 
-export async function transferWorkspaceOwnership(
-  workspaceId: string,
-  userId: string,
-): Promise<void> {
+export async function transferSpaceOwnership(spaceId: string, userId: string): Promise<void> {
   try {
-    await client.post(`/v1/workspaces/${workspaceId}/transfer-ownership`, { userId })
+    await client.post(`/v1/spaces/${spaceId}/transfer-ownership`, { userId })
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function updateWorkspaceDetails(
-  workspaceId: string,
+export async function updateSpaceDetails(
+  spaceId: string,
   name: string,
   description: string,
-): Promise<WorkspaceResponse> {
+): Promise<SpaceResponse> {
   try {
-    const { data } = await client.put<WorkspaceResponse>(`/v1/workspaces/${workspaceId}`, {
+    const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, {
       name,
       description,
       ownerId: null,
@@ -169,15 +150,17 @@ export async function updateWorkspaceDetails(
   }
 }
 
-export async function createWorkspace(
+export async function createSpace(
   name: string,
   description: string,
-): Promise<WorkspaceResponse> {
+  kind: SpaceKind = 'PROJECT',
+): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
-    const { data } = await client.post<WorkspaceResponse>('/v1/workspaces', {
+    const { data } = await client.post<SpaceResponse>('/v1/spaces', {
       name,
       description,
+      kind,
       ownerId: currentUserId,
       initialMembers: [],
     })
@@ -187,9 +170,9 @@ export async function createWorkspace(
   }
 }
 
-export async function deleteWorkspace(workspaceId: string): Promise<void> {
+export async function deleteSpace(spaceId: string): Promise<void> {
   try {
-    await client.delete(`/v1/workspaces/${workspaceId}`)
+    await client.delete(`/v1/spaces/${spaceId}`)
   } catch (err) {
     normalizeError(err)
   }

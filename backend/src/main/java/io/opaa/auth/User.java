@@ -43,6 +43,9 @@ public class User {
   @Column(name = "last_login_at")
   private Instant lastLoginAt;
 
+  @Column(name = "organization_id", nullable = false)
+  private UUID organizationId;
+
   protected User() {}
 
   public User(String subject, String issuer, String email, String displayName) {
@@ -102,5 +105,13 @@ public class User {
 
   public void setSystemRole(SystemRole systemRole) {
     this.systemRole = systemRole;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(UUID organizationId) {
+    this.organizationId = organizationId;
   }
 }

@@ -1,4 +1,4 @@
-package io.opaa.workspace;
+package io.opaa.space;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "workspaces")
-public class Workspace {
+@Table(name = "spaces")
+public class Space {
 
   @Id private UUID id;
 
@@ -29,11 +29,18 @@ public class Workspace {
   private String description;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "type", nullable = false, length = 20)
-  private WorkspaceType type;
+  @Column(name = "kind", nullable = false, length = 20)
+  private SpaceKind kind;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "visibility", nullable = false, length = 20)
+  private SpaceVisibility visibility;
 
   @Column(name = "owner_id", nullable = false)
   private UUID ownerId;
+
+  @Column(name = "organization_id", nullable = false)
+  private UUID organizationId;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -41,17 +48,25 @@ public class Workspace {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
-  @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<WorkspaceMembership> memberships = new ArrayList<>();
+  @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<SpaceMembership> memberships = new ArrayList<>();
 
-  protected Workspace() {}
+  protected Space() {}
 
-  public Workspace(String name, String description, WorkspaceType type, UUID ownerId) {
+  public Space(
+      String name,
+      String description,
+      SpaceKind kind,
+      SpaceVisibility visibility,
+      UUID ownerId,
+      UUID organizationId) {
     this.id = UUID.randomUUID();
     this.name = name;
     this.description = description;
-    this.type = type;
+    this.kind = kind;
+    this.visibility = visibility;
     this.ownerId = ownerId;
+    this.organizationId = organizationId;
   }
 
   @PrePersist
@@ -66,14 +81,14 @@ public class Workspace {
     this.updatedAt = Instant.now();
   }
 
-  public void addMembership(WorkspaceMembership membership) {
+  public void addMembership(SpaceMembership membership) {
     memberships.add(membership);
-    membership.assignWorkspace(this);
+    membership.assignSpace(this);
   }
 
-  public void removeMembership(WorkspaceMembership membership) {
+  public void removeMembership(SpaceMembership membership) {
     memberships.remove(membership);
-    membership.assignWorkspace(null);
+    membership.assignSpace(null);
   }
 
   public void updateDetails(String name, String description) {
@@ -81,8 +96,12 @@ public class Workspace {
     this.description = description;
   }
 
+  public void transferOwnershipTo(UUID newOwnerId) {
+    this.ownerId = newOwnerId;
+  }
+
   public boolean isPersonal() {
-    return this.type == WorkspaceType.PERSONAL;
+    return this.kind == SpaceKind.PERSONAL;
   }
 
   public UUID getId() {
@@ -97,12 +116,20 @@ public class Workspace {
     return description;
   }
 
-  public WorkspaceType getType() {
-    return type;
+  public SpaceKind getKind() {
+    return kind;
+  }
+
+  public SpaceVisibility getVisibility() {
+    return visibility;
   }
 
   public UUID getOwnerId() {
     return ownerId;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
   }
 
   public Instant getCreatedAt() {
@@ -113,7 +140,7 @@ public class Workspace {
     return updatedAt;
   }
 
-  public List<WorkspaceMembership> getMemberships() {
+  public List<SpaceMembership> getMemberships() {
     return Collections.unmodifiableList(memberships);
   }
 }

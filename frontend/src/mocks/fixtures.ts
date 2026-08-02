@@ -3,9 +3,8 @@ import type {
   IndexingStatusResponse,
   QueryResponse,
   UserInfo,
-  WorkspaceDocumentResponse,
-  WorkspaceListResponse,
-  WorkspaceResponse,
+  SpaceListResponse,
+  SpaceResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser, LoginResponse } from '../types/auth'
 
@@ -44,7 +43,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'architecture-overview.md',
-        workspaceName: 'Engineering',
+        spaceName: 'Engineering',
         relevanceScore: 0.92,
         matchCount: 3,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -52,7 +51,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'getting-started.pdf',
-        workspaceName: 'Meine Dokumente',
+        spaceName: 'Meine Dokumente',
         relevanceScore: 0.85,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -60,7 +59,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        workspaceName: 'Engineering',
+        spaceName: 'Engineering',
         relevanceScore: 0.78,
         matchCount: 2,
         indexedAt: '2025-01-14T08:00:00Z',
@@ -83,7 +82,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'contributing-guide.md',
-        workspaceName: 'Company',
+        spaceName: 'Company',
         relevanceScore: 0.95,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -106,7 +105,7 @@ export const mockQueryResponses: QueryResponse[] = [
     sources: [
       {
         fileName: 'docker-compose.yml',
-        workspaceName: 'Phoenix',
+        spaceName: 'Phoenix',
         relevanceScore: 0.97,
         matchCount: 2,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -114,7 +113,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'deployment-guide.pdf',
-        workspaceName: 'Phoenix',
+        spaceName: 'Phoenix',
         relevanceScore: 0.91,
         matchCount: 1,
         indexedAt: '2025-01-15T10:30:00Z',
@@ -122,7 +121,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'adr-0002-technology-stack.md',
-        workspaceName: 'Engineering',
+        spaceName: 'Engineering',
         relevanceScore: 0.88,
         matchCount: 3,
         indexedAt: '2025-01-14T08:00:00Z',
@@ -130,7 +129,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'ci-pipeline.md',
-        workspaceName: 'Company',
+        spaceName: 'Company',
         relevanceScore: 0.85,
         matchCount: 1,
         indexedAt: '2025-01-13T15:00:00Z',
@@ -138,7 +137,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'liquibase-changelog.xml',
-        workspaceName: 'Meine Dokumente',
+        spaceName: 'Meine Dokumente',
         relevanceScore: 0.82,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
@@ -146,7 +145,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'postgres-setup.md',
-        workspaceName: 'Meine Dokumente',
+        spaceName: 'Meine Dokumente',
         relevanceScore: 0.79,
         matchCount: 1,
         indexedAt: '2025-01-11T14:00:00Z',
@@ -154,7 +153,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'environment-config.md',
-        workspaceName: 'Company',
+        spaceName: 'Company',
         relevanceScore: 0.76,
         matchCount: 1,
         indexedAt: '2025-01-10T11:00:00Z',
@@ -162,7 +161,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'monitoring-guide.md',
-        workspaceName: 'Phoenix',
+        spaceName: 'Phoenix',
         relevanceScore: 0.72,
         matchCount: 1,
         indexedAt: '2025-01-09T16:00:00Z',
@@ -170,7 +169,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'backup-strategy.pdf',
-        workspaceName: 'Phoenix',
+        spaceName: 'Phoenix',
         relevanceScore: 0.68,
         matchCount: 1,
         indexedAt: null,
@@ -178,7 +177,7 @@ export const mockQueryResponses: QueryResponse[] = [
       },
       {
         fileName: 'security-checklist.md',
-        workspaceName: 'Company',
+        spaceName: 'Company',
         relevanceScore: 0.65,
         matchCount: 1,
         indexedAt: null,
@@ -218,140 +217,124 @@ export const mockUser: AuthUser = {
   systemRole: 'SYSTEM_ADMIN',
 }
 
-export const mockWorkspaces: WorkspaceListResponse[] = [
+export const mockSpaces: SpaceListResponse[] = [
   {
-    id: 'ws-personal',
+    id: 'space-personal',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
-    type: 'PERSONAL',
+    kind: 'PERSONAL',
+    visibility: 'PRIVATE',
     memberCount: 1,
-    userRole: 'OWNER',
+    userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
   {
-    id: 'ws-engineering',
+    id: 'space-engineering',
     name: 'Engineering',
     description: 'Dokumente der Entwicklung',
-    type: 'SHARED',
+    kind: 'TEAM',
+    visibility: 'PRIVATE',
     memberCount: 3,
     userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
   {
-    id: 'ws-phoenix',
+    id: 'space-phoenix',
     name: 'Phoenix',
     description: 'Projektdokumente',
-    type: 'SHARED',
+    kind: 'PROJECT',
+    visibility: 'PRIVATE',
     memberCount: 2,
-    userRole: 'EDITOR',
+    userRole: 'CURATOR',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
 ]
 
-export const mockWorkspaceDetails: Record<string, WorkspaceResponse> = {
-  'ws-personal': {
-    id: 'ws-personal',
+export const mockSpaceDetails: Record<string, SpaceResponse> = {
+  'space-personal': {
+    id: 'space-personal',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
-    type: 'PERSONAL',
+    kind: 'PERSONAL',
+    visibility: 'PRIVATE',
     ownerId: 'mock-user-id',
     memberCount: 1,
-    userRole: 'OWNER',
-    roleCounts: { VIEWER: 0, EDITOR: 0, ADMIN: 0, OWNER: 1 },
-    members: [
-      {
-        userId: 'mock-user-id',
-        displayName: 'Admin',
-        role: 'OWNER',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ],
-    createdAt: '2026-03-01T10:00:00Z',
-    updatedAt: '2026-03-01T10:00:00Z',
-  },
-  'ws-engineering': {
-    id: 'ws-engineering',
-    name: 'Engineering',
-    description: 'Dokumente der Entwicklung',
-    type: 'SHARED',
-    ownerId: 'owner-1',
-    memberCount: 3,
     userRole: 'ADMIN',
-    roleCounts: { VIEWER: 1, EDITOR: 1, ADMIN: 1, OWNER: 0 },
+    roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
     members: [
-      { userId: 'owner-1', displayName: 'Alice', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
       {
         userId: 'mock-user-id',
         displayName: 'Admin',
         role: 'ADMIN',
         createdAt: '2026-03-01T10:00:00Z',
       },
-      { userId: 'editor-1', displayName: 'Bob', role: 'EDITOR', createdAt: '2026-03-01T10:00:00Z' },
     ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
-  'ws-phoenix': {
-    id: 'ws-phoenix',
-    name: 'Phoenix',
-    description: 'Projektdokumente',
-    type: 'SHARED',
-    ownerId: 'owner-2',
-    memberCount: 2,
-    userRole: 'EDITOR',
-    roleCounts: { VIEWER: 0, EDITOR: 1, ADMIN: 0, OWNER: 1 },
+  'space-engineering': {
+    id: 'space-engineering',
+    name: 'Engineering',
+    description: 'Dokumente der Entwicklung',
+    kind: 'TEAM',
+    visibility: 'PRIVATE',
+    ownerId: 'owner-1',
+    memberCount: 3,
+    userRole: 'ADMIN',
+    roleCounts: { MEMBER: 1, CURATOR: 1, ADMIN: 1 },
     members: [
-      { userId: 'owner-2', displayName: 'Chris', role: 'OWNER', createdAt: '2026-03-01T10:00:00Z' },
+      {
+        userId: 'owner-1',
+        displayName: 'Alice',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
       {
         userId: 'mock-user-id',
         displayName: 'Admin',
-        role: 'EDITOR',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        userId: 'curator-1',
+        displayName: 'Bob',
+        role: 'CURATOR',
         createdAt: '2026-03-01T10:00:00Z',
       },
     ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
-}
-
-export const mockWorkspaceDocuments: Record<string, WorkspaceDocumentResponse[]> = {
-  'ws-personal': [
-    {
-      id: 'doc-1',
-      name: 'personal-notes.md',
-      type: 'MARKDOWN',
-      uploadedAt: '2026-03-03T14:00:00Z',
-      ownerDisplayName: 'Admin',
-    },
-  ],
-  'ws-engineering': [
-    {
-      id: 'doc-2',
-      name: 'architecture-overview.md',
-      type: 'MARKDOWN',
-      uploadedAt: '2026-03-02T09:30:00Z',
-      ownerDisplayName: 'Alice',
-    },
-    {
-      id: 'doc-3',
-      name: 'runbook.pdf',
-      type: 'PDF',
-      uploadedAt: '2026-03-02T10:45:00Z',
-      ownerDisplayName: 'Bob',
-    },
-  ],
-  'ws-phoenix': [
-    {
-      id: 'doc-4',
-      name: 'project-plan.docx',
-      type: 'DOCX',
-      uploadedAt: '2026-03-04T11:20:00Z',
-      ownerDisplayName: 'Chris',
-    },
-  ],
+  'space-phoenix': {
+    id: 'space-phoenix',
+    name: 'Phoenix',
+    description: 'Projektdokumente',
+    kind: 'PROJECT',
+    visibility: 'PRIVATE',
+    ownerId: 'owner-2',
+    memberCount: 2,
+    userRole: 'CURATOR',
+    roleCounts: { MEMBER: 0, CURATOR: 1, ADMIN: 1 },
+    members: [
+      {
+        userId: 'owner-2',
+        displayName: 'Chris',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        role: 'CURATOR',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
 }
 
 export const mockUsers: UserInfo[] = [
@@ -363,6 +346,6 @@ export const mockUsers: UserInfo[] = [
   },
   { id: 'owner-1', email: 'alice@opaa.local', displayName: 'Alice', systemRole: 'USER' },
   { id: 'owner-2', email: 'chris@opaa.local', displayName: 'Chris', systemRole: 'USER' },
-  { id: 'editor-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
+  { id: 'curator-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
   { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo-Benutzer', systemRole: 'USER' },
 ]

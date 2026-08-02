@@ -11,23 +11,23 @@ import Typography from '@mui/material/Typography'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
-import type { WorkspaceListResponse } from '../../types/api'
-import { workspaceRoleLabel } from '../../utils/labels'
+import type { SpaceListResponse } from '../../types/api'
+import { spaceRoleLabel } from '../../utils/labels'
 
 interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
-  workspaces?: WorkspaceListResponse[]
-  selectedWorkspaceIds?: string[]
-  onWorkspaceFilterChange?: (workspaceIds: string[]) => void
+  spaces?: SpaceListResponse[]
+  selectedSpaceIds?: string[]
+  onSpaceFilterChange?: (spaceIds: string[]) => void
 }
 
 export default function ChatInput({
   onSend,
   disabled = false,
-  workspaces = [],
-  selectedWorkspaceIds = [],
-  onWorkspaceFilterChange,
+  spaces = [],
+  selectedSpaceIds = [],
+  onSpaceFilterChange,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null)
@@ -41,13 +41,13 @@ export default function ChatInput({
     wasDisabled.current = disabled
   }, [disabled])
 
-  const selectedWorkspaces = useMemo(
-    () => workspaces.filter((workspace) => selectedWorkspaceIds.includes(workspace.id)),
-    [selectedWorkspaceIds, workspaces],
+  const selectedSpaces = useMemo(
+    () => spaces.filter((space) => selectedSpaceIds.includes(space.id)),
+    [selectedSpaceIds, spaces],
   )
 
   const filterSummary =
-    selectedWorkspaces.length === 0 ? 'Alle Workspaces' : `${selectedWorkspaces.length} ausgewählt`
+    selectedSpaces.length === 0 ? 'Alle Spaces' : `${selectedSpaces.length} ausgewählt`
 
   const handleSend = () => {
     const trimmed = value.trim()
@@ -164,11 +164,11 @@ export default function ChatInput({
         <Box sx={{ p: 2, width: 360 }}>
           <Autocomplete
             multiple
-            options={workspaces}
+            options={spaces}
             disableCloseOnSelect
             getOptionLabel={(option) => option.name}
-            value={selectedWorkspaces}
-            onChange={(_, next) => onWorkspaceFilterChange?.(next.map((workspace) => workspace.id))}
+            value={selectedSpaces}
+            onChange={(_, next) => onSpaceFilterChange?.(next.map((space) => space.id))}
             renderOption={(props, option, { selected }) => {
               const { key, ...optionProps } = props
               return (
@@ -177,16 +177,16 @@ export default function ChatInput({
                   <Box>
                     <Typography variant="body2">{option.name}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {workspaceRoleLabel(option.userRole)}
+                      {spaceRoleLabel(option.userRole)}
                     </Typography>
                   </Box>
                 </li>
               )
             }}
-            renderInput={(params) => <TextField {...params} label="Workspaces auswählen" />}
+            renderInput={(params) => <TextField {...params} label="Spaces auswählen" />}
           />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
-            <Button size="small" onClick={() => onWorkspaceFilterChange?.([])}>
+            <Button size="small" onClick={() => onSpaceFilterChange?.([])}>
               Zurücksetzen
             </Button>
             <Button size="small" variant="contained" onClick={handleCloseFilter}>

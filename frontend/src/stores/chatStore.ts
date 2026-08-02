@@ -11,7 +11,7 @@ interface ChatState {
   isLoading: boolean
   error: string | null
   conversationId: string | null
-  sendMessage: (question: string, workspaceIds?: string[]) => Promise<void>
+  sendMessage: (question: string, spaceIds?: string[]) => Promise<void>
   clearMessages: () => void
 }
 
@@ -21,7 +21,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   conversationId: null,
 
-  sendMessage: async (question: string, workspaceIds?: string[]) => {
+  sendMessage: async (question: string, spaceIds?: string[]) => {
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -36,7 +36,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
 
     try {
-      const response = await sendQuery(question, get().conversationId ?? undefined, workspaceIds)
+      const response = await sendQuery(question, get().conversationId ?? undefined, spaceIds)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
