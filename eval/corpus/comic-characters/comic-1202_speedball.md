@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Speedball
 
-Speedball, real name Robert Baldwin, is a good-aligned male character created by Marvel Comics, born in Springdale, Connecticut and first appearing in Amazing Spider-Man Annual #22, (chronologically) Speedball #1. He works as a Student, superhero and is affiliated with S.H.I.E.L.D and Avengers Resistance. His notable abilities include Energy Absorption, Force Fields and Telekinesis. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Speedball, real name Robert Baldwin, is a good-aligned male character created by Marvel Comics, born in Springdale, Connecticut and first appearing in Amazing Spider-Man Annual #22, (chronologically) Speedball #1. He works as a Student, superhero and is affiliated with S.H.I.E.L.D. and Avengers Resistance. His notable abilities include Energy Absorption, Force Fields and Telekinesis. Rated on a 0-100 scale across attributes, he scores 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.

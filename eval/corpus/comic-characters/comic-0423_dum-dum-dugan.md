@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Dum Dum Dugan
 
-Dum Dum Dugan, real name Thaddeus Aloysius Cadwallader Dugan, is a bad-aligned male character created by Marvel Comics. He is affiliated with S.H.I.E.L.D. His notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 15 for strength, 30 for speed, 30 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 7.
+Dum Dum Dugan, real name Thaddeus Aloysius Cadwallader Dugan, is a bad-aligned male character created by Marvel Comics. He is affiliated with S.H.I.E.L.D.. His notable abilities include Weapon-Based Powers and Weapons Master. Rated on a 0-100 scale across attributes, he scores 90 for intelligence, 15 for strength, 30 for speed, 30 for durability and 65 for combat. On a separate overall ranking scale, his overall score is 7.

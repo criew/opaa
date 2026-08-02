@@ -36,41 +36,40 @@ verzerrte Metriken.
 
 ## Entscheidung
 
-Die Ein-Chunk-Invariante wird auf zwei Ebenen abgesichert, nicht auf einer:
-
-**1. Im Generator bleibt eine billige, konservative Byte-Vorabprüfung erhalten**
-(`MAX_DOCUMENT_BYTES`, aktuell 3.000 — unterhalb des gemessenen Kipppunkts von ~3.164 Bytes bei der
-höchsten im Corpus beobachteten Tokendichte). Sie bricht die Generierung sofort ab, wenn ein
-Dokument spürbar zu groß gerät, ohne dass dafür ein Retrieval-Testlauf nötig ist. Der Generator
-bleibt damit standardbibliothek-only — keine `tiktoken`-Abhängigkeit nur für diese Prüfung. Der
-Code-Kommentar auf der Konstanten macht explizit, dass es sich um eine Annäherung handelt, keinen
-Beweis.
-
-**2. Die eigentliche, beweiskräftige Prüfung läuft im Java-Retrieval-Harness (#227)**: Dort läuft
-der echte, produktiv konfigurierte `TokenTextSplitter` gegen den eingefrorenen Korpus. Der Harness
-zählt die erzeugten Chunks je Quelldokument (über die Chunk-Metadaten `document_id`/`file_name`)
-und schlägt fehl, wenn irgendein Dokument mehr als einen Chunk ergibt. Das ist die einzige Prüfung,
-die tatsächlich beweist, dass die Invariante hält — sie verwendet denselben Splitter mit derselben
-Konfiguration wie die Produktion, nicht eine Annäherung daran.
-
-**Geprüfte, nicht gewählte Alternativen:**
+Drei Optionen standen zur Wahl:
 
 - **(a) Der Generator zählt Tokens selbst** (`tiktoken`, `cl100k_base`), mit einem
   `MAX_DOCUMENT_TOKENS`-Limit anstelle einer Byte-Grenze. Das wäre die genauere Prüfung an der
   Quelle — aber sie führt eine zweite Tokenizer-Implementierung ein, die von der tatsächlichen
   Backend-Konfiguration entkoppelt bleibt: Ändert sich das Embedding-Modell oder der Splitter im
   Backend künftig auf eine andere Tokenisierung, veraltet die Prüfung im Generator lautlos, während
-  (2) automatisch mit der echten Konfiguration mitzieht. Zusätzlich kostet es die
+  Option (c) automatisch mit der echten Konfiguration mitzieht. Zusätzlich kostet es die
   Standardbibliothek-only-Eigenschaft, die ADR-0008 für den Generator bewusst festgelegt hat.
-- **(c) Nur der Java-Retrieval-Harness prüft**, keine Vorabprüfung im Generator. Verworfen, weil
-  damit jede Korpus-Regenerierung erst nach einem vollständigen Testcontainers-Lauf (pgvector +
-  Ollama) einen möglichen Fehler zeigt, statt sofort beim `python generate_corpus.py`-Lauf. Für
-  einen Python-Entwickler ohne Backend-Umgebung ist das ein unnötig teurer Feedback-Zyklus für
-  einen Fehler, der sich günstig vorab eingrenzen lässt.
+  **Verworfen.**
+- **(b) Der Generator behält eine konservative Byte-Vorabprüfung** (`MAX_DOCUMENT_BYTES`, aktuell
+  3.000 — unterhalb des gemessenen Kipppunkts von ~3.164 Bytes bei der höchsten im Korpus
+  beobachteten Tokendichte). Sie bricht die Generierung sofort ab, wenn ein Dokument spürbar zu
+  groß gerät, ohne dass dafür ein Retrieval-Testlauf nötig ist, und hält den Generator
+  standardbibliothek-only. Ist aber nur eine Annäherung, kein Beweis — siehe Kontext oben.
+  **Übernommen, aber allein nicht ausreichend.**
+- **(c) Der Java-Retrieval-Harness (#227) prüft die Invariante**: Dort läuft der echte, produktiv
+  konfigurierte `TokenTextSplitter` gegen den eingefrorenen Korpus. Der Harness zählt die
+  erzeugten Chunks je Quelldokument (über die Chunk-Metadaten `document_id`/`file_name`) und
+  schlägt fehl, wenn irgendein Dokument mehr als einen Chunk ergibt — die einzige Prüfung, die
+  tatsächlich beweist, dass die Invariante hält, weil sie denselben Splitter mit derselben
+  Konfiguration wie die Produktion verwendet. Allein genommen (ohne (b)) verworfen, weil dann jede
+  Korpus-Regenerierung erst nach einem vollständigen Testcontainers-Lauf (pgvector + Ollama) einen
+  möglichen Fehler zeigt, statt sofort beim `python generate_corpus.py`-Lauf — für einen
+  Python-Entwickler ohne Backend-Umgebung ein unnötig teurer Feedback-Zyklus für einen Fehler, der
+  sich günstig vorab eingrenzen lässt. **Übernommen als die eigentlich beweiskräftige Prüfung.**
 
-Gewählt wird die **Kombination aus (b) und (c)**: eine billige, bewusst konservative Vorabprüfung
-im Generator, die den überwiegenden Teil realistischer Regressionen sofort abfängt, plus die
-einzig wirklich beweiskräftige Prüfung dort, wo der echte Splitter läuft.
+**Gewählt wird die Kombination aus (b) und (c)**: eine billige, bewusst konservative
+Vorabprüfung im Generator (b), die den überwiegenden Teil realistischer Regressionen sofort
+abfängt, plus die einzig wirklich beweiskräftige Prüfung dort, wo der echte Splitter läuft (c).
+Option (a) — Tokens im Generator selbst zählen — bleibt verworfen: Sie würde eine zweite,
+von der Produktionskonfiguration entkoppelte Tokenizer-Implementierung einführen, ohne (c)
+überflüssig zu machen (ein grüner `tiktoken`-Check im Generator bewiese immer noch nicht,
+dass der tatsächlich konfigurierte Backend-Splitter dasselbe Ergebnis liefert).
 
 **Was bei einer Änderung von `opaa.indexing.chunk-size` passiert:** Die Byte-Grenze im Generator
 ist nicht automatisch an `chunk-size` gekoppelt — sie ist eine manuell gepflegte, konservative

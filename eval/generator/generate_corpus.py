@@ -377,10 +377,23 @@ def indefinite_article(phrase: str) -> str:
 BALD_HAIR_VALUES = {"no hair", "none", "bald"}
 
 
+# Matches a run of two or more "single letter + dot" groups at the end of a
+# string, e.g. "S.H.I.E.L.D." or "U.S.". Used to tell a dotted-abbreviation
+# ending apart from an ordinary sentence-ending period.
+_ABBREVIATION_TAIL = re.compile(r"(?:[A-Za-z]\.){2,}$")
+
+
 def strip_trailing_period(text: str) -> str:
-    """Drop a single trailing '.' so the field can be embedded mid-sentence
-    without producing '..' or '. and ...' when more text follows."""
-    return text.rstrip(".")
+    """Drop a single trailing sentence-ending '.' so the field can be
+    embedded mid-sentence without producing '..' or '. and ...' when more
+    text follows — but leave a dotted abbreviation's own final period alone
+    (e.g. "S.H.I.E.L.D.", 6 documents in the current corpus), since stripping
+    it would silently corrupt the abbreviation rather than fix punctuation."""
+    if _ABBREVIATION_TAIL.search(text):
+        return text
+    if text.endswith("."):
+        return text[:-1]
+    return text
 
 
 def join_natural(items: list[str]) -> str:

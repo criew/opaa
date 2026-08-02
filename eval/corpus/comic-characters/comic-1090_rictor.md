@@ -28,4 +28,4 @@ license: "CC0-1.0"
 
 # Rictor
 
-Rictor is a good-aligned character created by Marvel Comics. They work as a (current) Adventurer, commando, (former--alleged) Soldier in unidentified Central American army, later X-Force I trainee and are affiliated with Weapon P.R.I.M.E, S.W.O.R.D and X-Factor. They have Brown eyes and Brown hair and stand 175 cm tall and weigh 65 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
+Rictor is a good-aligned character created by Marvel Comics. They work as a (current) Adventurer, commando, (former--alleged) Soldier in unidentified Central American army, later X-Force I trainee and are affiliated with Weapon P.R.I.M.E., S.W.O.R.D. and X-Factor. They have Brown eyes and Brown hair and stand 175 cm tall and weigh 65 kg. Rated on a 0-100 scale across attributes, they score 0 for intelligence, 0 for strength, 0 for speed, 0 for durability and 0 for combat.
