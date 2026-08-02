@@ -5,8 +5,23 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-02T21:07:47Z</updated>
+  <updated>2026-08-02T21:09:44Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 2. August 2026</title>
+    <link href="https://criew.github.io/opaa/reports/2026-08-02.html"/>
+    <id>https://criew.github.io/opaa/reports/2026-08-02.html</id>
+    <updated>2026-08-02T21:09:44Z</updated>
+    <summary type="text">Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler im Space-Modell.
+
+Bei der Report-Zusammenfassung wurde Anthropic als zusätzlicher Anbieter neben OpenAI unterstützt (#279, #281). Die beiden Systeme unterscheiden sich in ihren API-Schnittstellen erheblich — Pfad, Authentifizierung, Systemanweisung und Antwortformat sind jeweils unterschiedlich. Der Anbieter wird über `OPAA_REPORT_PROVIDER` gewählt oder automatisch am Schlüsselpräfix erkannt. Gleichzeitig wurde das Report-Secret von dem für Integrationstests genutzten Secret getrennt (#276, #278), um zu verhindern, dass die Aktivierung der Zusammenfassung unbeabsichtigt echte OpenAI-Aufrufe in der CI auslöst.
+
+Im Space-Modell wurden zwei Fehler aus dem Umbau in #199 behoben, die beide im Review zu #254 als vorbestehend eingestuft worden waren. Der persönliche Space eines Nutzers konnte bei gleichzeitiger Erstanmeldung doppelt entstehen, weil die Prüfung in `ensurePersonalSpace` ohne Datenbankschutz ablief (#265, #280). Ein partieller Unique-Index auf `(owner_id, kind)` für `PERSONAL`-Spaces schließt diese Lücke. Zusätzlich fehlte ein eigenständiger Index auf `space_memberships.space_id` (#266, #280), wodurch Abfragen zum Laden von Space-Mitgliedern den zusammengesetzten Index nicht nutzen konnten.
+
+Das Golden Dataset wurde nach dem Code-Review nachgebessert (#274, #277). Die Prüfung auf Feldwerte wurde case-insensitiv gemacht, da der Korpus Werte wie `&quot;Brown&quot;` und `&quot;brown&quot;` nebeneinander enthielt. Alle 49 Testfälle wurden unabhängig nachgerechnet und bestätigt.
+
+Die ADR-Nummernkollision zweier Dokumente mit der Nummer 0008 wurde aufgelöst (#263, #264): Das ältere ADR zum Space-und-Asset-Modell behielt die Nummer, das jüngere zur Suchqualitäts-Evaluierung wurde zu ADR-0011 umnummeriert. Alle Querverweise wurden angepasst.</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-01.html"/>

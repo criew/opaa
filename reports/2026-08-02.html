@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-02</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.summary p { margin: 0 0 .9rem; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+.tag {
+  display: inline-block;
+  font-size: .72rem;
+  padding: .1rem .45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-right: .3rem;
+  color: var(--muted);
+}
+.status { font-weight: 600; }
+.status.ok { color: #1a7f37; }
+.status.bad { color: #cf222e; }
+@media (prefers-color-scheme: dark) {
+  .status.ok { color: #3fb950; }
+  .status.bad { color: #f85149; }
+}
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Sonntag, 2. August 2026</h1>
+<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/criew/opaa">criew/opaa</a></p>
+</header>
+
+<section class="summary">
+<p>Der Sonntag war geprägt von der Stabilisierung der Report-Infrastruktur und der Behebung mehrerer vorbestehender Fehler im Space-Modell.</p>
+<p>Bei der Report-Zusammenfassung wurde Anthropic als zusätzlicher Anbieter neben OpenAI unterstützt (#279, #281). Die beiden Systeme unterscheiden sich in ihren API-Schnittstellen erheblich — Pfad, Authentifizierung, Systemanweisung und Antwortformat sind jeweils unterschiedlich. Der Anbieter wird über `OPAA_REPORT_PROVIDER` gewählt oder automatisch am Schlüsselpräfix erkannt. Gleichzeitig wurde das Report-Secret von dem für Integrationstests genutzten Secret getrennt (#276, #278), um zu verhindern, dass die Aktivierung der Zusammenfassung unbeabsichtigt echte OpenAI-Aufrufe in der CI auslöst.</p>
+<p>Im Space-Modell wurden zwei Fehler aus dem Umbau in #199 behoben, die beide im Review zu #254 als vorbestehend eingestuft worden waren. Der persönliche Space eines Nutzers konnte bei gleichzeitiger Erstanmeldung doppelt entstehen, weil die Prüfung in `ensurePersonalSpace` ohne Datenbankschutz ablief (#265, #280). Ein partieller Unique-Index auf `(owner_id, kind)` für `PERSONAL`-Spaces schließt diese Lücke. Zusätzlich fehlte ein eigenständiger Index auf `space_memberships.space_id` (#266, #280), wodurch Abfragen zum Laden von Space-Mitgliedern den zusammengesetzten Index nicht nutzen konnten.</p>
+<p>Das Golden Dataset wurde nach dem Code-Review nachgebessert (#274, #277). Die Prüfung auf Feldwerte wurde case-insensitiv gemacht, da der Korpus Werte wie `&quot;Brown&quot;` und `&quot;brown&quot;` nebeneinander enthielt. Alle 49 Testfälle wurden unabhängig nachgerechnet und bestätigt.</p>
+<p>Die ADR-Nummernkollision zweier Dokumente mit der Nummer 0008 wurde aufgelöst (#263, #264): Das ältere ADR zum Space-und-Asset-Modell behielt die Nummer, das jüngere zur Suchqualitäts-Evaluierung wurde zu ADR-0011 umnummeriert. Alle Querverweise wurden angepasst.</p>
+</section>
+
+<h2>Abgeschlossene Issues</h2>
+<ul class="items">
+<li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#276</span><a href="https://github.com/criew/opaa/issues/276">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#274</span><a href="https://github.com/criew/opaa/issues/274">fix(eval): Nachziehbedarf aus dem Review des Golden Datasets</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#268</span><a href="https://github.com/criew/opaa/issues/268">docs: PR-Regeln an Merge ohne Approval anpassen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#266</span><a href="https://github.com/criew/opaa/issues/266">perf(space): eigenständiger Index auf space_memberships.space_id fehlt</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#265</span><a href="https://github.com/criew/opaa/issues/265">fix(space): persönlicher Space kann bei gleichzeitiger Erstanmeldung doppelt entstehen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#263</span><a href="https://github.com/criew/opaa/issues/263">docs: Nummernkollision zweier ADRs mit der Nummer 0008 auflösen</a><span class="meta"><span class="tag">documentation</span>criew</span></li>
+<li><span class="num">#261</span><a href="https://github.com/criew/opaa/issues/261">fix(ci): Tagesreport landet beim ersten Lauf auf falschem Branch</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#248</span><a href="https://github.com/criew/opaa/issues/248">feat(ci): Täglichen Projektreport als GitHub-Pages-Seite mit Atom-Feed veröffentlichen</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#245</span><a href="https://github.com/criew/opaa/issues/245">fix(ci): CLA-Workflow schlägt bei Kommentaren auf Issues fehl</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#244</span><a href="https://github.com/criew/opaa/issues/244">docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#231</span><a href="https://github.com/criew/opaa/issues/231">test(e2e): Grundgerüst für browserbasierte End-to-End-Tests</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#226</span><a href="https://github.com/criew/opaa/issues/226">feat(eval): Golden Dataset aus dem Frontmatter des Korpus ableiten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#225</span><a href="https://github.com/criew/opaa/issues/225">feat(eval): Korpus-Generator für die Domäne Comichelden</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#221</span><a href="https://github.com/criew/opaa/issues/221">feat: Anwendungstexte auf Deutsch umstellen (Frontend und Backend)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#219</span><a href="https://github.com/criew/opaa/issues/219">docs: Projektsprache Deutsch für Issues und Pull Requests festlegen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#218</span><a href="https://github.com/criew/opaa/issues/218">feat(agents): add six public-administration stakeholder agents for concept review</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#199</span><a href="https://github.com/criew/opaa/issues/199">Rename workspace to space, add organization scope and reshape space roles</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span><span class="tag">workspace</span>criew</span></li>
+<li><span class="num">#196</span><a href="https://github.com/criew/opaa/issues/196">ci: publish backend and frontend Docker images to GHCR</a><span class="meta"><span class="tag">enhancement</span>criew</span></li>
+<li><span class="num">#194</span><a href="https://github.com/criew/opaa/issues/194">docs: document git worktree usage for parallel agent sessions</a><span class="meta"><span class="tag">documentation</span>criew</span></li>
+<li><span class="num">#189</span><a href="https://github.com/criew/opaa/issues/189">chore(frontend): bump all frontend dependencies to latest stable (MUI 9, Vite 8, TypeScript 6, ESLint 10)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+</ul>
+
+<h2>Gemergte Pull Requests</h2>
+<ul class="items">
+<li><span class="num">#281</span><a href="https://github.com/criew/opaa/pull/281">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span>3 Dateien, +108 / −23</span></li>
+<li><span class="num">#280</span><a href="https://github.com/criew/opaa/pull/280">fix(space): Eindeutigkeit persönlicher Spaces und fehlender Index auf space_memberships.space_id</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>7 Dateien, +631 / −3</span></li>
+<li><span class="num">#278</span><a href="https://github.com/criew/opaa/pull/278">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>4 Dateien, +45 / −10</span></li>
+<li><span class="num">#277</span><a href="https://github.com/criew/opaa/pull/277">fix(eval): Review-Nachziehbedarf des Golden Datasets beheben</a><span class="meta"><span class="tag">bug</span><span class="tag">evaluation</span>7 Dateien, +1709 / −6498</span></li>
+<li><span class="num">#275</span><a href="https://github.com/criew/opaa/pull/275">docs: Modellkonfiguration der Testinstanz berichtigen und Sentinel-Regel für die Ground Truth ergänzen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">evaluation</span><span class="tag">demo</span>3 Dateien, +166 / −56</span></li>
+<li><span class="num">#273</span><a href="https://github.com/criew/opaa/pull/273">feat(eval): Golden Dataset aus dem Frontmatter des Korpus ableiten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">evaluation</span>6 Dateien, +15050 / −0</span></li>
+<li><span class="num">#270</span><a href="https://github.com/criew/opaa/pull/270">docs: PR-Regeln an Merge ohne Approval anpassen</a><span class="meta"><span class="tag">documentation</span>3 Dateien, +18 / −6</span></li>
+<li><span class="num">#269</span><a href="https://github.com/criew/opaa/pull/269">docs: Betriebsfakten der Testinstanz ergänzen und Modellkonfiguration berichtigen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">security</span><span class="tag">evaluation</span><span class="tag">demo</span>1 Datei, +83 / −2</span></li>
+<li><span class="num">#264</span><a href="https://github.com/criew/opaa/pull/264">docs: ADR-Nummernkollision 0008 auflösen</a><span class="meta"><span class="tag">documentation</span>6 Dateien, +16 / −16</span></li>
+<li><span class="num">#262</span><a href="https://github.com/criew/opaa/pull/262">fix(ci): Zielbranch des Tagesreports zuverlässig setzen</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>1 Datei, +8 / −1</span></li>
+<li><span class="num">#259</span><a href="https://github.com/criew/opaa/pull/259">feat(ci): Täglichen Projektreport als Seite mit Atom-Feed veröffentlichen</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">ci</span>4 Dateien, +800 / −0</span></li>
+<li><span class="num">#254</span><a href="https://github.com/criew/opaa/pull/254">Workspace in Space umbenennen, Organisationsgrenze und neue Space-Rollen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>62 Dateien, +3943 / −2604</span></li>
+<li><span class="num">#253</span><a href="https://github.com/criew/opaa/pull/253">docs(eval): Demo-Instanz auf OpenAI und Account-Bindung korrigieren</a><span class="meta"><span class="tag">documentation</span><span class="tag">evaluation</span><span class="tag">demo</span>2 Dateien, +134 / −26</span></li>
+<li><span class="num">#251</span><a href="https://github.com/criew/opaa/pull/251">test(e2e): Grundgerüst für browserbasierte End-to-End-Tests</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">ci</span>17 Dateien, +936 / −9</span></li>
+<li><span class="num">#249</span><a href="https://github.com/criew/opaa/pull/249">feat(eval): Korpus-Generator für die Domäne Comichelden</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>1455 Dateien, +47350 / −0</span></li>
+<li><span class="num">#247</span><a href="https://github.com/criew/opaa/pull/247">docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">demo</span>2 Dateien, +13 / −0</span></li>
+<li><span class="num">#246</span><a href="https://github.com/criew/opaa/pull/246">fix(ci): CLA-Workflow nur für Pull-Request-Kommentare ausführen</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>1 Datei, +3 / −0</span></li>
+<li><span class="num">#236</span><a href="https://github.com/criew/opaa/pull/236">docs: Spezifikation und ADR zur Suchqualitäts-Evaluierung</a><span class="meta"><span class="tag">documentation</span><span class="tag">evaluation</span>2 Dateien, +554 / −0</span></li>
+<li><span class="num">#223</span><a href="https://github.com/criew/opaa/pull/223">feat: Anwendungstexte auf Deutsch umstellen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span>59 Dateien, +425 / −306</span></li>
+<li><span class="num">#222</span><a href="https://github.com/criew/opaa/pull/222">docs: Projektsprache Deutsch für Issues und Pull Requests festlegen</a><span class="meta"><span class="tag">documentation</span>8 Dateien, +35 / −11</span></li>
+<li><span class="num">#220</span><a href="https://github.com/criew/opaa/pull/220">feat(agents): add six public-administration stakeholder agents</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">size:M</span>25 Dateien, +489 / −1</span></li>
+<li><span class="num">#217</span><a href="https://github.com/criew/opaa/pull/217">docs: replace workspace model with space and asset model</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">security</span><span class="tag">workspace</span>14 Dateien, +1494 / −722</span></li>
+<li><span class="num">#197</span><a href="https://github.com/criew/opaa/pull/197">ci: publish backend and frontend images to GHCR</a><span class="meta">2 Dateien, +83 / −0</span></li>
+<li><span class="num">#195</span><a href="https://github.com/criew/opaa/pull/195">docs: document git worktree usage for parallel agent sessions</a><span class="meta">2 Dateien, +16 / −0</span></li>
+<li><span class="num">#191</span><a href="https://github.com/criew/opaa/pull/191">chore(frontend): bump all frontend dependencies to latest stable (MUI 9, Vite 8, TypeScript 6, ESLint 10)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:L</span>27 Dateien, +1709 / −2008</span></li>
+</ul>
+
+<h2>Neu angelegte Issues</h2>
+<ul class="items">
+<li><span class="num">#279</span><a href="https://github.com/criew/opaa/issues/279">feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#276</span><a href="https://github.com/criew/opaa/issues/276">fix(ci): Eigenes Secret für den Tagesreport statt des Anwendungsschlüssels</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#274</span><a href="https://github.com/criew/opaa/issues/274">fix(eval): Nachziehbedarf aus dem Review des Golden Datasets</a><span class="meta"><span class="tag">bug</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#272</span><a href="https://github.com/criew/opaa/issues/272">feat(frontend): Space-Sichtbarkeit in der Oberfläche nutzbar machen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#271</span><a href="https://github.com/criew/opaa/issues/271">security(auth): AdminController setzt die Organisationsgrenze nicht durch</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span><span class="tag">security</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#268</span><a href="https://github.com/criew/opaa/issues/268">docs: PR-Regeln an Merge ohne Approval anpassen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#267</span><a href="https://github.com/criew/opaa/issues/267">feat(security): Zielprüfung für URL-Indizierung ergänzen (private Adressbereiche, Schema)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#266</span><a href="https://github.com/criew/opaa/issues/266">perf(space): eigenständiger Index auf space_memberships.space_id fehlt</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#265</span><a href="https://github.com/criew/opaa/issues/265">fix(space): persönlicher Space kann bei gleichzeitiger Erstanmeldung doppelt entstehen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#263</span><a href="https://github.com/criew/opaa/issues/263">docs: Nummernkollision zweier ADRs mit der Nummer 0008 auflösen</a><span class="meta"><span class="tag">documentation</span>criew</span></li>
+<li><span class="num">#261</span><a href="https://github.com/criew/opaa/issues/261">fix(ci): Tagesreport landet beim ersten Lauf auf falschem Branch</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#260</span><a href="https://github.com/criew/opaa/issues/260">feat(auth): mehrere opaa.auth.basic.users-Einträge konfigurierbar machen</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#258</span><a href="https://github.com/criew/opaa/issues/258">docs: Beispiel-Secret für OPAA_AUTH_BASIC_SECRET verhindert Backend-Start</a><span class="meta"><span class="tag">bug</span><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#257</span><a href="https://github.com/criew/opaa/issues/257">docs: Einheitliche Testkonto-Konvention dokumentieren</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#256</span><a href="https://github.com/criew/opaa/issues/256">test(e2e): Lokale Modellbereitstellung für den E2E-Stack</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#255</span><a href="https://github.com/criew/opaa/issues/255">fix(auth): mock-Modus funktionsfähig machen oder aus Default und Doku entfernen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#252</span><a href="https://github.com/criew/opaa/issues/252">docs: Standardwerte in docs/deployment.md gegen application.yml abgleichen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#250</span><a href="https://github.com/criew/opaa/issues/250">docs(security): Härtungsanforderungen für erreichbare Compose-Deployments dokumentieren</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#248</span><a href="https://github.com/criew/opaa/issues/248">feat(ci): Täglichen Projektreport als GitHub-Pages-Seite mit Atom-Feed veröffentlichen</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#245</span><a href="https://github.com/criew/opaa/issues/245">fix(ci): CLA-Workflow schlägt bei Kommentaren auf Issues fehl</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#244</span><a href="https://github.com/criew/opaa/issues/244">docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#243</span><a href="https://github.com/criew/opaa/issues/243">Driftschutz für Abkömmlinge: Fristen und automatische Deaktivierung</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#242</span><a href="https://github.com/criew/opaa/issues/242">Konsistenzprüflauf zwischen Vektorspeicher und Datenbank</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#241</span><a href="https://github.com/criew/opaa/issues/241">Befristung und Rezertifizierung von Einzelgrants</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#240</span><a href="https://github.com/criew/opaa/issues/240">Nachfolge statt Sperre: Assets ausgeschiedener Eigentümer</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#239</span><a href="https://github.com/criew/opaa/issues/239">Audit-Governance: kein personenbezogener Auswertungspfad</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#238</span><a href="https://github.com/criew/opaa/issues/238">Historisierung von Rechten und Gruppenmitgliedschaften</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#237</span><a href="https://github.com/criew/opaa/issues/237">Verzeichnissynchronisation als Rechteereignis behandeln</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">security</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#235</span><a href="https://github.com/criew/opaa/issues/235">feat(demo): Demo-Domänen in getrennte Workspaces legen (blockiert)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">workspace</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#234</span><a href="https://github.com/criew/opaa/issues/234">feat(eval): Ausweitung des Korpus auf Filme, Reiseziele und Tiere</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:L</span><span class="tag">evaluation</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#233</span><a href="https://github.com/criew/opaa/issues/233">test(e2e): Suche im Demo-Korpus mit Quellenangaben</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#232</span><a href="https://github.com/criew/opaa/issues/232">test(e2e): Indizierung des Demo-Korpus über die Admin-Oberfläche</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#231</span><a href="https://github.com/criew/opaa/issues/231">test(e2e): Grundgerüst für browserbasierte End-to-End-Tests</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#230</span><a href="https://github.com/criew/opaa/issues/230">feat(demo): Demo-Korpus auf die bestehende Instanz opaa.ewerlin.com ausrollen</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#229</span><a href="https://github.com/criew/opaa/issues/229">feat(demo): Korpus als statisches HTTP-Verzeichnis im Compose-Stack</a><span class="meta"><span class="tag">enhancement</span><span class="tag">setup</span><span class="tag">size:M</span><span class="tag">demo</span>criew</span></li>
+<li><span class="num">#228</span><a href="https://github.com/criew/opaa/issues/228">ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#227</span><a href="https://github.com/criew/opaa/issues/227">test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#226</span><a href="https://github.com/criew/opaa/issues/226">feat(eval): Golden Dataset aus dem Frontmatter des Korpus ableiten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#225</span><a href="https://github.com/criew/opaa/issues/225">feat(eval): Korpus-Generator für die Domäne Comichelden</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#224</span><a href="https://github.com/criew/opaa/issues/224">Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression</a><span class="meta"><span class="tag">enhancement</span><span class="tag">epic</span><span class="tag">size:L</span><span class="tag">evaluation</span>criew</span></li>
+<li><span class="num">#221</span><a href="https://github.com/criew/opaa/issues/221">feat: Anwendungstexte auf Deutsch umstellen (Frontend und Backend)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#219</span><a href="https://github.com/criew/opaa/issues/219">docs: Projektsprache Deutsch für Issues und Pull Requests festlegen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#218</span><a href="https://github.com/criew/opaa/issues/218">feat(agents): add six public-administration stakeholder agents for concept review</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#216</span><a href="https://github.com/criew/opaa/issues/216">Governance controls for co-determination</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#215</span><a href="https://github.com/criew/opaa/issues/215">Asset catalog: visibility, listed flag and space directory</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#214</span><a href="https://github.com/criew/opaa/issues/214">Built-in assets as a distinct origin type</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#213</span><a href="https://github.com/criew/opaa/issues/213">Derivatives with permanent provenance and drift protection</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#212</span><a href="https://github.com/criew/opaa/issues/212">Recall by deactivation, with warnings in existing transcripts</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#211</span><a href="https://github.com/criew/opaa/issues/211">Asset versioning with immediate propagation and rollback</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#210</span><a href="https://github.com/criew/opaa/issues/210">Asset parameters: adapt without forking</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#209</span><a href="https://github.com/criew/opaa/issues/209">Agent and prompt library assets with the knowledge share chain</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#208</span><a href="https://github.com/criew/opaa/issues/208">Curator roles bound to organizational units</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#207</span><a href="https://github.com/criew/opaa/issues/207">Connector sources target exactly one knowledge library</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#206</span><a href="https://github.com/criew/opaa/issues/206">Artifacts in spaces with lifecycle and provenance-based release</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span>criew</span></li>
+<li><span class="num">#205</span><a href="https://github.com/criew/opaa/issues/205">Persistent chats inside spaces</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#204</span><a href="https://github.com/criew/opaa/issues/204">Strict mode for spaces</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#203</span><a href="https://github.com/criew/opaa/issues/203">Space-asset association as pure curation</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">workspace</span>criew</span></li>
+<li><span class="num">#202</span><a href="https://github.com/criew/opaa/issues/202">Asset permissions and permission-aware vector search</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">security</span>criew</span></li>
+<li><span class="num">#201</span><a href="https://github.com/criew/opaa/issues/201">Knowledge library as the document container, with data migration</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
+<li><span class="num">#200</span><a href="https://github.com/criew/opaa/issues/200">Introduce groups as permission subjects</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
+<li><span class="num">#199</span><a href="https://github.com/criew/opaa/issues/199">Rename workspace to space, add organization scope and reshape space roles</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span><span class="tag">workspace</span>criew</span></li>
+<li><span class="num">#198</span><a href="https://github.com/criew/opaa/issues/198">Epic: Space and asset model — replace the workspace model</a><span class="meta"><span class="tag">enhancement</span><span class="tag">epic</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:L</span><span class="tag">security</span><span class="tag">workspace</span>criew</span></li>
+<li><span class="num">#196</span><a href="https://github.com/criew/opaa/issues/196">ci: publish backend and frontend Docker images to GHCR</a><span class="meta"><span class="tag">enhancement</span>criew</span></li>
+<li><span class="num">#194</span><a href="https://github.com/criew/opaa/issues/194">docs: document git worktree usage for parallel agent sessions</a><span class="meta"><span class="tag">documentation</span>criew</span></li>
+<li><span class="num">#193</span><a href="https://github.com/criew/opaa/issues/193">fix(frontend): hamburger menu icon invisible in mobile header (white on white)</a><span class="meta"><span class="tag">bug</span><span class="tag">frontend</span><span class="tag">size:S</span>criew</span></li>
+<li><span class="num">#192</span><a href="https://github.com/criew/opaa/issues/192">chore(frontend): drop openapi-typescript peer override once upstream supports TypeScript 6</a><span class="meta"><span class="tag">frontend</span><span class="tag">size:S</span>criew</span></li>
+</ul>
+
+<h2>Offen zum Tagesende</h2>
+<ul class="items">
+<li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
+</ul>
+
+<h2>Stand der CI</h2>
+<p>Hauptbranch: <span class="status ok">grün</span> — <a href="https://github.com/criew/opaa/actions/runs/30767111635">Merge pull request #277 from criew/feature/274_golden-dataset-review-…</a></p>
+
+<footer>
+Erzeugt am 2026-08-02 um 23:09 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+</footer>
+</main>
+</body>
+</html>
