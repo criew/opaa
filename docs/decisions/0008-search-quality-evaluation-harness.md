@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert
 
 ## Kontext
 
@@ -29,11 +29,19 @@ Drei Punkte darin sind strukturell und legen das Projekt langfristig fest:
 zusammen mit einer `MANIFEST.sha256` über alle generierten Dateien. Kein Git LFS. Die Rohquelle
 wird als Snapshot mit Quell-URL, Abrufdatum und SHA-256 dokumentiert, aber nicht committet. Wächst
 der Gesamtkorpus über rund 25 MB, wird pro Domäne auf ein GitHub-Release-Artefakt gewechselt,
-wobei das Manifest im Repository verbleibt.
+wobei das Manifest im Repository verbleibt. Diese Grenze wird bei der Ausweitung auf vier Domänen
+erneut bewertet.
 
 **2. Der Korpus-Generator ist ein eigenständiges Python-Werkzeug** unter `eval/generator/`, kein
-Bestandteil des Gradle-Builds. Er ist deterministisch (fixer Seed, stabile Sortierung, byte-identischer
-Output) und wird nur bei bewussten Korpus-Änderungen ausgeführt — nie in CI und nie zur Laufzeit.
+Bestandteil des Gradle-Builds. Er ist deterministisch (stabile Sortierung, fixer Seed wo Zufall
+im Spiel ist, byte-identischer Output) und wird nur bei bewussten Korpus-Änderungen ausgeführt —
+nie in CI und nie zur Laufzeit.
+
+**2a. Nur CC0- oder CC-BY-Quellen** kommen in den verbreiteten Korpus; CC BY-SA und
+non-commercial-Lizenzen sind ausgeschlossen. Übernommen werden ausschließlich strukturierte
+Faktenfelder; der Fließtext der Entitäts-Dokumente wird vom Generator selbst formuliert. Das hält
+die Provenienz sauber **und** die Dokumentgröße so klein, dass eine Entität genau einem Chunk
+entspricht — die Voraussetzung für eindeutige Ground Truth.
 
 **3. Der Retrieval-Harness ist Java-nativ**: ein JUnit-Integrationstest im Backend, der Testcontainers
 (pgvector) verwendet, den Korpus über die produktive Indexierungs-Pipeline einliest und
