@@ -61,11 +61,18 @@ jobs:
         working-directory: site
         run: |
           if [ ! -d .git ]; then
-            git init -b gh-pages
+            git init -q
             git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Existiert gh-pages noch nicht, scheitert der vorangehende Checkout am
+          # fehlenden Ref, legt das Repository aber bereits an. HEAD zeigt dann
+          # auf dessen Standardbranch, weshalb der Zielbranch hier in jedem Fall
+          # gesetzt wird. symbolic-ref funktioniert auch ohne ersten Commit.
+          if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "gh-pages" ]; then
+            git symbolic-ref HEAD refs/heads/gh-pages
+          fi
           git add -A
           if git diff --staged --quiet; then
             echo "Keine Änderungen zu veröffentlichen."
