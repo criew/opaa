@@ -23,6 +23,32 @@ Modellaufruf und ist optional — siehe [Zusammenfassung aktivieren](#zusammenfa
 
 Tage ohne Issue- oder PR-Bewegung erzeugen keinen Report.
 
+### Gliederung nach Epics
+
+Die Zusammenfassung folgt den Epics, weil diese die thematisch
+zusammenhängenden Einheiten des Projekts sind. Je Epic mit Tagesbewegung
+entsteht ein Absatz, der die Bewegung des Tages in den Gesamtfortschritt
+einordnet — etwa „1 von 25 Tickets erledigt". Den Abschluss bildet ein Absatz
+für alles ohne Epic-Bezug.
+
+Die Gliederung und sämtliche Zahlen werden aus den Daten erhoben und dem Modell
+vorgegeben. Es formuliert nur den Text. Damit bleibt der Aufbau von Tag zu Tag
+gleich und die Zahlen stammen nicht aus einer Schätzung.
+
+Die Zuordnung stützt sich auf die Ticketliste im Body des Epic-Issues, da
+native Sub-Issues im Repository nicht verwendet werden:
+
+| Schritt | Grundlage |
+| --- | --- |
+| Epics finden | Issues mit dem Label `epic` |
+| Tickets zuordnen | Issue-Nummern im Body des Epics |
+| Pull Requests zuordnen | das über `Closes #N` geschlossene Issue |
+| Fortschritt | Anteil geschlossener Tickets der Liste |
+
+Ein Vorgang, der in keiner Ticketliste steht, wird **nicht** geraten, sondern
+unter „ohne Epic-Bezug" geführt. Wer die Zuordnung verbessern will, trägt die
+Ticketnummer im Epic nach; der nächste Lauf greift sie auf.
+
 ## Aufbau
 
 | Bestandteil | Zweck |
