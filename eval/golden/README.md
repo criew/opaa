@@ -95,24 +95,42 @@ Sentinel-Tabelle für `comic-characters` (sechs numerisch verwendete Felder):
 | `speed_score` | keine | s. u. |
 | `durability_score` | keine | s. u. |
 | `combat_score` | keine | s. u. |
-| `overall_score` | `null`, `"∞"` | `numeric_range` auf `overall_score` selbst: beide vor Fenster-/Schwellenwertbestimmung ausgeschlossen (`Entity.is_scored` ist `isinstance(overall_score, int)` — schließt `null` und `"∞"` in einem Test aus) |
+| `overall_score` | `null`, `"∞"` | `numeric_range` auf `overall_score` selbst: beide vor Fenster-/Schwellenwertbestimmung ausgeschlossen (`Entity.has_numeric_overall` ist `isinstance(overall_score, int)` — schließt `null` und `"∞"` in einem Test aus) |
 
 **Cross-Field-Ausnahme, klar von der Sentinel-Regel zu unterscheiden:** Die fünf Attributwerte
 haben selbst keinen Sentinel. Sie werden trotzdem zusätzlich über `overall_score is not null`
-gefiltert (`Entity.is_scored` in `generate_numeric_range`s `scored_entities`) — nicht weil sie
-selbst einen Sentinel führen, sondern weil 104 der 105 `overall_score: null`-Dokumente im Fließtext
+gefiltert (`Entity.is_rated` in `generate_numeric_range`s `scored_entities`) — nicht weil sie selbst
+einen Sentinel führen, sondern weil 104 der 105 `overall_score: null`-Dokumente im Fließtext
 wortwörtlich „scores 0 for intelligence, 0 for strength, …" enthalten (Review-Fund aus #226): Dieser
 Text ist für die fünf Attributfragen kontaminiert, unabhängig vom Sentinel-Konzept.
 `overall_score: "∞"`-Entitäten tragen **keine** solche Kontamination — ihre fünf Attributwerte sind
 gewöhnliche, vertrauenswürdige Zahlen — und werden deshalb korrekt **nicht** aus den
 Attributwert-Fragen ausgeschlossen.
 
-Verifiziert (Issue #274, Klarstellung des Product Managers zur ursprünglichen Formulierung): Beide
-Eigenschaften (feldbezogen, vor Fensterbestimmung) galten bereits in der Implementierung aus PR
-#273 korrekt — `overall_ints`/`Entity.is_scored` filterten schon vor der Schwellenwertwahl und
-berührten nie die fünf Attributfelder. Geändert wurden in #274 nur die Kommentare/Dokumentation, um
-die beiden Regeln unmissverständlich zu trennen, plus `is_scored`s Docstring, der jetzt explizit
-macht, dass er zwei verschiedene Zwecke mit zwei verschiedenen Geltungsbereichen bedient.
+**Korrektur (zweite #274-Review-Runde):** Die erste #274-Fassung dieses PRs behauptete an dieser
+Stelle, beide Eigenschaften hätten bereits in der PR-#273-Implementierung korrekt gegolten. Das war
+sachlich falsch. Tatsächlich hatte genau dieser PR `Entity.is_scored` (Stand #273:
+`overall_score is not None`) auf ein einziges `isinstance(overall_score, int)`-Prädikat geändert und
+dieses sowohl für `scored_entities` (die Cross-Field-Regel) als auch für `overall_ints` (die
+`overall_score`-Sentinel-Regel selbst) wiederverwendet. Dadurch schlossen die 18
+`overall_score: "∞"`-Entitäten seit dieser Änderung auch aus den fünf Attributwert-Fragen aus —
+genau die Feldbezogenheit verletzend, die oben gefordert ist.
+
+Behoben durch zwei getrennte Prädikate: `Entity.is_rated` (`overall_score is not None`) für die
+Cross-Field-Regel auf den fünf Attributen, `Entity.has_numeric_overall`
+(`isinstance(overall_score, int)`) für die Sentinel-Regel auf `overall_score` selbst. Code und
+Dokumentation stimmen jetzt überein.
+
+**Datenwirkung, selbst nachgerechnet:** keine. Unabhängig von der Codeänderung geprüft: Die Menge
+der Entitäten, die durch den Prädikat-Fix neu in den `scored_entities`-Pool aufgenommen werden (also
+zuvor fälschlich ausgeschlossen waren), umfasst genau die 18 `"∞"`-Figuren. Ihre niedrigsten Werte
+je Attribut liegen bei 95 (Intelligenz), 100 (Stärke), 100 (Geschwindigkeit), 85
+(Widerstandsfähigkeit) und 50 (Kampf) — alle über jeder in `BELOW_THRESHOLDS_BY_ATTRIBUTE`
+verwendeten Schwelle (maximal 50). Kein aktueller Rohkandidat und kein kuratierter Fall ändert sich
+dadurch; `git diff` von `comic-characters.json` und `comic-characters.candidates.json` gegen den
+Stand vor dem Prädikat-Fix ist leer. In einer künftigen Domäne mit niedrigen Attributwerten bei
+Sentinel-Entitäten (#234) hätte der ursprüngliche Fehler dagegen falsche Ground Truth erzeugt — dann
+wäre die Feldbezogenheit nicht nur dokumentarisch, sondern faktisch verletzt gewesen.
 
 **Bekannter Rest, außerhalb dieses Umfangs:** Der Ausschluss in der Ground Truth repariert nicht den
 Widerspruch im Korpus-Text selbst — „scores 0 for intelligence, …" (bei `null`) und „his overall
@@ -249,28 +267,54 @@ nachfolgenden `id`s — `comic-attr-101` existiert weiterhin, fragt aber eine an
 möglicherweise ein anderes Feld ab. Der ursprüngliche Guard prüfte nur, ob die `id` **existiert**,
 nicht, ob sie noch **dasselbe** bezeichnet.
 
-Behoben: Die Auswahl (`CURATED_CASES` in `generate_golden_dataset.py`) besteht jetzt aus
-(`natural_key`, `query`)-Paaren. `natural_key` wird ausschließlich aus den erzeugenden Parametern
-abgeleitet (Feld/Entität-Dateiname, Vorlagenindex/Entität-Dateiname,
-Alignment/Creator/Fähigkeit-Tripel, Feld/Operator/Schwellenwert) — nie aus der Position in einer
-Liste — und identifiziert damit „denselben" Kandidaten unabhängig davon, wie viele andere Kandidaten
-um ihn herum existieren. `main()` prüft beim Lauf:
+Behoben: Die Auswahl (`CURATED_CASES` in `generate_golden_dataset.py`) besteht aus
+(`natural_key`, `query`, `expected_documents`-Fingerabdruck)-Tripeln. `natural_key` wird
+ausschließlich aus den erzeugenden Parametern abgeleitet (Feld/Entität-Dateiname,
+Vorlagenindex/Entität-Dateiname, Alignment/Creator/Fähigkeit-Tripel,
+Feld/Operator/Schwellenwert) — nie aus der Position in einer Liste — und identifiziert damit
+„denselben" Kandidaten unabhängig davon, wie viele andere Kandidaten um ihn herum existieren.
+`main()` prüft beim Lauf:
 
 1. **Kollisionsfreiheit**: kein `natural_key` taucht bei zwei verschiedenen Kandidaten auf (harter
    Abbruch bei Verletzung — Absicherung dafür, dass ein künftiges Feld/eine künftige Vorlage die
    Eindeutigkeit nicht versehentlich verletzt).
 2. **Existenz**: jeder `natural_key` aus `CURATED_CASES` muss unter den aktuell generierten
    Kandidaten auftauchen — sonst bricht der Lauf mit den fehlenden Schlüsseln ab.
-3. **Fingerabdruck**: der zur `natural_key` gehörende Kandidat muss exakt die kuratierte
+3. **Fragetext**: der zur `natural_key` gehörende Kandidat muss exakt die kuratierte
    `query`-Zeichenkette tragen — sonst bricht der Lauf ab, weil sich die erzeugende Logik unter einer
    unverändert aussehenden Auswahl geändert hat.
+4. **Ground-Truth-Fingerabdruck** (zweite #274-Review-Runde, Fund 2): `natural_key` und `query`
+   fangen eine dritte Drift-Form nicht ab — die Erwartungsmenge (`expected_documents`) ändert sich,
+   während beide identisch bleiben. Der Reviewer stellte das gezielt nach: `comic-0001_3-d-man.md`
+   um die Fähigkeit „Reality Warping" ergänzt (also den Korpus manipuliert, um eine
+   Matching-Logik-Änderung zu simulieren) und den Generator laufen lassen —
+   `comic-filter-001` ging von 7 auf 8 Treffer, `EXITCODE = 0`, `comic-characters.json` wurde still
+   neu geschrieben. Der realistische Auslöser ist nicht der Korpus (den schützt
+   `MANIFEST.sha256`), sondern eine Generatoränderung — z. B. ein robusterer Parser als das
+   aktuelle `.split(", ")` für `superpowers`.
 
-**Verifiziert** (nicht nur behauptet): Beide Fehlerpfade wurden gezielt provoziert und lösten den
-erwarteten kontrollierten Abbruch aus — ein `natural_key` mit geänderter erwarteter `query` bricht
-mit „still exist but now generate a different query"; ein aus `CURATED_CASES` entfernter
-`natural_key`, der in keinem Kandidaten mehr vorkommt, bricht mit „no longer exist in the generated
-candidates". Beide Testläufe wurden mit einer temporären Kopie des Skripts durchgeführt, nicht mit
-dem committeten Code.
+   Behoben durch ein drittes Tripel-Element: `sha256("|".join(sorted(expected_documents)))`
+   (`expected_documents_fingerprint()`), ordnungsunabhängig über die Menge der erwarteten
+   Dokumente. `main()` berechnet ihn für den zur `natural_key` gehörenden Live-Kandidaten neu und
+   bricht ab, wenn er nicht mit dem kuratierten Fingerabdruck übereinstimmt.
+
+**Verifiziert** (nicht nur behauptet, alle drei Fehlerpfade einzeln provoziert):
+
+- Geänderte erwartete `query` → Abbruch mit „still exist but now generate a different query".
+- Aus `CURATED_CASES` entfernter `natural_key` → Abbruch mit „no longer exist in the generated
+  candidates".
+- **Der vom Reviewer nachgestellte Fall selbst reproduziert**: `comic-0001_3-d-man.md`s
+  `superpowers` im Korpus temporär um „Reality Warping" ergänzt (nicht committet, per `sha256sum -c
+  MANIFEST.sha256` nach dem Zurücksetzen als unverändert bestätigt), Generator laufen lassen — Ergebnis
+  jetzt: Abbruch mit „still generate the same query, but a different expected_documents set" für
+  `filter::Good::Marvel Comics::Reality Warping` **und** dessen `crosslingual`-Übersetzung
+  (`de::filter::Good::Marvel Comics::Reality Warping`) — der Fehler propagiert korrekt durch beide
+  Kategorien, weil die deutsche Übersetzung denselben `natural_key`-Stamm referenziert. `EXITCODE = 1`,
+  `comic-characters.json` wird nicht überschrieben.
+
+Die ersten beiden Testläufe liefen mit einer temporären Kopie des Skripts, der dritte — die direkte
+Nachstellung des Reviewer-Falls — mit dem committeten Code gegen eine temporär veränderte, danach
+wieder zurückgesetzte Korpusdatei.
 
 ### Warum keine `discarded.json`
 
@@ -337,7 +381,9 @@ Sieben kuratierte Fälle wurden unabhängig vom Generator-Code gegen den Korpus 
 | Kontrolle zur Kontaminationsschwelle | `comic-0226_brainiac-5.md`/`comic-0498_gambit.md` explizit gegen die Plausibilitätsprüfung getestet | beide korrekt als unplausibel erkannt |
 | `desc::2::comic-1224_starfire.md` (Neuauswahl nach der `occupation`-Gewichtung) | Geburtsort/Beruf/Augenfarbe unabhängig gegen alle 1.448 Dateien geprüft | genau 1 Treffer, `comic-1224_starfire.md` |
 | Case-Insensitivitäts-Fix | Nach der Normalisierung: `comic-characters.candidates.json` auf doppelte `entity_description`-Fragen/Ground-Truth-Dateien geprüft | 60 Fragen, 60 eindeutige Ground-Truth-Dateien — keine neuen Mehrdeutigkeiten |
-| Fingerabdruck-Guard | Zwei künstlich provozierte Abweichungen (geänderte `query`, entfernter `natural_key`) gegen eine temporäre Kopie des Skripts | beide lösten den erwarteten kontrollierten Abbruch aus |
+| `is_rated`/`has_numeric_overall`-Trennung | Menge der Entitäten verglichen, die vor/nach dem Prädikat-Fix in `scored_entities` (fünf Attributfragen) landen; niedrigste Attributwerte der 18 neu betroffenen `"∞"`-Entitäten je Feld ermittelt | Differenzmenge = exakt die 18 `"∞"`-Entitäten; niedrigste Werte 95/100/100/85/50, alle über jeder verwendeten Schwelle (max. 50) — `comic-characters.json` und `.candidates.json` vor/nach dem Fix per `git diff` verglichen: keine Änderung |
+| Fingerabdruck-Guard (Query/Existenz) | Zwei künstlich provozierte Abweichungen (geänderte `query`, entfernter `natural_key`) gegen eine temporäre Kopie des Skripts | beide lösten den erwarteten kontrollierten Abbruch aus |
+| Fingerabdruck-Guard (Ground Truth) | Vom Reviewer nachgestellter Fall selbst reproduziert: `comic-0001_3-d-man.md`s `superpowers` im Korpus temporär um „Reality Warping" ergänzt, Generator mit dem committeten Code laufen lassen, danach Korpusdatei zurückgesetzt und per `sha256sum -c MANIFEST.sha256` als unverändert bestätigt | Abbruch mit „still generate the same query, but a different expected_documents set" für `filter::Good::Marvel Comics::Reality Warping` und dessen `crosslingual`-Übersetzung, `EXITCODE = 1`, `comic-characters.json` nicht überschrieben |
 | Determinismus | Generator zweimal hintereinander laufen lassen, `diff` beider Ausgaben (nach allen #274-Fixes erneut geprüft) | byte-identisch |
 
 Keiner der sieben ursprünglichen Fälle musste korrigiert werden; die Nachrechnung bestätigt, dass
