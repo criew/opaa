@@ -39,11 +39,15 @@ Damit der Stack unabhängig von einem parallel laufenden Dev-Stack (`AGENTS.md` 
 parallele Sessions" beschreibt genau dieses Parallel-Szenario als Normalfall) betrieben werden
 kann, läuft er als **eigenes Compose-Projekt** (`COMPOSE_PROJECT_NAME=opaa-e2e`) mit **eigenen
 Host-Ports** und einem **eigenen Environment** (`e2e/e2e.env`, niemals `.env.docker`). Dafür wurde
-`docker-compose.yml` in zwei kleinen, rückwärtskompatiblen Punkten angepasst: die vier
-`container_name`-Festlegungen wurden entfernt (Compose vergibt sonst projektpräfixierte Namen von
-selbst) und `env_file` sowie der Postgres-Port wurden parametrisierbar gemacht
-(`${OPAA_ENV_FILE:-.env.docker}`, `${OPAA_DB_PORT:-5432}`) — beides ändert das Verhalten für
-bestehende `docker compose up`-Nutzung nicht (Standardwerte identisch zum vorherigen Verhalten).
+`docker-compose.yml` in drei Punkten angepasst: `env_file` sowie der Postgres-Port wurden
+parametrisierbar gemacht (`${OPAA_ENV_FILE:-.env.docker}`, `${OPAA_DB_PORT:-5432}`) — das ändert
+das Verhalten für bestehende `docker compose up`-Nutzung nicht (Standardwerte identisch zum
+vorherigen Verhalten; die `:-`-Form bleibt auch bei einer gesetzten, aber leeren Variable
+verhaltensneutral). Zusätzlich wurden die vier `container_name`-Festlegungen entfernt (Compose
+vergibt sonst projektpräfixierte Namen von selbst) — **das ändert das Verhalten für bestehende
+Nutzung einmalig**: Container heißen fortan `opaa-postgres-1`/`opaa-backend-1`/`opaa-frontend-1`
+statt `opaa-postgres`/`opaa-backend`/`opaa-frontend` (`docs/MVP-VERIFICATION.md` entsprechend
+aktualisiert; wer selbst Skripte oder Aliase mit den alten Namen hat, muss sie anpassen).
 
 Jeder Lauf beginnt und endet mit `docker compose down -v` unter diesem Projektnamen — eine
 definierte, reproduzierbare Ausgangslage, ohne Container oder Volumes fremder Projekte anzufassen.
@@ -106,8 +110,11 @@ sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für d
   E2E-Suite den dokumentierten Standard-Auth-Modus nicht ab.
 - Der zufällig generierte Signing-Secret bedeutet, dass zwischen zwei Läufen ausgestellte Tokens
   nicht wiederverwendbar sind — für eine Suite, die pro Lauf ohnehin frisch anmeldet, ohne Nachteil.
+- **Die E2E-Suite hängt jetzt an `docker-compose.yml`.** Jede künftige Änderung an den Service-
+  Definitionen dort (z. B. neue Pflicht-Umgebungsvariablen, geänderte Ports, neue Abhängigkeiten)
+  kann die Suite brechen, ohne dass das beim Ändern von `docker-compose.yml` offensichtlich ist.
 
 ### Neutral
 
-- Diese Entscheidungen gelten für die E2E-Suite; sie ändern nichts an `docker-compose.yml`s
-  Verhalten für reguläre Dev-/Deployment-Nutzung (Standardwerte bleiben unverändert).
+- Ports und Environment-Handling ändern sich für bestehende `docker compose up`-Nutzung nicht
+  (Standardwerte identisch); die Container-Namen ändern sich einmalig (siehe Punkt 2).

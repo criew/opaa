@@ -15,7 +15,7 @@ services:
       POSTGRES_USER: ${OPAA_DB_USERNAME:-opaa}
       POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}
     ports:
-      - "${OPAA_DB_PORT:-5432}:5432"
+      - "127.0.0.1:${OPAA_DB_PORT:-5432}:5432"
     volumes:
       - opaa-postgres-data:/var/lib/postgresql
     healthcheck:

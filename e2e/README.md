@@ -118,9 +118,9 @@ E2E-Stack hat also aktuell nur den einen Testnutzer `e2e-user`, der zugleich üb
 `OPAA_INITIAL_ADMIN_EMAIL=e2e-user@opaa.local` zum `SYSTEM_ADMIN` gemacht wird (nötig für
 Indexing-/Admin-Endpunkte). Ein **nicht**-administrativer Zweitnutzer lässt sich damit nicht ohne
 Produktivcode-Änderung abbilden. Szenarien, die einen nicht-privilegierten Nutzer brauchen (z. B.
-Berechtigungsprüfungen), müssen das entweder über eine künftige Erweiterung von
-`opaa.auth.basic.users` auf mehrere Einträge lösen, oder auf Rollenwechsel innerhalb eines
-Workspace-Memberships ausweichen. Siehe auch den Kommentar dazu in Issue #232.
+Berechtigungsprüfungen), brauchen dafür #260 (mehrere `opaa.auth.basic.users`-Einträge
+konfigurierbar machen) — als Voraussetzung an #232 Szenario 5 verlinkt — oder weichen auf
+Rollenwechsel innerhalb eines Workspace-Memberships aus.
 
 ## Serialisierungs-Konvention
 
@@ -164,3 +164,9 @@ wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eig
 
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
 Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen.
+
+> **Hinweis für später:** Sollte der `e2e`-Job jemals als Required Check für PRs konfiguriert
+> werden, blockiert `paths-ignore` reine Doku-PRs dauerhaft im Status "pending" (GitHub wartet auf
+> einen Check, der für diese PRs nie ausgelöst wird). In dem Fall muss stattdessen ein separater,
+> immer laufender Skip-Job mit demselben Job-Namen ergänzt werden, der für Doku-only-Änderungen
+> sofort grün durchläuft (Standardmuster für `paths-ignore` + Required Checks).
