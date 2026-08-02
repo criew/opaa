@@ -132,24 +132,67 @@ def search_issues(repo: str, qualifier: str) -> list[dict]:
     return items
 
 
-CLOSES_MUSTER = re.compile(
-    r"\b(?:closes|fixes|resolves|schliesst|schließt)\s+#(\d+)", re.IGNORECASE
-)
+# Ticketlisten in Epics folgen der Vorlage "- [ ] #123 titel". Die Nummer muss
+# unmittelbar auf die Checkbox folgen. Epic #60 nummeriert seine Befunde dagegen
+# als "- [ ] **#1 CORS Wildcard Headers**" — solche Marker sind keine
+# Issue-Referenzen und werden durch diese Bedingung ausgeschlossen.
+TICKET_MUSTER = re.compile(r"^\s*[-*]\s*\[[ xX]\]\s*#(\d+)\b", re.MULTILINE)
 
 
 def simplify_issue(item: dict) -> dict:
-    body = (item.get("body") or "").strip()
     return {
         "number": item["number"],
         "title": item["title"],
         "url": item["html_url"],
         "author": (item.get("user") or {}).get("login", ""),
         "labels": [label["name"] for label in item.get("labels", [])],
-        "body": body,
-        # Erlaubt es, einen Pull Request über das von ihm geschlossene Issue
-        # einem Epic zuzuordnen.
-        "closes": sorted({int(n) for n in CLOSES_MUSTER.findall(body)}),
+        "body": (item.get("body") or "").strip(),
+        # Wird für Pull Requests aus der von GitHub gepflegten Verknüpfung
+        # nachgetragen, siehe `add_closing_references`.
+        "closes": [],
     }
+
+
+def add_closing_references(repo: str, pull_requests: list[dict]) -> None:
+    """Trägt die von GitHub verknüpften Issues in die Pull Requests ein.
+
+    Ein Ausdruck auf `Closes #N` im Body ist dafür untauglich: PR-Beschreibungen
+    enthalten solche Zeichenfolgen auch als Beispiel oder Zitat. GitHub pflegt
+    die tatsächliche Verknüpfung selbst; sie wird hier in einer einzigen Abfrage
+    für alle Pull Requests des Tages geholt.
+    """
+    if not pull_requests:
+        return
+
+    besitzer, name = repo.split("/", 1)
+    felder = "\n".join(
+        f'    p{pr["number"]}: pullRequest(number: {pr["number"]}) '
+        "{ closingIssuesReferences(first: 20) { nodes { number } } }"
+        for pr in pull_requests
+    )
+    query = f'{{ repository(owner: "{besitzer}", name: "{name}") {{\n{felder}\n}} }}'
+
+    try:
+        antwort = json.loads(
+            subprocess.run(
+                ["gh", "api", "graphql", "-f", f"query={query}"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            ).stdout
+        )
+        daten = (antwort.get("data") or {}).get("repository") or {}
+    except (json.JSONDecodeError, ValueError) as error:
+        print(f"Verknüpfte Issues nicht abrufbar: {error}", file=sys.stderr)
+        return
+
+    for pull_request in pull_requests:
+        knoten = (daten.get(f"p{pull_request['number']}") or {}).get(
+            "closingIssuesReferences"
+        ) or {}
+        pull_request["closes"] = sorted(
+            eintrag["number"] for eintrag in knoten.get("nodes", [])
+        )
 
 
 def pull_request_stats(repo: str, number: int) -> dict:
@@ -201,22 +244,34 @@ def collect_epics(repo: str) -> list[dict]:
         print(f"Epics konnten nicht erhoben werden: {error}", file=sys.stderr)
         return []
 
-    status_je_nummer = {
-        item["number"]: item.get("state", "open")
+    # Die Issue-Liste enthält auch Pull Requests; diese sind keine Tickets.
+    nur_issues = [
+        item
         for item in alle
-        if isinstance(item, dict) and "number" in item
+        if isinstance(item, dict) and "number" in item and "pull_request" not in item
+    ]
+    status_je_nummer = {item["number"]: item.get("state", "open") for item in nur_issues}
+    bekannte_issues = set(status_je_nummer)
+    epic_nummern = {
+        item["number"]
+        for item in nur_issues
+        if "epic" in {label["name"] for label in item.get("labels", [])}
     }
 
     epics: list[dict] = []
-    for item in alle:
+    for item in nur_issues:
         labels = {label["name"] for label in item.get("labels", [])}
         if "epic" not in labels:
             continue
         tickets = sorted(
             {
                 int(nummer)
-                for nummer in re.findall(r"#(\d+)", item.get("body") or "")
+                for nummer in TICKET_MUSTER.findall(item.get("body") or "")
+                # Ein Epic ist kein Ticket eines anderen Epics, und eine Nummer
+                # ohne zugehöriges Issue ist ein Aufzählungsmarker.
                 if int(nummer) != item["number"]
+                and int(nummer) in bekannte_issues
+                and int(nummer) not in epic_nummern
             }
         )
         if not tickets:
@@ -332,6 +387,7 @@ def collect(repo: str, day: Date) -> dict:
         "ci": ci_status(repo),
         "summary": "",
     }
+    add_closing_references(repo, merged)
     ergebnis.update(assign_to_epics(ergebnis, collect_epics(repo)))
     return ergebnis
 
