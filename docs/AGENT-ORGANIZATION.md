@@ -81,7 +81,7 @@ flowchart TD
     D --> E[Developer: Worktree + Feature-Branch\n→ Implementierung + Tests + Docs → PR]
     E --> F[Code Reviewer + CI]
     F -- Befunde --> E
-    F -- genehmigt --> G[Maintainer merged]
+    F -- bestanden --> G[Maintainer merged\ncriew oder bigpuritz]
     G -.-> H[QA Engineer: geplante Läufe auf main\nE2E, RAG-Evaluierung, Coverage]
     H -. Befunde werden neue Issues .-> C
 ```
@@ -90,8 +90,10 @@ flowchart TD
 2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Feature-Spezifikation in `docs/features/` und erstellt beschriftete GitHub-Issues.
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
 4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
-5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen.
-6. **Merge** — **Nur Menschen mergen.** Kein Agent mergt jemals einen PR. (Diese Richtlinie kann schrittweise gelockert werden, wenn Vertrauen aufgebaut ist — jede Änderung daran muss hier festgehalten werden.)
+5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.
+6. **Merge** — **Nur Menschen mergen**, und zwar einer der Maintainer `criew` oder `bigpuritz`. Kein Agent mergt jemals einen PR. (Diese Richtlinie kann schrittweise gelockert werden, wenn Vertrauen aufgebaut ist — jede Änderung daran muss hier festgehalten werden.)
+
+Technisch durchgesetzt sind auf `main` die Status-Checks `backend`, `backend-integration` und `frontend`, das Auflösen offener Konversationen sowie der Schutz gegen Force-Push und Löschen. Schreibzugriff haben ausschließlich die beiden Maintainer; dass niemand sonst mergen kann, folgt daraus und braucht keine zusätzliche Regel.
 
 ### Wo QA passt: zwei Qualitätsschleifen
 

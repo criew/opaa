@@ -53,7 +53,15 @@ docs: update architecture decision records
 - Alle Änderungen gehen über PRs — keine direkten Pushes zu `main`
 - PR-Template vollständig ausfüllen
 - Zugehörige GitHub-Issues mit `Closes #N` verknüpfen
-- Sicherstellen, dass Tests bestehen, bevor ein Review angefordert wird
+- Sicherstellen, dass Tests bestehen, bevor der PR zum Merge angeboten wird
+
+### Wie ein PR nach `main` kommt
+
+1. CI muss grün sein — die Prüfungen `backend`, `backend-integration` und `frontend` sind Voraussetzung für den Merge
+2. Der Code Reviewer prüft die Änderung; offene Befunde und Konversationen werden vorher aufgelöst
+3. Einer der Maintainer merged den PR
+
+Ein formales Approval in GitHub ist dafür nicht erforderlich. Maintainer mit Merge-Recht sind [@criew](https://github.com/criew) und [@bigpuritz](https://github.com/bigpuritz).
 
 ## Wann einen E2E-Test schreiben?
 
@@ -92,7 +100,7 @@ Dieses Projekt begrüßt ausdrücklich Beiträge von KI-Coding-Agenten (Claude C
 
 ### Erwartungen an KI-generierten Code
 
-- Alle KI-Beiträge durchlaufen denselben PR-Review-Prozess wie menschlicher Code
+- Alle KI-Beiträge durchlaufen denselben Weg nach `main` wie menschlicher Code: CI, Code Review, Merge durch einen Maintainer
 - Conventional-Commits-Format verwenden
 - `Co-Authored-By`-Trailer in Commits einfügen (z. B. `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`)
 - KI-Beteiligung im Abschnitt „AI Agent Disclosure" des PR-Templates kennzeichnen
