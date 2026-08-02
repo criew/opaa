@@ -2,7 +2,8 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert — ergänzt um den [Nachtrag vom 2026-08-02](#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz)
+(Tatsachenkorrektur; die Entscheidung selbst bleibt unverändert).
 
 ## Kontext
 
@@ -85,3 +86,67 @@ unterschreitet oder um mehr als eine definierte Toleranz unter die committete Ba
   Evaluierung konfigurierbar gemacht.
 - Die Baseline ist an Modellversion **und** Korpus gebunden. Jede Änderung an einem der beiden
   erfordert einen bewussten neuen Baseline-Lauf.
+
+---
+
+## Nachtrag: korrigierte Tatsachenlage zur Demo-Instanz
+
+> **Nachtrag vom 2026-08-02.** Dieser ADR ist bereits akzeptiert und wird deshalb nicht still
+> umgeschrieben. Der Abschnitt hält eine Tatsachenkorrektur fest, die nach der Annahme bekannt
+> wurde, und bewertet, was sie für die getroffene Entscheidung bedeutet.
+
+### Was falsch war
+
+Die Feature-Spezifikation `docs/features/search-quality-evaluation.md`, Epic #224 und Issue #230
+behaupteten, die öffentliche Instanz `opaa.ewerlin.com` laufe mit ihrer „bestehenden
+Ollama-Konfiguration (`phi3:mini`)", weshalb „kein Kostenrisiko" bestehe und „kein kommerzielles
+Modell" eingeführt werde.
+
+Der Maintainer hat auf Nachfrage klargestellt: **Die Instanz nutzt OpenAI.** Die Fehlannahme
+entstand aus einer Verwechslung zweier Ebenen — der *Anwendungs-Default* in
+`backend/src/main/resources/application.yml` ist `${OPAA_AI_CHAT_PROVIDER:ollama}`, die
+*empfohlene Compose-Belegung* in `.env.example` dagegen `OPAA_AI_CHAT_PROVIDER=openai`. Die zweite
+Ebene beschreibt den tatsächlichen Betrieb, die erste nur das Verhalten ohne jede Konfiguration.
+Ein Folge-Issue klärt diese Zweideutigkeit auch in `docs/deployment.md`.
+
+Zweite Korrektur derselben Runde, ohne Bezug zu diesem ADR, aber der Vollständigkeit halber: Die
+Instanz erhält **keinen anonymen Lesezugriff**; sie bleibt account-gebunden hinter Keycloak. Für
+diese Entscheidung wird auf ausdrücklichen Wunsch des Maintainers **kein eigener ADR** angelegt;
+sie steht in der Feature-Spezifikation.
+
+### Trägt die Entscheidung noch?
+
+**Ja — vollständig, und ohne Abstriche an einer einzigen der sechs Festlegungen.** Die falsche
+Prämisse lag nicht in diesem ADR, sondern in der Demo-Beschreibung der Spezifikation. Im Einzelnen:
+
+- Keine der Entscheidungen 1 bis 6 nimmt auf den Chat-Anbieter der Demo-Instanz Bezug. Der ADR
+  hält im Gegenteil ausdrücklich fest, dass der Harness „kein laufendes System, keine Demo-Instanz
+  und kein LLM" braucht. Die Demo und der Regressionstest teilen den Korpus, sonst nichts.
+- Entscheidung 4 (Ollama als Einbettungsmodell in CI) stützt sich zwar unter anderem auf „kostenlos
+  und ohne Secret", trägt aber auch ohne dieses Argument: Ausschlaggebend ist die
+  **Baseline-Stabilität**. Ein Anbieter kann ein gehostetes Modell still ändern, womit die Baseline
+  ohne Code-Änderung driftet; ein festgenageltes lokales Modell kann das nicht. Dieses Argument ist
+  von Kosten unabhängig. Hinzu kommt, dass ein Secret in Forks ohnehin nicht verfügbar ist — auch
+  das ist keine Kostenfrage.
+
+Es besteht also **kein Anlass, ADR-0008 neu zu bewerten oder zu ersetzen.**
+
+### Was sich dennoch ändert
+
+Eine Konsequenz kommt hinzu, die vor der Korrektur nicht sichtbar war und die den ADR nicht
+umstößt, aber seine Aussagekraft begrenzt:
+
+- **Der CI-Harness misst eine andere Konfiguration als die Demo-Instanz fährt.** Die Baseline
+  entsteht mit `nomic-embed-text` über Ollama, die Instanz bettet laut `.env.example` mit
+  `text-embedding-3-small` über OpenAI ein. Ein grüner Regressionslauf sagt damit nichts über die
+  Trefferqualität, die ein Besucher auf `opaa.ewerlin.com` erlebt. Das ist vertretbar — der
+  Harness ist ein Regressionsdetektor für die Pipeline, keine Vorhersage für eine bestimmte
+  Installation —, muss aber benannt werden, damit niemand die Baseline als Aussage über die Demo
+  liest.
+- Daraus folgt eine Präzisierung, keine Änderung: Der in Entscheidung 4 vorgesehene **optionale
+  OpenAI-Vergleichslauf sollte mindestens einmal gegen die Konfiguration der Demo-Instanz laufen**,
+  damit der Abstand zwischen beiden Anbietern beziffert ist. Er bleibt ausdrücklich außerhalb der
+  Baseline.
+- Für den Betrieb der Demo — nicht für diesen ADR — folgt aus der Korrektur, dass Kosten aktiv zu
+  begrenzen sind: Ausgabenlimit beim Anbieter und Rate Limiting pro Konto. Das ist in der
+  Feature-Spezifikation und in den Abnahmekriterien von #230 verankert.
