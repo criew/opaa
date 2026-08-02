@@ -41,9 +41,23 @@ native Sub-Issues im Repository nicht verwendet werden:
 | Schritt | Grundlage |
 | --- | --- |
 | Epics finden | Issues mit dem Label `epic` |
-| Tickets zuordnen | Issue-Nummern im Body des Epics |
-| Pull Requests zuordnen | das über `Closes #N` geschlossene Issue |
+| Tickets zuordnen | Checklisteneinträge `- [ ] #123 titel` im Body des Epics |
+| Pull Requests zuordnen | die von GitHub verknüpften Issues (`closingIssuesReferences`) |
 | Fortschritt | Anteil geschlossener Tickets der Liste |
+
+Damit ein Ticket erkannt wird, muss die Nummer **unmittelbar** auf die Checkbox
+folgen, so wie es die [Epic-Vorlage](../.github/ISSUE_TEMPLATE/epic.md) vorsieht.
+Eine Nummer im Fließtext ist ein Querverweis, kein Ticket. Zusätzlich muss die
+Nummer zu einem existierenden Issue gehören, und Epics zählen nicht als Tickets
+anderer Epics.
+
+Diese Genauigkeit ist nötig, weil `#N` in Markdown mehrdeutig ist: Epic #60
+nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Ohne die
+Bedingung würde daraus ein Epic mit zwanzig erfundenen Tickets.
+
+Aus demselben Grund wird für Pull Requests **nicht** der Body ausgewertet:
+Beschreibungen enthalten Zeichenfolgen wie `Closes #221` auch als Beispiel oder
+Zitat. Maßgeblich ist allein die Verknüpfung, die GitHub selbst pflegt.
 
 Ein Vorgang, der in keiner Ticketliste steht, wird **nicht** geraten, sondern
 unter „ohne Epic-Bezug" geführt. Wer die Zuordnung verbessern will, trägt die
