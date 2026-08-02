@@ -375,6 +375,59 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/directory-sync/dry-run:
+    post:
+      operationId: runDirectorySyncDryRun
+      tags: [admin]
+      summary: Compute the directory synchronisation diff without applying it (system admin only)
+      description: >
+        Fetches the current directory state and computes what would change, but never writes
+        anything - not even when the run would otherwise be applicable. See #237.
+      responses:
+        "200":
+          description: Dry-run report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/directory-sync/run:
+    post:
+      operationId: runDirectorySync
+      tags: [admin]
+      summary: Run directory synchronisation and apply changes if plausible (system admin only)
+      description: >
+        Applies changes only if the directory is reachable, did not return an empty group list
+        while ORG_UNIT groups already exist, and the fraction of memberships that would be
+        removed does not exceed the configured threshold. Otherwise the run is aborted without
+        writing anything, and the report explains why. See #237.
+      responses:
+        "200":
+          description: Synchronisation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/directory-sync/status:
+    get:
+      operationId: getDirectorySyncStatus
+      tags: [admin]
+      summary: Get the outcome of the most recent directory synchronisation run (system admin only)
+      responses:
+        "200":
+          description: Last known synchronisation status; all fields are null if no run has happened yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/spaces:
     get:
       operationId: listSpaces
@@ -1170,6 +1223,108 @@ components:
         userId:
           type: string
           format: uuid
+
+    DirectorySyncOutcome:
+      type: string
+      description: >
+        What a directory synchronisation run did. APPLIED and DRY_RUN both mean the run computed
+        a valid diff; the ABORTED_* and UNREACHABLE values mean nothing was written on purpose -
+        see #237.
+      enum: [APPLIED, DRY_RUN, ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT, UNREACHABLE]
+      example: APPLIED
+
+    DirectorySyncGroupChange:
+      type: object
+      required: [externalId, name]
+      properties:
+        externalId:
+          type: string
+          example: directory-guid-1
+        name:
+          type: string
+          example: Referat 50
+        previousName:
+          type: string
+          nullable: true
+          description: Only set for a renamed group
+
+    DirectorySyncReportResponse:
+      type: object
+      required:
+        - outcome
+        - generatedAt
+        - groupsCreated
+        - groupsRenamed
+        - groupsDissolved
+        - membershipsAdded
+        - membershipsRemoved
+        - changedFraction
+        - thresholdFraction
+        - message
+      properties:
+        outcome:
+          $ref: "#/components/schemas/DirectorySyncOutcome"
+        generatedAt:
+          type: string
+          format: date-time
+        groupsCreated:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        groupsRenamed:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        groupsDissolved:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        membershipsAdded:
+          type: integer
+          example: 4
+        membershipsRemoved:
+          type: integer
+          example: 1
+        unresolvedMemberCount:
+          type: integer
+          description: Directory members whose subject matched no known user; skipped, not an error
+          example: 0
+        changedFraction:
+          type: number
+          format: double
+          description: Fraction of pre-run memberships this run would remove (or removed)
+          example: 0.05
+        thresholdFraction:
+          type: number
+          format: double
+          example: 0.3
+        message:
+          type: string
+          example: Synchronisation angewendet.
+
+    DirectorySyncStatusResponse:
+      type: object
+      properties:
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastOutcome:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DirectorySyncOutcome"
+        lastMessage:
+          type: string
+          nullable: true
+        lastAppliedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last run that actually applied changes (outcome APPLIED)
+        lastChangedFraction:
+          type: number
+          format: double
+          nullable: true
 
   responses:
     ValidationError:
