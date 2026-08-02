@@ -117,6 +117,10 @@ Jede Feature-Spezifikation enthält:
 - **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — Wie Menschen und KI an diesem Projekt zusammenarbeiten
 - **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agenten-Rollen (PM, Entwickler, Reviewer, QA, Marketing), der Idee-bis-Merge-Workflow und Kollaborationsregeln
 
+### Projektfortschritt
+
+- **[`tagesreport.md`](./tagesreport.md)** — Täglicher Report über abgeschlossene Issues, gemergte Pull Requests und neu angesetzte Arbeit, veröffentlicht auf GitHub Pages und abonnierbar als Atom-Feed
+
 ## Feature-Abhängigkeitskarte
 
 Wie Features verbunden sind:
