@@ -2,7 +2,7 @@
 
 Enthält die Testkorpora für die Suchqualitäts-Evaluierung (siehe
 [`docs/features/search-quality-evaluation.md`](../docs/features/search-quality-evaluation.md) und
-[ADR-0008](../docs/decisions/0008-search-quality-evaluation-harness.md)). Dieses Verzeichnis liegt
+[ADR-0011](../docs/decisions/0011-search-quality-evaluation-harness.md)). Dieses Verzeichnis liegt
 bewusst außerhalb des Gradle-Builds und der CI — die Generatoren laufen nur bei bewussten
 Korpus-Änderungen, nie automatisch.
 

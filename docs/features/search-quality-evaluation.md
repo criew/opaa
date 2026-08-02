@@ -1,7 +1,7 @@
 # Suchqualität messbar machen: Demo-Korpus und Retrieval-Regression
 
 > **Status: Abgestimmt für Phase 1 und 2.** Die strukturellen Entscheidungen sind in
-> [ADR-0008](../decisions/0008-search-quality-evaluation-harness.md) (Status: Akzeptiert)
+> [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) (Status: Akzeptiert)
 > festgehalten. Verbleibende Punkte stehen unter
 > [Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
 
@@ -216,7 +216,7 @@ Ohne diesen Punkt ist die gesamte Regression wertlos:
 | 2. Git LFS | Repo-Historie bleibt schlank | Zusätzliches Tooling für alle Beitragenden, LFS-Kontingent, CI-Komplexität |
 | 3. GitHub-Release-Artefakt, im Test heruntergeladen | Repo bleibt sauber | CI braucht Netz; Artefakt kann ersetzt werden → Einfrieren nur noch durch Konvention gesichert |
 
-**Entschieden: Option 1** (ADR-0008), solange der Gesamtkorpus unter etwa 25 MB bleibt. Wird diese
+**Entschieden: Option 1** (ADR-0011), solange der Gesamtkorpus unter etwa 25 MB bleibt. Wird diese
 Grenze bei der Ausweitung auf vier Domänen überschritten, wird pro Domäne auf Option 3 gewechselt,
 mit dem SHA-256-Manifest weiterhin im Repository. Die Neubewertung ist als Prüfpunkt in der
 Ausweitung verankert.
@@ -360,8 +360,8 @@ Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 > **Korrektur (aus dem Review zu PR #247).** Zwei Aussagen in diesem Abschnitt waren falsch und
 > sind nachfolgend berichtigt: Die Instanz läuft **nicht** auf Ollama, sondern auf **OpenAI**, und
 > es wird **kein anonymer Lesezugriff** eingeführt. Beide Punkte hat der Maintainer klargestellt.
-> Was das für die Begründung von ADR-0008 bedeutet, steht dort im
-> [Nachtrag](../decisions/0008-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
+> Was das für die Begründung von ADR-0011 bedeutet, steht dort im
+> [Nachtrag](../decisions/0011-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
 
 Drei Folgerungen:
 
@@ -452,7 +452,7 @@ Vom Maintainer entschieden:
 | 2 | **Multi-Tenancy:** ein gemeinsamer Index, Domänentrennung über Dateinamen-Präfix. Die Workspace-Variante wartet auf #115/#117, nicht auf Epic #198. |
 | 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com`. Sie läuft auf **OpenAI**, nicht auf Ollama — *korrigiert am 2026-08-02; die vorherige Angabe „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" war falsch.* Daraus folgt ein reales Kostenrisiko pro Anfrage, das über Ausgabenlimit und Rate Limiting begrenzt wird. |
 | 4 | **Korpus-Ablage:** Hauptrepository mit SHA-256-Manifest; Neubewertung bei der Ausweitung auf vier Domänen. |
-| 5 | **ADR-0008** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
+| 5 | **ADR-0011** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
 | 6 | **Zugangsmodell der Demo:** account-gebunden hinter Keycloak. Kein Gast- und kein Read-only-Zugang. *Korrigiert am 2026-08-02; die vorherige Anforderung „anonymer Lesezugriff" ist gestrichen.* Für diese Entscheidung wird ausdrücklich **kein ADR** angelegt. |
 
 Vom Product Manager gesetzt, mangels Rückfrage, weiterhin widerrufbar:

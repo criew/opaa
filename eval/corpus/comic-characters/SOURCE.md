@@ -44,7 +44,7 @@ das bei jedem Lauf automatisch (`verify_manifest_completeness` in `generate_corp
 
 1.448 Markdown-Dateien, größtes Dokument 2.573 Bytes, kleinstes 670 Bytes, Gesamtgröße rund 1,9 MB
 (deutlich unter der 5-MB-Obergrenze aus den Abnahmekriterien von Issue #225 und der
-25-MB-Prüfschwelle aus ADR-0008).
+25-MB-Prüfschwelle aus ADR-0011).
 
 ## Bekannte Eigenheiten der Bewertungsfelder
 

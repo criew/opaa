@@ -4,10 +4,10 @@ Erzeugt den Evaluierungskorpus unter `eval/corpus/comic-characters/` aus dem
 HuggingFace-Datensatz [`jrtec/Superheroes`](https://huggingface.co/datasets/jrtec/Superheroes)
 (CC0-1.0). Details zum Gesamtvorhaben stehen in
 [`docs/features/search-quality-evaluation.md`](../../docs/features/search-quality-evaluation.md)
-(Abschnitt „Der Testkorpus") und [ADR-0008](../../docs/decisions/0008-search-quality-evaluation-harness.md).
+(Abschnitt „Der Testkorpus") und [ADR-0011](../../docs/decisions/0011-search-quality-evaluation-harness.md).
 
 Dieses Werkzeug ist bewusst **außerhalb** des Gradle-Builds und der CI angesiedelt (siehe
-ADR-0008, Entscheidung 2). Es läuft nie automatisch, sondern nur, wenn der Korpus bewusst
+ADR-0011, Entscheidung 2). Es läuft nie automatisch, sondern nur, wenn der Korpus bewusst
 neu erzeugt werden soll — die Ausgabe wird dann als reguläre Änderung committet und reviewt.
 
 ## Voraussetzungen
