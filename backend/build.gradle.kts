@@ -77,26 +77,54 @@ tasks.register<Test>("evaluateRetrieval") {
 }
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
-// CorpusManifest — see their Javadoc). Lives in the evalTest source set (not `main`/`test`) so the
-// classes under test never ship in the production jar, but still runs as part of `check` so a
-// Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math regression, is caught
-// without Docker. Explicitly excludes RetrievalEvaluationHarnessTest, which needs Testcontainers
-// and stays exclusive to `evaluateRetrieval` — issue #227's exclusion criterion is about that one
-// Docker-requiring test class, not about the evalTest source set as a whole.
+// CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
+// `main`/`test`) so the classes under test never ship in the production jar, but still runs as
+// part of `check` so a Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math
+// regression, is caught without Docker. Explicitly excludes RetrievalEvaluationHarnessTest (needs
+// Testcontainers, stays exclusive to `evaluateRetrieval`) and BaselineRegressionTest (needs a
+// report file that only exists after a real `evaluateRetrieval` run, stays exclusive to
+// `checkRetrievalBaseline` below) — issue #227/#228's exclusion criterion is about those two
+// specific test classes, not about the evalTest source set as a whole.
 tasks.register<Test>("evalUnitTest") {
     description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
-        "MetricsAggregate, CorpusManifest). Part of check; does not touch Testcontainers."
+        "MetricsAggregate, CorpusManifest, BaselineComparator). Part of check; no Testcontainers, " +
+        "no report file dependency."
     group = "verification"
     testClassesDirs = sourceSets["evalTest"].output.classesDirs
     classpath = sourceSets["evalTest"].runtimeClasspath
     useJUnitPlatform()
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
+        excludeTestsMatching("*BaselineRegressionTest")
     }
 }
 
 tasks.named("check") {
     dependsOn("evalUnitTest")
+}
+
+// Compares the report produced by evaluateRetrieval against the committed baseline
+// (eval/baseline/comic-characters.json, issue #228). Depends on evaluateRetrieval so a single
+// `./gradlew checkRetrievalBaseline` invocation (as used by the nightly/manual/label-triggered CI
+// job in .github/workflows/retrieval-regression.yml) runs the full Docker-requiring harness and
+// then the baseline comparison, in order. Not part of `check`/`build`/`evalUnitTest` — same
+// rationale as `evaluateRetrieval` itself.
+tasks.register<Test>("checkRetrievalBaseline") {
+    description = "Runs evaluateRetrieval, then fails if the result regresses beyond tolerance " +
+        "against eval/baseline/comic-characters.json (issue #228). Needs Docker."
+    group = "verification"
+    dependsOn("evaluateRetrieval")
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching("*BaselineRegressionTest")
+    }
+    testLogging {
+        events("passed", "skipped", "failed", "standard_out")
+        showStandardStreams = true
+    }
 }
 
 dependencyManagement {

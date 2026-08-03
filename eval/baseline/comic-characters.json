@@ -1,0 +1,106 @@
+{
+  "measurementContractVersion": 1,
+  "fixedPoints": {
+    "embeddingModel": "nomic-embed-text:v1.5",
+    "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "chunkSize": 1000,
+    "chunkSizeMatchesApplicationDefault": true,
+    "corpusManifestSha256": "cdfbdfeff23134ec93689256d5abf1477ff03dfa82c03c7cb03728e6704215a7",
+    "corpusDocumentCount": 1448,
+    "goldenDatasetFile": "eval/golden/comic-characters.json",
+    "goldenDatasetSha256": "20ceafc07afb77afc537cbf82d2441702f8c5e0fc033db1e62359292c03e8b23",
+    "goldenCaseCount": 121
+  },
+  "groups": {
+    "overall": {
+      "n": 121,
+      "hitRateAt5": 0.521,
+      "mrr": 0.461,
+      "ndcgAt10": 0.445,
+      "recallAt10": 0.490,
+      "recallAt10Ceiling": 0.9708
+    },
+    "category:attribute_lookup": {
+      "n": 30,
+      "hitRateAt5": 0.967,
+      "mrr": 0.933,
+      "ndcgAt10": 0.942,
+      "recallAt10": 0.967,
+      "recallAt10Ceiling": 1.0
+    },
+    "category:entity_description": {
+      "n": 20,
+      "hitRateAt5": 0.650,
+      "mrr": 0.518,
+      "ndcgAt10": 0.575,
+      "recallAt10": 0.750,
+      "recallAt10Ceiling": 1.0
+    },
+    "category:crosslingual": {
+      "n": 34,
+      "hitRateAt5": 0.382,
+      "mrr": 0.337,
+      "ndcgAt10": 0.302,
+      "recallAt10": 0.322,
+      "recallAt10Ceiling": 0.9666
+    },
+    "category:multi_attribute_filter": {
+      "n": 21,
+      "hitRateAt5": 0.238,
+      "mrr": 0.206,
+      "ndcgAt10": 0.137,
+      "recallAt10": 0.159,
+      "recallAt10Ceiling": 0.9331
+    },
+    "category:numeric_range": {
+      "n": 16,
+      "hitRateAt5": 0.188,
+      "mrr": 0.101,
+      "ndcgAt10": 0.063,
+      "recallAt10": 0.060,
+      "recallAt10Ceiling": 0.9382
+    },
+    "difficulty:easy": {
+      "n": 40,
+      "hitRateAt5": 0.950,
+      "mrr": 0.912,
+      "ndcgAt10": 0.922,
+      "recallAt10": 0.950,
+      "recallAt10Ceiling": 1.0
+    },
+    "difficulty:medium": {
+      "n": 48,
+      "hitRateAt5": 0.333,
+      "mrr": 0.253,
+      "ndcgAt10": 0.262,
+      "recallAt10": 0.335,
+      "recallAt10Ceiling": 0.9706
+    },
+    "difficulty:hard": {
+      "n": 33,
+      "hitRateAt5": 0.273,
+      "mrr": 0.216,
+      "ndcgAt10": 0.134,
+      "recallAt10": 0.157,
+      "recallAt10Ceiling": 0.9359
+    },
+    "language:en": {
+      "n": 87,
+      "hitRateAt5": 0.575,
+      "mrr": 0.509,
+      "ndcgAt10": 0.502,
+      "recallAt10": 0.555,
+      "recallAt10Ceiling": 0.9725
+    },
+    "language:de": {
+      "n": 34,
+      "hitRateAt5": 0.382,
+      "mrr": 0.337,
+      "ndcgAt10": 0.302,
+      "recallAt10": 0.322,
+      "recallAt10Ceiling": 0.9666
+    }
+  },
+  "measuredAt": "2026-08-03",
+  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Aktualisierungsverfahren: eval/baseline/README.md."
+}

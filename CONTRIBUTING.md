@@ -90,6 +90,27 @@ statt sie zu kopieren; siehe `e2e/README.md` für Details zum lokalen Ausführen
 Selektor-Konvention (`getByRole`/`getByLabel` vor `data-testid` vor Text-/Placeholder-Selektoren)
 und die Serialisierungs-Konvention für Specs, die gemeinsamen Zustand verändern.
 
+## Retrieval-Regressionsjob und Baseline-Aktualisierung
+
+Der nächtliche Retrieval-Regressionsjob (`.github/workflows/retrieval-regression.yml`, siehe
+[`eval/README.md`](eval/README.md) und [`eval/baseline/README.md`](eval/baseline/README.md))
+vergleicht jeden Lauf gegen eine committete Baseline (`eval/baseline/comic-characters.json`). Eine
+neue Baseline ist nötig — im selben PR wie die verursachende Änderung, nicht separat —, sobald sich
+eine der folgenden Größen legitim ändert:
+
+- der Testkorpus (`eval/corpus/comic-characters/`, erkennbar an einer neuen
+  `MANIFEST.sha256`-Summe)
+- das Golden Dataset (`eval/golden/comic-characters.json`)
+- das Einbettungsmodell oder sein gepinnter Digest (`nomic-embed-text:v1.5` in
+  `RetrievalEvaluationHarnessTest`)
+- `opaa.indexing.chunk-size` in `application.yml`
+- der Messvertrag (ADR-0012), z. B. Gain-Funktion, IDCG-Basis oder die Fenstergrößen der Metriken
+
+In jedem dieser Fälle ist ein Fehlschlag des Jobs **keine** Retrieval-Regression, sondern eine
+geänderte Messgrundlage — der Job meldet das ausdrücklich getrennt (siehe
+`eval/baseline/README.md`, Abschnitt „Baseline ungültig vs. Regression"). Wer die Baseline ändern
+darf und mit welcher Begründung, steht dort im Detail.
+
 ## Issues
 
 - **Issues müssen auf Deutsch verfasst werden** — ebenso Pull Requests und Dokumentation. Englisch bleibt dem Quellcode vorbehalten (Bezeichner, Dateinamen, Kommentare); Details in [AGENTS.md](AGENTS.md#projektsprache)
