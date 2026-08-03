@@ -8,10 +8,14 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @Profile({"oidc", "basic"})
@@ -21,12 +25,19 @@ public class UserService {
   private final UserRepository userRepository;
   private final SpaceService spaceService;
   private final AuthProperties authProperties;
+  private final TransactionTemplate requiresNewTransactionTemplate;
 
   public UserService(
-      UserRepository userRepository, SpaceService spaceService, AuthProperties authProperties) {
+      UserRepository userRepository,
+      SpaceService spaceService,
+      AuthProperties authProperties,
+      PlatformTransactionManager transactionManager) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
     this.authProperties = authProperties;
+    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+    this.requiresNewTransactionTemplate.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
   }
 
   @Transactional
@@ -34,29 +45,62 @@ public class UserService {
     User user =
         userRepository
             .findBySubjectAndIssuer(subject, issuer)
-            .map(
-                existing -> {
-                  existing.setLastLoginAt(Instant.now());
-                  if (email != null) {
-                    existing.setEmail(email);
-                  }
-                  if (displayName != null) {
-                    existing.setDisplayName(displayName);
-                  }
-                  return userRepository.save(existing);
-                })
-            .orElseGet(
-                () -> {
-                  User newUser = new User(subject, issuer, email, displayName);
-                  newUser.setOrganizationId(Organization.DEFAULT_ID);
-                  if (isInitialAdmin(email)) {
-                    newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
-                  }
-                  return userRepository.save(newUser);
-                });
+            .map(existing -> updateExistingUser(existing, email, displayName))
+            .orElseGet(() -> createOrFetchUser(subject, issuer, email, displayName));
 
     ensurePersonalSpaceAfterCommit(user.getId(), user.getOrganizationId());
     return user;
+  }
+
+  private User updateExistingUser(User existing, String email, String displayName) {
+    existing.setLastLoginAt(Instant.now());
+    if (email != null) {
+      existing.setEmail(email);
+    }
+    if (displayName != null) {
+      existing.setDisplayName(displayName);
+    }
+    return userRepository.save(existing);
+  }
+
+  /**
+   * Creates a new user, tolerating the race of two concurrent first logins for the same {@code
+   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above (#293).
+   *
+   * <p>{@code findOrCreateUser} is itself {@code @Transactional}. On Postgres, a failed statement
+   * aborts the entire enclosing transaction, so catching a {@link DataIntegrityViolationException}
+   * from an insert made on that same connection/transaction would leave every subsequent statement
+   * in {@code findOrCreateUser} - including the read-back of the winner's row below - failing too.
+   * The insert therefore runs in its own {@code REQUIRES_NEW} transaction, on its own connection: a
+   * constraint violation there rolls back only that attempt and leaves the caller's transaction
+   * untouched, so the loser can simply read the row the winner has by now committed, instead of
+   * surfacing a 500 for {@code uq_users_subject_issuer}. Same pattern and reasoning as {@code
+   * SpaceService#ensurePersonalSpace}.
+   *
+   * <p>Unlike {@code ensurePersonalSpace}, this does not need to be deferred to {@code
+   * TransactionSynchronization#afterCommit()} (the fix required for #280/#287): the {@code
+   * REQUIRES_NEW} insert here does not depend on anything the caller's still-open transaction has
+   * written, so there is no visibility problem to work around - it only needs its own row to be
+   * unique, which Postgres enforces regardless of what else is uncommitted on other connections.
+   */
+  private User createOrFetchUser(String subject, String issuer, String email, String displayName) {
+    try {
+      return requiresNewTransactionTemplate.execute(
+          status -> insertUser(subject, issuer, email, displayName));
+    } catch (DataIntegrityViolationException raceLost) {
+      return userRepository.findBySubjectAndIssuer(subject, issuer).orElseThrow(() -> raceLost);
+    }
+  }
+
+  private User insertUser(String subject, String issuer, String email, String displayName) {
+    User newUser = new User(subject, issuer, email, displayName);
+    newUser.setOrganizationId(Organization.DEFAULT_ID);
+    if (isInitialAdmin(email)) {
+      newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    }
+    // saveAndFlush forces the INSERT to execute (and thus to fail, if it must) inside this
+    // REQUIRES_NEW transaction, instead of being deferred to a later flush point outside of it.
+    return userRepository.saveAndFlush(newUser);
   }
 
   /**
