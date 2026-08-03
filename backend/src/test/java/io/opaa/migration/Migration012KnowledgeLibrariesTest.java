@@ -33,10 +33,12 @@ import org.testcontainers.utility.DockerImageName;
  * (see the package Javadoc, which names #201 explicitly).
  *
  * <p>The two mechanisms this test class exercises against each other, not just individually: {@link
- * #backfillIsResumableAcrossPartialProgress()} interrupts the batched backfill mid-run and re-runs
- * it, and {@link #compositeForeignKeyRejectsADocumentPointingAtALibraryFromAnotherOrganization()}
- * combines the composite foreign key with a cross-organization library to prove the constraint -
- * not just application code - is what stops the leak.
+ * #backfillOnlyTouchesRowsStillMissingALibraryAcrossASecondUpdateCall()} combines a second, real
+ * {@code liquibase.update()} call with rows the backfill's {@code WHERE library_id IS NULL}
+ * predicate must skip, and {@link
+ * #compositeForeignKeyRejectsADocumentPointingAtALibraryFromAnotherOrganization()} combines the
+ * composite foreign key with a cross-organization library to prove the constraint - not just
+ * application code - is what stops the leak.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class Migration012KnowledgeLibrariesTest {
@@ -199,23 +201,27 @@ class Migration012KnowledgeLibrariesTest {
   }
 
   @Test
-  void backfillIsResumableAcrossPartialProgress() throws Exception {
-    // Simulates an interrupted migration run: apply only the changeSets up to and including the
-    // nullable column addition, seed documents, manually pre-assign some of them to the system
-    // library exactly as a partially completed backfill would have left them, then run the
-    // remaining changeSets (backfill + NOT NULL/FK enforcement) as the resumed run. The resumed
-    // run must only touch the still-NULL rows and must not fail or duplicate work on the
-    // already-migrated ones - the resumability the acceptance criteria require.
+  void backfillOnlyTouchesRowsStillMissingALibraryAcrossASecondUpdateCall() throws Exception {
+    // This does NOT test resumability within an interrupted transaction - the backfill changeSet
+    // is a single UPDATE inside one changeSet transaction (runInTransaction: true, Liquibase's
+    // default); a run that fails partway through rolls back entirely and is never partially
+    // applied (see the changeSet's own comment and the Resumierbarkeit section of
+    // docs/migrations/012-knowledge-library.md for why an earlier, batched version of this
+    // changeSet claimed otherwise and was wrong). What this test actually pins: the backfill's
+    // WHERE library_id IS NULL predicate only touches rows that still need it, so a second
+    // liquibase.update() call - the real DATABASECHANGELOG-level resumability this migration
+    // provides - does not fail or duplicate work if some rows were already assigned by other
+    // means (e.g. application code) between the two calls.
     applySchemaOnlyChangelog012();
 
-    UUID alreadyMigrated = UUID.randomUUID();
+    UUID alreadyAssigned = UUID.randomUUID();
     UUID stillPending1 = UUID.randomUUID();
     UUID stillPending2 = UUID.randomUUID();
-    insertDocument(alreadyMigrated, "already.pdf");
+    insertDocument(alreadyAssigned, "already.pdf");
     insertDocument(stillPending1, "pending1.pdf");
     insertDocument(stillPending2, "pending2.pdf");
-    // Hand-assign one document exactly as a partially completed backfill run would have left it -
-    // the knowledge_libraries table and the nullable columns already exist at this point (both are
+    // Assign one document by hand before the backfill changeSet ever runs - the
+    // knowledge_libraries table and the nullable columns already exist at this point (both are
     // part of the lib-schema context applied above), so this update is legal.
     try (Statement statement = connection.createStatement()) {
       statement.execute(
@@ -224,16 +230,16 @@ class Migration012KnowledgeLibrariesTest {
               + "', organization_id = '"
               + SEEDED_ORGANIZATION_ID
               + "' WHERE id = '"
-              + alreadyMigrated
+              + alreadyAssigned
               + "'");
     }
 
-    // Resume: apply the still-pending changeSets (backfill + enforcement) on top of the partial
-    // state above - a real second liquibase.update() call, not a simulation.
+    // Apply the still-pending changeSets (backfill + enforcement) as a second, real
+    // liquibase.update() call.
     resumeChangelog012();
 
     assertThat(countRows("documents")).isEqualTo(3);
-    for (UUID id : new UUID[] {alreadyMigrated, stillPending1, stillPending2}) {
+    for (UUID id : new UUID[] {alreadyAssigned, stillPending1, stillPending2}) {
       assertThat(columnValue("documents", "library_id", id.toString()))
           .isEqualTo(SYSTEM_LIBRARY_ID);
       assertThat(columnValue("documents", "organization_id", id.toString()))
@@ -249,7 +255,8 @@ class Migration012KnowledgeLibrariesTest {
             () ->
                 insertDocumentWithExplicitLibrary(
                     UUID.randomUUID(), "no-library.pdf", null, SEEDED_ORGANIZATION_ID))
-        .isInstanceOf(SQLException.class);
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("library_id");
   }
 
   @Test

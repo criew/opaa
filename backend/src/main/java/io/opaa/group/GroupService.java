@@ -7,6 +7,7 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,11 +29,11 @@ import org.springframework.web.server.ResponseStatusException;
  * managed here. {@link GroupKind#ORG_UNIT} groups are synchronised from the directory (#237) and
  * are read-only through this service.
  *
- * <p>Deleting a group that owns an asset is meant to be blocked until ownership is transferred (see
- * the feature spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria).
- * There is no asset model yet ({@code io.opaa.indexing.Document} is the only content type, and it
- * carries no owner) - #201/#202 introduce assets and asset ownership; see the {@code TODO} on
- * {@link #deleteGroup}.
+ * <p>Deleting a group that owns an asset is blocked until ownership is transferred (see the feature
+ * spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria). #201 introduced
+ * the first asset type ({@link io.opaa.library.KnowledgeLibrary}), so {@link #deleteGroup} now has
+ * something to check against; a fuller asset model (agents, prompt libraries) in later stages of
+ * the epic extends the same check, it does not replace it.
  */
 @Service
 @Transactional(readOnly = true)
@@ -44,14 +45,17 @@ public class GroupService {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
+  private final KnowledgeLibraryRepository libraryRepository;
 
   public GroupService(
       GroupRepository groupRepository,
       UserRepository userRepository,
-      GroupMembershipResolver membershipResolver) {
+      GroupMembershipResolver membershipResolver,
+      KnowledgeLibraryRepository libraryRepository) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
+    this.libraryRepository = libraryRepository;
   }
 
   @Transactional
@@ -98,11 +102,21 @@ public class GroupService {
 
   @Transactional
   public void deleteGroup(UUID groupId, UUID currentUserId) {
-    // TODO(#202): block deletion while the group still owns an asset, once asset ownership
-    // exists. There is nothing to check against yet - see the class javadoc for why no such
-    // check exists here.
     Group group = loadGroup(groupId, currentUserId);
     rejectOrgUnit(group);
+    // fk_knowledge_libraries_owner_group_organization is RESTRICT (migration 012): without this
+    // check, deleting a group that still owns a library would surface as an unhandled
+    // DataIntegrityViolationException -> HTTP 500 with no indication of the actual cause, a path
+    // that could not fail before #201 introduced the first asset type a group can own. Checking
+    // first turns that into a clean, actionable 409 - the block on deleting a group that still
+    // owns an asset the class Javadoc and #200's acceptance criteria require. A fuller asset model
+    // (agents, prompt libraries, in later epic stages) extends this same check to those tables; it
+    // does not replace it.
+    if (libraryRepository.existsByOwnerGroupId(groupId)) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die Gruppe besitzt noch Bibliotheken und kann nicht geloescht werden");
+    }
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();

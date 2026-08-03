@@ -15,6 +15,8 @@ import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.ArrayList;
@@ -61,6 +63,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private DocumentRepository documentRepository;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -90,16 +93,22 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // Libraries first (they reference users/groups, not the other way round), then groups, then
-    // users, then the two throwaway organizations.
-    libraryRepository.deleteAll(
+    // Documents first (fk_documents_library_organization is RESTRICT - a library a test left
+    // non-empty, e.g. after an assertion failure before its own cleanup ran, would otherwise block
+    // the library delete below), then libraries (they reference users/groups, not the other way
+    // round), then groups, then users, then the two throwaway organizations.
+    List<KnowledgeLibrary> ownLibraries =
         libraryRepository.findAll().stream()
             .filter(
                 l ->
                     !l.isSystemLibrary()
                         && (createdUserIds.contains(l.getOwnerUserId())
                             || createdGroupIds.contains(l.getOwnerGroupId())))
-            .toList());
+            .toList();
+    for (KnowledgeLibrary library : ownLibraries) {
+      documentRepository.deleteAll(documentRepository.findByLibraryId(library.getId()));
+    }
+    libraryRepository.deleteAll(ownLibraries);
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }
@@ -291,6 +300,67 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void cannotWidenThePersonalLibraryToOrganizationVisibilityButCanRenameIt() {
+    // Code review of #201/#305: once #202 makes library_id the filter axis for the
+    // permission-aware vector search, ORGANIZATION visibility on the personal library would expose
+    // its owner's private documents organization-wide. Mirrors the delete guard on the same
+    // library.
+    UUID owner = createUser(organizationA);
+    libraryService.ensurePersonalLibrary(owner, organizationA);
+    KnowledgeLibrary personalLibrary =
+        libraryRepository.findByOrganizationIdAndOwnerUserId(organizationA, owner).getFirst();
+
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    personalLibrary.getId(),
+                    new LibraryUpdateRequest(personalLibrary.getName())
+                        .visibility(LibraryVisibility.ORGANIZATION),
+                    owner,
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    assertThat(libraryRepository.findById(personalLibrary.getId()).orElseThrow().getVisibility())
+        .isEqualTo(LibraryVisibility.PRIVATE);
+
+    // Renaming (without touching visibility) is still allowed.
+    LibraryResponse renamed =
+        libraryService.updateLibrary(
+            personalLibrary.getId(), new LibraryUpdateRequest("Umbenannt"), owner, false);
+    assertThat(renamed.getName()).isEqualTo("Umbenannt");
+  }
+
+  @Test
+  void cannotDeleteALibraryThatStillContainsDocuments() {
+    // #201/#305 code review: fk_documents_library_organization is RESTRICT, so deleting a library
+    // that still contains documents must be blocked with a clean 409, not surface an unhandled
+    // DataIntegrityViolationException (500).
+    UUID owner = createUser(organizationA);
+    LibraryResponse library = libraryService.createLibrary(new LibraryRequest("Nicht leer"), owner);
+    Document document = new Document("dienstanweisung.pdf", "/tmp/dienstanweisung.pdf", null, 10L);
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(organizationA);
+    documentRepository.save(document);
+
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(libraryRepository.findById(library.getId())).isPresent();
+
+    // Once the library is empty, deletion succeeds - the check is a live guard, not a one-time
+    // flag on the library.
+    documentRepository.delete(document);
+    libraryService.deleteLibrary(library.getId(), owner, false);
+    assertThat(libraryRepository.findById(library.getId())).isEmpty();
   }
 
   @Test

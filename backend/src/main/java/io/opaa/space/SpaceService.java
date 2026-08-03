@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -276,9 +277,27 @@ public class SpaceService {
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
    * that first creates the user row will fail with a {@code fk_spaces_owner} violation, because the
    * {@code REQUIRES_NEW} connection cannot see the uncommitted row (regression fixed as a follow-up
-   * to #265/#280; see {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to
-   * a post-commit hook for exactly this reason).
+   * to #265/#280; see {@code UserService#ensurePersonalAssetsAfterCommit}, which defers this call
+   * to a post-commit hook for exactly this reason).
+   *
+   * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
+   * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
+   * through the Spring proxy opened an ambient read-only transaction (holding one JDBC connection)
+   * for this method's entire duration, while {@code requiresNewTransactionTemplate} below opened a
+   * <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction - two
+   * connections held by one caller at once, the same class of bug #299 fixed in {@code
+   * UserService.findOrCreateUser}. Found via {@code UserServiceCreationRaceIntegrationTest}'s
+   * 12-concurrent-first-login test once #201 added a second provisioning call ({@code
+   * KnowledgeLibraryService#ensurePersonalLibrary}) right after this one in the same per-login
+   * sequence: the added per-login duration was enough additional contention to push Hikari's
+   * default 10-connection pool past its {@code connectionTimeout} for some threads, even though
+   * this method's own two-connections-per-call pattern alone had not previously done so at that
+   * thread count. {@code NOT_SUPPORTED} suspends any ambient transaction for this method's duration
+   * (there normally is none, since {@code UserService.findOrCreateUser} itself is not
+   * {@code @Transactional} either - see #293/#299) and leaves only the one connection {@code
+   * requiresNewTransactionTemplate} actually needs.
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensurePersonalSpace(UUID userId, UUID organizationId) {
     if (spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
       return;

@@ -54,7 +54,13 @@ public class Document {
    * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
    * are set, because the indexing pipeline currently always targets the single well-known system
    * library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}) - see {@code
-   * FileProcessingService}. Selecting a target library per upload or connector source is #207.
+   * FileProcessingService}. This is a deliberate, maintainer-confirmed interim state (#201 builds
+   * the container; #201 does not yet route uploads to it): between #201 landing and the target
+   * library becoming selectable, no document is reachable by ordinary users through this path, only
+   * by system administrators, which is the same fail-closed default the migration already applies
+   * to pre-existing documents. Documented in the epic (#198) for anyone piloting in this window.
+   * Selecting a target library per connector source is #207; selecting one for a manual upload is
+   * #202 or a dedicated follow-up issue - #207 alone does not cover the upload path.
    */
   @Column(name = "library_id")
   private UUID libraryId;

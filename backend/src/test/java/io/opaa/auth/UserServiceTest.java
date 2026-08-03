@@ -138,13 +138,21 @@ class UserServiceTest {
   }
 
   @Test
-  void ensuresPersonalSpaceAndPersonalLibraryTogetherNeverOnlyOne() {
+  void ensuresPersonalSpaceAndPersonalLibraryTogetherNeverOnlyOneEvenIfOneFails() {
     // The two mechanisms this class coordinates (personal space provisioning, personal library
-    // provisioning) must always be attempted together from the same afterCommit callback - #201's
-    // "creates a personal space and a personal library atomically". A regression that calls one
-    // service without the other would pass every test above individually but fail this one: it
-    // pins both the fact that both are called and that neither call depends on the other's
-    // completion (each is invoked exactly once, independent of order or of one throwing).
+    // provisioning) must always be attempted together - #201's "creates a personal space and a
+    // personal library atomically". A regression that calls one service without the other would
+    // pass every test above individually but fail this one: it pins both the fact that both are
+    // called and that neither call depends on the other's completion (each is invoked exactly
+    // once, independent of order or of one throwing).
+    //
+    // The failure must not propagate to the caller (code review of #201/#305): findOrCreateUser
+    // has no ambient transaction to protect (#293/#299), so a rethrown failure here would fail the
+    // login request itself, and because this method runs unconditionally on every login, every
+    // subsequent login for the same user too - turning a provisioning failure into a lockout. The
+    // user is still returned successfully; the failure is only logged (see log output captured by
+    // the test framework, not asserted here - the observable contract is "the call did not throw
+    // and the library provisioning was still attempted").
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.initialAdminEmail()).thenReturn(null);
@@ -152,15 +160,9 @@ class UserServiceTest {
         .when(spaceService)
         .ensurePersonalSpace(any(), any());
 
-    // ensurePersonalSpace throwing must not prevent ensurePersonalLibrary from being attempted -
-    // ensurePersonalAssetsAfterCommit's isSynchronizationActive/registerSynchronization branch is
-    // a defensive fallback for a caller running inside its own transaction (see UserService's
-    // Javadoc); in production and in this test there is none, so the immediate, synchronous
-    // ensureBothPersonalAssets branch always runs, exactly like this unit test exercises.
-    assertThatThrownBy(
-            () -> userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test"))
-        .isInstanceOf(RuntimeException.class);
+    User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
 
+    assertThat(user.getSubject()).isEqualTo("sub1");
     InOrder inOrder = Mockito.inOrder(spaceService, libraryService);
     inOrder.verify(spaceService).ensurePersonalSpace(any(), any());
     inOrder.verify(libraryService).ensurePersonalLibrary(any(), any());

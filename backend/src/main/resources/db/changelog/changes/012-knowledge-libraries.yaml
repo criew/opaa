@@ -6,7 +6,8 @@ databaseChangeLog:
   #   3. 012-add-library-id-to-documents     - nullable column first, so existing rows do not block
   #                                             the ALTER TABLE
   #   4. 012-backfill-document-library-id    - assigns every pre-existing document to the system
-  #                                             library, batched and resumable
+  #                                             library in a single UPDATE; resumability is at the
+  #                                             changeSet level (see the changeSet's own comment)
   #   5. 012-enforce-documents-library-id    - NOT NULL + foreign key, only once every row has a
   #                                             value
   #
@@ -21,9 +22,10 @@ databaseChangeLog:
   # three stages an operator running the dry run/backfill/enforce sequence cares about; they carry
   # no other meaning and are not required for a normal run (an update with no context filter, as
   # spring-boot-starter-liquibase performs automatically at application startup, applies all of
-  # them in order regardless). Migration012KnowledgeLibrariesTest uses them to apply only
-  # 012-add-library-id-to-documents first and the remaining two afterwards, to exercise the backfill
-  # as a genuinely resumed run rather than only as one uninterrupted update().
+  # them in order regardless). Migration012KnowledgeLibrariesTest uses them to apply only the
+  # lib-schema changeSets first and the remaining ones afterwards, to exercise
+  # DATABASECHANGELOG-level resumability as a genuine second liquibase.update() call rather than
+  # only as one uninterrupted run.
 
   - changeSet:
       id: 012-create-knowledge-libraries
@@ -306,47 +308,28 @@ databaseChangeLog:
         with that library's organization. Documents carried no container of any kind before this
         issue (#201) - this is not a data loss, it is the first time the column exists at all (see
         the epic's migration section: "Guenstige Ausgangslage: Dokumente tragen heute keine
-        Workspace-Zuordnung"). Batched in chunks of 5 000 rather than a single UPDATE so the
-        migration is resumable: if the run is interrupted after some batches have committed,
-        re-running this changeSet (or the whole changelog) continues from "WHERE library_id IS
-        NULL" and only touches the remaining rows - already-migrated rows are simply not matched
-        again, making the loop idempotent. A single unbatched UPDATE would either complete entirely
-        or leave the table exactly as it started (one Postgres transaction), which is safe but does
-        not scale to a document count that would hold a long-running transaction open; batching
-        avoids that without weakening the guarantee. A RAISE NOTICE after each batch reports
-        progress for the volume-figures dry run docs/migrations/012-knowledge-library.md describes.
-        splitStatements is disabled because the DO block contains its own statement terminators.
+        Workspace-Zuordnung"). A single UPDATE, not a batched loop: this changeSet runs inside
+        Liquibase's default per-changeSet transaction (runInTransaction: true), and a PL/pgSQL DO
+        block cannot commit partway through that transaction - a prior version of this changeSet
+        claimed batch-level commits and resumability that a DO block structurally cannot provide
+        (confirmed empirically: interrupting a batched version after N batches rolls all N back,
+        not just the uncommitted remainder). The actual, honest guarantee at the current data
+        volume (pre-1.0, no production document count to speak of) is simpler and just as safe: one
+        transaction, all rows or none, and resumability comes from Liquibase's own
+        DATABASECHANGELOG bookkeeping at the changeSet level (see docs/migrations/008-... and the
+        Resumierbarkeit section of docs/migrations/012-knowledge-library.md) - an interrupted run
+        leaves this changeSet unrecorded and a later run re-executes it from scratch against
+        whatever library_id IS NULL rows remain, which is every row, because none were partially
+        committed. Should document volume ever require true batch-level resumability, that needs
+        runInTransaction: false plus explicit commits per batch (and FOR UPDATE SKIP LOCKED would
+        then be appropriate) - out of scope while a single UPDATE remains safe.
       changes:
         - sql:
-            splitStatements: false
-            sql: |
-              DO $$
-              DECLARE
-                batch_size CONSTANT integer := 5000;
-                updated_count integer;
-                total_updated integer := 0;
-              BEGIN
-                LOOP
-                  WITH batch AS (
-                    SELECT id FROM documents
-                    WHERE library_id IS NULL
-                    LIMIT batch_size
-                    FOR UPDATE SKIP LOCKED
-                  )
-                  UPDATE documents
-                  SET library_id = '00000000-0000-0000-0000-000000000002',
-                      organization_id = '00000000-0000-0000-0000-000000000001'
-                  WHERE id IN (SELECT id FROM batch);
-
-                  GET DIAGNOSTICS updated_count = ROW_COUNT;
-                  total_updated := total_updated + updated_count;
-                  RAISE NOTICE '012-backfill-document-library-id: assigned % document(s) to the system library (% so far)', updated_count, total_updated;
-
-                  EXIT WHEN updated_count = 0;
-                END LOOP;
-
-                RAISE NOTICE '012-backfill-document-library-id: done, % document(s) assigned in total', total_updated;
-              END $$;
+            sql: >
+              UPDATE documents
+              SET library_id = '00000000-0000-0000-0000-000000000002',
+                  organization_id = '00000000-0000-0000-0000-000000000001'
+              WHERE library_id IS NULL;
       rollback:
         - sql:
             comment: >

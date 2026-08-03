@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -179,6 +180,17 @@ public class KnowledgeLibraryService {
     if (!canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
+    // Mirrors the delete guard on the personal library (code review of #201/#305): once #202 makes
+    // library_id the filter axis for the permission-aware vector search, widening a personal
+    // library's visibility to ORGANIZATION would expose its owner's private documents
+    // organization-wide - a change no owner is likely to intend for a library the system, not they,
+    // created. The personal library's name and description can still be changed.
+    if (library.isPersonal() && request.getVisibility() == LibraryVisibility.ORGANIZATION) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "Die Sichtbarkeit der persoenlichen Bibliothek kann nicht auf ORGANIZATION gesetzt"
+              + " werden");
+    }
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
@@ -203,6 +215,16 @@ public class KnowledgeLibraryService {
     if (!canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
+    // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
+    // still contains documents would otherwise surface as an unhandled
+    // DataIntegrityViolationException
+    // -> HTTP 500 with no indication of the actual cause. Checking first turns that into a clean,
+    // actionable 409.
+    if (documentRepository.countByLibraryId(libraryId) > 0) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die Bibliothek enthaelt noch Dokumente und kann nicht geloescht werden");
+    }
 
     libraryRepository.delete(library);
   }
@@ -221,14 +243,14 @@ public class KnowledgeLibraryService {
 
   /**
    * Creates the automatic personal library "Meine Dokumente" for a user if it does not exist yet.
-   * Mirrors {@code SpaceService#ensurePersonalSpace} exactly - same {@code REQUIRES_NEW}
-   * transaction on its own connection, same race handling via the partial unique index {@code
-   * uk_knowledge_libraries_personal_owner} (migration 012) - because both are called from the same
-   * {@code UserService} post-commit callback for the same reason: the referenced {@code users} row
-   * must already be committed and visible on this method's own connection. See {@code
-   * UserService#ensurePersonalSpaceAfterCommit} for why the call is deferred to after commit, and
-   * {@code SpaceService#ensurePersonalSpace}'s Javadoc for the full race explanation this method
-   * does not repeat.
+   * Mirrors {@code SpaceService#ensurePersonalSpace}'s race handling exactly - same {@code
+   * REQUIRES_NEW} transaction on its own connection, same race handling via the partial unique
+   * index {@code uk_knowledge_libraries_personal_owner} (migration 012) - because both are called
+   * from the same {@code UserService} post-commit callback for the same reason: the referenced
+   * {@code users} row must already be committed and visible on this method's own connection. See
+   * {@code UserService#ensurePersonalAssetsAfterCommit} for why the call is deferred to after
+   * commit, and {@code SpaceService#ensurePersonalSpace}'s Javadoc for the full race explanation
+   * this method does not repeat.
    *
    * <p>Called independently of (not nested inside) {@code SpaceService#ensurePersonalSpace}'s own
    * transaction, so a failure creating the library never rolls back an already-committed personal
@@ -236,7 +258,26 @@ public class KnowledgeLibraryService {
    * the personal space alone. "Atomically" in #201's acceptance criteria is satisfied at the level
    * that matters operationally: both calls are always attempted together, from the same afterCommit
    * callback, so provisioning never silently creates one without the other.
+   *
+   * <p><b>{@code Propagation.NOT_SUPPORTED}, deliberately overriding the class-level
+   * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
+   * through the Spring proxy would open an ambient read-only transaction (and thus hold one JDBC
+   * connection) for this method's entire duration, while {@code requiresNewTransactionTemplate}
+   * below opens a <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction
+   * - two connections held by one caller at once, the same class of bug #299 fixed in {@code
+   * UserService.findOrCreateUser}. Found here under {@link
+   * io.opaa.auth.UserServiceCreationRaceIntegrationTest}'s 12-thread concurrent-first-login test:
+   * with {@code SpaceService#ensurePersonalSpace} already needing two connections per call (a
+   * pre-existing instance of the same pattern, out of scope for #201 - see the follow-up issue
+   * referenced in this PR) and every one of the 12 threads calling this method right after it in
+   * the same {@code ensureBothPersonalAssets} sequence, peak simultaneous connection demand
+   * exceeded Hikari's default pool size of 10 and the test failed with {@code
+   * CannotCreateTransactionException} after the 30-second connection-acquire timeout. {@code
+   * NOT_SUPPORTED} suspends any ambient transaction for this method's duration (there normally is
+   * none, since {@code findOrCreateUser} itself is not {@code @Transactional} either) and leaves
+   * only the one connection {@code requiresNewTransactionTemplate} actually needs.
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensurePersonalLibrary(UUID userId, UUID organizationId) {
     if (libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)) {
       return;
@@ -278,6 +319,15 @@ public class KnowledgeLibraryService {
     return isOwnerOrGroupMember(library, userId);
   }
 
+  /**
+   * <b>#202 must replace this, not just extend it</b> (code review of #201/#305): for a group-owned
+   * library, every member of the owning group can rename, change visibility and delete it - there
+   * is no distinction between an ordinary member and the {@code MANAGER}/{@code OWNER} asset roles
+   * the feature spec defines (see docs/features/spaces-and-assets.md#asset-rollen). For a
+   * directory-synchronised group this circle grows without any human decision point in this
+   * codebase (see #237's directory synchronisation), which is acceptable only as the coarse #201
+   * interim this class's own class Javadoc describes, never as the long-term model.
+   */
   private boolean canManage(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     if (library.isSystemLibrary()) {
       return systemAdmin;

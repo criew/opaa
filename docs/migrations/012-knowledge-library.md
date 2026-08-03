@@ -82,35 +82,39 @@ simulieren, statt ihn nur zu behaupten (siehe unten).
 
 ## Resumierbarkeit
 
-Jedes Changeset ist eine eigene Postgres-Transaktion (Liquibase-Standard). Bricht ein Lauf mitten in
-der Datei ab, sind bereits abgeschlossene Changesets in `DATABASECHANGELOG` vermerkt; ein erneuter
-Lauf setzt exakt beim ersten nicht abgeschlossenen Changeset fort.
+Jedes Changeset ist eine eigene Postgres-Transaktion (Liquibase-Standard, `runInTransaction: true`).
+Bricht ein Lauf mitten in der Datei ab, sind bereits abgeschlossene Changesets in
+`DATABASECHANGELOG` vermerkt; ein erneuter Lauf setzt exakt beim ersten nicht abgeschlossenen
+Changeset fort. Das ist die Ebene, auf der diese Migration tatsächlich resumierbar ist — nicht
+innerhalb eines einzelnen Changesets.
 
-Der Backfill selbst (`012-backfill-document-library-id`) geht darüber hinaus: Er ist **innerhalb**
-seines eigenen Changesets resumierbar, nicht nur zwischen Changesets. Statt eines einzelnen
-`UPDATE`-Statements über die gesamte Tabelle verarbeitet ein `DO`-Block Batches von 5 000 Zeilen in
-einer Schleife (`WHERE library_id IS NULL ... LIMIT batch_size FOR UPDATE SKIP LOCKED`), bis keine
-Zeile mehr fehlt. Das hat zwei Gründe:
+**Korrektur gegenüber einer früheren Fassung dieses Dokuments:** Der Backfill
+(`012-backfill-document-library-id`) war ursprünglich als Batch-Schleife in einem PL/pgSQL-`DO`-Block
+umgesetzt, mit der Behauptung, jeder Batch committe für sich und ein Abbruch hinterlasse einen Teil
+bereits zugewiesen. **Das ist falsch und wurde im Review widerlegt:** Ein `DO`-Block läuft vollständig
+innerhalb der einen Transaktion des umschließenden Changesets; er kann darin nicht committen. Ein
+Abbruch nach N Batches rollt alle N zurück, nicht nur den unfertigen Rest — empirisch nachgestellt mit
+`batch_size = 1` und einem simulierten Fehler nach zwei Batches: beide `RAISE NOTICE`-Meldungen
+erscheinen im Log, aber `rows assigned after the interruption = 0`.
 
-1. **Skalierung.** Ein einzelnes `UPDATE` über eine sehr große Tabelle hielte eine lange laufende
-   Transaktion offen. Batches vermeiden das, ohne die Garantie zu schwächen — jeder Batch committet
-   für sich (implizit, da `DO`-Blöcke innerhalb der äußeren Changeset-Transaktion laufen und diese am
-   Ende des Changesets committet; die Batches selbst sind idempotent, siehe Punkt 2).
-2. **Wiederaufsetzbarkeit.** Jeder Batch filtert erneut auf `library_id IS NULL` — bereits migrierte
-   Zeilen werden nie wieder angefasst. Ein Abbruch mitten im Lauf (Verbindungsabbruch, Neustart der
-   Anwendung während der Migration) hinterlässt einen Teil der Zeilen bereits zugewiesen und den Rest
-   unverändert `NULL`; ein erneuter Lauf des Changesets — oder des gesamten Changelogs beim nächsten
-   Anwendungsstart — führt exakt dort fort, wo der vorherige aufgehört hat, ohne Duplikate oder
-   übersprungene Zeilen.
+Der Changeset ist deshalb jetzt ein einzelnes `UPDATE documents SET library_id = ..., organization_id
+= ... WHERE library_id IS NULL` — eine Transaktion, alle passenden Zeilen oder keine. Das ist beim
+aktuellen Datenbestand (Projekt vor 1.0, kein produktiver Bestand in relevanter Größenordnung) die
+ehrlichere und einfachere Garantie, ohne die Batch-Schleife, die keine der ihr zugeschriebenen
+Eigenschaften tatsächlich hatte. Sollte die Dokumentenzahl irgendwann eine echte
+Batch-Wiederaufsetzbarkeit erfordern, braucht das `runInTransaction: false` auf dem Changeset und
+explizite Commits je Batch — dann, aber erst dann, ist `FOR UPDATE SKIP LOCKED` das richtige Werkzeug
+gegen konkurrierende Sperren statt eine Gefahrenquelle (eine Zeile, die eine andere Session sperrt,
+würde sonst übersprungen; blieben nur gesperrte Zeilen übrig, endete die Schleife vorzeitig mit
+`ROW_COUNT = 0`, und der nachfolgende `NOT NULL`-Changeset schlüge auf halb migriertem Bestand fehl).
 
-Jeder Batch meldet sein Ergebnis über `RAISE NOTICE` im Migrationslog — das Mengengerüst des
-Trockenlaufs (siehe unten) lässt sich damit auch während eines echten Laufs live beobachten.
-
-`Migration012KnowledgeLibrariesTest#backfillIsResumableAcrossPartialProgress` prüft die
-Wiederaufsetzbarkeit nicht nur behauptend, sondern tatsächlich: Es wendet zunächst nur die
-`lib-schema`-Changesets an, weist ein Dokument von Hand so zu, wie ein teilweise abgeschlossener
-Backfill es hinterlassen hätte, und wendet dann die verbleibenden Changesets als echten zweiten
-`liquibase.update()`-Aufruf an — nicht als Simulation innerhalb eines einzigen Laufs.
+`Migration012KnowledgeLibrariesTest#backfillHandlesInterruptedSchemaOnlyProgressOnResume` prüft, was
+diese Fassung tatsächlich leistet: Nach den `lib-schema`-Changesets (Tabelle, Seed, nullable Spalten)
+angewendet und einem Dokument von Hand so zugewiesen, wie es der Fall wäre, wenn zwischen zwei
+`liquibase.update()`-Läufen jemand manuell eingegriffen hätte, läuft der Backfill-Changeset als echter
+zweiter Aufruf und lässt das bereits zugewiesene Dokument unverändert, während die übrigen migriert
+werden — das idempotente `WHERE library_id IS NULL`-Prädikat, nicht Wiederaufsetzbarkeit innerhalb
+einer unterbrochenen Transaktion, die dieser Changeset nie erzeugen kann.
 
 ## Trockenlauf mit Mengengerüst
 
@@ -120,8 +124,7 @@ Liquibase-Gradle-Plugin-Task besitzt:
 
 1. Kopie der Zieldatenbank in einen frischen `docker compose up postgres`-Container einspielen.
 2. Die Anwendung gegen diese Kopie starten. Liquibase wendet automatisch alle ausstehenden
-   Changesets an, einschließlich `012-knowledge-libraries.yaml`. Das `RAISE NOTICE` des Backfills
-   erscheint im Anwendungslog mit der Anzahl migrierter Dokumente je Batch.
+   Changesets an, einschließlich `012-knowledge-libraries.yaml`.
 3. Das Mengengerüst vor und nach dem Lauf vergleichen:
 
    Vor der Migration:
@@ -195,8 +198,10 @@ zwischen Testmethoden. Er deckt:
   beschränkt aber nicht die Anzahl nicht-persönlicher Bibliotheken.
 - Der Backfill weist jedes bestehende Dokument der System-Bibliothek und ihrer Organisation zu, ohne
   eine Zeile zu verlieren.
-- Der Backfill ist über einen echten zweiten `liquibase.update()`-Aufruf hinweg wiederaufsetzbar
-  (siehe oben).
+- Ein zweiter `liquibase.update()`-Aufruf, der die `lib-schema`-Changesets bereits angewendet
+  vorfindet, lässt eine von Hand zugewiesene Zeile unverändert und migriert nur den Rest — das
+  idempotente `WHERE library_id IS NULL`-Prädikat, die tatsächliche Garantie dieses Changesets
+  (siehe die Korrektur im Abschnitt Resumierbarkeit oben).
 - `fk_documents_library_organization` weist ein Dokument zurück, dessen `organization_id` nicht zur
   Organisation der referenzierten Bibliothek passt — der eigentliche Cross-Tenant-Fall, den diese
   Migration verhindern soll, nicht nur ein fehlendes `library_id`.

@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +21,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Profile({"oidc", "basic"})
 @EnableConfigurationProperties(AuthProperties.class)
 public class UserService {
+
+  private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
   private final UserRepository userRepository;
   private final SpaceService spaceService;
@@ -138,10 +142,10 @@ public class UserService {
    * did - each {@link UserRepository} call in {@code findOrCreateUser} already committed
    * independently by the time control reaches here, so the user row this method's caller passes in
    * is always already visible on any connection, including {@code ensurePersonalSpace}'s and {@code
-   * ensurePersonalLibrary}'s {@code REQUIRES_NEW} ones. The {@code
-   * isSynchronizationActive}/{@code registerSynchronization} branch below is kept only as a defensive
-   * fallback for a caller running inside its own transaction (there is none in production today) -
-   * it must not silently skip provisioning if one ever exists.
+   * ensurePersonalLibrary}'s {@code REQUIRES_NEW} ones. The {@code isSynchronizationActive}/{@code
+   * registerSynchronization} branch below is kept only as a defensive fallback for a caller running
+   * inside its own transaction (there is none in production today) - it must not silently skip
+   * provisioning if one ever exists.
    */
   private void ensurePersonalAssetsAfterCommit(UUID userId, UUID organizationId) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -160,46 +164,56 @@ public class UserService {
   /**
    * Attempts {@link SpaceService#ensurePersonalSpace} and {@link
    * KnowledgeLibraryService#ensurePersonalLibrary} independently of one another - the second call
-   * always runs even if the first one throws, and vice versa. If either (or both) fail, the first
-   * failure is rethrown, with a second failure attached via {@link
-   * Throwable#addSuppressed(Throwable)} rather than dropped, so both are still visible to whatever
-   * logs the exception this bubbles up to. Neither call is wrapped in a transaction of its own here
-   * - each of {@code ensurePersonalSpace}/{@code ensurePersonalLibrary} already opens its own
-   * self-contained {@code REQUIRES_NEW} transaction (see their Javadoc), so nesting one here would
-   * only add an unused, connection-holding transaction around calls that do not need one - the
-   * exact class of cost the pool-exhaustion regression in #299 was caused by.
+   * always runs even if the first one throws, and vice versa. Neither call is wrapped in a
+   * transaction of its own here - each of {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}
+   * already opens its own self-contained {@code REQUIRES_NEW} transaction (see their Javadoc), so
+   * nesting one here would only add an unused, connection-holding transaction around calls that do
+   * not need one - the exact class of cost the pool-exhaustion regression in #299 was caused by.
+   *
+   * <p><b>Failures are logged, not rethrown</b> (code review of #201/#305). An earlier version of
+   * this method rethrew the first failure, reasoning that "an {@code afterCommit} callback failing
+   * here only logs; it does not roll back the already-committed user creation transaction" - that
+   * reasoning does not hold once {@link #findOrCreateUser} runs its no-ambient-transaction,
+   * always-synchronous path (the normal one since #293/#299, not just a defensive fallback - see
+   * {@link #ensurePersonalAssetsAfterCommit}'s Javadoc): there is no {@code afterCommit} callback
+   * to swallow the exception on this path, and Spring propagates it straight to {@code
+   * findOrCreateUser}'s caller, i.e. into the login request itself. Because this method is called
+   * unconditionally on <em>every</em> {@link #findOrCreateUser} invocation (see below), a
+   * persistently failing library or space provisioning would then fail every subsequent login for
+   * that user too - turning a provisioning failure into a lockout, which is a worse outcome than
+   * the login proceeding without (yet) having a personal space or library. Logging both failures
+   * (if both occur) keeps them visible for operations without blocking the user.
    *
    * <p>Called unconditionally for every {@link #findOrCreateUser} invocation, not only for newly
    * created users: both {@code ensurePersonalSpace} and {@code ensurePersonalLibrary} are
    * idempotent (each checks for an existing row first), so a returning user whose personal library
    * failed to provision on an earlier login - or who predates #201 entirely - gets one created on
-   * their next login instead of being left without one indefinitely. The personal space already had
-   * this self-healing property before #201; this keeps the personal library's provisioning on the
-   * same footing.
+   * their next login instead of being left without one indefinitely, exactly because this method no
+   * longer aborts that next login on the earlier failure. See #294, already open for the general
+   * "idempotent provisioning must not become a lockout" concern this addresses for personal
+   * space/library specifically.
    */
   private void ensureBothPersonalAssets(UUID userId, UUID organizationId) {
-    RuntimeException spaceFailure = null;
     try {
       spaceService.ensurePersonalSpace(userId, organizationId);
     } catch (RuntimeException e) {
-      spaceFailure = e;
+      log.error(
+          "Failed to provision personal space for user {} (organization {}); will retry on next"
+              + " login",
+          userId,
+          organizationId,
+          e);
     }
 
-    RuntimeException libraryFailure = null;
     try {
       libraryService.ensurePersonalLibrary(userId, organizationId);
     } catch (RuntimeException e) {
-      libraryFailure = e;
-    }
-
-    if (spaceFailure != null) {
-      if (libraryFailure != null) {
-        spaceFailure.addSuppressed(libraryFailure);
-      }
-      throw spaceFailure;
-    }
-    if (libraryFailure != null) {
-      throw libraryFailure;
+      log.error(
+          "Failed to provision personal library for user {} (organization {}); will retry on next"
+              + " login",
+          userId,
+          organizationId,
+          e);
     }
   }
 
