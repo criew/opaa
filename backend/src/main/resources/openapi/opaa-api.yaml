@@ -1332,11 +1332,16 @@ components:
           type: number
           format: double
           description: >
-            Fraction of memberships at risk this run - removals plus the memberships of groups
-            that would be dissolved, since a dissolved group's reach is capped the same way a
-            revoked grant would be. Relative to the memberships of every group this run actually
-            touches (new, renamed, membership-changed, dissolved, reactivated); untouched groups
-            are excluded from both sides of the ratio.
+            The worse of two independent risk measures, each compared against the configured
+            threshold on its own: the fraction of memberships at risk (removals plus the
+            memberships of groups that would be dissolved, relative to the memberships of every
+            group that was active before this run or is reactivated by it - a group that stayed
+            dissolved and unreported is excluded from this side), and the fraction of active
+            groups that would be dissolved this run (relative to all groups active before this
+            run - matched-but-unchanged groups are included in this denominator, since they are
+            part of what "active" means here). The second measure exists because an
+            introduction-phase directory often has ORG_UNIT groups with no members yet, which the
+            first measure cannot see a mass dissolution of.
           example: 0.05
         thresholdFraction:
           type: number

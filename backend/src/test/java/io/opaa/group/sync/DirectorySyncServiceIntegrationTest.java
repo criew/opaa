@@ -1,7 +1,9 @@
 package io.opaa.group.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.dto.DirectorySyncMembershipChange;
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -262,17 +264,26 @@ class DirectorySyncServiceIntegrationTest {
     UUID member = createUser(organizationId, "member-1");
     Group existing = persistOrgUnit("dir-guid-1", "Referat 50", member);
     // A large, unrelated, unaffected group so the one dissolving membership stays well under the
-    // 30% threshold - this test is about the dissolution mechanics, not the threshold.
+    // 30% membership threshold - this test is about the dissolution mechanics, not the threshold.
     UUID[] bulkMembers = new UUID[9];
     for (int i = 0; i < bulkMembers.length; i++) {
       bulkMembers[i] = createUser(organizationId, "bulk-" + i);
     }
     persistOrgUnit("dir-guid-bulk", "Referat Bulk", bulkMembers);
+    // Enough other unaffected groups that the *group-count* fraction (see the group-dissolution
+    // measure added in response to review of PR #297) also stays under 30%: 1 of 5 = 20%.
+    List<DirectoryGroup> unaffected = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      persistOrgUnit("dir-guid-other-" + i, "Referat Other " + i);
+      unaffected.add(
+          new DirectoryGroup("dir-guid-other-" + i, "Referat Other " + i, null, Set.of()));
+    }
 
-    // Directory no longer reports dir-guid-1 at all (merged into another unit); the bulk group is
-    // still reported unchanged.
-    directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()),
+    // Directory no longer reports dir-guid-1 at all (merged into another unit); every other group
+    // is still reported unchanged.
+    List<DirectoryGroup> reported = new ArrayList<>();
+    reported.add(new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()));
+    reported.add(
         new DirectoryGroup(
             "dir-guid-bulk",
             "Referat Bulk",
@@ -280,6 +291,8 @@ class DirectorySyncServiceIntegrationTest {
             Set.of(
                 "bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4", "bulk-5", "bulk-6", "bulk-7",
                 "bulk-8")));
+    reported.addAll(unaffected);
+    directoryClient.respondWith(reported.toArray(new DirectoryGroup[0]));
 
     DirectorySyncReportResponse report = directorySyncService.run(organizationId);
 
@@ -378,6 +391,32 @@ class DirectorySyncServiceIntegrationTest {
     assertThat(membershipRepository.findByGroupId(reloaded.getId())).hasSize(4);
   }
 
+  @Test
+  void aMassDissolutionOfMemberlessGroupsIsCaughtByTheGroupCountMeasureEvenAtZeroMembershipRisk() {
+    // 50 ORG_UNIT groups with no members at all (the routine state during an introduction phase,
+    // before curators and memberships are populated - review of PR #297). The directory now
+    // reports only one of them; the membership-based measure sees changedFraction = 0.0 either
+    // way, since no membership row is at stake.
+    List<DirectoryGroup> stillReported = new ArrayList<>();
+    for (int i = 0; i < 50; i++) {
+      persistOrgUnit("dir-guid-" + i, "Referat " + i);
+      if (i == 0) {
+        stillReported.add(new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, Set.of()));
+      }
+    }
+    directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
+
+    DirectorySyncReportResponse report = directorySyncService.run(organizationId);
+
+    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.getChangedFraction()).isEqualTo(0.98);
+    long dissolvedCount =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(Group::isDissolved)
+            .count();
+    assertThat(dissolvedCount).isZero();
+  }
+
   // ---------------------------------------------------------------------------------------
   // Dry run persists its outcome - review of PR #297: under the class-level readOnly transaction
   // dryRun used to run in, Hibernate's FlushMode.MANUAL silently dropped the status insert.
@@ -464,6 +503,61 @@ class DirectorySyncServiceIntegrationTest {
             .orElseThrow();
     Group reloadedA = groupRepository.findById(groupA.getId()).orElseThrow();
     assertThat(reloadedA.getParentGroupId()).isEqualTo(groupB.getId());
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Failed apply must not be recorded as APPLIED - review of PR #297: an earlier version wrote
+  // the status via a REQUIRES_NEW transaction that committed before the surrounding apply
+  // transaction could roll back, so a run that failed to actually apply could still end up
+  // durably marked APPLIED.
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void aFailedApplyDoesNotRecordAnAppliedStatus() {
+    UUID member = createUser(organizationId, "member-1");
+    persistOrgUnit("dir-guid-1", "Referat 50", member);
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
+    directorySyncService.dryRun(organizationId);
+    assertThat(statusRepository.findByOrganizationId(organizationId).orElseThrow().getLastOutcome())
+        .isEqualTo(DirectorySyncOutcome.DRY_RUN);
+
+    // A directory-supplied group name exceeding groups.name's varchar(255) makes the CREATE fail
+    // at commit time - a real, if unusual, directory response, not a test-only trick.
+    String tooLongName = "x".repeat(300);
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")),
+        new DirectoryGroup("dir-guid-9", tooLongName, null, Set.of()));
+
+    assertThatThrownBy(() -> directorySyncService.run(organizationId))
+        .isInstanceOf(RuntimeException.class);
+
+    DirectorySyncStatus status =
+        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+    assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
+    assertThat(status.getLastAppliedAt()).isNull();
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // The report must name who would lose membership, not only who would gain it - review of PR
+  // #297: the removed side used to carry a null display name unconditionally.
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void theDryRunReportNamesTheUsersWhoWouldLoseMembership() {
+    UUID keep = createUser(organizationId, "keep");
+    UUID leaving = createUser(organizationId, "leaving");
+    persistOrgUnit("dir-guid-1", "Referat 50", keep, leaving);
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("keep")));
+
+    DirectorySyncReportResponse report = directorySyncService.dryRun(organizationId);
+
+    assertThat(report.getMembershipChanges()).hasSize(1);
+    DirectorySyncMembershipChange change = report.getMembershipChanges().get(0);
+    assertThat(change.getRemoved()).hasSize(1);
+    assertThat(change.getRemoved().get(0).getUserId()).isEqualTo(leaving);
+    assertThat(change.getRemoved().get(0).getDisplayName()).isEqualTo("Test User");
   }
 
   // ---------------------------------------------------------------------------------------

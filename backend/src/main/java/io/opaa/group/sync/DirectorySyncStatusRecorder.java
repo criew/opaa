@@ -3,20 +3,19 @@ package io.opaa.group.sync;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Persists the outcome of a directory synchronisation run in its own transaction, independent of
- * the caller's. A separate bean rather than a private method on {@link DirectorySyncPlanExecutor}
- * or {@link DirectorySyncService} because {@code REQUIRES_NEW} on a method only takes effect
- * through Spring's proxy - a self-invoked private method on the same instance would silently run in
- * whatever transaction (or lack of one) is already active, which is exactly the bug review of PR
- * #297 found: under {@link DirectorySyncService#dryRun}'s read-only transaction, Hibernate's {@code
- * FlushMode.MANUAL} silently dropped the status insert. With this as a dedicated bean, the write
- * commits (or rolls back) on its own regardless of what the caller's transaction is doing, so "the
- * directory being unreachable is durably reported" holds for every entry point, including a dry
- * run.
+ * Persists the outcome of a directory synchronisation run. Called only from {@link
+ * DirectorySyncService}, which is itself not transactional and calls this only after {@link
+ * DirectorySyncPlanExecutor#planAndApply}/{@code planOnly} has already returned successfully - so
+ * there is never an ambient transaction to consider here, and a failed apply (its transaction
+ * rolled back) never reaches this class at all. An earlier version of this class ran under {@code
+ * REQUIRES_NEW} to escape the caller's transaction; that requirement disappeared along with the
+ * caller ever having one - see {@link DirectorySyncPlanExecutor}'s class javadoc for the defect
+ * that motivated moving the call here (review of PR #297: a REQUIRES_NEW status write could commit
+ * before the surrounding apply transaction later rolled back, durably recording {@code APPLIED} for
+ * a run that never actually applied).
  */
 @Service
 public class DirectorySyncStatusRecorder {
@@ -27,7 +26,7 @@ public class DirectorySyncStatusRecorder {
     this.statusRepository = statusRepository;
   }
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional
   public void record(
       UUID organizationId,
       Instant runAt,

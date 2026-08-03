@@ -41,10 +41,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p><b>Plan, then act.</b> {@link #buildPlan} computes the entire diff without mutating anything.
  * {@link #planOnly} and the plausibility-threshold abort path inside {@link #handle} both stop
  * there and only turn the plan into a report. Only {@link #planAndApply}, once the plan has been
- * judged plausible, calls {@link #applyPlan}. Status is always recorded through {@link
- * DirectorySyncStatusRecorder}'s own {@code REQUIRES_NEW} transaction, independent of whichever of
- * the two transaction types below is active - see that class's javadoc for why a plain field write
- * here is not equivalent.
+ * judged plausible, calls {@link #applyPlan}.
+ *
+ * <p><b>Status is recorded by the caller, not here.</b> An earlier version of this class recorded
+ * the outcome itself, in a {@code REQUIRES_NEW} transaction that committed before this class's own
+ * transaction did - so a run that failed to apply (e.g. a directory-supplied name too long for
+ * {@code groups.name}, causing the surrounding transaction to roll back at commit) could still end
+ * up with a durably recorded {@code APPLIED} status, exactly the "a change was made" claim {@link
+ * DirectorySyncStatus#getLastAppliedAt()} exists to be trustworthy about (review of PR #297).
+ * {@link DirectorySyncService} - itself not transactional - calls {@link
+ * DirectorySyncStatusRecorder} only after {@link #planAndApply} has returned successfully, so a
+ * roll back here never reaches the status table at all.
  *
  * <p><b>Matching:</b> exclusively by {@link Group#getExternalId()} - the directory's stable
  * identifier, never by name (see #237's acceptance criteria; a rename must be free of side
@@ -58,16 +65,25 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * so it works regardless of the order the directory reports groups in and applies to existing
  * groups too, not only newly created ones (review of PR #297).
  *
- * <p><b>Plausibility threshold ({@link #buildPlan}):</b> the denominator and numerator of {@code
- * changedFraction} both range over exactly the same population of groups - every group this run
- * actually touches (matched-and-unchanged, renamed, membership-changed, reactivated, or about to be
- * dissolved) - and nothing else. A group that was already dissolved before this run and stays
- * unreported keeps its frozen membership out of both sides. Two things review of PR #297 found
- * broken under the original (name-only) computation are folded in explicitly: a group being
- * dissolved this run contributes its entire pre-run membership to the numerator (its reach is
- * capped the same way a revoked grant would be, even though no individual {@code group_memberships}
- * row is deleted), and a group being reactivated this run contributes its frozen pre-run membership
- * to the denominator (it re-enters "in play" in the very run that can remove from it).
+ * <p><b>Plausibility threshold ({@link #buildPlan}):</b> {@code changedFraction} is the worse of
+ * two independent measures, each checked against the same configured threshold.
+ *
+ * <p>The first, membership-based measure has a denominator and numerator that both range over
+ * exactly the same population of groups - every group this run actually touches
+ * (matched-and-unchanged, renamed, membership-changed, reactivated, or about to be dissolved) - and
+ * nothing else. A group that was already dissolved before this run and stays unreported keeps its
+ * frozen membership out of both sides. Two things review of PR #297 found broken under the original
+ * (name-only) computation are folded in explicitly: a group being dissolved this run contributes
+ * its entire pre-run membership to the numerator (its reach is capped the same way a revoked grant
+ * would be, even though no individual {@code group_memberships} row is deleted), and a group being
+ * reactivated this run contributes its frozen pre-run membership to the denominator (it re-enters
+ * "in play" in the very run that can remove from it).
+ *
+ * <p>The second, group-count-based measure exists because the first is blind to a mass dissolution
+ * of groups that have no members at all - routine during an introduction phase, before curators and
+ * memberships are populated (residual risk flagged in review of PR #297). It is the fraction of
+ * groups active before this run that this run would dissolve, independent of how many members any
+ * of them have.
  */
 @Service
 class DirectorySyncPlanExecutor {
@@ -77,19 +93,16 @@ class DirectorySyncPlanExecutor {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
-  private final DirectorySyncStatusRecorder statusRecorder;
   private final DirectorySyncProperties properties;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
-      DirectorySyncStatusRecorder statusRecorder,
       DirectorySyncProperties properties) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
-    this.statusRecorder = statusRecorder;
     this.properties = properties;
   }
 
@@ -121,8 +134,7 @@ class DirectorySyncPlanExecutor {
               + " ORG_UNIT groups exist - aborting without changes",
           organizationId,
           existingOrgUnits.size());
-      return recordAndReport(
-          organizationId, now, DirectorySyncOutcome.ABORTED_EMPTY_RESULT, message, emptyPlan());
+      return buildReport(now, DirectorySyncOutcome.ABORTED_EMPTY_RESULT, message, emptyPlan());
     }
 
     SyncPlan plan = buildPlan(organizationId, snapshot, existingOrgUnits);
@@ -133,35 +145,30 @@ class DirectorySyncPlanExecutor {
       String message =
           String.format(
               Locale.ROOT,
-              "Der Lauf wuerde %s der betroffenen Mitgliedschaften entfernen bzw. einfrieren und"
-                  + " damit die konfigurierte Schwelle von %s ueberschreiten. Abgebrochen ohne"
-                  + " Aenderungen.",
+              "Der Lauf wuerde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
+                  + " einfrieren und damit die konfigurierte Schwelle von %s ueberschreiten."
+                  + " Abgebrochen ohne Aenderungen.",
               changedPercent,
               thresholdPercent);
       log.warn(
-          "Directory sync: run for organization {} would put {} of {} memberships at risk ({},"
-              + " threshold {}) - aborting without changes",
+          "Directory sync: run for organization {} would put {} of {} memberships and {} of {}"
+              + " active groups at risk ({}, threshold {}) - aborting without changes",
           organizationId,
           plan.membershipsAtRisk(),
           plan.existingMembershipCount(),
+          plan.dissolutions().size(),
+          plan.activeGroupCount(),
           changedPercent,
           thresholdPercent);
-      return recordAndReport(
-          organizationId, now, DirectorySyncOutcome.ABORTED_THRESHOLD, message, plan);
+      return buildReport(now, DirectorySyncOutcome.ABORTED_THRESHOLD, message, plan);
     }
 
     if (!applyIfPlausible) {
-      return recordAndReport(
-          organizationId,
-          now,
-          DirectorySyncOutcome.DRY_RUN,
-          "Trockenlauf - keine Aenderung.",
-          plan);
+      return buildReport(now, DirectorySyncOutcome.DRY_RUN, "Trockenlauf - keine Aenderung.", plan);
     }
 
     applyPlan(organizationId, now, plan);
-    return recordAndReport(
-        organizationId, now, DirectorySyncOutcome.APPLIED, "Synchronisation angewendet.", plan);
+    return buildReport(now, DirectorySyncOutcome.APPLIED, "Synchronisation angewendet.", plan);
   }
 
   private String formatPercent(double fraction) {
@@ -222,9 +229,9 @@ class DirectorySyncPlanExecutor {
         renames.add(new PlannedRename(existing, incoming.name()));
       }
 
-      Map<UUID, UserRef> currentMembers = new HashMap<>();
+      Set<UUID> currentMemberIds = new HashSet<>();
       for (GroupMembership membership : existing.getMemberships()) {
-        currentMembers.put(membership.getUserId(), new UserRef(membership.getUserId(), null));
+        currentMemberIds.add(membership.getUserId());
       }
       Map<UUID, UserRef> desiredMembers = new HashMap<>();
       for (UserRef user : resolved.users()) {
@@ -233,16 +240,17 @@ class DirectorySyncPlanExecutor {
 
       Set<UserRef> toAdd = new HashSet<>();
       for (Map.Entry<UUID, UserRef> entry : desiredMembers.entrySet()) {
-        if (!currentMembers.containsKey(entry.getKey())) {
+        if (!currentMemberIds.contains(entry.getKey())) {
           toAdd.add(entry.getValue());
         }
       }
-      Set<UserRef> toRemove = new HashSet<>();
-      for (Map.Entry<UUID, UserRef> entry : currentMembers.entrySet()) {
-        if (!desiredMembers.containsKey(entry.getKey())) {
-          toRemove.add(entry.getValue());
-        }
-      }
+      Set<UUID> toRemoveIds = new HashSet<>(currentMemberIds);
+      toRemoveIds.removeAll(desiredMembers.keySet());
+      // Resolved with a display name, not left null like an earlier version of this method did
+      // (review of PR #297): the report is exactly where an admin decides whether to let a run
+      // through that would remove access, and "who" matters most for the direction that costs
+      // rights.
+      Set<UserRef> toRemove = resolveUserRefsById(toRemoveIds);
 
       if (!toAdd.isEmpty() || !toRemove.isEmpty()) {
         membershipChanges.add(new PlannedMembershipChange(existing, toAdd, toRemove));
@@ -265,19 +273,34 @@ class DirectorySyncPlanExecutor {
     // groups, plus the entire pre-run membership of a group about to be dissolved - its reach is
     // capped the same way a revoked grant would be, even though no membership row is deleted.
     int existingMembershipCount = 0;
+    int activeGroupCount = 0;
     for (Group group : existingOrgUnits) {
       if (!group.isDissolved() || reactivatingGroupIds.contains(group.getId())) {
         existingMembershipCount += group.getMemberships().size();
+      }
+      if (!group.isDissolved()) {
+        activeGroupCount++;
       }
     }
     int membershipsAtRisk = membershipsRemoved;
     for (PlannedDissolution dissolution : dissolutions) {
       membershipsAtRisk += dissolution.group().getMemberships().size();
     }
-    double changedFraction =
+    double membershipChangedFraction =
         existingMembershipCount == 0
             ? (membershipsAtRisk > 0 ? 1.0 : 0.0)
             : (double) membershipsAtRisk / existingMembershipCount;
+
+    // A second, independent measure on the number of groups rather than their membership: an
+    // introduction-phase directory routinely has ORG_UNIT groups with zero members (curators and
+    // memberships are populated gradually), so a mass dissolution of empty groups is invisible to
+    // membershipChangedFraction - its numerator and denominator are both driven by memberships,
+    // which such a run never touches. changedFraction is the worse of the two so a run this
+    // implausible in either dimension is caught, not only one measured in memberships (residual
+    // risk flagged in review of PR #297).
+    double groupDissolutionFraction =
+        activeGroupCount == 0 ? 0.0 : (double) dissolutions.size() / activeGroupCount;
+    double changedFraction = Math.max(membershipChangedFraction, groupDissolutionFraction);
 
     return new SyncPlan(
         existingOrgUnits,
@@ -292,6 +315,7 @@ class DirectorySyncPlanExecutor {
         membershipsAtRisk,
         unresolvedMemberCount,
         existingMembershipCount,
+        activeGroupCount,
         changedFraction);
   }
 
@@ -302,11 +326,33 @@ class DirectorySyncPlanExecutor {
     List<User> users = userRepository.findByOrganizationIdAndSubjectIn(organizationId, subjects);
     Set<UserRef> userRefs = new HashSet<>();
     for (User user : users) {
-      String displayName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-      userRefs.add(new UserRef(user.getId(), displayName));
+      userRefs.add(toUserRef(user));
     }
     int unresolved = subjects.size() - users.size();
     return new ResolvedMembers(userRefs, Math.max(unresolved, 0));
+  }
+
+  /**
+   * Resolves already-known member ids (a group's current, persisted membership) to their display
+   * names, the same way {@link #resolveMembers} does for the directory's incoming subjects. These
+   * ids come from this organization's own {@code group_memberships} rows, not from external input,
+   * so no organization-boundary check is needed here the way {@link
+   * io.opaa.auth.UserRepository#findByOrganizationIdAndSubjectIn} enforces one.
+   */
+  private Set<UserRef> resolveUserRefsById(Set<UUID> userIds) {
+    if (userIds.isEmpty()) {
+      return Set.of();
+    }
+    Set<UserRef> userRefs = new HashSet<>();
+    for (User user : userRepository.findAllById(userIds)) {
+      userRefs.add(toUserRef(user));
+    }
+    return userRefs;
+  }
+
+  private UserRef toUserRef(User user) {
+    String displayName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
+    return new UserRef(user.getId(), displayName);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -464,17 +510,12 @@ class DirectorySyncPlanExecutor {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Status recording and report assembly
+  // Report assembly - status is recorded by DirectorySyncService, once this class's own
+  // transaction has committed successfully. See the class javadoc.
   // ---------------------------------------------------------------------------------------
 
-  private DirectorySyncReportResponse recordAndReport(
-      UUID organizationId,
-      Instant now,
-      DirectorySyncOutcome outcome,
-      String message,
-      SyncPlan plan) {
-    statusRecorder.record(organizationId, now, outcome, message, plan.changedFraction());
-
+  private DirectorySyncReportResponse buildReport(
+      Instant now, DirectorySyncOutcome outcome, String message, SyncPlan plan) {
     DirectorySyncReportResponse response =
         new DirectorySyncReportResponse(
             outcome,
@@ -495,7 +536,7 @@ class DirectorySyncPlanExecutor {
   static SyncPlan emptyPlan() {
     return new SyncPlan(
         List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, 0, 0, 0, 0,
-        0.0);
+        0, 0.0);
   }
 
   private List<DirectorySyncGroupChange> toChanges(List<PlannedCreate> creates) {
@@ -615,5 +656,6 @@ class DirectorySyncPlanExecutor {
       int membershipsAtRisk,
       int unresolvedMemberCount,
       int existingMembershipCount,
+      int activeGroupCount,
       double changedFraction) {}
 }

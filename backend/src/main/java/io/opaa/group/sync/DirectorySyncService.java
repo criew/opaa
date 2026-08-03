@@ -17,6 +17,20 @@ import org.springframework.stereotype.Service;
  * for the duration of a network call (review of PR #297). The transactional plan computation and,
  * if applicable, application live in {@link DirectorySyncPlanExecutor}, a separate bean called from
  * here through Spring's proxy.
+ *
+ * <p><b>Known gap: concurrent runs are not serialised, and the fetch-to-apply window is real.</b>
+ * Moving the directory fetch outside any transaction (above) widens the time between reading the
+ * directory and applying the diff; a change made through the admin UI in that window - e.g. an
+ * operator adding someone to an {@code AD_HOC} group, or (once #208 exists) a curator action on an
+ * {@code ORG_UNIT} group - is not part of the snapshot this run diffs against and can be reverted
+ * by it. Likewise, nothing here stops two calls to {@link #run} for the same organization from
+ * overlapping. Neither is new to this change - the previous, single-transaction version had a
+ * narrower but non-zero version of the same window - but the window is now large enough to be worth
+ * naming rather than assuming away. Out of scope for #237: closing it needs either serialising runs
+ * per organization (e.g. a Postgres advisory lock keyed on {@code organizationId}, held for the
+ * whole {@link #execute}) or accepting last-writer-wins and documenting it as a deployment
+ * constraint (run synchronisation on a schedule, never concurrently, never overlapping an admin
+ * bulk-edit window).
  */
 @Service
 public class DirectorySyncService {
@@ -100,8 +114,16 @@ public class DirectorySyncService {
           .unresolvedMemberCount(0);
     }
 
-    return applyIfPlausible
-        ? planExecutor.planAndApply(organizationId, now, snapshot)
-        : planExecutor.planOnly(organizationId, now, snapshot);
+    // If planAndApply's transaction fails to commit (e.g. a directory-supplied value that
+    // violates a column constraint), the exception propagates from here and nothing below runs -
+    // so a failed apply can never be recorded as APPLIED. See DirectorySyncPlanExecutor's class
+    // javadoc for the defect this replaced (review of PR #297).
+    DirectorySyncReportResponse report =
+        applyIfPlausible
+            ? planExecutor.planAndApply(organizationId, now, snapshot)
+            : planExecutor.planOnly(organizationId, now, snapshot);
+    statusRecorder.record(
+        organizationId, now, report.getOutcome(), report.getMessage(), report.getChangedFraction());
+    return report;
   }
 }
