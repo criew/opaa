@@ -11,6 +11,8 @@ import {
   mockUsers,
   mockSpaces,
   mockSpaceDetails,
+  mockGroups,
+  mockGroupDetails,
 } from './fixtures'
 import type { IndexingStatusResponse, QueryRequest } from '../types/api'
 import type { LoginRequest } from '../types/auth'
@@ -259,6 +261,105 @@ export const handlers = [
 
   http.get('/api/v1/admin/users', () => {
     return HttpResponse.json(mockUsers)
+  }),
+
+  http.get('/api/v1/admin/groups', () => {
+    return HttpResponse.json(mockGroups)
+  }),
+
+  http.post('/api/v1/admin/groups', async ({ request }) => {
+    const body = (await request.json()) as { name: string; description?: string }
+    if (!body.name || body.name.trim() === '') {
+      return HttpResponse.json({ error: 'Der Name der Gruppe ist erforderlich' }, { status: 400 })
+    }
+    const id = `group-${crypto.randomUUID().slice(0, 8)}`
+    const now = new Date().toISOString()
+    const listEntry: (typeof mockGroups)[number] = {
+      id,
+      name: body.name.trim(),
+      description: body.description?.trim() ?? null,
+      kind: 'AD_HOC',
+      externalId: null,
+      parentGroupId: null,
+      memberCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockGroups.push(listEntry)
+    mockGroupDetails[id] = { ...listEntry, members: [] }
+    return HttpResponse.json(mockGroupDetails[id], { status: 201 })
+  }),
+
+  http.get('/api/v1/admin/groups/:groupId', ({ params }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group)
+  }),
+
+  http.put('/api/v1/admin/groups/:groupId', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { name: string; description?: string }
+    group.name = body.name
+    group.description = body.description ?? null
+    listEntry.name = body.name
+    listEntry.description = body.description ?? null
+    return HttpResponse.json(group)
+  }),
+
+  http.delete('/api/v1/admin/groups/:groupId', ({ params }) => {
+    const groupId = String(params.groupId)
+    delete mockGroupDetails[groupId]
+    const idx = mockGroups.findIndex((item) => item.id === groupId)
+    if (idx >= 0) {
+      mockGroups.splice(idx, 1)
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('/api/v1/admin/groups/:groupId/members', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { userId: string }
+    if (!body.userId) {
+      return HttpResponse.json({ error: 'userId is required' }, { status: 400 })
+    }
+    if (group.members.some((member) => member.userId === body.userId)) {
+      return HttpResponse.json(
+        { error: 'Der Benutzer ist bereits Mitglied dieser Gruppe' },
+        { status: 409 },
+      )
+    }
+    const member = { userId: body.userId, createdAt: new Date().toISOString() }
+    group.members.push(member)
+    group.memberCount = group.members.length
+    listEntry.memberCount = group.members.length
+    return HttpResponse.json(member, { status: 201 })
+  }),
+
+  http.delete('/api/v1/admin/groups/:groupId/members/:userId', ({ params }) => {
+    const groupId = String(params.groupId)
+    const userId = String(params.userId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    group.members = group.members.filter((member) => member.userId !== userId)
+    group.memberCount = group.members.length
+    listEntry.memberCount = group.members.length
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.get('/api/v1/auth/config', () => {

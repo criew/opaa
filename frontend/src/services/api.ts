@@ -1,5 +1,8 @@
 import axios, { AxiosError } from 'axios'
 import type {
+  GroupListResponse,
+  GroupMemberResponse,
+  GroupResponse,
   HealthResponse,
   IndexingStatusResponse,
   IndexingTriggerRequest,
@@ -201,6 +204,79 @@ export async function getUsers(): Promise<UserInfo[]> {
   try {
     const { data } = await client.get<UserInfo[]>('/v1/admin/users')
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getGroups(): Promise<GroupListResponse[]> {
+  try {
+    const { data } = await client.get<GroupListResponse[]>('/v1/admin/groups')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getGroup(groupId: string): Promise<GroupResponse> {
+  try {
+    const { data } = await client.get<GroupResponse>(`/v1/admin/groups/${groupId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createGroup(name: string, description: string): Promise<GroupResponse> {
+  try {
+    const { data } = await client.post<GroupResponse>('/v1/admin/groups', { name, description })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateGroup(
+  groupId: string,
+  name: string,
+  description: string,
+): Promise<GroupResponse> {
+  try {
+    const { data } = await client.put<GroupResponse>(`/v1/admin/groups/${groupId}`, {
+      name,
+      description,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/admin/groups/${groupId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function addGroupMember(
+  groupId: string,
+  userId: string,
+): Promise<GroupMemberResponse> {
+  try {
+    const { data } = await client.post<GroupMemberResponse>(`/v1/admin/groups/${groupId}/members`, {
+      userId,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/admin/groups/${groupId}/members/${userId}`)
   } catch (err) {
     normalizeError(err)
   }
