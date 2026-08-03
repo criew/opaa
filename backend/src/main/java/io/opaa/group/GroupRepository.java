@@ -20,4 +20,15 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
    * this check to decide "update" versus "create" for an incoming directory group.
    */
   boolean existsByOrganizationIdAndExternalId(UUID organizationId, String externalId);
+
+  /**
+   * All {@link GroupKind#ORG_UNIT} groups of an organization, with their memberships eagerly
+   * fetched - what {@link io.opaa.group.sync.DirectorySyncService} diffs the directory's snapshot
+   * against. {@link GroupKind#AD_HOC} groups are never touched by synchronisation and are excluded
+   * here rather than filtered by the caller.
+   */
+  @Query(
+      "select distinct g from Group g left join fetch g.memberships "
+          + "where g.organizationId = :organizationId and g.kind = io.opaa.group.GroupKind.ORG_UNIT")
+  List<Group> findByOrganizationIdAndKindOrgUnit(@Param("organizationId") UUID organizationId);
 }

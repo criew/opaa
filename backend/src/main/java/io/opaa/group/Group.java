@@ -61,6 +61,19 @@ public class Group {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /**
+   * Set when directory synchronisation (#237) no longer sees this {@link GroupKind#ORG_UNIT} in the
+   * directory - a merge or reorganisation, not a deletion. Existing grants to a dissolved group
+   * keep working for its current members; the group's membership is simply frozen at its
+   * last-known-good state and never grows again through synchronisation. Always {@code false} for
+   * {@link GroupKind#AD_HOC} groups, which have no directory counterpart to disappear from.
+   */
+  @Column(name = "dissolved", nullable = false)
+  private boolean dissolved;
+
+  @Column(name = "dissolved_at")
+  private Instant dissolvedAt;
+
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<GroupMembership> memberships = new ArrayList<>();
 
@@ -109,8 +122,50 @@ public class Group {
     this.description = description;
   }
 
+  /**
+   * Applies a rename that originates from the directory (#237), never from a user - only the name
+   * changes, because {@code description} is not a directory-owned field for {@link
+   * GroupKind#ORG_UNIT} groups.
+   */
+  public void renameFromDirectory(String name) {
+    this.name = name;
+  }
+
+  /**
+   * Marks this group as no longer present in the directory (#237). Deliberately does not touch
+   * {@link #memberships} - the group's reach is frozen at its last-known-good state, not revoked.
+   */
+  public void dissolve(Instant dissolvedAt) {
+    this.dissolved = true;
+    this.dissolvedAt = dissolvedAt;
+  }
+
+  /**
+   * Reverses {@link #dissolve} when the directory reports this unit again after it had previously
+   * disappeared (a reorganisation that later un-did itself). Membership is resynchronised
+   * separately by the caller, the same way as for any other still-present group.
+   */
+  public void reactivate() {
+    this.dissolved = false;
+    this.dissolvedAt = null;
+  }
+
+  /**
+   * Updates the parent organizational unit from directory synchronisation (#237). Applied in a
+   * second pass after every group in a sync run has a persisted id, so it works regardless of the
+   * order the directory reported groups in, and to existing groups (a reorganisation that reassigns
+   * a unit under a different parent), not only newly created ones.
+   */
+  public void updateParentGroup(UUID parentGroupId) {
+    this.parentGroupId = parentGroupId;
+  }
+
   public boolean isOrgUnit() {
     return this.kind == GroupKind.ORG_UNIT;
+  }
+
+  public boolean isDissolved() {
+    return this.dissolved;
   }
 
   public UUID getId() {
@@ -147,6 +202,10 @@ public class Group {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public Instant getDissolvedAt() {
+    return dissolvedAt;
   }
 
   public List<GroupMembership> getMemberships() {
