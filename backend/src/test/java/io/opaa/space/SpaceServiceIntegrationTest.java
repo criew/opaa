@@ -11,6 +11,7 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
@@ -47,6 +48,7 @@ class SpaceServiceIntegrationTest {
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository membershipRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
 
@@ -62,6 +64,13 @@ class SpaceServiceIntegrationTest {
     // them again in tearDown() - see tearDown() below.
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
+    // - a leftover personal library from another test class sharing this context (e.g.
+    // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
+    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user. Never
+    // touches the one seeded SYSTEM library.
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
@@ -77,6 +86,8 @@ class SpaceServiceIntegrationTest {
     // sharing this context.
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     organizationRepository.deleteAllById(List.of(organizationA, organizationB));
   }

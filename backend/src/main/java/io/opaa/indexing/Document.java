@@ -47,6 +47,33 @@ public class Document {
   @Column(name = "last_modified_remote", length = 64)
   private String lastModifiedRemote;
 
+  /**
+   * The knowledge library this document belongs to (#201) - every document belongs to exactly one
+   * library, enforced as {@code NOT NULL} with {@code fk_documents_library} once migration 012's
+   * backfill has run. Not part of the constructors (unlike {@code fileName}/{@code filePath}):
+   * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
+   * are set, because the indexing pipeline currently always targets the single well-known system
+   * library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}) - see {@code
+   * FileProcessingService}. This is a deliberate, maintainer-confirmed interim state (#201 builds
+   * the container; #201 does not yet route uploads to it): between #201 landing and the target
+   * library becoming selectable, no document is reachable by ordinary users through this path, only
+   * by system administrators, which is the same fail-closed default the migration already applies
+   * to pre-existing documents. Documented in the epic (#198) for anyone piloting in this window.
+   * Selecting a target library per connector source is #207; selecting one for a manual upload is
+   * #202 or a dedicated follow-up issue - #207 alone does not cover the upload path.
+   */
+  @Column(name = "library_id")
+  private UUID libraryId;
+
+  /**
+   * The organization the {@link #libraryId} library belongs to, denormalized onto the document
+   * (#201) so the permission-aware vector search (#202) can filter chunks by organization without a
+   * join back to {@code knowledge_libraries} - see the same reasoning on {@code
+   * FileProcessingService#storeChunks}. Set together with {@link #libraryId}, never independently.
+   */
+  @Column(name = "organization_id")
+  private UUID organizationId;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -134,5 +161,21 @@ public class Document {
 
   public void setLastModifiedRemote(String lastModifiedRemote) {
     this.lastModifiedRemote = lastModifiedRemote;
+  }
+
+  public UUID getLibraryId() {
+    return libraryId;
+  }
+
+  public void setLibraryId(UUID libraryId) {
+    this.libraryId = libraryId;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(UUID organizationId) {
+    this.organizationId = organizationId;
   }
 }

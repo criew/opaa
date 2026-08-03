@@ -1,11 +1,16 @@
 package io.opaa.auth;
 
+import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,15 +24,37 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @EnableConfigurationProperties(AuthProperties.class)
 public class UserService {
 
+  private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+  /**
+   * Fixed-size striping for {@link #provisioningLockFor(UUID)}: bounds memory to exactly this many
+   * {@link ReentrantLock} instances for the lifetime of the process, at the cost of two unrelated
+   * users occasionally sharing a stripe and blocking on each other's provisioning - an acceptable
+   * trade for a lock that exists purely to reduce database contention (see {@link
+   * #ensurePersonalAssetsAfterCommit}'s Javadoc), never for correctness, which the database's
+   * partial unique indexes still guarantee on their own.
+   */
+  private static final int PROVISIONING_LOCK_STRIPES = 64;
+
+  private final ReentrantLock[] provisioningLocks = new ReentrantLock[PROVISIONING_LOCK_STRIPES];
+
   private final UserRepository userRepository;
   private final SpaceService spaceService;
+  private final KnowledgeLibraryService libraryService;
   private final AuthProperties authProperties;
 
   public UserService(
-      UserRepository userRepository, SpaceService spaceService, AuthProperties authProperties) {
+      UserRepository userRepository,
+      SpaceService spaceService,
+      KnowledgeLibraryService libraryService,
+      AuthProperties authProperties) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
+    this.libraryService = libraryService;
     this.authProperties = authProperties;
+    for (int i = 0; i < provisioningLocks.length; i++) {
+      provisioningLocks[i] = new ReentrantLock();
+    }
   }
 
   /**
@@ -47,6 +74,10 @@ public class UserService {
    * fire right after the SPA logs in). Without an ambient transaction here, {@link
    * #createOrFetchUser}'s insert attempt and its fallback read are each just one more short-lived,
    * independently connection-scoped call - never two connections held by the same caller at once.
+   * {@link #ensurePersonalAssetsAfterCommit} below (#201's personal space and personal library
+   * provisioning) follows the exact same reasoning: neither {@code ensurePersonalSpace} nor {@code
+   * ensurePersonalLibrary} ever runs inside an ambient transaction started here, for the same
+   * connection-budget reason.
    */
   public User findOrCreateUser(String subject, String issuer, String email, String displayName) {
     User user =
@@ -55,7 +86,7 @@ public class UserService {
             .map(existing -> updateExistingUser(existing, email, displayName))
             .orElseGet(() -> createOrFetchUser(subject, issuer, email, displayName));
 
-    ensurePersonalSpaceAfterCommit(user.getId(), user.getOrganizationId());
+    ensurePersonalAssetsAfterCommit(user.getId(), user.getOrganizationId());
     return user;
   }
 
@@ -104,8 +135,11 @@ public class UserService {
   }
 
   /**
-   * Runs {@link SpaceService#ensurePersonalSpace} only after the {@code users} row it needs has
-   * been committed.
+   * Runs {@link SpaceService#ensurePersonalSpace} and {@link
+   * KnowledgeLibraryService#ensurePersonalLibrary} only after the {@code users} row they need has
+   * been committed - and always together, so provisioning never silently produces a personal space
+   * without its personal library or the other way round (#201's "creating a user creates a personal
+   * space and a personal library atomically").
    *
    * <p>Historically (#265, fixed in the #280 follow-up), {@code findOrCreateUser} was
    * {@code @Transactional} and inserted the new user in a still-open transaction; {@code
@@ -114,7 +148,9 @@ public class UserService {
    * uncommitted {@code users} row, so the insert violated {@code fk_spaces_owner} and the whole
    * login failed. Deferring the call to {@link TransactionSynchronization#afterCommit()} fixed that
    * by guaranteeing the user row was already committed and visible by the time the personal space
-   * was created.
+   * was created. {@code ensurePersonalLibrary} (#201) inserts in its own {@code REQUIRES_NEW}
+   * transaction the same way and is subject to exactly the same visibility requirement, so it is
+   * called from this same method rather than from a second, parallel deferral mechanism.
    *
    * <p>Since {@link #findOrCreateUser} was made deliberately non-{@code @Transactional} (#293 code
    * review - see its Javadoc), there is no ambient transaction synchronization active here to
@@ -122,20 +158,146 @@ public class UserService {
    * synchronous branch. That remains correct for the same reason the {@code afterCommit} deferral
    * did - each {@link UserRepository} call in {@code findOrCreateUser} already committed
    * independently by the time control reaches here, so the user row this method's caller passes in
-   * is always already visible on any connection, including {@code ensurePersonalSpace}'s {@code
-   * REQUIRES_NEW} one.
+   * is always already visible on any connection, including {@code ensurePersonalSpace}'s and {@code
+   * ensurePersonalLibrary}'s {@code REQUIRES_NEW} ones. The {@code isSynchronizationActive}/{@code
+   * registerSynchronization} branch below is kept only as a defensive fallback for a caller running
+   * inside its own transaction (there is none in production today) - it must not silently skip
+   * provisioning if one ever exists.
+   *
+   * <p><b>{@code provisioningLockFor(userId)}, an in-process lock around the call below</b>
+   * (#201/#305 code review, measured): {@code SpaceRepository#insertPersonalSpaceIfAbsent} and
+   * {@code KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} each reduced their own round
+   * trips to one via {@code ON CONFLICT ... DO NOTHING}, but under {@code
+   * UserServiceCreationRaceIntegrationTest}'s 12-concurrent-first-login load that alone was not
+   * enough (3 of 6 runs still failed without this lock). The bottleneck is <b>not</b> database-side
+   * index contention - a follow-up measurement with 12 concurrent first logins of 12
+   * <em>different</em> users (no index conflict possible at all) still hit the same 30-second
+   * timeout, and {@code pg_stat_activity} showed no active session on the database during the
+   * stall. The bottleneck is acquiring a Hikari connection at all: two provisioning calls per login
+   * (space, then library), each needing its own short-lived connection, doubled the number of
+   * concurrent connection requests competing for the same pool once #201 added the second call. An
+   * in-process lock keyed by {@code userId} reduces that count for the case this test exercises and
+   * that is also the realistic production trigger (many requests for the *same* user's very first
+   * login, e.g. several tabs opened at once): only the first thread to acquire the lock reaches the
+   * database at all; by the time each following thread acquires it, the winner has already
+   * committed, so {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy}
+   * check returns {@code true} immediately and neither issues an insert, so neither needs a
+   * connection either. Confirmed by {@code UserServiceCreationRaceIntegrationTest} passing
+   * repeatedly at the unmodified production default pool size of 10 with this lock in place (see
+   * that test's Javadoc).
+   *
+   * <p>This is a performance measure, not a correctness one: the database's partial unique indexes
+   * (not this lock) remain the actual guarantee, unchanged and still exercised whenever this
+   * lock-protected block is skipped or raced across multiple application instances - the lock is
+   * process-local and does nothing for that case, deliberately: correctness must not depend on it.
+   * {@link #PROVISIONING_LOCK_STRIPES} bounds the lock table's size; see its Javadoc for the
+   * resulting trade-off. Concurrent first logins of <em>different</em> users still contend on the
+   * connection pool exactly as before this lock (it only serializes same-user callers) - tracked
+   * separately as #307, not addressed here.
    */
-  private void ensurePersonalSpaceAfterCommit(UUID userId, UUID organizationId) {
+  private void ensurePersonalAssetsAfterCommit(UUID userId, UUID organizationId) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              spaceService.ensurePersonalSpace(userId, organizationId);
+              runEnsureBothPersonalAssetsUnderLock(userId, organizationId);
             }
           });
     } else {
+      runEnsureBothPersonalAssetsUnderLock(userId, organizationId);
+    }
+  }
+
+  /**
+   * Acquires {@link #provisioningLockFor(UUID)} with a bounded {@code tryLock} instead of an
+   * unbounded {@code lock()} (code review of #201/#305): {@link #ensureBothPersonalAssets} logs
+   * rather than throws on failure (see its Javadoc), so a holder that hits two connection-acquire
+   * timeouts back to back could otherwise hold the lock for up to roughly twice Hikari's {@code
+   * connectionTimeout} (~60 s at the default) - and because {@link #PROVISIONING_LOCK_STRIPES} is a
+   * fixed-size striping, that also blocks unrelated users sharing the same stripe, turning what
+   * should be independent, parallel failures under a slow database into a serial pile-up of request
+   * threads. Falling through without the lock on a failed {@code tryLock} is safe: correctness is
+   * carried entirely by the database's partial unique indexes (see {@link
+   * #ensurePersonalAssetsAfterCommit}'s Javadoc), never by this lock, so skipping it only forgoes
+   * the connection-count reduction for this one call - the next login for the same user gets the
+   * same idempotent, self-healing retry either way.
+   */
+  private void runEnsureBothPersonalAssetsUnderLock(UUID userId, UUID organizationId) {
+    ReentrantLock lock = provisioningLockFor(userId);
+    boolean acquired = false;
+    try {
+      acquired = lock.tryLock(2, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    try {
+      ensureBothPersonalAssets(userId, organizationId);
+    } finally {
+      if (acquired) {
+        lock.unlock();
+      }
+    }
+  }
+
+  private ReentrantLock provisioningLockFor(UUID userId) {
+    int stripe = Math.floorMod(userId.hashCode(), provisioningLocks.length);
+    return provisioningLocks[stripe];
+  }
+
+  /**
+   * Attempts {@link SpaceService#ensurePersonalSpace} and {@link
+   * KnowledgeLibraryService#ensurePersonalLibrary} independently of one another - the second call
+   * always runs even if the first one throws, and vice versa. Neither call is wrapped in a
+   * transaction of its own here - each of {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}
+   * already opens its own self-contained {@code REQUIRES_NEW} transaction (see their Javadoc), so
+   * nesting one here would only add an unused, connection-holding transaction around calls that do
+   * not need one - the exact class of cost the pool-exhaustion regression in #299 was caused by.
+   *
+   * <p><b>Failures are logged, not rethrown</b> (code review of #201/#305). An earlier version of
+   * this method rethrew the first failure, reasoning that "an {@code afterCommit} callback failing
+   * here only logs; it does not roll back the already-committed user creation transaction" - that
+   * reasoning does not hold once {@link #findOrCreateUser} runs its no-ambient-transaction,
+   * always-synchronous path (the normal one since #293/#299, not just a defensive fallback - see
+   * {@link #ensurePersonalAssetsAfterCommit}'s Javadoc): there is no {@code afterCommit} callback
+   * to swallow the exception on this path, and Spring propagates it straight to {@code
+   * findOrCreateUser}'s caller, i.e. into the login request itself. Because this method is called
+   * unconditionally on <em>every</em> {@link #findOrCreateUser} invocation (see below), a
+   * persistently failing library or space provisioning would then fail every subsequent login for
+   * that user too - turning a provisioning failure into a lockout, which is a worse outcome than
+   * the login proceeding without (yet) having a personal space or library. Logging both failures
+   * (if both occur) keeps them visible for operations without blocking the user.
+   *
+   * <p>Called unconditionally for every {@link #findOrCreateUser} invocation, not only for newly
+   * created users: both {@code ensurePersonalSpace} and {@code ensurePersonalLibrary} are
+   * idempotent (each checks for an existing row first), so a returning user whose personal library
+   * failed to provision on an earlier login - or who predates #201 entirely - gets one created on
+   * their next login instead of being left without one indefinitely, exactly because this method no
+   * longer aborts that next login on the earlier failure. See #294, already open for the general
+   * "idempotent provisioning must not become a lockout" concern this addresses for personal
+   * space/library specifically.
+   */
+  private void ensureBothPersonalAssets(UUID userId, UUID organizationId) {
+    try {
       spaceService.ensurePersonalSpace(userId, organizationId);
+    } catch (RuntimeException e) {
+      log.error(
+          "Failed to provision personal space for user {} (organization {}); will retry on next"
+              + " login",
+          userId,
+          organizationId,
+          e);
+    }
+
+    try {
+      libraryService.ensurePersonalLibrary(userId, organizationId);
+    } catch (RuntimeException e) {
+      log.error(
+          "Failed to provision personal library for user {} (organization {}); will retry on next"
+              + " login",
+          userId,
+          organizationId,
+          e);
     }
   }
 

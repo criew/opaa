@@ -513,6 +513,14 @@ Der Gedanke, alles einheitlich als Asset zu modellieren, ist naheliegend, trägt
 
 ### Dokumente liegen in Bibliotheken
 
+**Umsetzungsstand:** Die Wissensbibliothek als Container ist mit #201 umgesetzt (Migration 012 in
+[docs/migrations/012-knowledge-library.md](../migrations/012-knowledge-library.md)) — Eigentümerschaft
+(Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag und die Zuweisung jedes
+bestehenden Dokuments an eine System-Bibliothek. Die abgestuften Asset-Rollen weiter unten
+(`USER`/`VIEWER`/`EDITOR`/`MANAGER`/`OWNER`) und die rechtebewusste Vektorsuche folgen mit #202 — bis
+dahin gilt eine grobe Zugriffslogik (Eigentümer, Gruppenmitglied, `ORGANIZATION`-Sichtbarkeit,
+System-Admin), dokumentiert auf `KnowledgeLibraryService`.
+
 Der Dokumentencontainer ist die Wissensbibliothek, nicht der Space. Jedes Dokument gehört zu genau einer Bibliothek; jeder Chunk trägt die Bibliotheks-Kennung als Filterachse.
 
 Das ist einfacher als das bisherige Konzept: Aus einer n:m-Beziehung Dokument→Workspaces wird eine n:1-Beziehung Dokument→Bibliothek. Die Mehrfachverwendung wandert eine Ebene höher — eine Bibliothek ist in mehreren Spaces assoziiert —, wo sie nichts kostet, weil sie nicht je Chunk materialisiert werden muss.

@@ -1,0 +1,385 @@
+databaseChangeLog:
+  # Five changeSets, in dependency order, introducing the first asset type (#201, see
+  # docs/features/spaces-and-assets.md#dokumente-liegen-in-bibliotheken):
+  #   1. 012-create-knowledge-libraries      - the table itself
+  #   2. 012-seed-system-library             - the migration target, must exist before the backfill
+  #   3. 012-add-library-id-to-documents     - nullable column first, so existing rows do not block
+  #                                             the ALTER TABLE
+  #   4. 012-backfill-document-library-id    - assigns every pre-existing document to the system
+  #                                             library in a single UPDATE; resumability is at the
+  #                                             changeSet level (see the changeSet's own comment)
+  #   5. 012-enforce-documents-library-id    - NOT NULL + foreign key, only once every row has a
+  #                                             value
+  #
+  # Rollback order (reverse of apply order):
+  # 012-enforce-documents-library-id
+  # 012-backfill-document-library-id (irreversible no-op, see its rollback block)
+  # 012-add-library-id-to-documents
+  # 012-seed-system-library
+  # 012-create-knowledge-libraries
+  #
+  # The context labels (lib-schema / lib-backfill / lib-enforce) group the changeSets into the
+  # three stages an operator running the dry run/backfill/enforce sequence cares about; they carry
+  # no other meaning and are not required for a normal run (an update with no context filter, as
+  # spring-boot-starter-liquibase performs automatically at application startup, applies all of
+  # them in order regardless). Migration012KnowledgeLibrariesTest uses them to apply only the
+  # lib-schema changeSets first and the remaining ones afterwards, to exercise
+  # DATABASECHANGELOG-level resumability as a genuine second liquibase.update() call rather than
+  # only as one uninterrupted run.
+
+  - changeSet:
+      id: 012-create-knowledge-libraries
+      author: opaa
+      context: lib-schema
+      comment: >
+        Create knowledge_libraries - the first asset type. A library has exactly one owner (a user,
+        a group, or - for the single migration target below - no individual at all), lives in
+        exactly one organization, and is associated with spaces by reference (#203, not yet
+        implemented) rather than containment. Ownership uses two separate nullable foreign-key
+        columns (owner_user_id, owner_group_id) instead of one polymorphic owner_id, so both
+        reference their target table with a real foreign key rather than an unenforced UUID - the
+        same choice would have improved io.opaa.space.Space.ownerId (a plain UUID against
+        fk_spaces_owner only, application-checked for the organization match) but is made from the
+        start here. owner_group_id's foreign key is composite (owner_group_id, organization_id)
+        against groups(id, organization_id), the same uk_groups_id_organization pattern
+        fk_group_memberships_group_organization (migration 009) uses, so a library can never be
+        owned by a group from another organization at the database level, not just in application
+        code. owner_user_id intentionally has no equivalent
+        organization check - users carries no (id, organization_id) unique constraint for a
+        composite foreign key to reference, mirroring fk_spaces_owner exactly; the organization
+        match for a user owner is enforced in KnowledgeLibraryService, the same as SpaceService
+        does for space ownership. uk_knowledge_libraries_id_organization exists for
+        fk_documents_library_organization below (changeSet 5) to reference, the same pattern used
+        for group_memberships.
+      changes:
+        - createTable:
+            tableName: knowledge_libraries
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: owner_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: owner_group_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: visibility
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: listed
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: personal
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            baseColumnNames: organization_id
+            referencedTableName: organizations
+            referencedColumnNames: id
+            constraintName: fk_knowledge_libraries_organization
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            baseColumnNames: owner_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_knowledge_libraries_owner_user
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            baseColumnNames: owner_group_id, organization_id
+            referencedTableName: groups
+            referencedColumnNames: id, organization_id
+            constraintName: fk_knowledge_libraries_owner_group_organization
+            onDelete: RESTRICT
+        - sql:
+            comment: "Add check constraint for owner_type values"
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner_type
+              CHECK (owner_type IN ('USER', 'GROUP', 'SYSTEM'));
+        - sql:
+            comment: "Add check constraint for visibility values"
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_visibility
+              CHECK (visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION'));
+        - sql:
+            comment: >
+              Exactly one owner column matches owner_type: USER carries owner_user_id only, GROUP
+              carries owner_group_id only, SYSTEM carries neither - it is not owned by any
+              individual or group (see LibraryOwnerType#SYSTEM).
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner
+              CHECK (
+                (owner_type = 'USER' AND owner_user_id IS NOT NULL AND owner_group_id IS NULL)
+                OR (owner_type = 'GROUP' AND owner_group_id IS NOT NULL AND owner_user_id IS NULL)
+                OR (owner_type = 'SYSTEM' AND owner_user_id IS NULL AND owner_group_id IS NULL)
+              );
+        - addUniqueConstraint:
+            tableName: knowledge_libraries
+            columnNames: id, organization_id
+            constraintName: uk_knowledge_libraries_id_organization
+        - sql:
+            comment: >
+              At most one personal library per user owner - mirrors uk_spaces_personal_owner
+              (migration 010). A plain unique constraint on owner_user_id would also cap
+              non-personal libraries at one per owner, which is wrong; a partial index only
+              indexes personal = true rows. Personal libraries are always USER-owned (see
+              KnowledgeLibraryService#ensurePersonalLibrary), so indexing owner_user_id alone is
+              sufficient - owner_group_id is always NULL on every row this index covers.
+            sql: >
+              CREATE UNIQUE INDEX uk_knowledge_libraries_personal_owner
+              ON knowledge_libraries (owner_user_id)
+              WHERE personal = true;
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_knowledge_libraries_personal_owner;"
+        - dropUniqueConstraint:
+            tableName: knowledge_libraries
+            constraintName: uk_knowledge_libraries_id_organization
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_owner;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_visibility;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_owner_type;
+        - dropForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            constraintName: fk_knowledge_libraries_owner_group_organization
+        - dropForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            constraintName: fk_knowledge_libraries_owner_user
+        - dropForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            constraintName: fk_knowledge_libraries_organization
+        - dropTable:
+            tableName: knowledge_libraries
+
+  - changeSet:
+      id: 012-seed-system-library
+      author: opaa
+      context: lib-schema
+      comment: >
+        Seed the single, well-known system library that the backfill below assigns every
+        pre-existing document to - readable by system administrators only (fail-closed default;
+        see the acceptance criteria of #201 and KnowledgeLibrary.SYSTEM_LIBRARY_ID). Must exist
+        before the backfill changeSet, and owner_type SYSTEM with both owner columns left NULL is
+        exactly the case chk_knowledge_libraries_owner above was written to allow. Seeded into the
+        same single
+        organization that 008-seed-default-organization seeded.
+      changes:
+        - insert:
+            tableName: knowledge_libraries
+            columns:
+              - column:
+                  name: id
+                  value: "00000000-0000-0000-0000-000000000002"
+              - column:
+                  name: organization_id
+                  value: "00000000-0000-0000-0000-000000000001"
+              - column:
+                  name: name
+                  value: "System-Bibliothek"
+              - column:
+                  name: description
+                  value: >-
+                    Automatisch angelegt fuer Dokumente ohne Container aus der Zeit vor der
+                    Wissensbibliothek (#201). Nur fuer Systemadministratoren lesbar.
+              - column:
+                  name: owner_type
+                  value: "SYSTEM"
+              - column:
+                  name: visibility
+                  value: "PRIVATE"
+              - column:
+                  name: listed
+                  valueBoolean: false
+              - column:
+                  name: personal
+                  valueBoolean: false
+              - column:
+                  name: created_at
+                  valueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  valueComputed: CURRENT_TIMESTAMP
+      rollback:
+        - delete:
+            tableName: knowledge_libraries
+            where: "id = '00000000-0000-0000-0000-000000000002'"
+
+  - changeSet:
+      id: 012-add-library-id-to-documents
+      author: opaa
+      context: lib-schema
+      comment: >
+        Add library_id and organization_id to documents, both nullable for now so the ALTER TABLE
+        does not require a value for existing rows - the backfill changeSet below fills them in,
+        then 012-enforce-documents-library-id makes both NOT NULL and ties them together with a
+        composite foreign key. organization_id is denormalized onto documents (rather than reached
+        only via a join to knowledge_libraries) for the same reason every chunk also carries it (see
+        docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit): the permission-aware
+        vector search (#202) filters on it directly.
+      changes:
+        - addColumn:
+            tableName: documents
+            columns:
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: documents
+            columnName: organization_id
+        - dropColumn:
+            tableName: documents
+            columnName: library_id
+
+  - changeSet:
+      id: 012-backfill-document-library-id
+      author: opaa
+      context: lib-backfill
+      comment: >
+        Assign every document that has no library yet to the system library seeded above, together
+        with that library's organization. Documents carried no container of any kind before this
+        issue (#201) - this is not a data loss, it is the first time the column exists at all (see
+        the epic's migration section: "Guenstige Ausgangslage: Dokumente tragen heute keine
+        Workspace-Zuordnung"). A single UPDATE, not a batched loop: this changeSet runs inside
+        Liquibase's default per-changeSet transaction (runInTransaction: true), and a PL/pgSQL DO
+        block cannot commit partway through that transaction - a prior version of this changeSet
+        claimed batch-level commits and resumability that a DO block structurally cannot provide
+        (confirmed empirically: interrupting a batched version after N batches rolls all N back,
+        not just the uncommitted remainder). The actual, honest guarantee at the current data
+        volume (pre-1.0, no production document count to speak of) is simpler and just as safe: one
+        transaction, all rows or none, and resumability comes from Liquibase's own
+        DATABASECHANGELOG bookkeeping at the changeSet level (see docs/migrations/008-... and the
+        Resumierbarkeit section of docs/migrations/012-knowledge-library.md) - an interrupted run
+        leaves this changeSet unrecorded and a later run re-executes it from scratch against
+        whatever library_id IS NULL rows remain, which is every row, because none were partially
+        committed. Should document volume ever require true batch-level resumability, that needs
+        runInTransaction: false plus explicit commits per batch (and FOR UPDATE SKIP LOCKED would
+        then be appropriate) - out of scope while a single UPDATE remains safe.
+      changes:
+        - sql:
+            sql: >
+              UPDATE documents
+              SET library_id = '00000000-0000-0000-0000-000000000002',
+                  organization_id = '00000000-0000-0000-0000-000000000001'
+              WHERE library_id IS NULL;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: a rolled-back application code path (012-enforce-documents-library-id)
+              could still create new documents with library_id already set to the system library,
+              indistinguishable here from rows this changeSet touched. Setting library_id and
+              organization_id back to NULL for every row currently pointing at the system library
+              would also un-assign those. This statement is a deliberate no-op so the rollback of
+              the surrounding, lossless changeSets is not blocked - see
+              010-cleanup-duplicate-personal-spaces for the same reasoning applied to a delete
+              instead of an update.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 012-enforce-documents-library-id
+      author: opaa
+      context: lib-enforce
+      comment: >
+        Every document belongs to exactly one library (#201 acceptance criteria): library_id and
+        organization_id are now NOT NULL, and fk_documents_library_organization is a composite
+        foreign key against knowledge_libraries(id, organization_id) - the same pattern
+        fk_group_memberships_group_organization (migration 009) uses against
+        uk_groups_id_organization - so a document can never point at a library from a different
+        organization than the one recorded on the document itself; the database enforces that
+        invariant, not just application code.
+      changes:
+        - addNotNullConstraint:
+            tableName: documents
+            columnName: library_id
+            columnDataType: uuid
+        - addNotNullConstraint:
+            tableName: documents
+            columnName: organization_id
+            columnDataType: uuid
+        - addForeignKeyConstraint:
+            baseTableName: documents
+            baseColumnNames: library_id, organization_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id, organization_id
+            constraintName: fk_documents_library_organization
+            onDelete: RESTRICT
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: documents
+            constraintName: fk_documents_library_organization
+        - dropNotNullConstraint:
+            tableName: documents
+            columnName: organization_id
+            columnDataType: uuid
+        - dropNotNullConstraint:
+            tableName: documents
+            columnName: library_id
+            columnDataType: uuid

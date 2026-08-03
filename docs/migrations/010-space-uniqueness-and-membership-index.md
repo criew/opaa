@@ -43,15 +43,14 @@ Komplexität hinzu, wenn Löschen bereits verlustfrei ist.
 ### Race in `SpaceService.ensurePersonalSpace`
 
 `ensurePersonalSpace` prüfte bisher mit `existsByOwnerIdAndKind` und legte danach an — ohne
-Absicherung auf Datenbankebene. Der Index oben schließt die Lücke, verlagert das Problem aber auf
-den Anwendungscode: Der Verlierer eines gleichzeitigen ersten Logins erhält jetzt eine
-`DataIntegrityViolationException` beim Insert. `ensurePersonalSpace` fängt diese ab und liest den
-bereits vom Gewinner angelegten Space, statt einen 500 zu werfen. Der Insert-Versuch läuft dazu in
-einer eigenen `REQUIRES_NEW`-Transaktion: Auf Postgres bricht eine fehlgeschlagene Anweisung die
-gesamte umschließende Transaktion ab, sodass ein Auffangen der Verletzung innerhalb derselben
-Transaktion, die den Insert ausgeführt hat, jede nachfolgende Anweisung in dieser Transaktion
-ebenfalls scheitern ließe. Details siehe Klassenkommentar auf
-`SpaceService.ensurePersonalSpace`.
+Absicherung auf Datenbankebene. Der Index oben schließt die Lücke. Ursprünglich (bis #201/#305)
+fing `ensurePersonalSpace` dazu die `DataIntegrityViolationException` des Verlierers ab und las den
+bereits vom Gewinner angelegten Space erneut — dieser Mechanismus **existiert nicht mehr**: Seit
+#201/#305 übernimmt `SpaceRepository.insertPersonalSpaceIfAbsent` die Race-Behandlung vollständig
+in der Datenbank über ein einzelnes `INSERT ... ON CONFLICT (owner_id) WHERE kind = 'PERSONAL' DO
+NOTHING`, sodass ein Verlierer gar keine Exception mehr auslöst, die abgefangen werden müsste, und
+kein erneutes Lesen mehr nötig ist (der Aufrufer erhält ohnehin keinen Rückgabewert). Details siehe
+Klassenkommentar auf `SpaceService.ensurePersonalSpace` und `SpaceRepository.insertPersonalSpaceIfAbsent`.
 
 **Regression nach dem Merge (Fix-PR, Referenz statt eigener Nummer hier — siehe Git-Historie):**
 Die `REQUIRES_NEW`-Transaktion oben löst die Race zwischen zwei `ensurePersonalSpace`-Aufrufen,
@@ -125,8 +124,11 @@ es das `public`-Schema nach jeder Testmethode droppt und neu anlegt (`resetSchem
 Methode bei einer leeren Datenbank inklusive leerem `DATABASECHANGELOG` startet. Dieses Muster ist
 für künftige Migrationstests mit mehreren Testmethoden zu übernehmen (siehe #237, #238).
 
-Der race-sichere Anwendungscode-Pfad in `SpaceService.ensurePersonalSpace` ist separat in
-`SpaceServiceTest` abgedeckt (reiner Mockito-Test, kein Testcontainer): Er simuliert den
-gleichzeitigen ersten Login, indem `existsByOwnerIdAndKind` und `saveAndFlush` so gestubbt werden,
-wie sie sich für den Verlierer des Rennens verhalten würden — deterministisch statt über echte
-Threads und Timing.
+Der Anwendungscode-Pfad in `SpaceService.ensurePersonalSpace` ist separat in `SpaceServiceTest`
+abgedeckt (reiner Mockito-Test, kein Testcontainer): Er prüft die eine Entscheidung, die
+`ensurePersonalSpace` seit #201/#305 noch selbst trifft — den Insert-Versuch bei einem positiven
+`existsByOwnerIdAndKind`-Ergebnis zu überspringen — sowie, dass eine echte, vom Repository
+geworfene Verletzung (z. B. ein hängender `ownerId`) unverändert durchgereicht wird. Die eigentliche
+Race-Behandlung liegt seither vollständig in der Datenbank (`SpaceRepository.insertPersonalSpaceIfAbsent`,
+`ON CONFLICT ... DO NOTHING`) und wird gegen das echte Schema in `SpaceRepositoryTest` geprüft
+(`insertPersonalSpaceIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting`).

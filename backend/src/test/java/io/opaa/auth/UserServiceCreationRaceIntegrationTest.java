@@ -3,6 +3,9 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryOwnerType;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
@@ -52,6 +55,38 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * failing fast (found in code review of #299). {@code findOrCreateUser} is deliberately not
  * {@code @Transactional} for exactly this reason - see its Javadoc - so this test also guards
  * against that regression, not only against the original unique-constraint 500.
+ *
+ * <p>Extended for #201: {@code findOrCreateUser}'s {@code ensureBothPersonalAssets} call now also
+ * provisions a personal {@link KnowledgeLibrary}, guarded by its own partial unique index {@code
+ * uk_knowledge_libraries_personal_owner} (migration 012) exactly the way {@code
+ * uk_spaces_personal_owner} guards the personal space. {@link
+ * #concurrentFirstLoginsOfTheSameSubjectCreateExactlyOneUser()} asserts on both: the user-creation
+ * race (#293, this class's original subject) and the personal-space/personal-library races are
+ * three independent partial-unique-index guards racing simultaneously under the same {@code
+ * CONCURRENT_LOGINS} threads, not three separate test runs - a regression in any one of them (e.g.
+ * a shared connection or transaction between the space and library provisioning calls that lets one
+ * insert's failure interfere with the other's race handling) would surface here even if each guard
+ * passed a test that raced it in isolation.
+ *
+ * <p><b>#201 initially reduced this test's reliability at the production default pool size of
+ * 10</b> (found and measured in code review of #201/#305: 5 of 9 runs failed with {@code
+ * CannotCreateTransactionException} after the 30-second {@code connectionTimeout}, versus 8 of 8
+ * passing on the pre-#201 code at the identical pool size). Raising this test's pool size was
+ * considered and rejected - the same masking-the-symptom mistake #299's own review already rejected
+ * once - because the measured database state at pool size 10 showed the actual defect: {@code
+ * findOrCreateUser} returned successfully for every one of the 12 logins while the personal library
+ * was still missing in 2 of 3 runs, because {@code ensureBothPersonalAssets} logs a provisioning
+ * failure instead of throwing it (see that method's Javadoc) - a connection-pool timeout under load
+ * would silently return a "successful" login without a personal library, self-healing only on a
+ * later, unloaded login. The actual fix is at the source: {@code
+ * SpaceRepository#insertPersonalSpaceIfAbsent} and {@code
+ * KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} now each provision in a single {@code
+ * INSERT ... ON CONFLICT ... DO NOTHING} round trip instead of the previous
+ * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence, roughly halving
+ * the number of connection acquisitions the {@code CONCURRENT_LOGINS} threads contend over. This
+ * test passes repeatedly at the unmodified production default pool size of 10 with that fix in
+ * place (see the two repository methods' Javadoc for the full reasoning) - no test-only
+ * configuration override.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -66,10 +101,15 @@ class UserServiceCreationRaceIntegrationTest {
   @Autowired private UserService userService;
   @Autowired private UserRepository userRepository;
   @Autowired private SpaceRepository spaceRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
 
   @BeforeEach
   void cleanUp() {
     spaceRepository.deleteAll();
+    // Never touches the one seeded SYSTEM library (#201) - only non-personal-owner cleanup would
+    // even be at risk of that, and this class only ever creates USER-owned personal libraries.
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
   }
 
@@ -115,6 +155,17 @@ class UserServiceCreationRaceIntegrationTest {
       List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(persistedUser.getId());
       assertThat(spaces).hasSize(1);
       assertThat(spaces.getFirst().getKind()).isEqualTo(SpaceKind.PERSONAL);
+
+      // #201: KnowledgeLibraryService.ensurePersonalLibrary races the same CONCURRENT_LOGINS calls
+      // for the same user, guarded by its own partial unique index. Exactly one personal library,
+      // never zero (a silently dropped provisioning attempt) and never more than one (a race the
+      // index failed to collapse).
+      List<KnowledgeLibrary> libraries =
+          libraryRepository.findByOrganizationIdAndOwnerUserId(
+              persistedUser.getOrganizationId(), persistedUser.getId());
+      assertThat(libraries).hasSize(1);
+      assertThat(libraries.getFirst().isPersonal()).isTrue();
+      assertThat(libraries.getFirst().getOwnerType()).isEqualTo(LibraryOwnerType.USER);
     } finally {
       executor.shutdown();
     }

@@ -684,6 +684,137 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries:
+    get:
+      operationId: listLibraries
+      tags: [library]
+      summary: List knowledge libraries the current user can see (owned directly, owned by one of their groups, or organization-wide)
+      responses:
+        "200":
+          description: List of libraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibraryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createLibrary
+      tags: [library]
+      summary: Create a new knowledge library, owned by the caller or by one of the caller's groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryRequest"
+      responses:
+        "201":
+          description: Library created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibrary
+      tags: [library]
+      summary: Get library details
+      responses:
+        "200":
+          description: Library details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateLibrary
+      tags: [library]
+      summary: Update library name, description, visibility and listed flag (owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryUpdateRequest"
+      responses:
+        "200":
+          description: Library updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteLibrary
+      tags: [library]
+      summary: Delete a library (owner only; the personal library and the system library cannot be deleted)
+      responses:
+        "204":
+          description: Library deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibraryDocuments
+      tags: [library]
+      summary: List documents contained in a library
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibraryDocumentResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -1223,6 +1354,189 @@ components:
         userId:
           type: string
           format: uuid
+
+    LibraryOwnerType:
+      type: string
+      description: >
+        Who owns a library. USER and GROUP are the only values a client may submit; SYSTEM (the
+        migration target for pre-#201 documents, readable by system admins only) is never
+        creatable through this API - see #201.
+      enum: [USER, GROUP, SYSTEM]
+      example: USER
+
+    LibraryVisibility:
+      type: string
+      description: >
+        PRIVATE reaches only the owner (and, for a group owner, its members). SHARED follows the
+        owning group's membership. ORGANIZATION is readable by every user in the same
+        organization. See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
+      enum: [PRIVATE, SHARED, ORGANIZATION]
+      example: PRIVATE
+
+    LibraryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Rechtsquellen Soziales
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: SGB II, SGB XII, VwVfG, Dienstanweisungen
+        ownerType:
+          $ref: "#/components/schemas/LibraryOwnerType"
+          description: Defaults to USER (the creator) when omitted
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required when ownerType is GROUP (the caller must be a member of that group).
+            Ignored for ownerType USER, which always owns as the creator.
+        visibility:
+          $ref: "#/components/schemas/LibraryVisibility"
+        listed:
+          type: boolean
+          nullable: true
+          description: Defaults to false
+
+    LibraryUpdateRequest:
+      type: object
+      required: [name]
+      description: >
+        Body for updating an existing library. Deliberately narrower than LibraryRequest: owner
+        and ownerType cannot be changed here - transferring ownership is out of scope for #201.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Rechtsquellen Soziales
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: SGB II, SGB XII, VwVfG, Dienstanweisungen
+        visibility:
+          $ref: "#/components/schemas/LibraryVisibility"
+        listed:
+          type: boolean
+          nullable: true
+          description: Defaults to false
+
+    LibraryListResponse:
+      type: object
+      required: [id, name, ownerType, visibility, listed, personal, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Rechtsquellen Soziales
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/LibraryOwnerType"
+        visibility:
+          $ref: "#/components/schemas/LibraryVisibility"
+        listed:
+          type: boolean
+        personal:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LibraryResponse:
+      type: object
+      required:
+        - id
+        - name
+        - ownerType
+        - visibility
+        - listed
+        - personal
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Rechtsquellen Soziales
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/LibraryOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null only for the SYSTEM-owned library
+        visibility:
+          $ref: "#/components/schemas/LibraryVisibility"
+        listed:
+          type: boolean
+        personal:
+          type: boolean
+        documentCount:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DocumentStatus:
+      type: string
+      enum: [PENDING, INDEXED, FAILED]
+      example: INDEXED
+
+    DocumentSourceType:
+      type: string
+      enum: [FILESYSTEM, HTTP_DIRECTORY]
+      example: FILESYSTEM
+
+    LibraryDocumentResponse:
+      type: object
+      required: [id, fileName, status, sourceType, chunkCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          example: dienstanweisung-2024.pdf
+        contentType:
+          type: string
+          nullable: true
+        fileSize:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
+        chunkCount:
+          type: integer
+        indexedAt:
+          type: string
+          format: date-time
+          nullable: true
 
     DirectorySyncOutcome:
       type: string

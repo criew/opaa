@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
@@ -19,6 +20,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -48,8 +51,10 @@ class SpaceRepositoryTest {
 
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID org;
 
@@ -62,6 +67,13 @@ class SpaceRepositoryTest {
     // it again in tearDown() - see tearDown() below.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
+    // - a leftover personal library from another test class sharing this context (e.g.
+    // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
+    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user. Never
+    // touches the one seeded SYSTEM library.
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
@@ -73,6 +85,8 @@ class SpaceRepositoryTest {
     // Organization.DEFAULT_ID or organizations created by other tests sharing this context.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     organizationRepository.deleteById(org);
   }
@@ -202,5 +216,40 @@ class SpaceRepositoryTest {
     assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("fk_spaces_organization");
+  }
+
+  @Test
+  void insertPersonalSpaceIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
+    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertPersonalSpaceIfAbsent's
+    // Javadoc) only ever suppresses the one named partial unique index - a genuinely dangling
+    // owner must still violate fk_spaces_owner exactly as the entity-based save above does, not be
+    // silently swallowed as if it were a race loss.
+    //
+    // A transaction is required around the call (unlike the saveAndFlush-based tests above):
+    // @Modifying custom @Query methods, unlike the inherited save/saveAndFlush methods, do not get
+    // an implicit transaction from the repository proxy and fail with "No active transaction for
+    // update or delete query" without one. A plain test-method @Transactional does not work here
+    // either - Spring wraps @BeforeEach/@AfterEach into that same transaction by default, and
+    // Postgres aborts the whole transaction on the constraint violation this test deliberately
+    // provokes, poisoning the next test method's cleanUp() on the same connection. Using this
+    // class's own TransactionTemplate mirrors exactly how SpaceService itself calls this method in
+    // production (its own requiresNewTransactionTemplate) and keeps the transaction - and its
+    // rollback on failure - fully scoped to this one call.
+    UUID nonExistentOwner = UUID.randomUUID();
+    TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.executeWithoutResult(
+                    status ->
+                        spaceRepository.insertPersonalSpaceIfAbsent(
+                            UUID.randomUUID(),
+                            UUID.randomUUID(),
+                            "Meine Dokumente",
+                            "Privater persoenlicher Space",
+                            nonExistentOwner,
+                            org)))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_spaces_owner");
   }
 }

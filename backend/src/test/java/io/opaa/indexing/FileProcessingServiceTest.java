@@ -9,11 +9,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,6 +84,44 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void newDocumentAndItsChunksCarryTheSystemLibraryAndOrganizationAsMetadata() throws IOException {
+    // #201 acceptance criteria: every document belongs to exactly one library, and every chunk
+    // carries library_id and organization_id. Indexing currently always targets the single
+    // system library (see FileProcessingService's Javadoc on why); this pins that both the
+    // document row and the chunk metadata actually carry it, not just one of the two.
+    Path file = tempDir.resolve("library-metadata.txt");
+    Files.writeString(file, "some content");
+
+    when(checksumService.computeSha256(file)).thenReturn("abc123");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("library-metadata.txt"), eq(parsed))).thenReturn(chunks);
+
+    service.processFile(file);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document savedDoc = docCaptor.getAllValues().getFirst();
+    assertThat(savedDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    assertThat(savedDoc.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
+    Map<String, Object> metadata = storedChunk.getMetadata();
+    assertThat(metadata).containsEntry("library_id", KnowledgeLibrary.SYSTEM_LIBRARY_ID.toString());
+    assertThat(metadata).containsEntry("organization_id", Organization.DEFAULT_ID.toString());
+  }
+
+  @Test
   void skipsUnchangedDocumentWithSameChecksumAndIndexedStatus() throws IOException {
     Path file = tempDir.resolve("unchanged.txt");
     Files.writeString(file, "same content");
@@ -129,6 +170,42 @@ class FileProcessingServiceTest {
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
     verify(documentRepository).delete(existingDoc);
     verify(documentService).parseDocument(file);
+  }
+
+  @Test
+  void reindexingKeepsTheLibraryAssignment() throws IOException {
+    // #201 acceptance criteria: re-indexing keeps the library assignment. The old document row is
+    // deleted and a new one created (see reindexesDocumentWithChangedChecksum above), so this pins
+    // that the replacement row still carries the system library, not a dangling/absent one.
+    Path file = tempDir.resolve("reindexed.txt");
+    Files.writeString(file, "new content");
+
+    when(checksumService.computeSha256(file)).thenReturn("new-checksum");
+
+    Document existingDoc =
+        new Document("reindexed.txt", file.toAbsolutePath().toString(), null, 10L);
+    existingDoc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    existingDoc.setOrganizationId(Organization.DEFAULT_ID);
+    existingDoc.setChecksum("old-checksum");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("reindexed.txt"), eq(parsed))).thenReturn(chunks);
+
+    service.processFile(file);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document newDoc = docCaptor.getAllValues().getFirst();
+    assertThat(newDoc.getId()).isNotEqualTo(existingDoc.getId());
+    assertThat(newDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    assertThat(newDoc.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
   }
 
   @Test

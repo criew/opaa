@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -257,58 +258,73 @@ public class SpaceService {
   }
 
   /**
-   * Creates the automatic personal space for a user if it does not exist yet. Shares the same
-   * validation path as {@link #createSpace}, so personal space creation no longer bypasses it.
+   * Creates the automatic personal space (and its owner {@code ADMIN} membership) for a user if it
+   * does not exist yet.
    *
    * <p>Two concurrent first logins of the same user can both pass the {@code existsBy} check below
    * before either has inserted a row - the check alone cannot prevent that. The partial unique
-   * index {@code uk_spaces_personal_owner} (migration 010) is the actual guard: it lets exactly one
-   * of the two inserts succeed and makes the other fail with a {@link
-   * DataIntegrityViolationException}. The insert attempt runs in its own {@code REQUIRES_NEW}
-   * transaction so that a failure there rolls back only that attempt - on Postgres, a failed
-   * statement aborts the entire enclosing transaction, so catching the violation inside the same
-   * transaction that performed the insert would leave every subsequent statement in that
-   * transaction failing too. The loser then simply reads the space the winner created instead of
-   * surfacing a 500.
+   * index {@code uk_spaces_personal_owner} (migration 010) is the actual guard, enforced through
+   * {@link SpaceRepository#insertPersonalSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}: at
+   * most one of several concurrent calls for the same owner actually inserts a row, the rest are
+   * silent no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second
+   * query to re-read the winner's row, because this method returns {@code void} and the caller
+   * (idempotent by design - see {@code UserService#ensureBothPersonalAssets}) does not need it
+   * back. A genuinely unrelated constraint violation (e.g. a dangling {@code ownerId}) still throws
+   * normally, because {@code ON CONFLICT} only ever suppresses the one named partial index, never
+   * any other constraint.
+   *
+   * <p><b>Replaced the earlier catch-and-reread pattern</b> (#201/#305 code review): under the
+   * {@code UserServiceCreationRaceIntegrationTest} 12-concurrent-first-login load, the previous
+   * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence needed up to two
+   * round trips per losing caller (the failed insert attempt, whose aborted transaction then had to
+   * be rolled back before the connection could be reused, plus the follow-up read), and #201
+   * doubled the number of callers doing this in the same per-login sequence by adding {@code
+   * KnowledgeLibraryService#ensurePersonalLibrary} right after this method. That was enough
+   * additional connection-pool queueing to intermittently exceed Hikari's default 30-second {@code
+   * connectionTimeout} at the production default pool size of 10 - not a deadlock (each connection
+   * was still only held by one caller at a time; see the {@code Propagation.NOT_SUPPORTED} note
+   * below, which fixes a separate, real double-connection defect this method also had), just more
+   * total round trips than the pool could clear in time. The single {@code INSERT ... ON CONFLICT}
+   * below is one round trip regardless of whether it wins or loses the race, cutting that queueing
+   * roughly in half without weakening the guarantee - confirmed by {@code
+   * UserServiceCreationRaceIntegrationTest} passing repeatedly at the production default pool size
+   * of 10, not a raised test-only pool size (see that test's Javadoc for why raising the pool was
+   * rejected as treating the symptom).
    *
    * <p><b>Caller requirement:</b> because the insert runs on its own connection, {@code userId}
    * must already be committed and visible to other connections when this method is called - not
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
    * that first creates the user row will fail with a {@code fk_spaces_owner} violation, because the
    * {@code REQUIRES_NEW} connection cannot see the uncommitted row (regression fixed as a follow-up
-   * to #265/#280; see {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to
-   * a post-commit hook for exactly this reason).
+   * to #265/#280; see {@code UserService#ensurePersonalAssetsAfterCommit}, which defers this call
+   * to a post-commit hook for exactly this reason).
+   *
+   * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
+   * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
+   * through the Spring proxy opened an ambient read-only transaction (holding one JDBC connection)
+   * for this method's entire duration, while {@code requiresNewTransactionTemplate} below opened a
+   * <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction - two
+   * connections held by one caller at once, the same class of bug #299 fixed in {@code
+   * UserService.findOrCreateUser}. {@code NOT_SUPPORTED} suspends any ambient transaction for this
+   * method's duration (there normally is none, since {@code UserService.findOrCreateUser} itself is
+   * not {@code @Transactional} either - see #293/#299) and leaves only the one connection {@code
+   * requiresNewTransactionTemplate} actually needs.
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensurePersonalSpace(UUID userId, UUID organizationId) {
     if (spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
       return;
     }
 
-    try {
-      requiresNewTransactionTemplate.executeWithoutResult(
-          status -> createPersonalSpace(userId, organizationId));
-    } catch (DataIntegrityViolationException raceLost) {
-      if (!spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
-        // Some other constraint was violated, not the personal-space uniqueness index - do not
-        // swallow an unrelated failure.
-        throw raceLost;
-      }
-    }
-  }
-
-  private void createPersonalSpace(UUID userId, UUID organizationId) {
-    Space personalSpace =
-        buildValidatedSpace(
-            "Meine Dokumente",
-            "Privater persönlicher Space",
-            SpaceKind.PERSONAL,
-            SpaceVisibility.PRIVATE,
-            userId,
-            organizationId);
-    personalSpace.addMembership(new SpaceMembership(userId, SpaceRole.ADMIN, organizationId));
-    // saveAndFlush forces the INSERT to execute (and thus to fail, if it must) inside this
-    // REQUIRES_NEW transaction, instead of being deferred to a later flush point outside of it.
-    spaceRepository.saveAndFlush(personalSpace);
+    requiresNewTransactionTemplate.executeWithoutResult(
+        status ->
+            spaceRepository.insertPersonalSpaceIfAbsent(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Meine Dokumente",
+                "Privater persönlicher Space",
+                userId,
+                organizationId));
   }
 
   private Space buildValidatedSpace(

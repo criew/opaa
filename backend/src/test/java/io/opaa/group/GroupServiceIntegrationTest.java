@@ -9,6 +9,9 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryVisibility;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -66,6 +69,7 @@ class GroupServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationA;
@@ -73,6 +77,7 @@ class GroupServiceIntegrationTest {
 
   @BeforeEach
   void cleanUp() {
+    libraryRepository.deleteAll();
     membershipRepository.deleteAll();
     groupRepository.deleteAll();
     userRepository.deleteAll();
@@ -140,6 +145,36 @@ class GroupServiceIntegrationTest {
 
     assertThat(groupRepository.findById(saved.getId())).isEmpty();
     assertThat(membershipRepository.findByGroupId(saved.getId())).isEmpty();
+  }
+
+  @Test
+  void cannotDeleteAGroupThatStillOwnsALibrary() {
+    // #201/#305 code review: deleting a group that still owns an asset must be blocked with a
+    // clean 409, not surface fk_knowledge_libraries_owner_group_organization as an unhandled
+    // DataIntegrityViolationException (500). This is exactly the check the class Javadoc and
+    // #200's acceptance criteria describe, made possible now that #201 introduced the first asset
+    // type a group can own.
+    UUID admin = createUser(organizationA);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group saved = groupRepository.save(group);
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByGroup(
+            organizationA, "Rechtsquellen", null, saved.getId(), LibraryVisibility.PRIVATE, false);
+    libraryRepository.save(library);
+
+    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(groupRepository.findById(saved.getId())).isPresent();
+
+    // Once the library no longer references the group, deletion succeeds - the check is a live
+    // guard, not a one-time flag on the group.
+    libraryRepository.delete(library);
+    groupService.deleteGroup(saved.getId(), admin);
+    assertThat(groupRepository.findById(saved.getId())).isEmpty();
   }
 
   @Test
