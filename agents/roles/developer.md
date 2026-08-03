@@ -19,6 +19,19 @@ Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 3.5 Backend, React 
 - Bugfixes beginnen mit einem Test, der den Bug reproduziert (AGENTS.md).
 - Der Code-Reviewer prüft das Diff auf Testmanipulation.
 
+## Transaktionen
+
+Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Projekt bereits dreimal die Fehlerursache — jedes Mal bei grünem CI, jedes Mal erst im Review gefunden: Sichtbarkeit einer noch nicht committeten Zeile (#280, brach jede Erstanmeldung), verfrühter Commit mit falscher Erfolgsmeldung (#297), Erschöpfung des Connection-Pools unter Last (#299). Jedes Mal war die beste Lösung, sie zu vermeiden statt zu reparieren.
+
+- **Zuerst prüfen, ob die umgebende Methode überhaupt `@Transactional` braucht.** Oft ist der einfachste Fix, sie wegzulassen.
+- **Sichtbarkeit:** Eine eigene Transaktion sieht nichts, was die umgebende noch nicht committet hat. Wer auf eine soeben geschriebene Zeile angewiesen ist, läuft in eine Fremdschlüsselverletzung.
+- **Commit-Reihenfolge:** Eine innere Transaktion committet vor der äußeren. Was sie schreibt, überlebt deren Rollback — ein Statuseintrag kann so Erfolg melden, den es nie gab.
+- **Ressourcen:** Eine innere Transaktion neben einer haltenden äußeren belegt zwei Connections gleichzeitig. Bei nebenläufigen Aufrufen skaliert das mit der Anzahl paralleler Anfragen und blockiert ab Pool-Größe auch unbeteiligte Requests.
+- **Wird sie doch gebraucht, beide Fehlerrichtungen prüfen und im PR benennen:** Was passiert bei Fehlschlag der inneren, was bei Fehlschlag der äußeren Transaktion.
+- **`@Transactional(readOnly = true)` verhindert Schreibzugriffe nicht strukturell**, sondern schluckt sie über den Flush-Modus. Wer zusichert, dass nichts geschrieben wird, entfernt den Schreibpfad — und verlässt sich nicht auf die Annotation.
+- **Nach einer abgefangenen `DataIntegrityViolationException` ist die umgebende Transaktion unter PostgreSQL abgebrochen.** Ein Neulesen braucht einen eigenen Kontext.
+- Nebenläufigkeit gegen echte Constraints prüfen: mehrere echte Threads gegen Postgres mit Liquibase-Schema, nicht gegen einen gemockten `PlatformTransactionManager` — der führt keine Propagation aus und deckt nur den Catch-Block ab.
+
 ## Umfang und Blocker
 
 - Das Issue und nichts weiter implementieren. Nicht über den Auftrag hinaus refaktorieren oder nebenbei Fixes vornehmen.
