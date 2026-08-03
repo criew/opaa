@@ -15,8 +15,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 
 /**
  * The race-related tests here follow the same simulation approach as {@code SpaceServiceTest}:
@@ -24,9 +22,9 @@ import org.springframework.transaction.TransactionStatus;
  * concurrent first login (empty before the insert attempt, present after a concurrent winner has
  * committed), and {@link UserRepository#saveAndFlush} is stubbed to throw the {@link
  * DataIntegrityViolationException} that {@code uq_users_subject_issuer} would raise for the losing
- * insert. The real, multi-threaded reproduction against Postgres lives in {@code
- * UserServiceCreationRaceIntegrationTest} - a mocked {@link PlatformTransactionManager} does not
- * execute real propagation and only covers the catch block itself.
+ * insert. The real, multi-threaded reproduction against Postgres - including the pool-exhaustion
+ * regression a first, {@code @Transactional} version of this fix introduced and that this class
+ * cannot catch - lives in {@code UserServiceCreationRaceIntegrationTest}.
  */
 class UserServiceTest {
 
@@ -40,9 +38,7 @@ class UserServiceTest {
     userRepository = mock(UserRepository.class);
     spaceService = mock(SpaceService.class);
     authProperties = mock(AuthProperties.class);
-    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
-    when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
-    userService = new UserService(userRepository, spaceService, authProperties, transactionManager);
+    userService = new UserService(userRepository, spaceService, authProperties);
   }
 
   @Test
