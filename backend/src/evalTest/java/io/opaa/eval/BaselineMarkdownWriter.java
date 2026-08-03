@@ -7,12 +7,24 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Renders a {@link BaselineComparator.ComparisonResult} as a Markdown delta table — used both for
- * the CI job summary and for the PR comment posted when the job is triggered via the {@code
- * evaluation} label (issue #228 acceptance criteria: "Ergebnis als PR-Kommentar mit Delta-Tabelle
- * gegenüber der Baseline").
+ * Renders a {@link BaselineComparator.ComparisonResult} as a Markdown delta table. The written file
+ * ({@code backend/build/eval-reports/baseline-comparison.md}) is consumed twice by {@code
+ * .github/workflows/retrieval-regression.yml}, not by this class directly: appended to {@code
+ * $GITHUB_STEP_SUMMARY} on every run, and posted as a PR comment when the job is triggered via the
+ * {@code evaluation} label (issue #228 acceptance criteria: "Ergebnis als PR-Kommentar mit
+ * Delta-Tabelle gegenüber der Baseline").
  */
 public final class BaselineMarkdownWriter {
+
+  /**
+   * Minimum delta before a metric is reported as an "improvement" hint. Deliberately non-zero: the
+   * baseline stores metrics rounded to 3 decimals while a fresh report carries full {@code double}
+   * precision, so an identical run already shows a tiny positive delta on essentially every metric
+   * (e.g. {@code crosslingual}'s {@code hitRateAt5}: {@code 13/34 ≈ 0.38235} against a baseline of
+   * {@code 0.382}) — without this threshold, the hint would fire on every single run, baseline
+   * drift or not (PR #301 review).
+   */
+  private static final double IMPROVEMENT_HINT_THRESHOLD = 0.005;
 
   private BaselineMarkdownWriter() {}
 
@@ -46,6 +58,12 @@ public final class BaselineMarkdownWriter {
       return sb.toString();
     }
 
+    // In normal operation, RetrievalEvaluationHarnessTest itself asserts the Ein-Chunk-Invariante
+    // and aborts *before* writing a report at all when it is violated (see its step 3) — so this
+    // branch is unreachable via the harness's own report-writing path today. It is kept as a
+    // second, defensive check (PR #301 review): it still fires correctly against a hand-edited or
+    // otherwise externally produced report, and protects this class against silently becoming
+    // wrong if the harness is ever changed to write partial reports on invariant failure.
     if (!result.oneChunkInvariantHolds()) {
       sb.append(
           "**Ein-Chunk-Invariante verletzt (ADR-0010).** Das ist ein harter Fehlschlag, kein "
@@ -80,7 +98,8 @@ public final class BaselineMarkdownWriter {
     }
 
     if (!anyFailed) {
-      boolean anyImprovement = result.checks().stream().anyMatch(c -> c.delta() > 0);
+      boolean anyImprovement =
+          result.checks().stream().anyMatch(c -> c.delta() > IMPROVEMENT_HINT_THRESHOLD);
       if (anyImprovement) {
         sb.append(
             "\n_Mindestens eine Metrik hat sich gegenüber der Baseline verbessert. Das lässt den "

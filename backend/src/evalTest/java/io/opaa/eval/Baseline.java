@@ -24,7 +24,17 @@ public record Baseline(
     FixedPoints fixedPoints,
     Map<String, MetricsAggregate> groups,
     String measuredAt,
+    Provenance provenance,
     String notes) {
+
+  /**
+   * Where this baseline's numbers came from — purely documentary, never read by {@link
+   * BaselineComparator} (PR #301 review: "Erwäge Provenienzfelder in der Baseline-Datei"). Lets a
+   * reader trace a committed baseline back to the exact {@code evaluateRetrieval} run and PR that
+   * produced it, without having to dig through git blame.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record Provenance(String sourceReportRunStartedAt, String sourcePullRequest) {}
 
   /**
    * The values that define what was measured, as opposed to how well it scored. Any drift here
@@ -37,8 +47,17 @@ public record Baseline(
   public record FixedPoints(
       String embeddingModel,
       String embeddingModelDigest,
+      int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,
+      // ADR-0012, decision 3: searchTopK and the (deliberately unset) production similarity
+      // threshold are part of the measurement contract, not just run metadata — see
+      // BaselineComparator's Javadoc and PR #301 review, Befund 4.
+      int searchTopK,
+      double productionSimilarityThreshold,
+      // ADR-0011, Konsequenzen: a future switch to exact search for the evaluation is a
+      // measurement-contract change, same as a corpus or model change.
+      String pgvectorIndexType,
       String corpusManifestSha256,
       int corpusDocumentCount,
       String goldenDatasetFile,

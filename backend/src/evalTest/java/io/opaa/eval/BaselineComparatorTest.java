@@ -10,43 +10,50 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the tolerance formula and fixed-point comparison in {@link
+ * Docker-free unit tests for the tolerance formula (ADR-0013) and fixed-point comparison in {@link
  * BaselineComparator} — see its Javadoc for the rationale. Part of {@code evalUnitTest}, wired into
  * {@code check}.
  */
 class BaselineComparatorTest {
 
   @Test
-  void toleranceIsDominatedByRelativeTermForLargeHighScoringGroups() {
-    // attribute_lookup-like: n=30, ndcg=0.942 → relative term (0.113) dominates but is capped.
-    assertThat(BaselineComparator.toleranceFor(0.942, 30)).isEqualTo(0.05, within(1e-9));
+  void toleranceIsDominatedByTheCaseBasedTermForModerateNAndHighBaselineValues() {
+    // attribute_lookup-like: n_eff=30, ndcg=0.942 → case-based (2/30=0.0667) beats the relative cap
+    // (0.25*0.942=0.2355).
+    assertThat(BaselineComparator.toleranceFor(0.942, 30)).isEqualTo(2.0 / 30, within(1e-9));
   }
 
   @Test
-  void toleranceIsDominatedByOneCaseGuardForSmallLowScoringGroups() {
-    // numeric_range-like: n=16, ndcg=0.063 → relative term (0.00756) and floor (0.02) both lose to
-    // the 1/n guard (0.0625), which then gets capped.
-    assertThat(BaselineComparator.toleranceFor(0.063, 16)).isEqualTo(0.05, within(1e-9));
+  void relativeCapDominatesForLowBaselineValuesEvenWithSmallGroups() {
+    // numeric_range-like: n_eff=15, ndcg=0.063 → the case-based term alone (2/15=0.1333) would
+    // license a ~211% relative drop on this tiny baseline; the relative cap (0.25*0.063=0.01575)
+    // reins that in — this is the exact scenario ADR-0013 decision 3 exists for.
+    assertThat(BaselineComparator.toleranceFor(0.063, 15)).isEqualTo(0.25 * 0.063, within(1e-9));
   }
 
   @Test
-  void toleranceFallsBackToAbsoluteFloorWhenBothOtherTermsAreTiny() {
-    // Large n, very low baseline value: relative term and 1/n term both collapse, floor kicks in.
-    assertThat(BaselineComparator.toleranceFor(0.01, 500)).isEqualTo(0.02, within(1e-9));
+  void relativeCapNeverWidensTheCaseBasedTerm() {
+    // A very small n_eff with a very high baseline value: case-based (2/5=0.4) would exceed 100%
+    // of the baseline value; the relative cap (0.25*0.9=0.225) still wins, keeping the tolerance
+    // sane regardless of how small the group is.
+    assertThat(BaselineComparator.toleranceFor(0.9, 5)).isEqualTo(0.225, within(1e-9));
   }
 
   @Test
-  void toleranceUsesRelativeTermWhenItIsTheMiddleValue() {
-    // crosslingual-like: n=34, ndcg=0.302 → relative (0.03624) beats both 1/n (0.0294) and floor
-    // (0.02), and stays below the cap.
-    assertThat(BaselineComparator.toleranceFor(0.302, 34)).isEqualTo(0.03624, within(1e-9));
+  void oneCaseFlipNoLongerFalselyFailsTheEntityDescriptionBoundaryCase() {
+    // PR #301 review: with the old formula, 12/20 - 0.65 == -0.05000000000000004 against a
+    // tolerance of exactly 0.05 failed on floating-point rounding alone. The new tolerance
+    // (2/20=0.1) comfortably covers a single case flip (1/20=0.05) with margin to spare, and the
+    // epsilon in addMetricCheck absorbs any remaining boundary rounding.
+    double tolerance = BaselineComparator.toleranceFor(0.650, 20);
+    assertThat(tolerance).isEqualTo(0.1, within(1e-9));
+    assertThat(tolerance).isGreaterThan(1.0 / 20);
   }
 
   @Test
   void detectsCorpusManifestDrift() {
-    Baseline baseline = baselineWith(fixedPoints("m1", "d1", 1000, true, "corpus-a", "golden-a"));
-    EvaluationReport report =
-        reportWith(runConfiguration("m1", "d1", 1000, true, "corpus-b", "golden-a"));
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-b", "golden-a"));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -62,9 +69,8 @@ class BaselineComparatorTest {
 
   @Test
   void detectsEmbeddingModelDigestDrift() {
-    Baseline baseline = baselineWith(fixedPoints("m1", "d1", 1000, true, "corpus-a", "golden-a"));
-    EvaluationReport report =
-        reportWith(runConfiguration("m1", "d2", 1000, true, "corpus-a", "golden-a"));
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d2", "corpus-a", "golden-a"));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -75,10 +81,46 @@ class BaselineComparatorTest {
   }
 
   @Test
+  void detectsSearchTopKDrift() {
+    // ADR-0012 decision 3 / PR #301 review, Befund 4: searchTopK is part of the measurement
+    // contract, not just run metadata — a topK change must invalidate the baseline, not be silently
+    // compared as if it were a regression.
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentTopK =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            50,
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds());
+    EvaluationReport report = reportWith(withDifferentTopK);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("searchTopK");
+  }
+
+  @Test
   void passesWhenFixedPointsMatchAndMetricsAreWithinTolerance() {
-    Baseline baseline = baselineWith(fixedPoints("m1", "d1", 1000, true, "corpus-a", "golden-a"));
-    EvaluationReport report =
-        reportWith(runConfiguration("m1", "d1", 1000, true, "corpus-a", "golden-a"));
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -90,11 +132,11 @@ class BaselineComparatorTest {
 
   @Test
   void failsWhenAMetricDropsBelowTolerance() {
-    Baseline baseline = baselineWith(fixedPoints("m1", "d1", 1000, true, "corpus-a", "golden-a"));
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
     EvaluationReport report =
         reportWith(
-            runConfiguration("m1", "d1", 1000, true, "corpus-a", "golden-a"),
-            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0));
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new MetricsAggregate(121, 0.10, 0.10, 0.10, 0.10, 1.0, 94));
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -105,11 +147,38 @@ class BaselineComparatorTest {
   }
 
   @Test
-  void failsWhenOneChunkInvariantIsViolated() {
-    Baseline baseline = baselineWith(fixedPoints("m1", "d1", 1000, true, "corpus-a", "golden-a"));
+  void hardFloorIsRelativeToTheCommittedBaselineValue() {
+    // ADR-0013 decision 4: the hard floor is 80% of the *committed* baseline value, not a fixed
+    // absolute number. A current value just above 80% of baseline passes the hard floor even
+    // though it is (deliberately, for this test) far outside the tolerance, so the *tolerance*
+    // check is what actually fails it — the hard floor is a separate, looser backstop.
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
     EvaluationReport report =
         reportWith(
-            runConfiguration("m1", "d1", 1000, true, "corpus-a", "golden-a"),
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new MetricsAggregate(121, 0.45, 0.45, 0.45, 0.45, 1.0, 94));
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    var hitRateCheck =
+        result.checks().stream()
+            .filter(c -> c.group().equals(Baseline.OVERALL) && c.metric().equals("hitRateAt5"))
+            .findFirst()
+            .orElseThrow();
+    // 0.8 * 0.521 = 0.4168 — 0.45 clears the hard floor...
+    assertThat(hitRateCheck.hardFloor()).isCloseTo(0.8 * 0.521, within(1e-9));
+    assertThat(hitRateCheck.passesHardFloor()).isTrue();
+    // ...but still fails the (much tighter) baseline-relative tolerance.
+    assertThat(hitRateCheck.withinTolerance()).isFalse();
+    assertThat(result.passed()).isFalse();
+  }
+
+  @Test
+  void failsWhenOneChunkInvariantIsViolated() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    EvaluationReport report =
+        reportWith(
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
             overallMetrics(),
             new OneChunkInvariantResult(
                 1458, List.of(new OneChunkInvariantResult.Violation("comic-0999_x.md", 2))));
@@ -120,24 +189,51 @@ class BaselineComparatorTest {
     assertThat(result.passed()).isFalse();
   }
 
+  @Test
+  void failsWhenReportIsMissingAGroupThatIsPresentInTheBaseline() {
+    // PR #301 review: a report whose byCategory/byDifficulty/byLanguage came back empty or partial
+    // must not silently pass with only the four overall checks run.
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("attribute_lookup"),
+                overallMetrics()),
+            "2026-08-03",
+            null,
+            "test fixture");
+    EvaluationReport report = reportWith(runConfiguration("m1", "d1", "corpus-a", "golden-a"));
+
+    assertThatMissingGroupThrows(baseline, report);
+  }
+
+  private static void assertThatMissingGroupThrows(Baseline baseline, EvaluationReport report) {
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> BaselineComparator.compare(baseline, report))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("category:attribute_lookup");
+  }
+
   // --- fixtures -----------------------------------------------------------------------------
 
   private static MetricsAggregate overallMetrics() {
-    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708);
+    return new MetricsAggregate(121, 0.521, 0.461, 0.445, 0.490, 0.9708, 94);
   }
 
   private static Baseline.FixedPoints fixedPoints(
-      String model,
-      String digest,
-      int chunkSize,
-      boolean matchesDefault,
-      String corpusSha,
-      String goldenSha) {
+      String model, String digest, String corpusSha, String goldenSha) {
     return new Baseline.FixedPoints(
         model,
         digest,
-        chunkSize,
-        matchesDefault,
+        768,
+        1000,
+        true,
+        10,
+        0.3,
+        "hnsw",
         corpusSha,
         1458,
         "eval/golden/x.json",
@@ -146,20 +242,15 @@ class BaselineComparatorTest {
   }
 
   private static RunConfiguration runConfiguration(
-      String model,
-      String digest,
-      int chunkSize,
-      boolean matchesDefault,
-      String corpusSha,
-      String goldenSha) {
+      String model, String digest, String corpusSha, String goldenSha) {
     return new RunConfiguration(
         "ollama",
         model,
         digest,
         "ollama/ollama:0.6.5",
         768,
-        chunkSize,
-        matchesDefault,
+        1000,
+        true,
         10,
         0.3,
         "note",
@@ -175,7 +266,12 @@ class BaselineComparatorTest {
 
   private static Baseline baselineWith(Baseline.FixedPoints fixedPoints) {
     return new Baseline(
-        1, fixedPoints, Map.of(Baseline.OVERALL, overallMetrics()), "2026-08-03", "test fixture");
+        1,
+        fixedPoints,
+        Map.of(Baseline.OVERALL, overallMetrics()),
+        "2026-08-03",
+        null,
+        "test fixture");
   }
 
   private static EvaluationReport reportWith(RunConfiguration cfg) {
@@ -192,7 +288,7 @@ class BaselineComparatorTest {
         1,
         cfg,
         invariant,
-        new EvaluationReport.DatasetNotes(121, 75, "note"),
+        new EvaluationReport.DatasetNotes(121, 94, "note"),
         overall,
         Map.of(),
         Map.of(),

@@ -3,8 +3,12 @@
   "fixedPoints": {
     "embeddingModel": "nomic-embed-text:v1.5",
     "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "embeddingDimensions": 768,
     "chunkSize": 1000,
     "chunkSizeMatchesApplicationDefault": true,
+    "searchTopK": 10,
+    "productionSimilarityThreshold": 0.3,
+    "pgvectorIndexType": "hnsw",
     "corpusManifestSha256": "cdfbdfeff23134ec93689256d5abf1477ff03dfa82c03c7cb03728e6704215a7",
     "corpusDocumentCount": 1448,
     "goldenDatasetFile": "eval/golden/comic-characters.json",
@@ -18,7 +22,8 @@
       "mrr": 0.461,
       "ndcgAt10": 0.445,
       "recallAt10": 0.490,
-      "recallAt10Ceiling": 0.9708
+      "recallAt10Ceiling": 0.9708,
+      "distinctExpectedDocumentSets": 94
     },
     "category:attribute_lookup": {
       "n": 30,
@@ -26,7 +31,8 @@
       "mrr": 0.933,
       "ndcgAt10": 0.942,
       "recallAt10": 0.967,
-      "recallAt10Ceiling": 1.0
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 30
     },
     "category:entity_description": {
       "n": 20,
@@ -34,7 +40,8 @@
       "mrr": 0.518,
       "ndcgAt10": 0.575,
       "recallAt10": 0.750,
-      "recallAt10Ceiling": 1.0
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 20
     },
     "category:crosslingual": {
       "n": 34,
@@ -42,7 +49,8 @@
       "mrr": 0.337,
       "ndcgAt10": 0.302,
       "recallAt10": 0.322,
-      "recallAt10Ceiling": 0.9666
+      "recallAt10Ceiling": 0.9666,
+      "distinctExpectedDocumentSets": 33
     },
     "category:multi_attribute_filter": {
       "n": 21,
@@ -50,7 +58,8 @@
       "mrr": 0.206,
       "ndcgAt10": 0.137,
       "recallAt10": 0.159,
-      "recallAt10Ceiling": 0.9331
+      "recallAt10Ceiling": 0.9331,
+      "distinctExpectedDocumentSets": 21
     },
     "category:numeric_range": {
       "n": 16,
@@ -58,7 +67,8 @@
       "mrr": 0.101,
       "ndcgAt10": 0.063,
       "recallAt10": 0.060,
-      "recallAt10Ceiling": 0.9382
+      "recallAt10Ceiling": 0.9382,
+      "distinctExpectedDocumentSets": 15
     },
     "difficulty:easy": {
       "n": 40,
@@ -66,7 +76,8 @@
       "mrr": 0.912,
       "ndcgAt10": 0.922,
       "recallAt10": 0.950,
-      "recallAt10Ceiling": 1.0
+      "recallAt10Ceiling": 1.0,
+      "distinctExpectedDocumentSets": 30
     },
     "difficulty:medium": {
       "n": 48,
@@ -74,7 +85,8 @@
       "mrr": 0.253,
       "ndcgAt10": 0.262,
       "recallAt10": 0.335,
-      "recallAt10Ceiling": 0.9706
+      "recallAt10Ceiling": 0.9706,
+      "distinctExpectedDocumentSets": 35
     },
     "difficulty:hard": {
       "n": 33,
@@ -82,7 +94,8 @@
       "mrr": 0.216,
       "ndcgAt10": 0.134,
       "recallAt10": 0.157,
-      "recallAt10Ceiling": 0.9359
+      "recallAt10Ceiling": 0.9359,
+      "distinctExpectedDocumentSets": 30
     },
     "language:en": {
       "n": 87,
@@ -90,7 +103,8 @@
       "mrr": 0.509,
       "ndcgAt10": 0.502,
       "recallAt10": 0.555,
-      "recallAt10Ceiling": 0.9725
+      "recallAt10Ceiling": 0.9725,
+      "distinctExpectedDocumentSets": 85
     },
     "language:de": {
       "n": 34,
@@ -98,9 +112,14 @@
       "mrr": 0.337,
       "ndcgAt10": 0.302,
       "recallAt10": 0.322,
-      "recallAt10Ceiling": 0.9666
+      "recallAt10Ceiling": 0.9666,
+      "distinctExpectedDocumentSets": 33
     }
   },
   "measuredAt": "2026-08-03",
-  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Aktualisierungsverfahren: eval/baseline/README.md."
+  "provenance": {
+    "sourceReportRunStartedAt": "2026-08-03T00:00:00Z",
+    "sourcePullRequest": "#299"
+  },
+  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Toleranzpolitik gemäß ADR-0013 (überarbeitet aus dem Review zu PR #301): tolerance = min(2/n_eff, 0.25*Baselinewert), harte Untergrenze der Gesamtmetriken = 80% des jeweils committeten Baselinewerts. distinctExpectedDocumentSets je Gruppe wurde am 2026-08-03 direkt aus eval/golden/comic-characters.json nachgerechnet (Korrektur: 94 statt der zuvor genannten 75 für 'overall' — die Zahl 75 aus einer früheren, ungeprüften Angabe war falsch). Aktualisierungsverfahren: eval/baseline/README.md."
 }
