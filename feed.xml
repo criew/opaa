@@ -5,18 +5,18 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-02T21:47:52Z</updated>
+  <updated>2026-08-03T07:58:50Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
     <title>Tagesreport Sonntag, 2. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-02.html"/>
     <id>https://criew.github.io/opaa/reports/2026-08-02.html</id>
-    <updated>2026-08-02T21:47:52Z</updated>
-    <summary type="text">Epic #198 „Space and asset model&quot; hat am Sonntag seine erste Umsetzungsphase abgeschlossen: 25 neue Tickets wurden angelegt, eines abgeschlossen und eines gemergt. Mit #199 ist der mechanische Rename von Workspace zu Space sowie die Neuordnung der Space-Rollen live. Die übrigen 24 Tickets decken die komplexere Arbeit ab — von Governance-Controls über Versionierung bis zur Drift-Schutz-Mechanik für Abkömmlinge, die bewusst zurückgestellt wird.
+    <updated>2026-08-03T07:58:50Z</updated>
+    <summary type="text">Epic #198 „Space and asset model — replace the workspace model&quot; verzeichnet 3 von 25 Tickets als erledigt. Heute wurden 25 Tickets neu angelegt und eines abgeschlossen. Mit dem Merge von #254 liegt die mechanische Umbenennung von Workspace zu Space vor, einschließlich neuer Rollenverteilung und Organisationsgrenze. Die Tickets #243 bis #199 decken die komplexere Mechanik ab: Driftschutz für Abkömmlinge, Konsistenzprüfung zwischen Vektorspeicher und Datenbank, Befristung von Grants, Nachfolge ausgeschiedener Eigentümer, Audit-Governance und Historisierung von Rechten.
 
-Epic #224 „Suchqualität messbar machen&quot; ist mit 4 von 14 Tickets erledigt. Der Tag brachte 14 neue Tickets, vier abgeschlossene und vier gemergte. Der Korpus-Generator für Comichelden (#225) und das Golden Dataset (#226) sind implementiert, die E2E-Test-Infrastruktur (#231) steht, und die öffentliche Demo-Instanz ist dokumentiert. Der Retrieval-Harness mit Metriken und automatisiertem Regressions-Check folgt als nächster Schritt.
+Epic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression&quot; zeigt 5 von 14 Tickets erledigt. Heute kamen 14 Tickets hinzu und vier wurden abgeschlossen. Mit den Merges von #273, #251 und #249 liegen ein versioniertes Golden Dataset mit 121 kuratierten Fällen, ein E2E-Grundgerüst mit Playwright und ein deterministischer Korpus-Generator für 1.448 Comic-Charaktere vor. Die neuen Tickets decken Dokumentation, Demo-Ausrollung und Retrieval-Regression ab.
 
-Ohne Epic-Bezug wurden 32 Tickets angelegt, 19 abgeschlossen und 23 gemergt. Schwerpunkte waren die Stabilisierung der Report-Infrastruktur — Fehlzuordnungen im Epic-Report behoben, Anthropic-Support hinzugefügt, eigenes Secret für die Zusammenfassung — sowie mehrere vorbestehende Fehler in Sicherheit, Performance und Dokumentation. Die ADR-Nummernkollision (zwei Tickets mit 0008) wurde aufgelöst, und die Projektsprache wurde auf Deutsch festgelegt.</summary>
+Ohne Epic-Bezug wurden 35 Tickets angelegt, 19 abgeschlossen und 24 gemergt. Im Bereich Authentifizierung behoben die Merges #287, #280 und #294 Regressions- und Race-Condition-Fehler bei der Erstanmeldung und der Anlage persönlicher Spaces. Die Merges #286, #281, #278 und #277 stabilisierten die Report-Infrastruktur und das Golden Dataset. Dokumentation wurde in #270, #269, #264 und #275 korrigiert und ergänzt, etwa zur Testinstanz opaa.ewerlin.com und zur ADR-Nummernkollision. Weitere Merges betrafen Sicherheit (#246), Abhängigkeits-Updates (#191) und Spracheinstellung (#223, #222, #220).</summary>
   </entry>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>
