@@ -8,12 +8,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
@@ -30,6 +33,7 @@ class UserServiceTest {
 
   private UserRepository userRepository;
   private SpaceService spaceService;
+  private KnowledgeLibraryService libraryService;
   private AuthProperties authProperties;
   private UserService userService;
 
@@ -37,8 +41,9 @@ class UserServiceTest {
   void setUp() {
     userRepository = mock(UserRepository.class);
     spaceService = mock(SpaceService.class);
+    libraryService = mock(KnowledgeLibraryService.class);
     authProperties = mock(AuthProperties.class);
-    userService = new UserService(userRepository, spaceService, authProperties);
+    userService = new UserService(userRepository, spaceService, libraryService, authProperties);
   }
 
   @Test
@@ -53,6 +58,7 @@ class UserServiceTest {
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
     verify(spaceService).ensurePersonalSpace(user.getId(), Organization.DEFAULT_ID);
+    verify(libraryService).ensurePersonalLibrary(user.getId(), Organization.DEFAULT_ID);
   }
 
   @Test
@@ -68,6 +74,7 @@ class UserServiceTest {
     assertThat(user.getEmail()).isEqualTo("new@example.com");
     assertThat(user.getDisplayName()).isEqualTo("New Name");
     verify(spaceService).ensurePersonalSpace(existing.getId(), Organization.DEFAULT_ID);
+    verify(libraryService).ensurePersonalLibrary(existing.getId(), Organization.DEFAULT_ID);
   }
 
   @Test
@@ -114,7 +121,7 @@ class UserServiceTest {
   }
 
   @Test
-  void findOrCreateUserDelegatesPersonalSpaceIdempotencyToSpaceService() {
+  void findOrCreateUserDelegatesPersonalSpaceAndLibraryIdempotencyToTheirServices() {
     User existing = new User("sub1", "issuer1", "old@example.com", "Old Name");
     existing.setOrganizationId(Organization.DEFAULT_ID);
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
@@ -123,9 +130,40 @@ class UserServiceTest {
 
     userService.findOrCreateUser("sub1", "issuer1", "old@example.com", "Old Name");
 
-    // UserService no longer checks existence itself; SpaceService.ensurePersonalSpace is
-    // idempotent and is always called, whether the user is new or existing.
+    // UserService no longer checks existence itself; both ensurePersonalSpace and
+    // ensurePersonalLibrary are idempotent and are always called, whether the user is new or
+    // existing.
     verify(spaceService).ensurePersonalSpace(existing.getId(), Organization.DEFAULT_ID);
+    verify(libraryService).ensurePersonalLibrary(existing.getId(), Organization.DEFAULT_ID);
+  }
+
+  @Test
+  void ensuresPersonalSpaceAndPersonalLibraryTogetherNeverOnlyOne() {
+    // The two mechanisms this class coordinates (personal space provisioning, personal library
+    // provisioning) must always be attempted together from the same afterCommit callback - #201's
+    // "creates a personal space and a personal library atomically". A regression that calls one
+    // service without the other would pass every test above individually but fail this one: it
+    // pins both the fact that both are called and that neither call depends on the other's
+    // completion (each is invoked exactly once, independent of order or of one throwing).
+    when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
+    when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(authProperties.initialAdminEmail()).thenReturn(null);
+    Mockito.doThrow(new RuntimeException("space provisioning failed"))
+        .when(spaceService)
+        .ensurePersonalSpace(any(), any());
+
+    // ensurePersonalSpace throwing must not prevent ensurePersonalLibrary from being attempted -
+    // ensurePersonalAssetsAfterCommit's isSynchronizationActive/registerSynchronization branch is
+    // a defensive fallback for a caller running inside its own transaction (see UserService's
+    // Javadoc); in production and in this test there is none, so the immediate, synchronous
+    // ensureBothPersonalAssets branch always runs, exactly like this unit test exercises.
+    assertThatThrownBy(
+            () -> userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test"))
+        .isInstanceOf(RuntimeException.class);
+
+    InOrder inOrder = Mockito.inOrder(spaceService, libraryService);
+    inOrder.verify(spaceService).ensurePersonalSpace(any(), any());
+    inOrder.verify(libraryService).ensurePersonalLibrary(any(), any());
   }
 
   @Test

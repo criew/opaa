@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.time.Instant;
@@ -21,12 +22,17 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final SpaceService spaceService;
+  private final KnowledgeLibraryService libraryService;
   private final AuthProperties authProperties;
 
   public UserService(
-      UserRepository userRepository, SpaceService spaceService, AuthProperties authProperties) {
+      UserRepository userRepository,
+      SpaceService spaceService,
+      KnowledgeLibraryService libraryService,
+      AuthProperties authProperties) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
+    this.libraryService = libraryService;
     this.authProperties = authProperties;
   }
 
@@ -47,6 +53,10 @@ public class UserService {
    * fire right after the SPA logs in). Without an ambient transaction here, {@link
    * #createOrFetchUser}'s insert attempt and its fallback read are each just one more short-lived,
    * independently connection-scoped call - never two connections held by the same caller at once.
+   * {@link #ensurePersonalAssetsAfterCommit} below (#201's personal space and personal library
+   * provisioning) follows the exact same reasoning: neither {@code ensurePersonalSpace} nor {@code
+   * ensurePersonalLibrary} ever runs inside an ambient transaction started here, for the same
+   * connection-budget reason.
    */
   public User findOrCreateUser(String subject, String issuer, String email, String displayName) {
     User user =
@@ -55,7 +65,7 @@ public class UserService {
             .map(existing -> updateExistingUser(existing, email, displayName))
             .orElseGet(() -> createOrFetchUser(subject, issuer, email, displayName));
 
-    ensurePersonalSpaceAfterCommit(user.getId(), user.getOrganizationId());
+    ensurePersonalAssetsAfterCommit(user.getId(), user.getOrganizationId());
     return user;
   }
 
@@ -104,8 +114,11 @@ public class UserService {
   }
 
   /**
-   * Runs {@link SpaceService#ensurePersonalSpace} only after the {@code users} row it needs has
-   * been committed.
+   * Runs {@link SpaceService#ensurePersonalSpace} and {@link
+   * KnowledgeLibraryService#ensurePersonalLibrary} only after the {@code users} row they need has
+   * been committed - and always together, so provisioning never silently produces a personal space
+   * without its personal library or the other way round (#201's "creating a user creates a personal
+   * space and a personal library atomically").
    *
    * <p>Historically (#265, fixed in the #280 follow-up), {@code findOrCreateUser} was
    * {@code @Transactional} and inserted the new user in a still-open transaction; {@code
@@ -114,7 +127,9 @@ public class UserService {
    * uncommitted {@code users} row, so the insert violated {@code fk_spaces_owner} and the whole
    * login failed. Deferring the call to {@link TransactionSynchronization#afterCommit()} fixed that
    * by guaranteeing the user row was already committed and visible by the time the personal space
-   * was created.
+   * was created. {@code ensurePersonalLibrary} (#201) inserts in its own {@code REQUIRES_NEW}
+   * transaction the same way and is subject to exactly the same visibility requirement, so it is
+   * called from this same method rather than from a second, parallel deferral mechanism.
    *
    * <p>Since {@link #findOrCreateUser} was made deliberately non-{@code @Transactional} (#293 code
    * review - see its Javadoc), there is no ambient transaction synchronization active here to
@@ -122,20 +137,69 @@ public class UserService {
    * synchronous branch. That remains correct for the same reason the {@code afterCommit} deferral
    * did - each {@link UserRepository} call in {@code findOrCreateUser} already committed
    * independently by the time control reaches here, so the user row this method's caller passes in
-   * is always already visible on any connection, including {@code ensurePersonalSpace}'s {@code
-   * REQUIRES_NEW} one.
+   * is always already visible on any connection, including {@code ensurePersonalSpace}'s and {@code
+   * ensurePersonalLibrary}'s {@code REQUIRES_NEW} ones. The {@code
+   * isSynchronizationActive}/{@code registerSynchronization} branch below is kept only as a defensive
+   * fallback for a caller running inside its own transaction (there is none in production today) -
+   * it must not silently skip provisioning if one ever exists.
    */
-  private void ensurePersonalSpaceAfterCommit(UUID userId, UUID organizationId) {
+  private void ensurePersonalAssetsAfterCommit(UUID userId, UUID organizationId) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              spaceService.ensurePersonalSpace(userId, organizationId);
+              ensureBothPersonalAssets(userId, organizationId);
             }
           });
     } else {
+      ensureBothPersonalAssets(userId, organizationId);
+    }
+  }
+
+  /**
+   * Attempts {@link SpaceService#ensurePersonalSpace} and {@link
+   * KnowledgeLibraryService#ensurePersonalLibrary} independently of one another - the second call
+   * always runs even if the first one throws, and vice versa. If either (or both) fail, the first
+   * failure is rethrown, with a second failure attached via {@link
+   * Throwable#addSuppressed(Throwable)} rather than dropped, so both are still visible to whatever
+   * logs the exception this bubbles up to. Neither call is wrapped in a transaction of its own here
+   * - each of {@code ensurePersonalSpace}/{@code ensurePersonalLibrary} already opens its own
+   * self-contained {@code REQUIRES_NEW} transaction (see their Javadoc), so nesting one here would
+   * only add an unused, connection-holding transaction around calls that do not need one - the
+   * exact class of cost the pool-exhaustion regression in #299 was caused by.
+   *
+   * <p>Called unconditionally for every {@link #findOrCreateUser} invocation, not only for newly
+   * created users: both {@code ensurePersonalSpace} and {@code ensurePersonalLibrary} are
+   * idempotent (each checks for an existing row first), so a returning user whose personal library
+   * failed to provision on an earlier login - or who predates #201 entirely - gets one created on
+   * their next login instead of being left without one indefinitely. The personal space already had
+   * this self-healing property before #201; this keeps the personal library's provisioning on the
+   * same footing.
+   */
+  private void ensureBothPersonalAssets(UUID userId, UUID organizationId) {
+    RuntimeException spaceFailure = null;
+    try {
       spaceService.ensurePersonalSpace(userId, organizationId);
+    } catch (RuntimeException e) {
+      spaceFailure = e;
+    }
+
+    RuntimeException libraryFailure = null;
+    try {
+      libraryService.ensurePersonalLibrary(userId, organizationId);
+    } catch (RuntimeException e) {
+      libraryFailure = e;
+    }
+
+    if (spaceFailure != null) {
+      if (libraryFailure != null) {
+        spaceFailure.addSuppressed(libraryFailure);
+      }
+      throw spaceFailure;
+    }
+    if (libraryFailure != null) {
+      throw libraryFailure;
     }
   }
 

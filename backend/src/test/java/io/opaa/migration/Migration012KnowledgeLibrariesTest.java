@@ -1,0 +1,467 @@
+package io.opaa.migration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.UUID;
+import liquibase.Contexts;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * Applies Liquibase changelog 012 in isolation against a database built from the real, versioned
+ * changelog through changeSet 011 - the same pattern as {@code Migration011DirectorySyncTest}, with
+ * {@code test-master-through-011.yaml} as the pre-migration fixture. {@code
+ * connection.setAutoCommit(true)} is called after every {@code liquibase.update(...)} call, and the
+ * public schema is dropped and recreated between test methods, exactly as {@code
+ * Migration010SpaceUniquenessTest} established for multi-method migration tests in this package
+ * (see the package Javadoc, which names #201 explicitly).
+ *
+ * <p>The two mechanisms this test class exercises against each other, not just individually: {@link
+ * #backfillIsResumableAcrossPartialProgress()} interrupts the batched backfill mid-run and re-runs
+ * it, and {@link #compositeForeignKeyRejectsADocumentPointingAtALibraryFromAnotherOrganization()}
+ * combines the composite foreign key with a cross-organization library to prove the constraint -
+ * not just application code - is what stops the leak.
+ */
+@Testcontainers(disabledWithoutDocker = true)
+class Migration012KnowledgeLibrariesTest {
+
+  @Container
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+
+  private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
+  private static final String SYSTEM_LIBRARY_ID = "00000000-0000-0000-0000-000000000002";
+
+  private Connection connection;
+  private Database database;
+
+  @BeforeEach
+  void setUp() throws Exception {
+    connection =
+        DriverManager.getConnection(
+            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    database =
+        DatabaseFactory.getInstance()
+            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+
+    Liquibase liquibase =
+        new Liquibase(
+            "db/changelog/test-master-through-011.yaml",
+            new ClassLoaderResourceAccessor(),
+            database);
+    liquibase.update(new Contexts());
+    connection.setAutoCommit(true);
+  }
+
+  @AfterEach
+  void tearDown() throws SQLException {
+    connection.setAutoCommit(true);
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("DROP SCHEMA public CASCADE");
+      statement.execute("CREATE SCHEMA public");
+    }
+    connection.close();
+  }
+
+  @Test
+  void createsSystemLibraryReadableOnlyByDesignFailClosed() throws Exception {
+    applyChangelog012();
+
+    assertThat(columnValue("knowledge_libraries", "owner_type", SYSTEM_LIBRARY_ID))
+        .isEqualTo("SYSTEM");
+    assertThat(columnValueOrNull("knowledge_libraries", "owner_user_id", SYSTEM_LIBRARY_ID))
+        .isNull();
+    assertThat(columnValueOrNull("knowledge_libraries", "owner_group_id", SYSTEM_LIBRARY_ID))
+        .isNull();
+    assertThat(columnValue("knowledge_libraries", "visibility", SYSTEM_LIBRARY_ID))
+        .isEqualTo("PRIVATE");
+    assertThat(columnValue("knowledge_libraries", "listed", SYSTEM_LIBRARY_ID)).isEqualTo("f");
+    assertThat(columnValue("knowledge_libraries", "personal", SYSTEM_LIBRARY_ID)).isEqualTo("f");
+  }
+
+  @Test
+  void ownerCheckConstraintRejectsEveryMismatchBetweenOwnerTypeAndOwnerColumns() throws Exception {
+    applyChangelog012();
+    UUID someUser = insertUser(UUID.randomUUID());
+    UUID someGroup = insertGroup(UUID.randomUUID());
+
+    // USER without owner_user_id.
+    assertThatThrownBy(
+            () -> insertLibrary(UUID.randomUUID(), "USER", null, null, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_owner");
+
+    // USER with owner_group_id set instead of owner_user_id.
+    assertThatThrownBy(
+            () ->
+                insertLibrary(UUID.randomUUID(), "USER", null, someGroup, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_owner");
+
+    // GROUP without owner_group_id.
+    assertThatThrownBy(
+            () -> insertLibrary(UUID.randomUUID(), "GROUP", null, null, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_owner");
+
+    // SYSTEM with an owner_user_id set.
+    assertThatThrownBy(
+            () ->
+                insertLibrary(UUID.randomUUID(), "SYSTEM", someUser, null, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_owner");
+
+    // SYSTEM with an owner_group_id set.
+    assertThatThrownBy(
+            () ->
+                insertLibrary(
+                    UUID.randomUUID(), "SYSTEM", null, someGroup, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_owner");
+  }
+
+  @Test
+  void foreignKeysRejectAnOwnerUserOrOwnerGroupThatDoesNotExist() throws Exception {
+    applyChangelog012();
+
+    assertThatThrownBy(
+            () ->
+                insertLibrary(
+                    UUID.randomUUID(), "USER", UUID.randomUUID(), null, "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_knowledge_libraries_owner_user");
+
+    assertThatThrownBy(
+            () ->
+                insertLibrary(
+                    UUID.randomUUID(), "GROUP", null, UUID.randomUUID(), "PRIVATE", false, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_knowledge_libraries_owner_group_organization");
+  }
+
+  @Test
+  void partialUniqueIndexAllowsOnlyOnePersonalLibraryPerOwnerButAnyNumberOfNonPersonalOnes()
+      throws Exception {
+    applyChangelog012();
+    UUID owner = insertUser(UUID.randomUUID());
+
+    insertLibrary(UUID.randomUUID(), "USER", owner, null, "PRIVATE", false, true);
+
+    assertThatThrownBy(
+            () -> insertLibrary(UUID.randomUUID(), "USER", owner, null, "PRIVATE", false, true))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("uk_knowledge_libraries_personal_owner");
+
+    // A user may still own any number of non-personal libraries - the partial index must not
+    // restrict that, mirroring uk_spaces_personal_owner's guarantee for spaces (migration 010).
+    insertLibrary(UUID.randomUUID(), "USER", owner, null, "SHARED", true, false);
+    insertLibrary(UUID.randomUUID(), "USER", owner, null, "ORGANIZATION", true, false);
+  }
+
+  @Test
+  void backfillAssignsEveryPreExistingDocumentToTheSystemLibraryWithoutLosingRows()
+      throws Exception {
+    insertDocument(UUID.randomUUID(), "a.pdf");
+    insertDocument(UUID.randomUUID(), "b.pdf");
+    insertDocument(UUID.randomUUID(), "c.pdf");
+    assertThat(countRows("documents")).isEqualTo(3);
+
+    applyChangelog012();
+
+    assertThat(countRows("documents")).isEqualTo(3);
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery("SELECT library_id, organization_id FROM documents")) {
+      int rows = 0;
+      while (rs.next()) {
+        rows++;
+        assertThat(rs.getString("library_id")).isEqualTo(SYSTEM_LIBRARY_ID);
+        assertThat(rs.getString("organization_id")).isEqualTo(SEEDED_ORGANIZATION_ID);
+      }
+      assertThat(rows).isEqualTo(3);
+    }
+  }
+
+  @Test
+  void backfillIsResumableAcrossPartialProgress() throws Exception {
+    // Simulates an interrupted migration run: apply only the changeSets up to and including the
+    // nullable column addition, seed documents, manually pre-assign some of them to the system
+    // library exactly as a partially completed backfill would have left them, then run the
+    // remaining changeSets (backfill + NOT NULL/FK enforcement) as the resumed run. The resumed
+    // run must only touch the still-NULL rows and must not fail or duplicate work on the
+    // already-migrated ones - the resumability the acceptance criteria require.
+    applySchemaOnlyChangelog012();
+
+    UUID alreadyMigrated = UUID.randomUUID();
+    UUID stillPending1 = UUID.randomUUID();
+    UUID stillPending2 = UUID.randomUUID();
+    insertDocument(alreadyMigrated, "already.pdf");
+    insertDocument(stillPending1, "pending1.pdf");
+    insertDocument(stillPending2, "pending2.pdf");
+    // Hand-assign one document exactly as a partially completed backfill run would have left it -
+    // the knowledge_libraries table and the nullable columns already exist at this point (both are
+    // part of the lib-schema context applied above), so this update is legal.
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "UPDATE documents SET library_id = '"
+              + SYSTEM_LIBRARY_ID
+              + "', organization_id = '"
+              + SEEDED_ORGANIZATION_ID
+              + "' WHERE id = '"
+              + alreadyMigrated
+              + "'");
+    }
+
+    // Resume: apply the still-pending changeSets (backfill + enforcement) on top of the partial
+    // state above - a real second liquibase.update() call, not a simulation.
+    resumeChangelog012();
+
+    assertThat(countRows("documents")).isEqualTo(3);
+    for (UUID id : new UUID[] {alreadyMigrated, stillPending1, stillPending2}) {
+      assertThat(columnValue("documents", "library_id", id.toString()))
+          .isEqualTo(SYSTEM_LIBRARY_ID);
+      assertThat(columnValue("documents", "organization_id", id.toString()))
+          .isEqualTo(SEEDED_ORGANIZATION_ID);
+    }
+  }
+
+  @Test
+  void enforcesNotNullAndCompositeForeignKeyOnDocumentsAfterBackfill() throws Exception {
+    applyChangelog012();
+
+    assertThatThrownBy(
+            () ->
+                insertDocumentWithExplicitLibrary(
+                    UUID.randomUUID(), "no-library.pdf", null, SEEDED_ORGANIZATION_ID))
+        .isInstanceOf(SQLException.class);
+  }
+
+  @Test
+  void compositeForeignKeyRejectsADocumentPointingAtALibraryFromAnotherOrganization()
+      throws Exception {
+    applyChangelog012();
+
+    UUID otherOrganization = UUID.randomUUID();
+    insertOrganization(otherOrganization);
+    UUID otherOrgOwner = insertUser(UUID.randomUUID(), otherOrganization.toString());
+    UUID libraryInOtherOrganization = UUID.randomUUID();
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO knowledge_libraries "
+              + "(id, organization_id, name, owner_type, owner_user_id, visibility, listed,"
+              + " personal, created_at, updated_at) VALUES ('"
+              + libraryInOtherOrganization
+              + "', '"
+              + otherOrganization
+              + "', 'Andere Organisation', 'USER', '"
+              + otherOrgOwner
+              + "', 'PRIVATE', false, false, now(), now())");
+    }
+
+    // library_id points at a real library, but organization_id on the document does not match
+    // that library's organization_id - the exact cross-tenant mismatch
+    // fk_documents_library_organization exists to reject at the database level, not just in
+    // application code.
+    assertThatThrownBy(
+            () ->
+                insertDocumentWithExplicitLibrary(
+                    UUID.randomUUID(),
+                    "cross-org.pdf",
+                    libraryInOtherOrganization.toString(),
+                    SEEDED_ORGANIZATION_ID))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_documents_library_organization");
+  }
+
+  private void applyChangelog012() throws Exception {
+    Liquibase liquibase =
+        new Liquibase(
+            "db/changelog/changes/012-knowledge-libraries.yaml",
+            new ClassLoaderResourceAccessor(),
+            database);
+    liquibase.update(new Contexts());
+    connection.setAutoCommit(true);
+  }
+
+  /**
+   * Applies only the {@code lib-schema}-context changeSets (table creation, system library seed,
+   * nullable column addition) - simulates a migration run interrupted before the backfill. See the
+   * context labels documented at the top of 012-knowledge-libraries.yaml.
+   */
+  private void applySchemaOnlyChangelog012() throws Exception {
+    Liquibase liquibase =
+        new Liquibase(
+            "db/changelog/changes/012-knowledge-libraries.yaml",
+            new ClassLoaderResourceAccessor(),
+            database);
+    liquibase.update(new Contexts("lib-schema"));
+    connection.setAutoCommit(true);
+  }
+
+  /**
+   * Applies every changeSet not yet recorded in DATABASECHANGELOG - an empty {@link Contexts}
+   * matches all changeSets regardless of their {@code context} attribute, so this resumes exactly
+   * where {@link #applySchemaOnlyChangelog012()} left off (the schema changeSets are skipped as
+   * already-applied; only the backfill and enforcement changeSets actually run).
+   */
+  private void resumeChangelog012() throws Exception {
+    applyChangelog012();
+  }
+
+  private void insertOrganization(UUID id) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO organizations (id, name, created_at) VALUES ('"
+              + id
+              + "', 'Org "
+              + id
+              + "', now()) ON CONFLICT (id) DO NOTHING");
+    }
+  }
+
+  private void insertLibrary(
+      UUID id,
+      String ownerType,
+      UUID ownerUserId,
+      UUID ownerGroupId,
+      String visibility,
+      boolean listed,
+      boolean personal)
+      throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO knowledge_libraries "
+              + "(id, organization_id, name, owner_type, owner_user_id, owner_group_id,"
+              + " visibility, listed, personal, created_at, updated_at) VALUES ('"
+              + id
+              + "', '"
+              + SEEDED_ORGANIZATION_ID
+              + "', 'Bibliothek "
+              + id
+              + "', '"
+              + ownerType
+              + "', "
+              + (ownerUserId == null ? "NULL" : "'" + ownerUserId + "'")
+              + ", "
+              + (ownerGroupId == null ? "NULL" : "'" + ownerGroupId + "'")
+              + ", '"
+              + visibility
+              + "', "
+              + listed
+              + ", "
+              + personal
+              + ", now(), now())");
+    }
+  }
+
+  private UUID insertUser(UUID id) throws SQLException {
+    return insertUser(id, SEEDED_ORGANIZATION_ID);
+  }
+
+  private UUID insertUser(UUID id, String organizationId) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO users (id, subject, issuer, system_role, organization_id, created_at) "
+              + "VALUES ('"
+              + id
+              + "', '"
+              + id
+              + "', 'test-issuer', 'USER', '"
+              + organizationId
+              + "', now())");
+    }
+    return id;
+  }
+
+  private UUID insertGroup(UUID id) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO groups (id, organization_id, kind, name, created_at, updated_at) "
+              + "VALUES ('"
+              + id
+              + "', '"
+              + SEEDED_ORGANIZATION_ID
+              + "', 'AD_HOC', 'Gruppe "
+              + id
+              + "', now(), now())");
+    }
+    return id;
+  }
+
+  private void insertDocument(UUID id, String fileName) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO documents (id, file_name, file_path, status, source_type) VALUES ('"
+              + id
+              + "', '"
+              + fileName
+              + "', '/tmp/"
+              + fileName
+              + "', 'INDEXED', 'FILESYSTEM')");
+    }
+  }
+
+  private void insertDocumentWithExplicitLibrary(
+      UUID id, String fileName, String libraryId, String organizationId) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
+              + " organization_id) VALUES ('"
+              + id
+              + "', '"
+              + fileName
+              + "', '/tmp/"
+              + fileName
+              + "', 'INDEXED', 'FILESYSTEM', "
+              + (libraryId == null ? "NULL" : "'" + libraryId + "'")
+              + ", "
+              + (organizationId == null ? "NULL" : "'" + organizationId + "'")
+              + ")");
+    }
+  }
+
+  private long countRows(String table) throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery("SELECT count(*) FROM " + table)) {
+      rs.next();
+      return rs.getLong(1);
+    }
+  }
+
+  private String columnValue(String table, String column, String id) throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT " + column + " FROM " + table + " WHERE id = '" + id + "'")) {
+      rs.next();
+      return rs.getString(1);
+    }
+  }
+
+  private String columnValueOrNull(String table, String column, String id) throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT " + column + " FROM " + table + " WHERE id = '" + id + "'")) {
+      rs.next();
+      String value = rs.getString(1);
+      return rs.wasNull() ? null : value;
+    }
+  }
+}

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
@@ -48,6 +49,7 @@ class SpaceRepositoryTest {
 
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private SpaceMembershipRepository spaceMembershipRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
 
@@ -62,6 +64,13 @@ class SpaceRepositoryTest {
     // it again in tearDown() - see tearDown() below.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
+    // - a leftover personal library from another test class sharing this context (e.g.
+    // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
+    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user. Never
+    // touches the one seeded SYSTEM library.
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
@@ -73,6 +82,8 @@ class SpaceRepositoryTest {
     // Organization.DEFAULT_ID or organizations created by other tests sharing this context.
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
     userRepository.deleteAll();
     organizationRepository.deleteById(org);
   }

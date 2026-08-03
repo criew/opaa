@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -109,6 +111,12 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
     assertThat(documents).allMatch(d -> d.getChecksum() != null && d.getChecksum().length() == 64);
+    // #201: every document belongs to exactly one library - against the real Liquibase schema,
+    // not just the mocked FileProcessingServiceTest, so a missing fk_documents_library_organization
+    // constraint or a NULL library_id would fail this insert, not just this assertion.
+    assertThat(documents)
+        .allMatch(d -> KnowledgeLibrary.SYSTEM_LIBRARY_ID.equals(d.getLibraryId()));
+    assertThat(documents).allMatch(d -> Organization.DEFAULT_ID.equals(d.getOrganizationId()));
 
     // Verify chunks with embeddings were stored in vector_store
     List<org.springframework.ai.document.Document> results =
@@ -117,6 +125,15 @@ class DocumentIndexingIntegrationTest {
     assertThat(results).isNotEmpty();
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
     assertThat(results).allMatch(r -> r.getMetadata().containsKey("document_id"));
+    assertThat(results)
+        .allMatch(
+            r ->
+                KnowledgeLibrary.SYSTEM_LIBRARY_ID
+                    .toString()
+                    .equals(r.getMetadata().get("library_id")));
+    assertThat(results)
+        .allMatch(
+            r -> Organization.DEFAULT_ID.toString().equals(r.getMetadata().get("organization_id")));
   }
 
   @Test
@@ -189,6 +206,7 @@ class DocumentIndexingIntegrationTest {
     Document initialDoc = documentRepository.findAll().getFirst();
     assertThat(initialDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(initialDoc.getChecksum()).isNotNull();
+    assertThat(initialDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
 
     // Update file and re-index
     Files.writeString(sharedTempDir.resolve("doc.txt"), "Updated content with more text.");
@@ -205,6 +223,8 @@ class DocumentIndexingIntegrationTest {
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
     assertThat(reindexedDoc.getChecksum()).isNotEqualTo(initialDoc.getChecksum());
+    // #201 acceptance criteria: re-indexing keeps the library assignment.
+    assertThat(reindexedDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
 
     // Verify chunk text was updated via similarity search
     List<org.springframework.ai.document.Document> newResults =

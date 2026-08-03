@@ -1,6 +1,8 @@
 package io.opaa.indexing;
 
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,6 +66,8 @@ public class FileProcessingService {
     long fileSize = Files.size(file);
 
     var doc = new Document(fileName, filePath, contentType, fileSize);
+    doc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    doc.setOrganizationId(Organization.DEFAULT_ID);
     doc = documentRepository.save(doc);
 
     try {
@@ -138,6 +142,8 @@ public class FileProcessingService {
     var doc =
         new Document(
             fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.HTTP_DIRECTORY);
+    doc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    doc.setOrganizationId(Organization.DEFAULT_ID);
     doc = documentRepository.save(doc);
 
     try {
@@ -175,6 +181,12 @@ public class FileProcessingService {
 
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
+    // library_id and organization_id are the filter axis the permission-aware vector search
+    // (#202) filters on - carried on every chunk, not just the document row, so that search can
+    // apply the filter directly in the VectorStore query without a join back to the relational
+    // model (see docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Both are
+    // currently always the single system library / the single seeded organization - see the
+    // Javadoc on Document#libraryId.
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
             .map(
@@ -185,7 +197,9 @@ public class FileProcessingService {
                       Map.of(
                           "document_id", document.getId().toString(),
                           "chunk_index", index,
-                          "file_name", document.getFileName()));
+                          "file_name", document.getFileName(),
+                          "library_id", document.getLibraryId().toString(),
+                          "organization_id", document.getOrganizationId().toString()));
                 })
             .toList();
 

@@ -47,6 +47,27 @@ public class Document {
   @Column(name = "last_modified_remote", length = 64)
   private String lastModifiedRemote;
 
+  /**
+   * The knowledge library this document belongs to (#201) - every document belongs to exactly one
+   * library, enforced as {@code NOT NULL} with {@code fk_documents_library} once migration 012's
+   * backfill has run. Not part of the constructors (unlike {@code fileName}/{@code filePath}):
+   * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
+   * are set, because the indexing pipeline currently always targets the single well-known system
+   * library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}) - see {@code
+   * FileProcessingService}. Selecting a target library per upload or connector source is #207.
+   */
+  @Column(name = "library_id")
+  private UUID libraryId;
+
+  /**
+   * The organization the {@link #libraryId} library belongs to, denormalized onto the document
+   * (#201) so the permission-aware vector search (#202) can filter chunks by organization without a
+   * join back to {@code knowledge_libraries} - see the same reasoning on {@code
+   * FileProcessingService#storeChunks}. Set together with {@link #libraryId}, never independently.
+   */
+  @Column(name = "organization_id")
+  private UUID organizationId;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -134,5 +155,21 @@ public class Document {
 
   public void setLastModifiedRemote(String lastModifiedRemote) {
     this.lastModifiedRemote = lastModifiedRemote;
+  }
+
+  public UUID getLibraryId() {
+    return libraryId;
+  }
+
+  public void setLibraryId(UUID libraryId) {
+    this.libraryId = libraryId;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(UUID organizationId) {
+    this.organizationId = organizationId;
   }
 }

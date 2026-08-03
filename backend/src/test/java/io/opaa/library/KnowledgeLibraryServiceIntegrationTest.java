@@ -1,0 +1,362 @@
+package io.opaa.library;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.opaa.TestcontainersConfiguration;
+import io.opaa.api.dto.LibraryRequest;
+import io.opaa.api.dto.LibraryResponse;
+import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.group.Group;
+import io.opaa.group.GroupKind;
+import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupMembershipResolver;
+import io.opaa.group.GroupRepository;
+import io.opaa.group.GroupService;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.server.ResponseStatusException;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+/**
+ * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
+ * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288
+ * and {@code SpaceServiceIntegrationTest}, whose pattern this class follows. Every owner id used
+ * here is a real, persisted {@link User} or {@link Group}, because {@code
+ * fk_knowledge_libraries_owner_user} and {@code fk_knowledge_libraries_owner_group_organization}
+ * (migration 012) are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
+ *
+ * <p>{@link #groupOwnedLibraryIsVisibleToGroupMembersButNotToTheCallerAfterLeavingTheGroup()} is
+ * the mechanism-interaction test: it exercises group ownership together with {@link
+ * GroupMembershipResolver}'s cache invalidation, not either in isolation - a regression that reads
+ * group membership correctly but forgets to invalidate the cache after a membership change would
+ * still pass a test that only checks membership once.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfiguration.class)
+@ActiveProfiles({"local", "basic"})
+@TestPropertySource(
+    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
+@Testcontainers(disabledWithoutDocker = true)
+class KnowledgeLibraryServiceIntegrationTest {
+
+  @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private GroupService groupService;
+  @Autowired private GroupRepository groupRepository;
+  @Autowired private UserRepository userRepository;
+  @Autowired private OrganizationRepository organizationRepository;
+
+  private UUID organizationA;
+  private UUID organizationB;
+
+  // This Spring context (and its Postgres container) is shared with other integration test
+  // classes carrying the identical @SpringBootTest/@Import/@ActiveProfiles/@TestPropertySource
+  // combination (Spring caches the context) - some of those classes (e.g.
+  // UserServicePersonalSpaceIntegrationTest) have no @AfterEach and leave Space rows behind that
+  // reference their users. A blanket userRepository.deleteAll() here would then fail on
+  // fk_spaces_owner for a user this test never created. Every user, group and non-system library
+  // this class creates is tracked here instead and removed by id in tearDown() - precise cleanup
+  // that never touches another test class's rows, mirroring the caution
+  // SpaceRepositoryTest/SpaceServiceIntegrationTest apply to Organization.DEFAULT_ID but extended
+  // to every row this class did not itself create.
+  private final List<UUID> createdUserIds = new ArrayList<>();
+  private final List<UUID> createdGroupIds = new ArrayList<>();
+
+  @BeforeEach
+  void setUp() {
+    createdUserIds.clear();
+    createdGroupIds.clear();
+    organizationA =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
+    organizationB =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org B")).getId();
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Libraries first (they reference users/groups, not the other way round), then groups, then
+    // users, then the two throwaway organizations.
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream()
+            .filter(
+                l ->
+                    !l.isSystemLibrary()
+                        && (createdUserIds.contains(l.getOwnerUserId())
+                            || createdGroupIds.contains(l.getOwnerGroupId())))
+            .toList());
+    for (UUID groupId : createdGroupIds) {
+      groupRepository.deleteById(groupId);
+    }
+    for (UUID userId : createdUserIds) {
+      userRepository.deleteById(userId);
+    }
+    organizationRepository.deleteById(organizationA);
+    organizationRepository.deleteById(organizationB);
+  }
+
+  private UUID createUser(UUID organizationId) {
+    User user =
+        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+    user.setOrganizationId(organizationId);
+    UUID id = userRepository.save(user).getId();
+    createdUserIds.add(id);
+    return id;
+  }
+
+  private Group createGroup(UUID organizationId, UUID... memberIds) {
+    Group group =
+        new Group(organizationId, GroupKind.AD_HOC, "Referat", "Ad-hoc-Gruppe", null, null);
+    for (UUID memberId : memberIds) {
+      group.addMembership(new GroupMembership(memberId, organizationId));
+    }
+    Group saved = groupRepository.save(group);
+    createdGroupIds.add(saved.getId());
+    return saved;
+  }
+
+  @Test
+  void createLibraryDefaultsToUserOwnershipAndPrivateVisibility() {
+    UUID owner = createUser(organizationA);
+    LibraryRequest request = new LibraryRequest("Rechtsquellen Soziales");
+
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    assertThat(response.getOwnerType()).isEqualTo(LibraryOwnerType.USER);
+    assertThat(response.getOwnerId()).isEqualTo(owner);
+    assertThat(response.getVisibility()).isEqualTo(LibraryVisibility.PRIVATE);
+    assertThat(response.getListed()).isFalse();
+    assertThat(response.getPersonal()).isFalse();
+  }
+
+  @Test
+  void createLibraryRejectsCallerSuppliedSystemOwnerType() {
+    UUID owner = createUser(organizationA);
+    LibraryRequest request = new LibraryRequest("Verboten").ownerType(LibraryOwnerType.SYSTEM);
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createGroupOwnedLibraryRequiresCallerToBeAMemberOfThatGroup() {
+    UUID member = createUser(organizationA);
+    UUID outsider = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+
+    LibraryRequest asMember =
+        new LibraryRequest("Rechtsquellen Soziales")
+            .ownerType(LibraryOwnerType.GROUP)
+            .ownerId(group.getId());
+    LibraryResponse response = libraryService.createLibrary(asMember, member);
+    assertThat(response.getOwnerType()).isEqualTo(LibraryOwnerType.GROUP);
+    assertThat(response.getOwnerId()).isEqualTo(group.getId());
+
+    LibraryRequest asOutsider =
+        new LibraryRequest("Zweiter Versuch")
+            .ownerType(LibraryOwnerType.GROUP)
+            .ownerId(group.getId());
+    assertThatThrownBy(() -> libraryService.createLibrary(asOutsider, outsider))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void createGroupOwnedLibraryTreatsAGroupFromAnotherOrganizationAsNotFound() {
+    UUID caller = createUser(organizationA);
+    UUID otherOrgMember = createUser(organizationB);
+    Group groupInOtherOrg = createGroup(organizationB, otherOrgMember);
+
+    LibraryRequest request =
+        new LibraryRequest("Fremde Organisation")
+            .ownerType(LibraryOwnerType.GROUP)
+            .ownerId(groupInOtherOrg.getId());
+
+    // 404, not 403 - a caller must not be able to distinguish "no such group" from "group in
+    // another organization" (#199's lesson for foreign ids in a request body).
+    assertThatThrownBy(() -> libraryService.createLibrary(request, caller))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void getLibraryTreatsALibraryFromAnotherOrganizationAsNotFoundEvenForASystemAdmin() {
+    UUID ownerInA = createUser(organizationA);
+    UUID adminInB = createUser(organizationB);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Bibliothek A"), ownerInA);
+
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), adminInB, true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void organizationWideVisibilityGrantsReadButNotManageToOtherOrganizationMembers() {
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen").visibility(LibraryVisibility.ORGANIZATION), owner);
+
+    // Read succeeds for any member of the same organization once visibility is ORGANIZATION.
+    LibraryResponse read = libraryService.getLibrary(library.getId(), otherMember, false);
+    assertThat(read.getId()).isEqualTo(library.getId());
+
+    // Organization-wide visibility grants read, not manage - only the owner (or a group member,
+    // or a system admin) may update.
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), otherMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void systemLibraryIsReadableOnlyBySystemAdminsRegardlessOfVisibility() {
+    KnowledgeLibrary systemLibrary =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    UUID regularUser = createUser(systemLibrary.getOrganizationId());
+    UUID systemAdmin = createUser(systemLibrary.getOrganizationId());
+
+    assertThatThrownBy(
+            () -> libraryService.getLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, regularUser, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+
+    LibraryResponse response =
+        libraryService.getLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, systemAdmin, true);
+    assertThat(response.getId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+  }
+
+  @Test
+  void systemLibraryAndPersonalLibraryCannotBeDeletedEvenByASystemAdmin() {
+    KnowledgeLibrary systemLibrary =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    UUID admin = createUser(systemLibrary.getOrganizationId());
+
+    assertThatThrownBy(
+            () -> libraryService.deleteLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, admin, true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+
+    libraryService.ensurePersonalLibrary(admin, systemLibrary.getOrganizationId());
+    List<KnowledgeLibrary> personalLibraries =
+        libraryRepository.findByOrganizationIdAndOwnerUserId(
+            systemLibrary.getOrganizationId(), admin);
+    assertThat(personalLibraries).hasSize(1);
+
+    assertThatThrownBy(
+            () -> libraryService.deleteLibrary(personalLibraries.getFirst().getId(), admin, true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void groupOwnedLibraryIsVisibleToGroupMembersButNotToTheCallerAfterLeavingTheGroup() {
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales")
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId()),
+            member);
+
+    // Membership grants access.
+    LibraryResponse read = libraryService.getLibrary(library.getId(), member, false);
+    assertThat(read.getId()).isEqualTo(library.getId());
+
+    // Removing the membership through the real GroupService (not a raw repository update) is the
+    // point of this test: GroupService#removeMember evicts GroupMembershipResolver's per-user
+    // cache entry after its own transaction commits (see GroupService#invalidateAfterCommit).
+    // KnowledgeLibraryService reads group membership exclusively through that same resolver
+    // (isOwnerOrGroupMember -> GroupMembershipResolver#groupIdsForUser), so this proves the two
+    // classes are wired to the same cache instance and that the eviction actually reaches it - a
+    // raw repository update bypassing GroupService would leave the resolver's cache stale and
+    // make this assertion pass for the wrong reason (a cache that was never populated) or fail
+    // where it should not.
+    groupService.removeMember(group.getId(), member, member);
+
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), member, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void savingALibraryWithANonExistentOwnerUserFailsInsteadOfSilentlyPersisting() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationA,
+            "Ghost",
+            "Owner does not exist",
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            false);
+
+    assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_knowledge_libraries_owner_user");
+  }
+
+  @Test
+  void savingALibraryWithANonExistentOwnerGroupFailsInsteadOfSilentlyPersisting() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByGroup(
+            organizationA,
+            "Ghost",
+            "Owner group does not exist",
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false);
+
+    assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_knowledge_libraries_owner_group_organization");
+  }
+}
