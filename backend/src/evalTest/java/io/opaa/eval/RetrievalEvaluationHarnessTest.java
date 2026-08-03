@@ -180,6 +180,26 @@ class RetrievalEvaluationHarnessTest {
 
   @BeforeAll
   static void pullEmbeddingModel() throws IOException, InterruptedException {
+    // Check the (local, in-container) /api/tags endpoint before pulling anything. If the model is
+    // already present with exactly the expected digest — the common case on a warm
+    // OLLAMA_MODEL_VOLUME, whether on a developer machine or restored from the CI cache (see
+    // .github/workflows/retrieval-regression.yml) — skip 'ollama pull' entirely. Without this
+    // check, 'ollama pull' always reaches out to the model registry to resolve the tag's manifest
+    // even when every layer is already cached locally, which contradicted this harness's claim
+    // (eval/README.md, ADR-0011) of running without third-party network access on a warm cache
+    // (PR #301 review, Befund 5). GET /api/tags itself never leaves the Docker network — it talks
+    // to the Ollama container this test just started, not to any third party.
+    String cachedDigest = tryFetchEmbeddingModelDigest();
+    if (cachedDigest != null && EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(cachedDigest)) {
+      log.info(
+          "{} already present in the Ollama Testcontainer with the expected digest {} — skipping "
+              + "'ollama pull' (no third-party network access needed).",
+          EMBEDDING_MODEL,
+          cachedDigest);
+      actualEmbeddingModelDigest = cachedDigest;
+      return;
+    }
+
     log.info(
         "Pulling {} into the Ollama Testcontainer (cached in the '{}' Docker volume after the "
             + "first run)...",
@@ -207,6 +227,19 @@ class RetrievalEvaluationHarnessTest {
               + "evaluateRetrieval run, updated numbers in the PR), not a code bug.");
     }
     log.info("Embedding model digest verified: {}", actualEmbeddingModelDigest);
+  }
+
+  /**
+   * Like {@link #fetchEmbeddingModelDigest()}, but {@code null} instead of throwing when the tag is
+   * not present in the container yet (fresh/empty volume) — the expected case on the very first
+   * run.
+   */
+  private static String tryFetchEmbeddingModelDigest() throws IOException, InterruptedException {
+    try {
+      return fetchEmbeddingModelDigest();
+    } catch (IllegalStateException e) {
+      return null;
+    }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

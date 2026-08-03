@@ -114,8 +114,14 @@ public final class ReportWriter {
   private static void appendMetricLine(StringBuilder sb, MetricsAggregate a) {
     sb.append(
         format(
-            "HitRate@5=%.3f  MRR=%.3f  nDCG@10=%.3f  Recall@10=%.3f (Obergrenze=%.3f)\n",
-            a.hitRateAt5(), a.mrr(), a.ndcgAt10(), a.recallAt10(), a.recallAt10Ceiling()));
+            "HitRate@5=%.3f  MRR=%.3f  nDCG@10=%.3f  Recall@10=%.3f (Obergrenze=%.3f, "
+                + "distinct=%d)\n",
+            a.hitRateAt5(),
+            a.mrr(),
+            a.ndcgAt10(),
+            a.recallAt10(),
+            a.recallAt10Ceiling(),
+            a.distinctExpectedDocumentSets()));
   }
 
   private static String shortHash(String hash) {

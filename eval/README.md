@@ -167,8 +167,16 @@ zu interpretieren.
 
 ### Baseline und CI
 
-Dieses Issue (#227) liefert den Harness und die erstmals gemessenen Zahlen. Eine feste Baseline,
-Schwellenwerte und die CI-Anbindung (nächtlich auf `main`, per Label an einem PR) folgen in #228.
+Issue #227 lieferte den Harness und die erstmals gemessenen Zahlen. Issue #228 hat darauf die feste
+Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
+
+- Baseline und Update-Verfahren: [`eval/baseline/README.md`](baseline/README.md).
+- CI-Workflow: [`.github/workflows/retrieval-regression.yml`](../.github/workflows/retrieval-regression.yml)
+  — nächtlich auf `main`, manuell über `workflow_dispatch` und per Label `evaluation` an einem Pull
+  Request; niemals bei jedem Pull Request automatisch.
+- Vergleichslogik: `io.opaa.eval.BaselineComparator`, ausgeführt über den Gradle-Task
+  `checkRetrievalBaseline` (führt `evaluateRetrieval` aus und vergleicht das Ergebnis anschließend
+  gegen `eval/baseline/comic-characters.json`).
 
 ### Messvertrag
 

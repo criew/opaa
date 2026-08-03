@@ -1,0 +1,309 @@
+name: Retrieval-Regression
+
+# Bewusst NICHT bei jedem Pull Request (siehe docs/features/search-quality-evaluation.md,
+# "Auslösung", und ADR-0011, Entscheidung 5): der Lauf zieht ein Ollama-Modell und indiziert rund
+# 1.450 Dokumente über die echte Chunking-/Embedding-Pipeline, das dauert mehrere Minuten selbst mit
+# warmem Modell-Cache (siehe eval/README.md) und würde jeden PR-Push unnötig verlangsamen.
+on:
+  schedule:
+    # Post-merge QA loop, wie in .github/workflows/e2e.yml — ein anderer Zeitpunkt (2:11 statt
+    # 3:17 UTC) verhindert, dass beide teuren nächtlichen Jobs gleichzeitig um denselben
+    # Runner/Docker-Netzwerk-Zugriff konkurrieren.
+    - cron: '11 2 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    types: [labeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  # PR #301 review, Befund 2: a workflow-level concurrency group keyed only on the PR number
+  # cancelled an in-flight 'evaluation'-labeled run whenever *any other* label was added to the
+  # same PR afterwards, because both runs shared the same group and cancel-in-progress killed the
+  # earlier one before its job-level `if` (below) ever got a chance to skip the irrelevant one.
+  # Including the event name and the label name in the group key means only a genuine re-trigger
+  # of the *same* event (e.g. the 'evaluation' label removed and re-added) shares a group; a
+  # different label, workflow_dispatch and schedule never collide with each other or with a
+  # legitimate 'evaluation' run. cancel-in-progress stays false: a 17-minute run that used to be
+  # this specific key is worth letting finish, not killing pre-emptively.
+  group: retrieval-regression-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    # Bei PR-Auslösung nur reagieren, wenn das Label tatsächlich 'evaluation' ist (jedes andere
+    # Label auf demselben PR löst sonst ebenfalls "labeled" aus und würde den teuren Job unnötig
+    # starten). Läuft dank der eindeutigen Concurrency-Gruppe oben unabhängig von anderen
+    # Label-Events auf demselben PR.
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.label.name == 'evaluation'
+    runs-on: ubuntu-latest
+    # PR #301 review, Befund 6: 20 Minuten gegen eine gemessene evaluateRetrieval-Laufzeit von
+    # ~1004s (~17 min) plus Checkout, Java-Setup, Gradle-Build, Image-Pulls und ggf. einen
+    # ~275-MB-Modell-Pull auf einem kalten Cache ließ praktisch keine Marge. 30 Minuten geben dem
+    # Rest realistisch Raum; das Abnahmekriterium in Issue #228 ("20 Minuten") ist dazu als
+    # bewusste, dokumentierte Abweichung im PR und als Issue-Kommentar festgehalten.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 statt des Default-1: Der Baseline-Absenkungs-Check unten braucht
+          # `git show origin/main:eval/baseline/comic-characters.json`, was bei einem flachen
+          # Checkout des PR-Branches allein nicht auflösbar ist.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/**/*.gradle*', 'backend/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
+      # container (see its OLLAMA_MODEL_VOLUME javadoc). On a developer machine this volume
+      # survives across runs; on GitHub's ephemeral runners it does not, so every scheduled run
+      # would otherwise re-pull the ~275 MB model. actions/cache round-trips the volume's content
+      # as a tar file instead: the pull only happens once per model digest (see the cache key
+      # below), and every subsequent run restores it from GitHub's cache. Combined with
+      # RetrievalEvaluationHarnessTest now skipping 'ollama pull' entirely once the expected digest
+      # is already present locally (see its pullEmbeddingModel() javadoc), a warm cache run makes
+      # no third-party network call at all.
+      #
+      # The cache key is pinned to the exact expected digest
+      # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST), not just the tag: a
+      # deliberate model re-pin changes the digest constant, which changes this key, which means a
+      # stale cache for the old model is never silently reused.
+      - name: Restore Ollama model cache
+        id: ollama-cache
+        uses: actions/cache@v4
+        with:
+          path: ollama-model-cache.tar
+          key: ollama-model-nomic-embed-text-v1.5-0a109f42
+
+      - name: Seed Docker volume from cache
+        if: steps.ollama-cache.outputs.cache-hit == 'true'
+        run: |
+          docker volume create opaa-eval-ollama-models
+          docker run --rm \
+            -v opaa-eval-ollama-models:/root/.ollama \
+            -v "${{ github.workspace }}":/backup \
+            alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
+
+      - name: Retrieval-Regression ausführen
+        working-directory: backend
+        run: ./gradlew checkRetrievalBaseline
+
+      # PR #301 review, Befund 3: this used to run unconditionally (always()) with a fixed cache
+      # key. actions/cache keys are immutable — if an earlier step failed before (or during) the
+      # Ollama model pull, this step would have exported an empty/partial volume, and that content
+      # would then have been saved under the fixed key *permanently*: every subsequent run would
+      # report a cache hit, seed nothing useful, and still re-pull the 275 MB anyway, forever,
+      # without anyone noticing. The size check below only ever populates the cache-eligible tar
+      # file when the volume plausibly contains a real model (~275 MB); otherwise it leaves no file
+      # at the cache path, so actions/cache's own post-job save simply has nothing to cache this
+      # run — no corruption, just a retry (with a real network pull) next time.
+      - name: Docker-Volume für den Cache exportieren
+        if: always()
+        run: |
+          if docker volume inspect opaa-eval-ollama-models >/dev/null 2>&1; then
+            size=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
+              du -sb /root/.ollama 2>/dev/null | cut -f1 || echo 0)
+            echo "Ollama-Volume-Größe: ${size:-0} Bytes"
+            if [ "${size:-0}" -gt 150000000 ]; then
+              docker run --rm \
+                -v opaa-eval-ollama-models:/root/.ollama \
+                -v "${{ github.workspace }}":/backup \
+                alpine sh -c "tar cf /backup/ollama-model-cache.tar -C /root/.ollama ."
+            else
+              echo "Volume zu klein (oder fehlt) für einen gültigen Modell-Cache — Export übersprungen, um den Cache-Schlüssel nicht dauerhaft zu vergiften."
+            fi
+          else
+            echo "Docker-Volume opaa-eval-ollama-models existiert nicht — Export übersprungen."
+          fi
+
+      - name: Baseline von main laden (nur PR-Lauf)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1
+          mkdir -p backend/build/eval-reports
+          git show origin/main:eval/baseline/comic-characters.json > /tmp/main-baseline.json
+
+      # ADR-0013, Entscheidung 6: eine Baseline-Absenkung soll sichtbar sein, nicht nur prozedural
+      # über eval/baseline/README.md gehofft. Rein informativ (Exit-Code immer 0) — die eigentliche
+      # Kontrolle bleibt der Review, siehe Docstring von diff_baseline.py.
+      - name: Baseline-Absenkung gegenüber main prüfen (nur PR-Lauf)
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 eval/baseline/diff_baseline.py \
+            --main /tmp/main-baseline.json \
+            --pr eval/baseline/comic-characters.json \
+            --output backend/build/eval-reports/baseline-diff-vs-main.md \
+            --main-ref main \
+            --pr-ref "${{ github.head_ref }}"
+
+      - name: Report der Job-Zusammenfassung hinzufügen
+        if: always()
+        run: |
+          if [ -f backend/build/eval-reports/baseline-comparison.md ]; then
+            cat backend/build/eval-reports/baseline-comparison.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f backend/build/eval-reports/baseline-diff-vs-main.md ]; then
+            cat backend/build/eval-reports/baseline-diff-vs-main.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Report als Artefakt hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retrieval-metrics
+          path: |
+            backend/build/eval-reports/retrieval-metrics.json
+            backend/build/eval-reports/baseline-comparison.md
+            backend/build/eval-reports/baseline-diff-vs-main.md
+          if-no-files-found: warn
+          retention-days: 90
+
+      # Bei Auslösung per PR-Label: Ergebnis als PR-Kommentar mit Delta-Tabelle (Issue #228,
+      # Umfang), plus die Baseline-Diff-Tabelle gegenüber main. Läuft unabhängig davon, ob der
+      # vorige Schritt bestanden hat oder nicht — genau dann ist der Kommentar am wichtigsten.
+      # continue-on-error (PR #301 review, Befund 5): löst ein Fork den Lauf aus, ist das
+      # Standard-GITHUB_TOKEN schreibgeschützt und dieser Schritt scheitert mit 403 — das darf den
+      # eigentlichen Retrieval-Befund (vorheriger Schritt) nicht überdecken.
+      - name: Delta-Tabelle als PR-Kommentar posten
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparisonPath = 'backend/build/eval-reports/baseline-comparison.md';
+            const diffPath = 'backend/build/eval-reports/baseline-diff-vs-main.md';
+
+            let body;
+            if (!fs.existsSync(comparisonPath)) {
+              body = '## Retrieval-Regression gegen Baseline\n\nDer Lauf hat keinen Report ' +
+                'erzeugt (vermutlich vor der Baseline-Prüfung abgebrochen) — siehe die ' +
+                'Workflow-Logs für Details.';
+            } else {
+              body = fs.readFileSync(comparisonPath, 'utf8');
+              if (fs.existsSync(diffPath)) {
+                body += '\n\n' + fs.readFileSync(diffPath, 'utf8');
+              }
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # Nächtlicher/manueller Lauf hat kein PR, das einen Fehlschlag sichtbar macht — ohne diesen
+      # Schritt wäre ein Regressionsfund für niemanden sichtbar, bis zufällig jemand in die
+      # Actions-Läufe schaut. Sucht ein offenes, mit dem festen Marker versehenes Issue und
+      # kommentiert es, statt bei jedem nächtlichen Fehlschlag ein weiteres Duplikat anzulegen oder
+      # (PR #301 review) eine bereits vorhandene Analyse im Body zu überschreiben.
+      #
+      # `if: failure() || cancelled()` statt nur `failure()` (Befund 6): Ein Abbruch durch
+      # `timeout-minutes` markiert den Job als cancelled, nicht als failed — `failure()` allein
+      # hätte einen reinen Timeout-Fehlschlag lautlos durchrutschen lassen, ohne Alarm-Issue und
+      # ohne Artefakt-Hinweis.
+      - name: Fehlschlag als Issue melden (nächtlicher/manueller Lauf)
+        if: (failure() || cancelled()) && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- retrieval-regression-alert -->';
+            const path = 'backend/build/eval-reports/baseline-comparison.md';
+            const details = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_Kein Report ' +
+              'erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder ' +
+              'Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe ' +
+              'Workflow-Logs._';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commentBody = `Erneut fehlgeschlagen: ${runUrl}\n\n${details}`;
+            const issueBody = `${marker}\n\n**Automatischer nächtlicher Retrieval-Regressionslauf ` +
+              `fehlgeschlagen.**\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
+
+            // per_page: 100 statt der 30er-Default-Seite, und ausdrücklicher Ausschluss von Pull
+            // Requests (PR #301 review): listForRepo mit label 'evaluation' liefert auch offene
+            // PRs zurück, weil 'evaluation' zugleich das Auslöser-Label ist — ohne den Filter und
+            // ohne ausreichende Seitengröße könnte das Alarm-Issue von der ersten Seite rutschen
+            // und ein Duplikat entstehen.
+            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'evaluation',
+              per_page: 100,
+            });
+            const existing = issuesAndPrs.find(
+              i => !i.pull_request && i.body && i.body.includes(marker)
+            );
+            if (existing) {
+              // Nur kommentieren, nie den Body überschreiben (PR #301 review) — eine eingetragene
+              // Analyse des Maintainers im Issue-Body wäre sonst beim nächsten Fehlschlag weg.
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Retrieval-Regression erkannt (automatischer Lauf)',
+                body: issueBody,
+                labels: ['evaluation', 'bug'],
+              });
+            }
+
+      # Spiegelbild des vorigen Schritts: schließt/kommentiert das Alarm-Issue automatisch, sobald
+      # ein nächtlicher/manueller Lauf wieder grün ist, statt es als vermeintlich offenes Problem
+      # liegen zu lassen.
+      - name: Alarm-Issue bei erneutem Bestehen schließen
+        if: success() && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- retrieval-regression-alert -->';
+            const { data: issuesAndPrs } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'evaluation',
+              per_page: 100,
+            });
+            // Provenance check (PR #301 review): only ever touch an issue that actually carries
+            // this workflow's own marker — never assume "some open issue labeled evaluation" is
+            // the one this workflow created.
+            const existing = issuesAndPrs.find(
+              i => !i.pull_request && i.body && i.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: 'Der nächtliche Retrieval-Regressionslauf ist wieder grün: ' +
+                  `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }
