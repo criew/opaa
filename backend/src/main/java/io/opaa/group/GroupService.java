@@ -7,6 +7,7 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +35,15 @@ import org.springframework.web.server.ResponseStatusException;
  * the first asset type ({@link io.opaa.library.KnowledgeLibrary}), so {@link #deleteGroup} now has
  * something to check against; a fuller asset model (agents, prompt libraries) in later stages of
  * the epic extends the same check, it does not replace it.
+ *
+ * <p>#202 code review: deleting a group that merely <em>holds a grant</em> - not necessarily owns
+ * anything - must be blocked too, and independently of the ownership check above. {@code
+ * fk_asset_grants_subject_group_organization} (migration 013) is RESTRICT, exactly like {@code
+ * fk_knowledge_libraries_owner_group_organization}; without the check in {@link #deleteGroup}, the
+ * everyday case the feature spec's "Freigabestufen und Auffindbarkeit" describes - "an Abteilung 5
+ * freigeben" is a grant to the group representing Abteilung 5, not ownership - would surface as an
+ * unhandled {@code DataIntegrityViolationException} (HTTP 500) the first time anyone tried to
+ * delete such a group.
  */
 @Service
 @Transactional(readOnly = true)
@@ -46,16 +56,19 @@ public class GroupService {
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
   private final KnowledgeLibraryRepository libraryRepository;
+  private final AssetGrantRepository grantRepository;
 
   public GroupService(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
-      KnowledgeLibraryRepository libraryRepository) {
+      KnowledgeLibraryRepository libraryRepository,
+      AssetGrantRepository grantRepository) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.libraryRepository = libraryRepository;
+    this.grantRepository = grantRepository;
   }
 
   @Transactional
@@ -116,6 +129,13 @@ public class GroupService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "Die Gruppe besitzt noch Bibliotheken und kann nicht geloescht werden");
+    }
+    // #202 code review: a group that merely holds a grant (never owns anything) hits the same
+    // RESTRICT constraint via fk_asset_grants_subject_group_organization - see the class Javadoc.
+    if (grantRepository.existsBySubjectGroupId(groupId)) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht geloescht werden");
     }
 
     List<UUID> affectedUserIds =

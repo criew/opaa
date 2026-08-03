@@ -18,6 +18,8 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +85,8 @@ class AssetGrantServiceTest {
   @Test
   void upsertGrantCreatesADirectUserGrantAndInvalidatesTheLibraryCache() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID subjectId = UUID.randomUUID();
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
     subjectUser.setOrganizationId(organizationId);
@@ -107,6 +111,8 @@ class AssetGrantServiceTest {
   @Test
   void upsertGrantRejectsASubjectUserFromAnotherOrganizationAsNotFound() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID foreignUserId = UUID.randomUUID();
     User foreignUser = new User("foreign", "issuer", "foreign@example.com", "Foreign");
     foreignUser.setOrganizationId(UUID.randomUUID());
@@ -126,6 +132,8 @@ class AssetGrantServiceTest {
   @Test
   void upsertGrantRejectsASubjectGroupFromAnotherOrganizationAsNotFound() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
     Group foreignGroup = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Fremd", null, null, null);
     when(groupRepository.findById(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
@@ -144,6 +152,8 @@ class AssetGrantServiceTest {
   @Test
   void upsertGrantUpdatesAnExistingGrantsRoleInsteadOfCreatingADuplicate() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID subjectId = UUID.randomUUID();
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
     subjectUser.setOrganizationId(organizationId);
@@ -167,6 +177,8 @@ class AssetGrantServiceTest {
   @Test
   void revokeGrantRemovesTheGrantAndInvalidatesTheLibraryCache() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
     AssetGrant grant =
         AssetGrant.forUser(
@@ -182,6 +194,8 @@ class AssetGrantServiceTest {
   @Test
   void revokeGrantTreatsAGrantFromAnotherLibraryAsNotFound() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
     AssetGrant grantOnAnotherLibrary =
         AssetGrant.forUser(
@@ -200,5 +214,162 @@ class AssetGrantServiceTest {
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.NOT_FOUND));
     verify(grantRepository, never()).delete(any());
+  }
+
+  @Test
+  void upsertGrantRejectsGrantingARoleHigherThanTheCallersOwnRole() {
+    // #202 code review (blocker 3): being a MANAGER is enough to grant *some* role, not enough to
+    // grant OWNER - only an OWNER may hand out OWNER, or a MANAGER could grant itself OWNER and
+    // then delete the library or transfer ownership, rights the spec reserves for OWNER alone.
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    AssetGrantRequest request =
+        new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.OWNER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantAllowsGrantingExactlyTheCallersOwnRole() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantRequest request =
+        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+    var response = grantService.upsertGrant(libraryId, request, managerId, false);
+
+    assertThat(response.getRole()).isEqualTo(AssetRole.MANAGER);
+  }
+
+  @Test
+  void upsertGrantRejectsAGrantOnThePersonalLibrary() {
+    KnowledgeLibrary personalLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Meine Dokumente",
+            null,
+            managerId,
+            LibraryVisibility.PRIVATE,
+            false,
+            true);
+    UUID personalLibraryId = personalLibrary.getId();
+    when(libraryRepository.findById(personalLibraryId)).thenReturn(Optional.of(personalLibrary));
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    AssetGrantRequest request =
+        new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(personalLibraryId, request, managerId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsTargetingADissolvedGroup() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    Group dissolvedGroup =
+        new Group(organizationId, GroupKind.AD_HOC, "Aufgeloest", null, null, null);
+    dissolvedGroup.dissolve(Instant.now());
+    when(groupRepository.findById(dissolvedGroup.getId())).thenReturn(Optional.of(dissolvedGroup));
+
+    AssetGrantRequest request =
+        new AssetGrantRequest(
+            PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsDowngradingTheLastActiveOwnerGrant() {
+    // #202 code review (blocker 3, extended to the update path): downgrading the sole active
+    // OWNER grant is exactly as dangerous as revoking it outright - both leave nobody able to
+    // manage the library.
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(libraryId, organizationId, subjectId, AssetRole.OWNER, null, managerId);
+    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
+            libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(onlyOwnerGrant));
+
+    AssetGrantRequest request =
+        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void revokeGrantRejectsRemovingTheLastActiveOwnerGrant() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(onlyOwnerGrant));
+
+    assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    verify(grantRepository, never()).delete(any());
+  }
+
+  @Test
+  void revokeGrantAllowsRemovingAnOwnerGrantWhenAnotherActiveOwnerGrantRemains() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant grantToRemove =
+        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
+    AssetGrant otherOwnerGrant =
+        AssetGrant.forUser(
+            libraryId, organizationId, UUID.randomUUID(), AssetRole.OWNER, null, managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantToRemove));
+    when(grantRepository.findByLibraryId(libraryId))
+        .thenReturn(List.of(grantToRemove, otherOwnerGrant));
+
+    grantService.revokeGrant(libraryId, grantId, managerId, false);
+
+    verify(grantRepository).delete(grantToRemove);
   }
 }

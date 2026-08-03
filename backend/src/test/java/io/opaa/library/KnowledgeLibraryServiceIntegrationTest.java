@@ -8,6 +8,7 @@ import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.SpaceRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -21,6 +22,9 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.space.SpaceKind;
+import io.opaa.space.SpaceRepository;
+import io.opaa.space.SpaceService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -48,15 +52,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * (migration 012) are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
  *
  * <p>{@link
- * #grantingTheOwningGroupAViewerRoleReachesItsMembersAndRevocationTakesEffectImmediately()} and
+ * #aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately()} and
  * {@link #revokingAGrantTakesEffectOnTheNextCall()} are the mechanism-interaction tests (#202):
  * they exercise a group grant together with {@link GroupMembershipResolver}'s cache invalidation,
  * and a direct grant together with {@code LibraryAccessService}'s own per-library grant cache, not
  * either mechanism in isolation - a regression that reads membership or a grant correctly but
  * forgets to invalidate the relevant cache would still pass a test that only checks access once.
- * {@link #creatingAGroupOwnedLibraryDoesNotAutomaticallyGrantOtherGroupMembersAnyAccess()} is the
- * regression guard for the #201 behaviour #202 replaced: mere membership in the owning group used
- * to imply full management rights with no human decision point.
+ * {@link #creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider()} is the
+ * regression guard for the #201 behaviour #202 replaced - see its own Javadoc for why granting
+ * OWNER to the group is the fix, not a reappearance of the #201 bug.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -77,6 +81,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private SpaceService spaceService;
+  @Autowired private SpaceRepository spaceRepository;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -93,11 +99,13 @@ class KnowledgeLibraryServiceIntegrationTest {
   // to every row this class did not itself create.
   private final List<UUID> createdUserIds = new ArrayList<>();
   private final List<UUID> createdGroupIds = new ArrayList<>();
+  private final List<UUID> createdSpaceIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
     createdUserIds.clear();
     createdGroupIds.clear();
+    createdSpaceIds.clear();
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
     organizationB =
@@ -122,6 +130,9 @@ class KnowledgeLibraryServiceIntegrationTest {
       documentRepository.deleteAll(documentRepository.findByLibraryId(library.getId()));
     }
     libraryRepository.deleteAll(ownLibraries);
+    for (UUID spaceId : createdSpaceIds) {
+      spaceRepository.deleteById(spaceId);
+    }
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }
@@ -377,14 +388,24 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void creatingAGroupOwnedLibraryDoesNotAutomaticallyGrantOtherGroupMembersAnyAccess() {
-    // #202 code review of #201/#305: the coarse #201 canRead/canManage let every member of a
-    // group-owned library read and manage it, growing without a human decision point as a
-    // directory-synchronised group's membership grows. LibraryAccessService replaces that: only
-    // the creator (via the explicit OWNER grant KnowledgeLibraryService#createLibrary makes) has
-    // any access at all until a MANAGER explicitly grants the group (or another user) a role.
+  void creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider() {
+    // #202 code review (blocker 4): granting OWNER to the *creator personally* on a GROUP-owned
+    // library was wrong - it left the library owned by an individual in every way that matters
+    // (the migration 013 backfill grants the *group* OWNER for pre-existing libraries, and a
+    // freshly created one must follow the same rule, or the feature spec's leitbeispiel
+    // "Rechtsquellen Soziales" - owner the group "Referat 50 * Grundsatz" - hangs on a grant to
+    // whichever person happened to click "create" the moment they leave). Granting OWNER to the
+    // group instead is not the #201 bug reappearing: unlike the coarse #201 canManage (which
+    // derived rights structurally from the owner columns, with no possible distinction, no
+    // revocation short of deleting the library, and no audit trail), this is one explicit,
+    // revocable AssetGrant row - a MANAGER can downgrade or revoke it at any time via the grant
+    // API, exactly the human decision point #201 lacked. An outsider - not a member of the
+    // owning group at all - still has no access whatsoever, which is the actual invariant #201
+    // broke (mere existence of *a* group somewhere never implies access; only membership in the
+    // group an explicit grant targets does).
     UUID creator = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
+    UUID outsider = createUser(organizationA);
     Group group = createGroup(organizationA, creator, otherMember);
     LibraryResponse library =
         libraryService.createLibrary(
@@ -393,20 +414,17 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .ownerId(group.getId()),
             creator);
 
-    // The creator has access (their explicit OWNER grant), a plain group member does not.
-    LibraryResponse read = libraryService.getLibrary(library.getId(), creator, false);
-    assertThat(read.getId()).isEqualTo(library.getId());
+    // Every current member of the owning group has OWNER access via the single group grant - not
+    // a personal grant to the creator.
+    assertThat(libraryService.getLibrary(library.getId(), creator, false).getId())
+        .isEqualTo(library.getId());
+    assertThat(libraryService.getLibrary(library.getId(), otherMember, false).getId())
+        .isEqualTo(library.getId());
+    libraryService.updateLibrary(
+        library.getId(), new LibraryUpdateRequest("Umbenannt von otherMember"), otherMember, false);
 
-    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), otherMember, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
-    assertThatThrownBy(
-            () ->
-                libraryService.updateLibrary(
-                    library.getId(), new LibraryUpdateRequest("Umbenannt"), otherMember, false))
+    // An outsider - not a member of this group - has no access at all.
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), outsider, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -415,26 +433,25 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void grantingTheOwningGroupAViewerRoleReachesItsMembersAndRevocationTakesEffectImmediately() {
-    UUID creator = createUser(organizationA);
-    UUID otherMember = createUser(organizationA);
-    Group group = createGroup(organizationA, creator, otherMember);
+  void aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately() {
+    // The group-grant counterpart of revokingAGrantTakesEffectOnTheNextCall, using a plain
+    // USER-owned library (not the owning group itself, to keep this test independent of
+    // creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider's concern):
+    // an explicit grant to an ordinary AD_HOC group reaches its current members exactly like a
+    // direct grant would, and losing membership removes access on the next call.
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
     LibraryResponse library =
-        libraryService.createLibrary(
-            new LibraryRequest("Rechtsquellen Soziales")
-                .ownerType(LibraryOwnerType.GROUP)
-                .ownerId(group.getId()),
-            creator);
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
 
-    // The creator (MANAGER via their OWNER grant) explicitly grants the whole group VIEWER - the
-    // human decision point the coarse #201 model was missing.
     grantService.upsertGrant(
         library.getId(),
         new AssetGrantRequest(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
-        creator,
+        owner,
         false);
 
-    LibraryResponse read = libraryService.getLibrary(library.getId(), otherMember, false);
+    LibraryResponse read = libraryService.getLibrary(library.getId(), member, false);
     assertThat(read.getId()).isEqualTo(library.getId());
 
     // Removing the membership through the real GroupService (not a raw repository update) is the
@@ -445,9 +462,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     // reaches it - a raw repository update bypassing GroupService would leave the resolver's
     // cache stale and make this assertion pass for the wrong reason (a cache that was never
     // populated) or fail where it should not.
-    groupService.removeMember(group.getId(), otherMember, creator);
+    groupService.removeMember(group.getId(), member, owner);
 
-    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), otherMember, false))
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), member, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -514,6 +531,31 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(elapsedMillis)
         .as("readableLibraryIds took %dms against a real Postgres schema", elapsedMillis)
         .isLessThan(100);
+  }
+
+  @Test
+  void spaceMembershipAloneGrantsNoAccessToAnyLibraryNotEvenAsSpaceAdmin() {
+    // #202 acceptance criteria, explicit negative test (code review nit 4): "Space membership
+    // alone grants no access to any library." docs/features/spaces-and-assets.md is explicit that
+    // space associations do not appear in the readableLibraries formula at all - this proves it
+    // end to end against the real SpaceService, not just by the absence of wiring between the two
+    // packages. spaceAdmin becomes the space's ADMIN (the highest space role, able to manage
+    // members and settings) purely by creating it - full space authority, zero library authority.
+    UUID libraryOwner = createUser(organizationA);
+    UUID spaceAdmin = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), libraryOwner);
+    var space =
+        spaceService.createSpace(
+            new SpaceRequest("Team Leistungsgewaehrung", SpaceKind.PROJECT), spaceAdmin, false);
+    createdSpaceIds.add(space.getId());
+
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), spaceAdmin, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
   }
 
   @Test

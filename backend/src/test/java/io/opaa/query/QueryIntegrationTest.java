@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -242,6 +243,79 @@ class QueryIntegrationTest {
       assertThat(response.getSources()).isEmpty();
     } finally {
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  @Test
+  void queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem() {
+    // #202 code review (blocker 1): userWithoutAnyGrantSeesNothing alone does not prove the filter
+    // is part of the vector search rather than a post-filter, because an empty readable set short
+    // -circuits before the vector store is ever called (see QueryService#query). This test instead
+    // gives the user a real, non-empty readable set with a second, ungranted library present in
+    // the same store, and asserts on the *count* of results, not just their content: with 6 chunks
+    // in the granted library A and 6 in the ungranted library B, FakeEmbeddingModel returns an
+    // identical embedding for every text (see its Javadoc), so every one of the 12 chunks scores
+    // equally on similarity - a post-filter applied after retrieving topK=5 candidates would
+    // return however many of those 5 happened to come from A (typically 2-3 given 6-vs-6 odds,
+    // never reliably 5), while a filter that is genuinely part of the ANN search - the only way to
+    // guarantee 5 results out of 5 candidates that are all from a library with only 6 members
+    // total - always returns exactly topK results, all from A. See the PR description for the
+    // reproduction: reverting QueryService's filterExpression(...) call turns this test red while
+    // every other test in this class, QueryControllerTest and io.opaa.library.* stay green.
+    UUID ungrantedLibraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, listed, personal, created_at, updated_at)"
+            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, false, now(),"
+            + " now())",
+        ungrantedLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+
+    List<Document> chunks = new ArrayList<>();
+    for (int i = 0; i < 6; i++) {
+      chunks.add(
+          new Document(
+              "Granted content " + i,
+              Map.of(
+                  "file_name",
+                  "a" + i + ".md",
+                  "document_id",
+                  "doc-a-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  libraryId.toString())));
+    }
+    for (int i = 0; i < 6; i++) {
+      chunks.add(
+          new Document(
+              "Unauthorized content " + i,
+              Map.of(
+                  "file_name",
+                  "b" + i + ".md",
+                  "document_id",
+                  "doc-b-" + i,
+                  "chunk_index",
+                  0,
+                  "library_id",
+                  ungrantedLibraryId.toString())));
+    }
+    vectorStore.add(chunks);
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    try {
+      QueryResponse response = queryService.query("Beliebige Frage", null, userId);
+
+      // Exactly topK (5, application.yml default) results, every one of them from the granted
+      // library - the count itself is the assertion that matters (see the comment above).
+      assertThat(response.getSources()).hasSize(5);
+      assertThat(response.getSources())
+          .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
+    } finally {
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
   }
 

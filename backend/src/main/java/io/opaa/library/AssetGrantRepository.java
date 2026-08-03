@@ -73,4 +73,16 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
       @Param("groupIds") Set<UUID> groupIds,
       @Param("organizationId") UUID organizationId,
       @Param("now") Instant now);
+
+  /**
+   * Whether the given group is the subject of any grant, on any library - used by {@code
+   * GroupService#deleteGroup} to reject deleting a group that still holds a grant (#202 code
+   * review: {@code fk_asset_grants_subject_group_organization} is RESTRICT, migration 013, so
+   * without this check the delete would surface as an unhandled {@code
+   * DataIntegrityViolationException} -> HTTP 500). This is deliberately a second, independent check
+   * next to {@code KnowledgeLibraryRepository#existsByOwnerGroupId} (ownership), not a replacement
+   * for it - a group can be both the owner of a library and hold a grant on an unrelated one;
+   * deleting it must be rejected for either reason.
+   */
+  boolean existsBySubjectGroupId(UUID subjectGroupId);
 }

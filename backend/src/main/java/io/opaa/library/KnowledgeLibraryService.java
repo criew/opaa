@@ -103,14 +103,15 @@ public class KnowledgeLibraryService {
     boolean listed = Boolean.TRUE.equals(request.getListed());
 
     KnowledgeLibrary library;
+    Group ownerGroup = null;
     if (ownerType == LibraryOwnerType.GROUP) {
       if (request.getOwnerId() == null) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
-      Group group =
+      ownerGroup =
           requireGroupInOrganization(request.getOwnerId(), currentUser.getOrganizationId());
-      if (!membershipResolver.groupIdsForUser(currentUserId).contains(group.getId())) {
+      if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
         throw new ResponseStatusException(
             HttpStatus.FORBIDDEN,
             "Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen");
@@ -120,7 +121,7 @@ public class KnowledgeLibraryService {
               currentUser.getOrganizationId(),
               normalizedName,
               request.getDescription(),
-              group.getId(),
+              ownerGroup.getId(),
               visibility,
               listed);
     } else {
@@ -136,17 +137,35 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
-    // The creator always becomes explicit OWNER via a grant, regardless of ownerType - see the
-    // class Javadoc for why this replaces deriving management rights from the owner columns
-    // (#202 code review of #201's coarse canManage).
-    grantRepository.save(
-        AssetGrant.forUser(
-            saved.getId(),
-            saved.getOrganizationId(),
-            currentUserId,
-            AssetRole.OWNER,
-            null,
-            currentUserId));
+    // #202 code review (blocker 4): the OWNER grant must follow ownerType, exactly like the
+    // migration 013 backfill does for pre-existing libraries - a GROUP-owned library grants OWNER
+    // to the *group*, not the creator, so a centrally maintained library (the feature spec's
+    // leitbeispiel "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz") survives its
+    // creator's departure instead of hanging on a grant to a person who has since left. The
+    // creator still gets access immediately: membership in ownerGroup (already required above)
+    // resolves through the same group grant via LibraryAccessService#effectiveRole - no separate
+    // personal grant needed, and none is created, so no other member of the group inherits rights
+    // beyond what the group grant itself carries (see the class Javadoc on why mere membership
+    // must never imply management on its own).
+    if (ownerGroup != null) {
+      grantRepository.save(
+          AssetGrant.forGroup(
+              saved.getId(),
+              saved.getOrganizationId(),
+              ownerGroup.getId(),
+              AssetRole.OWNER,
+              null,
+              currentUserId));
+    } else {
+      grantRepository.save(
+          AssetGrant.forUser(
+              saved.getId(),
+              saved.getOrganizationId(),
+              currentUserId,
+              AssetRole.OWNER,
+              null,
+              currentUserId));
+    }
     return toLibraryResponse(saved);
   }
 
