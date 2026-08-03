@@ -25,9 +25,15 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +64,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * and a direct grant together with {@code LibraryAccessService}'s own per-library grant cache, not
  * either mechanism in isolation - a regression that reads membership or a grant correctly but
  * forgets to invalidate the relevant cache would still pass a test that only checks access once.
- * {@link #creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider()} is the
- * regression guard for the #201 behaviour #202 replaced - see its own Javadoc for why granting
- * OWNER to the group is the fix, not a reappearance of the #201 bug.
+ * {@link #creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider()} is
+ * the regression guard for the #201 behaviour #202 replaced - see its own Javadoc for why the group
+ * gets MANAGER (not OWNER, which round 1 of the #202 review tried and round 2 reverted) and the
+ * creator personally gets OWNER.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -388,21 +395,28 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider() {
-    // #202 code review (blocker 4): granting OWNER to the *creator personally* on a GROUP-owned
-    // library was wrong - it left the library owned by an individual in every way that matters
-    // (the migration 013 backfill grants the *group* OWNER for pre-existing libraries, and a
-    // freshly created one must follow the same rule, or the feature spec's leitbeispiel
-    // "Rechtsquellen Soziales" - owner the group "Referat 50 * Grundsatz" - hangs on a grant to
-    // whichever person happened to click "create" the moment they leave). Granting OWNER to the
-    // group instead is not the #201 bug reappearing: unlike the coarse #201 canManage (which
-    // derived rights structurally from the owner columns, with no possible distinction, no
-    // revocation short of deleting the library, and no audit trail), this is one explicit,
-    // revocable AssetGrant row - a MANAGER can downgrade or revoke it at any time via the grant
-    // API, exactly the human decision point #201 lacked. An outsider - not a member of the
-    // owning group at all - still has no access whatsoever, which is the actual invariant #201
-    // broke (mere existence of *a* group somewhere never implies access; only membership in the
-    // group an explicit grant targets does).
+  void creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider() {
+    // #202 code review, two rounds. Round 1 corrected the original bug: granting OWNER to the
+    // *creator personally* on a GROUP-owned library left the library owned by an individual in
+    // every way that matters, so round 1 moved OWNER onto the group instead. Measurement in round
+    // 2 (Befund 2) showed that went a step too far: every current *and future* member of the
+    // owning group automatically became OWNER - able to delete the library and transfer ownership
+    // - growing without a human decision point as a directory-synchronised group's membership
+    // grows (#237), structurally the same defect #201 had, one level up. It was also not
+    // demotable: being the library's only OWNER grant, both the escalation guard
+    // (AssetGrantService#requireCallerCanTouchExistingGrant, once it existed) and the
+    // last-active-OWNER guard permanently protected it - measured as a 409 on both the downgrade
+    // and the revoke path, contradicting the round-1 Javadoc's claim that "a MANAGER can downgrade
+    // or revoke it at any time".
+    //
+    // The settled rule: the group gets MANAGER (sharing, granting roles to others - the actual
+    // day-to-day need behind "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz", surviving
+    // its creator's departure), and the creator personally gets OWNER (delete, transfer
+    // ownership - reserved for a named, accountable person). The known price - OWNER is lost when
+    // its holder leaves - is what #240 (succession instead of blocking) exists to regulate, not
+    // this class. An outsider - not a member of the owning group at all - still has no access
+    // whatsoever, which is the actual invariant #201 broke (mere existence of *a* group somewhere
+    // never implies access; only membership in the group an explicit grant targets does).
     UUID creator = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     UUID outsider = createUser(organizationA);
@@ -414,10 +428,15 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .ownerId(group.getId()),
             creator);
 
-    // Every current member of the owning group has OWNER access via the single group grant - not
-    // a personal grant to the creator.
-    assertThat(libraryService.getLibrary(library.getId(), creator, false).getId())
-        .isEqualTo(library.getId());
+    // The creator personally holds OWNER; other group members hold MANAGER via the group grant.
+    KnowledgeLibrary persistedLibrary = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(accessService.effectiveRole(persistedLibrary, creator, false))
+        .isEqualTo(AssetRole.OWNER);
+    assertThat(accessService.effectiveRole(persistedLibrary, otherMember, false))
+        .isEqualTo(AssetRole.MANAGER);
+
+    // MANAGER (via the group grant) is still enough to read and to manage - rename, change
+    // visibility - the library.
     assertThat(libraryService.getLibrary(library.getId(), otherMember, false).getId())
         .isEqualTo(library.getId());
     libraryService.updateLibrary(
@@ -425,6 +444,25 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     // An outsider - not a member of this group - has no access at all.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), outsider, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+
+    // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
+    // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
+    // that already carries a role higher than its own, regardless of the last-active-OWNER count.
+    AssetGrant creatorsOwnerGrant =
+        grantRepository.findByLibraryId(library.getId()).stream()
+            .filter(g -> g.getSubjectType() == PermissionSubjectType.USER)
+            .filter(g -> creator.equals(g.getSubjectUserId()))
+            .findFirst()
+            .orElseThrow();
+    assertThatThrownBy(
+            () ->
+                grantService.revokeGrant(
+                    library.getId(), creatorsOwnerGrant.getId(), otherMember, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
@@ -499,6 +537,91 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void concurrentRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner()
+      throws Exception {
+    // #202 code review round 2, nit 2: isLastActiveOwnerGrant is a read-then-decide check with no
+    // locking of its own. Two OWNER grants, two threads each revoking one at (as close to)
+    // literally the same instant as CyclicBarrier can arrange, against the real Postgres schema
+    // (not a mock - a mocked PlatformTransactionManager would not exercise the row lock
+    // AssetGrantRepository#findByLibraryIdForUpdate takes, per this project's rule for
+    // concurrency-sensitive invariants). Without that lock, both threads could read the other's
+    // grant as still active and both would proceed, leaving zero active OWNER grants - exactly the
+    // state the guard exists to prevent. With it, exactly one thread must see a 409 and the
+    // library must retain exactly one active OWNER grant afterwards, never zero.
+    UUID firstOwner = createUser(organizationA);
+    UUID secondOwner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), firstOwner);
+    AssetGrant firstOwnerGrant =
+        grantRepository.findByLibraryId(library.getId()).stream()
+            .filter(g -> firstOwner.equals(g.getSubjectUserId()))
+            .findFirst()
+            .orElseThrow();
+    var secondOwnerGrant =
+        grantService.upsertGrant(
+            library.getId(),
+            new AssetGrantRequest(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
+            firstOwner,
+            false);
+
+    var barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      List<Future<Exception>> results =
+          executor.invokeAll(
+              List.of(
+                  revokeAfterBarrier(barrier, library.getId(), firstOwnerGrant.getId(), firstOwner),
+                  revokeAfterBarrier(
+                      barrier, library.getId(), secondOwnerGrant.getId(), secondOwner)));
+
+      long conflicts = 0;
+      long successes = 0;
+      for (var result : results) {
+        Exception outcome = result.get();
+        if (outcome == null) {
+          successes++;
+        } else if (outcome instanceof ResponseStatusException rse
+            && rse.getStatusCode() == HttpStatus.CONFLICT) {
+          conflicts++;
+        } else {
+          throw new AssertionError("Unexpected outcome", outcome);
+        }
+      }
+
+      assertThat(successes).as("exactly one revoke must succeed").isEqualTo(1);
+      assertThat(conflicts).as("the other must be rejected as the last active owner").isEqualTo(1);
+      List<AssetGrant> remainingGrants = grantRepository.findByLibraryId(library.getId());
+      long activeOwnerCount =
+          remainingGrants.stream()
+              .filter(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(Instant.now()))
+              .count();
+      assertThat(activeOwnerCount)
+          .as("the library must retain exactly one active owner")
+          .isEqualTo(1);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  /**
+   * A task that waits for the other thread at {@code barrier} before calling {@code
+   * grantService.revokeGrant}, returning the {@link ResponseStatusException} it threw (if any)
+   * instead of letting it propagate, so both outcomes can be inspected on the calling thread.
+   */
+  private Callable<Exception> revokeAfterBarrier(
+      CyclicBarrier barrier, UUID libraryId, UUID grantId, UUID callerId) {
+    return () -> {
+      barrier.await();
+      try {
+        grantService.revokeGrant(libraryId, grantId, callerId, false);
+        return null;
+      } catch (ResponseStatusException e) {
+        return e;
+      }
+    };
   }
 
   @Test

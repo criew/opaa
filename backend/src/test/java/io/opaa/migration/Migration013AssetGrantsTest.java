@@ -31,13 +31,13 @@ import org.testcontainers.utility.DockerImageName;
  * public schema is dropped and recreated between test methods, per the package Javadoc's mandatory
  * teardown pattern.
  *
- * <p>{@link
- * #backfillGrantsOwnerAccessForExistingUserAndGroupOwnedLibrariesButNotTheSystemLibrary()} is the
- * mechanism-interaction test: it combines the backfill changeSet with both owner column variants
- * (USER and GROUP) and the SYSTEM library's deliberate exemption in a single run, not any of the
- * three in isolation - a backfill that only handles USER owners, for instance, would lock every
- * existing group-owned library's members out the moment #202's LibraryAccessService replaces the
- * coarse #201 canRead/canManage that this migration accompanies.
+ * <p>{@link #backfillGrantsOwnerAccessForExistingUserOwnedLibrariesButNotTheSystemLibrary()} and
+ * {@link
+ * #backfillGrantsManagerNotOwnerToAnExistingGroupOwnedLibraryLeavingItWithoutAnActiveOwner()}
+ * together cover both owner column variants and the SYSTEM library's deliberate exemption - a
+ * backfill that treated GROUP the same as USER, granting OWNER to the group, would reintroduce the
+ * exact defect (unbounded, non-downgradable management rights via mere membership) #202 exists to
+ * fix, one level up (see 013-backfill-owner-grants's comment for the full reasoning).
  */
 @Testcontainers(disabledWithoutDocker = true)
 class Migration013AssetGrantsTest {
@@ -81,24 +81,40 @@ class Migration013AssetGrantsTest {
   }
 
   @Test
-  void backfillGrantsOwnerAccessForExistingUserAndGroupOwnedLibrariesButNotTheSystemLibrary()
+  void backfillGrantsOwnerAccessForExistingUserOwnedLibrariesButNotTheSystemLibrary()
       throws Exception {
     UUID user = insertUser(UUID.randomUUID());
-    UUID group = insertGroup(UUID.randomUUID());
     UUID userOwnedLibrary = insertLibrary(UUID.randomUUID(), "USER", user, null);
-    UUID groupOwnedLibrary = insertLibrary(UUID.randomUUID(), "GROUP", null, group);
 
     applyChangelog013();
 
     assertThat(grantCountFor(userOwnedLibrary)).isEqualTo(1);
     assertThat(grantRole(userOwnedLibrary, "USER", user.toString())).isEqualTo("OWNER");
 
-    assertThat(grantCountFor(groupOwnedLibrary)).isEqualTo(1);
-    assertThat(grantRole(groupOwnedLibrary, "GROUP", group.toString())).isEqualTo("OWNER");
-
     // The SYSTEM library stays fail-closed to system admins with no grant at all - backfilling one
     // would open a hole in the exact invariant KnowledgeLibrary.SYSTEM_LIBRARY_ID exists to close.
     assertThat(grantCountFor(UUID.fromString(SYSTEM_LIBRARY_ID))).isZero();
+  }
+
+  @Test
+  void backfillGrantsManagerNotOwnerToAnExistingGroupOwnedLibraryLeavingItWithoutAnActiveOwner()
+      throws Exception {
+    // #202 code review round 2 (Befund 2): this backfill has no recorded "creator" to attribute a
+    // personal OWNER grant to for a pre-existing GROUP-owned library - the owner_user_id/
+    // owner_group_id columns it reads from never carried one - and granting OWNER to the group
+    // itself would reintroduce the exact defect (unbounded, non-downgradable management rights via
+    // mere membership) #202 exists to fix, one level up. The deliberate, maintainer-confirmed
+    // choice (see 013-backfill-owner-grants's comment and the PR description) is a MANAGER grant
+    // to the group and no OWNER grant at all - functionally the same "Nachfolge offen" state #240
+    // formalises for a departed owner, present here from the first migration run.
+    UUID group = insertGroup(UUID.randomUUID());
+    UUID groupOwnedLibrary = insertLibrary(UUID.randomUUID(), "GROUP", null, group);
+
+    applyChangelog013();
+
+    assertThat(grantCountFor(groupOwnedLibrary)).isEqualTo(1);
+    assertThat(grantRole(groupOwnedLibrary, "GROUP", group.toString())).isEqualTo("MANAGER");
+    assertThat(activeOwnerGrantCountFor(groupOwnedLibrary)).isZero();
   }
 
   @Test
@@ -328,6 +344,18 @@ class Migration013AssetGrantsTest {
         ResultSet rs =
             statement.executeQuery(
                 "SELECT count(*) FROM asset_grants WHERE library_id = '" + libraryId + "'")) {
+      rs.next();
+      return rs.getLong(1);
+    }
+  }
+
+  private long activeOwnerGrantCountFor(UUID libraryId) throws SQLException {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT count(*) FROM asset_grants WHERE library_id = '"
+                    + libraryId
+                    + "' AND role = 'OWNER' AND (expires_at IS NULL OR expires_at > now())")) {
       rs.next();
       return rs.getLong(1);
     }

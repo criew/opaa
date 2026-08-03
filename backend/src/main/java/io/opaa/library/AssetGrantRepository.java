@@ -39,6 +39,24 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   /** All grants on a library, used to populate {@link LibraryAccessService}'s per-library cache. */
   List<AssetGrant> findByLibraryId(UUID libraryId);
 
+  /**
+   * The locked counterpart of {@link #findByLibraryId}, used only by {@code AssetGrantService}'s
+   * last-active-OWNER guard before it revokes or downgrades an OWNER grant (#202 code review nit
+   * 2). {@code SELECT ... FOR UPDATE} takes a row lock on every grant of the library for the
+   * remainder of the caller's transaction, so two concurrent calls that would each, read in
+   * isolation, see the other's OWNER grant as still active and both proceed - the exact race a
+   * plain read-then-decide check cannot rule out - instead serialize: the second blocks until the
+   * first commits (releasing the lock) or rolls back, and then re-reads the now-current state
+   * before making its own decision. Deliberately scoped to only the mutations that touch an active
+   * OWNER grant, not every grant write, since this is real row-level database contention, not an
+   * in-process lock - see {@code io.opaa.auth.UserService#provisioningLockFor} for why that
+   * distinction matters.
+   */
+  @Query(
+      value = "SELECT * FROM asset_grants WHERE library_id = :libraryId FOR UPDATE",
+      nativeQuery = true)
+  List<AssetGrant> findByLibraryIdForUpdate(@Param("libraryId") UUID libraryId);
+
   Optional<AssetGrant> findByLibraryIdAndSubjectTypeAndSubjectUserId(
       UUID libraryId, PermissionSubjectType subjectType, UUID subjectUserId);
 

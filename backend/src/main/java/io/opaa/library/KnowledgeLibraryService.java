@@ -32,11 +32,15 @@ import org.springframework.web.server.ResponseStatusException;
  * canManage} - see that class's Javadoc for the full reasoning, in particular why group ownership
  * alone no longer implies management rights.
  *
- * <p>{@link #createLibrary} grants the creator {@link AssetRole#OWNER} explicitly via an {@link
- * AssetGrant}, regardless of {@link LibraryOwnerType} - ownership of a group-owned library is
- * attributed to the group (for succession, see #240), but the actual right to manage the library
- * comes only from this grant and any further grants a {@link AssetRole#MANAGER} makes explicitly,
- * never from group membership alone.
+ * <p>{@link #createLibrary} always grants the creator {@link AssetRole#OWNER} explicitly via an
+ * {@link AssetGrant} - the right to delete the library and transfer ownership always sits on a
+ * named person, never on group membership alone. For a {@link LibraryOwnerType#GROUP} library the
+ * owning group additionally gets {@link AssetRole#MANAGER} (sharing and granting roles to others),
+ * <em>not</em> {@code OWNER}: every member automatically holding {@code OWNER} would grow without a
+ * human decision point as a directory-synchronised group's membership grows (#237) and could never
+ * be downgraded once it became the library's only {@code OWNER} grant (#202 code review round 2).
+ * The accepted price is that the personal {@code OWNER} grant is lost when its holder leaves - #240
+ * (succession instead of blocking) is what regulates that case, not this class.
  *
  * <p>{@link LibraryOwnerType#SYSTEM} libraries (exactly one per organization, see {@link
  * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link
@@ -137,35 +141,44 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
-    // #202 code review (blocker 4): the OWNER grant must follow ownerType, exactly like the
-    // migration 013 backfill does for pre-existing libraries - a GROUP-owned library grants OWNER
-    // to the *group*, not the creator, so a centrally maintained library (the feature spec's
-    // leitbeispiel "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz") survives its
-    // creator's departure instead of hanging on a grant to a person who has since left. The
-    // creator still gets access immediately: membership in ownerGroup (already required above)
-    // resolves through the same group grant via LibraryAccessService#effectiveRole - no separate
-    // personal grant needed, and none is created, so no other member of the group inherits rights
-    // beyond what the group grant itself carries (see the class Javadoc on why mere membership
-    // must never imply management on its own).
+    // #202 code review round 2 (Befund 2): a GROUP-owned library grants the *group* MANAGER, not
+    // OWNER, and grants the *creator* (a person) OWNER separately - the round-1 fix (group gets
+    // OWNER) went a step too far. Every current and future member of the owning group is
+    // automatically OWNER under that rule - able to delete the library and transfer ownership -
+    // and grows without a human decision point as a directory-synchronised group's membership
+    // grows (#237), which is structurally the same defect #201 had, one level up. It is also not
+    // demotable: the round-1 group grant is the library's only OWNER grant, so both
+    // requireCallerCanTouchExistingGrant and the last-active-OWNER guard permanently protect it -
+    // measured as a 409 on both the downgrade and the revoke path.
+    //
+    // Splitting the two roles keeps the group's real benefit (a centrally maintained library like
+    // the feature spec's leitbeispiel "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz",
+    // survives its creator's departure - MANAGER already covers sharing and granting roles to
+    // others) while keeping the two highest-stakes rights, delete and ownership transfer, on a
+    // named person who can be held accountable for them. The accepted price - that OWNER hangs on
+    // a person and is lost when they leave - is exactly the case #240 (succession instead of
+    // blocking) exists to regulate: the library does not lock, it goes to "Nachfolge offen",
+    // usable and frozen against growing reach until a curator is assigned. No other member of the
+    // group inherits rights beyond what the group's MANAGER grant itself carries (see the class
+    // Javadoc on why mere membership must never imply management on its own).
     if (ownerGroup != null) {
       grantRepository.save(
           AssetGrant.forGroup(
               saved.getId(),
               saved.getOrganizationId(),
               ownerGroup.getId(),
-              AssetRole.OWNER,
-              null,
-              currentUserId));
-    } else {
-      grantRepository.save(
-          AssetGrant.forUser(
-              saved.getId(),
-              saved.getOrganizationId(),
-              currentUserId,
-              AssetRole.OWNER,
+              AssetRole.MANAGER,
               null,
               currentUserId));
     }
+    grantRepository.save(
+        AssetGrant.forUser(
+            saved.getId(),
+            saved.getOrganizationId(),
+            currentUserId,
+            AssetRole.OWNER,
+            null,
+            currentUserId));
     return toLibraryResponse(saved);
   }
 

@@ -201,14 +201,34 @@ databaseChangeLog:
       id: 013-backfill-owner-grants
       author: opaa
       comment: >
-        Every library that already has an individual or group owner (i.e. everything except the
-        SYSTEM library, which stays fail-closed to system admins with no grant at all) gets an
-        explicit OWNER grant for that owner. This is not a new decision: it makes the decision
-        already made when the library was created explicit as a revocable, auditable grant row -
-        the same shift #202 makes going forward for every new library via
+        Every library that already has an individual owner (i.e. USER, not GROUP or the SYSTEM
+        library, which stays fail-closed to system admins with no grant at all) gets an explicit
+        OWNER grant for that owner. This is not a new decision: it makes the decision already made
+        when the library was created explicit as a revocable, auditable grant row - the same shift
+        #202 makes going forward for every new USER-owned library via
         KnowledgeLibraryService#createLibrary. Without this backfill, #202's replacement of the
         coarse #201 canRead/canManage (which derived rights from the owner columns directly) would
-        silently lock every existing owner out of their own library.
+        silently lock every existing individual owner out of their own library.
+
+        A GROUP-owned library instead gets its owning group an explicit MANAGER grant, not OWNER -
+        matching the rule #202's round-2 review settled on for newly created group-owned libraries
+        (see KnowledgeLibraryService#createLibrary): OWNER must sit on a named person who can be
+        held accountable for deleting the library or transferring ownership, and a bulk-granted
+        OWNER to every group member would be exactly as unbounded and non-downgradable as the #201
+        defect this migration accompanies fixing. For a pre-existing GROUP-owned library there is,
+        by construction, no recorded "creator" to attribute that personal OWNER grant to - the
+        owner_user_id/owner_group_id columns this backfill reads from never carried one. Rather
+        than fabricate a creator (there is no principled way to pick one member of the group over
+        another), this backfill deliberately leaves such a library without any OWNER grant at all:
+        every current group member keeps working access via the new MANAGER grant (share, grant
+        further roles, rename, change visibility), but nobody can delete the library or transfer
+        ownership until a system admin (who still resolves to an implicit OWNER-equivalent via
+        LibraryAccessService#effectiveRole's systemAdmin bypass, unlike the search path) grants an
+        explicit OWNER to a named person - functionally the same "Nachfolge offen" state #240
+        formalises for a departed owner, present here from the very first migration run rather than
+        introduced later by an ownership change. This was raised explicitly for maintainer
+        confirmation rather than decided silently (#202 code review round 2) - see the PR
+        description for the alternatives considered and why they were rejected.
       changes:
         - sql:
             sql: >
@@ -221,7 +241,7 @@ databaseChangeLog:
             sql: >
               INSERT INTO asset_grants
                 (id, library_id, organization_id, subject_type, subject_group_id, role, created_at, updated_at)
-              SELECT gen_random_uuid(), kl.id, kl.organization_id, 'GROUP', kl.owner_group_id, 'OWNER', now(), now()
+              SELECT gen_random_uuid(), kl.id, kl.organization_id, 'GROUP', kl.owner_group_id, 'MANAGER', now(), now()
               FROM knowledge_libraries kl
               WHERE kl.owner_type = 'GROUP';
       rollback:

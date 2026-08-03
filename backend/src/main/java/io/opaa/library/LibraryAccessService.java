@@ -21,8 +21,11 @@ import org.springframework.stereotype.Component;
  * it let every member of a group-owned library manage it, growing without a human decision point as
  * a directory-synchronised group's membership grows (#237). Under this class, management rights
  * come exclusively from an explicit {@link AssetGrant} (see {@code
- * KnowledgeLibraryService#createLibrary}, which grants the creator {@link AssetRole#OWNER}
- * explicitly instead of deriving it from the owner columns) or from organization-wide visibility.
+ * KnowledgeLibraryService#createLibrary}, which grants the creator {@link AssetRole#OWNER} and, for
+ * a group-owned library, additionally grants the owning group {@link AssetRole#MANAGER} - never
+ * {@code OWNER} to the group, which would reintroduce the same unbounded, non-downgradable grant
+ * this class replaced #201's coarse check to avoid, see that method's Javadoc) or from
+ * organization-wide visibility.
  *
  * <p>Two access paths, deliberately not unified:
  *

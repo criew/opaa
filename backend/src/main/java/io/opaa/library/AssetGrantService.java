@@ -23,14 +23,35 @@ import org.springframework.web.server.ResponseStatusException;
  * resolved through {@link LibraryAccessService}, which is also where the cache this class
  * invalidates after every write lives.
  *
- * <p><b>Escalation guards (#202 code review):</b> {@code MANAGER} being able to grant roles at all
- * does not mean it may grant a role higher than its own - {@link #upsertGrant} caps the requested
- * {@link AssetRole} at the caller's own {@link LibraryAccessService#effectiveRole effective role},
- * otherwise a {@code MANAGER} could grant itself {@code OWNER} and then delete the library or
- * transfer ownership, rights the specification reserves for {@code OWNER} alone. Symmetrically,
- * {@link #revokeGrant} refuses to remove the last non-expired {@code OWNER} grant on a library -
- * without that guard, a {@code MANAGER} could remove the actual owner's grant and leave the library
- * in a state the application can no longer manage at all.
+ * <p><b>Escalation guards (#202 code review), both directions:</b> {@code MANAGER} being able to
+ * touch grants at all does not mean it may act on a role higher than its own, in either direction -
+ * {@link #requireCallerRoleAtLeast} enforces {@code callerRole >= otherRole} everywhere a role is
+ * compared, and every mutating path calls it twice:
+ *
+ * <ul>
+ *   <li><b>The role being granted or requested</b> ({@link #upsertGrant}) - a {@code MANAGER} could
+ *       otherwise grant itself {@code OWNER} and then delete the library or transfer ownership,
+ *       rights the specification reserves for {@code OWNER} alone.
+ *   <li><b>The role already held by the grant being changed or removed</b> ({@link #upsertGrant}'s
+ *       update path and {@link #revokeGrant}) - without this half, a {@code MANAGER} could
+ *       downgrade or revoke an {@code OWNER}'s own grant even though it could never have granted
+ *       {@code OWNER} in the first place (#202 code review round 2, "Rollen-Deckelung wirkt nur in
+ *       eine Richtung"): the class Javadoc's earlier claim that these two checks were already a
+ *       "mirror image" was wrong until this second half was added - only capping the requested role
+ *       left the role of an <em>existing</em> grant uncompared to the caller's own.
+ * </ul>
+ *
+ * <p>Independently of the role-escalation guards above, {@link #revokeGrant} and {@link
+ * #upsertGrant}'s update path also refuse to leave a library with zero active {@code OWNER} grants
+ * - removing or downgrading the last one would leave nobody able to manage the library at all, not
+ * even to grant a new {@code OWNER}. This count is taken <em>after</em> the intended change,
+ * including any new {@code expiresAt} the caller is setting (#202 code review round 2, nit 1): an
+ * {@code OWNER} renewing their own grant with {@code role = OWNER} does not by itself prove the
+ * grant stays active if the caller also supplies an {@code expiresAt} in the past. See {@link
+ * #requireNotDowngradingTheLastActiveOwnerGrant} and {@link
+ * AssetGrantRepository#findByLibraryIdForUpdate} for how this count is additionally protected
+ * against two concurrent callers each observing the other's OWNER grant as still active (#202 code
+ * review round 2, nit 2).
  *
  * <p>Also enforces two narrower rules from the feature spec: a grant can never be created or
  * updated on the automatic personal library (it is meant to reach only its owner, see {@code
@@ -92,14 +113,14 @@ public class AssetGrantService {
           HttpStatus.BAD_REQUEST,
           "Auf die persoenliche Bibliothek koennen keine Berechtigungen vergeben werden");
     }
-    // Escalation guard: a caller may never grant a role higher than the one they themselves hold -
-    // see the class Javadoc. requireManageable already established callerRole is at least MANAGER.
+    // Escalation guard, half 1: a caller may never grant a role higher than the one they
+    // themselves hold - see the class Javadoc. requireManageable already established callerRole is
+    // at least MANAGER.
     AssetRole callerRole = accessService.effectiveRole(library, currentUserId, systemAdmin);
-    if (callerRole == null || request.getRole().ordinal() > callerRole.ordinal()) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN,
-          "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
-    }
+    requireCallerRoleAtLeast(
+        callerRole,
+        request.getRole(),
+        "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
 
     AssetGrant grant;
     if (request.getSubjectType() == PermissionSubjectType.USER) {
@@ -119,7 +140,9 @@ public class AssetGrantService {
                 request.getExpiresAt(),
                 currentUser.getId());
       } else {
-        requireNotDowngradingTheLastActiveOwnerGrant(library.getId(), grant, request.getRole());
+        requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
+        requireNotDowngradingTheLastActiveOwnerGrant(
+            library.getId(), grant, request.getRole(), request.getExpiresAt());
         grant.updateRole(request.getRole(), request.getExpiresAt());
       }
     } else {
@@ -139,7 +162,9 @@ public class AssetGrantService {
                 request.getExpiresAt(),
                 currentUser.getId());
       } else {
-        requireNotDowngradingTheLastActiveOwnerGrant(library.getId(), grant, request.getRole());
+        requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
+        requireNotDowngradingTheLastActiveOwnerGrant(
+            library.getId(), grant, request.getRole(), request.getExpiresAt());
         grant.updateRole(request.getRole(), request.getExpiresAt());
       }
     }
@@ -162,24 +187,59 @@ public class AssetGrantService {
     if (!grant.getLibraryId().equals(library.getId())) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Berechtigung nicht gefunden");
     }
-    // Escalation guard, the mirror image of upsertGrant's: removing the last non-expired OWNER
-    // grant would leave the library in a state the application can no longer manage - nobody left
-    // with the role required to grant, revoke or delete. See the class Javadoc.
-    if (grant.getRole() == AssetRole.OWNER
-        && !grant.isExpired(Instant.now())
-        && isLastActiveOwnerGrant(library.getId(), grant.getId())) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
+    // Escalation guard, half 2 - see the class Javadoc: a caller may never touch a grant that
+    // already carries a role higher than their own, regardless of whether they could have
+    // *granted* that role in the first place.
+    AssetRole callerRole = accessService.effectiveRole(library, currentUserId, systemAdmin);
+    requireCallerCanTouchExistingGrant(callerRole, grant, "entfernen");
+
+    // Last-active-OWNER guard, the mirror image of upsertGrant's downgrade guard: removing the
+    // last non-expired OWNER grant would leave the library in a state the application can no
+    // longer manage - nobody left with the role required to grant, revoke or delete. See the class
+    // Javadoc for why the count is taken under a row lock (findByLibraryIdForUpdate), not the plain
+    // cached read used elsewhere.
+    if (grant.getRole() == AssetRole.OWNER && !grant.isExpired(Instant.now())) {
+      List<AssetGrant> lockedLibraryGrants =
+          grantRepository.findByLibraryIdForUpdate(library.getId());
+      if (isLastActiveOwnerGrant(lockedLibraryGrants, grant.getId())) {
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
+      }
     }
 
     grantRepository.delete(grant);
     invalidateAfterCommit(library.getId());
   }
 
-  private boolean isLastActiveOwnerGrant(UUID libraryId, UUID excludingGrantId) {
+  /**
+   * Escalation guard, half 2 (see the class Javadoc): whether {@code callerRole} is at least as
+   * privileged as the role an existing grant already carries, before that grant may be changed or
+   * removed. {@code action} is the German verb ("aendern"/"entfernen") for the resulting message.
+   */
+  private void requireCallerCanTouchExistingGrant(
+      AssetRole callerRole, AssetGrant existingGrant, String action) {
+    requireCallerRoleAtLeast(
+        callerRole,
+        existingGrant.getRole(),
+        "Die eigene Rolle reicht nicht aus, um eine bestehende "
+            + existingGrant.getRole()
+            + "-Berechtigung zu "
+            + action);
+  }
+
+  /**
+   * Throws {@code 403} unless {@code callerRole} is at least as privileged as {@code otherRole}.
+   */
+  private void requireCallerRoleAtLeast(AssetRole callerRole, AssetRole otherRole, String message) {
+    if (callerRole == null || otherRole.ordinal() > callerRole.ordinal()) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+    }
+  }
+
+  private boolean isLastActiveOwnerGrant(List<AssetGrant> libraryGrants, UUID excludingGrantId) {
     Instant now = Instant.now();
-    return grantRepository.findByLibraryId(libraryId).stream()
+    return libraryGrants.stream()
         .filter(g -> !g.getId().equals(excludingGrantId))
         .noneMatch(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(now));
   }
@@ -187,17 +247,29 @@ public class AssetGrantService {
   /**
    * The same guard as {@link #revokeGrant}'s, applied to {@link #upsertGrant}'s update path:
    * lowering an existing OWNER grant's role is exactly as dangerous as revoking it outright if it
-   * is the last active one - both leave nobody able to manage the library at all. {@code newRole ==
-   * OWNER} is always allowed (that path cannot reduce the active-owner count).
+   * is the last active one - both leave nobody able to manage the library at all.
+   *
+   * <p>The count is taken <em>after</em> the intended change (#202 code review round 2, nit 1):
+   * {@code newRole == OWNER} alone does not prove the grant stays an active owner - the caller may
+   * also be setting {@code newExpiresAt} to a point in the past, which expires it immediately. Only
+   * {@code newRole == OWNER} combined with a {@code newExpiresAt} that is either absent or still in
+   * the future counts as "stays active" and skips the check below.
    */
   private void requireNotDowngradingTheLastActiveOwnerGrant(
-      UUID libraryId, AssetGrant existingGrant, AssetRole newRole) {
-    if (newRole == AssetRole.OWNER
-        || existingGrant.getRole() != AssetRole.OWNER
-        || existingGrant.isExpired(Instant.now())) {
+      UUID libraryId, AssetGrant existingGrant, AssetRole newRole, Instant newExpiresAt) {
+    Instant now = Instant.now();
+    if (existingGrant.getRole() != AssetRole.OWNER || existingGrant.isExpired(now)) {
       return;
     }
-    if (isLastActiveOwnerGrant(libraryId, existingGrant.getId())) {
+    boolean staysActiveOwner =
+        newRole == AssetRole.OWNER && (newExpiresAt == null || newExpiresAt.isAfter(now));
+    if (staysActiveOwner) {
+      return;
+    }
+    // See AssetGrantRepository#findByLibraryIdForUpdate for why this read is taken under a row
+    // lock rather than the plain cached read used elsewhere (#202 code review round 2, nit 2).
+    List<AssetGrant> lockedLibraryGrants = grantRepository.findByLibraryIdForUpdate(libraryId);
+    if (isLastActiveOwnerGrant(lockedLibraryGrants, existingGrant.getId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht herabgestuft werden");
