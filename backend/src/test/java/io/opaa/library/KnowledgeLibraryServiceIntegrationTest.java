@@ -32,6 +32,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -64,6 +66,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -428,5 +431,39 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("fk_knowledge_libraries_owner_group_organization");
+  }
+
+  @Test
+  void insertPersonalLibraryIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
+    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertPersonalLibraryIfAbsent's
+    // Javadoc) only ever suppresses the one named partial unique index - a genuinely dangling
+    // owner must still violate fk_knowledge_libraries_owner_user exactly as the entity-based save
+    // above does, not be silently swallowed as if it were a race loss.
+    //
+    // A transaction is required around the call (unlike the saveAndFlush-based tests above):
+    // @Modifying custom @Query methods, unlike the inherited save/saveAndFlush methods, do not get
+    // an implicit transaction from the repository proxy and fail with "No active transaction for
+    // update or delete query" without one. A plain test-method @Transactional does not work here
+    // either - Spring wraps @BeforeEach/@AfterEach into that same transaction by default, and
+    // Postgres aborts the whole transaction on the constraint violation this test deliberately
+    // provokes, poisoning the next test method's setUp() on the same connection. Using this
+    // class's own TransactionTemplate mirrors exactly how KnowledgeLibraryService itself calls
+    // this method in production (its own requiresNewTransactionTemplate) and keeps the transaction
+    // - and its rollback on failure - fully scoped to this one call.
+    UUID nonExistentOwner = UUID.randomUUID();
+    TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.executeWithoutResult(
+                    status ->
+                        libraryRepository.insertPersonalLibraryIfAbsent(
+                            UUID.randomUUID(),
+                            organizationA,
+                            "Meine Dokumente",
+                            "Private persoenliche Wissensbibliothek",
+                            nonExistentOwner)))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_knowledge_libraries_owner_user");
   }
 }

@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,28 +169,31 @@ public class UserService {
    * {@code KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} each reduced their own round
    * trips to one via {@code ON CONFLICT ... DO NOTHING}, but under {@code
    * UserServiceCreationRaceIntegrationTest}'s 12-concurrent-first-login load that alone was not
-   * enough: with all 12 threads issuing conflicting {@code INSERT}s against the same partial unique
-   * index at (essentially) the same instant, Postgres itself serializes them at the index level -
-   * each transaction after the first must wait for the ones ahead of it to finish before it can
-   * determine whether it conflicts - and with two such rounds per login (space, then library) back
-   * to back, that queuing occasionally pushed the slowest thread's total wait past 30 seconds even
-   * with the single-round-trip fix in place. An in-process lock keyed by {@code userId} removes the
-   * database-level queuing for the case that dominates this test and is also the realistic
-   * production case (many requests for the *same* user's very first login, e.g. several tabs opened
-   * at once): only the first thread to acquire the lock reaches the database at all; by the time
-   * each following thread acquires it, the winner has already committed, so {@code
-   * ensurePersonalSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy} check returns {@code
-   * true} immediately and neither issues an insert. Confirmed by {@code
-   * UserServiceCreationRaceIntegrationTest} passing repeatedly at the unmodified production default
-   * pool size of 10 with this lock in place (see that test's Javadoc) - it failed intermittently at
-   * the same pool size with only the single-round-trip fix and no lock.
+   * enough (3 of 6 runs still failed without this lock). The bottleneck is <b>not</b> database-side
+   * index contention - a follow-up measurement with 12 concurrent first logins of 12
+   * <em>different</em> users (no index conflict possible at all) still hit the same 30-second
+   * timeout, and {@code pg_stat_activity} showed no active session on the database during the
+   * stall. The bottleneck is acquiring a Hikari connection at all: two provisioning calls per login
+   * (space, then library), each needing its own short-lived connection, doubled the number of
+   * concurrent connection requests competing for the same pool once #201 added the second call. An
+   * in-process lock keyed by {@code userId} reduces that count for the case this test exercises and
+   * that is also the realistic production trigger (many requests for the *same* user's very first
+   * login, e.g. several tabs opened at once): only the first thread to acquire the lock reaches the
+   * database at all; by the time each following thread acquires it, the winner has already
+   * committed, so {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy}
+   * check returns {@code true} immediately and neither issues an insert, so neither needs a
+   * connection either. Confirmed by {@code UserServiceCreationRaceIntegrationTest} passing
+   * repeatedly at the unmodified production default pool size of 10 with this lock in place (see
+   * that test's Javadoc).
    *
    * <p>This is a performance measure, not a correctness one: the database's partial unique indexes
    * (not this lock) remain the actual guarantee, unchanged and still exercised whenever this
    * lock-protected block is skipped or raced across multiple application instances - the lock is
    * process-local and does nothing for that case, deliberately: correctness must not depend on it.
    * {@link #PROVISIONING_LOCK_STRIPES} bounds the lock table's size; see its Javadoc for the
-   * resulting trade-off.
+   * resulting trade-off. Concurrent first logins of <em>different</em> users still contend on the
+   * connection pool exactly as before this lock (it only serializes same-user callers) - tracked
+   * separately as #307, not addressed here.
    */
   private void ensurePersonalAssetsAfterCommit(UUID userId, UUID organizationId) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -205,13 +209,34 @@ public class UserService {
     }
   }
 
+  /**
+   * Acquires {@link #provisioningLockFor(UUID)} with a bounded {@code tryLock} instead of an
+   * unbounded {@code lock()} (code review of #201/#305): {@link #ensureBothPersonalAssets} logs
+   * rather than throws on failure (see its Javadoc), so a holder that hits two connection-acquire
+   * timeouts back to back could otherwise hold the lock for up to roughly twice Hikari's {@code
+   * connectionTimeout} (~60 s at the default) - and because {@link #PROVISIONING_LOCK_STRIPES} is a
+   * fixed-size striping, that also blocks unrelated users sharing the same stripe, turning what
+   * should be independent, parallel failures under a slow database into a serial pile-up of request
+   * threads. Falling through without the lock on a failed {@code tryLock} is safe: correctness is
+   * carried entirely by the database's partial unique indexes (see {@link
+   * #ensurePersonalAssetsAfterCommit}'s Javadoc), never by this lock, so skipping it only forgoes
+   * the connection-count reduction for this one call - the next login for the same user gets the
+   * same idempotent, self-healing retry either way.
+   */
   private void runEnsureBothPersonalAssetsUnderLock(UUID userId, UUID organizationId) {
     ReentrantLock lock = provisioningLockFor(userId);
-    lock.lock();
+    boolean acquired = false;
+    try {
+      acquired = lock.tryLock(2, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
     try {
       ensureBothPersonalAssets(userId, organizationId);
     } finally {
-      lock.unlock();
+      if (acquired) {
+        lock.unlock();
+      }
     }
   }
 

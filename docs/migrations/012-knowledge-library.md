@@ -211,11 +211,25 @@ das Fail-closed-Verhalten der System-Bibliothek, das Zusammenspiel mit
 `GroupMembershipResolver`s Cache-Invalidierung) ist separat in
 `backend/src/test/java/io/opaa/library/KnowledgeLibraryServiceIntegrationTest.java` abgedeckt (echtes
 Postgres-Schema über Liquibase, `ddl-auto=none`, nach demselben Muster wie
-`SpaceServiceIntegrationTest`). Die Race-Behandlung von
-`KnowledgeLibraryService#ensurePersonalLibrary` ist in
-`backend/src/test/java/io/opaa/library/KnowledgeLibraryServiceTest.java` abgedeckt (reiner
-Mockito-Test, kein Testcontainer, spiegelt `SpaceServiceTest`). Das Zusammenspiel von persönlichem
-Space und persönlicher Bibliothek bei der Nutzeranlage — beide werden immer gemeinsam versucht, auch
-wenn einer der beiden Aufrufe fehlschlägt — ist in
+`SpaceServiceIntegrationTest`). Diese Klasse enthält seit #201/#305 auch
+`insertPersonalLibraryIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting`: den Nachweis
+gegen das echte Schema, dass `ON CONFLICT ... DO NOTHING` ausschließlich den benannten partiellen
+Unique-Index abfängt und eine echte Fremdschlüsselverletzung (hängender Eigentümer) weiterhin normal
+wirft.
+
+Die eigentliche Race-Behandlung von `KnowledgeLibraryService#ensurePersonalLibrary` liegt seit
+#201/#305 vollständig in der Datenbank
+(`KnowledgeLibraryRepository.insertPersonalLibraryIfAbsent`, `ON CONFLICT ... DO NOTHING` gegen
+`uk_knowledge_libraries_personal_owner`) — ein Verlierer löst keine Exception mehr aus, die
+`ensurePersonalLibrary` abfangen müsste. `KnowledgeLibraryServiceTest` (reiner Mockito-Test, kein
+Testcontainer, spiegelt `SpaceServiceTest`) prüft die eine Entscheidung, die die Methode noch selbst
+trifft: den Insert-Versuch bei bereits vorhandener persönlicher Bibliothek zu überspringen, und dass
+eine echte Repository-Verletzung unverändert durchgereicht wird.
+
+Das Zusammenspiel von persönlichem Space und persönlicher Bibliothek bei der Nutzeranlage — beide
+werden immer gemeinsam versucht, auch wenn einer der beiden Aufrufe fehlschlägt, über ein
+prozesslokales Lock je Nutzer serialisiert (`UserService#provisioningLockFor`) — ist in
 `backend/src/test/java/io/opaa/auth/UserServiceTest.java` und
-`backend/src/test/java/io/opaa/auth/UserServicePersonalSpaceIntegrationTest.java` abgedeckt.
+`backend/src/test/java/io/opaa/auth/UserServicePersonalSpaceIntegrationTest.java` abgedeckt; die
+12-Thread-Regression gegen echten Verbindungspool-Druck in
+`backend/src/test/java/io/opaa/auth/UserServiceCreationRaceIntegrationTest.java`.
