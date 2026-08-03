@@ -3,6 +3,7 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
@@ -18,26 +19,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Exercises {@link UserService#findOrCreateUser} against a real Postgres database with the real,
  * versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none})
- * - not against Hibernate-generated DDL, and not with a mocked transaction manager. This is
- * deliberate: the regression this test guards against (follow-up to #265/#280) only manifests with
- * real foreign-key constraints and real, separately committed transactions. Neither {@code
- * SpaceServiceIntegrationTest} (Hibernate {@code ddl-auto=create-drop}; plain UUID columns like
- * {@code Space.ownerId} get no foreign key at all under that regime) nor {@code SpaceServiceTest}
- * (mocked {@link org.springframework.transaction.PlatformTransactionManager} - no real connection,
- * no real propagation, no real visibility semantics) can exercise it.
+ * - not against Hibernate-generated DDL, and not with a mocked transaction manager. This class
+ * predates #288 (it was added in #287, on real foreign keys from the start) and its
+ * container/schema setup is the pattern #288 later applied to {@code SpaceServiceIntegrationTest}
+ * and {@code SpaceRepositoryTest}. This is deliberate: the regression this test guards against
+ * (follow-up to #265/#280) only manifests with real foreign-key constraints and real, separately
+ * committed transactions. Even after #288, neither {@code SpaceServiceIntegrationTest} (calls
+ * {@code ensurePersonalSpace} directly on an already-committed user, never from inside {@code
+ * UserService}'s still-open transaction) nor {@code SpaceServiceTest} (mocked {@link
+ * org.springframework.transaction.PlatformTransactionManager} - no real connection, no real
+ * propagation, no real visibility semantics) can exercise it - the regression is specific to the
+ * transaction-ordering interaction between {@code UserService} and {@code SpaceService}, not to
+ * schema alone.
  *
  * <p><b>The regression:</b> {@code SpaceService.ensurePersonalSpace} (#265) runs its insert in its
  * own {@code REQUIRES_NEW} transaction, on its own connection with its own snapshot, so that a
@@ -53,21 +54,12 @@ import org.testcontainers.utility.DockerImageName;
  * guaranteeing the user row is committed and visible by the time the personal space is created.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(UserServicePersonalSpaceIntegrationTest.PostgresTestConfiguration.class)
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles({"local", "basic"})
 @TestPropertySource(
     properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
 @Testcontainers(disabledWithoutDocker = true)
 class UserServicePersonalSpaceIntegrationTest {
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class PostgresTestConfiguration {
-    @Bean
-    @ServiceConnection
-    PostgreSQLContainer postgresContainer() {
-      return new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-    }
-  }
 
   @Autowired private UserService userService;
   @Autowired private SpaceService spaceService;
