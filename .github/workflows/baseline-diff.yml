@@ -1,0 +1,70 @@
+name: Baseline-Diff
+
+# Läuft für JEDEN Pull Request, der eval/baseline/** ändert — unabhängig vom Label 'evaluation'
+# (ADR-0013, Entscheidung 6; PR #301 review, zweite Runde). Der eigentliche Retrieval-Regressionsjob
+# (.github/workflows/retrieval-regression.yml) läuft nur bei diesem Label, weil er Docker braucht und
+# ~17 Minuten dauert; ohne diesen separaten, Docker-freien Workflow würde ein PR, der die Baseline
+# unbemerkt absenkt, aber nie das Label bekommt, überhaupt keinen Hinweis erzeugen. Dieser Workflow
+# ist stdlib-only Python und braucht keine Minute — kein Grund, ihn ans Label zu koppeln.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'eval/baseline/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: baseline-diff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Für `git show origin/main:...` unten wird main's Version der Baseline-Datei gebraucht,
+          # die ein flacher Checkout (Default fetch-depth: 1, nur der PR-Kopf) nicht auflösen kann.
+          fetch-depth: 0
+
+      - name: Baseline von main laden
+        run: |
+          git fetch origin main --depth=1
+          mkdir -p build
+          # Existiert die Datei auf main noch nicht (z. B. der allererste PR, der sie einführt),
+          # ist das kein Fehler — es gibt dann schlicht nichts, wovon abgesenkt werden könnte.
+          git show origin/main:eval/baseline/comic-characters.json > build/main-baseline.json \
+            || echo '{"groups":{}}' > build/main-baseline.json
+
+      - name: Baseline-Absenkung gegenüber main prüfen
+        run: |
+          python3 eval/baseline/diff_baseline.py \
+            --main build/main-baseline.json \
+            --pr eval/baseline/comic-characters.json \
+            --output build/baseline-diff-vs-main.md \
+            --main-ref main \
+            --pr-ref "${{ github.head_ref }}"
+
+      - name: Diff-Tabelle der Job-Zusammenfassung hinzufügen
+        run: cat build/baseline-diff-vs-main.md >> "$GITHUB_STEP_SUMMARY"
+
+      # continue-on-error (wie in retrieval-regression.yml, PR #301 review): ein Fork-PR hat nur ein
+      # schreibgeschütztes Standard-GITHUB_TOKEN, der Kommentar-Versuch scheitert dann mit 403 — das
+      # darf den Job nicht als fehlgeschlagen markieren, die Diff-Prüfung selbst ist rein informativ.
+      - name: Diff-Tabelle als PR-Kommentar posten
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('build/baseline-diff-vs-main.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

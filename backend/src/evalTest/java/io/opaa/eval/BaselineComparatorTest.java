@@ -175,6 +175,39 @@ class BaselineComparatorTest {
   }
 
   @Test
+  void hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded() {
+    // ADR-0013 Nachtrag (second PR #301 review round): a purely baseline-relative floor (0.8 *
+    // baselineValue) tracks a baseline down if the baseline itself erodes over successive PRs,
+    // instead of anchoring against that erosion. With an (artificially low, for this test)
+    // committed baseline of 0.30, 0.8 * 0.30 = 0.24 — but the fixed absolute floor (0.30) is
+    // higher and must win via max(...), otherwise the floor would have silently loosened together
+    // with the eroded baseline.
+    Baseline erodedBaseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(Baseline.OVERALL, new MetricsAggregate(121, 0.30, 0.461, 0.445, 0.490, 1.0, 94)),
+            "2026-08-03",
+            null,
+            "eroded baseline fixture");
+    EvaluationReport report =
+        reportWith(
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new MetricsAggregate(121, 0.25, 0.461, 0.445, 0.490, 1.0, 94));
+
+    var result = BaselineComparator.compare(erodedBaseline, report);
+
+    var hitRateCheck =
+        result.checks().stream()
+            .filter(c -> c.group().equals(Baseline.OVERALL) && c.metric().equals("hitRateAt5"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(hitRateCheck.hardFloor()).isCloseTo(0.30, within(1e-9));
+    assertThat(hitRateCheck.passesHardFloor()).isFalse();
+    assertThat(result.passed()).isFalse();
+  }
+
+  @Test
   void failsWhenOneChunkInvariantIsViolated() {
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
     EvaluationReport report =

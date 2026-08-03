@@ -80,6 +80,39 @@ public record Baseline(
   }
 
   public static Baseline load(Path file) throws IOException {
-    return JsonMapper.builder().build().readValue(Files.readString(file), Baseline.class);
+    Baseline baseline =
+        JsonMapper.builder().build().readValue(Files.readString(file), Baseline.class);
+    validate(baseline, file);
+    return baseline;
+  }
+
+  /**
+   * Guards against a silently over-wide tolerance gate (PR #301 review, second round): {@code
+   * distinctExpectedDocumentSets} is required in {@code toleranceFor}'s denominator ({@code
+   * BaselineComparator}). A hand-edited baseline that drops or misspells the field would otherwise
+   * deserialize it as {@code 0} (Jackson's default for a missing {@code int}), which {@code
+   * Math.max(nEff, 1)} then turns into {@code 1} — silently *widening* every metric's tolerance in
+   * that group to the full {@code RELATIVE_CAP_FRACTION * baselineValue}, the loosest the formula
+   * can produce, instead of failing loudly. Failing fast here at load time is cheaper than
+   * debugging why a group's tolerance mysteriously loosened.
+   */
+  private static void validate(Baseline baseline, Path file) {
+    baseline
+        .groups()
+        .forEach(
+            (key, aggregate) -> {
+              if (aggregate.distinctExpectedDocumentSets() <= 0) {
+                throw new IllegalStateException(
+                    "Baseline group '"
+                        + key
+                        + "' in "
+                        + file.toAbsolutePath()
+                        + " has distinctExpectedDocumentSets="
+                        + aggregate.distinctExpectedDocumentSets()
+                        + " (missing or zero) — this would silently widen that group's tolerance "
+                        + "to the loosest possible value instead of failing loudly. Fix the field "
+                        + "in the baseline file.");
+              }
+            });
   }
 }
