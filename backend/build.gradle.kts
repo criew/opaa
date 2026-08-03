@@ -24,6 +24,24 @@ sourceSets {
     main {
         java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
     }
+    // Retrieval-quality evaluation harness (issue #227). Deliberately its own source set, not
+    // part of `test`: it needs Docker (pgvector + Ollama Testcontainers), pulls a ~275 MB
+    // embedding model and indexes ~1.450 corpus documents, which would slow down every
+    // `./gradlew build` for something that only needs to run occasionally and by choice. See the
+    // `evaluateRetrieval` task below and docs/discussions/discussion-rag-evaluation.md.
+    create("evalTest") {
+        java.srcDir("src/evalTest/java")
+        resources.srcDir("src/evalTest/resources")
+        compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+        runtimeClasspath += output + sourceSets.main.get().output + sourceSets.test.get().output
+    }
+}
+
+configurations.named("evalTestImplementation") {
+    extendsFrom(configurations["testImplementation"])
+}
+configurations.named("evalTestRuntimeOnly") {
+    extendsFrom(configurations["testRuntimeOnly"])
 }
 
 dependencies {
@@ -36,6 +54,49 @@ dependencies {
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)
+}
+
+// Runs the retrieval-quality evaluation harness against eval/corpus (issue #227). Not wired into
+// `check`/`build`/`test` on purpose (see the `evalTest` source set comment above) — invoke
+// explicitly with `./gradlew evaluateRetrieval`. Needs Docker; downloads the `nomic-embed-text`
+// model into the Ollama Testcontainer on first run.
+tasks.register<Test>("evaluateRetrieval") {
+    description = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
+        "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
+    systemProperty("file.encoding", "UTF-8")
+    testLogging {
+        events("passed", "skipped", "failed", "standard_out")
+        showStandardStreams = true
+    }
+}
+
+// Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
+// CorpusManifest — see their Javadoc). Lives in the evalTest source set (not `main`/`test`) so the
+// classes under test never ship in the production jar, but still runs as part of `check` so a
+// Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math regression, is caught
+// without Docker. Explicitly excludes RetrievalEvaluationHarnessTest, which needs Testcontainers
+// and stays exclusive to `evaluateRetrieval` — issue #227's exclusion criterion is about that one
+// Docker-requiring test class, not about the evalTest source set as a whole.
+tasks.register<Test>("evalUnitTest") {
+    description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
+        "MetricsAggregate, CorpusManifest). Part of check; does not touch Testcontainers."
+    group = "verification"
+    testClassesDirs = sourceSets["evalTest"].output.classesDirs
+    classpath = sourceSets["evalTest"].runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*RetrievalEvaluationHarnessTest")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("evalUnitTest")
 }
 
 dependencyManagement {
