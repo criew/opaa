@@ -48,10 +48,14 @@ import org.springframework.web.server.ResponseStatusException;
  * including any new {@code expiresAt} the caller is setting (#202 code review round 2, nit 1): an
  * {@code OWNER} renewing their own grant with {@code role = OWNER} does not by itself prove the
  * grant stays active if the caller also supplies an {@code expiresAt} in the past. See {@link
- * #requireNotDowngradingTheLastActiveOwnerGrant} and {@link
- * AssetGrantRepository#findByLibraryIdForUpdate} for how this count is additionally protected
+ * #requireNotDowngradingTheLastActiveOwnerGrant}, {@link
+ * AssetGrantRepository#lockLibraryGrantsForMutation} and {@link
+ * AssetGrantRepository#countOtherActiveOwnerGrants} for how this count is additionally protected
  * against two concurrent callers each observing the other's OWNER grant as still active (#202 code
- * review round 2, nit 2).
+ * review round 2 nit 2), first via a locked entity read that turned out to be stale under that
+ * exact scenario, then via a {@code SELECT ... FOR UPDATE} on the grant rows that fixed the
+ * staleness but deadlocked under real concurrency, and settling on a per-library advisory lock plus
+ * a plain scalar count (round 3, blocker 2) - see both methods' Javadoc for the full history.
  *
  * <p>Also enforces two narrower rules from the feature spec: a grant can never be created or
  * updated on the automatic personal library (it is meant to reach only its owner, see {@code
@@ -196,16 +200,14 @@ public class AssetGrantService {
     // Last-active-OWNER guard, the mirror image of upsertGrant's downgrade guard: removing the
     // last non-expired OWNER grant would leave the library in a state the application can no
     // longer manage - nobody left with the role required to grant, revoke or delete. See the class
-    // Javadoc for why the count is taken under a row lock (findByLibraryIdForUpdate), not the plain
-    // cached read used elsewhere.
-    if (grant.getRole() == AssetRole.OWNER && !grant.isExpired(Instant.now())) {
-      List<AssetGrant> lockedLibraryGrants =
-          grantRepository.findByLibraryIdForUpdate(library.getId());
-      if (isLastActiveOwnerGrant(lockedLibraryGrants, grant.getId())) {
-        throw new ResponseStatusException(
-            HttpStatus.CONFLICT,
-            "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
-      }
+    // Javadoc and AssetGrantRepository#lockLibraryGrantsForMutation for why this locks per library
+    // via an advisory lock before counting, rather than row-locking the grants directly.
+    if (grant.getRole() == AssetRole.OWNER
+        && !grant.isExpired(Instant.now())
+        && isLastActiveOwnerGrant(library.getId(), grant.getId())) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
     }
 
     grantRepository.delete(grant);
@@ -237,11 +239,18 @@ public class AssetGrantService {
     }
   }
 
-  private boolean isLastActiveOwnerGrant(List<AssetGrant> libraryGrants, UUID excludingGrantId) {
-    Instant now = Instant.now();
-    return libraryGrants.stream()
-        .filter(g -> !g.getId().equals(excludingGrantId))
-        .noneMatch(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(now));
+  /**
+   * Whether {@code excludingGrantId} is the library's only active {@code OWNER} grant, i.e.
+   * removing or downgrading it would leave zero. Acquires {@link
+   * AssetGrantRepository#lockLibraryGrantsForMutation}'s per-library advisory lock first, then
+   * counts via {@link AssetGrantRepository#countOtherActiveOwnerGrants} - see both methods' Javadoc
+   * for why this two-step, lock-then-plain-read sequence is both deadlock- and staleness-safe where
+   * a single {@code SELECT ... FOR UPDATE} on the grant rows was neither.
+   */
+  private boolean isLastActiveOwnerGrant(UUID libraryId, UUID excludingGrantId) {
+    grantRepository.lockLibraryGrantsForMutation(libraryId);
+    return grantRepository.countOtherActiveOwnerGrants(libraryId, excludingGrantId, Instant.now())
+        == 0;
   }
 
   /**
@@ -266,10 +275,10 @@ public class AssetGrantService {
     if (staysActiveOwner) {
       return;
     }
-    // See AssetGrantRepository#findByLibraryIdForUpdate for why this read is taken under a row
-    // lock rather than the plain cached read used elsewhere (#202 code review round 2, nit 2).
-    List<AssetGrant> lockedLibraryGrants = grantRepository.findByLibraryIdForUpdate(libraryId);
-    if (isLastActiveOwnerGrant(lockedLibraryGrants, existingGrant.getId())) {
+    // See AssetGrantRepository#lockLibraryGrantsForMutation for why this locks per library via an
+    // advisory lock before counting, rather than row-locking the grants directly (#202 code review
+    // round 2 nit 2, round 3 blocker 2).
+    if (isLastActiveOwnerGrant(libraryId, existingGrant.getId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht herabgestuft werden");

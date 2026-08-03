@@ -262,7 +262,14 @@ public class KnowledgeLibraryService {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Die persoenliche Bibliothek kann nicht geloescht werden");
     }
-    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
+    // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
+    // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
+    // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
+    // libraries) could otherwise delete the whole library, taking every grant on it - including the
+    // creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the round-1/round-2
+    // escalation guards entirely instead of being blocked by them. See
+    // LibraryAccessService#canDelete.
+    if (!accessService.canDelete(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that

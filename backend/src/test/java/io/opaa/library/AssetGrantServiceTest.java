@@ -19,7 +19,6 @@ import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -323,7 +322,9 @@ class AssetGrantServiceTest {
     when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
             libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.of(onlyOwnerGrant));
-    when(grantRepository.findByLibraryIdForUpdate(libraryId)).thenReturn(List.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+        .thenReturn(0L);
 
     AssetGrantRequest request =
         new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
@@ -346,7 +347,9 @@ class AssetGrantServiceTest {
     AssetGrant onlyOwnerGrant =
         AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(onlyOwnerGrant));
-    when(grantRepository.findByLibraryIdForUpdate(libraryId)).thenReturn(List.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+        .thenReturn(0L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -365,12 +368,13 @@ class AssetGrantServiceTest {
     UUID grantId = UUID.randomUUID();
     AssetGrant grantToRemove =
         AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
-    AssetGrant otherOwnerGrant =
-        AssetGrant.forUser(
-            libraryId, organizationId, UUID.randomUUID(), AssetRole.OWNER, null, managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantToRemove));
-    when(grantRepository.findByLibraryIdForUpdate(libraryId))
-        .thenReturn(List.of(grantToRemove, otherOwnerGrant));
+    // Keyed on grantToRemove's own id (not the lookup id grantId) - AssetGrantService passes
+    // grant.getId() to the guard, and AssetGrant.forUser mints its own random id independent of
+    // grantId.
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(libraryId), eq(grantToRemove.getId()), any()))
+        .thenReturn(1L);
 
     grantService.revokeGrant(libraryId, grantId, managerId, false);
 
@@ -392,16 +396,14 @@ class AssetGrantServiceTest {
     AssetGrant ownerGrantToRemove =
         AssetGrant.forUser(
             libraryId, organizationId, UUID.randomUUID(), AssetRole.OWNER, null, managerId);
-    AssetGrant anotherActiveOwnerGrant =
-        AssetGrant.forUser(
-            libraryId, organizationId, UUID.randomUUID(), AssetRole.OWNER, null, managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(ownerGrantToRemove));
     // Deliberately stubbed even though the test asserts it is never called: proves the rejection
-    // below is not an accidental side effect of an empty/unstubbed grant list making the
-    // last-active-OWNER guard fire for the wrong reason - a second active OWNER grant genuinely
+    // below is not an accidental side effect of an unstubbed count defaulting to 0 and the
+    // last-active-OWNER guard firing for the wrong reason - a second active OWNER grant genuinely
     // exists, so that guard alone would allow the removal.
-    when(grantRepository.findByLibraryIdForUpdate(libraryId))
-        .thenReturn(List.of(ownerGrantToRemove, anotherActiveOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(libraryId), eq(ownerGrantToRemove.getId()), any()))
+        .thenReturn(1L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
@@ -413,7 +415,7 @@ class AssetGrantServiceTest {
     // The role-escalation guard must short-circuit before the last-active-OWNER count is even
     // read - a MANAGER is refused for the more fundamental reason regardless of how many other
     // OWNER grants exist.
-    verify(grantRepository, never()).findByLibraryIdForUpdate(any());
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
   }
 
   @Test
@@ -460,7 +462,9 @@ class AssetGrantServiceTest {
     when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
             libraryId, PermissionSubjectType.USER, managerId))
         .thenReturn(Optional.of(onlyOwnerGrant));
-    when(grantRepository.findByLibraryIdForUpdate(libraryId)).thenReturn(List.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+        .thenReturn(0L);
 
     AssetGrantRequest request =
         new AssetGrantRequest(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
@@ -495,6 +499,6 @@ class AssetGrantServiceTest {
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
     assertThat(response.getRole()).isEqualTo(AssetRole.OWNER);
-    verify(grantRepository, never()).findByLibraryIdForUpdate(any());
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
   }
 }

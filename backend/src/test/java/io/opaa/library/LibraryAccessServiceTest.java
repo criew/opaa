@@ -116,6 +116,32 @@ class LibraryAccessServiceTest {
   }
 
   @Test
+  void aDirectManagerGrantAllowsManagingButNotDeleting() {
+    // #202 code review round 3 (Blocker 1): MANAGER is enough to rename, change visibility or
+    // manage grants, but never enough to delete the library or (once it exists) transfer its
+    // ownership - AssetRole reserves that for OWNER alone.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.MANAGER, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThat(accessService.canManage(library, userId, false)).isTrue();
+    assertThat(accessService.canDelete(library, userId, false)).isFalse();
+  }
+
+  @Test
+  void aDirectOwnerGrantAllowsDeleting() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.OWNER, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThat(accessService.canDelete(library, userId, false)).isTrue();
+  }
+
+  @Test
   void aUserOnlyGrantDoesNotAllowReadingConfiguration() {
     // #202's central distinction: USER can use the asset but not see its configuration.
     UUID libraryId = UUID.randomUUID();

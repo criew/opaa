@@ -471,10 +471,50 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void aGroupMemberHoldingOnlyManagerCannotDeleteTheLibraryEvenThoughItCanManageIt() {
+    // #202 code review round 3 (Blocker 1): AssetRole reserves "delete the asset and transfer
+    // ownership" for OWNER alone - deleteLibrary must gate on that, not on canManage (MANAGER).
+    // Before this fix, otherMember - holding only the group's MANAGER grant, never able to touch
+    // the creator's OWNER grant directly (see the escalation guard exercised above) - could still
+    // delete the whole library outright, taking every grant on it down with it via
+    // fk_asset_grants_library_organization's ON DELETE CASCADE (migration 013): a detour all the
+    // way around the round-1/round-2 escalation guards instead of being stopped by them. This is
+    // strictly worse for a migrated, backfilled group-owned library, which deliberately carries no
+    // OWNER grant at all (013-asset-grants.yaml's backfill comment) - there, every member could
+    // delete a library nobody could even downgrade the group's grant on.
+    UUID creator = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Group group = createGroup(organizationA, creator, otherMember);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales")
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId()),
+            creator);
+
+    // otherMember can still manage (rename, change visibility) via the group's MANAGER grant...
+    libraryService.updateLibrary(
+        library.getId(), new LibraryUpdateRequest("Umbenannt von otherMember"), otherMember, false);
+    // ...but cannot delete: that requires OWNER, which only the creator personally holds.
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), otherMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThat(libraryRepository.findById(library.getId())).isPresent();
+
+    // The creator, holding OWNER, can delete it.
+    libraryService.deleteLibrary(library.getId(), creator, false);
+    assertThat(libraryRepository.findById(library.getId())).isEmpty();
+  }
+
+  @Test
   void aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately() {
     // The group-grant counterpart of revokingAGrantTakesEffectOnTheNextCall, using a plain
     // USER-owned library (not the owning group itself, to keep this test independent of
-    // creatingAGroupOwnedLibraryGrantsOwnerToTheGroupNotOnlyTheCreatorButNoOutsider's concern):
+    // creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider's
+    // concern):
     // an explicit grant to an ordinary AD_HOC group reaches its current members exactly like a
     // direct grant would, and losing membership removes access on the next call.
     UUID owner = createUser(organizationA);
@@ -545,12 +585,19 @@ class KnowledgeLibraryServiceIntegrationTest {
     // #202 code review round 2, nit 2: isLastActiveOwnerGrant is a read-then-decide check with no
     // locking of its own. Two OWNER grants, two threads each revoking one at (as close to)
     // literally the same instant as CyclicBarrier can arrange, against the real Postgres schema
-    // (not a mock - a mocked PlatformTransactionManager would not exercise the row lock
-    // AssetGrantRepository#findByLibraryIdForUpdate takes, per this project's rule for
-    // concurrency-sensitive invariants). Without that lock, both threads could read the other's
-    // grant as still active and both would proceed, leaving zero active OWNER grants - exactly the
-    // state the guard exists to prevent. With it, exactly one thread must see a 409 and the
-    // library must retain exactly one active OWNER grant afterwards, never zero.
+    // (not a mock - a mocked PlatformTransactionManager would not exercise
+    // AssetGrantRepository#lockLibraryGrantsForMutation's real advisory lock, per this project's
+    // rule for concurrency-sensitive invariants). Without that lock, both threads could read the
+    // other's grant as still active and both would proceed, leaving zero active OWNER grants -
+    // exactly the state the guard exists to prevent. With it, exactly one thread must see a 409
+    // and the library must retain exactly one active OWNER grant afterwards, never zero.
+    //
+    // This test alone cannot catch a guard that serializes correctly but decides on stale data
+    // (#202 code review round 3, blocker 2): a deleted row simply disappears from any subsequent
+    // read, so a revoke-vs-revoke race can never observe staleness. See
+    // #concurrentDowngradeAndRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner
+    // below, which pairs a downgrade with a revoke - an *updated*, not deleted, row - and is the
+    // scenario that actually exposed the round-2 fix's remaining staleness bug.
     UUID firstOwner = createUser(organizationA);
     UUID secondOwner = createUser(organizationA);
     LibraryResponse library =
@@ -622,6 +669,93 @@ class KnowledgeLibraryServiceIntegrationTest {
         return e;
       }
     };
+  }
+
+  @Test
+  void concurrentDowngradeAndRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner()
+      throws Exception {
+    // #202 code review round 3, blocker 2: two earlier versions of this guard both failed this
+    // exact scenario, for two different reasons, both only visible with a real downgrade racing a
+    // real revoke - a revoke-vs-revoke race (the test above) cannot expose either, because a
+    // deleted row simply disappears from any subsequent read, stale or not:
+    //  1. Locking the grant rows with SELECT ... FOR UPDATE and mapping the result back to
+    //     AssetGrant entities decided on a stale, already-loaded managed instance for the count,
+    //     because requireManageable -> effectiveRole had already loaded the same rows into this
+    //     transaction's persistence context beforehand (via LibraryAccessService's own
+    //     findByLibraryId) - fixed by counting via a plain scalar aggregate query instead, which
+    // has
+    //     no entity identity to resolve against the persistence context.
+    //  2. That scalar aggregate, still built on SELECT ... FOR UPDATE over every grant row of the
+    //     library, then deadlocked under real concurrency even with a deterministic ORDER BY id on
+    //     the locking query - fixed by replacing the row lock with a single per-library Postgres
+    //     advisory lock (AssetGrantRepository#lockLibraryGrantsForMutation) acquired before the
+    //     plain count, removing the multi-row lock-ordering question entirely.
+    UUID firstOwner = createUser(organizationA);
+    UUID secondOwner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), firstOwner);
+    AssetGrant firstOwnerGrant =
+        grantRepository.findByLibraryId(library.getId()).stream()
+            .filter(g -> firstOwner.equals(g.getSubjectUserId()))
+            .findFirst()
+            .orElseThrow();
+    var secondOwnerGrant =
+        grantService.upsertGrant(
+            library.getId(),
+            new AssetGrantRequest(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
+            firstOwner,
+            false);
+
+    var barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Callable<Exception> downgradeFirstOwner =
+          () -> {
+            barrier.await();
+            try {
+              grantService.upsertGrant(
+                  library.getId(),
+                  new AssetGrantRequest(PermissionSubjectType.USER, firstOwner, AssetRole.VIEWER),
+                  firstOwner,
+                  false);
+              return null;
+            } catch (ResponseStatusException e) {
+              return e;
+            }
+          };
+      Callable<Exception> revokeSecondOwner =
+          revokeAfterBarrier(barrier, library.getId(), secondOwnerGrant.getId(), secondOwner);
+
+      List<Future<Exception>> results =
+          executor.invokeAll(List.of(downgradeFirstOwner, revokeSecondOwner));
+
+      long conflicts = 0;
+      long successes = 0;
+      for (var result : results) {
+        Exception outcome = result.get();
+        if (outcome == null) {
+          successes++;
+        } else if (outcome instanceof ResponseStatusException rse
+            && rse.getStatusCode() == HttpStatus.CONFLICT) {
+          conflicts++;
+        } else {
+          throw new AssertionError("Unexpected outcome", outcome);
+        }
+      }
+
+      assertThat(successes).as("exactly one of downgrade/revoke must succeed").isEqualTo(1);
+      assertThat(conflicts).as("the other must be rejected as the last active owner").isEqualTo(1);
+      List<AssetGrant> remainingGrants = grantRepository.findByLibraryId(library.getId());
+      long activeOwnerCount =
+          remainingGrants.stream()
+              .filter(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(Instant.now()))
+              .count();
+      assertThat(activeOwnerCount)
+          .as("the library must retain exactly one active owner")
+          .isEqualTo(1);
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test
