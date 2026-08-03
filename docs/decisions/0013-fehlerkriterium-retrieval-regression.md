@@ -62,10 +62,18 @@ dort, wo sie schadet.
 Baselinewert darf um mehr als 25 % relativ fallen, unabhängig davon, was die fallbasierte Toleranz
 erlaubt. Damit bleibt `numeric_range` (nDCG@10 0,063) bei rund 0,047 statt bei rund 0,013 geschützt.
 
-**4. Die harte Untergrenze der vier Gesamtmetriken wird an die Baseline gekoppelt**: 80 % des jeweils
-committeten Baselinewerts. Ihr Zweck bleibt der zweite, baseline-unabhängige Fangnetz gegen
-katastrophales Versagen; als feste 0,25 hätte sie eine schrittweise Baseline-Absenkung um 44 %
-zugelassen, ohne je auszulösen.
+**4. Die harte Untergrenze der vier Gesamtmetriken kombiniert eine baseline-relative und eine feste
+absolute Komponente** über `max(...)`: `max(0,8 · committeter Baselinewert, feste Untergrenze)` —
+Hit Rate@5 ≥ 0,30, MRR ≥ 0,25, nDCG@10 ≥ 0,25, Recall@10 ≥ 0,25 als feste Komponente (siehe
+[Nachtrag, zweite Review-Runde](#nachtrag-zweite-review-runde-2026-08-03), Punkt 2, für die
+Korrektur gegenüber der ursprünglichen Entwurfsfassung dieser Entscheidung, die die feste Komponente
+noch fallen ließ). Beide Komponenten allein sind unzureichend: rein relativ (0,8·b) liegt sie bei der
+aktuellen Baseline oberhalb der Primär-Toleranz und kann bei gültiger Baseline nie auslösen — und sie
+wandert unverändert mit, wenn die Baseline selbst über mehrere PRs erodiert, verliert also genau den
+Erosionsschutz, den sie haben soll. Rein absolut (feste 0,25/0,30) erodiert sie umgekehrt zur
+Bedeutungslosigkeit, sobald die tatsächlichen Werte weit darüber liegen. Erst `max(...)` beider
+Komponenten liefert sowohl Katastrophenschutz als auch einen Anker gegen schleichende
+Baseline-Absenkung.
 
 **5. Alle Größen, die den Messvertrag nach ADR-0012 bestimmen, sind Fixpunkte der Baseline** und
 führen bei Abweichung zu „Baseline ungültig", nicht zu einem Metrikvergleich. Das umfasst
@@ -105,18 +113,33 @@ nicht mehr allein auf der Aufmerksamkeit des Reviewers.
   sie identisch sind — heute erzeugen sie acht statt vier Prüfungen über dieselben Daten. Eigenes
   Issue (`evaluation`, `size:S`).
 - Ob Gruppen mit sehr niedrigem Baselinewert überhaupt über Mittelwerte geprüft werden sollten oder
-  besser über die absolute Zahl getroffener Fälle (z. B. „mindestens 2 der 16 `numeric_range`-Fälle
-  liefern einen Treffer in den Top 5"). **Konkret bekannt und bewusst nicht gelöst:** Für
-  `category:numeric_range` (n_eff=15) liegt die aus Entscheidung 3 resultierende Toleranz von
-  `hitRateAt5` bei rund 0,047 — knapp unter der Verschiebung, die ein einzelner kippender Fall in
-  dieser Gruppe erzeugt (1/16 ≈ 0,0625). Für dieses eine Metrik/Gruppen-Paar kann ein einzelner
-  Fall also weiterhin einen Fehlschlag auslösen, obwohl Entscheidung 2 genau das verhindern soll.
-  Der Grund ist der in diesem ADR beschriebene Zielkonflikt selbst: Die relative Deckelung aus
-  Entscheidung 3, die `numeric_range`s nDCG@10 wirksam schützt, kann für ein anderes, weniger
-  extremes Metrik desselben Golden-Kategoriewerts (`hitRateAt5`, Baseline 0,188) enger ausfallen als
+  besser über die absolute Zahl getroffener Fälle (z. B. „die Zahl der Fälle mit nDCG@10 > 0 darf um
+  höchstens 1 sinken"). **Konkret bekannt und bewusst nicht gelöst — korrigiert in der zweiten
+  Review-Runde vom 2026-08-03:** Es ist **kein** isolierter Einzelfall, sondern betrifft **sechs**
+  Metrik/Gruppen-Paare, deren Toleranz enger ist als die Verschiebung, die ein einzelner kippender
+  Fall in dieser Gruppe erzeugt (`1/n`):
+
+  | Paar | Toleranz | 1/n | Verhältnis |
+  |---|---|---|---|
+  | `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |
+  | `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |
+  | `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |
+  | `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |
+  | `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |
+  | `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |
+
+  Für `numeric_range`s nDCG@10 genügt es bereits, dass eine einzige der 16 Anfragen von Rang 1 auf
+  Rang 3 rutscht — **kein** Treffer muss verloren gehen —, um die Toleranz mehr als doppelt zu
+  reißen. Für alle sechs Paare kann ein einzelner Fall also weiterhin einen Fehlschlag auslösen,
+  obwohl Entscheidung 2 genau das verhindern soll. Der Grund ist der in diesem ADR beschriebene
+  Zielkonflikt selbst: Die relative Deckelung aus Entscheidung 3, die die schwächsten Werte wirksam
+  schützt, fällt für andere, etwas weniger extreme Metriken derselben (kleinen) Gruppe enger aus als
   der Ein-Fall-Schutz aus Entscheidung 2. Eine fallzahlbasierte Prüfung (statt Mittelwert-Toleranz)
-  für Gruppen mit `n_eff < 20` wäre der sauberere, aber grundsätzlichere Wechsel — dafür fehlt heute
-  die Evidenz aus echten nächtlichen Läufen, um das zu kalibrieren.
+  für diese Paare wäre der sauberere, aber grundsätzlichere Wechsel und ist billiger als zunächst
+  angenommen — der Report führt in `allQueryResults` bereits jeden Einzelfall mit seinen vier
+  Metriken, eine „Zahl erfolgreicher Fälle darf um höchstens 1 sinken"-Prüfung bräuchte keine neue
+  Kalibrierungsevidenz und wäre strenger als die 25-%-Deckelung. Nachverfolgt in Issue #306
+  (`evaluation`, `ci`, `size:M`).
 
 ## Nachtrag: Umsetzung in PR #301
 
@@ -137,3 +160,33 @@ nicht mehr allein auf der Aufmerksamkeit des Reviewers.
 
 Der Kern der Entscheidung (Formel, harte Untergrenze, Fixpunkt-Liste, Baseline-Diff) ist davon nicht
 berührt.
+
+## Nachtrag: zweite Review-Runde (2026-08-03)
+
+> Der Maintainer hat `checkRetrievalBaseline` mit echtem Docker laufen lassen — vier Läufe auf drei
+> Maschinen, alle bit-identisch, Exit 0. Für `multi_attribute_filter` und `numeric_range` exakt die
+> committeten Baseline-Werte (Delta 0,000). Das ist die erste Verifikation des vollständigen Wegs,
+> nicht nur der Vergleichslogik gegen synthetische Reports — und die Grundlage für die folgenden drei
+> Korrekturen.
+
+1. **Der Sechsfach-Befund aus dem „Offen"-Abschnitt war als Einzelfall beschrieben.** Korrigiert:
+   siehe die Tabelle mit allen sechs betroffenen Metrik/Gruppen-Paaren oben. Der Javadoc von
+   `BaselineComparator` listet dieselben sechs Paare.
+2. **Die harte Untergrenze (Entscheidung 4) war ausschließlich baseline-relativ und dadurch
+   wirkungslos**, nicht wie ursprünglich in diesem ADR vorgeschlagen. Zur Laufzeit unerreichbar (die
+   Primär-Toleranz löst bei einer gültigen Baseline immer zuerst aus) **und** ohne Erosionsschutz
+   (sie wandert unverändert mit einer abgesenkten Baseline mit, statt dagegen zu verankern). Korrekt
+   ist die Kombination aus relativer und fester absoluter Komponente über `max(...)` — Entscheidung 4
+   oben ist entsprechend präzisiert.
+3. **Die Herabstufung des Sechsfach-Befunds auf einen Folge-Eintrag beruht auf vier bit-identischen
+   Läufen über drei Maschinen — CI-Hardware (GitHub-Actions-Runner) steht dabei noch aus.** Alle
+   bisherigen Läufe stammen von Entwickler-/Reviewer-Rechnern. Der erste nächtliche Lauf über
+   `.github/workflows/retrieval-regression.yml` ist insofern der eigentliche Test, ob die
+   Reproduzierbarkeit auch auf Runner-Hardware hält — nicht nur eine Formalität nach dem Merge.
+4. **Der Baseline-Diff gegenüber `main` (Entscheidung 6) hing zunächst am Label `evaluation`.** Ein
+   PR, der die Baseline unbemerkt absenkt, aber nie dieses Label bekommt, hätte dadurch überhaupt
+   keinen Hinweis erzeugt — der CODEOWNERS-Gegenvorschlag des Autors trägt zwar (Merge-Rechte sind
+   ohnehin auf zwei Maintainer beschränkt), macht die Sichtbarkeit aber zur einzigen verbliebenen,
+   und damals noch freiwilligen, Kontrolle. Korrigiert: `eval/baseline/diff_baseline.py` läuft jetzt
+   über einen eigenen, Docker-freien Workflow (`.github/workflows/baseline-diff.yml`) für **jeden**
+   PR, der `eval/baseline/**` ändert, unabhängig vom Label.

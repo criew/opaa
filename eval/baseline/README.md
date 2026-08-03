@@ -143,14 +143,27 @@ Diese Tabelle ist reproduzierbar aus der committeten Baseline nachrechenbar
 (`BaselineComparator.toleranceFor`, unit-getestet in `BaselineComparatorTest`) und keine separate,
 von Hand gepflegte Angabe.
 
-**Bekannter, bewusst nicht gelöster Grenzfall** (siehe ADR-0013, Abschnitt „Offen"): Für
-`category:numeric_range` liegt die Toleranz von `hitRateAt5` (0,047) knapp unter der Verschiebung,
-die ein einzelner kippender Fall in dieser 16-Fälle-Gruppe erzeugt (1/16 ≈ 0,0625) — dort kann ein
-einzelner Fall weiterhin einen Fehlschlag auslösen. Die relative Deckelung, die `numeric_range`s
-nDCG@10 wirksam schützt, fällt für `hitRateAt5` (höherer Baseline-Wert derselben Gruppe) enger aus
-als der Ein-Fall-Schutz. Eine fallzahlbasierte statt Mittelwert-Prüfung für sehr kleine Gruppen wäre
-der sauberere Fix, ist aber ohne Erfahrung aus echten nächtlichen Läufen nicht kalibrierbar — offenes
-Folge-Thema, kein PR-#301-Bug.
+**Bekannter, bewusst nicht gelöster Grenzfall — betrifft sechs Paare, nicht eines** (siehe ADR-0013,
+Abschnitt „Offen", korrigiert in dessen zweiter Review-Runde): Für die folgenden Metrik/Gruppen-Paare
+ist die Toleranz enger als die Verschiebung, die ein einzelner kippender Fall erzeugt (`1/n`) — dort
+kann ein einzelner Fall weiterhin einen Fehlschlag auslösen, ohne dass sich sonst etwas geändert hat:
+
+| Paar | Toleranz | 1/n | Verhältnis |
+|---|---|---|---|
+| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |
+| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |
+| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |
+| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |
+| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |
+| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |
+
+Für `numeric_range`s nDCG@10 genügt es bereits, dass eine einzige der 16 Anfragen von Rang 1 auf
+Rang 3 rutscht — kein verlorener Treffer nötig —, um die Toleranz mehr als doppelt zu reißen. Die
+relative Deckelung, die die niedrigsten Werte wirksam schützt, fällt für andere, etwas weniger
+extreme Metriken derselben kleinen Gruppe enger aus als der Ein-Fall-Schutz. Eine fallzahlbasierte
+statt Mittelwert-Prüfung wäre der sauberere Fix und ist billiger als zunächst angenommen — die
+Einzelergebnisse liegen im Report bereits vor (`allQueryResults`) —, ist aber ein eigenes,
+nachverfolgtes Folge-Thema (Issue #306, `evaluation`, `ci`, `size:M`), kein PR-#301-Bug.
 
 Diese engen Toleranzen sind bewusst gewählt, **weil** die Reproduzierbarkeit oben belegt ist: Eine
 weite Toleranz würde bei nachgewiesener Stabilität keinen zusätzlichen Schutz vor falschem
@@ -158,15 +171,30 @@ Alarm kaufen, sondern nur echte Regressionen durchlassen.
 
 ### Harte Untergrenze (zweite Stufe)
 
-Zusätzlich zur baseline-relativen Toleranz gilt eine für die vier Gesamt-Metriken (`overall`, nicht
-für einzelne Gruppen) **an die Baseline gekoppelte** Untergrenze: 80 % des jeweils committeten
-Baselinewerts (`BaselineComparator.HARD_FLOOR_FRACTION_OF_BASELINE`, ADR-0013 Entscheidung 4). Für
-die aktuelle Baseline also Hit Rate@5 ≥ 0,417, MRR ≥ 0,369, nDCG@10 ≥ 0,356, Recall@10 ≥ 0,392. Eine
-feste Zahl (zuvor 0,25 für alle vier) hätte eine schrittweise Baseline-Absenkung um 44 % erlaubt,
-ohne je auszulösen — an die Baseline gekoppelt wandert die Untergrenze bei jeder Baseline-
-Aktualisierung mit. Die baseline-relative Toleranz greift im Regelfall lange vorher; der Zweck der
-harten Untergrenze bleibt ein zweiter, von der primären Toleranzformel unabhängiger Fangnetz gegen
-katastrophales Versagen (z. B. ein leerer oder falsch konfigurierter Vektor-Store).
+> **Korrigiert in der zweiten Review-Runde zu PR #301.** Die erste Fassung dieses Abschnitts
+> beschrieb eine rein baseline-relative Untergrenze (80 % des Baselinewerts, sonst nichts). Das war
+> in zweierlei Hinsicht wirkungslos: Bei einer gültigen Baseline liegt `0,8·Baselinewert` für jede
+> Gesamtmetrik oberhalb der viel engeren Primär-Toleranz (rund 0,021 für `overall`) — die Toleranz
+> schlägt also immer zuerst zu, die Untergrenze konnte praktisch nie auslösen. Und weil sie
+> ausschließlich relativ war, wandert sie bei einer schrittweise abgesenkten Baseline unverändert
+> mit, statt dagegen zu verankern — das Gegenteil dessen, wofür ein „harter Boden" da ist.
+
+Zusätzlich zur baseline-relativen Toleranz gilt für die vier Gesamt-Metriken (`overall`, nicht für
+einzelne Gruppen) eine Untergrenze, die **beide** Komponenten kombiniert
+(`BaselineComparator.HARD_FLOOR_FRACTION_OF_BASELINE` und `HARD_FLOOR_ABSOLUTE_*`, ADR-0013
+Entscheidung 4):
+
+```
+harteUntergrenze = max( 0,8 · committeter Baselinewert, feste Untergrenze )
+```
+
+Feste Untergrenzen: Hit Rate@5 ≥ 0,30, MRR ≥ 0,25, nDCG@10 ≥ 0,25, Recall@10 ≥ 0,25. Für die aktuelle
+Baseline dominiert die relative Komponente (Hit Rate@5 ≥ 0,417, MRR ≥ 0,369, nDCG@10 ≥ 0,356,
+Recall@10 ≥ 0,392) — bei einer künftig, legitim oder nicht, stark abgesenkten Baseline übernimmt die
+feste Komponente die Ankerfunktion. Die baseline-relative Toleranz greift im Regelfall trotzdem lange
+vor der harten Untergrenze; deren Zweck bleibt ein zweiter, von der primären Toleranzformel
+unabhängiger Fangnetz gegen katastrophales Versagen (z. B. ein leerer oder falsch konfigurierter
+Vektor-Store) — jetzt tatsächlich mit dieser Wirkung, nicht nur der Absicht danach.
 
 ## Baseline ungültig vs. Regression — wie der Job das unterscheidet
 
@@ -235,14 +263,19 @@ beantwortbar bleibt.
 
 ## Baseline-Absenkung gegenüber `main` (ADR-0013, Entscheidung 6)
 
-Der label-ausgelöste Lauf an einem Pull Request vergleicht zusätzlich die Baseline **des
-PR-Branches** gegen die Baseline **von `main`** (`eval/baseline/diff_baseline.py`, aufgerufen aus
-`.github/workflows/retrieval-regression.yml`) und postet jede Metrik, die im PR-Branch niedriger ist
-als auf `main`, als eigene Tabelle im PR-Kommentar. Der Grund: Ohne diesen Vergleich prüft der
-label-ausgelöste Lauf nur, ob der aktuelle Retrieval-Lauf zur **eigenen, im selben PR mitgelieferten**
-Baseline passt — ein PR, der die Baseline im selben Zug unbemerkt absenkt, bekommt dadurch einen
-grünen Regressionsjob als scheinbaren Beleg für "keine Regression", obwohl der Maßstab selbst
-gesunken ist.
+> **Korrigiert in der zweiten Review-Runde zu PR #301.** Dieser Vergleich lief zunächst nur im
+> label-ausgelösten Retrieval-Regressionslauf. Das hätte einen PR, der die Baseline unbemerkt
+> absenkt, aber nie das Label `evaluation` bekommt, ohne jeden Hinweis durchgelassen — die einzige
+> verbliebene Kontrolle wäre dann die Aufmerksamkeit eines Reviewers gewesen, nicht mehr etwas
+> Automatisiertes.
+
+**`.github/workflows/baseline-diff.yml`** vergleicht deshalb für **jeden** Pull Request, der
+`eval/baseline/**` ändert — unabhängig vom Label `evaluation` — die Baseline **des PR-Branches**
+gegen die Baseline **von `main`** (`eval/baseline/diff_baseline.py`) und postet jede Metrik, die im
+PR-Branch niedriger ist als auf `main`, als eigene Tabelle im PR-Kommentar sowie in der
+Job-Zusammenfassung. Der Grund für einen eigenen Workflow statt eines Schritts im
+Retrieval-Regressionsjob: Das Skript ist Standardbibliothek-only Python, braucht kein Docker und
+läuft in unter einer Minute — es gibt keinen Grund, es an das teure, gelabelte Verfahren zu koppeln.
 
 Das Skript ist rein informativ und schlägt nie fehl (Exit-Code immer 0) — es macht eine Absenkung im
 PR-Kommentar sichtbar, ersetzt aber nicht die Review-Pflicht aus dem Abschnitt oben. Es ist bewusst

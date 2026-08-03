@@ -186,9 +186,12 @@ class RetrievalEvaluationHarnessTest {
     // .github/workflows/retrieval-regression.yml) — skip 'ollama pull' entirely. Without this
     // check, 'ollama pull' always reaches out to the model registry to resolve the tag's manifest
     // even when every layer is already cached locally, which contradicted this harness's claim
-    // (eval/README.md, ADR-0011) of running without third-party network access on a warm cache
-    // (PR #301 review, Befund 5). GET /api/tags itself never leaves the Docker network — it talks
-    // to the Ollama container this test just started, not to any third party.
+    // (eval/README.md, ADR-0011) of not needing to download the embedding model again on a warm
+    // cache (PR #301 review, Befund 5). Narrowly scoped claim, not "no third-party network access
+    // at all": the pgvector/pgvector and ollama/ollama base images are still pulled from Docker
+    // Hub regardless of this check (Testcontainers itself does that, independent of the model). GET
+    // /api/tags itself never leaves the Docker network either way — it talks to the Ollama
+    // container this test just started, not to any third party.
     String cachedDigest = tryFetchEmbeddingModelDigest();
     if (cachedDigest != null && EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(cachedDigest)) {
       log.info(
