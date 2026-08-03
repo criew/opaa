@@ -36,6 +36,8 @@ class KnowledgeLibraryServiceTest {
   private PlatformTransactionManager transactionManager;
   private KnowledgeLibraryService libraryService;
 
+  private AssetGrantRepository grantRepository;
+
   @BeforeEach
   void setUp() {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
@@ -43,6 +45,8 @@ class KnowledgeLibraryServiceTest {
     GroupRepository groupRepository = mock(GroupRepository.class);
     GroupMembershipResolver membershipResolver = mock(GroupMembershipResolver.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
+    grantRepository = mock(AssetGrantRepository.class);
+    LibraryAccessService accessService = mock(LibraryAccessService.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     libraryService =
@@ -52,6 +56,8 @@ class KnowledgeLibraryServiceTest {
             groupRepository,
             membershipResolver,
             documentRepository,
+            grantRepository,
+            accessService,
             transactionManager);
   }
 
@@ -66,6 +72,9 @@ class KnowledgeLibraryServiceTest {
     verify(libraryRepository)
         .insertPersonalLibraryIfAbsent(
             any(UUID.class), eq(organizationId), any(String.class), any(String.class), eq(userId));
+    // #202: the owner grant is inserted in the same call, on the same connection, right after the
+    // library insert - see AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent.
+    verify(grantRepository).insertOwnerGrantForPersonalLibraryIfAbsent(any(UUID.class), eq(userId));
   }
 
   @Test

@@ -5,7 +5,10 @@ import static java.util.stream.Collectors.toMap;
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -24,19 +27,26 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
 
   private static final Pattern VALID_CONVERSATION_ID = Pattern.compile("^[a-zA-Z0-9-]{1,50}$");
+  private static final String LIBRARY_ID_METADATA_KEY = "library_id";
 
   private final VectorStore vectorStore;
   private final AnswerGenerationService answerGenerationService;
   private final ChatMemory chatMemory;
   private final CitationParser citationParser;
   private final DocumentRepository documentRepository;
+  private final UserRepository userRepository;
+  private final LibraryAccessService libraryAccessService;
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
 
@@ -46,6 +56,8 @@ public class QueryService {
       ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository,
+      UserRepository userRepository,
+      LibraryAccessService libraryAccessService,
       QueryMetrics metrics,
       QueryProperties queryProperties) {
     this.vectorStore = vectorStore;
@@ -53,30 +65,62 @@ public class QueryService {
     this.chatMemory = chatMemory;
     this.citationParser = citationParser;
     this.documentRepository = documentRepository;
+    this.userRepository = userRepository;
+    this.libraryAccessService = libraryAccessService;
     this.metrics = metrics;
     this.queryProperties = queryProperties;
   }
 
+  /**
+   * Answers {@code question}, restricted to chunks from libraries {@code currentUserId} may read
+   * (#202 - the permission-aware vector search, the central gap the epic set out to close: before
+   * this, the similarity search ran with no metadata filter whatsoever). The filter is part of the
+   * {@link VectorStore#similaritySearch} call itself, not a post-filter applied to its result - an
+   * unauthorized chunk is never loaded or ranked, let alone returned. There is no bypass for a
+   * system admin here (unlike {@code LibraryAccessService#effectiveRole}, used for library
+   * administration): a query always reads with the calling user's own rights, with no second rights
+   * context (ADR-0008 §5).
+   *
+   * <p>An empty readable set short-circuits before the vector store is even called, skipping
+   * straight to answer generation with zero chunks - the same code path a query with genuinely no
+   * matching content takes, so the resulting message cannot be used to distinguish "no permission
+   * on anything" from "nothing matched" (#202 acceptance criteria).
+   */
   @Transactional(readOnly = true)
-  public QueryResponse query(String question, String conversationId) {
+  public QueryResponse query(String question, String conversationId, UUID currentUserId) {
     return metrics
         .queryTimer()
         .record(
             () -> {
               try {
+                User currentUser =
+                    userRepository
+                        .findById(currentUserId)
+                        .orElseThrow(
+                            () ->
+                                new ResponseStatusException(
+                                    HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+
                 String effectiveConversationId = validateConversationId(conversationId);
 
                 String searchQuery = buildSearchQuery(question, effectiveConversationId);
 
                 long startTime = System.currentTimeMillis();
 
+                Set<UUID> readableLibraryIds =
+                    libraryAccessService.readableLibraryIds(
+                        currentUserId, currentUser.getOrganizationId());
+
                 List<Document> relevantChunks =
-                    vectorStore.similaritySearch(
-                        SearchRequest.builder()
-                            .query(searchQuery)
-                            .topK(queryProperties.topK())
-                            .similarityThreshold(queryProperties.similarityThreshold())
-                            .build());
+                    readableLibraryIds.isEmpty()
+                        ? List.of()
+                        : vectorStore.similaritySearch(
+                            SearchRequest.builder()
+                                .query(searchQuery)
+                                .topK(queryProperties.topK())
+                                .similarityThreshold(queryProperties.similarityThreshold())
+                                .filterExpression(libraryFilter(readableLibraryIds))
+                                .build());
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());
 
@@ -112,6 +156,17 @@ public class QueryService {
                 throw e;
               }
             });
+  }
+
+  /**
+   * Builds the {@code library_id IN (...)} filter passed straight into {@link
+   * VectorStore#similaritySearch} - see {@link #query} for why this must be part of the search
+   * call, never a filter applied to its result afterwards.
+   */
+  private Filter.Expression libraryFilter(Set<UUID> readableLibraryIds) {
+    List<Object> libraryIdValues =
+        readableLibraryIds.stream().map(UUID::toString).map(Object.class::cast).toList();
+    return new FilterExpressionBuilder().in(LIBRARY_ID_METADATA_KEY, libraryIdValues).build();
   }
 
   private Map<String, Integer> countMatchesPerFile(List<Document> chunks) {

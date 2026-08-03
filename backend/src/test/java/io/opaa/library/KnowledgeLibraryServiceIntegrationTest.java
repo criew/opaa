@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
@@ -15,6 +16,7 @@ import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.PermissionSubjectType;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.organization.Organization;
@@ -45,11 +47,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * fk_knowledge_libraries_owner_user} and {@code fk_knowledge_libraries_owner_group_organization}
  * (migration 012) are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
  *
- * <p>{@link #groupOwnedLibraryIsVisibleToGroupMembersButNotToTheCallerAfterLeavingTheGroup()} is
- * the mechanism-interaction test: it exercises group ownership together with {@link
- * GroupMembershipResolver}'s cache invalidation, not either in isolation - a regression that reads
- * group membership correctly but forgets to invalidate the cache after a membership change would
- * still pass a test that only checks membership once.
+ * <p>{@link
+ * #grantingTheOwningGroupAViewerRoleReachesItsMembersAndRevocationTakesEffectImmediately()} and
+ * {@link #revokingAGrantTakesEffectOnTheNextCall()} are the mechanism-interaction tests (#202):
+ * they exercise a group grant together with {@link GroupMembershipResolver}'s cache invalidation,
+ * and a direct grant together with {@code LibraryAccessService}'s own per-library grant cache, not
+ * either mechanism in isolation - a regression that reads membership or a grant correctly but
+ * forgets to invalidate the relevant cache would still pass a test that only checks access once.
+ * {@link #creatingAGroupOwnedLibraryDoesNotAutomaticallyGrantOtherGroupMembersAnyAccess()} is the
+ * regression guard for the #201 behaviour #202 replaced: mere membership in the owning group used
+ * to imply full management rights with no human decision point.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -61,6 +68,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetGrantRepository grantRepository;
+  @Autowired private AssetGrantService grantService;
+  @Autowired private LibraryAccessService accessService;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private UserRepository userRepository;
@@ -367,37 +377,143 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void groupOwnedLibraryIsVisibleToGroupMembersButNotToTheCallerAfterLeavingTheGroup() {
-    UUID member = createUser(organizationA);
-    Group group = createGroup(organizationA, member);
+  void creatingAGroupOwnedLibraryDoesNotAutomaticallyGrantOtherGroupMembersAnyAccess() {
+    // #202 code review of #201/#305: the coarse #201 canRead/canManage let every member of a
+    // group-owned library read and manage it, growing without a human decision point as a
+    // directory-synchronised group's membership grows. LibraryAccessService replaces that: only
+    // the creator (via the explicit OWNER grant KnowledgeLibraryService#createLibrary makes) has
+    // any access at all until a MANAGER explicitly grants the group (or another user) a role.
+    UUID creator = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Group group = createGroup(organizationA, creator, otherMember);
     LibraryResponse library =
         libraryService.createLibrary(
             new LibraryRequest("Rechtsquellen Soziales")
                 .ownerType(LibraryOwnerType.GROUP)
                 .ownerId(group.getId()),
-            member);
+            creator);
 
-    // Membership grants access.
-    LibraryResponse read = libraryService.getLibrary(library.getId(), member, false);
+    // The creator has access (their explicit OWNER grant), a plain group member does not.
+    LibraryResponse read = libraryService.getLibrary(library.getId(), creator, false);
     assertThat(read.getId()).isEqualTo(library.getId());
 
-    // Removing the membership through the real GroupService (not a raw repository update) is the
-    // point of this test: GroupService#removeMember evicts GroupMembershipResolver's per-user
-    // cache entry after its own transaction commits (see GroupService#invalidateAfterCommit).
-    // KnowledgeLibraryService reads group membership exclusively through that same resolver
-    // (isOwnerOrGroupMember -> GroupMembershipResolver#groupIdsForUser), so this proves the two
-    // classes are wired to the same cache instance and that the eviction actually reaches it - a
-    // raw repository update bypassing GroupService would leave the resolver's cache stale and
-    // make this assertion pass for the wrong reason (a cache that was never populated) or fail
-    // where it should not.
-    groupService.removeMember(group.getId(), member, member);
-
-    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), member, false))
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), otherMember, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), otherMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void grantingTheOwningGroupAViewerRoleReachesItsMembersAndRevocationTakesEffectImmediately() {
+    UUID creator = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Group group = createGroup(organizationA, creator, otherMember);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales")
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId()),
+            creator);
+
+    // The creator (MANAGER via their OWNER grant) explicitly grants the whole group VIEWER - the
+    // human decision point the coarse #201 model was missing.
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        creator,
+        false);
+
+    LibraryResponse read = libraryService.getLibrary(library.getId(), otherMember, false);
+    assertThat(read.getId()).isEqualTo(library.getId());
+
+    // Removing the membership through the real GroupService (not a raw repository update) is the
+    // point of this test: GroupService#removeMember evicts GroupMembershipResolver's per-user
+    // cache entry after its own transaction commits (see GroupService#invalidateAfterCommit).
+    // LibraryAccessService reads group membership exclusively through that same resolver, so this
+    // proves the two classes are wired to the same cache instance and that the eviction actually
+    // reaches it - a raw repository update bypassing GroupService would leave the resolver's
+    // cache stale and make this assertion pass for the wrong reason (a cache that was never
+    // populated) or fail where it should not.
+    groupService.removeMember(group.getId(), otherMember, creator);
+
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), otherMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void revokingAGrantTakesEffectOnTheNextCall() {
+    // #202 acceptance criteria: "Revoking a grant takes effect on the next query." Exercises
+    // LibraryAccessService's per-library grant cache and AssetGrantService's afterCompletion
+    // invalidation together, not either in isolation.
+    UUID owner = createUser(organizationA);
+    UUID viewer = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+
+    var grant =
+        grantService.upsertGrant(
+            library.getId(),
+            new AssetGrantRequest(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+            owner,
+            false);
+    assertThat(libraryService.getLibrary(library.getId(), viewer, false).getId())
+        .isEqualTo(library.getId());
+
+    grantService.revokeGrant(library.getId(), grant.getId(), owner, false);
+
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void readableLibraryIdsResolvesWellWithinTheHundredMillisecondBudgetOnARealDatabase() {
+    // #202 asks that permission resolution add "less than 50ms" to query time; that specific
+    // number could not be assessed as a load-tested SLO in this PR (see the PR description for
+    // why). What this test does establish, against the real Postgres schema this codebase now
+    // ships, not a mock: LibraryAccessService#readableLibraryIds - the method QueryService calls
+    // on every query - resolves via a small number of indexed queries (group membership, cached
+    // after the first call per GroupMembershipResolver; two asset_grants queries; one
+    // organization-wide-visibility query), not a full scan or anything that grows with unrelated
+    // data. A generous 100ms bound (double the target, on a Testcontainers-backed single query
+    // measured by wall clock, not warmed up or repeated) catches a gross regression - an
+    // accidental N+1 or a missing index - without being a flaky micro-benchmark.
+    UUID owner = createUser(organizationA);
+    UUID reader = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.USER),
+        owner,
+        false);
+
+    long startNanos = System.nanoTime();
+    var readable = accessService.readableLibraryIds(reader, organizationA);
+    long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+
+    assertThat(readable).contains(library.getId());
+    assertThat(elapsedMillis)
+        .as("readableLibraryIds took %dms against a real Postgres schema", elapsedMillis)
+        .isLessThan(100);
   }
 
   @Test

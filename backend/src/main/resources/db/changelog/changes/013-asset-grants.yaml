@@ -1,0 +1,234 @@
+databaseChangeLog:
+  # Two changeSets, in dependency order, introducing asset permissions (#202, see
+  # docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten):
+  #   1. 013-create-asset-grants          - the table itself
+  #   2. 013-backfill-owner-grants        - makes every existing library owner's implicit
+  #                                          management right an explicit grant, so #202's
+  #                                          replacement of the coarse #201 canRead/canManage does
+  #                                          not silently lock out an existing owner
+  #
+  # Rollback order (reverse of apply order):
+  # 013-backfill-owner-grants
+  # 013-create-asset-grants
+
+  - changeSet:
+      id: 013-create-asset-grants
+      author: opaa
+      comment: >
+        Create asset_grants - a grant of a graded AssetRole (USER < VIEWER < EDITOR < MANAGER <
+        OWNER, a ranking deliberately separate from space_memberships.role, see AssetRole and
+        ADR-0008 #7) on a knowledge_libraries row to a user or a group. Subject uses the same
+        two-nullable-columns pattern as knowledge_libraries.owner_user_id/owner_group_id (migration
+        012) rather than one polymorphic subject_id, so each carries a real foreign key to its own
+        target table. expires_at is present from the start even though recertification only
+        arrives with #241 - adding the column later is cheap, assessing an existing body of grants
+        without one is not. library_id plus organization_id together (not library_id alone) is the
+        filter axis the permission-aware vector search (#202) uses, mirroring
+        documents.library_id/organization_id from migration 012.
+      changes:
+        - createTable:
+            tableName: asset_grants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: subject_group_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: granted_by_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: library_id, organization_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id, organization_id
+            constraintName: fk_asset_grants_library_organization
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grants_subject_user
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: subject_group_id, organization_id
+            referencedTableName: groups
+            referencedColumnNames: id, organization_id
+            constraintName: fk_asset_grants_subject_group_organization
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: granted_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grants_granted_by_user
+            onDelete: RESTRICT
+        - sql:
+            comment: "Add check constraint for subject_type values"
+            sql: >
+              ALTER TABLE asset_grants
+              ADD CONSTRAINT chk_asset_grants_subject_type
+              CHECK (subject_type IN ('USER', 'GROUP'));
+        - sql:
+            comment: "Add check constraint for role values - AssetRole, disjoint from SpaceRole"
+            sql: >
+              ALTER TABLE asset_grants
+              ADD CONSTRAINT chk_asset_grants_role
+              CHECK (role IN ('USER', 'VIEWER', 'EDITOR', 'MANAGER', 'OWNER'));
+        - sql:
+            comment: >
+              Exactly one subject column matches subject_type: USER carries subject_user_id only,
+              GROUP carries subject_group_id only - mirrors chk_knowledge_libraries_owner
+              (migration 012).
+            sql: >
+              ALTER TABLE asset_grants
+              ADD CONSTRAINT chk_asset_grants_subject
+              CHECK (
+                (subject_type = 'USER' AND subject_user_id IS NOT NULL AND subject_group_id IS NULL)
+                OR (subject_type = 'GROUP' AND subject_group_id IS NOT NULL AND subject_user_id IS NULL)
+              );
+        - sql:
+            comment: >
+              At most one grant per (library, user subject) - the target AssetGrantService#upsertGrant
+              upserts against, and the ON CONFLICT target
+              AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent races against.
+            sql: >
+              CREATE UNIQUE INDEX uk_asset_grants_user_subject
+              ON asset_grants (library_id, subject_user_id)
+              WHERE subject_type = 'USER';
+        - sql:
+            comment: "The group-subject counterpart of uk_asset_grants_user_subject."
+            sql: >
+              CREATE UNIQUE INDEX uk_asset_grants_group_subject
+              ON asset_grants (library_id, subject_group_id)
+              WHERE subject_type = 'GROUP';
+        - sql:
+            comment: >
+              Supports LibraryAccessService#readableLibraryIds's direct- and group-grant queries,
+              which always filter on subject plus organization_id together.
+            sql: >
+              CREATE INDEX idx_asset_grants_subject_user_organization
+              ON asset_grants (subject_user_id, organization_id)
+              WHERE subject_type = 'USER';
+        - sql:
+            sql: >
+              CREATE INDEX idx_asset_grants_subject_group_organization
+              ON asset_grants (subject_group_id, organization_id)
+              WHERE subject_type = 'GROUP';
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_asset_grants_subject_group_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_asset_grants_subject_user_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_asset_grants_group_subject;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_asset_grants_user_subject;"
+        - sql:
+            sql: "ALTER TABLE asset_grants DROP CONSTRAINT IF EXISTS chk_asset_grants_subject;"
+        - sql:
+            sql: "ALTER TABLE asset_grants DROP CONSTRAINT IF EXISTS chk_asset_grants_role;"
+        - sql:
+            sql: "ALTER TABLE asset_grants DROP CONSTRAINT IF EXISTS chk_asset_grants_subject_type;"
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_granted_by_user
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_subject_group_organization
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_subject_user
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_library_organization
+        - dropTable:
+            tableName: asset_grants
+
+  - changeSet:
+      id: 013-backfill-owner-grants
+      author: opaa
+      comment: >
+        Every library that already has an individual or group owner (i.e. everything except the
+        SYSTEM library, which stays fail-closed to system admins with no grant at all) gets an
+        explicit OWNER grant for that owner. This is not a new decision: it makes the decision
+        already made when the library was created explicit as a revocable, auditable grant row -
+        the same shift #202 makes going forward for every new library via
+        KnowledgeLibraryService#createLibrary. Without this backfill, #202's replacement of the
+        coarse #201 canRead/canManage (which derived rights from the owner columns directly) would
+        silently lock every existing owner out of their own library.
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO asset_grants
+                (id, library_id, organization_id, subject_type, subject_user_id, role, created_at, updated_at)
+              SELECT gen_random_uuid(), kl.id, kl.organization_id, 'USER', kl.owner_user_id, 'OWNER', now(), now()
+              FROM knowledge_libraries kl
+              WHERE kl.owner_type = 'USER';
+        - sql:
+            sql: >
+              INSERT INTO asset_grants
+                (id, library_id, organization_id, subject_type, subject_group_id, role, created_at, updated_at)
+              SELECT gen_random_uuid(), kl.id, kl.organization_id, 'GROUP', kl.owner_group_id, 'OWNER', now(), now()
+              FROM knowledge_libraries kl
+              WHERE kl.owner_type = 'GROUP';
+      rollback:
+        - sql:
+            comment: >
+              Irreversible for the same reason 012-backfill-document-library-id's rollback is a
+              no-op: a grant created by application code after this changeSet ran is
+              indistinguishable here from one this changeSet inserted. Deliberate no-op so the
+              rollback of the surrounding, lossless changeSets is not blocked.
+            sql: "SELECT 1;"

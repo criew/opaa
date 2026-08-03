@@ -27,20 +27,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages knowledge libraries - the first asset type (#201, see
- * docs/features/spaces-and-assets.md#assets). Read/write access implemented here is deliberately
- * the coarse subset the model already fixes for #201: the owner (a matching user, or any member of
- * an owning group), organization-wide read for {@link LibraryVisibility#ORGANIZATION}, and full
- * access for system administrators. It does not implement the graded asset roles ({@code
- * USER}/{@code VIEWER}/{@code EDITOR}/{@code MANAGER}/{@code OWNER}) or a grants table - that is
- * #202's "asset permissions and permission-aware vector search", the actual linchpin of the epic.
- * Building that here would be speculative: #201 only needs "does this library have a responsible
- * owner and can documents be attributed to it", not the full sharing model.
+ * docs/features/spaces-and-assets.md#assets). Read/write access checks are delegated to {@link
+ * LibraryAccessService} (#202), which replaced this class's former coarse {@code canRead}/{@code
+ * canManage} - see that class's Javadoc for the full reasoning, in particular why group ownership
+ * alone no longer implies management rights.
+ *
+ * <p>{@link #createLibrary} grants the creator {@link AssetRole#OWNER} explicitly via an {@link
+ * AssetGrant}, regardless of {@link LibraryOwnerType} - ownership of a group-owned library is
+ * attributed to the group (for succession, see #240), but the actual right to manage the library
+ * comes only from this grant and any further grants a {@link AssetRole#MANAGER} makes explicitly,
+ * never from group membership alone.
  *
  * <p>{@link LibraryOwnerType#SYSTEM} libraries (exactly one per organization, see {@link
- * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link #canRead} and {@link
- * #canManage} both require {@code systemAdmin} for them regardless of any other check, and {@link
- * #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright - only the migration
- * (012-seed-system-library) ever creates one.
+ * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link
+ * LibraryAccessService#effectiveRole} requires {@code systemAdmin} for them regardless of any
+ * grant, and {@link #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright -
+ * only the migration (012-seed-system-library) ever creates one.
  */
 @Service
 @Transactional(readOnly = true)
@@ -55,6 +57,8 @@ public class KnowledgeLibraryService {
   private final GroupRepository groupRepository;
   private final GroupMembershipResolver membershipResolver;
   private final DocumentRepository documentRepository;
+  private final AssetGrantRepository grantRepository;
+  private final LibraryAccessService accessService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public KnowledgeLibraryService(
@@ -63,12 +67,16 @@ public class KnowledgeLibraryService {
       GroupRepository groupRepository,
       GroupMembershipResolver membershipResolver,
       DocumentRepository documentRepository,
+      AssetGrantRepository grantRepository,
+      LibraryAccessService accessService,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.membershipResolver = membershipResolver;
     this.documentRepository = documentRepository;
+    this.grantRepository = grantRepository;
+    this.accessService = accessService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -128,6 +136,17 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
+    // The creator always becomes explicit OWNER via a grant, regardless of ownerType - see the
+    // class Javadoc for why this replaces deriving management rights from the owner columns
+    // (#202 code review of #201's coarse canManage).
+    grantRepository.save(
+        AssetGrant.forUser(
+            saved.getId(),
+            saved.getOrganizationId(),
+            currentUserId,
+            AssetRole.OWNER,
+            null,
+            currentUserId));
     return toLibraryResponse(saved);
   }
 
@@ -166,7 +185,7 @@ public class KnowledgeLibraryService {
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canRead(library, currentUserId, systemAdmin)) {
+    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return toLibraryResponse(library);
@@ -176,7 +195,7 @@ public class KnowledgeLibraryService {
   public LibraryResponse updateLibrary(
       UUID libraryId, LibraryUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canManage(library, currentUserId, systemAdmin)) {
+    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     // Mirrors the delete guard on the personal library (code review of #201/#305): once #202 makes
@@ -211,7 +230,7 @@ public class KnowledgeLibraryService {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Die persoenliche Bibliothek kann nicht geloescht werden");
     }
-    if (!canManage(library, currentUserId, systemAdmin)) {
+    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
@@ -231,7 +250,7 @@ public class KnowledgeLibraryService {
   public List<LibraryDocumentResponse> listDocuments(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canRead(library, currentUserId, systemAdmin)) {
+    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
 
@@ -278,53 +297,18 @@ public class KnowledgeLibraryService {
     }
 
     requiresNewTransactionTemplate.executeWithoutResult(
-        status ->
-            libraryRepository.insertPersonalLibraryIfAbsent(
-                UUID.randomUUID(),
-                organizationId,
-                PERSONAL_LIBRARY_NAME,
-                "Private persoenliche Wissensbibliothek",
-                userId));
-  }
-
-  private boolean canRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    if (library.isSystemLibrary()) {
-      return systemAdmin;
-    }
-    if (systemAdmin) {
-      return true;
-    }
-    if (library.getVisibility() == LibraryVisibility.ORGANIZATION) {
-      return true;
-    }
-    return isOwnerOrGroupMember(library, userId);
-  }
-
-  /**
-   * <b>#202 must replace this, not just extend it</b> (code review of #201/#305): for a group-owned
-   * library, every member of the owning group can rename, change visibility and delete it - there
-   * is no distinction between an ordinary member and the {@code MANAGER}/{@code OWNER} asset roles
-   * the feature spec defines (see docs/features/spaces-and-assets.md#asset-rollen). For a
-   * directory-synchronised group this circle grows without any human decision point in this
-   * codebase (see #237's directory synchronisation), which is acceptable only as the coarse #201
-   * interim this class's own class Javadoc describes, never as the long-term model.
-   */
-  private boolean canManage(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    if (library.isSystemLibrary()) {
-      return systemAdmin;
-    }
-    if (systemAdmin) {
-      return true;
-    }
-    return isOwnerOrGroupMember(library, userId);
-  }
-
-  private boolean isOwnerOrGroupMember(KnowledgeLibrary library, UUID userId) {
-    if (library.isOwnedByUser(userId)) {
-      return true;
-    }
-    return library.getOwnerType() == LibraryOwnerType.GROUP
-        && membershipResolver.groupIdsForUser(userId).contains(library.getOwnerGroupId());
+        status -> {
+          libraryRepository.insertPersonalLibraryIfAbsent(
+              UUID.randomUUID(),
+              organizationId,
+              PERSONAL_LIBRARY_NAME,
+              "Private persoenliche Wissensbibliothek",
+              userId);
+          // Same connection/transaction as the insert above, so it always sees the row it just
+          // wrote (or the pre-existing one another concurrent call won the race for) - see
+          // AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent.
+          grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(UUID.randomUUID(), userId);
+        });
   }
 
   private String validateName(String name) {

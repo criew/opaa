@@ -9,6 +9,8 @@ import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -36,6 +38,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
+ * the test user must actually hold an {@code AssetGrant} on the library a chunk's {@code
+ * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
+ * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
+ */
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
 class QueryIntegrationTest {
@@ -61,30 +69,86 @@ class QueryIntegrationTest {
     }
   }
 
+  private static final UUID DEFAULT_ORGANIZATION_ID =
+      UUID.fromString("00000000-0000-0000-0000-000000000001");
+
   @MockitoBean private ChatModel chatModel;
 
   @Autowired private VectorStore vectorStore;
   @Autowired private QueryService queryService;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  private UUID userId;
+  private UUID libraryId;
+
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+
+    userId = UUID.randomUUID();
+    libraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        userId,
+        "query-it-" + userId,
+        "test-issuer",
+        "query-it@example.com",
+        "Query IT User",
+        DEFAULT_ORGANIZATION_ID);
+    jdbcTemplate.update(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, listed, personal, created_at, updated_at)"
+            + " VALUES (?, ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false, false, now(), now())",
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
+            + " role, created_at, updated_at)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        libraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+  }
+
+  @AfterEach
+  void tearDown() {
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
   }
 
   @Test
   void endToEndQueryReturnsAnswerWithSources() {
-    // Index some test documents into the vector store
+    // Index some test documents into the vector store, attributed to the granted library
     var doc1 =
         new Document(
             "OPAA is an AI-powered project assistant built with Spring Boot.",
-            Map.of("file_name", "readme.md", "document_id", "doc-1", "chunk_index", 0));
+            Map.of(
+                "file_name",
+                "readme.md",
+                "document_id",
+                "doc-1",
+                "chunk_index",
+                0,
+                "library_id",
+                libraryId.toString()));
     var doc2 =
         new Document(
             "The deployment uses Docker Compose with PostgreSQL and pgvector.",
-            Map.of("file_name", "deployment.md", "document_id", "doc-2", "chunk_index", 0));
+            Map.of(
+                "file_name",
+                "deployment.md",
+                "document_id",
+                "doc-2",
+                "chunk_index",
+                0,
+                "library_id",
+                libraryId.toString()));
     vectorStore.add(List.of(doc1, doc2));
 
     // Mock the ChatModel response
@@ -111,7 +175,7 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     // Execute the query
-    QueryResponse response = queryService.query("What is OPAA?", null);
+    QueryResponse response = queryService.query("What is OPAA?", null, userId);
 
     // Verify the response
     assertThat(response.getAnswer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
@@ -130,15 +194,61 @@ class QueryIntegrationTest {
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Something completely unrelated", null);
+    QueryResponse response = queryService.query("Something completely unrelated", null, userId);
 
     assertThat(response.getAnswer()).contains("don't have enough context");
     assertThat(response.getSources()).isEmpty();
   }
 
   @Test
+  void userWithoutAnyGrantSeesNothing() {
+    // A chunk exists in a library the querying user has no grant on - verifies #202's central
+    // acceptance criterion end to end: an unauthorized chunk is never loaded, let alone returned,
+    // and the answer path is indistinguishable from "nothing matched" (same mocked assistant
+    // reply as queryWithNoMatchingDocumentsReturnsEmptySources).
+    var doc =
+        new Document(
+            "Confidential content only the owner may see.",
+            Map.of(
+                "file_name",
+                "secret.md",
+                "document_id",
+                "doc-secret",
+                "chunk_index",
+                0,
+                "library_id",
+                libraryId.toString()));
+    vectorStore.add(List.of(doc));
+
+    var assistantMessage =
+        new AssistantMessage("I don't have enough context to answer that question.");
+    var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    UUID strangerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        strangerId,
+        "query-it-stranger-" + strangerId,
+        "test-issuer",
+        "stranger@example.com",
+        "Stranger",
+        DEFAULT_ORGANIZATION_ID);
+    try {
+      QueryResponse response = queryService.query("What is the secret?", null, strangerId);
+
+      assertThat(response.getAnswer()).contains("don't have enough context");
+      assertThat(response.getSources()).isEmpty();
+    } finally {
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  @Test
   void queryRejectsInvalidConversationId() {
-    assertThatThrownBy(() -> queryService.query("Test question", "<script>alert(1)</script>"))
+    assertThatThrownBy(
+            () -> queryService.query("Test question", "<script>alert(1)</script>", userId))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Ungültiges Format der conversationId");
   }
