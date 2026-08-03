@@ -83,12 +83,25 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * of groups that have no members at all - routine during an introduction phase, before curators and
  * memberships are populated (residual risk flagged in review of PR #297). It is the fraction of
  * groups active before this run that this run would dissolve, independent of how many members any
- * of them have.
+ * of them have - but only once the population is large enough ({@link
+ * #MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE}) or the dissolution count alarming enough on its own
+ * ({@link #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}) for a fraction to mean anything; below that floor a
+ * single legitimate dissolution in a small organisation - the normal case for a pilot, not the
+ * mass-outage case this measure targets - would otherwise abort every run indefinitely, with no
+ * per-run override available (a second regression review of PR #297 found and measured).
  */
 @Service
 class DirectorySyncPlanExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(DirectorySyncPlanExecutor.class);
+
+  /**
+   * Floor for the group-count plausibility measure - see where it is used in {@link #buildPlan} for
+   * the reasoning (review of PR #297).
+   */
+  private static final int MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE = 10;
+
+  private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
 
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
@@ -298,8 +311,24 @@ class DirectorySyncPlanExecutor {
     // which such a run never touches. changedFraction is the worse of the two so a run this
     // implausible in either dimension is caught, not only one measured in memberships (residual
     // risk flagged in review of PR #297).
+    //
+    // Only takes effect once the population is large enough to make a *fraction* meaningful
+    // (MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE) or the absolute count is already alarming on its own
+    // (MIN_DISSOLUTIONS_FOR_GROUP_MEASURE) - without this floor, review of PR #297 measured a
+    // small, entirely legitimate organisation (3 active units, one empty placeholder correctly
+    // disappearing, zero memberships at risk) getting permanently stuck at ABORTED_THRESHOLD: 1 of
+    // 3 groups is 33%, above the default 30% threshold, with no per-run override available and no
+    // way for the fraction to ever improve on a later run of the same organisation. A single
+    // dissolved unit in a small authority - the common case for a pilot, not the exception - must
+    // stay a routine, applicable change; this measure exists for the *mass* case the numbers below
+    // are calibrated to.
+    boolean groupMeasureApplies =
+        activeGroupCount >= MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE
+            || dissolutions.size() >= MIN_DISSOLUTIONS_FOR_GROUP_MEASURE;
     double groupDissolutionFraction =
-        activeGroupCount == 0 ? 0.0 : (double) dissolutions.size() / activeGroupCount;
+        groupMeasureApplies && activeGroupCount > 0
+            ? (double) dissolutions.size() / activeGroupCount
+            : 0.0;
     double changedFraction = Math.max(membershipChangedFraction, groupDissolutionFraction);
 
     return new SyncPlan(

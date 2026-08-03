@@ -1341,7 +1341,9 @@ components:
             run - matched-but-unchanged groups are included in this denominator, since they are
             part of what "active" means here). The second measure exists because an
             introduction-phase directory often has ORG_UNIT groups with no members yet, which the
-            first measure cannot see a mass dissolution of.
+            first measure cannot see a mass dissolution of; it only applies once the active-group
+            count or the dissolution count is large enough for a fraction to be meaningful, so a
+            single legitimate dissolution in a small organisation is never blocked by it.
           example: 0.05
         thresholdFraction:
           type: number

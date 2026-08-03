@@ -98,7 +98,7 @@ public class DirectorySyncService {
           "Directory sync: directory unreachable for organization {}: {}",
           organizationId,
           e.getMessage());
-      statusRecorder.record(organizationId, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+      recordStatusSafely(organizationId, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
       return new DirectorySyncReportResponse(
               DirectorySyncOutcome.UNREACHABLE,
               now,
@@ -122,8 +122,36 @@ public class DirectorySyncService {
         applyIfPlausible
             ? planExecutor.planAndApply(organizationId, now, snapshot)
             : planExecutor.planOnly(organizationId, now, snapshot);
-    statusRecorder.record(
+    recordStatusSafely(
         organizationId, now, report.getOutcome(), report.getMessage(), report.getChangedFraction());
     return report;
+  }
+
+  /**
+   * A failure here (e.g. the status row's own insert/update failing) must not turn an already
+   * successful, already-committed plan/apply - or an already-built unreachable report - into an
+   * error response: the group/membership changes (if any) are real regardless, and the caller still
+   * needs the report. Under-recording the status is the safer direction of the two failure modes
+   * (review of PR #297): a missing or stale status line is visible and prompts an operator to
+   * check, whereas swallowing the report behind an exception here would additionally invite a retry
+   * of a run that already applied.
+   */
+  private void recordStatusSafely(
+      UUID organizationId,
+      Instant now,
+      DirectorySyncOutcome outcome,
+      String message,
+      double changedFraction) {
+    try {
+      statusRecorder.record(organizationId, now, outcome, message, changedFraction);
+    } catch (RuntimeException e) {
+      log.error(
+          "Directory sync: failed to record the outcome ({}) for organization {} - the run itself"
+              + " completed and its report is still returned, but the status table may now be"
+              + " stale",
+          outcome,
+          organizationId,
+          e);
+    }
   }
 }

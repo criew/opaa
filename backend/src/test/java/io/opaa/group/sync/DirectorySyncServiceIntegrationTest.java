@@ -15,6 +15,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -265,25 +266,20 @@ class DirectorySyncServiceIntegrationTest {
     Group existing = persistOrgUnit("dir-guid-1", "Referat 50", member);
     // A large, unrelated, unaffected group so the one dissolving membership stays well under the
     // 30% membership threshold - this test is about the dissolution mechanics, not the threshold.
+    // Only 2 groups are active in total, so the group-count measure (see
+    // MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE) does not apply here - it is exercised separately by
+    // aMassDissolutionOfMemberlessGroupsIsCaughtByTheGroupCountMeasureEvenAtZeroMembershipRisk and
+    // its counterpart aLegitimateSingleDissolutionInASmallOrganizationPassesThroughUnblocked.
     UUID[] bulkMembers = new UUID[9];
     for (int i = 0; i < bulkMembers.length; i++) {
       bulkMembers[i] = createUser(organizationId, "bulk-" + i);
     }
     persistOrgUnit("dir-guid-bulk", "Referat Bulk", bulkMembers);
-    // Enough other unaffected groups that the *group-count* fraction (see the group-dissolution
-    // measure added in response to review of PR #297) also stays under 30%: 1 of 5 = 20%.
-    List<DirectoryGroup> unaffected = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      persistOrgUnit("dir-guid-other-" + i, "Referat Other " + i);
-      unaffected.add(
-          new DirectoryGroup("dir-guid-other-" + i, "Referat Other " + i, null, Set.of()));
-    }
 
-    // Directory no longer reports dir-guid-1 at all (merged into another unit); every other group
-    // is still reported unchanged.
-    List<DirectoryGroup> reported = new ArrayList<>();
-    reported.add(new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()));
-    reported.add(
+    // Directory no longer reports dir-guid-1 at all (merged into another unit); the bulk group is
+    // still reported unchanged.
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()),
         new DirectoryGroup(
             "dir-guid-bulk",
             "Referat Bulk",
@@ -291,8 +287,6 @@ class DirectorySyncServiceIntegrationTest {
             Set.of(
                 "bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4", "bulk-5", "bulk-6", "bulk-7",
                 "bulk-8")));
-    reported.addAll(unaffected);
-    directoryClient.respondWith(reported.toArray(new DirectoryGroup[0]));
 
     DirectorySyncReportResponse report = directorySyncService.run(organizationId);
 
@@ -415,6 +409,44 @@ class DirectorySyncServiceIntegrationTest {
             .filter(Group::isDissolved)
             .count();
     assertThat(dissolvedCount).isZero();
+  }
+
+  @Test
+  void aLegitimateSingleDissolutionInASmallOrganizationPassesThroughUnblocked() {
+    // The exact scenario a second review of PR #297 measured against real Postgres: 3 active
+    // ORG_UNIT groups, well under MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE and
+    // MIN_DISSOLUTIONS_FOR_GROUP_MEASURE, two of them unchanged with real members and one an
+    // empty placeholder unit that legitimately disappears from the directory. No membership is at
+    // risk at all - without the floor on the group-count measure, this run used to abort
+    // permanently (1 of 3 active groups = 33%, above the 30% default threshold, with no per-run
+    // override and no way for a later run of the same small organization to ever pass).
+    Set<String> teamASubjects = new HashSet<>();
+    UUID[] teamAMembers = new UUID[10];
+    for (int i = 0; i < teamAMembers.length; i++) {
+      teamAMembers[i] = createUser(organizationId, "team-a-" + i);
+      teamASubjects.add("team-a-" + i);
+    }
+    persistOrgUnit("dir-team-a", "Team A", teamAMembers);
+
+    Set<String> teamBSubjects = new HashSet<>();
+    UUID[] teamBMembers = new UUID[10];
+    for (int i = 0; i < teamBMembers.length; i++) {
+      teamBMembers[i] = createUser(organizationId, "team-b-" + i);
+      teamBSubjects.add("team-b-" + i);
+    }
+    persistOrgUnit("dir-team-b", "Team B", teamBMembers);
+
+    persistOrgUnit("dir-placeholder", "Platzhalter"); // empty, about to legitimately disappear
+
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-team-a", "Team A", null, teamASubjects),
+        new DirectoryGroup("dir-team-b", "Team B", null, teamBSubjects));
+
+    DirectorySyncReportResponse report = directorySyncService.run(organizationId);
+
+    assertThat(report.getOutcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(report.getChangedFraction()).isEqualTo(0.0);
+    assertThat(report.getGroupsDissolved()).hasSize(1);
   }
 
   // ---------------------------------------------------------------------------------------
