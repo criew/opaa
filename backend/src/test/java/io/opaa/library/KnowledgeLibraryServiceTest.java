@@ -3,8 +3,10 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,13 +22,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 /**
- * Simulates the two concurrent first-login race #265 describes, without relying on real threads or
- * timing - the library-side counterpart of {@code SpaceServiceTest}, which this class deliberately
- * mirrors: {@link KnowledgeLibraryRepository#existsByOwnerUserIdAndPersonalTrue} is stubbed to
- * answer as it would for the loser of the race (false before the attempt, true after a concurrent
- * winner has committed), and {@link KnowledgeLibraryRepository#saveAndFlush} is stubbed to throw
- * the {@link DataIntegrityViolationException} that {@code uk_knowledge_libraries_personal_owner}
- * (migration 012) would raise for the losing insert.
+ * {@link KnowledgeLibraryService#ensurePersonalLibrary}'s race handling is delegated to {@link
+ * KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}
+ * (#201/#305 code review) - the library-side counterpart of {@code SpaceServiceTest}, which this
+ * class deliberately mirrors after the same change there. What remains testable at the unit level
+ * is the one decision {@link KnowledgeLibraryService#ensurePersonalLibrary} itself still makes:
+ * skip the insert attempt entirely when {@code existsByOwnerUserIdAndPersonalTrue} already reports
+ * a personal library, otherwise delegate to the repository.
  */
 class KnowledgeLibraryServiceTest {
 
@@ -54,35 +56,16 @@ class KnowledgeLibraryServiceTest {
   }
 
   @Test
-  void ensurePersonalLibraryReadsTheWinnersLibraryInsteadOfThrowing() {
+  void ensurePersonalLibraryInsertsWhenNoPersonalLibraryExistsYet() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
+    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false);
 
-    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false, true);
-    when(libraryRepository.saveAndFlush(any(KnowledgeLibrary.class)))
-        .thenThrow(
-            new DataIntegrityViolationException(
-                "duplicate key value violates unique constraint"
-                    + " \"uk_knowledge_libraries_personal_owner\""));
+    libraryService.ensurePersonalLibrary(userId, organizationId);
 
-    assertThatCode(() -> libraryService.ensurePersonalLibrary(userId, organizationId))
-        .doesNotThrowAnyException();
-
-    verify(libraryRepository, times(2)).existsByOwnerUserIdAndPersonalTrue(userId);
-  }
-
-  @Test
-  void ensurePersonalLibraryPropagatesViolationsUnrelatedToTheRace() {
-    UUID userId = UUID.randomUUID();
-    UUID organizationId = UUID.randomUUID();
-
-    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false, false);
-    DataIntegrityViolationException violation =
-        new DataIntegrityViolationException("some other constraint violation");
-    when(libraryRepository.saveAndFlush(any(KnowledgeLibrary.class))).thenThrow(violation);
-
-    assertThatThrownBy(() -> libraryService.ensurePersonalLibrary(userId, organizationId))
-        .isSameAs(violation);
+    verify(libraryRepository)
+        .insertPersonalLibraryIfAbsent(
+            any(UUID.class), eq(organizationId), any(String.class), any(String.class), eq(userId));
   }
 
   @Test
@@ -93,6 +76,41 @@ class KnowledgeLibraryServiceTest {
 
     libraryService.ensurePersonalLibrary(userId, organizationId);
 
-    verify(libraryRepository, times(0)).saveAndFlush(any(KnowledgeLibrary.class));
+    verify(libraryRepository, never())
+        .insertPersonalLibraryIfAbsent(
+            any(UUID.class),
+            any(UUID.class),
+            any(String.class),
+            any(String.class),
+            any(UUID.class));
+  }
+
+  @Test
+  void ensurePersonalLibraryPropagatesAnyFailureFromTheInsert() {
+    // A genuine failure other than the partial-unique-index conflict (which the repository method
+    // itself absorbs via ON CONFLICT ... DO NOTHING and therefore never throws for) - e.g. a
+    // dangling ownerUserId - must still surface to the caller, not be swallowed.
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false);
+    DataIntegrityViolationException violation =
+        new DataIntegrityViolationException("fk_knowledge_libraries_owner_user violation");
+    doThrow(violation)
+        .when(libraryRepository)
+        .insertPersonalLibraryIfAbsent(
+            any(UUID.class), eq(organizationId), any(String.class), any(String.class), eq(userId));
+
+    assertThatThrownBy(() -> libraryService.ensurePersonalLibrary(userId, organizationId))
+        .isSameAs(violation);
+  }
+
+  @Test
+  void ensurePersonalLibraryDoesNotThrowWhenTheInsertSucceedsOrIsANoOp() {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false);
+
+    assertThatCode(() -> libraryService.ensurePersonalLibrary(userId, organizationId))
+        .doesNotThrowAnyException();
   }
 }

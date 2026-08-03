@@ -68,38 +68,31 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * insert's failure interfere with the other's race handling) would surface here even if each guard
  * passed a test that raced it in isolation.
  *
- * <p><b>{@code spring.datasource.hikari.maximum-pool-size=20}, deliberately overriding the
- * production default of 10 for this test only:</b> {@link SpaceService#ensurePersonalSpace} and
- * {@link io.opaa.library.KnowledgeLibraryService#ensurePersonalLibrary} are each already {@code
- * Propagation.NOT_SUPPORTED} (see their Javadoc) so neither ever holds two connections at once -
- * the #299 defect this class exists to catch is fixed on both, and does not need a larger pool to
- * prove that. What changed is the <em>amount</em> of per-login database work: before #201, each of
- * the {@code CONCURRENT_LOGINS} threads made one existence-check-plus-insert round trip (the
- * personal space); #201 added a second, equally structured one (the personal library) right after
- * it in the same sequence, roughly doubling the number of short-lived connection acquisitions per
- * login. At {@code CONCURRENT_LOGINS = 12} against the production default pool size of 10, that
- * additional volume was enough to intermittently exceed Hikari's 30-second {@code
- * connectionTimeout} under ordinary CI/dev-machine scheduling jitter - not a deadlock, not a leak
- * (the unmodified pre-#201 version of this test, against the identical default pool size, did not
- * reproduce the failure across several repeated runs during this investigation, while the #201
- * version with two provisioning calls per login failed intermittently under the same conditions
- * before this override was added), just more queueing than the original headroom assumed for a
- * single provisioning call. Raising the pool size restores that headroom for a
- * two-provisioning-call login without weakening what this test actually proves (no deadlock, no
- * unhandled failure, exactly one row per partial unique index) - it only removes timing noise that
- * has nothing to do with correctness. This is a test-only override; production pool sizing is
- * unaffected. Reduce {@code CONCURRENT_LOGINS} instead of raising the pool further if a future
- * addition to this same provisioning sequence reintroduces this flakiness - the constant only needs
- * to stay above the production pool size, not grow indefinitely with it.
+ * <p><b>#201 initially reduced this test's reliability at the production default pool size of
+ * 10</b> (found and measured in code review of #201/#305: 5 of 9 runs failed with {@code
+ * CannotCreateTransactionException} after the 30-second {@code connectionTimeout}, versus 8 of 8
+ * passing on the pre-#201 code at the identical pool size). Raising this test's pool size was
+ * considered and rejected - the same masking-the-symptom mistake #299's own review already rejected
+ * once - because the measured database state at pool size 10 showed the actual defect: {@code
+ * findOrCreateUser} returned successfully for every one of the 12 logins while the personal library
+ * was still missing in 2 of 3 runs, because {@code ensureBothPersonalAssets} logs a provisioning
+ * failure instead of throwing it (see that method's Javadoc) - a connection-pool timeout under load
+ * would silently return a "successful" login without a personal library, self-healing only on a
+ * later, unloaded login. The actual fix is at the source: {@code
+ * SpaceRepository#insertPersonalSpaceIfAbsent} and {@code
+ * KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} now each provision in a single {@code
+ * INSERT ... ON CONFLICT ... DO NOTHING} round trip instead of the previous
+ * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence, roughly halving
+ * the number of connection acquisitions the {@code CONCURRENT_LOGINS} threads contend over. This
+ * test passes repeatedly at the unmodified production default pool size of 10 with that fix in
+ * place (see the two repository methods' Javadoc for the full reasoning) - no test-only
+ * configuration override.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles({"local", "basic"})
 @TestPropertySource(
-    properties = {
-      "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234",
-      "spring.datasource.hikari.maximum-pool-size=20"
-    })
+    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
 @Testcontainers(disabledWithoutDocker = true)
 class UserServiceCreationRaceIntegrationTest {
 

@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -243,14 +242,13 @@ public class KnowledgeLibraryService {
 
   /**
    * Creates the automatic personal library "Meine Dokumente" for a user if it does not exist yet.
-   * Mirrors {@code SpaceService#ensurePersonalSpace}'s race handling exactly - same {@code
-   * REQUIRES_NEW} transaction on its own connection, same race handling via the partial unique
-   * index {@code uk_knowledge_libraries_personal_owner} (migration 012) - because both are called
-   * from the same {@code UserService} post-commit callback for the same reason: the referenced
-   * {@code users} row must already be committed and visible on this method's own connection. See
-   * {@code UserService#ensurePersonalAssetsAfterCommit} for why the call is deferred to after
-   * commit, and {@code SpaceService#ensurePersonalSpace}'s Javadoc for the full race explanation
-   * this method does not repeat.
+   * Mirrors {@code SpaceService#ensurePersonalSpace} exactly, including its {@code ON CONFLICT ...
+   * DO NOTHING} race handling via the partial unique index {@code
+   * uk_knowledge_libraries_personal_owner} (migration 012) - see that method's Javadoc for the full
+   * reasoning, not repeated here. Both are called from the same {@code UserService} post-commit
+   * callback for the same reason: the referenced {@code users} row must already be committed and
+   * visible on this method's own connection (see {@code
+   * UserService#ensurePersonalAssetsAfterCommit} for why the call is deferred to after commit).
    *
    * <p>Called independently of (not nested inside) {@code SpaceService#ensurePersonalSpace}'s own
    * transaction, so a failure creating the library never rolls back an already-committed personal
@@ -265,17 +263,13 @@ public class KnowledgeLibraryService {
    * connection) for this method's entire duration, while {@code requiresNewTransactionTemplate}
    * below opens a <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction
    * - two connections held by one caller at once, the same class of bug #299 fixed in {@code
-   * UserService.findOrCreateUser}. Found here under {@link
-   * io.opaa.auth.UserServiceCreationRaceIntegrationTest}'s 12-thread concurrent-first-login test:
-   * with {@code SpaceService#ensurePersonalSpace} already needing two connections per call (a
-   * pre-existing instance of the same pattern, out of scope for #201 - see the follow-up issue
-   * referenced in this PR) and every one of the 12 threads calling this method right after it in
-   * the same {@code ensureBothPersonalAssets} sequence, peak simultaneous connection demand
-   * exceeded Hikari's default pool size of 10 and the test failed with {@code
-   * CannotCreateTransactionException} after the 30-second connection-acquire timeout. {@code
-   * NOT_SUPPORTED} suspends any ambient transaction for this method's duration (there normally is
-   * none, since {@code findOrCreateUser} itself is not {@code @Transactional} either) and leaves
-   * only the one connection {@code requiresNewTransactionTemplate} actually needs.
+   * UserService.findOrCreateUser}. {@code SpaceService#ensurePersonalSpace} had the identical
+   * defect and is fixed the same way, in this same PR (#201/#305 code review) - not deferred to a
+   * follow-up issue, because the fix is one annotation and both methods are exercised together by
+   * {@link io.opaa.auth.UserServiceCreationRaceIntegrationTest}. {@code NOT_SUPPORTED} suspends any
+   * ambient transaction for this method's duration (there normally is none, since {@code
+   * findOrCreateUser} itself is not {@code @Transactional} either) and leaves only the one
+   * connection {@code requiresNewTransactionTemplate} actually needs.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensurePersonalLibrary(UUID userId, UUID organizationId) {
@@ -283,27 +277,14 @@ public class KnowledgeLibraryService {
       return;
     }
 
-    try {
-      requiresNewTransactionTemplate.executeWithoutResult(
-          status -> createPersonalLibrary(userId, organizationId));
-    } catch (DataIntegrityViolationException raceLost) {
-      if (!libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)) {
-        throw raceLost;
-      }
-    }
-  }
-
-  private void createPersonalLibrary(UUID userId, UUID organizationId) {
-    KnowledgeLibrary personalLibrary =
-        KnowledgeLibrary.ownedByUser(
-            organizationId,
-            PERSONAL_LIBRARY_NAME,
-            "Private persoenliche Wissensbibliothek",
-            userId,
-            LibraryVisibility.PRIVATE,
-            false,
-            true);
-    libraryRepository.saveAndFlush(personalLibrary);
+    requiresNewTransactionTemplate.executeWithoutResult(
+        status ->
+            libraryRepository.insertPersonalLibraryIfAbsent(
+                UUID.randomUUID(),
+                organizationId,
+                PERSONAL_LIBRARY_NAME,
+                "Private persoenliche Wissensbibliothek",
+                userId));
   }
 
   private boolean canRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {

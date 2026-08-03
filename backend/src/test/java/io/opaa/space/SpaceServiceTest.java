@@ -3,8 +3,10 @@ package io.opaa.space;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,12 +19,18 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 /**
- * Simulates the two concurrent first-login race #265 describes, without relying on real threads or
- * timing: {@link SpaceRepository#existsByOwnerIdAndKind} is stubbed to answer as it would for the
- * loser of the race (false before the attempt, true after a concurrent winner has committed), and
- * {@link SpaceRepository#saveAndFlush} is stubbed to throw the {@link
- * DataIntegrityViolationException} that {@code uk_spaces_personal_owner} (migration 010) would
- * raise for the losing insert.
+ * {@link SpaceService#ensurePersonalSpace}'s race handling (#265) is now entirely delegated to
+ * {@link SpaceRepository#insertPersonalSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING} (#201/
+ * #305 code review) - there is no more application-level catch-and-reread branch to simulate here,
+ * unlike the version of this test that predates that change. What remains testable at the unit
+ * level is the one decision {@link SpaceService#ensurePersonalSpace} itself still makes: skip the
+ * insert attempt entirely when {@code existsByOwnerIdAndKind} already reports a personal space,
+ * otherwise delegate to the repository. A {@link PlatformTransactionManager} is still mocked here
+ * (not a real one) because {@link SpaceService} constructs its own {@link
+ * org.springframework.transaction.support.TransactionTemplate} from it in the constructor; {@code
+ * TransactionTemplate#executeWithoutResult} invokes the callback synchronously regardless of
+ * whether the underlying transaction manager is real, so the mocked repository call inside it is
+ * still observable via {@code verify(...)} below.
  */
 class SpaceServiceTest {
 
@@ -40,40 +48,21 @@ class SpaceServiceTest {
   }
 
   @Test
-  void ensurePersonalSpaceReadsTheWinnersSpaceInsteadOfThrowing() {
+  void ensurePersonalSpaceInsertsWhenNoPersonalSpaceExistsYet() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
+    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
 
-    // First call: this login has not created a personal space yet. Second call (the race-loss
-    // fallback check): a concurrent login already committed one while this insert was failing.
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL))
-        .thenReturn(false, true);
-    when(spaceRepository.saveAndFlush(any(Space.class)))
-        .thenThrow(
-            new DataIntegrityViolationException(
-                "duplicate key value violates unique constraint \"uk_spaces_personal_owner\""));
+    spaceService.ensurePersonalSpace(userId, organizationId);
 
-    assertThatCode(() -> spaceService.ensurePersonalSpace(userId, organizationId))
-        .doesNotThrowAnyException();
-
-    verify(spaceRepository, times(2)).existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL);
-  }
-
-  @Test
-  void ensurePersonalSpacePropagatesViolationsUnrelatedToTheRace() {
-    UUID userId = UUID.randomUUID();
-    UUID organizationId = UUID.randomUUID();
-
-    // The personal space still does not exist after the failed insert - so the violation was not
-    // caused by a concurrent winner, and must not be swallowed.
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL))
-        .thenReturn(false, false);
-    DataIntegrityViolationException violation =
-        new DataIntegrityViolationException("some other constraint violation");
-    when(spaceRepository.saveAndFlush(any(Space.class))).thenThrow(violation);
-
-    assertThatThrownBy(() -> spaceService.ensurePersonalSpace(userId, organizationId))
-        .isSameAs(violation);
+    verify(spaceRepository)
+        .insertPersonalSpaceIfAbsent(
+            any(UUID.class),
+            any(UUID.class),
+            any(String.class),
+            any(String.class),
+            eq(userId),
+            eq(organizationId));
   }
 
   @Test
@@ -84,6 +73,49 @@ class SpaceServiceTest {
 
     spaceService.ensurePersonalSpace(userId, organizationId);
 
-    verify(spaceRepository, times(0)).saveAndFlush(any(Space.class));
+    verify(spaceRepository, never())
+        .insertPersonalSpaceIfAbsent(
+            any(UUID.class),
+            any(UUID.class),
+            any(String.class),
+            any(String.class),
+            any(UUID.class),
+            any(UUID.class));
+  }
+
+  @Test
+  void ensurePersonalSpacePropagatesAnyFailureFromTheInsert() {
+    // A genuine failure other than the partial-unique-index conflict (which the repository method
+    // itself absorbs via ON CONFLICT ... DO NOTHING and therefore never throws for) - e.g. a
+    // dangling ownerId violating fk_spaces_owner - must still surface to the caller, not be
+    // swallowed. There is no "was it the race or a real violation" distinction to make anymore;
+    // whatever the repository throws propagates as-is.
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
+    DataIntegrityViolationException violation =
+        new DataIntegrityViolationException("fk_spaces_owner violation");
+    doThrow(violation)
+        .when(spaceRepository)
+        .insertPersonalSpaceIfAbsent(
+            any(UUID.class),
+            any(UUID.class),
+            any(String.class),
+            any(String.class),
+            eq(userId),
+            eq(organizationId));
+
+    assertThatThrownBy(() -> spaceService.ensurePersonalSpace(userId, organizationId))
+        .isSameAs(violation);
+  }
+
+  @Test
+  void ensurePersonalSpaceDoesNotThrowWhenTheInsertSucceedsOrIsANoOp() {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
+
+    assertThatCode(() -> spaceService.ensurePersonalSpace(userId, organizationId))
+        .doesNotThrowAnyException();
   }
 }

@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -24,6 +25,18 @@ public class UserService {
 
   private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
+  /**
+   * Fixed-size striping for {@link #provisioningLockFor(UUID)}: bounds memory to exactly this many
+   * {@link ReentrantLock} instances for the lifetime of the process, at the cost of two unrelated
+   * users occasionally sharing a stripe and blocking on each other's provisioning - an acceptable
+   * trade for a lock that exists purely to reduce database contention (see {@link
+   * #ensurePersonalAssetsAfterCommit}'s Javadoc), never for correctness, which the database's
+   * partial unique indexes still guarantee on their own.
+   */
+  private static final int PROVISIONING_LOCK_STRIPES = 64;
+
+  private final ReentrantLock[] provisioningLocks = new ReentrantLock[PROVISIONING_LOCK_STRIPES];
+
   private final UserRepository userRepository;
   private final SpaceService spaceService;
   private final KnowledgeLibraryService libraryService;
@@ -38,6 +51,9 @@ public class UserService {
     this.spaceService = spaceService;
     this.libraryService = libraryService;
     this.authProperties = authProperties;
+    for (int i = 0; i < provisioningLocks.length; i++) {
+      provisioningLocks[i] = new ReentrantLock();
+    }
   }
 
   /**
@@ -146,6 +162,34 @@ public class UserService {
    * registerSynchronization} branch below is kept only as a defensive fallback for a caller running
    * inside its own transaction (there is none in production today) - it must not silently skip
    * provisioning if one ever exists.
+   *
+   * <p><b>{@code provisioningLockFor(userId)}, an in-process lock around the call below</b>
+   * (#201/#305 code review, measured): {@code SpaceRepository#insertPersonalSpaceIfAbsent} and
+   * {@code KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} each reduced their own round
+   * trips to one via {@code ON CONFLICT ... DO NOTHING}, but under {@code
+   * UserServiceCreationRaceIntegrationTest}'s 12-concurrent-first-login load that alone was not
+   * enough: with all 12 threads issuing conflicting {@code INSERT}s against the same partial unique
+   * index at (essentially) the same instant, Postgres itself serializes them at the index level -
+   * each transaction after the first must wait for the ones ahead of it to finish before it can
+   * determine whether it conflicts - and with two such rounds per login (space, then library) back
+   * to back, that queuing occasionally pushed the slowest thread's total wait past 30 seconds even
+   * with the single-round-trip fix in place. An in-process lock keyed by {@code userId} removes the
+   * database-level queuing for the case that dominates this test and is also the realistic
+   * production case (many requests for the *same* user's very first login, e.g. several tabs opened
+   * at once): only the first thread to acquire the lock reaches the database at all; by the time
+   * each following thread acquires it, the winner has already committed, so {@code
+   * ensurePersonalSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy} check returns {@code
+   * true} immediately and neither issues an insert. Confirmed by {@code
+   * UserServiceCreationRaceIntegrationTest} passing repeatedly at the unmodified production default
+   * pool size of 10 with this lock in place (see that test's Javadoc) - it failed intermittently at
+   * the same pool size with only the single-round-trip fix and no lock.
+   *
+   * <p>This is a performance measure, not a correctness one: the database's partial unique indexes
+   * (not this lock) remain the actual guarantee, unchanged and still exercised whenever this
+   * lock-protected block is skipped or raced across multiple application instances - the lock is
+   * process-local and does nothing for that case, deliberately: correctness must not depend on it.
+   * {@link #PROVISIONING_LOCK_STRIPES} bounds the lock table's size; see its Javadoc for the
+   * resulting trade-off.
    */
   private void ensurePersonalAssetsAfterCommit(UUID userId, UUID organizationId) {
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -153,12 +197,27 @@ public class UserService {
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              ensureBothPersonalAssets(userId, organizationId);
+              runEnsureBothPersonalAssetsUnderLock(userId, organizationId);
             }
           });
     } else {
-      ensureBothPersonalAssets(userId, organizationId);
+      runEnsureBothPersonalAssetsUnderLock(userId, organizationId);
     }
+  }
+
+  private void runEnsureBothPersonalAssetsUnderLock(UUID userId, UUID organizationId) {
+    ReentrantLock lock = provisioningLockFor(userId);
+    lock.lock();
+    try {
+      ensureBothPersonalAssets(userId, organizationId);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private ReentrantLock provisioningLockFor(UUID userId) {
+    int stripe = Math.floorMod(userId.hashCode(), provisioningLocks.length);
+    return provisioningLocks[stripe];
   }
 
   /**
