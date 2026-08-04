@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-03T07:58:50Z</updated>
+  <updated>2026-08-04T07:12:06Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 3. August 2026</title>
+    <link href="https://criew.github.io/opaa/reports/2026-08-03.html"/>
+    <id>https://criew.github.io/opaa/reports/2026-08-03.html</id>
+    <updated>2026-08-04T07:12:06Z</updated>
+    <summary type="text">Epic #198 „Space and asset model — replace the workspace model&quot; machte heute Fortschritte bei der Umsetzung: drei Tickets wurden abgeschlossen und drei gemergt, womit vier von 25 Tickets erledigt sind. Die gemergte #305 führt KnowledgeLibrary als ersten Asset-Typ ein und migriert Dokumente in diesen Container. #297 behandelt Verzeichnissynchronisation als Rechteereignis mit stabiler externer ID und strikter Trennung von Diff-Berechnung und Anwendung, während #283 Gruppen als zweiten Rechtesubjekt-Typ neben Nutzern einführt.
+
+Epic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression&quot; machte ebenfalls Fortschritte: zwei Tickets wurden abgeschlossen und zwei gemergt, womit sechs von 14 Tickets erledigt sind. Die gemergte #301 führt den Retrieval-Harness als automatisierten CI-Job gegen eine committete Baseline aus und vergleicht dabei Fixpunkte wie Korpus-Manifest und Embedding-Modell-Digest. #292 indiziert den eingefrorenen Korpus über die produktive Pipeline und berechnet Hit Rate, MRR, nDCG und Recall gegen den Vektor-Store.
+
+Ohne Epic-Bezug wurden sieben Tickets neu angelegt und vier abgeschlossen. Die gemergte #299 behebt einen Race Condition bei paralleler Erstanmeldung auf der Unique-Constraint uq_users_subject_issuer. #298 stellt FK-abhängige Space-Tests auf echtes Liquibase-Schema um. #303 und #296 dokumentieren Transaktionsbehandlung und Branch-Regeln in den Entwickler-Richtlinien.</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 2. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-02.html"/>
