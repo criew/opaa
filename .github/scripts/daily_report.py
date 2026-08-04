@@ -53,6 +53,9 @@ def _local_timezone() -> ZoneInfo | timezone:
 
 
 TIMEZONE = _local_timezone()
+# Beim Rückfall auf UTC verschieben sich die Tagesgrenzen. Das wird im Report
+# ausgewiesen, damit ein solcher Lauf nicht unbemerkt bleibt.
+TIMEZONE_FALLBACK = str(TIMEZONE) != "Europe/Berlin"
 UTC = timezone.utc
 SEARCH_PAGE_SIZE = 100
 SEARCH_MAX_PAGES = 10
@@ -107,15 +110,27 @@ def gh_api(path: str, *, paginate: bool = False) -> object:
 
 
 def day_bounds(day: Date) -> tuple[str, str]:
-    """Liefert Beginn und Ende eines Tages als ISO-Zeitstempel mit Zeitzone.
+    """Liefert das halboffene Zeitfenster eines Tages mit Zeitzone.
 
     Die Suche der GitHub-API rechnet ohne Offset in UTC. Für einen Report, der
     sich an der lokalen Arbeitszeit orientiert, muss der Offset mitgegeben
     werden, sonst wandern Abendereignisse in den Folgetag.
+
+    Beide Grenzen gehören zum Fenster. Ein halboffenes Fenster wäre sauberer,
+    ist über die Suche aber nicht ausdrückbar: Zwei Bereichsangaben zum selben
+    Feld verknüpft GitHub nicht, die zweite verdrängt die erste. Eine Abfrage
+    `merged:>=A merged:<B` liefert daher alles vor B statt des Tages. Nur der
+    Bereichsoperator `A..B` grenzt korrekt ein. Da die Zeitstempel der API
+    sekundengenau sind, entsteht zum Folgetag dennoch keine Lücke.
     """
     start = datetime.combine(day, datetime.min.time(), tzinfo=TIMEZONE)
-    end = start + timedelta(days=1) - timedelta(seconds=1)
-    return start.isoformat(), end.isoformat()
+    ende = start + timedelta(days=1) - timedelta(seconds=1)
+    return start.isoformat(), ende.isoformat()
+
+
+def zeitraum_qualifier(feld: str, start: str, ende: str) -> str:
+    """Baut den Suchausdruck für das Zeitfenster eines Tages."""
+    return f"{feld}:{start}..{ende}"
 
 
 def search_issues(repo: str, qualifier: str) -> list[dict]:
@@ -352,19 +367,24 @@ def assign_to_epics(data: dict, epics: list[dict]) -> dict:
 def collect(repo: str, day: Date) -> dict:
     """Trägt alle Daten für einen Tag zusammen."""
     start, end = day_bounds(day)
-    window = f"{start}..{end}"
 
     closed_issues = [
         simplify_issue(item)
-        for item in search_issues(repo, f"is:issue is:closed closed:{window}")
+        for item in search_issues(
+            repo, "is:issue is:closed " + zeitraum_qualifier("closed", start, end)
+        )
     ]
     opened_issues = [
         simplify_issue(item)
-        for item in search_issues(repo, f"is:issue created:{window}")
+        for item in search_issues(
+            repo, "is:issue " + zeitraum_qualifier("created", start, end)
+        )
     ]
     merged = [
         simplify_issue(item)
-        for item in search_issues(repo, f"is:pr is:merged merged:{window}")
+        for item in search_issues(
+            repo, "is:pr is:merged " + zeitraum_qualifier("merged", start, end)
+        )
     ]
     for pull_request in merged:
         pull_request.update(pull_request_stats(repo, pull_request["number"]))
@@ -380,6 +400,12 @@ def collect(repo: str, day: Date) -> dict:
         "repo": repo,
         "date": day.isoformat(),
         "generated_at": datetime.now(tz=TIMEZONE).isoformat(),
+        # Macht nachprüfbar, gegen welche Grenzen abgefragt wurde — besonders
+        # für Vorgänge kurz vor Mitternacht.
+        "timezone": str(TIMEZONE),
+        "timezone_fallback": TIMEZONE_FALLBACK,
+        "window_start": start,
+        "window_end": end,
         "closed_issues": closed_issues,
         "opened_issues": opened_issues,
         "merged_pull_requests": merged,
@@ -744,6 +770,27 @@ def render_ci(ci: dict | None) -> str:
     )
 
 
+def render_zeitraum(data: dict) -> str:
+    """Weist das abgefragte Zeitfenster aus.
+
+    Ältere Reports kennen die Felder nicht; dann entfällt der Hinweis.
+    """
+    start, ende = data.get("window_start"), data.get("window_end")
+    if not start or not ende:
+        return ""
+    zone = html.escape(str(data.get("timezone", "")))
+    hinweis = (
+        f'<br><span class="empty">Berichtszeitraum: {html.escape(start[:19])} '
+        f"bis {html.escape(ende[:19])} ({zone})</span>"
+    )
+    if data.get("timezone_fallback"):
+        hinweis += (
+            '<br><span class="status bad">Ohne Zeitzonendatenbank erzeugt — '
+            "die Tagesgrenzen können abweichen.</span>"
+        )
+    return hinweis
+
+
 def render_report(data: dict) -> str:
     day = Date.fromisoformat(data["date"])
     body = f"""<header>
@@ -773,6 +820,7 @@ def render_report(data: dict) -> str:
 <footer>
 Erzeugt am {html.escape(data["generated_at"][:16].replace("T", " um "))} Uhr ·
 <a href="../feed.xml">Feed abonnieren</a>
+{render_zeitraum(data)}
 </footer>"""
     return page(f"Tagesreport {day.isoformat()}", body, feed_href="../feed.xml")
 

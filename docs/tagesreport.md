@@ -23,6 +23,42 @@ Modellaufruf und ist optional — siehe [Zusammenfassung aktivieren](#zusammenfa
 
 Tage ohne Issue- oder PR-Bewegung erzeugen keinen Report.
 
+### Welcher Tag ein Vorgang ist
+
+Maßgeblich ist der Zeitpunkt des **Ereignisses**, nicht der Anlage. Ein im
+Januar erstelltes Issue, das am 3. August geschlossen wird, erscheint im Report
+vom 3. August.
+
+| Gruppe | Zeitstempel |
+| --- | --- |
+| Neu angelegte Issues | `created_at` |
+| Abgeschlossene Issues | `closed_at` |
+| Gemergte Pull Requests | `merged_at` |
+
+Der Tag wird nach **Europe/Berlin** abgegrenzt, nicht nach UTC. Das Fenster
+reicht von `00:00:00` bis `23:59:59` desselben Tages, jeweils mit Offset, etwa
+`2026-08-03T00:00:00+02:00..2026-08-03T23:59:59+02:00`. Beide Grenzen gehören
+dazu; da die Zeitstempel der API sekundengenau sind, entsteht zum Folgetag
+keine Lücke.
+
+Ein halboffenes Fenster wäre sauberer, ist über die Suche aber nicht
+ausdrückbar: Zwei Bereichsangaben zum selben Feld verknüpft GitHub nicht, die
+zweite verdrängt die erste. `merged:>=A merged:<B` liefert deshalb alles vor
+`B` statt des Tages.
+
+**Nachprüfbarkeit.** Jeder Report weist im Fußbereich das tatsächlich
+verwendete Fenster samt Zeitzone aus, die Rohdaten führen es als
+`window_start`, `window_end` und `timezone`. Wer wissen will, in welchem Report
+ein Vorgang von kurz vor Mitternacht gelandet ist, vergleicht dessen
+Zeitstempel mit diesen Grenzen.
+
+**Wenn die Zeitzonendatenbank fehlt**, weicht das Skript auf UTC aus; die
+Grenzen verschieben sich dann um ein bis zwei Stunden. Der Workflow installiert
+`tzdata` deshalb ausdrücklich. Sollte das einmal fehlschlagen, weist der Report
+sichtbar darauf hin, statt stillschweigend andere Grenzen zu verwenden. Die
+Auswirkung ist real: Für den 3. August 2026 liefert das UTC-Fenster sieben
+abgeschlossene Issues, das Berliner Fenster neun.
+
 ### Gliederung nach Epics
 
 Die Zusammenfassung folgt den Epics, weil diese die thematisch
@@ -77,8 +113,13 @@ Die Rohdaten jedes Tages liegen als JSON unter `data/` im Branch `gh-pages`.
 
 ## Bedienung
 
-Der Workflow läuft täglich um 04:30 UTC. Ein Lauf lässt sich jederzeit von Hand
-auslösen, wahlweise für einen bestimmten Tag:
+Der Workflow läuft täglich um 00:30 UTC. Die Uhrzeit ist ein Wunsch, keine
+Zusage: GitHub führt geplante Läufe bei Last auch mehrere Stunden später aus,
+beobachtet wurden bis zu dreieinhalb Stunden. Ein ausgefallener Tag holt sich
+nicht von selbst nach und muss von Hand nachgezogen werden.
+
+Ein Lauf lässt sich jederzeit von Hand auslösen, wahlweise für einen bestimmten
+Tag:
 
 ```bash
 # Vortag
