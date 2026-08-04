@@ -2,7 +2,9 @@ package io.opaa.query;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.auth.UserRepository;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -78,6 +80,8 @@ public class QueryConfiguration {
       ChatMemory chatMemory,
       CitationParser citationParser,
       DocumentRepository documentRepository,
+      UserRepository userRepository,
+      LibraryAccessService libraryAccessService,
       QueryMetrics queryMetrics,
       QueryProperties queryProperties) {
     return new QueryService(
@@ -86,6 +90,8 @@ public class QueryConfiguration {
         chatMemory,
         citationParser,
         documentRepository,
+        userRepository,
+        libraryAccessService,
         queryMetrics,
         queryProperties);
   }

@@ -815,6 +815,89 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/grants:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listAssetGrants
+      tags: [library]
+      summary: >
+        List the grants on a library (MANAGER role or above required). See
+        docs/features/spaces-and-assets.md#asset-rollen.
+      responses:
+        "200":
+          description: List of grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssetGrantResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: upsertAssetGrant
+      tags: [library]
+      summary: >
+        Grant (or update the role of) a user or group on a library (MANAGER role or above
+        required). Idempotent per subject: submitting again for the same subject replaces its role
+        and expiry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetGrantRequest"
+      responses:
+        "200":
+          description: Grant created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetGrantResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/grants/{grantId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: revokeAssetGrant
+      tags: [library]
+      summary: Revoke a grant (MANAGER role or above required). Takes effect on the next query.
+      responses:
+        "204":
+          description: Grant revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -1537,6 +1620,72 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    AssetRole:
+      type: string
+      description: >
+        The graded asset role a grant carries - a ranking deliberately separate from SpaceRole; no
+        role name occurs in both. USER uses the asset without seeing its configuration, VIEWER
+        additionally sees it, EDITOR additionally changes it, MANAGER additionally shares/grants
+        and sets visibility, OWNER additionally deletes and transfers ownership. See
+        docs/features/spaces-and-assets.md#asset-rollen.
+      enum: [USER, VIEWER, EDITOR, MANAGER, OWNER]
+      example: VIEWER
+
+    PermissionSubjectType:
+      type: string
+      description: Whether a grant targets a single user or a group.
+      enum: [USER, GROUP]
+      example: USER
+
+    AssetGrantRequest:
+      type: object
+      required: [subjectType, subjectId, role]
+      properties:
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: The user or group id, depending on subjectType.
+        role:
+          $ref: "#/components/schemas/AssetRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Null means the grant never expires. Present from the start even though
+            recertification only arrives with #241.
+
+    AssetGrantResponse:
+      type: object
+      required: [id, subjectType, subjectId, role, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/AssetRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        grantedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     DirectorySyncOutcome:
       type: string

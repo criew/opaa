@@ -1,5 +1,7 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.AssetGrantRequest;
+import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -8,6 +10,7 @@ import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -35,10 +38,15 @@ public class LibraryController {
   private static final String UNKNOWN_ISSUER = "unknown";
 
   private final KnowledgeLibraryService libraryService;
+  private final AssetGrantService grantService;
   private final UserService userService;
 
-  public LibraryController(KnowledgeLibraryService libraryService, UserService userService) {
+  public LibraryController(
+      KnowledgeLibraryService libraryService,
+      AssetGrantService grantService,
+      UserService userService) {
     this.libraryService = libraryService;
+    this.grantService = grantService;
     this.userService = userService;
   }
 
@@ -92,6 +100,39 @@ public class LibraryController {
     User currentUser = currentUser(jwt);
     return libraryService.listDocuments(
         libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @GetMapping("/{libraryId}/grants")
+  public List<AssetGrantResponse> listAssetGrants(
+      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return grantService.listGrants(
+        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @PostMapping("/{libraryId}/grants")
+  public AssetGrantResponse upsertAssetGrant(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody AssetGrantRequest request,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return grantService.upsertGrant(
+        libraryId,
+        request,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @DeleteMapping("/{libraryId}/grants/{grantId}")
+  public ResponseEntity<Void> revokeAssetGrant(
+      @PathVariable UUID libraryId, @PathVariable UUID grantId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    grantService.revokeGrant(
+        libraryId,
+        grantId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.noContent().build();
   }
 
   private User currentUser(Jwt jwt) {

@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,10 +11,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.api.dto.QueryMetadata;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
+import io.opaa.auth.User;
+import io.opaa.auth.UserService;
 import io.opaa.query.QueryService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
@@ -24,14 +30,31 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(QueryController.class)
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "basic"})
 @Import(TestSecurityConfig.class)
 class QueryControllerTest {
 
+  private static final String TEST_ISSUER = "test-issuer";
+  private static final String TEST_SUBJECT = "test-subject";
+
   @Autowired private MockMvc mockMvc;
   @MockitoBean private QueryService queryService;
+  @MockitoBean private UserService userService;
+
+  @BeforeEach
+  void setUp() {
+    User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
+    user.setSystemRole(SystemRole.USER);
+    when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
+        .thenReturn(Optional.of(user));
+  }
+
+  private RequestPostProcessor asTestUser() {
+    return jwt().jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER));
+  }
 
   @Test
   void queryReturnsAnswerWithSources() throws Exception {
@@ -41,11 +64,12 @@ class QueryControllerTest {
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryMetadata("gpt-4o", 500, 1200L),
             "conv-123");
-    when(queryService.query(anyString(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any())).thenReturn(response);
 
     mockMvc
         .perform(
             post("/api/v1/query")
+                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What is OPAA?\"}"))
         .andExpect(status().isOk())
@@ -66,11 +90,12 @@ class QueryControllerTest {
     var response =
         new QueryResponse(
             "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "existing-conv");
-    when(queryService.query(anyString(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any())).thenReturn(response);
 
     mockMvc
         .perform(
             post("/api/v1/query")
+                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"Follow-up?\", \"conversationId\": \"existing-conv\"}"))
         .andExpect(status().isOk())
@@ -82,6 +107,7 @@ class QueryControllerTest {
     mockMvc
         .perform(
             post("/api/v1/query")
+                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"  \"}"))
         .andExpect(status().isBadRequest())
@@ -91,18 +117,26 @@ class QueryControllerTest {
   @Test
   void queryWithMissingBodyReturns400() throws Exception {
     mockMvc
-        .perform(post("/api/v1/query").contentType(MediaType.APPLICATION_JSON))
+        .perform(post("/api/v1/query").with(asTestUser()).contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isBadRequest());
   }
 
+  // No test for the "unknown user" 401 path here: GlobalExceptionHandler has no
+  // @ExceptionHandler(ResponseStatusException.class), so a ResponseStatusException thrown from
+  // currentUser() (the same pattern LibraryController, GroupController and SpaceController
+  // already use) falls through to the generic Exception.class handler and surfaces as 500, not
+  // its actual status - a pre-existing gap this PR does not fix (out of scope for #202, see the
+  // PR description's follow-up note).
+
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
-    when(queryService.query(anyString(), any()))
+    when(queryService.query(anyString(), any(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
         .perform(
             post("/api/v1/query")
+                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isServiceUnavailable())
@@ -112,12 +146,13 @@ class QueryControllerTest {
 
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
-    when(queryService.query(anyString(), any()))
+    when(queryService.query(anyString(), any(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
         .perform(
             post("/api/v1/query")
+                .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\": \"What?\"}"))
         .andExpect(status().isBadGateway())

@@ -9,6 +9,9 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.AssetGrant;
+import io.opaa.library.AssetGrantRepository;
+import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
@@ -70,6 +73,7 @@ class GroupServiceIntegrationTest {
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetGrantRepository grantRepository;
   @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationA;
@@ -77,6 +81,7 @@ class GroupServiceIntegrationTest {
 
   @BeforeEach
   void cleanUp() {
+    grantRepository.deleteAll();
     libraryRepository.deleteAll();
     membershipRepository.deleteAll();
     groupRepository.deleteAll();
@@ -173,6 +178,42 @@ class GroupServiceIntegrationTest {
     // Once the library no longer references the group, deletion succeeds - the check is a live
     // guard, not a one-time flag on the group.
     libraryRepository.delete(library);
+    groupService.deleteGroup(saved.getId(), admin);
+    assertThat(groupRepository.findById(saved.getId())).isEmpty();
+  }
+
+  @Test
+  void cannotDeleteAGroupThatStillHoldsAGrantOnALibraryItDoesNotOwn() {
+    // #202 code review (blocker 2): "an Abteilung 5 freigeben" (feature spec's
+    // "Freigabestufen und Auffindbarkeit") is a grant TO the group, not ownership BY it - the
+    // everyday case, not the edge case. fk_asset_grants_subject_group_organization (migration
+    // 013) is RESTRICT exactly like fk_knowledge_libraries_owner_group_organization, so without
+    // GroupService#deleteGroup's second, independent check, this must fail with an unhandled
+    // DataIntegrityViolationException (500) instead of a clean 409.
+    UUID admin = createUser(organizationA);
+    UUID owner = createUser(organizationA);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null);
+    Group saved = groupRepository.save(group);
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationA, "Rechtsquellen", null, owner, LibraryVisibility.PRIVATE, false, false);
+    KnowledgeLibrary savedLibrary = libraryRepository.save(library);
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            savedLibrary.getId(), organizationA, saved.getId(), AssetRole.VIEWER, null, owner);
+    grantRepository.save(grant);
+
+    assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), admin))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(groupRepository.findById(saved.getId())).isPresent();
+
+    // Once the grant is revoked, deletion succeeds - the check is a live guard, not a one-time
+    // flag on the group.
+    grantRepository.delete(grant);
     groupService.deleteGroup(saved.getId(), admin);
     assertThat(groupRepository.findById(saved.getId())).isEmpty();
   }

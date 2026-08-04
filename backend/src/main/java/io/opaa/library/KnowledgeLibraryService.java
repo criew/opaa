@@ -27,20 +27,26 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manages knowledge libraries - the first asset type (#201, see
- * docs/features/spaces-and-assets.md#assets). Read/write access implemented here is deliberately
- * the coarse subset the model already fixes for #201: the owner (a matching user, or any member of
- * an owning group), organization-wide read for {@link LibraryVisibility#ORGANIZATION}, and full
- * access for system administrators. It does not implement the graded asset roles ({@code
- * USER}/{@code VIEWER}/{@code EDITOR}/{@code MANAGER}/{@code OWNER}) or a grants table - that is
- * #202's "asset permissions and permission-aware vector search", the actual linchpin of the epic.
- * Building that here would be speculative: #201 only needs "does this library have a responsible
- * owner and can documents be attributed to it", not the full sharing model.
+ * docs/features/spaces-and-assets.md#assets). Read/write access checks are delegated to {@link
+ * LibraryAccessService} (#202), which replaced this class's former coarse {@code canRead}/{@code
+ * canManage} - see that class's Javadoc for the full reasoning, in particular why group ownership
+ * alone no longer implies management rights.
+ *
+ * <p>{@link #createLibrary} always grants the creator {@link AssetRole#OWNER} explicitly via an
+ * {@link AssetGrant} - the right to delete the library and transfer ownership always sits on a
+ * named person, never on group membership alone. For a {@link LibraryOwnerType#GROUP} library the
+ * owning group additionally gets {@link AssetRole#MANAGER} (sharing and granting roles to others),
+ * <em>not</em> {@code OWNER}: every member automatically holding {@code OWNER} would grow without a
+ * human decision point as a directory-synchronised group's membership grows (#237) and could never
+ * be downgraded once it became the library's only {@code OWNER} grant (#202 code review round 2).
+ * The accepted price is that the personal {@code OWNER} grant is lost when its holder leaves - #240
+ * (succession instead of blocking) is what regulates that case, not this class.
  *
  * <p>{@link LibraryOwnerType#SYSTEM} libraries (exactly one per organization, see {@link
- * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link #canRead} and {@link
- * #canManage} both require {@code systemAdmin} for them regardless of any other check, and {@link
- * #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright - only the migration
- * (012-seed-system-library) ever creates one.
+ * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link
+ * LibraryAccessService#effectiveRole} requires {@code systemAdmin} for them regardless of any
+ * grant, and {@link #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright -
+ * only the migration (012-seed-system-library) ever creates one.
  */
 @Service
 @Transactional(readOnly = true)
@@ -55,6 +61,8 @@ public class KnowledgeLibraryService {
   private final GroupRepository groupRepository;
   private final GroupMembershipResolver membershipResolver;
   private final DocumentRepository documentRepository;
+  private final AssetGrantRepository grantRepository;
+  private final LibraryAccessService accessService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public KnowledgeLibraryService(
@@ -63,12 +71,16 @@ public class KnowledgeLibraryService {
       GroupRepository groupRepository,
       GroupMembershipResolver membershipResolver,
       DocumentRepository documentRepository,
+      AssetGrantRepository grantRepository,
+      LibraryAccessService accessService,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.membershipResolver = membershipResolver;
     this.documentRepository = documentRepository;
+    this.grantRepository = grantRepository;
+    this.accessService = accessService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -95,14 +107,15 @@ public class KnowledgeLibraryService {
     boolean listed = Boolean.TRUE.equals(request.getListed());
 
     KnowledgeLibrary library;
+    Group ownerGroup = null;
     if (ownerType == LibraryOwnerType.GROUP) {
       if (request.getOwnerId() == null) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST, "ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
-      Group group =
+      ownerGroup =
           requireGroupInOrganization(request.getOwnerId(), currentUser.getOrganizationId());
-      if (!membershipResolver.groupIdsForUser(currentUserId).contains(group.getId())) {
+      if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
         throw new ResponseStatusException(
             HttpStatus.FORBIDDEN,
             "Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen");
@@ -112,7 +125,7 @@ public class KnowledgeLibraryService {
               currentUser.getOrganizationId(),
               normalizedName,
               request.getDescription(),
-              group.getId(),
+              ownerGroup.getId(),
               visibility,
               listed);
     } else {
@@ -128,6 +141,44 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
+    // #202 code review round 2 (Befund 2): a GROUP-owned library grants the *group* MANAGER, not
+    // OWNER, and grants the *creator* (a person) OWNER separately - the round-1 fix (group gets
+    // OWNER) went a step too far. Every current and future member of the owning group is
+    // automatically OWNER under that rule - able to delete the library and transfer ownership -
+    // and grows without a human decision point as a directory-synchronised group's membership
+    // grows (#237), which is structurally the same defect #201 had, one level up. It is also not
+    // demotable: the round-1 group grant is the library's only OWNER grant, so both
+    // requireCallerCanTouchExistingGrant and the last-active-OWNER guard permanently protect it -
+    // measured as a 409 on both the downgrade and the revoke path.
+    //
+    // Splitting the two roles keeps the group's real benefit (a centrally maintained library like
+    // the feature spec's leitbeispiel "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz",
+    // survives its creator's departure - MANAGER already covers sharing and granting roles to
+    // others) while keeping the two highest-stakes rights, delete and ownership transfer, on a
+    // named person who can be held accountable for them. The accepted price - that OWNER hangs on
+    // a person and is lost when they leave - is exactly the case #240 (succession instead of
+    // blocking) exists to regulate: the library does not lock, it goes to "Nachfolge offen",
+    // usable and frozen against growing reach until a curator is assigned. No other member of the
+    // group inherits rights beyond what the group's MANAGER grant itself carries (see the class
+    // Javadoc on why mere membership must never imply management on its own).
+    if (ownerGroup != null) {
+      grantRepository.save(
+          AssetGrant.forGroup(
+              saved.getId(),
+              saved.getOrganizationId(),
+              ownerGroup.getId(),
+              AssetRole.MANAGER,
+              null,
+              currentUserId));
+    }
+    grantRepository.save(
+        AssetGrant.forUser(
+            saved.getId(),
+            saved.getOrganizationId(),
+            currentUserId,
+            AssetRole.OWNER,
+            null,
+            currentUserId));
     return toLibraryResponse(saved);
   }
 
@@ -166,7 +217,7 @@ public class KnowledgeLibraryService {
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canRead(library, currentUserId, systemAdmin)) {
+    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return toLibraryResponse(library);
@@ -176,7 +227,7 @@ public class KnowledgeLibraryService {
   public LibraryResponse updateLibrary(
       UUID libraryId, LibraryUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canManage(library, currentUserId, systemAdmin)) {
+    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     // Mirrors the delete guard on the personal library (code review of #201/#305): once #202 makes
@@ -211,7 +262,14 @@ public class KnowledgeLibraryService {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Die persoenliche Bibliothek kann nicht geloescht werden");
     }
-    if (!canManage(library, currentUserId, systemAdmin)) {
+    // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
+    // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
+    // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
+    // libraries) could otherwise delete the whole library, taking every grant on it - including the
+    // creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the round-1/round-2
+    // escalation guards entirely instead of being blocked by them. See
+    // LibraryAccessService#canDelete.
+    if (!accessService.canDelete(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
@@ -231,7 +289,7 @@ public class KnowledgeLibraryService {
   public List<LibraryDocumentResponse> listDocuments(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!canRead(library, currentUserId, systemAdmin)) {
+    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
 
@@ -278,53 +336,18 @@ public class KnowledgeLibraryService {
     }
 
     requiresNewTransactionTemplate.executeWithoutResult(
-        status ->
-            libraryRepository.insertPersonalLibraryIfAbsent(
-                UUID.randomUUID(),
-                organizationId,
-                PERSONAL_LIBRARY_NAME,
-                "Private persoenliche Wissensbibliothek",
-                userId));
-  }
-
-  private boolean canRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    if (library.isSystemLibrary()) {
-      return systemAdmin;
-    }
-    if (systemAdmin) {
-      return true;
-    }
-    if (library.getVisibility() == LibraryVisibility.ORGANIZATION) {
-      return true;
-    }
-    return isOwnerOrGroupMember(library, userId);
-  }
-
-  /**
-   * <b>#202 must replace this, not just extend it</b> (code review of #201/#305): for a group-owned
-   * library, every member of the owning group can rename, change visibility and delete it - there
-   * is no distinction between an ordinary member and the {@code MANAGER}/{@code OWNER} asset roles
-   * the feature spec defines (see docs/features/spaces-and-assets.md#asset-rollen). For a
-   * directory-synchronised group this circle grows without any human decision point in this
-   * codebase (see #237's directory synchronisation), which is acceptable only as the coarse #201
-   * interim this class's own class Javadoc describes, never as the long-term model.
-   */
-  private boolean canManage(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    if (library.isSystemLibrary()) {
-      return systemAdmin;
-    }
-    if (systemAdmin) {
-      return true;
-    }
-    return isOwnerOrGroupMember(library, userId);
-  }
-
-  private boolean isOwnerOrGroupMember(KnowledgeLibrary library, UUID userId) {
-    if (library.isOwnedByUser(userId)) {
-      return true;
-    }
-    return library.getOwnerType() == LibraryOwnerType.GROUP
-        && membershipResolver.groupIdsForUser(userId).contains(library.getOwnerGroupId());
+        status -> {
+          libraryRepository.insertPersonalLibraryIfAbsent(
+              UUID.randomUUID(),
+              organizationId,
+              PERSONAL_LIBRARY_NAME,
+              "Private persoenliche Wissensbibliothek",
+              userId);
+          // Same connection/transaction as the insert above, so it always sees the row it just
+          // wrote (or the pre-existing one another concurrent call won the race for) - see
+          // AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent.
+          grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(UUID.randomUUID(), userId);
+        });
   }
 
   private String validateName(String name) {
