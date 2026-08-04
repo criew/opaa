@@ -48,7 +48,24 @@ jobs:
     # ~275-MB-Modell-Pull auf einem kalten Cache ließ praktisch keine Marge. 30 Minuten geben dem
     # Rest realistisch Raum; das Abnahmekriterium in Issue #228 ("20 Minuten") ist dazu als
     # bewusste, dokumentierte Abweichung im PR und als Issue-Kommentar festgehalten.
-    timeout-minutes: 30
+    #
+    # Update (Issue #311): die ~1004s-Messung, auf der die 30 Minuten oben beruhten, stammte nicht
+    # von einem echten GitHub-Actions-Runner — der Workflow ist seit seiner Einführung (PR #292/#301)
+    # auf main noch nie erfolgreich durchgelaufen, jeder bisherige Lauf wurde entweder per
+    # Label-Filter übersprungen oder lief ins Zeitlimit. Der erste nächtliche Lauf
+    # (https://github.com/criew/opaa/actions/runs/30880506057) hat im Indizierungsschritt selbst
+    # 1078 von 1448 Korpus-Dokumenten in 1704s geschafft (~1,58s/Dokument, aus den
+    # AsyncIndexingExecutor-Log-Zeitstempeln), bevor er ins 30-Minuten-Limit lief — Checkout,
+    # Java-/Gradle-Setup und Image-Pulls brauchten dabei zusammen nur rund 15s, sind also nicht die
+    # Ursache. Hochgerechnet auf den vollen Korpus (1448 Dokumente) allein schon ~38 Minuten
+    # Indizierung, dazu golden-Query-Auswertung (121 Anfragen, dieselbe sequenzielle
+    # Ollama-Embedding-Latenz), Report- und Baseline-Schritte. Ursache ist die reale
+    # GitHub-Actions-Runner-CPU (2 vCPU, geteilt zwischen Postgres-, Ollama- und
+    # Anwendungs-Container) — keine Regression durch #201/#202 (deren Indizierungs-Änderungen
+    # sind zwei zusätzliche, statische Setter-Aufrufe pro Dokument, keine zusätzlichen
+    # Datenbank-Roundtrips). 60 Minuten geben dem gemessenen ~44-Minuten-Vollauf wieder eine
+    # reale Marge, statt bei jedem Lauf erneut ins Limit zu laufen.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,9 +102,19 @@ jobs:
       # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST), not just the tag: a
       # deliberate model re-pin changes the digest constant, which changes this key, which means a
       # stale cache for the old model is never silently reused.
+      # actions/cache/restore + actions/cache/save (issue #311), not the combined actions/cache
+      # action: actions/cache's own save step only runs as a *post*-job step, and GitHub Actions
+      # skips post-job steps entirely when the job's own status is 'cancelled' — which is exactly
+      # what timeout-minutes produces. On a cold cache the very first scheduled run always times
+      # out (indexing ~1.5k documents through the real Ollama container is itself the majority of
+      # the runtime, see the timeout-minutes comment below), so the combined action's cache-key
+      # never got written, next night started cold again, timed out again, forever — a
+      # self-perpetuating failure with no way out except manual intervention. Splitting restore and
+      # save lets the explicit save step below run as a normal, non-post job step with its own
+      # `if:`, so it still executes even when the overall job is later marked cancelled.
       - name: Restore Ollama model cache
         id: ollama-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ollama-model-cache.tar
           key: ollama-model-nomic-embed-text-v1.5-0a109f42
@@ -132,6 +159,21 @@ jobs:
           else
             echo "Docker-Volume opaa-eval-ollama-models existiert nicht — Export übersprungen."
           fi
+
+      # Runs as an ordinary job step (see the comment on "Restore Ollama model cache" above), so
+      # `if: always()` here genuinely means always — including when the job is cancelled by
+      # timeout-minutes, unlike actions/cache's built-in post-job save. Guarded on the tar file
+      # actually existing (hashFiles returns '' when nothing matches) because actions/cache/save
+      # fails the step outright if the given path doesn't exist, and the export step above
+      # deliberately leaves no file behind when the volume was too small to be a valid model cache.
+      # actions/cache/save itself is a no-op (warns, does not fail) if this exact key was already
+      # saved by an earlier run — cache keys are immutable, so that is expected once warm.
+      - name: Ollama model cache speichern
+        if: always() && hashFiles('ollama-model-cache.tar') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ollama-model-cache.tar
+          key: ollama-model-nomic-embed-text-v1.5-0a109f42
 
       - name: Baseline von main laden (nur PR-Lauf)
         if: github.event_name == 'pull_request'
