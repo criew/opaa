@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.*;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.organization.Organization;
 import io.opaa.query.QueryService;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,8 +52,16 @@ class OpenAiIntegrationTest {
     registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
-  private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
-  private static final String SYSTEM_LIBRARY_ID = "00000000-0000-0000-0000-000000000002";
+  // The real seeded ids (Organization.DEFAULT_ID, KnowledgeLibrary.SYSTEM_LIBRARY_ID), not
+  // locally duplicated string literals - both are UUID, and both are bound as JDBC parameters
+  // against uuid-typed columns (asset_grants.library_id, users.organization_id) via a plain
+  // PreparedStatement, which does not auto-cast a text/varchar parameter to uuid the way an
+  // inline SQL literal would. A local String constant here surfaced as a BadSqlGrammarException
+  // ("operator does not exist: uuid = text") the moment this test actually executed (#309 code
+  // review round 4: it never had, because this whole class is gated behind OPAA_OPENAI_API_KEY
+  // and was never run after being adapted to the asset-grants model in #305/#309).
+  private static final UUID SEEDED_ORGANIZATION_ID = Organization.DEFAULT_ID;
+  private static final UUID SYSTEM_LIBRARY_ID = KnowledgeLibrary.SYSTEM_LIBRARY_ID;
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private QueryService queryService;
