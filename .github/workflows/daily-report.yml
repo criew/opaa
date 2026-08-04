@@ -2,9 +2,11 @@ name: Daily Report
 
 on:
   schedule:
-    # 04:30 UTC entspricht 06:30 MESZ beziehungsweise 05:30 MEZ. Der Vortag ist
-    # damit in jedem Fall abgeschlossen.
-    - cron: "30 4 * * *"
+    # 00:30 UTC entspricht 02:30 MESZ beziehungsweise 01:30 MEZ. Der Vortag ist
+    # nach mitteleuropäischer Zeit damit abgeschlossen, siehe TIMEZONE im Skript.
+    # Die Uhrzeit ist ein Wunsch, keine Zusage: GitHub führt geplante Läufe bei
+    # Last auch mehrere Stunden später aus.
+    - cron: "30 0 * * *"
   workflow_dispatch:
     inputs:
       date:
