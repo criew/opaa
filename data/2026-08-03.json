@@ -1,7 +1,7 @@
 {
   "repo": "criew/opaa",
   "date": "2026-08-03",
-  "generated_at": "2026-08-04T09:12:06.698672+02:00",
+  "generated_at": "2026-08-04T09:16:20.549906+02:00",
   "closed_issues": [
     {
       "number": 302,
@@ -417,7 +417,7 @@
     "title": "Merge pull request #305 from criew/feature/201_wissensbibliothek",
     "finished_at": "2026-08-03T15:22:25Z"
   },
-  "summary": "Epic #198 „Space and asset model — replace the workspace model\" machte heute Fortschritte bei der Umsetzung: drei Tickets wurden abgeschlossen und drei gemergt, womit vier von 25 Tickets erledigt sind. Die gemergte #305 führt KnowledgeLibrary als ersten Asset-Typ ein und migriert Dokumente in diesen Container. #297 behandelt Verzeichnissynchronisation als Rechteereignis mit stabiler externer ID und strikter Trennung von Diff-Berechnung und Anwendung, während #283 Gruppen als zweiten Rechtesubjekt-Typ neben Nutzern einführt.\n\nEpic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression\" machte ebenfalls Fortschritte: zwei Tickets wurden abgeschlossen und zwei gemergt, womit sechs von 14 Tickets erledigt sind. Die gemergte #301 führt den Retrieval-Harness als automatisierten CI-Job gegen eine committete Baseline aus und vergleicht dabei Fixpunkte wie Korpus-Manifest und Embedding-Modell-Digest. #292 indiziert den eingefrorenen Korpus über die produktive Pipeline und berechnet Hit Rate, MRR, nDCG und Recall gegen den Vektor-Store.\n\nOhne Epic-Bezug wurden sieben Tickets neu angelegt und vier abgeschlossen. Die gemergte #299 behebt einen Race Condition bei paralleler Erstanmeldung auf der Unique-Constraint uq_users_subject_issuer. #298 stellt FK-abhängige Space-Tests auf echtes Liquibase-Schema um. #303 und #296 dokumentieren Transaktionsbehandlung und Branch-Regeln in den Entwickler-Richtlinien.",
+  "summary": "Epic #198 „Space and asset model — replace the workspace model\" machte heute Fortschritte bei der Umsetzung: drei Tickets wurden abgeschlossen und drei gemergt, womit vier von 25 Tickets erledigt sind. Die gemergte PR #305 führt die KnowledgeLibrary als ersten Asset-Typ ein und migriert Dokumente in diesen Container. PR #297 behandelt die Verzeichnissynchronisation als Rechteereignis mit stabiler Identifikation über die externe ID, und PR #283 etabliert Gruppen als zweiten Rechtesubjekt-Typ neben Nutzern.\n\nEpic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression\" erreichte heute sechs von 14 abgeschlossenen Tickets durch zwei Merges. PR #301 führt den Retrieval-Regressionsjob in GitHub Actions gegen eine committete Baseline aus und vergleicht dabei Fixpunkte wie Korpus-Manifest und Embedding-Modell-Digest. PR #292 implementiert den JUnit-Integrationstest für Retrieval-Metriken, der Hit Rate, MRR, nDCG und Recall berechnet.\n\nAußerhalb der Epics wurden sieben neue Tickets angelegt und vier abgeschlossen. Drei Merges adressierten Transaktions- und Authentifizierungsprobleme: PR #303 dokumentiert den Umgang mit Transaktionen in der Entwicklerrolle, PR #299 behebt eine Race Condition bei paralleler Erstanmeldung auf der Unique-Constraint, und PR #298 stellt FK-abhängige Space-Tests auf das echte Liquibase-Schema um. PR #296 präzisiert die Branch-Regel und macht Reproduktionsnachweise verbindlich.",
   "epics": [
     {
       "number": 198,
