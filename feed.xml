@@ -5,8 +5,17 @@
   <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/"/>
   <id>https://criew.github.io/opaa/</id>
-  <updated>2026-08-04T07:16:20Z</updated>
+  <updated>2026-08-05T03:42:59Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 4. August 2026</title>
+    <link href="https://criew.github.io/opaa/reports/2026-08-04.html"/>
+    <id>https://criew.github.io/opaa/reports/2026-08-04.html</id>
+    <updated>2026-08-05T03:42:59Z</updated>
+    <summary type="text">Im Epic Space and asset model — replace the workspace model wurden heute Fortschritte bei der Implementierung von Asset-Rechten erzielt. Das Ticket #202 zur Asset-Berechtigung und rechtebewussten Vektorsuche wurde abgeschlossen und der entsprechende Pull Request #309 gemergt. Damit ist ein zentraler Angelpunkt des Epics realisiert, das bisher bei 5 von 25 erledigten Tickets steht.
+
+Bei den Vorgängen ohne Epic-Bezug lag der Fokus auf Verbesserungen der CI-Pipeline und Qualitätssicherung. Das Ticket #312 zur Verbesserung des Zeitfensters im Tagesreport wurde abgeschlossen und gemergt, um Lücken und Mehrdeutigkeiten bei der Tagesabgrenzung zu beheben. Gleichzeitig wurde eine automatische Retrieval-Regression erkannt, die zur Anlage von Ticket #311 führte.</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 3. August 2026</title>
     <link href="https://criew.github.io/opaa/reports/2026-08-03.html"/>

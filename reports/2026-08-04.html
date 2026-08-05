@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-04</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.summary p { margin: 0 0 .9rem; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+.tag {
+  display: inline-block;
+  font-size: .72rem;
+  padding: .1rem .45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-right: .3rem;
+  color: var(--muted);
+}
+.status { font-weight: 600; }
+.status.ok { color: #1a7f37; }
+.status.bad { color: #cf222e; }
+@media (prefers-color-scheme: dark) {
+  .status.ok { color: #3fb950; }
+  .status.bad { color: #f85149; }
+}
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Dienstag, 4. August 2026</h1>
+<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/criew/opaa">criew/opaa</a></p>
+</header>
+
+<section class="summary">
+<p>Im Epic Space and asset model — replace the workspace model wurden heute Fortschritte bei der Implementierung von Asset-Rechten erzielt. Das Ticket #202 zur Asset-Berechtigung und rechtebewussten Vektorsuche wurde abgeschlossen und der entsprechende Pull Request #309 gemergt. Damit ist ein zentraler Angelpunkt des Epics realisiert, das bisher bei 5 von 25 erledigten Tickets steht.</p>
+<p>Bei den Vorgängen ohne Epic-Bezug lag der Fokus auf Verbesserungen der CI-Pipeline und Qualitätssicherung. Das Ticket #312 zur Verbesserung des Zeitfensters im Tagesreport wurde abgeschlossen und gemergt, um Lücken und Mehrdeutigkeiten bei der Tagesabgrenzung zu beheben. Gleichzeitig wurde eine automatische Retrieval-Regression erkannt, die zur Anlage von Ticket #311 führte.</p>
+</section>
+
+<h2>Abgeschlossene Issues</h2>
+<ul class="items">
+<li><span class="num">#312</span><a href="https://github.com/criew/opaa/issues/312">fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#202</span><a href="https://github.com/criew/opaa/issues/202">Asset permissions and permission-aware vector search</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">security</span>criew</span></li>
+</ul>
+
+<h2>Gemergte Pull Requests</h2>
+<ul class="items">
+<li><span class="num">#313</span><a href="https://github.com/criew/opaa/pull/313">fix(ci): Report früher planen und Zeitfenster nachvollziehbar machen</a><span class="meta"><span class="tag">bug</span><span class="tag">ci</span>3 Dateien, +103 / −12</span></li>
+<li><span class="num">#309</span><a href="https://github.com/criew/opaa/pull/309">feat(library): Asset-Rechte und rechtebewusste Vektorsuche</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">security</span>26 Dateien, +3630 / −122</span></li>
+</ul>
+
+<h2>Neu angelegte Issues</h2>
+<ul class="items">
+<li><span class="num">#312</span><a href="https://github.com/criew/opaa/issues/312">fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#311</span><a href="https://github.com/criew/opaa/issues/311">Retrieval-Regression erkannt (automatischer Lauf)</a><span class="meta"><span class="tag">bug</span><span class="tag">evaluation</span>github-actions[bot]</span></li>
+</ul>
+
+<h2>Offen zum Tagesende</h2>
+<ul class="items">
+<li><span class="num">#316</span><a href="https://github.com/criew/opaa/pull/316">fix(group): Race auf uk_directory_sync_status_organization behandeln</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span>criew</span></li>
+<li><span class="num">#315</span><a href="https://github.com/criew/opaa/pull/315">fix(ci): Ollama-Modell-Cache im Retrieval-Regressionslauf trotz Timeout speichern</a><span class="meta"><span class="tag">bug</span><span class="tag">size:S</span><span class="tag">ci</span>criew</span></li>
+<li><span class="num">#314</span><a href="https://github.com/criew/opaa/pull/314">fix(api): ResponseStatusException und DataIntegrityViolationException im GlobalExceptionHandler abbilden</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span>criew</span></li>
+<li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
+</ul>
+
+<h2>Stand der CI</h2>
+<p>Hauptbranch: <span class="status ok">grün</span> — <a href="https://github.com/criew/opaa/actions/runs/30889696305">Merge pull request #309 from criew/feature/202_asset-rechte-vektorsuche</a></p>
+
+<footer>
+Erzeugt am 2026-08-05 um 05:42 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-04T00:00:00 bis 2026-08-04T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

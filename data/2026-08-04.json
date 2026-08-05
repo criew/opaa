@@ -1,0 +1,269 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-08-04",
+  "generated_at": "2026-08-05T05:42:59.725841+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-04T00:00:00+02:00",
+  "window_end": "2026-08-04T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 312,
+      "title": "fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen",
+      "url": "https://github.com/criew/opaa/issues/312",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:S",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer Report grenzt den Berichtstag über Zeitstempel ab. Drei Punkte machen das derzeit angreifbar, besonders bei Arbeit rund um den Tageswechsel.\n\n## Befunde\n\n**1. Stiller Rückfall auf UTC**\n\nFehlt die Zeitzonendatenbank, weicht das Skript auf UTC aus und protokolliert das nur auf der Fehlerausgabe. Die Tagesgrenzen verschieben sich dadurch um ein bis zwei Stunden, ohne dass es dem fertigen Report anzusehen wäre.\n\n**2. Fenstergrenze auf `23:59:59`**\n\nDas Fenster endet eine Sekunde vor Mitternacht. Bei sekundengenauen Zeitstempeln entsteht dadurch keine Lücke, die Konstruktion ist aber unnötig fragil. Ein halboffenes Fenster bis zum Beginn des Folgetages ist eindeutig.\n\n**3. Das verwendete Fenster ist nicht nachvollziehbar**\n\nWeder Seite noch Rohdaten nennen die Grenzen, gegen die abgefragt wurde. Ob ein Vorgang um 23:50 im richtigen Report gelandet ist, lässt sich damit nicht prüfen.\n\n## Umfang\n\n- Verwendete Zeitzone und Fenstergrenzen in den Rohdaten festhalten und im Fußbereich der Seite ausweisen\n- Halboffenes Fenster verwenden: ab Beginn des Tages, vor Beginn des Folgetages\n- Den Rückfall auf UTC im Report kenntlich machen, statt ihn nur zu protokollieren\n\n## Abnahmekriterien\n\n- [ ] Rohdaten und Seite nennen Zeitzone und Fenstergrenzen\n- [ ] Das Fenster ist halboffen und damit lückenlos zum Folgetag\n- [ ] Ein Lauf ohne Zeitzonendatenbank ist am Report erkennbar\n- [ ] Ältere Reports ohne die neuen Felder lassen sich weiterhin darstellen",
+      "closes": []
+    },
+    {
+      "number": 202,
+      "title": "Asset permissions and permission-aware vector search",
+      "url": "https://github.com/criew/opaa/issues/202",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:L",
+        "security"
+      ],
+      "body": "## Context\r\n\r\nThe central gap of the current implementation: `QueryService` performs a similarity search with no\r\nmetadata filter whatsoever. Until this issue is done, the whole model is a facade.\r\n\r\nSee [`docs/features/spaces-and-assets.md`](docs/features/spaces-and-assets.md) and [ADR-0008](docs/decisions/0008-space-and-asset-model.md).\r\n\r\n## Scope\r\n\r\n- `AssetGrant`: subject (user or group) -> role `USER` | `VIEWER` | `EDITOR` | `MANAGER` | `OWNER`,\r\n  a rank order **separate** from the space roles\r\n- **The managing asset role is `MANAGER`, not `ADMIN`** — no role name occurs in both role systems.\r\n  Whoever says \"admin rights\" always means a space\r\n- **Every grant carries an optional expiry field from the start**, even though recertification only\r\n  arrives with #241. Adding the field later is cheap; assessing an existing body of grants without\r\n  one is not\r\n- Resolution of `readableLibraries(user)` = direct grants + group grants + organization-wide\r\n  libraries. **Space associations do not appear in this expression**\r\n- Caching with immediate invalidation on any permission change\r\n- Metadata filter on `library_id` inside `VectorStore.similaritySearch` — part of the search, not a\r\n  post-filter\r\n- The retrieval context is always the calling user; there is no second rights context\r\n\r\n## Acceptance criteria\r\n\r\n- [ ] A user only receives chunks from libraries they may read; verified against a library they have\r\n      no grant on\r\n- [ ] Revoking a grant takes effect on the next query\r\n- [ ] Space membership alone grants no access to any library — explicit negative test\r\n- [ ] Group grants work identically to direct grants\r\n- [ ] No role name exists simultaneously in `SpaceRole` and the asset role enum\r\n- [ ] An empty readable set produces an empty result, not an error, and the message reveals no counts\r\n- [ ] Permission resolution adds less than 50 ms to query time\r\n- [ ] Backend format, build and test pass\r\n\r\n## Depends on\r\n\r\n#201, #200\r\n\r\nPart of #198",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 312,
+      "title": "fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen",
+      "url": "https://github.com/criew/opaa/issues/312",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:S",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer Report grenzt den Berichtstag über Zeitstempel ab. Drei Punkte machen das derzeit angreifbar, besonders bei Arbeit rund um den Tageswechsel.\n\n## Befunde\n\n**1. Stiller Rückfall auf UTC**\n\nFehlt die Zeitzonendatenbank, weicht das Skript auf UTC aus und protokolliert das nur auf der Fehlerausgabe. Die Tagesgrenzen verschieben sich dadurch um ein bis zwei Stunden, ohne dass es dem fertigen Report anzusehen wäre.\n\n**2. Fenstergrenze auf `23:59:59`**\n\nDas Fenster endet eine Sekunde vor Mitternacht. Bei sekundengenauen Zeitstempeln entsteht dadurch keine Lücke, die Konstruktion ist aber unnötig fragil. Ein halboffenes Fenster bis zum Beginn des Folgetages ist eindeutig.\n\n**3. Das verwendete Fenster ist nicht nachvollziehbar**\n\nWeder Seite noch Rohdaten nennen die Grenzen, gegen die abgefragt wurde. Ob ein Vorgang um 23:50 im richtigen Report gelandet ist, lässt sich damit nicht prüfen.\n\n## Umfang\n\n- Verwendete Zeitzone und Fenstergrenzen in den Rohdaten festhalten und im Fußbereich der Seite ausweisen\n- Halboffenes Fenster verwenden: ab Beginn des Tages, vor Beginn des Folgetages\n- Den Rückfall auf UTC im Report kenntlich machen, statt ihn nur zu protokollieren\n\n## Abnahmekriterien\n\n- [ ] Rohdaten und Seite nennen Zeitzone und Fenstergrenzen\n- [ ] Das Fenster ist halboffen und damit lückenlos zum Folgetag\n- [ ] Ein Lauf ohne Zeitzonendatenbank ist am Report erkennbar\n- [ ] Ältere Reports ohne die neuen Felder lassen sich weiterhin darstellen",
+      "closes": []
+    },
+    {
+      "number": 311,
+      "title": "Retrieval-Regression erkannt (automatischer Lauf)",
+      "url": "https://github.com/criew/opaa/issues/311",
+      "author": "github-actions[bot]",
+      "labels": [
+        "bug",
+        "evaluation"
+      ],
+      "body": "<!-- retrieval-regression-alert -->\n\n**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/30880506057\n\n_Kein Report erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe Workflow-Logs._",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 313,
+      "title": "fix(ci): Report früher planen und Zeitfenster nachvollziehbar machen",
+      "url": "https://github.com/criew/opaa/pull/313",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "ci"
+      ],
+      "body": "## Zusammenfassung\n\nDer geplante Lauf liegt jetzt auf **00:30 UTC** statt 04:30 UTC. Zusätzlich wird das verwendete Zeitfenster ausgewiesen, damit nachprüfbar ist, in welchem Report ein Vorgang von kurz vor Mitternacht gelandet ist.\n\n## Wie der Berichtstag abgegrenzt wird\n\nMaßgeblich ist der Zeitpunkt des **Ereignisses**, nicht der Anlage:\n\n| Gruppe | Zeitstempel |\n| --- | --- |\n| Neu angelegte Issues | `created_at` |\n| Abgeschlossene Issues | `closed_at` |\n| Gemergte Pull Requests | `merged_at` |\n\nAbgegrenzt wird nach `Europe/Berlin`, etwa `2026-08-03T00:00:00+02:00..2026-08-03T23:59:59+02:00`.\n\n## Die Änderungen\n\n**Nachprüfbarkeit.** Die Rohdaten führen `timezone`, `window_start` und `window_end`; der Fußbereich der Seite nennt Zeitraum und Zeitzone. Wer wissen will, wo ein Vorgang von 23:50 gelandet ist, vergleicht dessen Zeitstempel mit diesen Grenzen.\n\n**Der UTC-Rückfall wird sichtbar.** Fehlt `tzdata`, weicht das Skript auf UTC aus — bisher nur auf der Fehlerausgabe vermerkt. Der Report weist jetzt sichtbar darauf hin. Die Auswirkung ist real: Für den 3. August liefert das UTC-Fenster **sieben** abgeschlossene Issues, das Berliner Fenster **neun**. Zwei Vorgänge lagen zwischen 00:00 und 02:00 Berliner Zeit.\n\n## Was ich verworfen habe\n\nGeplant war ein halboffenes Fenster (`>= Tagesbeginn`, `< Folgetag`), weil das eindeutiger ist als eine Grenze auf `23:59:59`. **Das funktioniert bei GitHub nicht.** Zwei Bereichsangaben zum selben Feld werden nicht verknüpft — die zweite verdrängt die erste:\n\n```\nmerged:<2026-08-04T00:00:00+02:00                                    -> 118\nmerged:>=2026-08-03T00:00:00+02:00 merged:<2026-08-04T00:00:00+02:00 -> 118\nkorrekt (Bereichsoperator)                                           ->   9\n```\n\nDer Bereichsoperator bleibt daher unverändert; der Grund steht jetzt als Kommentar im Code, damit es niemand erneut versucht. Da die Zeitstempel der API sekundengenau sind, entsteht zum Folgetag ohnehin keine Lücke.\n\n## Prüfung\n\n- Alte und neue Suchsyntax gegen die echten Daten des 3. August verglichen — dabei fiel die Abweichung auf\n- Zeitfenster, Zeitzone und Warnhinweis erscheinen korrekt im Fußbereich\n- Reports im alten Format ohne die neuen Felder rendern weiterhin, der Hinweis entfällt dann\n- YAML validiert, Cron steht auf `30 0 * * *`\n\n## Hinweis zur Pünktlichkeit\n\nDie Uhrzeit ist ein Wunsch, keine Zusage — beide bisherigen Läufe kamen rund drei Stunden später. Ein ausgefallener Tag holt sich nicht von selbst nach. Beides ist jetzt in `docs/tagesreport.md` vermerkt.\n\n## Zugehörige Issues\n\nCloses #312\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echten Daten geprüft, YAML validiert)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
+      "closes": [
+        312
+      ],
+      "additions": 103,
+      "deletions": 12,
+      "changed_files": 3
+    },
+    {
+      "number": 309,
+      "title": "feat(library): Asset-Rechte und rechtebewusste Vektorsuche",
+      "url": "https://github.com/criew/opaa/pull/309",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "security"
+      ],
+      "body": "## Zusammenfassung\n\nFuehrt Asset-Rechte (`AssetGrant`) und die rechtebewusste Vektorsuche ein - den zentralen Angelpunkt des Space-and-Asset-Epics (#198). Bis zu diesem PR filterte `QueryService` die Aehnlichkeitssuche ueberhaupt nicht.\n\n**AssetGrant** ist eine eigene Rangordnung `USER < VIEWER < EDITOR < MANAGER < OWNER`, disjunkt von `SpaceRole` (kein Rollenname kommt in beiden Systemen vor). Ein Grant zeigt auf einen Nutzer oder eine Gruppe (ueber zwei nullable Spalten `subject_user_id`/`subject_group_id`, wie schon `knowledge_libraries.owner_*`) und traegt von Anfang an ein optionales `expiresAt` (Rezertifizierung kommt erst mit #241, aber das Feld nachtraeglich hinzuzufuegen waere teuer, ein bestehender Grant-Bestand ohne Ablaufdatum nachtraeglich zu bewerten erst recht).\n\n**`LibraryAccessService`** ersetzt (nicht ergaenzt) `KnowledgeLibraryService`s bisherige grobe `canRead`/`canManage`-Zwischenfassung aus #201. Der wichtigste Verhaltensunterschied: **Gruppen-Eigentuemerschaft einer Bibliothek gewaehrt Mitgliedern keine automatischen Verwaltungsrechte mehr.** Bisher durfte jedes Mitglied einer gruppen-eigenen Bibliothek sie umbenennen, die Sichtbarkeit aendern und loeschen - bei verzeichnissynchronisierten Gruppen waechst dieser Kreis ohne menschlichen Entscheidungspunkt. Jetzt entsteht Verwaltungsrecht ausschliesslich aus einem expliziten `AssetGrant`, und die Rollen dabei sind bewusst gestaffelt (**Stand nach Review-Runde 2/3, nicht mehr \"OWNER unabhaengig vom ownerType\" wie in der ersten Fassung dieses Textes**):\n\n- `KnowledgeLibraryService#createLibrary` gewaehrt dem **Ersteller** immer persoenlich `OWNER` - loeschen und Eigentum uebertragen bleibt an eine benannte, verantwortliche Person gebunden.\n- Bei einer **`GROUP`-eigenen** Bibliothek bekommt zusaetzlich die **Gruppe** einen `MANAGER`-Grant (teilen, weitere Rechte vergeben) - **nicht** `OWNER`: jedes Mitglied automatisch als `OWNER` wuerde ohne menschlichen Entscheidungspunkt mit der Gruppengroesse mitwachsen (#237) und liesse sich, sobald es der einzige aktive `OWNER`-Grant ist, nicht mehr herabstufen oder entziehen - genau der Fehler, den dieser PR fuer #201 beheben soll, eine Ebene hoeher.\n- `deleteLibrary` verlangt seit Review-Runde 3 `OWNER` (`LibraryAccessService#canDelete`), nicht mehr `MANAGER` - sonst haette ein Gruppenmitglied mit nur dem `MANAGER`-Grant die ganze Bibliothek loeschen und damit auch den persoenlichen `OWNER`-Grant des Erstellers per `ON DELETE CASCADE` mitreissen koennen, ein voelliger Umweg um die Eskalations-Waechter.\n\n**`QueryService`** filtert die Vektorsuche jetzt auf `LibraryAccessService#readableLibraryIds(userId, organizationId)` - als `library_id IN (...)`-Filterausdruck, der Teil des `VectorStore#similaritySearch`-Aufrufs selbst ist, kein Nachfilter. Ein nicht autorisierter Chunk wird nie geladen, geschweige denn gerankt. Es gibt **keine** Systemadmin-Ausnahme in diesem Pfad - ein Agent liest immer mit den Rechten des aufrufenden Nutzers, ohne zweiten Rechtekontext (ADR-0008 §5). Eine leere lesbare Menge ueberspringt den Vektorstore-Aufruf komplett und erzeugt denselben Antwortpfad wie \"nichts gefunden\" - die Nachricht verraet also keine Zaehlwerte.\n\n**Caching:** `LibraryAccessService` cached die Grant-Liste je Bibliothek (Caffeine, analog zu `GroupMembershipResolver`), invalidiert nach Commit (`AssetGrantService#invalidateAfterCommit`, gleiches `TransactionSynchronization#afterCompletion`-Muster wie `GroupService`). Der Suchpfad selbst (`readableLibraryIds`) ist bewusst **nicht** gecacht - eine einzelne indexierte Abfrage garantiert, dass ein widerrufener Grant sofort wirkt, ohne einen zweiten Cache-Invalidierungspfad korrekt halten zu muessen.\n\n**Migration 013** legt `asset_grants` an und backfillt fuer jede bestehende **`USER`-eigene** Bibliothek einen expliziten `OWNER`-Grant fuer den bisherigen individuellen Eigentuemer. Fuer eine bestehende **`GROUP`-eigene** Bibliothek gibt es dagegen **keinen erfassten Ersteller** - der Backfill vergibt dort nur `MANAGER` an die Gruppe und **fabriziert keinen `OWNER`-Grant**. Diese Bibliothek bleibt vollstaendig nutzbar (lesen, teilen, umbenennen, Sichtbarkeit aendern), aber niemand kann sie loeschen oder Eigentum uebertragen, bis ein System-Admin (der weiterhin OWNER-aequivalent bypassed) einer benannten Person explizit `OWNER` gewaehrt - faktisch derselbe \"Nachfolge offen\"-Zustand, den #240 fuer einen ausgeschiedenen Eigentuemer vorsieht, hier von Anfang an fuer Bestandsdaten. Erwogene Alternativen (Gruppe behaelt `OWNER` fuer Bestandsdaten; `OWNER` an ein beliebiges Gruppenmitglied) wurden verworfen - siehe den Kommentar am Backfill-Changeset (`013-asset-grants.yaml`) fuer die Begruendung. Die SYSTEM-Bibliothek bleibt bewusst ganz ohne Grant, fail-closed fuer Systemadmins.\n\n## Zugehörige Issues\n\nCloses #202\n\n## Annahmen\n\n- **System-Admin-Bypass bei `LibraryAccessService#effectiveRole`** (fuer Bibliotheks-CRUD: `getLibrary`/`updateLibrary`/`deleteLibrary`/`listDocuments`) bleibt erhalten, wie schon vor diesem PR. Im Suchpfad (`readableLibraryIds`) gibt es dagegen **keinen** Bypass. Diese Asymmetrie ist beabsichtigt (Verwaltung vs. rechte-strikter Suchpfad), aber nicht explizit im Issue-Text vorgegeben - bei Bedarf bitte im Review ansprechen.\n- **`LibraryVisibility.ORGANIZATION` gewaehrt implizit `VIEWER`** (nicht nur `USER`) an alle Organisationsmitglieder - identisch zum Verhalten der ersetzten #201-Zwischenfassung. Das Issue spezifiziert keinen Rang fuer diesen Pfad; ich habe das bestehende Verhalten beibehalten, um es nicht ohne Auftrag einzuschraenken.\n- **Grant-Verwaltungs-API** (`GET/POST /libraries/{id}/grants`, `DELETE /libraries/{id}/grants/{grantId}`) wurde ergaenzt, weil ohne sie kein `MANAGER` je einen Grant an eine Gruppe oder einen weiteren Nutzer vergeben koennte - das Issue nennt keine Endpunkte explizit, aber \"Resolution of readableLibraries(user) = direct grants + group grants + ...\" setzt voraus, dass solche Grants ueberhaupt entstehen koennen.\n- **Migration-013-Backfill fuer bestehende `GROUP`-eigene Bibliotheken (Review-Runde 2, zur ausdruecklichen Bestaetigung vorgelegt):** kein `OWNER`-Grant wird fabriziert, nur `MANAGER` an die Gruppe - siehe Absatz oben und den Kommentar am Backfill-Changeset. Falls eine andere Aufloesung gewuenscht ist, bitte im Review benennen.\n\n## Leistungszusage (\"unter 50 ms\")\n\nKonnte **nicht** als belastbare, last-getestete Zusage nachgewiesen werden - das war in der Aufgabenstellung als offen markiert. Was ich beitragen kann: ein einzelner, kalter Aufruf von `LibraryAccessService#readableLibraryIds` gegen ein echtes Postgres-Testcontainer-Schema (kein Mock) hat in einem Testlauf **43 ms** gebraucht (Messung im PR-Test `readableLibraryIdsResolvesWellWithinTheHundredMillisecondBudgetOnARealDatabase`, mit grosszuegigem 100-ms-Regressionsschutz statt einer harten 50-ms-Assertion, um keinen flakigen Mikro-Benchmark zu erzeugen). Das ist ein Hinweis, kein Beleg unter Last oder Produktionsdatenvolumen.\n\n## Follow-ups (ausserhalb des Scopes)\n\n- `GlobalExceptionHandler` hat keinen `@ExceptionHandler(ResponseStatusException.class)`. Eine `ResponseStatusException` (z. B. aus `QueryController#currentUser`, identisch zum bestehenden Muster in `LibraryController`/`GroupController`/`SpaceController`) faellt auf den generischen `Exception`-Handler durch und liefert 500 statt ihres eigentlichen Status. Vorbestehende Luecke, nicht durch diesen PR verursacht - ich habe deshalb keinen Test dafuer im Query-Controller ergaenzt, sondern die Luecke im Code kommentiert. Ein eigenes Issue waere sinnvoll.\n- `GroupService.deleteGroup` prueft ohne Sperre - nebenlaeufig angelegte Grants koennen weiterhin einen 500er ausloesen. Sicherheitsnetz ist als **#310** angelegt.\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe Review-Kommentare zu Runde 2 und Runde 3)\n- [x] Dokumentation aktualisiert (falls zutreffend) - Feature-Spezifikation deckte das Zielmodell bereits ab, keine Aenderung noetig\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## Pre-Push-Ergebnisse (Stand Review-Runde 3)\n\n- Backend-Formatierung: `./gradlew spotlessCheck` - OK\n- Backend-Build + Test: `./gradlew build` - OK, alle Tests gruen (58 Test-Suiten, 0 Fehler; Testcontainers/Docker verfuegbar, inkl. Nebenlaeufigkeitstests mit echten Threads gegen Postgres)\n- Frontend nicht betroffen in Runde 2/3 (kein Frontend-Code geaendert seit der urspruenglichen Einreichung)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude, developer-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        202
+      ],
+      "additions": 3630,
+      "deletions": 122,
+      "changed_files": 26
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 316,
+      "title": "fix(group): Race auf uk_directory_sync_status_organization behandeln",
+      "url": "https://github.com/criew/opaa/pull/316",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 315,
+      "title": "fix(ci): Ollama-Modell-Cache im Retrieval-Regressionslauf trotz Timeout speichern",
+      "url": "https://github.com/criew/opaa/pull/315",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "size:S",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 314,
+      "title": "fix(api): ResponseStatusException und DataIntegrityViolationException im GlobalExceptionHandler abbilden",
+      "url": "https://github.com/criew/opaa/pull/314",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/30889696305",
+    "title": "Merge pull request #309 from criew/feature/202_asset-rechte-vektorsuche",
+    "finished_at": "2026-08-04T07:57:19Z"
+  },
+  "summary": "Im Epic Space and asset model — replace the workspace model wurden heute Fortschritte bei der Implementierung von Asset-Rechten erzielt. Das Ticket #202 zur Asset-Berechtigung und rechtebewussten Vektorsuche wurde abgeschlossen und der entsprechende Pull Request #309 gemergt. Damit ist ein zentraler Angelpunkt des Epics realisiert, das bisher bei 5 von 25 erledigten Tickets steht.\n\nBei den Vorgängen ohne Epic-Bezug lag der Fokus auf Verbesserungen der CI-Pipeline und Qualitätssicherung. Das Ticket #312 zur Verbesserung des Zeitfensters im Tagesreport wurde abgeschlossen und gemergt, um Lücken und Mehrdeutigkeiten bei der Tagesabgrenzung zu beheben. Gleichzeitig wurde eine automatische Retrieval-Regression erkannt, die zur Anlage von Ticket #311 führte.",
+  "epics": [
+    {
+      "number": 198,
+      "title": "Epic: Space and asset model — replace the workspace model",
+      "tickets_total": 25,
+      "tickets_closed": 5,
+      "opened": [],
+      "closed": [
+        {
+          "number": 202,
+          "title": "Asset permissions and permission-aware vector search",
+          "url": "https://github.com/criew/opaa/issues/202",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:L",
+            "security"
+          ],
+          "body": "## Context\r\n\r\nThe central gap of the current implementation: `QueryService` performs a similarity search with no\r\nmetadata filter whatsoever. Until this issue is done, the whole model is a facade.\r\n\r\nSee [`docs/features/spaces-and-assets.md`](docs/features/spaces-and-assets.md) and [ADR-0008](docs/decisions/0008-space-and-asset-model.md).\r\n\r\n## Scope\r\n\r\n- `AssetGrant`: subject (user or group) -> role `USER` | `VIEWER` | `EDITOR` | `MANAGER` | `OWNER`,\r\n  a rank order **separate** from the space roles\r\n- **The managing asset role is `MANAGER`, not `ADMIN`** — no role name occurs in both role systems.\r\n  Whoever says \"admin rights\" always means a space\r\n- **Every grant carries an optional expiry field from the start**, even though recertification only\r\n  arrives with #241. Adding the field later is cheap; assessing an existing body of grants without\r\n  one is not\r\n- Resolution of `readableLibraries(user)` = direct grants + group grants + organization-wide\r\n  libraries. **Space associations do not appear in this expression**\r\n- Caching with immediate invalidation on any permission change\r\n- Metadata filter on `library_id` inside `VectorStore.similaritySearch` — part of the search, not a\r\n  post-filter\r\n- The retrieval context is always the calling user; there is no second rights context\r\n\r\n## Acceptance criteria\r\n\r\n- [ ] A user only receives chunks from libraries they may read; verified against a library they have\r\n      no grant on\r\n- [ ] Revoking a grant takes effect on the next query\r\n- [ ] Space membership alone grants no access to any library — explicit negative test\r\n- [ ] Group grants work identically to direct grants\r\n- [ ] No role name exists simultaneously in `SpaceRole` and the asset role enum\r\n- [ ] An empty readable set produces an empty result, not an error, and the message reveals no counts\r\n- [ ] Permission resolution adds less than 50 ms to query time\r\n- [ ] Backend format, build and test pass\r\n\r\n## Depends on\r\n\r\n#201, #200\r\n\r\nPart of #198",
+          "closes": []
+        }
+      ],
+      "merged": [
+        {
+          "number": 309,
+          "title": "feat(library): Asset-Rechte und rechtebewusste Vektorsuche",
+          "url": "https://github.com/criew/opaa/pull/309",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "security"
+          ],
+          "body": "## Zusammenfassung\n\nFuehrt Asset-Rechte (`AssetGrant`) und die rechtebewusste Vektorsuche ein - den zentralen Angelpunkt des Space-and-Asset-Epics (#198). Bis zu diesem PR filterte `QueryService` die Aehnlichkeitssuche ueberhaupt nicht.\n\n**AssetGrant** ist eine eigene Rangordnung `USER < VIEWER < EDITOR < MANAGER < OWNER`, disjunkt von `SpaceRole` (kein Rollenname kommt in beiden Systemen vor). Ein Grant zeigt auf einen Nutzer oder eine Gruppe (ueber zwei nullable Spalten `subject_user_id`/`subject_group_id`, wie schon `knowledge_libraries.owner_*`) und traegt von Anfang an ein optionales `expiresAt` (Rezertifizierung kommt erst mit #241, aber das Feld nachtraeglich hinzuzufuegen waere teuer, ein bestehender Grant-Bestand ohne Ablaufdatum nachtraeglich zu bewerten erst recht).\n\n**`LibraryAccessService`** ersetzt (nicht ergaenzt) `KnowledgeLibraryService`s bisherige grobe `canRead`/`canManage`-Zwischenfassung aus #201. Der wichtigste Verhaltensunterschied: **Gruppen-Eigentuemerschaft einer Bibliothek gewaehrt Mitgliedern keine automatischen Verwaltungsrechte mehr.** Bisher durfte jedes Mitglied einer gruppen-eigenen Bibliothek sie umbenennen, die Sichtbarkeit aendern und loeschen - bei verzeichnissynchronisierten Gruppen waechst dieser Kreis ohne menschlichen Entscheidungspunkt. Jetzt entsteht Verwaltungsrecht ausschliesslich aus einem expliziten `AssetGrant`, und die Rollen dabei sind bewusst gestaffelt (**Stand nach Review-Runde 2/3, nicht mehr \"OWNER unabhaengig vom ownerType\" wie in der ersten Fassung dieses Textes**):\n\n- `KnowledgeLibraryService#createLibrary` gewaehrt dem **Ersteller** immer persoenlich `OWNER` - loeschen und Eigentum uebertragen bleibt an eine benannte, verantwortliche Person gebunden.\n- Bei einer **`GROUP`-eigenen** Bibliothek bekommt zusaetzlich die **Gruppe** einen `MANAGER`-Grant (teilen, weitere Rechte vergeben) - **nicht** `OWNER`: jedes Mitglied automatisch als `OWNER` wuerde ohne menschlichen Entscheidungspunkt mit der Gruppengroesse mitwachsen (#237) und liesse sich, sobald es der einzige aktive `OWNER`-Grant ist, nicht mehr herabstufen oder entziehen - genau der Fehler, den dieser PR fuer #201 beheben soll, eine Ebene hoeher.\n- `deleteLibrary` verlangt seit Review-Runde 3 `OWNER` (`LibraryAccessService#canDelete`), nicht mehr `MANAGER` - sonst haette ein Gruppenmitglied mit nur dem `MANAGER`-Grant die ganze Bibliothek loeschen und damit auch den persoenlichen `OWNER`-Grant des Erstellers per `ON DELETE CASCADE` mitreissen koennen, ein voelliger Umweg um die Eskalations-Waechter.\n\n**`QueryService`** filtert die Vektorsuche jetzt auf `LibraryAccessService#readableLibraryIds(userId, organizationId)` - als `library_id IN (...)`-Filterausdruck, der Teil des `VectorStore#similaritySearch`-Aufrufs selbst ist, kein Nachfilter. Ein nicht autorisierter Chunk wird nie geladen, geschweige denn gerankt. Es gibt **keine** Systemadmin-Ausnahme in diesem Pfad - ein Agent liest immer mit den Rechten des aufrufenden Nutzers, ohne zweiten Rechtekontext (ADR-0008 §5). Eine leere lesbare Menge ueberspringt den Vektorstore-Aufruf komplett und erzeugt denselben Antwortpfad wie \"nichts gefunden\" - die Nachricht verraet also keine Zaehlwerte.\n\n**Caching:** `LibraryAccessService` cached die Grant-Liste je Bibliothek (Caffeine, analog zu `GroupMembershipResolver`), invalidiert nach Commit (`AssetGrantService#invalidateAfterCommit`, gleiches `TransactionSynchronization#afterCompletion`-Muster wie `GroupService`). Der Suchpfad selbst (`readableLibraryIds`) ist bewusst **nicht** gecacht - eine einzelne indexierte Abfrage garantiert, dass ein widerrufener Grant sofort wirkt, ohne einen zweiten Cache-Invalidierungspfad korrekt halten zu muessen.\n\n**Migration 013** legt `asset_grants` an und backfillt fuer jede bestehende **`USER`-eigene** Bibliothek einen expliziten `OWNER`-Grant fuer den bisherigen individuellen Eigentuemer. Fuer eine bestehende **`GROUP`-eigene** Bibliothek gibt es dagegen **keinen erfassten Ersteller** - der Backfill vergibt dort nur `MANAGER` an die Gruppe und **fabriziert keinen `OWNER`-Grant**. Diese Bibliothek bleibt vollstaendig nutzbar (lesen, teilen, umbenennen, Sichtbarkeit aendern), aber niemand kann sie loeschen oder Eigentum uebertragen, bis ein System-Admin (der weiterhin OWNER-aequivalent bypassed) einer benannten Person explizit `OWNER` gewaehrt - faktisch derselbe \"Nachfolge offen\"-Zustand, den #240 fuer einen ausgeschiedenen Eigentuemer vorsieht, hier von Anfang an fuer Bestandsdaten. Erwogene Alternativen (Gruppe behaelt `OWNER` fuer Bestandsdaten; `OWNER` an ein beliebiges Gruppenmitglied) wurden verworfen - siehe den Kommentar am Backfill-Changeset (`013-asset-grants.yaml`) fuer die Begruendung. Die SYSTEM-Bibliothek bleibt bewusst ganz ohne Grant, fail-closed fuer Systemadmins.\n\n## Zugehörige Issues\n\nCloses #202\n\n## Annahmen\n\n- **System-Admin-Bypass bei `LibraryAccessService#effectiveRole`** (fuer Bibliotheks-CRUD: `getLibrary`/`updateLibrary`/`deleteLibrary`/`listDocuments`) bleibt erhalten, wie schon vor diesem PR. Im Suchpfad (`readableLibraryIds`) gibt es dagegen **keinen** Bypass. Diese Asymmetrie ist beabsichtigt (Verwaltung vs. rechte-strikter Suchpfad), aber nicht explizit im Issue-Text vorgegeben - bei Bedarf bitte im Review ansprechen.\n- **`LibraryVisibility.ORGANIZATION` gewaehrt implizit `VIEWER`** (nicht nur `USER`) an alle Organisationsmitglieder - identisch zum Verhalten der ersetzten #201-Zwischenfassung. Das Issue spezifiziert keinen Rang fuer diesen Pfad; ich habe das bestehende Verhalten beibehalten, um es nicht ohne Auftrag einzuschraenken.\n- **Grant-Verwaltungs-API** (`GET/POST /libraries/{id}/grants`, `DELETE /libraries/{id}/grants/{grantId}`) wurde ergaenzt, weil ohne sie kein `MANAGER` je einen Grant an eine Gruppe oder einen weiteren Nutzer vergeben koennte - das Issue nennt keine Endpunkte explizit, aber \"Resolution of readableLibraries(user) = direct grants + group grants + ...\" setzt voraus, dass solche Grants ueberhaupt entstehen koennen.\n- **Migration-013-Backfill fuer bestehende `GROUP`-eigene Bibliotheken (Review-Runde 2, zur ausdruecklichen Bestaetigung vorgelegt):** kein `OWNER`-Grant wird fabriziert, nur `MANAGER` an die Gruppe - siehe Absatz oben und den Kommentar am Backfill-Changeset. Falls eine andere Aufloesung gewuenscht ist, bitte im Review benennen.\n\n## Leistungszusage (\"unter 50 ms\")\n\nKonnte **nicht** als belastbare, last-getestete Zusage nachgewiesen werden - das war in der Aufgabenstellung als offen markiert. Was ich beitragen kann: ein einzelner, kalter Aufruf von `LibraryAccessService#readableLibraryIds` gegen ein echtes Postgres-Testcontainer-Schema (kein Mock) hat in einem Testlauf **43 ms** gebraucht (Messung im PR-Test `readableLibraryIdsResolvesWellWithinTheHundredMillisecondBudgetOnARealDatabase`, mit grosszuegigem 100-ms-Regressionsschutz statt einer harten 50-ms-Assertion, um keinen flakigen Mikro-Benchmark zu erzeugen). Das ist ein Hinweis, kein Beleg unter Last oder Produktionsdatenvolumen.\n\n## Follow-ups (ausserhalb des Scopes)\n\n- `GlobalExceptionHandler` hat keinen `@ExceptionHandler(ResponseStatusException.class)`. Eine `ResponseStatusException` (z. B. aus `QueryController#currentUser`, identisch zum bestehenden Muster in `LibraryController`/`GroupController`/`SpaceController`) faellt auf den generischen `Exception`-Handler durch und liefert 500 statt ihres eigentlichen Status. Vorbestehende Luecke, nicht durch diesen PR verursacht - ich habe deshalb keinen Test dafuer im Query-Controller ergaenzt, sondern die Luecke im Code kommentiert. Ein eigenes Issue waere sinnvoll.\n- `GroupService.deleteGroup` prueft ohne Sperre - nebenlaeufig angelegte Grants koennen weiterhin einen 500er ausloesen. Sicherheitsnetz ist als **#310** angelegt.\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe Review-Kommentare zu Runde 2 und Runde 3)\n- [x] Dokumentation aktualisiert (falls zutreffend) - Feature-Spezifikation deckte das Zielmodell bereits ab, keine Aenderung noetig\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## Pre-Push-Ergebnisse (Stand Review-Runde 3)\n\n- Backend-Formatierung: `./gradlew spotlessCheck` - OK\n- Backend-Build + Test: `./gradlew build` - OK, alle Tests gruen (58 Test-Suiten, 0 Fehler; Testcontainers/Docker verfuegbar, inkl. Nebenlaeufigkeitstests mit echten Threads gegen Postgres)\n- Frontend nicht betroffen in Runde 2/3 (kein Frontend-Code geaendert seit der urspruenglichen Einreichung)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude, developer-Rolle)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+          "closes": [
+            202
+          ],
+          "additions": 3630,
+          "deletions": 122,
+          "changed_files": 26
+        }
+      ]
+    }
+  ],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 312,
+        "title": "fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen",
+        "url": "https://github.com/criew/opaa/issues/312",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "size:S",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer Report grenzt den Berichtstag über Zeitstempel ab. Drei Punkte machen das derzeit angreifbar, besonders bei Arbeit rund um den Tageswechsel.\n\n## Befunde\n\n**1. Stiller Rückfall auf UTC**\n\nFehlt die Zeitzonendatenbank, weicht das Skript auf UTC aus und protokolliert das nur auf der Fehlerausgabe. Die Tagesgrenzen verschieben sich dadurch um ein bis zwei Stunden, ohne dass es dem fertigen Report anzusehen wäre.\n\n**2. Fenstergrenze auf `23:59:59`**\n\nDas Fenster endet eine Sekunde vor Mitternacht. Bei sekundengenauen Zeitstempeln entsteht dadurch keine Lücke, die Konstruktion ist aber unnötig fragil. Ein halboffenes Fenster bis zum Beginn des Folgetages ist eindeutig.\n\n**3. Das verwendete Fenster ist nicht nachvollziehbar**\n\nWeder Seite noch Rohdaten nennen die Grenzen, gegen die abgefragt wurde. Ob ein Vorgang um 23:50 im richtigen Report gelandet ist, lässt sich damit nicht prüfen.\n\n## Umfang\n\n- Verwendete Zeitzone und Fenstergrenzen in den Rohdaten festhalten und im Fußbereich der Seite ausweisen\n- Halboffenes Fenster verwenden: ab Beginn des Tages, vor Beginn des Folgetages\n- Den Rückfall auf UTC im Report kenntlich machen, statt ihn nur zu protokollieren\n\n## Abnahmekriterien\n\n- [ ] Rohdaten und Seite nennen Zeitzone und Fenstergrenzen\n- [ ] Das Fenster ist halboffen und damit lückenlos zum Folgetag\n- [ ] Ein Lauf ohne Zeitzonendatenbank ist am Report erkennbar\n- [ ] Ältere Reports ohne die neuen Felder lassen sich weiterhin darstellen",
+        "closes": []
+      },
+      {
+        "number": 311,
+        "title": "Retrieval-Regression erkannt (automatischer Lauf)",
+        "url": "https://github.com/criew/opaa/issues/311",
+        "author": "github-actions[bot]",
+        "labels": [
+          "bug",
+          "evaluation"
+        ],
+        "body": "<!-- retrieval-regression-alert -->\n\n**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/30880506057\n\n_Kein Report erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe Workflow-Logs._",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 312,
+        "title": "fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen",
+        "url": "https://github.com/criew/opaa/issues/312",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "size:S",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer Report grenzt den Berichtstag über Zeitstempel ab. Drei Punkte machen das derzeit angreifbar, besonders bei Arbeit rund um den Tageswechsel.\n\n## Befunde\n\n**1. Stiller Rückfall auf UTC**\n\nFehlt die Zeitzonendatenbank, weicht das Skript auf UTC aus und protokolliert das nur auf der Fehlerausgabe. Die Tagesgrenzen verschieben sich dadurch um ein bis zwei Stunden, ohne dass es dem fertigen Report anzusehen wäre.\n\n**2. Fenstergrenze auf `23:59:59`**\n\nDas Fenster endet eine Sekunde vor Mitternacht. Bei sekundengenauen Zeitstempeln entsteht dadurch keine Lücke, die Konstruktion ist aber unnötig fragil. Ein halboffenes Fenster bis zum Beginn des Folgetages ist eindeutig.\n\n**3. Das verwendete Fenster ist nicht nachvollziehbar**\n\nWeder Seite noch Rohdaten nennen die Grenzen, gegen die abgefragt wurde. Ob ein Vorgang um 23:50 im richtigen Report gelandet ist, lässt sich damit nicht prüfen.\n\n## Umfang\n\n- Verwendete Zeitzone und Fenstergrenzen in den Rohdaten festhalten und im Fußbereich der Seite ausweisen\n- Halboffenes Fenster verwenden: ab Beginn des Tages, vor Beginn des Folgetages\n- Den Rückfall auf UTC im Report kenntlich machen, statt ihn nur zu protokollieren\n\n## Abnahmekriterien\n\n- [ ] Rohdaten und Seite nennen Zeitzone und Fenstergrenzen\n- [ ] Das Fenster ist halboffen und damit lückenlos zum Folgetag\n- [ ] Ein Lauf ohne Zeitzonendatenbank ist am Report erkennbar\n- [ ] Ältere Reports ohne die neuen Felder lassen sich weiterhin darstellen",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 313,
+        "title": "fix(ci): Report früher planen und Zeitfenster nachvollziehbar machen",
+        "url": "https://github.com/criew/opaa/pull/313",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "ci"
+        ],
+        "body": "## Zusammenfassung\n\nDer geplante Lauf liegt jetzt auf **00:30 UTC** statt 04:30 UTC. Zusätzlich wird das verwendete Zeitfenster ausgewiesen, damit nachprüfbar ist, in welchem Report ein Vorgang von kurz vor Mitternacht gelandet ist.\n\n## Wie der Berichtstag abgegrenzt wird\n\nMaßgeblich ist der Zeitpunkt des **Ereignisses**, nicht der Anlage:\n\n| Gruppe | Zeitstempel |\n| --- | --- |\n| Neu angelegte Issues | `created_at` |\n| Abgeschlossene Issues | `closed_at` |\n| Gemergte Pull Requests | `merged_at` |\n\nAbgegrenzt wird nach `Europe/Berlin`, etwa `2026-08-03T00:00:00+02:00..2026-08-03T23:59:59+02:00`.\n\n## Die Änderungen\n\n**Nachprüfbarkeit.** Die Rohdaten führen `timezone`, `window_start` und `window_end`; der Fußbereich der Seite nennt Zeitraum und Zeitzone. Wer wissen will, wo ein Vorgang von 23:50 gelandet ist, vergleicht dessen Zeitstempel mit diesen Grenzen.\n\n**Der UTC-Rückfall wird sichtbar.** Fehlt `tzdata`, weicht das Skript auf UTC aus — bisher nur auf der Fehlerausgabe vermerkt. Der Report weist jetzt sichtbar darauf hin. Die Auswirkung ist real: Für den 3. August liefert das UTC-Fenster **sieben** abgeschlossene Issues, das Berliner Fenster **neun**. Zwei Vorgänge lagen zwischen 00:00 und 02:00 Berliner Zeit.\n\n## Was ich verworfen habe\n\nGeplant war ein halboffenes Fenster (`>= Tagesbeginn`, `< Folgetag`), weil das eindeutiger ist als eine Grenze auf `23:59:59`. **Das funktioniert bei GitHub nicht.** Zwei Bereichsangaben zum selben Feld werden nicht verknüpft — die zweite verdrängt die erste:\n\n```\nmerged:<2026-08-04T00:00:00+02:00                                    -> 118\nmerged:>=2026-08-03T00:00:00+02:00 merged:<2026-08-04T00:00:00+02:00 -> 118\nkorrekt (Bereichsoperator)                                           ->   9\n```\n\nDer Bereichsoperator bleibt daher unverändert; der Grund steht jetzt als Kommentar im Code, damit es niemand erneut versucht. Da die Zeitstempel der API sekundengenau sind, entsteht zum Folgetag ohnehin keine Lücke.\n\n## Prüfung\n\n- Alte und neue Suchsyntax gegen die echten Daten des 3. August verglichen — dabei fiel die Abweichung auf\n- Zeitfenster, Zeitzone und Warnhinweis erscheinen korrekt im Fußbereich\n- Reports im alten Format ohne die neuen Felder rendern weiterhin, der Hinweis entfällt dann\n- YAML validiert, Cron steht auf `30 0 * * *`\n\n## Hinweis zur Pünktlichkeit\n\nDie Uhrzeit ist ein Wunsch, keine Zusage — beide bisherigen Läufe kamen rund drei Stunden später. Ein ausgefallener Tag holt sich nicht von selbst nach. Beides ist jetzt in `docs/tagesreport.md` vermerkt.\n\n## Zugehörige Issues\n\nCloses #312\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (keine Anwendungsänderung; gegen die echten Daten geprüft, YAML validiert)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst (Claude Opus 5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01DzEd5z6cNCgQkUV8Y61zaF",
+        "closes": [
+          312
+        ],
+        "additions": 103,
+        "deletions": 12,
+        "changed_files": 3
+      }
+    ]
+  }
+}
