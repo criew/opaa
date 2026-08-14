@@ -149,3 +149,29 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bereits abgedeckt.
 - **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Zitierzwang: Schnitt der Belegprüfung und Ort des Schalters
+
+- **Punkt:** Die technische Ausformung des Leitprinzips Belegbarkeit — was der Zitierzwang prüft und auf
+  welcher Ebene er geschaltet wird.
+- **Entscheidung:** Die Belegprüfung wird in zwei Stufen geführt, von denen nur die erste jetzt gilt.
+  **Stufe 1** prüft deterministisch und ohne zusätzlichen Modellaufruf, dass jeder Beleg auf eine für
+  diese Antwort tatsächlich abgerufene Fundstelle zeigt, dass ohne abgerufene Fundstellen gar nicht erst
+  eine Antwort erzeugt wird und dass jede tragende Aussage einen gültigen Beleg führt. **Stufe 2**, die
+  inhaltliche Deckungsprüfung, ist ein eigener, noch nicht entschiedener Vorgang. Geschaltet wird der
+  Zitierzwang **am Space**; eine Systemvorgabe kann ihn hausweit erzwingen. Verschärfen kann jede Ebene,
+  abschalten keine.
+- **Begründung:** Stufe 1 kommt zuerst, weil sie die größte Lücke zum niedrigsten Preis schließt: Heute
+  wird nur das Vorkommen des Belegmusters geprüft, sodass ein Modell durch bloßes Nachahmen der Form
+  einen Beleg erzeugt, der auf nichts zeigt. Sie ist eine echte Zusicherung — gleiche Eingabe, gleiches
+  Urteil — während Stufe 2 einen zweiten Modelldurchlauf je Antwort braucht, selbst fehlbar ist und den
+  Zitierzwang damit von einer Zusicherung in eine Wahrscheinlichkeit verwandelt; ohne den Messaufbau der
+  Suchqualitäts-Evaluierung wäre ihre Güte zudem nicht bewertbar. Die Verankerung am Space ist
+  **ausdrücklich die schwächere von zwei Möglichkeiten**: Sie hängt den Zwang an den Raum statt an die
+  Daten und ist deshalb durch einen Raumwechsel umgehbar — dieselbe Wissensbibliothek in einem Space ohne
+  Zitierzwang liefert unbelegte Antworten. Gewählt wurde sie, weil der Space bereits Zweck, Suchbereich
+  und Zurechnung bestimmt und keine zusätzliche Verwaltungsebene entsteht; die Folge ist eine
+  organisatorische Pflicht des Betriebs, haftungskritische Bestände nicht in Spaces ohne Zitierzwang
+  bereitzustellen. Die Verankerung an der Wissensbibliothek bleibt als Alternative benannt.
+- **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#zitierzwang)
