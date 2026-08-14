@@ -602,13 +602,20 @@ Siehe [Daten-Indizierung & RAG](./features/data-indexing-rag.md).
 
 ### Speicher-Backend
 
-Der austauschbare Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
+Der Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
 die PDF- und DOCX-Dateien für Download und erneute Verarbeitung, dort die Embeddings für die Suche.
 
-**Mögliche Backends (bei der Installation gewählt):**
-- **Objektspeicher** (S3-kompatibel, etwa MinIO im eigenen Rechenzentrum)
-- **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus
-- **Lokales Dateisystem** — Entwicklung und kleine Installationen
+**Gebaut ist genau ein Weg: ein Verzeichnis.** OPAA schreibt und liest gegen ein konfiguriertes
+Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht. Das Dateisystem ist der
+Vertrag — was dahinter hängt, entscheidet der Betrieb:
+
+- **Lokales Dateisystem** — Erprobung und kleine Installationen
+- **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus; es wird vom Betriebssystem auf das konfigurierte
+  Verzeichnis eingehängt und braucht deshalb keinen eigenen Weg in der Anwendung
+- **Objektspeicher** (S3-kompatibel) — **Zielbild, nicht gebaut**; er ist der einzige Fall, der einen
+  eigenen Pfad im Code braucht
+
+Näheres in [Betrieb & Deployment](./features/deployment-infrastructure.md#speicher-backends).
 
 ---
 

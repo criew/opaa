@@ -265,11 +265,19 @@ nicht vertreten.
 - Docker Compose für den gesamten Stapel (`docker-compose.yml`, `keycloak/`)
 - PostgreSQL mit pgvector; Schemaverwaltung über Liquibase
 - Öffentliche Testinstanz (siehe [deployment.md](./deployment.md))
+- Dokumentenspeicher: **genau ein konfiguriertes Verzeichnis** (`OPAA_INDEXING_DOCUMENT_PATH`,
+  Standard `./documents`). Ein Netzlaufwerk wird dorthin eingehängt und braucht deshalb nichts
+  Zusätzliches im Code
+
+**Nicht gebaut**
+- **Keine Speicher-Abstraktion.** Es gibt keine wählbaren Speicher-Backends, sondern das eine
+  Verzeichnis. Objektbasierter Speicher ist entschieden als eigener Weg ohne Termin (#351); ein
+  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel
 
 **Geplant (Phase 1)**
 - Kubernetes mit Hochverfügbarkeit · **Betrieb ohne Netzanbindung** — die übertragbare Lieferung aus
   Abbildern, Modellgewichten und Stückliste ist heute nirgends geschnitten
-- Umfang der Speicher-Abstraktion (#351)
+- Objektbasierter Dokumentenspeicher für den mandantenfähigen Rechenzentrumsbetrieb (#351)
 
 > Der Docker-Build überspringt die Tests (#68). Härtungsanforderungen für erreichbare
 > Compose-Installationen sind nicht dokumentiert (#250).

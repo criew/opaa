@@ -215,3 +215,21 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bei jeder Durchsicht neu ausdiskutiert oder in gutem Glauben weggeräumt.
 - **Verweis:** [#367](https://github.com/criew/opaa/issues/367) ·
   [market/MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen)
+
+### 14.08.2026 — Umfang der Speicher-Abstraktion für Dokumente
+
+- **Punkt:** Umfang der Abstraktion über Speicher-Backends für Originaldokumente.
+- **Entscheidung:** Das Dateisystem ist der Vertrag. OPAA schreibt und liest Quelldokumente gegen genau
+  ein konfiguriertes Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht und ist für
+  die dateibasierten Fälle auch nicht vorgesehen. Ein Netzlaufwerk (SMB/NFS) wird vom Betrieb dorthin
+  eingehängt. Objektbasierter Speicher wird als eigener Weg geführt, aber ohne Termin; ein
+  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel. Der Code bleibt unverändert —
+  geändert wird allein das Versprechen in der Dokumentation.
+- **Begründung:** Zwei der drei bisher zugesagten Backends sind mit dem heutigen Code bereits abgedeckt,
+  weil ein eingehängtes Netzlaufwerk für die Anwendung wie ein Verzeichnis aussieht, sodass der
+  zugesagten Abstraktion in diesen Fällen kein Bedarf gegenübersteht. Objektbasierter Speicher braucht
+  als einziger einen eigenen Pfad im Code und bleibt deshalb als Weg bestehen; der Grund dafür ist der
+  mandantenfähige Rechenzentrumsbetrieb, in dem ein geteiltes Netzlaufwerk bei Mandantentrennung,
+  Kontingenten und Sicherung der unangenehmere Weg ist.
+- **Verweis:** [#351](https://github.com/criew/opaa/issues/351) ·
+  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends)
