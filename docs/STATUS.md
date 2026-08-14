@@ -44,7 +44,9 @@ Drei Zustände werden unterschieden:
   `AnswerGenerationService`)
 - **Quellenangaben in der Antwort** (`CitationParser`) mit Relevanzwert und Textauszug
 - Gesprächsgedächtnis je Sitzung (`CaffeineChatMemoryRepository`)
-- Vektorspeicherung in PostgreSQL mit pgvector
+- Vektorspeicherung in PostgreSQL mit pgvector — der einzige unterstützte Vektorspeicher; ein Wechsel
+  ist über die Schnittstelle von Spring AI technisch möglich, wird aber nicht unterstützt, nicht geprüft
+  und nicht dokumentiert (#348)
 
 **Im Bau**
 - Messbarkeit der Suchqualität — Korpus, Golden Dataset und Regressionsprüfung (Epic #224, Verzeichnis
