@@ -911,5 +911,7 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 ## Verwandte Dokumente
 
-- [Zugangskontrolle](./access-control.md) — Systemverwaltung, Nutzerverwaltung, Audit und Compliance
+- [Identität, Rechte & Mandanten](./access-control.md) — Systemverwaltung, Anmeldung und Kontenlebenszyklus
+- [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md) — Protokoll, DSGVO, C5-Fähigkeit, Mitbestimmungsfähigkeit
+- [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — Grenzen, Kosten und aggregierte Auswertung
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
