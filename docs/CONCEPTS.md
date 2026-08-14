@@ -102,8 +102,8 @@ Eine numerische Darstellung von Text, die dessen Bedeutung erfasst. Ein Embeddin
 
 Eine Datenbank, die auf das Speichern und Durchsuchen von Embeddings ausgelegt ist.
 
-**Beispiele:**
-- **PostgreSQL mit pgvector** — relationale Datenbank mit Vektor-Erweiterung; die Grundlage in OPAA
+**Beispiele der Gattung:**
+- **PostgreSQL mit pgvector** — relationale Datenbank mit Vektor-Erweiterung
 - **Elasticsearch** — Suchmaschine mit Vektor-Unterstützung
 - **Milvus, Qdrant, Weaviate** — quelloffene Systeme für große Vektorbestände
 
@@ -111,6 +111,12 @@ Eine Datenbank, die auf das Speichern und Durchsuchen von Embeddings ausgelegt i
 - Klassische SQL-Datenbanken sind auf exakte Treffer optimiert
 - Vektor-Datenbanken sind auf **Ähnlichkeitssuche** optimiert („finde die zehn nächstliegenden Vektoren")
 - Für die semantische Suche ist das um Größenordnungen schneller
+
+**In OPAA:** eingesetzt wird **PostgreSQL mit pgvector** — als einziger unterstützter Vektorspeicher.
+Die übrigen Systeme sind hier nur zur Einordnung der Gattung genannt und keine wählbare Option. Der
+Zugriff läuft zwar über eine portable Schnittstelle des eingesetzten Rahmenwerks, ein Wechsel wird aber
+nicht unterstützt, nicht geprüft und nicht dokumentiert. Begründung:
+[Daten-Indizierung & RAG](./features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
 
 ---
 
