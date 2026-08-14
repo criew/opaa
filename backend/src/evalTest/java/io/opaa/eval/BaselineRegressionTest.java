@@ -3,13 +3,13 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Compares the most recent {@code evaluateRetrieval} report against the committed baseline (issue
@@ -43,7 +43,9 @@ class BaselineRegressionTest {
     }
 
     EvaluationReport report =
-        new ObjectMapper().readValue(Files.readString(REPORT_FILE), EvaluationReport.class);
+        JsonMapper.builder()
+            .build()
+            .readValue(Files.readString(REPORT_FILE), EvaluationReport.class);
     Path baselineFile = RepoPaths.evalDir().resolve("baseline").resolve("comic-characters.json");
     Baseline baseline = Baseline.load(baselineFile);
 

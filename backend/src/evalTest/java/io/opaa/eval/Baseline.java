@@ -1,11 +1,11 @@
 package io.opaa.eval;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The committed retrieval-quality baseline (issue #228), checked into {@code
@@ -80,6 +80,6 @@ public record Baseline(
   }
 
   public static Baseline load(Path file) throws IOException {
-    return new ObjectMapper().readValue(Files.readString(file), Baseline.class);
+    return JsonMapper.builder().build().readValue(Files.readString(file), Baseline.class);
   }
 }
