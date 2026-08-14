@@ -12,9 +12,8 @@
 // host ports and its own env file (OPAA_ENV_FILE, see docker-compose.yml),
 // so this script never reads or writes a developer's own .env.docker.
 
-import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -33,12 +32,8 @@ const extraTestArgs = process.argv.slice(2)
 
 const composeArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'e2e/docker-compose.e2e.yml']
 
-// e2e/e2e.env deliberately does not contain OPAA_AUTH_BASIC_SECRET (no
-// signing secret should ever live in a tracked file): a fresh one is
-// generated for every run and passed through the process environment only
-// (see e2e/docker-compose.e2e.yml, which injects it into the backend
-// container).
-const authSecret = randomBytes(32).toString('hex')
+// No auth secrets are needed: the stack runs in the "dev" auth profile,
+// which has neither credentials nor a signing key (see e2e/e2e.env).
 
 const composeEnv = {
   ...process.env,
@@ -47,25 +42,9 @@ const composeEnv = {
   OPAA_BACKEND_PORT: backendPort,
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
-  OPAA_AUTH_BASIC_SECRET: authSecret,
 }
 
 let tornDown = false
-
-// e2e/e2e.env is the single source of truth for the test user's
-// username/password (OPAA_AUTH_BASIC_USERNAME/PASSWORD, consumed by the
-// backend container). Read them back here so Playwright (running on the
-// host, not in a container) logs in with the exact same credentials,
-// instead of duplicating them in a second place that could drift out of
-// sync.
-function readE2eEnvVar(name) {
-  const contents = readFileSync(join(e2eDir, 'e2e.env'), 'utf8')
-  const match = contents.match(new RegExp(`^${name}=(.*)$`, 'm'))
-  if (!match) {
-    throw new Error(`${name} not found in e2e/e2e.env`)
-  }
-  return match[1]
-}
 
 function run(command, args, { cwd = repoRoot, env = process.env } = {}) {
   const result = spawnSync(command, args, {
@@ -169,8 +148,6 @@ async function main() {
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
-      E2E_USERNAME: readE2eEnvVar('OPAA_AUTH_BASIC_USERNAME'),
-      E2E_PASSWORD: readE2eEnvVar('OPAA_AUTH_BASIC_PASSWORD'),
     },
   })
 

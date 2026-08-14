@@ -25,45 +25,46 @@ describe('authStore', () => {
     expect(state.mode).toBeNull()
   })
 
-  it('initializes as authenticated in mock mode', async () => {
+  it('initializes as authenticated in dev mode and loads the current user', async () => {
     await useAuthStore.getState().initialize()
 
     const state = useAuthStore.getState()
-    expect(state.mode).toBe('mock')
+    expect(state.mode).toBe('dev')
     expect(state.isAuthenticated).toBe(true)
     expect(state.isLoading).toBe(false)
-  })
-
-  it('logs in with basic credentials', async () => {
-    useAuthStore.setState({ mode: 'basic', isLoading: false })
-
-    await useAuthStore.getState().loginBasic('admin', 'admin')
-
-    const state = useAuthStore.getState()
-    expect(state.isAuthenticated).toBe(true)
-    expect(state.token).toBe('mock-jwt-token')
     expect(state.user).toEqual({
       id: 'mock-user-id',
       email: 'admin@opaa.local',
       displayName: 'Admin',
       systemRole: 'SYSTEM_ADMIN',
     })
-    expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeTruthy()
   })
 
-  it('shows error on invalid basic login', async () => {
-    useAuthStore.setState({ mode: 'basic', isLoading: false })
+  it('remembers the dev user from the URL for the rest of the session', async () => {
+    window.history.replaceState({}, '', '/chat?devUser=dev-user')
 
-    await useAuthStore.getState().loginBasic('admin', 'wrong')
+    await useAuthStore.getState().initialize()
+
+    expect(sessionStorage.getItem('opaa.devAuth.user')).toBe('dev-user')
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('stays unauthenticated and reports an error when the auth config cannot be loaded', async () => {
+    server.use(http.get('/api/v1/auth/config', () => HttpResponse.error()))
+
+    await useAuthStore.getState().initialize()
 
     const state = useAuthStore.getState()
     expect(state.isAuthenticated).toBe(false)
+    expect(state.mode).toBeNull()
+    expect(state.isLoading).toBe(false)
     expect(state.error).toBeTruthy()
   })
 
   it('clears state on logout', async () => {
+    sessionStorage.setItem('opaa.devAuth.user', 'dev-user')
     useAuthStore.setState({
-      mode: 'basic',
+      mode: 'dev',
       token: 'some-token',
       user: { id: '1', email: 'test@test.com', displayName: 'Test', systemRole: 'USER' as const },
       isAuthenticated: true,
@@ -92,7 +93,7 @@ describe('authStore', () => {
     expect(authState.isAuthenticated).toBe(false)
     expect(authState.token).toBeNull()
     expect(authState.user).toBeNull()
-    expect(sessionStorage.getItem('opaa.basicAuth.session')).toBeNull()
+    expect(sessionStorage.getItem('opaa.devAuth.user')).toBeNull()
 
     const spaceState = useSpaceStore.getState()
     expect(spaceState.spaces).toEqual([])
@@ -104,36 +105,22 @@ describe('authStore', () => {
     expect(useAuthStore.getState().getAccessToken()).toBe('test-token')
   })
 
-  it('restores basic session on initialize', async () => {
+  it('stays unauthenticated in oidc mode without a stored session', async () => {
     server.use(
-      http.get('/api/v1/auth/config', () => HttpResponse.json({ mode: 'basic' })),
-      http.get('/api/v1/auth/me', () =>
+      http.get('/api/v1/auth/config', () =>
         HttpResponse.json({
-          id: 'persisted-user-id',
-          email: 'persisted@opaa.local',
-          displayName: 'Persisted User',
+          mode: 'oidc',
+          authority: 'https://idp.example.test/realms/opaa',
+          clientId: 'opaa-frontend',
         }),
       ),
-    )
-
-    sessionStorage.setItem(
-      'opaa.basicAuth.session',
-      JSON.stringify({
-        token: 'persisted-token',
-        user: { id: 'stale', email: 'stale@opaa.local', displayName: 'Stale' },
-      }),
     )
 
     await useAuthStore.getState().initialize()
 
     const state = useAuthStore.getState()
-    expect(state.mode).toBe('basic')
-    expect(state.isAuthenticated).toBe(true)
-    expect(state.token).toBe('persisted-token')
-    expect(state.user).toEqual({
-      id: 'persisted-user-id',
-      email: 'persisted@opaa.local',
-      displayName: 'Persisted User',
-    })
+    expect(state.mode).toBe('oidc')
+    expect(state.isAuthenticated).toBe(false)
+    expect(state.isLoading).toBe(false)
   })
 })

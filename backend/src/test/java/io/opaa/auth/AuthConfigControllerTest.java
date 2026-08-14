@@ -21,11 +21,11 @@ class AuthConfigControllerTest {
 
   @Test
   void getAuthConfigReturnsModeFromProperties() throws Exception {
-    when(authProperties.mode()).thenReturn("mock");
+    when(authProperties.mode()).thenReturn("dev");
 
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.mode").value("mock"));
+        .andExpect(jsonPath("$.mode").value("dev"));
   }
 }

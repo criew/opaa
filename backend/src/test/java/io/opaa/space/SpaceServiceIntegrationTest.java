@@ -24,7 +24,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -39,9 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "basic"})
-@TestPropertySource(
-    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
+@ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
 class SpaceServiceIntegrationTest {
 

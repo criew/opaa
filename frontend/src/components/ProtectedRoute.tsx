@@ -6,7 +6,6 @@ import { useAuthStore } from '../stores/authStore'
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const mode = useAuthStore((s) => s.mode)
   const location = useLocation()
 
   if (isLoading) {
@@ -22,10 +21,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         <CircularProgress />
       </Box>
     )
-  }
-
-  if (mode === 'mock') {
-    return <>{children}</>
   }
 
   if (!isAuthenticated) {

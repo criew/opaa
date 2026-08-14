@@ -6,7 +6,6 @@ import {
   getRandomMockResponse,
   mockErrorResponse,
   mockAuthConfig,
-  mockLoginResponse,
   mockUser,
   mockUsers,
   mockSpaces,
@@ -15,7 +14,6 @@ import {
   mockGroupDetails,
 } from './fixtures'
 import type { IndexingStatusResponse, QueryRequest } from '../types/api'
-import type { LoginRequest } from '../types/auth'
 
 let indexingPollCount = 0
 let indexingActive = false
@@ -364,14 +362,6 @@ export const handlers = [
 
   http.get('/api/v1/auth/config', () => {
     return HttpResponse.json(mockAuthConfig)
-  }),
-
-  http.post('/api/v1/auth/login', async ({ request }) => {
-    const body = (await request.json()) as LoginRequest
-    if (body.username === 'admin' && body.password === 'admin') {
-      return HttpResponse.json(mockLoginResponse)
-    }
-    return HttpResponse.json({ error: 'Ungültige Anmeldedaten' }, { status: 401 })
   }),
 
   http.get('/api/v1/auth/me', () => {

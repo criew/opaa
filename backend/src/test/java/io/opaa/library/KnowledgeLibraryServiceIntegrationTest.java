@@ -43,7 +43,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -71,9 +70,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
-@ActiveProfiles({"local", "basic"})
-@TestPropertySource(
-    properties = "OPAA_AUTH_BASIC_SECRET=test-only-secret-not-used-for-anything-sensitive-1234")
+@ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
 class KnowledgeLibraryServiceIntegrationTest {
 
@@ -95,7 +92,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   private UUID organizationB;
 
   // This Spring context (and its Postgres container) is shared with other integration test
-  // classes carrying the identical @SpringBootTest/@Import/@ActiveProfiles/@TestPropertySource
+  // classes carrying the identical @SpringBootTest/@Import/@ActiveProfiles
   // combination (Spring caches the context) - some of those classes (e.g.
   // UserServicePersonalSpaceIntegrationTest) have no @AfterEach and leave Space rows behind that
   // reference their users. A blanket userRepository.deleteAll() here would then fail on

@@ -58,7 +58,9 @@ spring:
 
 opaa:
   auth:
-    mode: ${OPAA_AUTH_MODE:mock}
+    # No default mode on purpose: the active Spring profile ("oidc" or "dev")
+    # sets it. Starting without one of those profiles fails fast, see
+    # io.opaa.auth.AuthProfileGuard.
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
@@ -142,18 +144,26 @@ opaa:
       client-id: ${OPAA_OIDC_CLIENT_ID:opaa-frontend}
 
 ---
+# Development and test profile: no credential check at all. Requests are
+# authenticated as opaa.auth.dev.default-user, or as the user named in the
+# X-OPAA-Dev-User header. See io.opaa.auth.DevAuthFilter.
 spring:
   config:
     activate:
-      on-profile: basic
+      on-profile: dev
 
 opaa:
   auth:
-    mode: basic
-    basic:
+    mode: dev
+    dev:
+      issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
+      default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}
       users:
-        - username: ${OPAA_AUTH_BASIC_USERNAME:admin}
-          password: ${OPAA_AUTH_BASIC_PASSWORD:admin}
-      secret: ${OPAA_AUTH_BASIC_SECRET:}
-      token-expiration-seconds: ${OPAA_AUTH_BASIC_TOKEN_EXPIRATION:3600}
-      issuer: ${OPAA_AUTH_BASIC_ISSUER:opaa-basic}
+        # Matches the default opaa.auth.initial-admin-email, and is therefore
+        # provisioned as SYSTEM_ADMIN on first request.
+        - subject: dev-admin
+          email: admin@opaa.local
+          display-name: Dev Admin
+        - subject: dev-user
+          email: dev-user@opaa.local
+          display-name: Dev User

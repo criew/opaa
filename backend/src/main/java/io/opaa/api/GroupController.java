@@ -12,7 +12,6 @@ import io.opaa.group.GroupService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-@Profile({"oidc", "basic"})
 @RestController
 @RequestMapping("/api/v1/admin/groups")
 public class GroupController {

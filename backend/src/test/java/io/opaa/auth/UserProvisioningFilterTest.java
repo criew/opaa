@@ -34,17 +34,17 @@ class UserProvisioningFilterTest {
         Jwt.withTokenValue("token")
             .header("alg", "HS256")
             .claim("sub", "admin")
-            .claim("iss", "opaa-basic")
+            .claim("iss", "opaa-dev")
             .claim("preferred_username", "admin")
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
-    when(userService.findOrCreateUser("admin", "opaa-basic", null, "admin"))
-        .thenReturn(new User("admin", "opaa-basic", null, "admin"));
+    when(userService.findOrCreateUser("admin", "opaa-dev", null, "admin"))
+        .thenReturn(new User("admin", "opaa-dev", null, "admin"));
 
     UserProvisioningFilter filter = new UserProvisioningFilter(userService);
     filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), filterChain);
 
-    verify(userService).findOrCreateUser("admin", "opaa-basic", null, "admin");
+    verify(userService).findOrCreateUser("admin", "opaa-dev", null, "admin");
     verify(filterChain).doFilter(any(), any());
     verifyNoMoreInteractions(userService);
   }

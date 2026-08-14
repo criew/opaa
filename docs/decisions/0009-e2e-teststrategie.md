@@ -54,26 +54,27 @@ definierte, reproduzierbare Ausgangslage, ohne Container oder Volumes fremder Pr
 `scripts/run-e2e.mjs` registriert `SIGINT`/`SIGTERM`-Handler, die denselben Teardown auslösen, damit
 ein abgebrochener Lauf (`Strg+C`, CI-Cancel) keinen laufenden Stack hinterlässt.
 
-Ein per Lauf zufällig erzeugtes JWT-Signing-Secret (`OPAA_AUTH_BASIC_SECRET`, siehe Punkt 3) wird
-ausschließlich über die Prozessumgebung durchgereicht und nie in eine Datei geschrieben.
+Es gibt keine Secrets zu verwalten: Der Stack läuft im Auth-Modus `dev` (Punkt 3), der weder
+Anmeldedaten noch einen Signaturschlüssel kennt.
 
-### 3. Auth-Modus `basic`, nicht `mock`
+### 3. Auth-Modus `dev`
 
-Der dokumentierte Standard-Modus `mock` (ADR-0005: "Kein Auth — alle Anfragen erlaubt") ist im
-Backend nicht als eigenständiger, funktionierender Pfad implementiert: Es existieren nur zwei
-`SecurityFilterChain`-Beans (`@Profile("basic")`, `@Profile("oidc")`); ohne eines der beiden aktiven
-Spring-Profile bleibt Spring Boots generische Security-Auto-Konfiguration aktiv (blockt alle
-Anfragen) und die Fach-Controller (`WorkspaceController`, `UserInfoController`, `AdminController`,
-`UserService`, alle `@Profile({"oidc","basic"})`) existieren gar nicht als Beans. `mock` ist für den
-vollständig über Docker Compose laufenden E2E-Stack damit nicht nutzbar — dieser Mangel liegt im
-Produkt, nicht in der Teststrategie (siehe Follow-up-Issue "`mock`-Modus funktionsfähig machen oder
-aus Default und Doku entfernen").
+Die Suite läuft mit `SPRING_PROFILES_ACTIVE=docker,dev`. Der `dev`-Modus ([ADR-0005](0005-authentication-strategy.md))
+authentifiziert jede Anfrage als einen der unter `opaa.auth.dev.users` konfigurierten Nutzer, ohne
+Anmeldevorgang und ohne Token; die Filterkette ist ansonsten identisch zur produktiven
+OIDC-Konfiguration. `e2e/fixtures/auth.ts` wählt den Nutzer über den Query-Parameter `?devUser=`.
 
-Die Suite verwendet daher `basic`: kein externer Identity-Provider (im Gegensatz zu `oidc`, das
-zusätzlich Keycloak bräuchte), ein Testnutzer mit fest hinterlegtem Benutzernamen/Passwort in
-`e2e/e2e.env` (keine echten Secrets) und ein pro Lauf zufällig erzeugtes Signing-Secret (Punkt 2).
-Der Testnutzer wird über `OPAA_INITIAL_ADMIN_EMAIL` zum `SYSTEM_ADMIN`, damit Indexing-/
-Admin-Endpunkte für spätere Szenarien erreichbar sind.
+Der Alternative `oidc` hätte einen weiteren Container, den Realm-Import und den Weiterleitungsablauf
+des Autorisierungscode-Flusses in den Prüfpfad gebracht — zusätzliche Fehlerquellen ohne Aussagewert
+für die Fachszenarien. Der Anmeldeablauf selbst ist bewusst nicht Teil der Suite.
+
+Standardmäßig stehen zwei Nutzer bereit: `dev-admin` (E-Mail `admin@opaa.local`, entspricht dem
+Standardwert von `opaa.auth.initial-admin-email` und wird damit als `SYSTEM_ADMIN` angelegt, nötig
+für Indexing- und Admin-Endpunkte) und `dev-user` als regulärer Nutzer für Berechtigungsszenarien.
+
+> **Historie:** Bis zur Überarbeitung von ADR-0005 lief die Suite auf dem inzwischen entfernten
+> Modus `basic`, weil der damalige Standardmodus `mock` gar keine funktionierende
+> Security-Filterkette mitbrachte. Dieser Produktmangel ist mit der Überarbeitung behoben.
 
 ### 4. Modelle lokal im Stack statt externer Anbieter
 
@@ -102,14 +103,9 @@ sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für d
   wenige Sekunden). Der CI-Job hat deshalb ein separates, großzügigeres Zeitbudget als die in #231
   genannten 10 Minuten (die sich auf den Suite-Lauf beziehen); ein GitHub-Actions-Layer-Cache
   mildert das, ersetzt aber keinen echten Cache über Runner-Neustarts hinweg.
-- **`basic` unterstützt aktuell nur einen konfigurierten Nutzer.** Szenarien, die einen
-  nicht-privilegierten Zweitnutzer brauchen (z. B. Berechtigungsprüfungen), sind mit dieser
-  Grundlage nicht abbildbar, ohne entweder die Backend-Konfiguration zu erweitern (mehrere
-  `opaa.auth.basic.users`-Einträge) oder auf Workspace-Rollenwechsel auszuweichen.
-- **`mock` bleibt ungetestet.** Solange der Produktmangel aus Punkt 3 nicht behoben ist, deckt die
-  E2E-Suite den dokumentierten Standard-Auth-Modus nicht ab.
-- Der zufällig generierte Signing-Secret bedeutet, dass zwischen zwei Läufen ausgestellte Tokens
-  nicht wiederverwendbar sind — für eine Suite, die pro Lauf ohnehin frisch anmeldet, ohne Nachteil.
+- **Der OIDC-Anmeldeablauf ist nicht abgedeckt.** Die Suite prüft die Anwendung hinter der
+  Authentifizierung, nicht den Anmeldevorgang selbst. Ein gezielter Test gegen das Compose-Profil
+  `oidc` mit Keycloak bleibt offen.
 - **Die E2E-Suite hängt jetzt an `docker-compose.yml`.** Jede künftige Änderung an den Service-
   Definitionen dort (z. B. neue Pflicht-Umgebungsvariablen, geänderte Ports, neue Abhängigkeiten)
   kann die Suite brechen, ohne dass das beim Ändern von `docker-compose.yml` offensichtlich ist.

@@ -18,8 +18,8 @@ describe('ProtectedRoute', () => {
     })
   })
 
-  it('renders children in mock mode', () => {
-    useAuthStore.setState({ mode: 'mock', isAuthenticated: true, isLoading: false })
+  it('renders children when authenticated in dev mode', () => {
+    useAuthStore.setState({ mode: 'dev', isAuthenticated: true, isLoading: false })
     renderWithProviders(
       <ProtectedRoute>
         <div>Protected Content</div>
@@ -30,7 +30,7 @@ describe('ProtectedRoute', () => {
   })
 
   it('renders children when authenticated', () => {
-    useAuthStore.setState({ mode: 'basic', isAuthenticated: true, isLoading: false })
+    useAuthStore.setState({ mode: 'oidc', isAuthenticated: true, isLoading: false })
     renderWithProviders(
       <ProtectedRoute>
         <div>Protected Content</div>
@@ -41,7 +41,7 @@ describe('ProtectedRoute', () => {
   })
 
   it('shows loading spinner while loading', () => {
-    useAuthStore.setState({ mode: 'basic', isAuthenticated: false, isLoading: true })
+    useAuthStore.setState({ mode: 'oidc', isAuthenticated: false, isLoading: true })
     renderWithProviders(
       <ProtectedRoute>
         <div>Protected Content</div>
@@ -53,7 +53,7 @@ describe('ProtectedRoute', () => {
   })
 
   it('redirects to login when not authenticated', () => {
-    useAuthStore.setState({ mode: 'basic', isAuthenticated: false, isLoading: false })
+    useAuthStore.setState({ mode: 'oidc', isAuthenticated: false, isLoading: false })
     renderWithProviders(
       <Routes>
         <Route

@@ -5,7 +5,6 @@ import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.group.sync.DirectorySyncService;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-@Profile({"oidc", "basic"})
 @RestController
 @RequestMapping("/api/v1/admin/directory-sync")
 public class DirectorySyncController {

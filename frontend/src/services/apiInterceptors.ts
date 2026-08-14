@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios'
+import { DEV_USER_HEADER, getDevUser } from './devAuth'
 
 type TokenGetter = () => string | null
 type LogoutFn = () => void
@@ -12,6 +13,11 @@ export function setupAuthInterceptors(
     const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    // Only ever set in dev mode; the backend ignores it under oidc.
+    const devUser = getDevUser()
+    if (devUser) {
+      config.headers[DEV_USER_HEADER] = devUser
     }
     return config
   })

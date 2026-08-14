@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { Navigate, useLocation } from 'react-router'
 import { useAuthStore } from '../stores/authStore'
@@ -14,15 +12,7 @@ export default function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const error = useAuthStore((s) => s.error)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const loginBasic = useAuthStore((s) => s.loginBasic)
   const loginOidc = useAuthStore((s) => s.loginOidc)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-
-  async function handleBasicLogin(e: React.FormEvent) {
-    e.preventDefault()
-    await loginBasic(username, password)
-  }
 
   if (isAuthenticated) {
     const from =
@@ -57,31 +47,6 @@ export default function LoginPage() {
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
-        )}
-
-        {mode === 'basic' && (
-          <form onSubmit={handleBasicLogin}>
-            <TextField
-              label="Benutzername"
-              fullWidth
-              margin="normal"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-            <TextField
-              label="Passwort"
-              type="password"
-              fullWidth
-              margin="normal"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-            <Button type="submit" variant="contained" fullWidth disabled={isLoading} sx={{ mt: 2 }}>
-              Anmelden
-            </Button>
-          </form>
         )}
 
         {mode === 'oidc' && (

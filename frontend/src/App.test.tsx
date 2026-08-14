@@ -6,7 +6,7 @@ import { useAuthStore } from './stores/authStore'
 describe('App', () => {
   beforeEach(() => {
     useAuthStore.setState({
-      mode: 'mock',
+      mode: 'dev',
       isAuthenticated: true,
       isLoading: false,
       user: null,

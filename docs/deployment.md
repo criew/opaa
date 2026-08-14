@@ -33,7 +33,7 @@ Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **T
 
 - **Betreiber:** Der Maintainer (`criew`), auf privater VPS-Infrastruktur außerhalb dieses Repositorys.
 - **Zweck:** Öffentlich erreichbare Instanz zum Ausprobieren und Vorzeigen des aktuellen `main`-Stands.
-- **Zugriff:** Die Instanz läuft mit `OPAA_AUTH_MODE=oidc` hinter Keycloak (siehe [Authentifizierung](#authentifizierung)). Der Zugang ist bewusst account-gebunden — ein anonymer Zugang oder Gastzugang ist **nicht** vorgesehen; jede Nutzung erfordert eine Anmeldung. Wer welchen Zugang erhält, ist außerhalb dieses Dokuments geregelt und hier nicht beschrieben. Eine Konsequenz dieser Festlegung: Inhalte auf der Instanz — etwa ein dort ausgerollter Demo-Korpus (siehe #230) — sind nur für angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
+- **Zugriff:** Die Instanz läuft im Auth-Modus `oidc` hinter Keycloak (siehe [Authentifizierung](#authentifizierung)). Der Zugang ist bewusst account-gebunden — ein anonymer Zugang oder Gastzugang ist **nicht** vorgesehen; jede Nutzung erfordert eine Anmeldung. Wer welchen Zugang erhält, ist außerhalb dieses Dokuments geregelt und hier nicht beschrieben. Eine Konsequenz dieser Festlegung: Inhalte auf der Instanz — etwa ein dort ausgerollter Demo-Korpus (siehe #230) — sind nur für angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
 - **Administration:** Genau ein Konto trägt die Rolle `SYSTEM_ADMIN` — das persönliche Konto des Maintainers, auf das `OPAA_INITIAL_ADMIN_EMAIL` zeigt. Alle administrativen Vorgänge auf der Instanz (insbesondere das Auslösen der Indizierung) führt dieses Konto über den Admin-Bereich der Oberfläche aus. Weitere Konten mit dieser Rolle gibt es derzeit nicht.
 - **Netzwerk:** Alle Container-Ports binden ausschließlich auf `127.0.0.1`. Nach außen führt ausschließlich ein nginx auf dem Host, der TLS terminiert und weiterleitet. Keycloak ist unter dem Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend `/auth/callback` selbst als OIDC-Redirect verwendet und die beiden sich sonst überlagern.
 - **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`). Auf dem Server gibt es **keinen Repository-Checkout** und keinen Build — nur eine `docker-compose.yml`, die `image:` statt `build:` verwendet.
@@ -189,7 +189,7 @@ Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und soll
 
 | Variable | Erforderlicher Wert | Warum |
 |----------|---------------------|-------|
-| `SPRING_PROFILES_ACTIVE` | `docker` (oder `docker,oidc`) | Aktiviert Docker-spezifische Konfiguration (DB-URL, Ollama-URL) |
+| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, Ollama-URL) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
 | `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
 | `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
@@ -198,7 +198,7 @@ Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und soll
 ### Minimale `.env.docker`
 
 ```env
-SPRING_PROFILES_ACTIVE=docker
+SPRING_PROFILES_ACTIVE=docker,dev
 OPAA_SERVER_ADDRESS=0.0.0.0
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:3000
 OPAA_AI_CHAT_PROVIDER=openai
@@ -256,13 +256,11 @@ OPAA_DB_PASSWORD=opaa
 | `OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS` | `60` | Indizierungs-Rate-Limit-Fenster in Sekunden |
 | `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `5` | Max. Indizierungsanfragen über alle IPs pro Fenster |
 | **Authentifizierung** | | |
-| `OPAA_AUTH_MODE` | `mock` | Auth-Modus: `mock`, `basic` oder `oidc` |
-| `OPAA_AUTH_BASIC_USERNAME` | `admin` | Benutzername für Basic Auth |
-| `OPAA_AUTH_BASIC_PASSWORD` | `admin` | Passwort für Basic Auth |
-| `OPAA_AUTH_BASIC_SECRET` | — | JWT-Signing-Secret (min. 256 Bit) |
-| `OPAA_AUTH_BASIC_TOKEN_EXPIRATION` | `3600` | JWT-Token-Ablauf in Sekunden |
-| `OPAA_AUTH_BASIC_ISSUER` | `opaa-basic` | JWT-Issuer-Claim |
-| `OPAA_INITIAL_ADMIN_EMAIL` | — | E-Mail für automatisch erstellten initialen Admin-Benutzer |
+| `SPRING_PROFILES_ACTIVE` | — | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht |
+| `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` | E-Mail für den automatisch erstellten initialen Admin-Benutzer |
+| **Entwicklungs-Auth (`dev`)** | | |
+| `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
+| `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird |
 | **OIDC** | | |
 | `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK-Set-URI für Token-Verifizierung |
 | `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung |
@@ -313,19 +311,32 @@ Dies ist erforderlich, weil Spring Boots Standard-HTTP-Client HTTP/2 bevorzugt, 
 
 ## Authentifizierung
 
-### Mock-Modus (Standard)
+OPAA kennt genau zwei Auth-Modi ([ADR-0005](decisions/0005-authentication-strategy.md)). Der Modus
+wird über das aktive Spring-Profil gewählt; ist weder `oidc` noch `dev` gesetzt, **bricht das
+Backend den Start mit einer Fehlermeldung ab**.
 
-Keine Authentifizierung — alle Anfragen sind erlaubt. Nur für lokale Entwicklung geeignet.
+| Modus | Profil | Zweck |
+|-------|--------|-------|
+| `oidc` | `oidc` | Der einzige für den Betrieb zulässige Modus |
+| `dev` | `dev` | Lokale Entwicklung und automatisierte Tests — **keinerlei Prüfung von Anmeldedaten** |
 
-### Basic Auth
+### Entwicklungsmodus (`dev`)
 
 ```env
-SPRING_PROFILES_ACTIVE=docker
-OPAA_AUTH_MODE=basic
-OPAA_AUTH_BASIC_USERNAME=admin
-OPAA_AUTH_BASIC_PASSWORD=admin
-OPAA_AUTH_BASIC_SECRET=change-me-to-a-256-bit-secret-key-in-production!!
+SPRING_PROFILES_ACTIVE=docker,dev
 ```
+
+Es gibt keinen Anmeldevorgang und kein Token: Jede Anfrage wird als einer der konfigurierten
+Entwicklungsnutzer authentifiziert. Vorkonfiguriert sind `dev-admin` (E-Mail `admin@opaa.local`,
+wird durch `OPAA_INITIAL_ADMIN_EMAIL` zum `SYSTEM_ADMIN`) und `dev-user` (regulärer Nutzer).
+
+Den Nutzer wechselt man im Browser über den Query-Parameter `?devUser=dev-user`, der für die Dauer
+der Browser-Session gemerkt wird; direkte API-Aufrufe setzen stattdessen den Header
+`X-OPAA-Dev-User`. Ein unbekannter Nutzername führt zu `401`.
+
+> **Warnung:** Dieser Modus deaktiviert die Authentifizierung vollständig. Er gehört ausschließlich
+> auf Arbeitsplätze und in Testumgebungen, nie auf eine erreichbare Instanz. Das Backend
+> protokolliert beim Start eine entsprechende Warnung.
 
 ### OIDC (Keycloak)
 
@@ -339,7 +350,6 @@ Erforderliche Variablen in `.env.docker`:
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
-OPAA_AUTH_MODE=oidc
 OPAA_OIDC_JWK_SET_URI=http://keycloak:8180/realms/opaa/protocol/openid-connect/certs
 ```
 
@@ -381,7 +391,7 @@ CORS ist wahrscheinlich falsch konfiguriert. Sicherstellen, dass `OPAA_CORS_ALLO
 
 Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mit anderen Anmeldeinformationen. `docker compose down -v` ausführen, um das Volume zu entfernen und neu zu starten.
 
-### OIDC: "Completing sign in..." hängt oder fällt auf Mock zurück
+### OIDC: "Completing sign in..." hängt
 
 - Sicherstellen, dass Keycloak läuft (`docker compose --profile oidc ps`)
 - Wenn Keycloak neu gestartet wurde, ist das Access-Token möglicherweise abgelaufen — Seite neu laden und erneut anmelden

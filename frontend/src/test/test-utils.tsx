@@ -35,9 +35,10 @@ export function renderWithProviders(
   return render(ui, { wrapper: Wrapper, ...renderOptions })
 }
 
+/** Puts the auth store into an authenticated dev-mode state, bypassing any network call. */
 export function setMockAuthState() {
   useAuthStore.setState({
-    mode: 'mock',
+    mode: 'dev',
     isAuthenticated: true,
     isLoading: false,
     user: null,

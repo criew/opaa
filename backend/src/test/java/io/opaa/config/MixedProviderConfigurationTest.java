@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,6 +26,7 @@ import org.testcontainers.utility.DockerImageName;
  * different values, confirming independent configurability.
  */
 @SpringBootTest(properties = {"spring.ai.model.chat=ollama", "spring.ai.model.embedding=openai"})
+@ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class MixedProviderConfigurationTest {
 
