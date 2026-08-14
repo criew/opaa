@@ -159,14 +159,18 @@ Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei jedem Push u
 
 2. **Backend starten:**
 
+   Das Auth-Profil muss gesetzt sein — ohne `dev` (oder `oidc`) bricht der Start
+   mit einer Meldung von `AuthProfileGuard` ab (siehe [ADR-0005](decisions/0005-authentication-strategy.md)).
+   Im `dev`-Modus findet keine Anmeldung statt; Anfragen laufen als `dev-admin`.
+
    ```bash
    cd backend
 
    # Mit Ollama (lokal, kein API-Schlüssel nötig):
-   ./gradlew bootRun
+   SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun
 
    # Mit OpenAI (erfordert API-Schlüssel):
-   OPAA_OPENAI_API_KEY=sk-... ./gradlew bootRun
+   SPRING_PROFILES_ACTIVE=local,dev OPAA_OPENAI_API_KEY=sk-... ./gradlew bootRun
    ```
 
 3. **Frontend starten:**
