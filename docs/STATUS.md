@@ -27,7 +27,7 @@ Drei Zustände werden unterschieden:
 | **D** Agenten, Prompts & Werkzeuge | nichts gebaut, keine Vorgänge | Phase 2 schneiden |
 | **E** Modelle & zentrale Steuerung | lokal-first gebaut, zentrale Vorgaben fehlen | Modellverwaltung |
 | **F** Identität, Rechte & Mandanten | Anmeldung und Verzeichnisabgleich gebaut | rechtebewusste Suche vollenden |
-| **G** Sicherheit, Nachweis & Prüfbarkeit | **größte Lücke** — kein Protokoll | Umfang klären (#355) |
+| **G** Sicherheit, Nachweis & Prüfbarkeit | **größte Lücke** — kein Protokoll, Schnitt entschieden | Protokollablage bauen (#391) |
 | **H** Monitoring, Kosten & Governance | Betriebsmetriken gebaut, fachliche Auswertung fehlt | Phase 1 abgrenzen |
 | **I** Kanäle & Oberflächen | Web-Oberfläche und REST-API gebaut | weitere Kanäle offen (#352) |
 | **J** Betrieb & Deployment | Docker Compose gebaut | Kubernetes, Betrieb ohne Netz |
@@ -209,7 +209,15 @@ nicht vertreten.
 **Nicht gebaut**
 - **Revisionssicheres Protokoll.** Es gibt kein Audit-Paket im Code. Weder Verwaltungsaktionen noch
   Zugriffe auf Protokolldaten werden festgehalten. Ohne das besteht kein Betreiber eine Prüfung mit
-  OPAA im Prüfumfang. Umfang und Schnitt werden in #355 geklärt.
+  OPAA im Prüfumfang.
+  **Der Schnitt der ersten Stufe ist entschieden (#355, ADR-0014):** protokolliert wird alles, was
+  Zugriff verändert oder Verwaltungshandeln ist — Rechte, Spaces, Bibliotheken, Gruppen,
+  Rollenänderungen, Eigentumsübergänge, Verzeichnisabgleich, Systemeinstellungen und jeder Zugriff auf
+  die Protokolldaten selbst. Abfragen und Antwortinhalte bleiben draußen. Sicherheitsgrad: einfaches
+  Anfügen mit auf Datenbankebene entzogenen Änderungs- und Löschrechten, **ohne** Prüfsummenverkettung
+  — eine Manipulation mit direktem Datenbankzugang fällt damit nicht auf; das ist eine benannte Grenze
+  und liegt beim Betreiber. Umsetzung: #391 (Ablage), #392 (Erfassung), #393 (Zugriffsweg für die
+  Revision), #394 (Zugriff protokollieren), #395 (Aufbewahrung).
 - **Vollständigkeit nach DSGVO** — Löschrecht und Datenexport fehlen (#143)
 - Software-Stückliste, signierte Builds, automatisierte Sicherheitsprüfung im CI
 - Governance der Auswertung: kein personenbezogener Auswertungspfad (#239)
@@ -254,8 +262,9 @@ nicht vertreten.
 - **Es gibt keine Verwaltung von API-Tokens.** Die Einstellungsseite kennt nur das Farbschema.
 
 **Nicht gebaut**
-- **Kein einziger Chat-Kanal.** Weder ein self-hosted Team-Chat noch ein Verbraucher-Messenger. Die
-  Dokumentation nannte bisher mehrere davon; welche im Zielbild bleiben, wird in #352 geklärt.
+- **Kein einziger Chat-Kanal.** Im Zielbild stehen ausschließlich selbst betriebene Team-Chats
+  (Matrix, Mattermost, Rocket.Chat) in Phase 3; fremd betriebene Verbraucherdienste sind gestrichen
+  (#352). Gebaut ist davon nichts.
 
 **Geplant**
 - Dokumentenseite, Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205),
@@ -273,11 +282,19 @@ nicht vertreten.
 - Docker Compose für den gesamten Stapel (`docker-compose.yml`, `keycloak/`)
 - PostgreSQL mit pgvector; Schemaverwaltung über Liquibase
 - Öffentliche Testinstanz (siehe [deployment.md](./deployment.md))
+- Dokumentenspeicher: **genau ein konfiguriertes Verzeichnis** (`OPAA_INDEXING_DOCUMENT_PATH`,
+  Standard `./documents`). Ein Netzlaufwerk wird dorthin eingehängt und braucht deshalb nichts
+  Zusätzliches im Code
+
+**Nicht gebaut**
+- **Keine Speicher-Abstraktion.** Es gibt keine wählbaren Speicher-Backends, sondern das eine
+  Verzeichnis. Objektbasierter Speicher ist entschieden als eigener Weg ohne Termin (#351); ein
+  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel
 
 **Geplant (Phase 1)**
 - Kubernetes mit Hochverfügbarkeit · **Betrieb ohne Netzanbindung** — die übertragbare Lieferung aus
   Abbildern, Modellgewichten und Stückliste ist heute nirgends geschnitten
-- Umfang der Speicher-Abstraktion (#351)
+- Objektbasierter Dokumentenspeicher für den mandantenfähigen Rechenzentrumsbetrieb (#351)
 
 > Der Docker-Build überspringt die Tests (#68). Härtungsanforderungen für erreichbare
 > Compose-Installationen sind nicht dokumentiert (#250).
@@ -296,7 +313,7 @@ im Code und im Backlog leer.
 - Barrierefreiheit nach BITV · Feinschliff der Amtssprache
 
 **Geplant (Phase 4)**
-- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger (#357)
+- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger
 
 ---
 
