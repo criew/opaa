@@ -23,6 +23,10 @@ Dokumente kommen**, steht in [Wissensquellen und Konnektoren](./knowledge-source
 darf**, in [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md); **welches Modell antwortet**,
 in [Modelle und zentrale Steuerung](./llm-integration.md).
 
+**Lesehinweis zum Umsetzungsstand.** Diese Spezifikation beschreibt überwiegend das Zielbild. Wo sie
+bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(gebaut)** gekennzeichnet.
+Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
+
 ---
 
 ## Überblick
@@ -200,6 +204,40 @@ derselben Datei die Antwort tragen — wirken **nach** dem Reranking und sind ei
 Aktualitätsbonus ist im Rechtsbereich nicht immer erwünscht: Die geltende Fassung ist nicht immer die
 jüngste Datei.
 
+### Stellschrauben und ihre Wirkung
+
+Die Güte des Retrievals hängt an wenigen Zahlen. Sie gehören in die Spezifikation, weil die
+Regressionsmessung (siehe [Qualitätssicherung](#qualitätssicherung)) genau ihre Wirkung misst — eine
+Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertbar.
+
+| Stellschraube | Heutige Voreinstellung | Wovon die Wahl abhängt | Wirkung einer Erhöhung |
+|---|---|---|---|
+| **Chunk-Größe** | 1000 Token **(gebaut)** | Wie lang eine in sich verständliche Sinneinheit im Bestand ist | Mehr Zusammenhang je Fundstelle, aber unschärfere Treffer und längere Belegauszüge |
+| **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
+| **Überlappung** | keine **(gebaut: 0)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
+| **`top-k`** | 5 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
+| **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber mehr Fragen ohne Antwort — im Zitierzwang mehr Verweigerungen |
+| **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
+| **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
+
+Drei Zusammenhänge sind dabei wesentlich:
+
+1. **Chunk-Größe und `top-k` hängen aneinander.** Beide bestimmen zusammen, wie viel Text in die
+   Antwort eingeht. Wer die Chunks vergrößert, muss `top-k` in der Regel senken, sonst wächst der
+   Antwortkontext über das hinaus, was das Modell verlässlich auswertet.
+2. **Die Ähnlichkeitsschwelle ist zugleich die Schwelle des Zitierzwangs.** Sie zu senken, um weniger
+   Verweigerungen zu erzeugen, verschiebt das Problem: Die Antworten werden dann auf schwächere Belege
+   gestützt. Genau deshalb wird eine Verweigerung ausdrücklich nicht als Störung gemessen.
+3. **Fehlende Überlappung ist heute die auffälligste Lücke.** Ohne sie kann eine Definition von ihrer
+   Überschrift getrennt werden, und der Beleg zeigt eine Passage, der ihr Bezug fehlt. Die Zielgröße
+   ist eine Überlappung im Bereich eines Zehntels der Chunk-Größe; die tatsächliche Wahl wird gegen
+   die Referenzfälle gemessen und nicht gesetzt.
+
+Diese Werte sind **je Installation konfigurierbar**. Im Zielbild kommt eine Festlegung je
+Wissensbibliothek hinzu: Rechtsquellen, Besprechungsnotizen und Tabellenwerke vertragen nicht dieselbe
+Zerlegung. Ob eine hausweite Voreinstellung dafür ausreicht, steht unter
+[Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
+
 ### Speicherung und Filterachse
 
 Jeder Chunk führt neben seinem Text und seiner Vektordarstellung die Metadaten mit, die Retrieval und
@@ -248,6 +286,39 @@ Aus dem erkannten Typ folgt die Verarbeitungsstrategie:
 Wird ein Typ nicht erkannt oder scheitert die Extraktion, wird das Dokument **übersprungen und gemeldet**,
 nicht mit einem Notverfahren durchgereicht. Ein halb extrahiertes Dokument im Index ist schlimmer als ein
 fehlendes: Es liefert Treffer, die niemand einordnen kann.
+
+#### Welche Dateien OPAA verarbeitet
+
+Die Typklassen oben beschreiben das Verfahren. Die erste Frage jeder Fachseite ist aber eine andere:
+*Kann OPAA meine Dateien?* Deshalb hier die konkreten Formate je Typklasse, getrennt nach dem, was
+heute läuft, und dem, was zum Zielbild gehört.
+
+| Typklasse | Gebaut | Zielbild |
+|---|---|---|
+| Textdokument mit Gliederung | Markdown (`.md`), Klartext (`.txt`) | AsciiDoc (`.adoc`), reStructuredText |
+| Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`; im Netzweg zusätzlich `.doc`) | OpenDocument-Text (`.odt`), RTF |
+| Tabellenkalkulation | — | Excel (`.xlsx`, `.xls`), OpenDocument (`.ods`), CSV |
+| Präsentation | PowerPoint (`.pptx`) | OpenDocument (`.odp`) |
+| Auszeichnungssprache | — | HTML, XML |
+| Strukturierte Daten | — | JSON, CSV, XML-Datensätze |
+| Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
+| Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
+
+Zwei Einschränkungen des gebauten Stands gehören dazu, weil sie sonst überraschen:
+
+- **Die Auswahl der Formate ist heute eine Endungsliste, keine Inhaltserkennung.** Die im Überblick
+  beschriebene Erkennung anhand des tatsächlichen Inhalts ist Zielbild. Der eingesetzte Extraktor
+  beherrscht mehr Formate, als die Liste zulässt — die Begrenzung ist eine bewusste Auswahl, keine
+  Grenze der Extraktion, und lässt sich entsprechend erweitern.
+- **Die zugelassenen Endungen unterscheiden sich zwischen den Wegen.** Der Weg über ein Verzeichnis im
+  Dateisystem und der Weg über eine Verzeichnisliste im Netz (siehe
+  [Wissensquellen und Konnektoren](./knowledge-sources.md#erreichbare-verzeichnislisten-im-netz-gebaut))
+  führen getrennte Listen. Das ist eine Abweichung, keine Absicht.
+
+Im Zielbild werden Dateien mit nicht zugelassenem Format **nicht stillschweigend übersprungen**,
+sondern je Lauf als nicht verarbeitet ausgewiesen. Heute fallen sie ohne Vermerk aus der Auswahl —
+mit der Folge, dass eine Fachseite einen Bestand für erschlossen halten kann, von dem ein Teil nie im
+Index angekommen ist.
 
 ### Erklärbares und darstellbares Chunking
 
@@ -382,6 +453,94 @@ Aufwand je Frage.
 
 ---
 
+## Weitere Fähigkeiten des Zielbilds
+
+Vier Fähigkeiten gehören zum Zielbild, tragen den Kern aber nicht und sind deshalb später eingeordnet.
+Sie stehen hier, damit über sie entschieden werden kann — nichts davon ist gebaut.
+
+### Mehrsprachige Verarbeitung — Phase 2
+
+Bestände in mehreren Sprachen sind in der Verwaltung der Normalfall, sobald europäische Vorgaben,
+Normen oder Herstellerdokumentation im Spiel sind. Vorgesehen ist: Jedes Dokument führt seine erkannte
+Sprache mit, das Einbettungsmodell muss die Sprachen des Bestands abdecken, eine Frage in einer Sprache
+findet Fundstellen in einer anderen, und die Antwort gibt den Auszug **im Wortlaut des Originals**
+wieder. Eine Übersetzung des Belegs käme nicht in Betracht — ein übersetztes Zitat ist kein Zitat.
+
+### Extraktion von Dokumentmetadaten — Phase 2
+
+Aus jedem Dokument werden Titel, verantwortliche Stelle, Erstellungs- und Änderungsdatum, Dokumentart
+(Verfügung, Vermerk, Protokoll, Richtlinie) und Sachbegriffe abgeleitet. Der Nutzen liegt in der
+Einschränkung der Suche („nur Dienstanweisungen", „nur aus diesem Jahr") und in der Einordnung eines
+Belegs. Die Grenze ist bekannt: Abgeleitete Metadaten sind Vermutungen. Sie werden deshalb als
+abgeleitet gekennzeichnet und dürfen keine Rechtefrage entscheiden.
+
+### Zwischenspeicherung wiederkehrender Fragen — offen, keine Phase
+
+Häufig gestellte Fragen mehrfach vollständig zu beantworten, kostet Zeit und Verbrauch. Eine
+Zwischenspeicherung der Antwort verträgt sich aber schlecht mit rechteabhängigen Ergebnissen: Zwei
+Personen mit unterschiedlichem Leserecht müssen unterschiedliche Antworten erhalten, und ein
+Zwischenspeicher, der das nicht abbildet, ist ein Leck. Hinzu kommt die Ungültigkeit bei jeder Änderung
+im Bestand. Die Fähigkeit bleibt deshalb ausdrücklich **unentschieden** und steht unter
+[Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
+
+### Ablauf und Archivierung von Dokumenten — Phase 2
+
+Ein Dokument kann seine Gültigkeit verlieren, ohne aus der Quelle zu verschwinden. Vorgesehen sind
+Zustände von „aktiv" über „archiviert" bis „abgelaufen", die Wirkung auf die Suche haben — beschrieben
+im [Lebenszyklus der Dokumente](./knowledge-sources.md#lebenszyklus-der-dokumente). Für das Retrieval
+folgt daraus: Archivierte Fundstellen werden gefunden, aber als älterer Stand gekennzeichnet;
+abgelaufene werden nicht mehr gefunden, bleiben für den Nachweis älterer Antworten aber auffindbar.
+
+---
+
+## Leistungs- und Skalierungsziele
+
+Die folgenden Werte sind **Zielwerte für die Auslegung**, keine Messergebnisse und keine Zusicherung
+für eine bestimmte Installation. Sie hängen an Hardware, Modellwahl und Bestandsgröße. Ihr Zweck ist,
+eine Grundlage für die Auslegung und für die Bewertung einer Messung zu geben — ohne sie ist jede
+Messung ein Zahlenwert ohne Bezugsgröße.
+
+### Abfragelatenz
+
+| Abschnitt | Zielwert (P95) |
+|---|---|
+| Hybride Suche einschließlich Rechtefilter | unter 500 ms |
+| Reranking der Kandidatenmenge | unter 200 ms zusätzlich |
+| Gesamte Retrieval-Zeit bis zur Übergabe an das Antwortmodell | unter 1 Sekunde |
+
+Die Zeit des Antwortmodells ist darin **nicht** enthalten; sie hängt am eingesetzten Modell und wird in
+[Modelle und zentrale Steuerung](./llm-integration.md) behandelt. Die Rechteprüfung erzeugt keinen
+eigenen Abschnitt in dieser Rechnung, weil sie als Filter in der Suche selbst sitzt.
+
+### Indizierungsdurchsatz
+
+Zielgrößen für einen Erstlauf auf einer Installation üblicher Auslegung:
+
+| Bestandsgröße | Zielwert Erstlauf |
+|---|---|
+| einige hundert Dokumente | Minuten |
+| einige zehntausend Dokumente | wenige Stunden, planbar über Nacht |
+| Hunderttausende Dokumente | über mehrere Läufe verteilt, mit sichtbarem Fortschritt |
+
+Bestimmend ist fast immer der Einbettungsschritt, nicht die Extraktion. Ein Erstlauf ist deshalb
+ausdrücklich **nachrangig** eingeplant und darf die tägliche Aktualisierung gepflegter Bestände nicht
+verdrängen (siehe [Zeitpläne und Vorrang](./knowledge-sources.md#vorrang)).
+
+### Skalierungsverhalten
+
+- **Bestandsgröße:** Die Suche muss bei wachsendem Bestand flach bleiben; ein Suchindex, dessen Antwortzeit
+  linear mit der Dokumentzahl wächst, ist die falsche Auslegung.
+- **Gleichzeitige Nutzung:** Die Auslegung zielt auf gleichzeitige Nutzung durch ein ganzes Haus, nicht
+  durch einzelne Fachreferate. Begrenzend ist regelmäßig der Modelldienst, nicht der Suchindex.
+- **Mehrere Quellen gleichzeitig:** Indizierungsläufe verschiedener Konnektoren laufen nebeneinander,
+  begrenzt durch die für die Indizierung bereitgestellten Arbeitsfäden und den Schonzeitraum je
+  Quellsystem.
+- **Trennung der Lasten:** Ein laufender Erstlauf darf die Antwortzeit der Suche nicht spürbar
+  verschlechtern. Das ist die härteste dieser Anforderungen und zugleich die, die bei Einführungen am
+  häufigsten verfehlt wird.
+
+---
+
 ## Verarbeitungskette im Überblick
 
 ```
@@ -428,6 +587,28 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
 
 ---
 
+## Geklärte Fragen
+
+Entscheidungen, die bereits getroffen sind. Sie stehen hier, damit sie nicht in einem Jahr als neue
+Idee wieder aufgemacht werden.
+
+- **Hybrides Retrieval — ja.** Vektorsuche allein trägt in der Verwaltung nicht, weil Aktenzeichen,
+  Paragrafen und Erlassnummern exakt getroffen werden müssen. Vektor- und Volltextsuche laufen
+  nebeneinander, ihre Listen werden rangbasiert zusammengeführt (siehe
+  [Hybride Suche](#hybride-suche)).
+- **Reranking als eigener Schritt — ja.** Die zusammengeführte Liste ist auf Abdeckung optimiert; die
+  Präzision entsteht erst durch die gemeinsame Bewertung von Frage und Passage. Über welches Modell
+  das läuft, ist offen.
+- **Dokumentenversionierung — ja.** Die Abfolge der Fassungen bleibt erhalten. Für das Retrieval folgt
+  daraus, dass Chunkgrenzen und Belege **fassungsgebunden** sind: Eine ältere Antwort verweist
+  weiterhin auf die Fassung, mit der sie erzeugt wurde. Ein Beleg, der stillschweigend auf eine neuere
+  Fassung zeigt, wäre kein Beleg. Der Weg dorthin hängt am Upload-Verfahren und ist in
+  [Wissensquellen und Konnektoren](./knowledge-sources.md#geklärte-fragen) mit **Issue #119** erfasst.
+- **Verweigerung ist ein Ergebnis, kein Fehler.** „Nicht feststellbar" wird protokolliert und zählt in
+  der Auswertung nicht als Störung — sonst entsteht Druck, die Schwelle zu senken.
+
+---
+
 ## Offene Fragen / Zukünftige Erweiterungen
 
 - Soll eine Wissensbibliothek den Zitierzwang **erzwingen** können oder nur empfehlen? Erzwingen ist
@@ -446,6 +627,16 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
   Kennzeichnung, oder eine ausdrückliche Auswahl durch die Fragestellerin?
 - Zwischenspeicherung von Antworten auf wiederkehrende Fragen: spart Aufwand, verträgt sich aber schlecht
   mit rechteabhängigen Ergebnissen und mit Beständen, die sich laufend ändern.
+- Werden Chunk-Größe, Überlappung, `top-k` und Ähnlichkeitsschwelle hausweit gesetzt oder je
+  Wissensbibliothek? Je Bibliothek ist fachlich richtig, vervielfacht aber die Zahl der Größen, die
+  gegen die Referenzfälle gemessen werden müssen.
+- Bleiben **mehrsprachige Verarbeitung** und **Extraktion von Dokumentmetadaten** im Zielbild? Beide
+  waren im früheren Bestand als Erweiterung geführt und sind hier unverändert übernommen. Für die
+  Mehrsprachigkeit spricht der reale Bestand; gegen die Metadatenextraktion spricht, dass abgeleitete
+  Angaben genau die Scheingenauigkeit erzeugen, die diese Spezifikation sonst vermeidet.
+- Soll die heutige **Endungsliste** durch die im Zielbild beschriebene Inhaltserkennung ersetzt und
+  zwischen den Indizierungswegen vereinheitlicht werden? Solange zwei Listen bestehen, hängt es vom
+  Weg ab, ob eine Datei aufgenommen wird.
 
 ---
 

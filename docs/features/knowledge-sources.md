@@ -28,12 +28,18 @@ Was mit den eingegangenen Dokumenten geschieht — Formaterkennung, Zerlegung, E
 in [Wissensschicht und Retrieval](./data-indexing-rag.md). Wem ein Bestand gehört und wer ihn lesen
 darf, in [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
+**Lesehinweis zum Umsetzungsstand.** Diese Spezifikation beschreibt überwiegend das Zielbild. Wo sie
+bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(gebaut)** gekennzeichnet.
+Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
+
 ---
 
 ## Überblick
 
 1. **Zwei Wege führen Wissen in OPAA:** der **Upload** durch Menschen und der **Konnektor**, der aus
-   einem Quellsystem zieht.
+   einem Quellsystem zieht. Die Indizierung aus einer erreichbaren Verzeichnisliste im Netz ist eine
+   **Sonderform des Konnektors** und zusammen mit der Indizierung eines Verzeichnisses im Dateisystem
+   heute der gebaute Stand; der Upload gehört zum Zielbild.
 2. **Konnektorbestände aktualisieren sich selbst**, Uploads bleiben statisch. Das ist der wesentliche
    Unterschied und bestimmt, welcher Weg sich für welchen Zweck eignet.
 3. **Eine Konnektorquelle speist genau eine Wissensbibliothek.** Kein Bestand wird vervielfacht;
@@ -83,9 +89,15 @@ Zwei Sicherungen gehören dazu:
 
 - **Hinweis auf ähnliche Bestände.** Vor dem Abschluss zeigt OPAA an, ob ein inhaltlich sehr ähnliches
   Dokument bereits vorliegt — beschränkt auf Bestände, die die hochladende Person ohnehin sehen darf.
-  Der Hinweis blockiert nicht, er verhindert das stille Nebeneinander zweier Fassungen.
+  Der Hinweis blockiert nicht, er verhindert das stille Nebeneinander zweier Fassungen. Näheres unter
+  [Duplikate erkennen](#duplikate-erkennen).
 - **Kontingente je Person** mit hausweitem Standardwert. Ohne sie wird der persönliche Bereich zur
   Ausweichablage für ganze Netzlaufwerke, und zwar an der Kuratierung vorbei.
+
+Beide sind entschieden und als **Issue #119** erfasst (siehe [Geklärte Fragen](#geklärte-fragen)), aber
+noch nicht gebaut — ebenso wenig wie der Upload selbst. Wo die Originale abgelegt werden, entscheidet
+die Installation; die Wahl des Dokumentenspeichers ist in
+[Deployment und Infrastruktur](./deployment-infrastructure.md) beschrieben.
 
 Ein Upload ist **statisch**. Ändert sich das Original außerhalb von OPAA, merkt das niemand. Deshalb
 führt jedes hochgeladene Dokument seinen Übergabezeitpunkt sichtbar mit, und die Antwort weist bei
@@ -115,7 +127,9 @@ Konnektor  "Intranet-Wiki"
 
 **Quellklassen der ersten Ausbaustufe:** Dateiablagen und Netzlaufwerke über die gängigen
 Netzdateiprotokolle, Wiki- und Intranetsysteme über deren Schnittstelle, Postfächer und E-Mail-Archive,
-Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Verzeichnislisten. Weitere
+Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Verzeichnislisten — für
+letztere ist der Weg bereits gebaut, siehe
+[Erreichbare Verzeichnislisten im Netz](#erreichbare-verzeichnislisten-im-netz-gebaut). Weitere
 Quellklassen kommen bedarfsgetrieben hinzu; die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
@@ -125,6 +139,57 @@ Einzelprodukte eine Installation anbindet, ist eine Frage der Umsetzung und kein
 Jede Quelle kann **Einschluss- und Ausschlussmuster** tragen — Pfadmuster, Dateitypen, Änderungsalter.
 Sie sind das wirksamste Mittel gegen den häufigsten Fehler bei der Erschließung von Netzlaufwerken:
 zehntausend Dateien einzulesen, von denen dreihundert gemeint waren.
+
+### Erreichbare Verzeichnislisten im Netz (gebaut)
+
+Viele Häuser stellen Dokumentbestände schlicht über einen Webserver bereit, der ein Verzeichnis als
+HTML-Liste ausgibt. Für diese Bestände gibt es kein Quellsystem mit Schnittstelle — die Liste selbst
+**ist** das Verzeichnis.
+
+**Einordnung.** Dieser Weg wird als **Sonderform des Konnektors** geführt, nicht als dritter Weg neben
+Upload und Konnektor. Der Grund: Er teilt alle bestimmenden Eigenschaften des Konnektors — OPAA zieht,
+der Lauf ist wiederholbar, der Bestand hält sich selbst aktuell, das Original bleibt beim Quellsystem.
+Ihn als eigenen Weg zu führen, würde diese Gemeinsamkeiten verdecken und für jede spätere Festlegung
+zu Zeitplan, Vorrang, Zuordnung und Lebenszyklus eine zweite Regel erzwingen. Er unterscheidet sich vom
+gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien entsteht.
+
+**Ablauf eines Laufs:**
+
+1. Die Verzeichnisliste unter der angegebenen Adresse wird abgerufen und **rekursiv** durch die
+   Unterverzeichnisse verfolgt.
+2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
+   [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
+3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes
+   Dokument wird übersprungen, bevor Bandbreite anfällt.
+4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
+   gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
+   Änderungszeitpunkt ab.
+5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument.
+6. Der temporäre Bereich wird nach der Verarbeitung geräumt — auch bei einem Fehler.
+
+**Was der Weg heute kann:** rekursives Durchlaufen, einfache Anmeldung mit Benutzername und Kennwort,
+Zugriff über einen Netzvermittler (Proxy), auf Wunsch das Aussetzen der Zertifikatsprüfung für
+Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die verbreiteten
+Verzeichnislistenformate der gängigen Webserver verträgt.
+
+**Auslösung.** Der Lauf wird von der **Systemverwaltung** angestoßen — über die Verwaltungsoberfläche
+oder über die Schnittstelle unter `/api/v1/indexing`. Der Anstoß ist der Rolle der Systemverwaltung
+vorbehalten und trägt ein eigenes, enges Kontingent gegen Überlastung. Der Fortschritt eines Laufs ist
+abrufbar. Wird keine Adresse angegeben, läuft stattdessen die Indizierung des im Dateisystem
+konfigurierten Verzeichnisses.
+
+**Was noch fehlt** — und zwar so, dass es benannt gehört:
+
+- **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
+  Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
+  Weiterleitungen werden gefolgt. Solange nur die Systemverwaltung anstoßen darf, ist die Lage
+  beherrschbar; sobald mehrere Personen diese Rolle halten, fällt sie mit der Fähigkeit zusammen, aus
+  dem Serverkontext beliebige interne Adressen abzurufen. Die Härtung ist als **Issue #267** erfasst.
+- **Zuordnung zu einer Wissensbibliothek.** Der gebaute Weg kennt die Zuordnung noch nicht; alles
+  landet im einen vorhandenen Bestand. Die in diesem Dokument beschriebene Regel *eine Quelle, eine
+  Bibliothek* ist für ihn Zielbild.
+- **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
+  nächsten Kapitels ist damit noch nicht erreicht.
 
 ---
 
@@ -308,6 +373,30 @@ rücknehmbar.
   zwischengespeicherte Extrakte und Vorschauen. Verfahren und Fristen stehen in
   [Zugangskontrolle](./access-control.md#datenlöschung-dsgvo).
 
+### Duplikate erkennen
+
+Derselbe Inhalt liegt in gewachsenen Ablagen regelmäßig mehrfach: als Kopie im Netzlaufwerk, als Anhang
+in mehreren Vorgängen, als zweiter Upload durch eine zweite Person. Ohne Behandlung erscheint dieselbe
+Passage mehrfach als Treffer, und niemand weiß, welche der Fassungen gilt.
+
+OPAA setzt dagegen zwei Mittel ein, die verschiedene Fälle abdecken:
+
+- **Prüfsumme über den Inhalt (gebaut).** Jedes verarbeitete Dokument führt eine Prüfsumme mit. Ist sie
+  unverändert und war der letzte Lauf erfolgreich, wird das Dokument übersprungen; hat sie sich
+  geändert, werden die alten Zerlegungen entfernt, bevor die neuen entstehen. Das erkennt **exakte**
+  Doppel — auch nach Umbenennung oder Verschiebung — und verhindert zugleich, dass eine geänderte Datei
+  doppelt im Index steht.
+- **Hinweis auf ähnliche Bestände beim Upload (Zielbild).** Prüfsummen greifen nicht, sobald sich ein
+  Dokument in einem Zeichen unterscheidet — und genau das ist bei zwei Fassungen derselben
+  Besprechungsnotiz der Normalfall. Vor dem Abschluss eines Uploads zeigt OPAA deshalb inhaltlich sehr
+  ähnliche Dokumente an, **beschränkt auf Bestände, die die hochladende Person ohnehin sehen darf**.
+  Die Beschränkung ist wesentlich: Ein Hinweis auf ein Dokument, das jemand nicht sehen darf, verrät
+  dessen Existenz. Der Hinweis blockiert nicht; er verhindert das stille Nebeneinander zweier
+  Fassungen. Erfasst als **Issue #119**.
+
+Eine **automatische** Entfernung erkannter Duplikate findet nicht statt. Welche von zwei Fassungen
+gilt, ist eine fachliche Entscheidung, und ein Indizierungslauf kann sie nicht treffen.
+
 **Neuindizierung** wird ausgelöst, wenn sich die Verarbeitung geändert hat — anderes Einbettungsmodell,
 andere Zerlegungsstrategie, korrigierte Formaterkennung. Sie ist je Bibliothek und je Quelle auslösbar
 und läuft mit niedrigerem Vorrang als die laufende Aktualisierung, damit ein großer Nachlauf den Betrieb
@@ -379,6 +468,31 @@ Menschen.
 
 ---
 
+## Geklärte Fragen
+
+Entscheidungen, die bereits getroffen sind. Sie stehen hier, damit sie nicht in einem Jahr als neue
+Idee wieder aufgemacht werden.
+
+- **Speicherkontingente — ja, für manuelle Uploads.** Es gibt eine Obergrenze je Person mit einem
+  hausweit konfigurierbaren Standardwert; einzelne Personen können davon abweichend gesetzt werden.
+  Ohne Kontingent wird der persönliche Bereich zur Ausweichablage für ganze Netzlaufwerke, und zwar an
+  der Kuratierung vorbei. Konnektorbestände sind davon nicht betroffen — sie werden über den Zuschnitt
+  der Quelle begrenzt, nicht über ein Kontingent. Erfasst als **Issue #119**.
+- **Anzeige ähnlicher Dokumente beim Upload — ja**, beschränkt auf Bestände, die die hochladende Person
+  sehen darf, und als Hinweis ohne Blockade (siehe [Duplikate erkennen](#duplikate-erkennen)). Ebenfalls
+  **Issue #119**.
+- **Dokumentenversionierung — ja.** Die Abfolge der Fassungen bleibt erkennbar, damit eine ältere
+  Antwort auf die Fassung verweisen kann, mit der sie erzeugt wurde. Sie gehört fachlich mit der
+  Duplikatanzeige zusammen: Beides beantwortet die Frage, welche von mehreren Fassungen gilt — die eine
+  über die Zeit, die andere über den Bestand.
+- **Eine Konnektorquelle speist genau eine Wissensbibliothek.** Mehrfachzuordnungen werden abgelehnt;
+  Mehrfachverwendung geschieht über die Bereitstellung derselben Bibliothek. Erfasst als
+  **Issue #207**.
+- **Lesen ist der Normalfall, Schreiben die Ausnahme** mit ausdrücklicher Freischaltung je Integration
+  und menschlichem Freigabeschritt im Einzelfall.
+
+---
+
 ## Offene Fragen / Zukünftige Erweiterungen
 
 - Wie wird die Obergrenze der Freigabe genau definiert, und was geschieht mit bereits erteilten,
@@ -397,6 +511,13 @@ Menschen.
   ungepflegte Bestände in den persönlichen Bereich spült?
 - Wie werden sehr große Erstläufe abgeschätzt und angekündigt, damit Betrieb und Fachbereich vorher
   wissen, womit sie rechnen?
+- Soll die Indizierung aus einer Verzeichnisliste im Netz auf das volle Konnektormodell gehoben werden
+  — Zeitplan, Zuordnung zu einer Wissensbibliothek, Einschluss- und Ausschlussmuster —, oder bleibt sie
+  ein angestoßener Sonderweg? Die Zielprüfung aus **Issue #267** ist davon unabhängig und in jedem Fall
+  nötig.
+- Bleiben die Felder für Netzvermittler, Anmeldung und das Aussetzen der Zertifikatsprüfung in ihrer
+  heutigen Form, oder gehören diese Angaben in die Konnektorkonfiguration statt in den Anstoß eines
+  einzelnen Laufs?
 
 ---
 
