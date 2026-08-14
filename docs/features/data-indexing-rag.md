@@ -97,6 +97,11 @@ Drei Punkte machen den Unterschied zwischen einer Zusicherung und einer Bitte an
    Auswertung nicht als Störung. Wo „nicht feststellbar" als Ausfall gemessen wird, entsteht Druck, die
    Schwelle zu senken.
 
+Daraus folgt eine Einschränkung bei der Ausgabe: Weil die Prüfung an der fertigen Antwort ansetzt, kann
+im Zitierzwang **nicht im Fluss ausgegeben** werden — sonst wäre ein unbelegter Satz bereits gelesen,
+wenn die Prüfung urteilt. Die Abwägung dazu steht in
+[Modelle und zentrale Steuerung](./llm-integration.md#ausgabe-im-fluss).
+
 #### Wo der Schalter sitzt
 
 Zu klären ist, auf welcher Ebene der Zitierzwang gesetzt wird. Drei Möglichkeiten stehen zur Wahl.
@@ -203,6 +208,12 @@ Zusätzliche Signale — Aktualität eines Dokuments, Vielfalt der Quellen, dami
 derselben Datei die Antwort tragen — wirken **nach** dem Reranking und sind einzeln abschaltbar. Ein
 Aktualitätsbonus ist im Rechtsbereich nicht immer erwünscht: Die geltende Fassung ist nicht immer die
 jüngste Datei.
+
+Mit der Auswahl endet die Zuständigkeit dieses Dokuments. **Wie** die ausgewählten Passagen an das
+Modell übergeben werden — mit welchem Kopf je Passage, in welcher Form die Belege zurückkommen und was
+bei Überschreitung der Kontextgrenze entfällt — ist eine Eigenschaft des Modellaufrufs und steht in
+[Modelle und zentrale Steuerung](./llm-integration.md#übergabe-der-passagen-und-form-der-antwort). Diese
+Übergabe ist die Nahtstelle, an der die Belegprüfung ansetzt.
 
 ### Stellschrauben und ihre Wirkung
 

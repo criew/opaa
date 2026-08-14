@@ -29,6 +29,10 @@ Dieses Dokument beschreibt die Modellverwaltung und die zentrale Steuerung, die 
 zugleich den zweiten Hebel der Verteilbarkeit: Was einmal zentral festgelegt ist, gilt überall, ohne dass
 irgendein Team seine Agenten anfassen muss.
 
+**Lesehinweis zum Umsetzungsstand.** Diese Spezifikation beschreibt überwiegend das Zielbild. Wo sie
+bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(gebaut)** gekennzeichnet.
+Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
+
 ---
 
 ## Überblick
@@ -49,6 +53,11 @@ irgendein Team seine Agenten anfassen muss.
 7. **Personenbezogene Daten werden vor der Weitergabe an ein Modell außerhalb des Hauses geprüft** — und
    im Zweifel wird der Aufruf verweigert statt bereinigt.
 8. **Eine zentrale Änderung wirkt sofort überall**, ohne Nacharbeit in Spaces und Agenten.
+9. **Die Passagen werden einzeln und mit ihrer Herkunft übergeben**, und die Belege kommen im Text
+   zurück, nicht als Liste am Ende. Nur so lässt sich die Belegprüfung überhaupt ansetzen.
+10. **Die Ausgabe läuft im Fluss** — außer im Zitierzwang, wo erst nach der Belegprüfung ausgegeben wird.
+11. **Die Absicherung gegen Missbrauch liegt nicht im Modell**, sondern in der Rechteprüfung davor, dem
+    unveränderlichen Systemvorspann und der Belegprüfung danach.
 
 ---
 
@@ -293,7 +302,7 @@ Bestimmung des zulässigen Modells      ← Schnitt aller Vorgaben
   ↓
 Zusammenstellung: Systemvorspann + Passagen mit Fundstellen + Frage
   ↓
-Aufruf, Antwort im Fluss ausgegeben
+Aufruf; Ausgabe im Fluss, außer im Zitierzwang
   ↓
 Belegprüfung: trägt jede Aussage eine Fundstelle?
   ↓
@@ -313,6 +322,144 @@ Modell die Anweisung befolgt.
 bereit, gibt OPAA die gefundenen Fundstellen ohne erzeugten Text aus und sagt, dass keine Antwort
 formuliert werden konnte. Das ist ein brauchbares Zwischenergebnis — die Recherche ist getan, nur die
 Formulierung fehlt.
+
+### Übergabe der Passagen und Form der Antwort
+
+Wie die abgerufenen Passagen an das Modell übergeben werden, ist keine Feinheit der Umsetzung, sondern
+die **Nahtstelle zwischen Retrieval und Belegprüfung**: Woran die Prüfung ansetzt, entsteht genau hier.
+Ohne eine beschriebene Übergabe ist der Zitierzwang nicht beschreibbar.
+
+Die Zuständigkeit ist deshalb so geschnitten: **[Wissensschicht und Retrieval](./data-indexing-rag.md)
+bestimmt, welche Passagen übergeben werden** — Suche, Zusammenführung, Reranking, Schwelle. **Dieses
+Dokument bestimmt, wie sie übergeben werden**, weil das eine Eigenschaft des Modellaufrufs ist und mit
+Systemvorspann, Parametern und Kontextgrenze zusammen festgelegt wird.
+
+Der Aufruf wird aus vier Teilen zusammengesetzt:
+
+1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen und die verbindlichen Belegregeln. Nicht über
+   den Chat änderbar (siehe [Absicherung des Modells](#absicherung-des-modells-gegen-missbrauch)).
+2. **Die Passagen, jede mit einem eigenen Kopf.** Der Kopf trägt die Angaben, die den späteren Beleg
+   tragen: Dokument, Stelle im Dokument, Bezeichnung — und die **Zeichenfolge, mit der genau diese
+   Passage zu zitieren ist**. Die Passagen sind voneinander sichtbar getrennt, damit das Modell sie
+   nicht zu einem Fließtext verschmilzt. **(gebaut)**
+3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)**
+4. **Die Frage.**
+
+Die Antwort kommt **mit Belegen im Text zurück, nicht mit einer Liste am Ende**: Jede tragende Aussage
+trägt die Zeichenfolge der Passage, auf die sie sich stützt, unmittelbar bei sich. OPAA löst diese
+Zeichenfolgen anschließend gegen die tatsächlich übergebenen Passagen auf und macht Sprungmarken
+daraus; was sich nicht auflösen lässt, gilt als nicht belegt. **(gebaut, in der Grundform)**
+
+Diese Form ist bewusst gewählt und trägt die Belegbarkeit:
+
+- **Eine Quellenliste am Ende ließe sich nicht prüfen.** Sie sagt nicht, welcher Satz woher stammt —
+  genau die Zuordnung, die die Belegprüfung braucht.
+- **Erfundene Belege fallen auf.** Eine Zeichenfolge, die keiner übergebenen Passage entspricht, wird
+  beim Auflösen zu einer Fehlstelle statt zu einem Verweis.
+- **Der Beleg bleibt an der Aussage**, auch wenn Nutzende die Antwort kürzen, zitieren oder in einen
+  Vermerk übernehmen.
+
+Für die Zuschneidung auf die Kontextgrenze gilt: Passt die Menge der ausgewählten Passagen nicht, wird
+**von unten gekürzt** — die schwächsten Treffer entfallen zuerst — und die Kürzung wird ausgewiesen. Eine
+stillschweigend gekürzte Grundlage wäre die schlechteste Form der Verkürzung, weil die Antwort
+vollständig aussieht.
+
+### Ausgabe im Fluss
+
+Eine Antwort, die erst nach mehreren Sekunden am Stück erscheint, wird als langsam erlebt, auch wenn sie
+es nicht ist. OPAA gibt sie deshalb **im Fluss** aus: Der Text erscheint, während er entsteht, und der
+Vorgang lässt sich abbrechen, sobald erkennbar ist, dass die Antwort in die falsche Richtung läuft. Für
+die empfundene Antwortzeit ist das der wirksamste Einzelfaktor.
+
+Das steht in einer Spannung zum Zitierzwang, die benannt gehört: **Die Belegprüfung setzt an der
+fertigen Antwort an.** Wer im Fluss ausgibt, hat schon ausgegeben, wenn die Prüfung urteilt. Drei
+Auflösungen stehen zur Wahl.
+
+**Option 1 — Erst prüfen, dann ausgeben.** Im Zitierzwang wird die Antwort vollständig erzeugt, geprüft
+und erst danach ausgegeben. Sauber und ohne Widerruf, aber der Zeitvorteil entfällt genau in dem Modus,
+in dem am sorgfältigsten gearbeitet wird.
+
+**Option 2 — Ausgeben und widerrufen können.** Der Text läuft mit, und die Prüfung kann ihn nachträglich
+als nicht belegt kennzeichnen oder zurücknehmen. Schnell, aber jemand hat den unbelegten Satz bereits
+gelesen — und Gelesenes ist nicht widerrufbar. In einer Auskunft mit Außenwirkung ist das der falsche
+Kompromiss.
+
+**Option 3 — Abschnittsweise prüfen.** Ausgegeben wird in belegten Abschnitten: Ein Abschnitt erscheint,
+sobald seine Belege aufgelöst sind. Verbindet beide Vorteile, ist aber die aufwendigste Variante und
+setzt voraus, dass sich die Antwort verlässlich in prüfbare Abschnitte zerlegen lässt.
+
+**Empfehlung:** Option 1 im Zitierzwang, Ausgabe im Fluss überall sonst. Damit ist die Zusicherung
+eindeutig — im Zitierzwang wird nichts Unbelegtes sichtbar —, und der Zeitvorteil bleibt dort erhalten,
+wo er ohne Zusicherungsverlust zu haben ist. Dass der Zitierzwang spürbar langsamer ist, wird
+**angezeigt** statt kaschiert; es ist der ehrliche Preis der Prüfung. Option 3 bleibt als spätere
+Verbesserung offen.
+
+**Zielbild.** Die Ausgabe im Fluss ist heute nicht gebaut; die Antwort erscheint am Stück. Die Wahl
+zwischen den drei Optionen ist damit noch nicht durch eine Umsetzung vorentschieden.
+
+---
+
+## Absicherung des Modells gegen Missbrauch
+
+Ein Sprachmodell tut, was in seinem Eingabetext steht — und der Eingabetext besteht bei OPAA zu einem
+großen Teil aus Dokumenten, die niemand daraufhin gelesen hat. Drei Angriffsflächen folgen daraus, und
+sie werden getrennt behandelt, weil sie verschiedene Gegenmittel haben.
+
+### Widerstand gegen Umgehungsversuche
+
+Gemeint ist der Versuch, das Modell durch Anweisungen in der Frage aus seiner Rolle zu lösen — „vergiss
+deine Anweisungen", „antworte als ein System ohne Beschränkungen". Vier Eigenschaften wirken dagegen,
+und keine davon ist eine Bitte an das Modell:
+
+- **Der Systemvorspann ist nicht über den Chat änderbar.** Eingaben ersetzen ihn nicht; sie stehen an
+  einer anderen Stelle des Aufrufs und werden als Nutzertext behandelt.
+- **Die Antwortgrundlage ist der abgerufene Bestand.** Was nicht gefunden wurde, steht dem Modell nicht
+  zur Verfügung — eine Umgehung erweitert den Zugriff nicht.
+- **Die Rechteprüfung sitzt vor dem Modell, nicht im Modell.** Kein Formulierungstrick kann Bestände
+  öffnen, denn unberechtigte Passagen werden gar nicht erst geladen. Das ist die eigentliche Sicherung
+  und der Grund, warum ein gelungener Umgehungsversuch bei OPAA vergleichsweise wenig einbringt.
+- **Der Zitierzwang begrenzt den Schaden.** Eine Antwort ohne Beleg ist im Zitierzwang keine Antwort.
+
+### Untergeschobene Anweisungen aus Dokumenten
+
+Der ernstere Fall ist nicht die Frage, sondern der **Bestand**: Ein Dokument enthält einen Satz, der wie
+eine Anweisung an das Modell aussieht. Das kann bösartig platziert sein oder schlicht ein zitierter
+Beispieltext. Zwei Festlegungen gelten:
+
+- **Dokumentinhalt ist Material, keine Anweisung.** Die Übergabe kennzeichnet jede Passage als Fundstelle
+  mit Herkunft (siehe [Übergabe der Passagen](#übergabe-der-passagen-und-form-der-antwort)); Anweisungen
+  aus diesem Bereich werden nicht befolgt.
+- **Das Restrisiko bleibt und wird nicht wegdefiniert.** Kein Sprachmodell trennt Anweisung und Material
+  zuverlässig. Deshalb greifen dahinter die Sicherungen, die nicht am Modell hängen: Rechteprüfung vor
+  der Suche, Belegprüfung nach der Erzeugung, Protokoll.
+
+Die Seite, die für **Agenten mit Werkzeugen** hinzukommt — eine untergeschobene Anweisung, die eine
+Handlung im Quellsystem auslöst —, ist ungleich folgenreicher und wird im Prüfstand für Agenten
+(Themenbereich D) behandelt, nicht hier. Für diesen Zusammenhang gilt der Grundsatz aus
+[Wissensquellen und Konnektoren](./knowledge-sources.md#lesender-und-schreibender-zugriff): Lesen ist
+folgenlos, Schreiben verlangt eine menschliche Freigabe.
+
+### Erfundene Aussagen
+
+Die frühere Fassung führte dies als eigenes Thema. Es ist inhaltlich in der **Belegbarkeit**
+aufgegangen: Antworten sind an Fundstellen gebunden, die Belegdeckung wird ausgewiesen, und im
+Zitierzwang gibt es ohne Beleg keine Antwort. Beschrieben ist das in
+[Wissensschicht und Retrieval](./data-indexing-rag.md#belegbarkeit). Hier steht es nur noch als Verweis,
+damit die Verlagerung nicht als Wegfall gelesen wird.
+
+### Filterung von Inhalten
+
+Manche Häuser verlangen zusätzliche Prüfschritte auf dem Weg zur Ausgabe: Unterdrückung anstößiger
+Formulierungen, Schwärzung personenbezogener Merkmale in der Ausgabe, Maskierung besonders
+schutzbedürftiger Angaben. Vorgesehen ist das als **zuschaltbarer Nachbearbeitungsschritt**, ausgeschaltet
+in der Voreinstellung, mit drei Einschränkungen:
+
+- **Ein Filter ersetzt keine Zugriffsbeschränkung.** Was jemand nicht sehen darf, gehört nicht in die
+  Antwort, weil es nicht in den Suchbereich gehört — nicht, weil ein Filter es hinterher entfernt.
+- **Eine Schwärzung im Beleg macht den Beleg unbrauchbar.** Wird gefiltert, muss erkennbar bleiben, dass
+  gefiltert wurde, und der Sprung ins Original bleibt rechtegeprüft möglich.
+- **Filter arbeiten auf Mustern und irren.** Sie sind eine Erleichterung, keine Zusicherung — dieselbe
+  Einordnung wie beim Ersetzen personenbezogener Merkmale vor einem Aufruf nach außen.
 
 ---
 
@@ -338,7 +485,8 @@ dort beschrieben.
 ## Integrationspunkte
 
 - **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Einbettungs-, Rerank- und Antwortmodell;
-  Zitierzwang und Belegprüfung; die Fähigkeitsabhängigkeit des Bildverständnisses.
+  Zitierzwang und Belegprüfung; die Fähigkeitsabhängigkeit des Bildverständnisses. Dort wird bestimmt,
+  **welche** Passagen übergeben werden; hier, **wie**.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — die Vorgaben von Space, Bibliothek
   und Agent, ihre Verrechnung als Obergrenze und die Zuständigkeit für ihre Festlegung.
 - **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — die Modellvorgabe einer
@@ -375,6 +523,16 @@ dort beschrieben.
   oder bleibt sie eine reine Vertrags- und Dokumentationsangabe?
 - Ab welcher Größe lohnt eine **getrennte Betriebsumgebung für Modelle** gegenüber dem gemeinsamen
   Betrieb mit der Anwendung?
+- Bleibt es im Zitierzwang bei der **vollständigen Prüfung vor der Ausgabe**, oder lohnt die
+  abschnittsweise Prüfung während der Ausgabe? Letztere hält den Zeitvorteil, verlangt aber eine
+  verlässliche Zerlegung der Antwort in prüfbare Abschnitte.
+- Soll die **Filterung von Inhalten** im Zielbild bleiben? Sie war im früheren Bestand als Erweiterung
+  geführt und ist hier unverändert übernommen. Dagegen spricht, dass sie eine Sicherheit suggeriert, die
+  eine Mustererkennung nicht leisten kann, und dass sie mit der Belegbarkeit in Konflikt gerät.
+- Wie wird eine **Kürzung an der Kontextgrenze** dargestellt, ohne die Antwort mit technischen Hinweisen
+  zu überfrachten — und ab welchem Anteil entfallener Passagen ist die Antwort besser zu verweigern?
+- Wird der Anteil **untergeschobener Anweisungen aus Dokumenten** überhaupt messbar, oder bleibt es bei
+  der Feststellung eines nicht bezifferbaren Restrisikos?
 
 ---
 
