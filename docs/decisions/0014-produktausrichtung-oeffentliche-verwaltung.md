@@ -80,7 +80,7 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 | Punkt | Spannung zur neuen Ausrichtung |
 |---|---|
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
+| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
@@ -129,3 +129,23 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   und wird als bekannter Punkt geführt; tritt er ein, ist das eine neue Entscheidung mit eigenem ADR.
 - **Verweis:** [#348](https://github.com/criew/opaa/issues/348) ·
   [features/data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner)
+
+### 14.08.2026 — Cloud-Betrieb und betreuter Dienst
+
+- **Punkt:** Der Betrieb in einer angemieteten Cloud-Umgebung als eigenes Betriebsmodell und ein vom
+  Projektteam betreuter Dienst.
+- **Entscheidung:** Beides entfällt als Betriebsmodell. Der Betrieb außerhalb des eigenen Hauses wird
+  als Möglichkeit beschrieben, nicht als Angebot: OPAA läuft dort, wo eine Container-Umgebung und
+  PostgreSQL mit pgvector stehen, und wo das ist, entscheidet die verantwortliche Stelle. Anbieternamen
+  und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung außerhalb des eigenen
+  Hauses bleiben als benannter Fall bestehen, unter der Bedingung, dass dort keine echten Daten liegen.
+  Ein vom Projektteam betreuter Dienst wird ersatzlos gestrichen.
+- **Begründung:** Entscheidend ist nicht der Ort, sondern wer Verantwortlicher der Verarbeitung ist —
+  ein Rechenzentrum der Verwaltung ist ebenfalls nicht das eigene Haus und trotzdem unproblematisch,
+  während für einen erheblichen Teil der Verwaltungsdaten die Verarbeitung außerhalb der eigenen
+  Verantwortungssphäre rechtlich ausgeschlossen ist. Ein betreuter Dienst würde das Projekt selbst zum
+  Betreiber machen und eine Erwartung an Verfügbarkeit und Haftung erzeugen, die ein quelloffenes
+  Vorhaben nicht einlöst; der Bedarf ist über den mandantenfähigen Betrieb durch ein Rechenzentrum
+  bereits abgedeckt.
+- **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
+  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
