@@ -100,36 +100,36 @@ Für alle Dokumente und Marketing-Assets gilt: keine Namen von Mitbewerbern, kei
 benannten Produkten, keine beteiligten Personen oder Partnerunternehmen, keine Referenzkunden, keine
 Preise, keine Aufwands- oder Kostenschätzungen. Abgrenzungen werden mit dem Sachgrund begründet.
 
-## Nachträge: entschiedene Punkte
-
-Die im Abschnitt „Was schwieriger wird" benannten Punkte werden einzeln entschieden. Jede getroffene
-Entscheidung wird hier nachgetragen, damit der ADR den Stand führt und nicht nur die offene Frage.
-
-### 2026-08-14 — Cloud-Deployment und betreuter Dienst
-
-**Punkt:** Der Betrieb in einer angemieteten Cloud-Umgebung als eigenes Betriebsmodell und ein vom
-Projektteam betreuter Dienst.
-
-**Entscheidung:** Beides entfällt als Betriebsmodell. Der Betrieb außerhalb des eigenen Hauses wird
-als Möglichkeit beschrieben, nicht als Angebot: OPAA läuft dort, wo eine Container-Umgebung und
-PostgreSQL mit pgvector stehen, und wo das ist, entscheidet die verantwortliche Stelle. Anbieternamen
-und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung außerhalb des eigenen
-Hauses bleiben als benannter Fall bestehen, unter der Bedingung, dass dort keine echten Daten liegen.
-Ein vom Projektteam betreuter Dienst wird ersatzlos gestrichen.
-
-**Begründung:** Entscheidend ist nicht der Ort, sondern wer Verantwortlicher der Verarbeitung ist —
-ein Rechenzentrum der Verwaltung ist ebenfalls nicht das eigene Haus und trotzdem unproblematisch,
-während für einen erheblichen Teil der Verwaltungsdaten die Verarbeitung außerhalb der eigenen
-Verantwortungssphäre rechtlich ausgeschlossen ist. Ein betreuter Dienst wiederum würde das Projekt
-selbst zum Betreiber machen und eine Erwartung an Verfügbarkeit und Haftung erzeugen, die ein
-quelloffenes Vorhaben nicht einlöst; der Bedarf ist über den mandantenfähigen Betrieb durch ein
-Rechenzentrum bereits abgedeckt.
-
-**Issue:** [#350](https://github.com/criew/opaa/issues/350)
-
 ## Referenzen
 
 - [VISION.md](../VISION.md) — Nordstern, Themenbereiche, Phasen
 - [USE-CASES.md](../USE-CASES.md) — Anwendungsfälle im Verwaltungsalltag
 - [ADR-0002](0002-mvp-technology-stack.md) — Technologieentscheidungen des Fundaments
 - [features/spaces-and-assets.md](../features/spaces-and-assets.md) — das Verteilungsmodell
+
+## Nachträge: entschiedene Punkte
+
+Die Tabelle unter [Was schwieriger wird](#was-schwieriger-wird) benennt Punkte, die dieser ADR
+ausdrücklich **nicht** entscheidet. Sobald einer davon entschieden ist, kommt er hier als Nachtrag
+hinzu — der ADR selbst bleibt im Wortlaut unverändert, damit erkennbar bleibt, was wann galt. Jeder
+Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
+
+### 14.08.2026 — Cloud-Betrieb und betreuter Dienst
+
+- **Punkt:** Der Betrieb in einer angemieteten Cloud-Umgebung als eigenes Betriebsmodell und ein vom
+  Projektteam betreuter Dienst.
+- **Entscheidung:** Beides entfällt als Betriebsmodell. Der Betrieb außerhalb des eigenen Hauses wird
+  als Möglichkeit beschrieben, nicht als Angebot: OPAA läuft dort, wo eine Container-Umgebung und
+  PostgreSQL mit pgvector stehen, und wo das ist, entscheidet die verantwortliche Stelle. Anbieternamen
+  und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung außerhalb des eigenen
+  Hauses bleiben als benannter Fall bestehen, unter der Bedingung, dass dort keine echten Daten liegen.
+  Ein vom Projektteam betreuter Dienst wird ersatzlos gestrichen.
+- **Begründung:** Entscheidend ist nicht der Ort, sondern wer Verantwortlicher der Verarbeitung ist —
+  ein Rechenzentrum der Verwaltung ist ebenfalls nicht das eigene Haus und trotzdem unproblematisch,
+  während für einen erheblichen Teil der Verwaltungsdaten die Verarbeitung außerhalb der eigenen
+  Verantwortungssphäre rechtlich ausgeschlossen ist. Ein betreuter Dienst würde das Projekt selbst zum
+  Betreiber machen und eine Erwartung an Verfügbarkeit und Haftung erzeugen, die ein quelloffenes
+  Vorhaben nicht einlöst; der Bedarf ist über den mandantenfähigen Betrieb durch ein Rechenzentrum
+  bereits abgedeckt.
+- **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
+  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
