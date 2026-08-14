@@ -150,9 +150,14 @@ class DocumentIndexingIntegrationTest {
 
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    // Only .txt is a supported format, .csv is filtered out by DocumentService
+    // Only .txt is a supported format, .csv is rejected by the shared format list.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
+    // Issue #375: a rejected document must be reported, not silently dropped. Both files were
+    // found, so both are part of the job's total, and the rejected one shows up as skipped —
+    // otherwise whoever runs the installation never learns that part of the stock went unindexed.
+    assertThat(completedJob.getDocumentsTotal()).isEqualTo(2);
+    assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
 
     // Verify only the supported file was indexed
     List<Document> documents = documentRepository.findAll();

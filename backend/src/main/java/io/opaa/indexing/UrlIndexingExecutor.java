@@ -83,7 +83,7 @@ public class UrlIndexingExecutor {
 
       // Step 2: Filter to supported file types
       List<AutoindexCrawlerService.CrawledFileEntry> supportedFiles =
-          allFiles.stream().filter(this::isSupportedFormat).toList();
+          allFiles.stream().filter(UrlIndexingExecutor::isSupportedFormat).toList();
 
       log.info(
           "Discovered {} files ({} supported) for URL indexing",
@@ -184,7 +184,7 @@ public class UrlIndexingExecutor {
         && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 
-  private boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
+  static boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
     String name = entry.name().toLowerCase();
     return SUPPORTED_EXTENSIONS.stream().anyMatch(name::endsWith);
   }
