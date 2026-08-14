@@ -70,7 +70,20 @@ Die Ausdifferenzierung der Asset-Typen ist **nicht** Gegenstand dieses Dokuments
 
 Die Trennung **`USER` gegen `VIEWER`** ist der wesentliche Zugewinn: Ein Sachgebiet soll einen geprüften Agenten nutzen können, ohne dass jeder Nutzer seine Aufgabenbeschreibung ändern oder die zugrundeliegende Dokumentenliste einsehen kann.
 
-Asset-Rollen sind eine **eigene Rangordnung**, getrennt von den Space-Rollen. **Kein Rollenname kommt in beiden Systemen vor** — deshalb heißt die verwaltende Asset-Rolle `MANAGER` und nicht `ADMIN`. Wer sagt „ich habe hier Admin-Rechte", meint damit immer einen Space; wer Asset-Rechte meint, sagt `MANAGER` oder `OWNER`. Das ist keine Kosmetik: Bei der Übergabe eines Vorgangs muss ohne Rückfrage klar sein, wovon die Rede ist.
+Asset-Rollen sind eine **eigene Rangordnung**, getrennt von den Space- und Gruppenrollen. **Kein Rollenname kommt in zwei Systemen vor** — deshalb heißt die verwaltende Asset-Rolle `MANAGER` und nicht `ADMIN`. Wer sagt „ich habe hier Admin-Rechte", meint damit immer einen Space; wer Asset-Rechte meint, sagt `MANAGER` oder `OWNER`. Das ist keine Kosmetik: Bei der Übergabe eines Vorgangs muss ohne Rückfrage klar sein, wovon die Rede ist.
+
+#### Die drei Rollensysteme im Überblick
+
+Es gibt **drei getrennte Rollensysteme** plus eine systemweite Rolle. Sie beantworten verschiedene Fragen und werden nie miteinander verrechnet:
+
+| System | Rollen | Beantwortet die Frage |
+|---|---|---|
+| **Asset** | `USER` · `VIEWER` · `EDITOR` · `MANAGER` · `OWNER` | Was darf ich mit diesem Agenten, dieser Bibliothek, dieser Prompt-Sammlung tun? |
+| **Space** | `MEMBER` · `CURATOR` · `ADMIN` (+ `ownerId` als Attribut) | Was darf ich in diesem Arbeitsraum tun? |
+| **Gruppe** | *(Mitglied)* · `STEWARD` · `LEAD` | Wer darf etwas an diese Gruppe verteilen? |
+| **systemweit** | System-Admin | Wer verwaltet Konnektoren, Verzeichnis, Policies und offene Nachfolgen? |
+
+Die drei Systeme sind **unabhängig**: Ein Space-`ADMIN` hat dadurch keinerlei Recht an den dort assoziierten Assets, ein Asset-`OWNER` ist dadurch in keinem Space Mitglied, und ein `STEWARD` einer Gruppe erhält durch die Annahme einer Freigabe kein Eigentum am Asset.
 
 ### Rechte an einem Asset erhalten
 
@@ -112,7 +125,7 @@ Die Stufe ergibt sich stattdessen daraus, **wem** der Grant gilt, kombiniert mit
 | **Fachbereich** | `visibility = SHARED`, **Grant an die Abteilungs- oder Amts-Gruppe** |
 | organisationsweit | `visibility = ORGANIZATION` |
 
-Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Gruppe, die die Abteilung abbildet** — erteilt mit Zustimmung des Kurators dieser Einheit. Ohne Gruppen gäbe es die Stufe „Fachbereich" nicht; sie ist der Punkt, an dem das flache Space-Modell sonst eine Lücke hätte. Das ist der eigentliche Grund, warum Gruppen früh und nicht später gebraucht werden. Einzelheiten unter [Verteilung von Assets](#verteilung-von-assets).
+Ein Asset „an die ganze Abteilung freigeben" heißt also: **Grant an die Gruppe, die die Abteilung abbildet** — erteilt mit Zustimmung eines `STEWARD` dieser Gruppe. Ohne Gruppen gäbe es die Stufe „Fachbereich" nicht; sie ist der Punkt, an dem das flache Space-Modell sonst eine Lücke hätte. Das ist der eigentliche Grund, warum Gruppen früh und nicht später gebraucht werden. Einzelheiten unter [Verteilung von Assets](#verteilung-von-assets).
 
 Zwei Felder steuern das:
 
@@ -134,7 +147,7 @@ Jedes Asset hat genau einen Eigentümer. Wenn dieser Eigentümer eine **Person**
 1. **Eigentümer kann eine Person oder eine Gruppe sein.** Für zentral gepflegte Assets — Rechtsquellen, Dienstanweisungen, hausweite Agenten — ist die **Gruppe der Regelfall**: Eigentümer ist „Referat Z 2", nicht Frau Müller. Damit übersteht das Asset jeden Personalwechsel, und die Zuständigkeit ist im Katalog als Organisationseinheit ausgewiesen. Das ist die eigentliche Lösung; alles Folgende ist Auffangnetz.
 2. **Die Deaktivierung eines Kontos ist immer sofort möglich** und wird nie blockiert.
 3. **Assets des Ausgeschiedenen gehen in den Zustand „Nachfolge offen".** Sie funktionieren weiter und behalten ihre Rechte, damit die laufende Arbeit nicht abreißt — **aber ihre Reichweite kann nicht mehr wachsen**: keine neuen Grants, keine Erhöhung der Freigabestufe, keine neue Assoziation. Ein Asset ohne fachlich Verantwortlichen darf sich nicht weiter verbreiten.
-4. **Die Nachfolge hat einen benannten Adressaten und eine Frist.** Zuständig ist der Kurator der Organisationseinheit des Ausgeschiedenen; ist keiner benannt, greift die Eskalation nach oben (siehe [Kuratoren](#kuratoren)). Der Vorgang erscheint auf seiner Liste mit Frist und wird bei Ablauf eskaliert — er verfällt nicht und landet nicht in einer namenlosen Sammelliste.
+4. **Die Nachfolge hat einen benannten Adressaten und eine Frist.** Zuständig ist ein `STEWARD` der Organisationseinheit des Ausgeschiedenen; ist keiner benannt, der System-Admin (siehe [Stewards](#stewards-die-annahmeseite-der-gruppe)). Der Vorgang erscheint mit Frist auf der Governance-Arbeitsliste — er verfällt nicht und landet nicht in einer namenlosen Sammelliste.
 5. **Nichts wird stillschweigend gelöscht oder in seiner Reichweite verändert.**
 
 Damit gibt es keine Regel mehr, die eine andere aufhebt: Der Zugang endet sofort, die Zuständigkeit wird nachgezogen, und in der Zwischenzeit ist das Asset nutzbar, aber eingefroren.
@@ -155,35 +168,48 @@ Gruppen haben zwei Ausprägungen:
 
 | `Group.kind` | Herkunft | Verwendung |
 |---|---|---|
-| `ORG_UNIT` | aus dem Verzeichnis synchronisiert (Referat, Abteilung, Amt) | Rechtesubjekt **und** Freigabeziel; kennt ihre übergeordnete Einheit; kann Kuratoren haben |
+| `ORG_UNIT` | aus dem Verzeichnis synchronisiert (Referat, Abteilung, Amt) | Rechtesubjekt **und** Freigabeziel; kennt ihre übergeordnete Einheit |
 | `AD_HOC` | im System angelegt | nur Rechtesubjekt (z. B. „Projektbeteiligte Phoenix", „Stabsstelle Leserunde") |
 
-**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Neu ist nicht *was* passiert, sondern *wer es erteilen darf* — bei einer Organisationseinheit ist dafür deren Kurator zuständig (siehe unten). Ein Grant an eine `AD_HOC`-Gruppe braucht keinen Kurator und wird wie jede andere Rechtevergabe von einem `MANAGER` des Assets erteilt.
+**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Neu ist nicht *was* passiert, sondern *wer es erteilen darf* — dafür trägt die Gruppe selbst eine Rolle (siehe [Stewards](#stewards-die-annahmeseite-der-gruppe)).
 
-**Zwei Richtungen, die nicht verwechselt werden dürfen:**
+**Mitgliedschaft vererbt nicht.** Wer in einer Einheit Mitglied ist, sagt das Verzeichnis. OPAA erfindet keine Vererbung nach unten: Ein Grant an „Amt 5" erreicht nur, wen das Verzeichnis dieser Gruppe zurechnet.
 
-- **Mitgliedschaft vererbt nicht.** Wer in einer Einheit Mitglied ist, sagt das Verzeichnis. OPAA erfindet keine Vererbung nach unten: Ein Grant an „Amt 5" erreicht nur, wen das Verzeichnis dieser Gruppe zurechnet.
-- **Zuständigkeit vererbt aufwärts.** Ist für eine Einheit kein Kurator benannt, fällt die Zuständigkeit an die nächsthöhere Einheit, im Zweifel an die Gesamtorganisation.
+Damit ist auch die frühere Aussage „keine Hierarchie" präzisiert: **Die einzige Hierarchie im System ist die Aufbauorganisation, und sie kommt aus dem Verzeichnis.** Sie wird für die Anzeige und für Auswertungen genutzt, aber **nicht als Zuständigkeitskette für Freigaben** — siehe unten. Spaces bleiben flach, Assets bleiben flach.
 
-Damit ist auch die frühere Aussage „keine Hierarchie" präzisiert: **Die einzige Hierarchie im System ist die Aufbauorganisation, und sie kommt aus dem Verzeichnis.** Spaces bleiben flach, Assets bleiben flach.
+### Stewards: die Annahmeseite der Gruppe
 
-### Kuratoren
+Eine Verteilung hat zwei Seiten. Die **Gebeseite** ist geregelt: Ein `MANAGER` des Assets erteilt den Grant. Offen ist die **Annahmeseite** — ob eine Organisationseinheit sich etwas in ihren Verantwortungsbereich legen lassen will. Genau dafür gibt es den Steward.
 
-Ein **Kurator** ist an eine Organisationseinheit gebunden, nicht global. Es gibt Kuratoren für Referate, für Abteilungen und für die Gesamtorganisation.
+> **Ein `STEWARD` ist eine Rolle *in einer Gruppe*: Wer sie hat, entscheidet über Freigaben an diese Gruppe.**
 
-- Eine Freigabe an eine Einheit erfordert die Zustimmung ihres Kurators.
-- Ist für eine Einheit kein Kurator benannt, greift der Kurator der nächsthöheren Einheit.
-- Die Besetzung ist damit **optional und wächst mit**: Eine Pilotbehörde benennt einen einzigen zentralen Kurator und ist sofort arbeitsfähig. Eine große Behörde besetzt Referats- und Abteilungsebene und steuert fein.
+Er ist damit kein eigenes Objekt und keine eigene Hierarchie, sondern ein Eintrag in der Mitgliederliste, die ohnehin existiert. Die Frage „wer darf an Abteilung 5 freigeben?" beantwortet die Gruppe „Abteilung 5" selbst.
 
-Der Kurator entscheidet über die Aufnahme in seinen Verantwortungsbereich — er wird dadurch nicht Eigentümer des Assets. Eigentum und Kuratierung sind getrennt.
+| Gruppenrolle | Darf |
+|---|---|
+| *(Mitglied ohne Rolle)* | über die Gruppe erteilte Grants empfangen |
+| `STEWARD` | zusätzlich Freigaben an diese Gruppe annehmen oder ablehnen |
+| `LEAD` | zusätzlich Stewards benennen; bei `AD_HOC` außerdem Mitglieder verwalten |
 
-**Die Zuständigkeit hängt an der Reichweite, nicht an der Gruppenart.** Sonst gäbe es einen offenen Umgehungsweg: Wer eine Freigabe an „Abteilung 5" nicht durch den Kurator bringt, legt eine `AD_HOC`-Gruppe mit denselben Personen an und erteilt den Grant ohne jede Kuratierung — materiell dieselbe Reichweite, formal keine Freigabe an die Einheit. Deshalb gilt:
+Bei `ORG_UNIT`-Gruppen kommt die Mitgliedschaft aus dem Verzeichnis und ist im System nicht änderbar; `LEAD` steuert dort ausschließlich die Besetzung der Steward-Rolle. Ist für eine Gruppe kein `STEWARD` benannt, entscheidet der System-Admin über die Governance-Arbeitsliste.
 
-> Ein Grant an eine Gruppe ab einer konfigurierbaren Größe erfordert die Zustimmung eines Kurators — **unabhängig davon, ob es eine Organisationseinheit oder eine Ad-hoc-Gruppe ist.**
+**Warum keine Zuständigkeitsvererbung nach oben.** Eine frühere Fassung band den Kurator an die Organisationseinheit und ließ die Zuständigkeit bei Nichtbesetzung an die nächsthöhere Einheit fallen, im Zweifel bis zur Gesamtorganisation. Das ist aus drei Gründen verworfen:
 
-Zuständig ist bei einer Ad-hoc-Gruppe der Kurator der Organisationseinheit des Erteilenden. Kleine Ad-hoc-Gruppen — der übliche Projektkreis — bleiben frei von Kuratierung; sie sind der Grund, warum es diese Gruppenart überhaupt gibt.
+1. **Es löst nichts, was die Arbeitsliste nicht löst.** Der Auffangfall — niemand ist benannt — endet in beiden Entwürfen beim System-Admin. Die Eskalationskette ist der teure Weg zu demselben Ergebnis.
+2. **Es setzt eine Besetzung voraus, die eine Pilotbehörde nicht hat.** Referats- und Abteilungsebene mit Arbeitszeit zu hinterlegen ist ein Einführungsprojekt. Bis dahin läuft ohnehin alles zentral auf — nur mit dem Umweg über eine Kette, die auf jeder Stufe leer ist.
+3. **Es erzeugt einen Zustandsautomaten für einen Verwaltungsvorgang.** Fristen je Stufe, Weiterreichen bei Ablauf, Liegezeit je Station: Aufwand und Fehleranfälligkeit stehen in keinem Verhältnis zum Gewinn gegenüber einer Liste, die zeigt, was offen ist und seit wann.
 
-**Voraussetzung dafür ist, dass die Kuratorenrolle tatsächlich besetzt und mit Arbeitszeit hinterlegt ist.** Bleibt sie unbesetzt, fällt über die Eskalation alles auf die zentrale Ebene, dort stapeln sich die Anfragen, und die dokumentierte Freigabekette ist nicht mehr die gelebte. Das ist keine Frage der Technik, sondern der Einführung — die einführende Stelle muss die Rolle benennen und ausstatten. Das Produkt macht sie sichtbar: Offene Anfragen mit Liegezeit stehen auf einer Liste, und die Liegezeit ist auswertbar.
+Die Aufbauorganisation bleibt im Modell — als Herkunft der Gruppen und als Aggregationsachse für Auswertungen. Sie trägt nur keine Freigabezuständigkeit mehr. Wer die Eskalation später doch braucht, kann sie über der Steward-Rolle ergänzen, ohne das Rechtemodell anzufassen.
+
+**Der Steward entscheidet über die Aufnahme in seinen Verantwortungsbereich — er wird dadurch nicht Eigentümer des Assets.** Eigentum und Kuratierung sind getrennt.
+
+**Die Zuständigkeit hängt an der Reichweite, nicht an der Gruppenart.** Sonst gäbe es einen offenen Umgehungsweg: Wer eine Freigabe an „Abteilung 5" nicht durch deren Steward bringt, legt eine `AD_HOC`-Gruppe mit denselben Personen an und erteilt den Grant ohne jede Prüfung — materiell dieselbe Reichweite, formal keine Freigabe an die Einheit. Deshalb gilt:
+
+> Ein Grant an eine Gruppe ab einer konfigurierbaren Größe erfordert die Zustimmung eines `STEWARD` dieser Gruppe — **unabhängig davon, ob es eine Organisationseinheit oder eine Ad-hoc-Gruppe ist.** Hat die Gruppe keinen, entscheidet der System-Admin.
+
+Kleine Ad-hoc-Gruppen — der übliche Projektkreis — bleiben frei von Kuratierung; sie sind der Grund, warum es diese Gruppenart überhaupt gibt.
+
+**Zur Wortwahl.** Der Begriff „Kurator" ist bewusst aufgegeben: Die Space-Rolle `CURATOR` trägt ihn bereits, und die Spezifikation verlangt an anderer Stelle ausdrücklich, dass kein Rollenname in zwei Rollensystemen vorkommt (siehe [Asset-Rollen](#asset-rollen)). „Steward" ist im Datenmanagement etabliert und in beiden Sprachen identisch.
 
 ### Referenz statt Kopie
 
@@ -352,7 +378,7 @@ Warum drei statt der bisherigen vier Rollen:
 
 ### Assets in einen Space assoziieren
 
-Ein Kurator kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
+Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
 
@@ -569,7 +595,7 @@ Eine Teilablehnung blockiert die Weitergabe nicht. Der Agent wird geteilt und ar
 
 **Nicht-Reaktion ist der Regelfall, nicht die Ablehnung** — Urlaub, unklare Zuständigkeit, Postfach ohne Betreuung. Ohne Behandlung hinge ein Agent dauerhaft unvollständig, ohne dass jemand weiß, woran es liegt. Deshalb:
 
-- Jede Anfrage hat eine **Frist**. Läuft sie ab, wird sie an den Kurator der Organisationseinheit des Bibliotheks-Eigentümers eskaliert, von dort nach oben.
+- Jede Anfrage hat eine **Frist**. Läuft sie ab, erscheint sie auf der Governance-Arbeitsliste des System-Admins.
 - Der Zustand ist für beide Seiten **jederzeit sichtbar**: „wartet seit 6 Tagen auf Referat 34".
 - **Der Empfänger sieht am Agenten selbst**, dass eine Wissensquelle fehlt — nicht erst an schlechteren Antworten. Sonst hält er den Agenten für untauglich, statt zu erkennen, dass eine Freigabe aussteht.
 
@@ -617,7 +643,7 @@ Drei Mechanismen aus einem früheren Entwurf sind ersatzlos gestrichen, weil sie
 
 | Entfallen | Grund |
 |---|---|
-| **Bestätigungspflicht des Kurators bei gemischter Assoziation** | Die Assoziation setzt niemanden mehr etwas aus. Sie stellt eine Bibliothek bereit; sichtbar wird ein Ergebnis erst durch das Ablegen |
+| **Bestätigungspflicht des Space-`CURATOR` bei gemischter Assoziation** | Die Assoziation setzt niemanden mehr etwas aus. Sie stellt eine Bibliothek bereit; sichtbar wird ein Ergebnis erst durch das Ablegen |
 | **Dauerhafte Kennzeichnung gemischter Spaces** | In einer realen Behörde fallen Leserkreise praktisch nie exakt zusammen — ein Teilzeitbeschäftigter, eine externe Kraft, ein Abgeordneter genügt. Damit wäre so gut wie *jeder* Space gekennzeichnet, und ein Warnzeichen, das an allem klebt, informiert über nichts |
 | **Herkunftsabhängiger Sonderweg bei Artefakten** | Ein Ergebnis war mal sofort sichtbar und mal nicht, ohne dass der Ersteller den Unterschied erklären konnte. Jetzt gilt für alles dieselbe Regel |
 
@@ -661,8 +687,8 @@ Das System löst dann **weder Assoziationen automatisch** (das entzöge einem ga
 
 Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund. Ein Sperrzustand ohne Zuständigen wäre allerdings nur die halbe Regelung — er erzeugt **Arbeitsstillstand**, und zwar in genau dem Raum, für den dieses Dokument den Strikt-Modus empfiehlt. Deshalb gilt derselbe Zuschnitt wie bei „Nachfolge offen":
 
-- **Benannter Adressat, Frist und Eskalation.** Der Vorgang erscheint auf der Liste des Kurators der Organisationseinheit des betroffenen Bibliotheks-Eigentümers, mit Frist und Eskalation nach oben. Ohne das hängt die Arbeitsfähigkeit einer Prüfstelle an der Reaktionszeit eines Referatsleiters, den sie unter Umständen gerade prüft.
-- **Der System-Admin erhält eine Liste mit Liegezeit** — wie bei offenen Kuratorenanfragen und bei der Nachfolge. Sonst sieht niemand, wie viele Räume betroffen sind und wie lange schon, und ein Space kann monatelang gesperrt daliegen, weil eine Nachricht im Urlaub ankam.
+- **Benannter Adressat und Frist.** Der Vorgang erscheint bei einem `STEWARD` der Organisationseinheit des betroffenen Bibliotheks-Eigentümers und nach Fristablauf beim System-Admin. Ohne das hängt die Arbeitsfähigkeit einer Prüfstelle an der Reaktionszeit eines Referatsleiters, den sie unter Umständen gerade prüft.
+- **Der System-Admin erhält eine Liste mit Liegezeit** — wie bei offenen Freigabeanfragen und bei der Nachfolge. Sonst sieht niemand, wie viele Räume betroffen sind und wie lange schon, und ein Space kann monatelang gesperrt daliegen, weil eine Nachricht im Urlaub ankam.
 - **Die Neubewertung wird von jeder Rechteänderung an jeder Bibliothek ausgelöst, die in irgendeinem Strikt-Space bereitgestellt ist.** Sonst löst sich der Zustand nicht von selbst, wenn seine Ursache wegfällt, sondern bleibt hängen, bis jemand einen Knopf drückt.
 - **Die Ursache geht im Klartext an den Space-Verantwortlichen:** welche Bibliothek, welches Ereignis, welcher Zeitpunkt.
 - **Die Meldung an den Nutzer weist den Zustand als fachlichen Vorgang aus, nicht als Störung**, und benennt die zuständige Stelle. Sinngemäß: „Dieser Raum ist gesperrt, weil eine Zugriffsvoraussetzung nicht mehr erfüllt ist. Zuständig ist der Space-Verantwortliche."
@@ -682,7 +708,7 @@ erlaubte Modelle = Systempolicy
                  ∩ Policy des Agenten
 ```
 
-Die Bibliothek trägt ihre Obergrenze **selbst mit sich**. Das ist wesentlich: Unter diesem Modell hat der Space keine Hoheit über die Bibliotheken, die in ihm auftauchen — jeder Kurator kann jede Bibliothek assoziieren, auf die er Zugriff hat. Eine Bibliothek mit besonders geschützten Daten kann also in einem Space landen, dessen Policy Cloud-Modelle erlaubt. Eine ausschließlich space-gebundene Policy schützt genau diesen Fall nicht.
+Die Bibliothek trägt ihre Obergrenze **selbst mit sich**. Das ist wesentlich: Unter diesem Modell hat der Space keine Hoheit über die Bibliotheken, die in ihm auftauchen — jeder Space-`CURATOR` kann jede Bibliothek assoziieren, auf die er Zugriff hat. Eine Bibliothek mit besonders geschützten Daten kann also in einem Space landen, dessen Policy Cloud-Modelle erlaubt. Eine ausschließlich space-gebundene Policy schützt genau diesen Fall nicht.
 
 > **Datenschutzrelevante Modellbeschränkungen gehören an die Daten, nicht an den Raum.**
 
@@ -827,9 +853,10 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 ### Rechtemodell
 
-- **Vereinigung — Space-Mitgliedschaft gewährt automatisch Asset-Rechte.** Bequem und intuitiv, aber ein Kurator könnte ein Asset, das ihm nicht gehört, in einen großen Space hängen und damit dessen Mitgliedern Zugriff verschaffen. Confluence verbietet genau diese Richtung ausdrücklich.
+- **Vereinigung — Space-Mitgliedschaft gewährt automatisch Asset-Rechte.** Bequem und intuitiv, aber ein Space-`CURATOR` könnte ein Asset, das ihm nicht gehört, in einen großen Space hängen und damit dessen Mitgliedern Zugriff verschaffen. Confluence verbietet genau diese Richtung ausdrücklich.
 - **Schnittmenge — Space-Rolle und Asset-Recht müssen beide erlauben.** Scheitert an der Mehrfachzuordnung (welcher Space ist maßgeblich, wenn das Asset in zweien mit unterschiedlichen Rollen liegt) und zerstört das direkte Teilen ohne gemeinsamen Space.
 - **Assoziation mit explizitem, gedeckeltem Grant.** Sicher, aber sie verlangt bei jeder Zuordnung eine zusätzliche Entscheidung durch den Asset-Verantwortlichen. Zugunsten des einfacheren und strikteren Modells verworfen.
+- **Kuratoren als eigenes Objekt an der Organisationseinheit, mit Zuständigkeitsvererbung nach oben.** Die ursprüngliche Fassung. Verworfen zugunsten der Gruppenrolle `STEWARD`: Der Auffangfall endet in beiden Entwürfen beim System-Admin, die Eskalationskette ist also der teurere Weg zum selben Ergebnis. Sie setzt zudem eine Besetzung von Referats- und Abteilungsebene voraus, die eine Pilotbehörde nicht hat, und erzeugt einen Zustandsautomaten (Frist je Stufe, Weiterreichen, Liegezeit je Station) für einen Vorgang, den eine Arbeitsliste abbildet. Die Eskalation lässt sich später über der Steward-Rolle ergänzen, ohne das Rechtemodell anzufassen. Siehe [Stewards](#stewards-die-annahmeseite-der-gruppe).
 - **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, organisationsweit — kombiniert mit `visibility` und `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
 - **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Projekt-Space wären für die Projektmitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
 
