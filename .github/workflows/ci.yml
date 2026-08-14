@@ -76,6 +76,22 @@ jobs:
           path: backend/build/reports/tests/
           retention-days: 14
 
+  report-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest
+        run: pip install pytest
+
+      # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
+      - name: Test
+        run: pytest .github/scripts/test_daily_report.py
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
