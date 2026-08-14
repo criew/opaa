@@ -2,19 +2,25 @@
 """Erzeugt den täglichen Projektreport als HTML-Seite und Atom-Feed.
 
 Das Skript sammelt über die GitHub-API, was an einem Tag im Repository
-passiert ist, lässt daraus optional eine Zusammenfassung schreiben und legt
-das Ergebnis im Ausgabeverzeichnis ab. Aus den gespeicherten Rohdaten aller
-bisherigen Tage werden Übersichtsseite und Feed jedes Mal neu erzeugt, damit
-sich Layoutänderungen rückwirkend auf alle Reports auswirken.
+passiert ist, lässt daraus optional Stichpunkte schreiben und legt das
+Ergebnis im Ausgabeverzeichnis ab. Der Report ist eine Management Summary:
+Kennzahlen, Fortschritt je Epic, Sonstiges — keine vollständigen Listen.
+
+Aus den gespeicherten Rohdaten aller bisherigen Tage werden sämtliche Seiten
+jedes Mal neu erzeugt, damit sich Layoutänderungen rückwirkend auf alle
+Reports auswirken.
 
 Aufruf:
     daily_report.py --repo criew/opaa --date 2026-08-01 --output site/
 
 Benötigt die GitHub-CLI (`gh`) mit gültigem Token. Ein API-Schlüssel für die
-Zusammenfassung ist optional; fehlt er, entsteht der Report ohne Fließtext.
-Der Schlüssel wird bewusst aus OPAA_REPORT_API_KEY gelesen und nicht aus dem
-Anwendungsschlüssel OPAA_OPENAI_API_KEY, damit sich das Aktivieren der
-Zusammenfassung nicht auf die Integrationstests in der CI auswirkt.
+Zusammenfassung ist optional; fehlt er, treten die Titel der Vorgänge an die
+Stelle der Stichpunkte. Der Schlüssel wird bewusst aus OPAA_REPORT_API_KEY
+gelesen und nicht aus dem Anwendungsschlüssel OPAA_OPENAI_API_KEY, damit sich
+das Aktivieren der Zusammenfassung nicht auf die Integrationstests in der CI
+auswirkt.
+
+Die Tests liegen daneben in test_daily_report.py und laufen in der CI.
 """
 
 from __future__ import annotations
@@ -62,6 +68,9 @@ SEARCH_MAX_PAGES = 10
 # Obergrenze je Abschnitt im Prompt. An Tagen mit sehr vielen Issues bleibt der
 # Aufruf so bezahlbar, ohne dass der Report selbst gekürzt wird.
 PROMPT_MAX_ITEMS = 25
+# Ziel des Links auf die laufende Instanz. Überschreibbar, damit ein Fork oder
+# eine verschobene Umgebung keine Codeänderung erfordert.
+DEFAULT_TEST_URL = "https://opaa.ewerlin.com/chat"
 
 WEEKDAYS = (
     "Montag",
@@ -145,6 +154,22 @@ def search_issues(repo: str, qualifier: str) -> list[dict]:
         if len(batch) < SEARCH_PAGE_SIZE:
             break
     return items
+
+
+def count_issues(repo: str, qualifier: str) -> int | None:
+    """Zählt Treffer einer Suche, ohne sie zu holen.
+
+    Für die Kennzahl der offenen Issues genügt die Gesamtzahl; die Einträge
+    selbst werden nicht gebraucht. Bei einem Fehler bleibt die Kachel leer,
+    statt den Report scheitern zu lassen.
+    """
+    query = urllib.parse.quote(f"repo:{repo} {qualifier}")
+    try:
+        response = gh_api(f"search/issues?q={query}&per_page=1")
+    except RuntimeError as error:
+        print(f"Anzahl offener Issues nicht ermittelbar: {error}", file=sys.stderr)
+        return None
+    return response.get("total_count")
 
 
 # Ticketlisten in Epics folgen der Vorlage "- [ ] #123 titel". Die Nummer muss
@@ -410,8 +435,12 @@ def collect(repo: str, day: Date) -> dict:
         "opened_issues": opened_issues,
         "merged_pull_requests": merged,
         "open_pull_requests": open_pulls,
+        # Bestandsgröße, nicht Tagesbewegung: der Stand zum Zeitpunkt des Laufs.
+        "open_issues_total": count_issues(repo, "is:issue is:open"),
         "ci": ci_status(repo),
-        "summary": "",
+        # Stichpunkte je Epic, siehe `summarize`. Leer, wenn keine
+        # Zusammenfassung erzeugt werden konnte.
+        "highlights": {},
     }
     add_closing_references(repo, merged)
     ergebnis.update(assign_to_epics(ergebnis, collect_epics(repo)))
@@ -432,34 +461,43 @@ def has_activity(data: dict) -> bool:
 # --------------------------------------------------------------------------
 
 SUMMARY_SYSTEM_PROMPT = """\
-Du schreibst die Zusammenfassung eines Tagesreports für ein Softwareprojekt.
+Du schreibst die Stichpunkte eines Tagesreports für ein Softwareprojekt.
 
-Die Eingabe ist bereits nach Epics gegliedert. Ein Epic bündelt thematisch
+Die Eingabe ist nach Epics gegliedert. Ein Epic bündelt thematisch
 zusammenhängende Arbeit. Übernimm diese Gliederung unverändert.
 
-Aufbau:
-- Ein Absatz je Epic, in der vorgegebenen Reihenfolge. Kein Epic auslassen,
-  keines hinzuerfinden, keine zwei Epics in einem Absatz zusammenfassen.
-- Danach höchstens ein Absatz für die Vorgänge ohne Epic-Bezug. Fasse ihn
-  nach Themen zusammen, etwa Projektsetup, Sicherheit oder Dokumentation,
-  und halte ihn kürzer als die Epic-Absätze.
-- Jeder Absatz höchstens drei Sätze, und jeder Satz höchstens 25 Wörter.
+Antworte ausschließlich mit einem JSON-Objekt in genau dieser Form:
 
-Inhalt je Absatz:
-- Nenne das Epic beim Namen und sage, was an diesem Tag darin geschehen ist:
-  überwiegend Definition neuer Tickets, überwiegend Umsetzung, oder beides.
-- Ordne es in den Gesamtfortschritt ein. Jede Zahl, die du nennst, muss
-  wörtlich in der Eingabe stehen. Zähle nichts selbst ab, rechne nichts aus
-  und schätze nichts. Im Zweifel nenne gar keine Zahl.
-- Nenne höchstens zwei Vorgänge beispielhaft mit Nummer, und nur solche, die
-  den Schwerpunkt des Tages tragen. Zähle nicht alles auf; der Leser sieht
-  die Listen darunter.
+{
+  "198": [
+    {"nummer": 201, "text": "Knowledge Library umgesetzt"},
+    {"nummer": null, "text": "Schema für Assets festgelegt"}
+  ],
+  "sonstiges": [
+    {"nummer": 293, "text": "Race Condition bei der Anmeldung behoben"}
+  ]
+}
 
-Sprache:
-- Schlichtes, sachliches Deutsch. Reiner Fließtext.
-- Keine Aufzählungszeichen, keine Überschriften, kein Markdown.
-- Keine Werbesprache, keine Bewertung der Arbeitsleistung.
-- Technische Begriffe und Bezeichner bleiben in ihrer Originalform.
+Regeln für die Struktur:
+- Ein Schlüssel je Epic, und zwar dessen Nummer als Zeichenkette. Genau die
+  Epics aus der Eingabe, keines auslassen, keines hinzuerfinden.
+- Der Schlüssel "sonstiges" nur, wenn die Eingabe einen solchen Abschnitt hat.
+- Je Abschnitt höchstens vier Stichpunkte.
+- "nummer" ist die Nummer des Vorgangs, um den es geht, oder null, wenn sich
+  der Stichpunkt auf mehrere bezieht. Verwende nur Nummern, die im jeweiligen
+  Abschnitt der Eingabe stehen.
+- Kein Text vor oder nach dem JSON, keine Code-Blöcke, keine Erläuterung.
+
+Regeln für die Stichpunkte:
+- Ein Stichpunkt sagt, was fachlich geschehen ist — nicht, dass ein Ticket
+  bewegt wurde. "Gruppen als Rechtesubjekte eingeführt", nicht "#200 wurde
+  geschlossen".
+- Höchstens 15 Wörter. Kein Satzzeichen am Ende.
+- Fasse zusammen, was zusammengehört, statt jeden Vorgang einzeln zu nennen.
+- Nenne keine Zahlen, die du selbst abgezählt oder ausgerechnet hast. Der
+  Fortschritt steht bereits neben der Überschrift.
+- Schlichtes, sachliches Deutsch. Keine Werbesprache, keine Bewertung der
+  Arbeitsleistung. Technische Begriffe und Bezeichner bleiben unverändert.
 """
 
 
@@ -499,7 +537,9 @@ def build_summary_prompt(data: dict) -> str:
         )
 
     for epic in data.get("epics", []):
-        lines.append(f"## Epic #{epic['number']}: {epic['title']}")
+        # Die Überschrift nennt den JSON-Schlüssel, unter dem die Stichpunkte
+        # zu diesem Abschnitt erwartet werden.
+        lines.append(f'## Schlüssel "{epic["number"]}" — Epic #{epic["number"]}: {epic["title"]}')
         lines.append(
             f"Gesamtfortschritt: {epic['tickets_closed']} von "
             f"{epic['tickets_total']} Tickets erledigt."
@@ -512,7 +552,7 @@ def build_summary_prompt(data: dict) -> str:
 
     ohne = data.get("ohne_epic") or {}
     if any(ohne.get(k) for k in ("opened", "closed", "merged")):
-        lines.append("## Ohne Epic-Bezug")
+        lines.append('## Schlüssel "sonstiges" — ohne Epic-Bezug')
         lines.append(kennzahlen(ohne))
         lines.append("")
         eintraege("Heute neu angelegt", ohne.get("opened", []), body_limit=300)
@@ -597,12 +637,69 @@ def extract_text(provider: str, body: dict) -> str:
     return body["choices"][0]["message"]["content"].strip()
 
 
-def summarize(data: dict) -> str:
-    """Erzeugt die Zusammenfassung. Bei jedem Fehler bleibt sie leer."""
+def als_nummer(wert: object) -> int | None:
+    """Liest eine Vorgangsnummer, auch wenn sie als Zeichenkette kommt.
+
+    Modelle geben die Nummer je nach Laune als Zahl, als "201" oder als
+    "#201" zurück. Ohne diese Umwandlung verlöre der Stichpunkt seinen Link.
+    """
+    if isinstance(wert, bool):
+        return None
+    if isinstance(wert, int):
+        return wert
+    if isinstance(wert, str):
+        ziffern = wert.strip().lstrip("#")
+        if ziffern.isdigit():
+            return int(ziffern)
+    return None
+
+
+def parse_highlights(text: str) -> dict[str, list[dict]]:
+    """Liest die Stichpunkte aus der Antwort des Modells.
+
+    Trotz der Anweisung, nur JSON zu liefern, umschließen Modelle die Antwort
+    gelegentlich mit einem Code-Block oder einem einleitenden Satz. Deshalb
+    wird das äußerste Objekt aus dem Text herausgeschnitten. Was sich nicht
+    lesen lässt, führt zu einem leeren Ergebnis — der Report entsteht dann mit
+    den Titeln der Vorgänge statt mit Stichpunkten.
+    """
+    anfang, ende = text.find("{"), text.rfind("}")
+    if anfang < 0 or ende <= anfang:
+        print("Antwort enthält kein JSON-Objekt.", file=sys.stderr)
+        return {}
+    try:
+        roh = json.loads(text[anfang : ende + 1])
+    except json.JSONDecodeError as error:
+        print(f"Stichpunkte nicht lesbar: {error}", file=sys.stderr)
+        return {}
+    if not isinstance(roh, dict):
+        return {}
+
+    ergebnis: dict[str, list[dict]] = {}
+    for schluessel, eintraege in roh.items():
+        if not isinstance(eintraege, list):
+            continue
+        punkte: list[dict] = []
+        for eintrag in eintraege:
+            if isinstance(eintrag, str):
+                eintrag = {"nummer": None, "text": eintrag}
+            if not isinstance(eintrag, dict):
+                continue
+            text_wert = str(eintrag.get("text", "")).strip()
+            if not text_wert:
+                continue
+            punkte.append({"nummer": als_nummer(eintrag.get("nummer")), "text": text_wert})
+        if punkte:
+            ergebnis[str(schluessel)] = punkte
+    return ergebnis
+
+
+def summarize(data: dict) -> dict[str, list[dict]]:
+    """Erzeugt die Stichpunkte je Abschnitt. Bei jedem Fehler bleiben sie leer."""
     api_key = os.environ.get("OPAA_REPORT_API_KEY", "").strip()
     if not api_key:
-        print("Kein API-Schlüssel gesetzt — Report ohne Zusammenfassung.", file=sys.stderr)
-        return ""
+        print("Kein API-Schlüssel gesetzt — Report ohne Stichpunkte.", file=sys.stderr)
+        return {}
 
     provider = detect_provider(api_key)
     # Nicht gesetzte Repository-Variablen erreichen den Prozess als leerer
@@ -620,17 +717,17 @@ def summarize(data: dict) -> str:
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
             body = json.loads(response.read().decode("utf-8"))
-        return extract_text(provider, body)
+        return parse_highlights(extract_text(provider, body))
     except urllib.error.HTTPError as error:
         # Der Fehlertext des Anbieters nennt die Ursache, etwa ein unbekanntes
         # Modell oder einen abgelaufenen Schlüssel. Er enthält den Schlüssel
         # selbst nicht und kann daher protokolliert werden.
         detail = error.read().decode("utf-8", errors="replace")[:400]
         print(f"Zusammenfassung fehlgeschlagen ({error.code}): {detail}", file=sys.stderr)
-        return ""
+        return {}
     except (urllib.error.URLError, KeyError, IndexError, TimeoutError) as error:
         print(f"Zusammenfassung fehlgeschlagen: {error}", file=sys.stderr)
-        return ""
+        return {}
 
 
 # --------------------------------------------------------------------------
@@ -646,6 +743,8 @@ STYLESHEET = """\
   --line: #e2e5e9;
   --accent: #2f6feb;
   --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -655,6 +754,8 @@ STYLESHEET = """\
     --line: #2a2e35;
     --accent: #6ea0ff;
     --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
   }
 }
 * { box-sizing: border-box; }
@@ -671,7 +772,92 @@ header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-b
 h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
 h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .sub { color: var(--muted); font-size: .9rem; margin: 0; }
-.summary p { margin: 0 0 .9rem; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
 ul.items { list-style: none; margin: 0; padding: 0; }
 ul.items li {
   padding: .7rem .9rem;
@@ -680,26 +866,10 @@ ul.items li {
   margin-bottom: .5rem;
   background: var(--card);
 }
-.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
-.tag {
-  display: inline-block;
-  font-size: .72rem;
-  padding: .1rem .45rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-right: .3rem;
-  color: var(--muted);
-}
-.status { font-weight: 600; }
-.status.ok { color: #1a7f37; }
-.status.bad { color: #cf222e; }
-@media (prefers-color-scheme: dark) {
-  .status.ok { color: #3fb950; }
-  .status.bad { color: #f85149; }
-}
+
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
-.empty { color: var(--muted); font-style: italic; }
+.status.bad { color: var(--red); font-weight: 600; }
 """
 
 
@@ -722,52 +892,142 @@ def page(title: str, body: str, *, feed_href: str) -> str:
 """
 
 
-def render_items(items: list[dict], *, show_stats: bool = False) -> str:
-    if not items:
-        return '<p class="empty">Keine.</p>'
-    parts = ['<ul class="items">']
-    for item in items:
-        tags = "".join(
-            f'<span class="tag">{html.escape(label)}</span>' for label in item["labels"]
+def render_linkbar(repo: str, ci: dict | None, test_url: str) -> str:
+    """Baut die Leiste mit den Einstiegspunkten ins Projekt.
+
+    Der CI-Eintrag trägt den Zustand als farbigen Punkt statt als Wort, damit
+    die Leiste einzeilig bleibt. Der Tooltip nennt den Zustand im Klartext,
+    da Farbe allein ihn nicht zugänglich macht.
+    """
+    basis = f"https://github.com/{html.escape(repo)}"
+    eintraege = [
+        f'<a href="{html.escape(test_url)}">Testumgebung</a>' if test_url else "",
+        f'<a href="{basis}">Repository</a>',
+        f'<a href="{basis}/issues">Issues</a>',
+        f'<a href="{basis}/pulls">Pull Requests</a>',
+    ]
+
+    if ci:
+        ok = ci["conclusion"] == "success"
+        zustand = "erfolgreich" if ok else ci["conclusion"]
+        titel = f"Letzter CI-Lauf auf dem Hauptbranch: {html.escape(zustand)}"
+        farbe = "green" if ok else "red"
+        ziel = html.escape(ci["url"]) or f"{basis}/actions"
+        eintraege.append(
+            f'<a href="{ziel}" title="{titel}">CI <span class="dot {farbe}"></span></a>'
         )
-        meta = tags
-        if show_stats and item.get("changed_files"):
-            count = item["changed_files"]
-            noun = "Datei" if count == 1 else "Dateien"
-            meta += f'{count} {noun}, +{item["additions"]} / −{item["deletions"]}'
-        elif item.get("author"):
-            meta += html.escape(item["author"])
-        parts.append(
-            "<li>"
-            f'<span class="num">#{item["number"]}</span>'
-            f'<a href="{html.escape(item["url"])}">{html.escape(item["title"])}</a>'
-            f'<span class="meta">{meta}</span>'
-            "</li>"
+    else:
+        eintraege.append(
+            f'<a href="{basis}/actions" title="Kein CI-Lauf gefunden">CI</a>'
         )
-    parts.append("</ul>")
-    return "\n".join(parts)
+
+    return f'<div class="linkbar">{"".join(e for e in eintraege if e)}</div>'
 
 
-def render_summary(summary: str) -> str:
-    if not summary:
-        return (
-            '<p class="empty">Für diesen Tag liegt keine Zusammenfassung vor.</p>'
-        )
-    paragraphs = [p.strip() for p in summary.split("\n\n") if p.strip()]
-    return "\n".join(f"<p>{html.escape(p)}</p>" for p in paragraphs)
-
-
-def render_ci(ci: dict | None) -> str:
-    if not ci:
-        return '<p class="empty">Kein CI-Lauf gefunden.</p>'
-    ok = ci["conclusion"] == "success"
-    label = "grün" if ok else html.escape(ci["conclusion"])
-    css = "ok" if ok else "bad"
-    title = html.escape(ci["title"]) if ci["title"] else "letzter Lauf"
-    return (
-        f'<p>Hauptbranch: <span class="status {css}">{label}</span> — '
-        f'<a href="{html.escape(ci["url"])}">{title}</a></p>'
+def render_kpis(data: dict) -> str:
+    """Zeigt die Kennzahlen des Tages neben dem Bestand an offenen Issues."""
+    offen = data.get("open_issues_total")
+    kacheln = [
+        ("—" if offen is None else str(offen), "Issues offen", ""),
+        (f'+{len(data["opened_issues"])}', "Neu angelegt", " green"),
+        (str(len(data["closed_issues"])), "Abgeschlossen", ""),
+        (str(len(data["merged_pull_requests"])), "PRs gemergt", ""),
+    ]
+    zellen = "".join(
+        f'<div class="kpi"><div class="kpi-value{css}">{wert}</div>'
+        f'<div class="kpi-label">{label}</div></div>'
+        for wert, label, css in kacheln
     )
+    return f'<div class="kpi-row">{zellen}</div>'
+
+
+# Mehr Stichpunkte je Abschnitt überfordern den Überblick, den die Summary
+# geben soll. Die Grenze gilt auch für den Rückfall auf die Titel.
+MAX_STICHPUNKTE = 4
+
+
+def fallback_stichpunkte(gruppe: dict) -> list[dict]:
+    """Erzeugt Stichpunkte aus den Titeln, wenn keine Zusammenfassung vorliegt.
+
+    Abgeschlossenes steht vor Neuangelegtem: es trägt den Fortschritt des
+    Tages. Ohne diesen Rückfall bliebe der Abschnitt leer, sobald der Aufruf
+    beim Anbieter scheitert — der Report soll aber auch dann tragen.
+    """
+    eintraege = gruppe.get("closed", []) + gruppe.get("opened", [])
+    return [
+        {"nummer": eintrag["number"], "text": eintrag["title"]}
+        for eintrag in eintraege[:MAX_STICHPUNKTE]
+    ]
+
+
+def render_stichpunkte(punkte: list[dict], repo: str) -> str:
+    if not punkte:
+        return ""
+    zeilen = []
+    for punkt in punkte[:MAX_STICHPUNKTE]:
+        nummer = punkt.get("nummer")
+        marke = (
+            f'<span class="num"><a href="https://github.com/{html.escape(repo)}'
+            f'/issues/{nummer}">#{nummer}</a></span>'
+            if isinstance(nummer, int)
+            else ""
+        )
+        zeilen.append(f'<li>{marke}{html.escape(punkt["text"])}</li>')
+    return f'<ul>{"".join(zeilen)}</ul>'
+
+
+def render_merged(merged: list[dict]) -> str:
+    """Listet die gemergten Pull Requests eines Abschnitts mit Umfang."""
+    if not merged:
+        return ""
+    zeilen = []
+    for pull_request in merged:
+        umfang = ""
+        if pull_request.get("changed_files"):
+            anzahl = pull_request["changed_files"]
+            wort = "Datei" if anzahl == 1 else "Dateien"
+            umfang = (
+                f' (+{pull_request["additions"]}/−{pull_request["deletions"]}, '
+                f"{anzahl} {wort})"
+            )
+        zeilen.append(
+            f'<li><span class="num">'
+            f'<a href="{html.escape(pull_request["url"])}">#{pull_request["number"]}</a>'
+            f'</span>{html.escape(pull_request["title"])}{umfang}</li>'
+        )
+    return (
+        '<div class="merged-summary">Gemergte Pull Requests:'
+        f'<ul>{"".join(zeilen)}</ul></div>'
+    )
+
+
+def render_epic(epic: dict, highlights: dict, repo: str) -> str:
+    """Rendert den Abschnitt eines Epics samt Fortschritt und Stichpunkten."""
+    gesamt = epic.get("tickets_total") or 0
+    erledigt = epic.get("tickets_closed") or 0
+    anteil = round(erledigt / gesamt * 100) if gesamt else 0
+    punkte = highlights.get(str(epic["number"])) or fallback_stichpunkte(epic)
+    return f"""<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/{html.escape(repo)}/issues/{epic["number"]}">#{epic["number"]}</a> {html.escape(epic["title"])}</span>
+<span class="epic-progress">{erledigt} / {gesamt} erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: {anteil}%"></div></div>
+{render_stichpunkte(punkte, repo)}
+{render_merged(epic.get("merged", []))}
+</div>"""
+
+
+def render_sonstiges(ohne: dict, highlights: dict, repo: str) -> str:
+    """Rendert den Abschnitt für alles, was keinem Epic zugeordnet ist."""
+    if not any(ohne.get(k) for k in ("opened", "closed", "merged")):
+        return ""
+    punkte = highlights.get("sonstiges") or fallback_stichpunkte(ohne)
+    return f"""<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+{render_stichpunkte(punkte, repo)}
+{render_merged(ohne.get("merged", []))}
+</div>"""
 
 
 def render_zeitraum(data: dict) -> str:
@@ -791,31 +1051,26 @@ def render_zeitraum(data: dict) -> str:
     return hinweis
 
 
-def render_report(data: dict) -> str:
+def render_report(data: dict, test_url: str) -> str:
     day = Date.fromisoformat(data["date"])
+    repo = data["repo"]
+    highlights = data.get("highlights") or {}
+
+    abschnitte = [render_epic(epic, highlights, repo) for epic in data.get("epics", [])]
+    abschnitte.append(render_sonstiges(data.get("ohne_epic") or {}, highlights, repo))
+    inhalt = "\n".join(a for a in abschnitte if a) or (
+        '<p class="empty">Keine Bewegung an diesem Tag.</p>'
+    )
+
     body = f"""<header>
 <h1>Tagesreport {html.escape(german_date(day))}</h1>
-<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/{html.escape(data["repo"])}">{html.escape(data["repo"])}</a></p>
+<p class="sub"><a href="../index.html">Alle Reports</a></p>
+{render_linkbar(repo, data.get("ci"), test_url)}
 </header>
 
-<section class="summary">
-{render_summary(data["summary"])}
-</section>
+{render_kpis(data)}
 
-<h2>Abgeschlossene Issues</h2>
-{render_items(data["closed_issues"])}
-
-<h2>Gemergte Pull Requests</h2>
-{render_items(data["merged_pull_requests"], show_stats=True)}
-
-<h2>Neu angelegte Issues</h2>
-{render_items(data["opened_issues"])}
-
-<h2>Offen zum Tagesende</h2>
-{render_items(data["open_pull_requests"])}
-
-<h2>Stand der CI</h2>
-{render_ci(data["ci"])}
+{inhalt}
 
 <footer>
 Erzeugt am {html.escape(data["generated_at"][:16].replace("T", " um "))} Uhr ·
@@ -862,6 +1117,34 @@ Automatisch erzeugt aus Issues und Pull Requests von
     return page("OPAA — Tagesreport", body, feed_href="feed.xml")
 
 
+def feed_text(data: dict) -> str:
+    """Fasst einen Report für den Feed als Text zusammen.
+
+    Der Feed trägt keine Formatierung, deshalb werden die Stichpunkte aller
+    Abschnitte zu Zeilen zusammengezogen. Reports aus der Zeit vor der
+    Umstellung führen ihren Fließtext im Feld `summary`; er wird weiter
+    genutzt, damit ältere Einträge im Feed nicht verstummen.
+    """
+    highlights = data.get("highlights") or {}
+    zeilen: list[str] = []
+
+    for epic in data.get("epics", []):
+        punkte = highlights.get(str(epic["number"])) or fallback_stichpunkte(epic)
+        if punkte:
+            zeilen.append(f"{epic['title']}:")
+            zeilen.extend(f"— {punkt['text']}" for punkt in punkte[:MAX_STICHPUNKTE])
+
+    ohne = data.get("ohne_epic") or {}
+    punkte = highlights.get("sonstiges") or fallback_stichpunkte(ohne)
+    if punkte:
+        zeilen.append("Sonstiges:")
+        zeilen.extend(f"— {punkt['text']}" for punkt in punkte[:MAX_STICHPUNKTE])
+
+    if zeilen:
+        return "\n".join(zeilen)
+    return data.get("summary") or "Für diesen Tag liegt keine Zusammenfassung vor."
+
+
 def render_feed(reports: list[dict], repo: str, site_url: str) -> str:
     """Erzeugt einen Atom-Feed über die jüngsten Reports."""
     updated = (
@@ -874,7 +1157,7 @@ def render_feed(reports: list[dict], repo: str, site_url: str) -> str:
         day = Date.fromisoformat(data["date"])
         url = f"{site_url}/reports/{day.isoformat()}.html"
         published = datetime.fromisoformat(data["generated_at"]).astimezone(UTC)
-        content = data["summary"] or "Für diesen Tag liegt keine Zusammenfassung vor."
+        content = feed_text(data)
         entries.append(
             f"""  <entry>
     <title>Tagesreport {html.escape(german_date(day))}</title>
@@ -929,7 +1212,21 @@ def main() -> int:
     parser.add_argument(
         "--site-url", default="", help="Basis-URL der veröffentlichten Seite"
     )
+    parser.add_argument(
+        "--test-url",
+        default="",
+        help=(
+            "URL der Testumgebung für die Linkleiste. Ersatzweise aus "
+            f"OPAA_REPORT_TEST_URL, sonst {DEFAULT_TEST_URL}."
+        ),
+    )
     args = parser.parse_args()
+
+    test_url = (
+        args.test_url.strip()
+        or os.environ.get("OPAA_REPORT_TEST_URL", "").strip()
+        or DEFAULT_TEST_URL
+    )
 
     if args.date:
         day = Date.fromisoformat(args.date)
@@ -947,26 +1244,31 @@ def main() -> int:
 
     if not has_activity(data):
         print("Keine Aktivität an diesem Tag — kein Report.")
-        # Index und Feed werden trotzdem neu erzeugt, damit Layoutänderungen
-        # auch ohne neuen Report wirksam werden.
+        # Die bestehenden Reports werden trotzdem neu erzeugt, damit
+        # Layoutänderungen auch ohne neuen Report wirksam werden.
     else:
-        data["summary"] = summarize(data)
+        data["highlights"] = summarize(data)
         (data_dir / f"{day.isoformat()}.json").write_text(
             json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        (reports_dir / f"{day.isoformat()}.html").write_text(
-            render_report(data), encoding="utf-8"
-        )
-        print(f"Report geschrieben: reports/{day.isoformat()}.html")
+        print(f"Daten geschrieben: data/{day.isoformat()}.json")
 
+    # Alle Seiten aus den Rohdaten neu erzeugen, nicht nur die des Berichtstags.
+    # Eine Layoutänderung wirkt so rückwirkend auf den gesamten Bestand, ohne
+    # dass die Daten erneut von GitHub geholt werden müssten.
     reports = load_existing(data_dir)
+    for bericht in reports:
+        (reports_dir / f"{bericht['date']}.html").write_text(
+            render_report(bericht, test_url), encoding="utf-8"
+        )
+
     site_url = args.site_url.rstrip("/") or f"https://github.com/{args.repo}"
     (output / "index.html").write_text(render_index(reports, args.repo), encoding="utf-8")
     (output / "feed.xml").write_text(
         render_feed(reports, args.repo, site_url), encoding="utf-8"
     )
     (output / ".nojekyll").write_text("", encoding="utf-8")
-    print(f"Übersicht und Feed erzeugt ({len(reports)} Reports).")
+    print(f"Seiten erzeugt ({len(reports)} Reports).")
     return 0
 
 

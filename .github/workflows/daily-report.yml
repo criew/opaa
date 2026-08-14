@@ -58,6 +58,9 @@ jobs:
           OPAA_REPORT_PROVIDER: ${{ vars.OPAA_REPORT_PROVIDER }}
           OPAA_REPORT_MODEL: ${{ vars.OPAA_REPORT_MODEL }}
           OPAA_REPORT_BASE_URL: ${{ vars.OPAA_REPORT_BASE_URL }}
+          # Ziel des Links auf die laufende Instanz. Nicht gesetzt bedeutet die
+          # Vorgabe aus dem Skript, siehe DEFAULT_TEST_URL.
+          OPAA_REPORT_TEST_URL: ${{ vars.OPAA_REPORT_TEST_URL }}
         run: |
           python .github/scripts/daily_report.py \
             --repo "${{ github.repository }}" \

@@ -9,19 +9,34 @@ lässt sich der Report abonnieren.
 
 ## Was im Report steht
 
-Für den jeweiligen Vortag:
+Der Report ist eine Management Summary: Er soll in einer halben Minute lesbar
+sein und beantworten, woran gearbeitet wurde. Vollständige Listen aller
+Vorgänge stehen bewusst nicht darin — dafür gibt es GitHub, und die Linkleiste
+führt mit einem Klick dorthin.
 
-- Abgeschlossene Issues
-- Gemergte Pull Requests mit Umfang der Änderung
-- Neu angelegte Issues
-- Zum Tagesende offene Pull Requests
-- Status des letzten CI-Laufs auf `main`
+Für den jeweiligen Vortag, von oben nach unten:
 
-Darüber steht eine Zusammenfassung in Fließtext, die beschreibt, was sich
-inhaltlich geändert hat und was neu angesetzt wurde. Sie entsteht durch einen
-Modellaufruf und ist optional — siehe [Zusammenfassung aktivieren](#zusammenfassung-aktivieren).
+| Bereich | Inhalt |
+| --- | --- |
+| Linkleiste | Testumgebung, Repository, Issues, Pull Requests, CI |
+| Kennzahlen | offene Issues insgesamt, am Tag neu angelegt, abgeschlossen, gemergte Pull Requests |
+| Je Epic ein Abschnitt | Fortschritt (`x / y erledigt`), Stichpunkte zum Tag, gemergte Pull Requests mit Umfang |
+| Sonstiges | dasselbe für alles ohne Epic-Bezug |
+
+Der CI-Eintrag der Linkleiste trägt den Zustand des letzten Laufs auf `main`
+als farbigen Punkt: grün bei Erfolg, sonst rot. Der Zustand steht zusätzlich
+im Klartext im Tooltip, da Farbe allein ihn nicht zugänglich macht.
+
+Die Stichpunkte entstehen durch einen Modellaufruf und sind optional — siehe
+[Zusammenfassung aktivieren](#zusammenfassung-aktivieren). Fehlen sie, treten
+die Titel der betroffenen Vorgänge an ihre Stelle; der Report bleibt also auch
+ohne Modell brauchbar.
 
 Tage ohne Issue- oder PR-Bewegung erzeugen keinen Report.
+
+Die Adresse der Testumgebung ist `https://opaa.ewerlin.com/chat`. Sie lässt
+sich ohne Codeänderung umstellen, über `--test-url` oder die Umgebungsvariable
+`OPAA_REPORT_TEST_URL`. Ein leerer Wert lässt den Link weg.
 
 ### Welcher Tag ein Vorgang ist
 
@@ -61,15 +76,16 @@ abgeschlossene Issues, das Berliner Fenster neun.
 
 ### Gliederung nach Epics
 
-Die Zusammenfassung folgt den Epics, weil diese die thematisch
-zusammenhängenden Einheiten des Projekts sind. Je Epic mit Tagesbewegung
-entsteht ein Absatz, der die Bewegung des Tages in den Gesamtfortschritt
-einordnet — etwa „1 von 25 Tickets erledigt". Den Abschluss bildet ein Absatz
-für alles ohne Epic-Bezug.
+Der Report folgt den Epics, weil diese die thematisch zusammenhängenden
+Einheiten des Projekts sind. Je Epic mit Tagesbewegung entsteht ein Abschnitt,
+der die Bewegung des Tages in den Gesamtfortschritt einordnet — etwa
+„1 / 25 erledigt". Die Abschnitte stehen nach Umfang der Tagesbewegung, den
+Abschluss bildet „Sonstiges".
 
 Die Gliederung und sämtliche Zahlen werden aus den Daten erhoben und dem Modell
-vorgegeben. Es formuliert nur den Text. Damit bleibt der Aufbau von Tag zu Tag
-gleich und die Zahlen stammen nicht aus einer Schätzung.
+vorgegeben. Es liefert nur die Stichpunkte, und zwar strukturiert je Abschnitt,
+damit sie dem richtigen Epic zugeordnet werden können. Damit bleibt der Aufbau
+von Tag zu Tag gleich und die Zahlen stammen nicht aus einer Schätzung.
 
 Die Zuordnung stützt sich auf die Ticketliste im Body des Epic-Issues, da
 native Sub-Issues im Repository nicht verwendet werden:
@@ -105,11 +121,23 @@ Ticketnummer im Epic nach; der nächste Lauf greift sie auf.
 | --- | --- |
 | `.github/workflows/daily-report.yml` | Zeitsteuerung, Veröffentlichung im Branch `gh-pages` |
 | `.github/scripts/daily_report.py` | Datenerhebung, Zusammenfassung, Erzeugung von Seite und Feed |
+| `.github/scripts/test_daily_report.py` | Tests für Auswertung und Darstellung, laufen in der CI |
 | Branch `gh-pages` | Veröffentlichte Seite samt Rohdaten aller bisherigen Tage |
 
 Die Rohdaten jedes Tages liegen als JSON unter `data/` im Branch `gh-pages`.
-Übersichtsseite und Feed werden bei jedem Lauf daraus neu erzeugt, sodass sich
-Änderungen an der Darstellung rückwirkend auf alle Reports auswirken.
+**Sämtliche Seiten werden bei jedem Lauf daraus neu erzeugt**, nicht nur die
+des Berichtstags. Eine Änderung an der Darstellung wirkt damit rückwirkend auf
+den gesamten Bestand, ohne dass die Daten erneut von GitHub geholt werden
+müssten. Rohdaten aus der Zeit vor einer Änderung kennen neuere Felder nicht;
+für sie greifen dieselben Rückfälle wie bei einem ausgefallenen Modellaufruf.
+
+Die Tests laufen im CI-Job `report-script` bei jedem Push und Pull Request.
+Ohne sie fiele ein Fehler erst beim nächtlichen Lauf auf.
+
+```bash
+pip install pytest
+pytest .github/scripts/test_daily_report.py
+```
 
 ## Bedienung
 
@@ -135,7 +163,8 @@ Lokal ausprobieren, ohne etwas zu veröffentlichen:
 python .github/scripts/daily_report.py \
   --repo criew/opaa \
   --date 2026-08-01 \
-  --output /tmp/report
+  --output /tmp/report \
+  --test-url https://opaa.ewerlin.com/chat
 ```
 
 Das Skript benötigt eine angemeldete GitHub-CLI und kommt ohne zusätzliche
@@ -145,8 +174,9 @@ zwei Stunden. Mit `pip install tzdata` lässt sich das beheben.
 
 ## Zusammenfassung aktivieren
 
-Ohne API-Schlüssel entsteht der Report vollständig, nur ohne den Fließtext.
-Zum Aktivieren einen Schlüssel als Repository-Secret hinterlegen:
+Ohne API-Schlüssel entsteht der Report vollständig, nur mit den Titeln der
+Vorgänge statt formulierter Stichpunkte. Zum Aktivieren einen Schlüssel als
+Repository-Secret hinterlegen:
 
 ```bash
 gh secret set OPAA_REPORT_API_KEY
@@ -171,10 +201,17 @@ Ohne diese Variablen gelten je Anbieter:
 | Anthropic | `claude-haiku-4-5-20251001` | `https://api.anthropic.com` |
 | OpenAI | `gpt-4o` | `https://api.openai.com` |
 
-Schlägt der Aufruf fehl, erscheint der Report ohne Zusammenfassung statt gar
-nicht. Die Fehlermeldung des Anbieters steht im Protokoll des Workflows und
-nennt typische Ursachen wie ein unbekanntes Modell oder einen abgelaufenen
-Schlüssel.
+Das Modell antwortet mit einem JSON-Objekt, dessen Schlüssel die Epic-Nummern
+und `sonstiges` sind. Diese Struktur ist nötig, damit die Stichpunkte dem
+richtigen Abschnitt zugeordnet werden; aus Fließtext ließe sich das nicht
+zurückgewinnen.
+
+Der Report entsteht auch dann, wenn dabei etwas schiefgeht — bei fehlendem
+Schlüssel, gescheitertem Aufruf, einer Antwort ohne verwertbares JSON oder
+einzelnen unbrauchbaren Einträgen. An die Stelle der betroffenen Stichpunkte
+treten die Titel der Vorgänge. Die Fehlermeldung des Anbieters steht im
+Protokoll des Workflows und nennt typische Ursachen wie ein unbekanntes Modell
+oder einen abgelaufenen Schlüssel.
 
 ### Warum ein eigenes Secret
 
