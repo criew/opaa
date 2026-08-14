@@ -81,12 +81,8 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 |---|---|
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
-| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-
-| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
+| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
 
 Die Prüfung dieser Punkte läuft über ein eigenes Epic mit je einer Entscheidungsvorlage. Bis dahin bleibt
