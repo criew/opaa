@@ -44,7 +44,9 @@ Drei Zustände werden unterschieden:
   `AnswerGenerationService`)
 - **Quellenangaben in der Antwort** (`CitationParser`) mit Relevanzwert und Textauszug
 - Gesprächsgedächtnis je Sitzung (`CaffeineChatMemoryRepository`)
-- Vektorspeicherung in PostgreSQL mit pgvector
+- Vektorspeicherung in PostgreSQL mit pgvector — der einzige unterstützte Vektorspeicher; ein Wechsel
+  ist über die Schnittstelle von Spring AI technisch möglich, wird aber nicht unterstützt, nicht geprüft
+  und nicht dokumentiert (#348)
 
 **Im Bau**
 - Messbarkeit der Suchqualität — Korpus, Golden Dataset und Regressionsprüfung (Epic #224, Verzeichnis
@@ -141,17 +143,24 @@ nicht vertreten.
 
 **Gebaut**
 - Austauschbare Anbieter für Chat und Einbettung, getrennt konfigurierbar
-- **Lokal betriebene Modelle sind die Voreinstellung**, für Chat und Einbettung. Ein Cloud-Anbieter ist
-  konfigurierbar, aber nicht voreingestellt; ohne gesetzten Schlüssel greift ein Platzhalter. Eine
-  unkonfigurierte Installation redet nicht nach außen.
+- **Lokal betriebene Modelle sind die Voreinstellung**, für Chat und Einbettung — entschieden, nicht
+  vorläufig. Ein anderer Anbieter ist konfigurierbar, aber nicht voreingestellt. Eine unkonfigurierte
+  Installation redet nicht nach außen.
+- **Die Zieladresse hat keine Voreinstellung.** Der Anbietername `openai` bezeichnet das Protokoll, das
+  auch lokal betriebene Modellserver sprechen, nicht das Ziel. Wer diesen Anbieter wählt, gibt die
+  Adresse an; fehlt sie, bricht der Start mit einer Meldung ab, die die fehlende Variable benennt.
 
 **Geplant (Phase 1)**
 - **Ausgabe im Fluss.** Die Antwort erscheint heute am Stück. `AnswerGenerationService` ruft das Modell
   blockierend auf, die Schnittstelle kennt keinen Ereignisstrom und die Oberfläche empfängt keinen. Für
   die wahrgenommene Antwortzeit ist das der wichtigste Einzelfaktor.
 - **Modellverwaltung** — Modelle sind heute Konfiguration, keine verwaltbaren Objekte
-- **Zentrale Vorgaben als Obergrenze** — es gibt keine technische Sperre, die Cloud-Nutzung ausschließt
-  oder je Wissensbibliothek beschränkt. Wer das heute will, verlässt sich auf die Konfiguration.
+- **Zentrale Vorgaben als Obergrenze** — Modellvorgaben je Space, Wissensbibliothek und Agent gibt es
+  nicht. Sie bleiben geplant und sind der Ort, an dem eine technische Durchsetzung später einhängt.
+  **Eine solche Durchsetzung ist für den heutigen Stand ausdrücklich nicht vorgesehen** (entschieden):
+  Kein Mechanismus verweigert einen Aufruf an ein Ziel außerhalb festgelegter Netzbereiche. Die
+  Zusicherung, dass keine Daten das Haus verlassen, ruht auf der Konfiguration; nachgewiesen wird sie
+  über die Konfiguration und über den Netzweg außerhalb von OPAA.
 - Beschränkungen, die an den Daten hängen statt am Arbeitsraum
 - Voreinstellungen und Parameter je Aufgabe
 
@@ -287,7 +296,7 @@ im Code und im Backlog leer.
 - Barrierefreiheit nach BITV · Feinschliff der Amtssprache
 
 **Geplant (Phase 4)**
-- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger (#357)
+- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger
 
 ---
 

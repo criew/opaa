@@ -3,9 +3,7 @@
 > **Status: Entwurf.** Themenbereich J der Produktvision. Phasenlage: Betrieb mit Docker Compose,
 > Kubernetes mit Hochverfügbarkeit und der Betrieb ohne Netzanbindung gehören in **Phase 1**; die
 > Andockung an die Bausteine des souveränen Arbeitsplatzes in **Phase 4**. Der Umfang der
-> Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)),
-> die Zukunft von Cloud-Deployment und betreutem Dienst wird in
-> [#350](https://github.com/criew/opaa/issues/350) geklärt.
+> Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)).
 >
 > Diese Spezifikation beschreibt das **Zielbild**. Der tatsächlich verfügbare Betriebsweg ist in
 > [deployment.md](../deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
@@ -30,14 +28,16 @@ Dieses Dokument beschreibt die Betriebsformen, ihre Voraussetzungen und ihre Gre
 ## Überblick
 
 1. **Betrieb im eigenen Verantwortungsbereich ist der Standard.** Alles Weitere ist eine Abweichung,
-   die begründet werden muss — nicht umgekehrt.
+   die begründet werden muss — nicht umgekehrt. Maßgeblich ist dabei die Verantwortlichkeit, nicht
+   die Entfernung zum eigenen Serverraum.
 2. **Zwei Größenordnungen, eine Codebasis.** Docker Compose für kleine Installationen, Kubernetes mit
    Hochverfügbarkeit für große. Der Unterschied liegt in der Betriebsform, nicht im Produkt.
 3. **Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario**, keine Ausnahme und kein Sonderfall.
    Er bestimmt Entwurfsentscheidungen mit, statt nachträglich ermöglicht zu werden.
 4. **Der Dateispeicher ist austauschbar — durch Einhängen, nicht durch eine Abstraktion.** OPAA
    schreibt und liest gegen genau ein konfiguriertes Verzeichnis; ein Netzlaufwerk hängt der Betrieb
-   dort ein. Objektbasierter Speicher ist als eigener Weg vorgesehen, aber **nicht gebaut**.
+   dort ein. Objektbasierter Speicher ist als eigener Weg vorgesehen, aber **nicht gebaut**. Der
+   **Vektorspeicher** ist davon ausgenommen — er ist auf pgvector festgelegt.
 5. **Mandantenfähiger Betrieb ist der Hebel für die Fläche.** Ein Rechenzentrum betreibt eine
    Installation für viele Häuser, die einzeln nie beschaffen würden.
 6. **Die gesamte Konfiguration liegt außerhalb des Abbilds** — in Umgebungsvariablen und
@@ -148,7 +148,11 @@ sondern bleibt greifbar, damit der Sprung von der Antwort zur Fundstelle möglic
 der nur den Index hält, macht die Belegbarkeit unmöglich.
 
 Der Metadatenbestand und der Vektorindex liegen in PostgreSQL mit pgvector (siehe
-[ADR-0002](../decisions/0002-mvp-technology-stack.md)).
+[ADR-0002](../decisions/0002-mvp-technology-stack.md)). Anders als der Dateispeicher ist der
+**Vektorspeicher nicht wählbar**: pgvector ist der einzige unterstützte. Der Zugriff läuft zwar über
+eine portable Schnittstelle des eingesetzten Rahmenwerks, ein Wechsel wird aber nicht unterstützt, nicht
+geprüft und nicht dokumentiert — Begründung in
+[Daten-Indizierung & RAG](./data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
 
 ### Betriebshinweise zum eingehängten Netzlaufwerk
 
@@ -245,24 +249,62 @@ gegenüber anderen Umgebungen. Der Umfang dieser Anbindung gehört in Phase 4 un
 
 ---
 
-## Cloud-Deployment und betreuter Dienst
+## Wo eine Installation stehen darf
 
-Der bisherige Stand dieses Dokuments nannte neben dem Betrieb im eigenen Haus zwei weitere Modelle:
-den Betrieb in einer angemieteten Cloud-Umgebung und einen vom Projektteam betreuten Dienst. Beide
-stehen **weiterhin hier** und werden nicht stillschweigend gestrichen.
+OPAA braucht eine Container-Umgebung, PostgreSQL mit pgvector und, wo Modelle im Haus laufen,
+Rechenleistung für den Modellbetrieb. Mehr nicht. Weil die gesamte Konfiguration außerhalb des
+Abbilds liegt und der Dateispeicher austauschbar ist, ist eine Installation technisch dieselbe, gleich wo
+sie steht.
 
-Offen ist, wie sie sich zur Ausrichtung auf Souveränität verhalten:
+Daraus folgt: **Der Ort ist keine Produktentscheidung.** OPAA schreibt ihn nicht vor, nennt keine
+Betreiber und liefert keine anbieterspezifischen Anleitungen. Wo eine Installation steht, entscheidet
+die verantwortliche Stelle — und mit ihr die rechtliche Zulässigkeit. Es gibt deshalb kein zweites
+Betriebsmodell neben dem Betrieb im eigenen Verantwortungsbereich, sondern nur die Frage, wie weit
+dieser Verantwortungsbereich reicht.
 
-- Ist der Betrieb in einer angemieteten Cloud-Umgebung für die Zielgruppe ein realistischer Weg, oder
-  untergräbt das Angebot die Zusage, dass Daten das Haus nicht verlassen?
-- Passt ein vom Projektteam betreuter Dienst zu einem quelloffenen Produkt, das von Rechenzentren
-  mandantenfähig betrieben werden soll?
+### Nicht der Ort entscheidet, sondern die Verantwortlichkeit
 
-Diese Fragen werden in [#350](https://github.com/criew/opaa/issues/350) entschieden. Bis dahin wird
-hier weder etwas entfernt noch etwas zugesagt. Festhalten lässt sich unabhängig davon nur das
-Technische: Da die gesamte Konfiguration außerhalb des Abbilds liegt und der Speicher austauschbar
-ist, wäre ein solcher Betrieb technisch dieselbe Installation an einem anderen Ort. Die Frage ist
-keine technische, sondern eine der Zusage.
+Ein Rechenzentrum des Landes oder ein kommunaler IT-Dienstleister ist ebenfalls nicht das eigene
+Haus — und trotzdem ist der Betrieb dort unproblematisch. Der Grund ist nicht die Entfernung, sondern
+die Zurechnung: Die Verantwortung ist vertraglich geregelt, die betreibende Stelle ist selbst Teil
+der Verwaltung, und die Weisungslage ist eindeutig. Genau darin unterscheidet sich dieser Fall vom
+Betrieb bei einem beliebigen Anbieter angemieteter Infrastruktur.
+
+Die Frage lautet also nicht „im eigenen Haus oder außerhalb", sondern: **Wer ist Verantwortlicher der
+Verarbeitung, und in welchem Rahmen ist er es?**
+
+### Die rechtliche Schranke
+
+Für einen erheblichen Teil der Verwaltungsdaten ist die Verarbeitung außerhalb der eigenen
+Verantwortungssphäre rechtlich ausgeschlossen. Das Steuergeheimnis nach § 30 AO ist das schärfste,
+aber nicht das einzige Beispiel; das Sozialgeheimnis und die Bestände aus Sicherheitsüberprüfungen
+stehen unter vergleichbaren Bindungen.
+
+Das ist hier als Feststellung genannt und nicht als Auslegung. Welche Daten wo verarbeitet werden
+dürfen, prüft die verantwortliche Stelle mit ihrem Datenschutzbeauftragten — dieses Dokument
+entscheidet das nicht und ersetzt die Prüfung nicht.
+
+### Erprobung und Schulung
+
+Wer OPAA vor einer Beschaffung ausprobieren oder Beschäftigte daran schulen will, tut das nicht im
+Produktivnetz und nicht mit echten Vorgangsdaten. Eine Umgebung außerhalb des eigenen Hauses ist für
+diesen Fall ein legitimer Weg, und er wird hier ausdrücklich benannt.
+
+Die Bedingung, die ihn trägt, ist einfach und nicht verhandelbar: **Dort liegen keine echten Daten.**
+Testbestände, öffentlich verfügbare Unterlagen oder synthetische Beispiele — mehr nicht. Sobald echte
+Vorgänge ins Spiel kommen, gilt wieder der vorstehende Abschnitt, und die Umgebung ist die falsche.
+
+### Kein vom Projekt betreuter Dienst
+
+Das Projekt liefert Software, keinen Betrieb. Ein vom Projektteam betreuter Dienst ist nicht
+vorgesehen — weder heute noch als Ausblick. Er würde das Projekt selbst zum Betreiber machen und eine
+Erwartung an Verfügbarkeit, Erreichbarkeit und Haftung erzeugen, die ein quelloffenes Vorhaben nicht
+einlöst.
+
+Der Bedarf dahinter ist real und hat bereits seinen Weg: Wer betreuten Betrieb braucht, beauftragt
+ein Rechenzentrum. Das ist oben als
+[mandantenfähiger Betrieb](#mandantenfähiger-betrieb-durch-ein-rechenzentrum) beschrieben und bleibt
+unverändert der vorgesehene Pfad.
 
 ---
 
@@ -517,12 +559,10 @@ Installation berührt.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Cloud-Deployment und betreuter Dienst: bleiben, entfallen oder werden umformuliert? Entscheidung in
-  [#350](https://github.com/criew/opaa/issues/350).
 - Wie der Weg zu objektbasiertem Speicher im Einzelnen aussieht — Kontingente, Trennung der Mandanten
   und Sicherung je Organisation —, ist offen. Dass er als eigener Weg geführt wird und dass kein
   solcher Dienst in den mitgelieferten Stapel gehört, ist entschieden (siehe
-  [Speicher-Backends](#speicher-backends), [#351](https://github.com/criew/opaa/issues/351)).
+  [Speicher-Backends](#speicher-backends)).
 - **Zuordnung von Netzsicherheit und Transportverschlüsselung ist zu klären.** Beides steht hier,
   weil Netztrennung, vorgelagerter Zugangsweg und Zertifikatsverwaltung Betriebsthemen sind und beim
   Betreiber liegen. Ebenso vertretbar wäre die Spezifikation zu Sicherheit und Nachweisführung, die

@@ -4,8 +4,17 @@ Ein täglich laufender Workflow trägt zusammen, was im Projekt passiert ist, un
 veröffentlicht das Ergebnis als Seite auf GitHub Pages. Über einen Atom-Feed
 lässt sich der Report abonnieren.
 
-- **Seite:** https://criew.github.io/opaa/
-- **Feed:** https://criew.github.io/opaa/feed.xml
+- **Übersicht:** https://criew.github.io/opaa/report/
+- **Aktueller Tag:** https://criew.github.io/opaa/report/latest.html
+- **Feed:** https://criew.github.io/opaa/report/feed.xml
+
+`latest.html` ist die feste Adresse zum Bookmarken: Sie führt stets zum
+jüngsten vorhandenen Report. GitHub Pages liefert nur statische Dateien, eine
+serverseitige Weiterleitung gibt es dort nicht — die Seite leitet deshalb selbst
+weiter (`meta refresh`) und trägt für den Fall, dass das unterbunden ist, einen
+sichtbaren Link zum Ziel. Die Adresse in der Adresszeile wird dabei zum
+konkreten Tag, sodass sich ein geteilter Link immer auf einen festen Tag
+bezieht.
 
 ## Was im Report steht
 
@@ -18,6 +27,7 @@ Für den jeweiligen Vortag, von oben nach unten:
 
 | Bereich | Inhalt |
 | --- | --- |
+| Blätterzeile | vorheriger Berichtstag, Übersicht, nächster Berichtstag |
 | Linkleiste | Testumgebung, Repository, Issues, Pull Requests, CI |
 | Kennzahlen | offene Issues insgesamt, am Tag neu angelegt, abgeschlossen, gemergte Pull Requests |
 | Je Epic ein Abschnitt | Fortschritt (`x / y erledigt`), Stichpunkte zum Tag, gemergte Pull Requests mit Umfang |
@@ -33,6 +43,11 @@ die Titel der betroffenen Vorgänge an ihre Stelle; der Report bleibt also auch
 ohne Modell brauchbar.
 
 Tage ohne Issue- oder PR-Bewegung erzeugen keinen Report.
+
+Die Blätterzeile führt zu den **im Bestand benachbarten** Berichtstagen, nicht
+zu den Kalendernachbarn: Tage ohne Bewegung werden übersprungen, weil es für
+sie keine Seite gibt. Am Rand des Bestands entfällt der jeweilige Link, statt
+ins Leere zu zeigen.
 
 Die Adresse der Testumgebung ist `https://opaa.ewerlin.com/chat`. Sie lässt
 sich ohne Codeänderung umstellen, über `--test-url` oder die Umgebungsvariable

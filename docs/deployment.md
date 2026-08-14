@@ -112,6 +112,8 @@ Kurz: Ein Update über `docker compose pull` + `docker compose up -d` **gefährd
 - **Liquibase** wendet beim Backend-Start ausschließlich noch nicht angewendete Changesets vorwärts an. Keines der Changesets löscht Dokument- oder Vektordaten — die `dropTable`-Anweisungen in `db/changelog/changes/` stehen ausnahmslos in `rollback`-Blöcken und laufen im Normalbetrieb nie.
 - **Die Vektortabelle** wird nicht von Liquibase, sondern von Spring AI selbst angelegt (`spring.ai.vectorstore.pgvector.initialize-schema: true`). Sie wird nur erzeugt, wenn sie fehlt, und bei einem Update nicht verändert.
 
+> **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Begründung: [Daten-Indizierung & RAG](./features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
+
 Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image-Update zu tun haben:
 
 | Auslöser | Folge |
@@ -150,7 +152,10 @@ Wer den Endpunkt aufrufen darf, kann im Feld `url` eine beliebige Adresse angebe
 ```bash
 # 1. Umgebung konfigurieren
 cp .env.example .env.docker
-# .env.docker bearbeiten und OPAA_OPENAI_API_KEY setzen
+# .env.docker bearbeiten. Voreingestellt sind lokal betriebene Modelle über
+# Ollama — dafür ist keine weitere Angabe nötig. Wer stattdessen einen
+# openai-kompatiblen Anbieter wählt, muss OPAA_OPENAI_BASE_URL setzen
+# (siehe „LLM-Anbieter").
 
 # 2. Alle Services starten
 docker compose up --build
@@ -177,11 +182,22 @@ Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker 
 
 ### Erforderliche Variablen
 
-Die einzige Variable, die vor dem Start gesetzt werden muss:
+Im Standardfall — lokal betriebene Modelle über Ollama für Chat und Einbettung — ist **keine**
+Modellvariable erforderlich. Der Stack startet ohne zusätzliche Angabe.
+
+Wer für Chat oder Einbettung den openai-kompatiblen Anbieter wählt (`OPAA_AI_CHAT_PROVIDER=openai`
+bzw. `OPAA_AI_EMBEDDING_PROVIDER=openai`), muss die **Zieladresse angeben**:
 
 ```env
+OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
+
+Es gibt für die Adresse **keine Voreinstellung**. Fehlt sie bei gewähltem openai-kompatiblen
+Anbieter, bricht das Backend den Start mit einer Meldung ab, die die fehlende Variable benennt
+(`io.opaa.config.OpenAiBaseUrlGuard`). Der Grund: `openai` bezeichnet das Protokoll, nicht das Ziel
+— lokal betriebene Modellserver sprechen dasselbe Protokoll. Eine Voreinstellung würde eine
+Installation, die im Haus bleiben soll, stillschweigend nach außen richten.
 
 ### Docker-spezifische Variablen
 
@@ -201,12 +217,14 @@ Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und soll
 SPRING_PROFILES_ACTIVE=docker,dev
 OPAA_SERVER_ADDRESS=0.0.0.0
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:3000
-OPAA_AI_CHAT_PROVIDER=openai
-OPAA_AI_EMBEDDING_PROVIDER=openai
-OPAA_OPENAI_API_KEY=sk-your-key-here
 OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
+
+Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Profil `docker` auf
+`http://ollama:11434` vorbelegt). Für einen openai-kompatiblen Anbieter kommen
+`OPAA_AI_CHAT_PROVIDER` bzw. `OPAA_AI_EMBEDDING_PROVIDER`, `OPAA_OPENAI_BASE_URL` und
+`OPAA_OPENAI_API_KEY` hinzu.
 
 ### Alle Umgebungsvariablen
 
@@ -222,10 +240,10 @@ OPAA_DB_PASSWORD=opaa
 | `OPAA_DB_USERNAME` | `opaa` | PostgreSQL-Benutzername |
 | `OPAA_DB_PASSWORD` | `opaa` | PostgreSQL-Passwort |
 | **LLM / Embedding** | | |
-| `OPAA_AI_CHAT_PROVIDER` | `openai` | Chat-Modell-Anbieter (`openai` oder `ollama`) |
-| `OPAA_AI_EMBEDDING_PROVIDER` | `openai` | Embedding-Modell-Anbieter (`openai` oder `ollama`) |
-| `OPAA_OPENAI_API_KEY` | — | OpenAI-API-Schlüssel (erforderlich bei Verwendung von OpenAI) |
-| `OPAA_OPENAI_BASE_URL` | `https://api.openai.com` | OpenAI-kompatible API-Basis-URL |
+| `OPAA_AI_CHAT_PROVIDER` | `ollama` | Chat-Modell-Anbieter (`ollama` oder `openai`) |
+| `OPAA_AI_EMBEDDING_PROVIDER` | `ollama` | Embedding-Modell-Anbieter (`ollama` oder `openai`) |
+| `OPAA_OPENAI_API_KEY` | — | Zugangsschlüssel der openai-kompatiblen Schnittstelle |
+| `OPAA_OPENAI_BASE_URL` | — | Basis-Adresse der openai-kompatiblen Schnittstelle. **Ohne Voreinstellung; erforderlich, sobald ein Anbieter auf `openai` steht** — sonst bricht der Start ab |
 | `OPAA_OPENAI_CHAT_MODEL` | `gpt-4o` | OpenAI-Chat-Modellname |
 | `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | Chat-Antwort-Temperatur (0,0–2,0) |
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | Maximale Tokens in Chat-Antwort |
@@ -288,15 +306,33 @@ OPAA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://your-hostname:5173
 
 ### LLM-Anbieter
 
-Standardmäßig verwendet OPAA OpenAI. `OPAA_OPENAI_API_KEY` auf Ihren API-Schlüssel setzen.
-
-Um stattdessen Ollama (lokales LLM) zu verwenden:
+**Voreingestellt sind lokal betriebene Modelle** über Ollama, für Chat und für Einbettung. Eine
+Installation, an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf. Diese
+Voreinstellung ist so gewollt und bleibt (siehe
+[ADR-0014, Nachtrag vom 14.08.2026](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#nachträge-entschiedene-punkte)).
 
 ```env
 OPAA_AI_CHAT_PROVIDER=ollama
 OPAA_AI_EMBEDDING_PROVIDER=ollama
 OPAA_OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+Um stattdessen einen openai-kompatiblen Anbieter zu verwenden, sind Anbieter **und Zieladresse**
+anzugeben:
+
+```env
+OPAA_AI_CHAT_PROVIDER=openai
+OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
+OPAA_OPENAI_API_KEY=sk-your-key-here
+```
+
+`OPAA_OPENAI_CHAT_BASE_URL` und `OPAA_OPENAI_EMBEDDING_BASE_URL` überschreiben die Adresse je
+Funktion; ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide.
+
+> **Es gibt keine technische Sperre**, die einen Aufruf außerhalb festgelegter Netzbereiche
+> verhindert. Wer zusichern muss, dass keine Daten das Haus verlassen, weist die Konfiguration nach
+> und sichert den Netzweg außerhalb von OPAA ab — siehe
+> [Modelle und zentrale Steuerung](features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
 
 ### vLLM / OpenAI-kompatible Server
 
