@@ -1,206 +1,236 @@
 # OPAA Dokumentations-Index
 
-Willkommen bei OPAA (Open Project AI Assistant)! Dieser Index hilft Ihnen, die vollständige Dokumentation zu navigieren.
+OPAA ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
+die vollständige Dokumentation.
 
-## Erste Schritte (Hier anfangen!)
+## Hier anfangen
 
-Neu bei OPAA? Mit diesen Dokumenten in dieser Reihenfolge beginnen:
+1. **[README](../README.md)** — was OPAA ist und für wen
+2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien, die elf Themenbereiche, die vier
+   Phasen
+3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
+4. **[CONCEPTS.md](./CONCEPTS.md)** — Begriffe und Glossar
+5. **[STATUS.md](./STATUS.md)** — was davon heute tatsächlich gebaut ist
+6. **[GETTING-STARTED.md](./GETTING-STARTED.md)** — welche Lesepfade es je Publikum gibt
 
-1. **[README](../README.md)** — Was ist OPAA und warum ist es wichtig (2 Min. Lesezeit)
-2. **[GETTING STARTED](./GETTING-STARTED.md)** — Welches Dokument basierend auf Ihrer Rolle zu lesen ist (5 Min. Lesezeit)
-3. **[CONCEPTS](./CONCEPTS.md)** — Schlüsselkonzepte und Terminologie verstehen (10 Min. Lesezeit)
-4. **[VISION](./VISION.md)** — Vollständige Produktvision und Architektur (15 Min. Lesezeit)
-
-## Dokumentationsstruktur
-
-### Kernvision & Strategie
-- **[VISION.md](./VISION.md)** — Vollständige Produktvision, Anwendungsfälle, Architektur, Designprinzipien
-- **[CONCEPTS.md](./CONCEPTS.md)** — Glossar und Erklärung der Schlüsselkonzepte
-- **[GETTING-STARTED.md](./GETTING-STARTED.md)** — Leitfaden, was basierend auf Ihrer Rolle zu lesen ist
-
-### Feature-Spezifikationen (Detailliert)
-
-Jede Feature-Spezifikation enthält:
-- **Motivation** — Warum dieses Feature existiert
-- **Design** — Wie es aus Benutzerperspektive funktioniert
-- **Konfiguration** — Was angepasst werden kann
-- **Integrationspunkte** — Wie es sich mit anderen Features verbindet
-- **Offene Fragen** — Zukünftige Überlegungen
-
-#### 1. Benutzer-Frontends
-**[`features/user-frontends.md`](./features/user-frontends.md)** — Wie Benutzer mit OPAA interagieren
-
-- Web-Chat-Schnittstelle mit Dokument-Browser
-- Chat-Plattform-Integrationen (Mattermost, RocketChat, Signal, Slack-kompatibel)
-- REST-API für benutzerdefinierte Integrationen
-- Einheitliche Authentifizierung & Berechtigungen über alle Schnittstellen
-
-**Für:** Product Manager, UX-Designer, Frontend-Entwickler
+> **Vision und Stand nicht verwechseln.** VISION.md beschreibt das Zielbild, STATUS.md den Code. Wo eine
+> Feature-Spezifikation etwas beschreibt, heißt das nicht, dass es gebaut ist.
 
 ---
 
-#### 2. Daten-Indizierung & RAG
-**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** — Wie Dokumente indiziert und abgerufen werden
+## Ausrichtung und Strategie
 
-- 5 Datenquellen-Kategorien (Wikis, E-Mail, Dateisysteme, APIs, benutzerdefiniert)
-- Benutzer-Dokument-Uploads (über Web-UI, Chat, REST-API)
-- Dokumentenverarbeitungs-Pipeline (Extraktion → Chunking → Embedding → Speicherung)
-- Speicher-Backend-Abstraktion (S3, Netzlaufwerk, lokales Dateisystem)
-- Mehrere Vektor-Datenbank-Backends (Elasticsearch, PostgreSQL, Milvus, Cloud-Optionen)
-- Retrieval & Ranking mit Konfidenz-Scoring
-- Erweiterte Features (mehrsprachig, Caching, semantische Deduplizierung)
-
-**Für:** Data Engineers, DevOps, Backend-Entwickler
+- **[VISION.md](./VISION.md)** — Produktvision: Wissen, Agenten, KI für Teams und Organisation
+- **[USE-CASES.md](./USE-CASES.md)** — Abläufe aus dem Verwaltungsalltag
+- **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
+- **[STATUS.md](./STATUS.md)** — Umsetzungsstand je Themenbereich
+- **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
+  — die Entscheidung, die die Ausrichtung trägt
 
 ---
 
-#### 3. LLM-Integration
-**[`features/llm-integration.md`](./features/llm-integration.md)** — Modellkonfiguration & Intelligenz
+## Die elf Themenbereiche
 
-- OpenAI-kompatible API-Unterstützung (kein Vendor-Lock-in)
-- Antwortgenerierungs-Pipeline mit Streaming
-- Multi-Modell-Strategie (verschiedene Modelle für verschiedene Aufgaben)
-- Embedding-Modell-Konfiguration
-- Kostenoptimierungstechniken
-- Sicherheit & verantwortungsvolle Nutzung
-- Einfaches Anbieter-Wechseln
+Die Gliederung folgt [VISION.md](./VISION.md). Zu jedem Bereich gehört genau eine zuständige
+Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
 
-**Für:** ML Engineers, DevOps, kostenorientierte Organisationen
+### A · Wissensschicht & Retrieval
+
+**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** ·
+**[`features/search-quality-evaluation.md`](./features/search-quality-evaluation.md)**
+
+Zitierzwang, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
+Dokumentenverarbeitung von der Extraktion bis zur Vektorablage · Messbarkeit der Suchqualität gegen ein
+Golden Dataset · Deep Research.
+
+### B · Wissensquellen & Konnektoren
+
+**[`features/knowledge-sources.md`](./features/knowledge-sources.md)**
+
+Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
+Aktualisierung · Spiegelung der Rechte aus dem Quellsystem · Zuordnung einer Quelle zu genau einer
+Wissensbibliothek.
+
+### C · Spaces, Assets & Verteilung
+
+**[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)**
+
+Spaces als Arbeitsräume, Assets als eigenständige Objekte · Assoziation gegen Enthaltensein ·
+Wissensbibliotheken als Rechteanker · Verteilungsstufen bis zum organisationsweiten Katalog · Freigabekette,
+Versionierung, Rückruf · Chats und Artefakte · Mitbestimmung und Personalvertretung.
+
+### D · Agenten, Prompts & Werkzeuge
+
+**[`features/agents-and-tools.md`](./features/agents-and-tools.md)**
+
+Agenten als teilbare Pakete mit Aufgabenbeschreibung · geführtes Onboarding · Agenten-Prüfstand vor der
+Freigabe · Prüfagenten · isolierte Ausführungsumgebung · Werkzeuge und MCP · schreibende Aktionen mit
+menschlicher Freigabe.
+
+### E · Modelle & zentrale Steuerung
+
+**[`features/llm-integration.md`](./features/llm-integration.md)**
+
+Jede OpenAI-kompatible Schnittstelle · lokal betriebene Modelle als Voreinstellung · Modellverwaltung ·
+Modell-Policy als Obergrenze · Beschränkungen, die an den Daten hängen · Schutz vor Weitergabe
+personenbezogener Daten.
+
+### F · Identität, Rechte & Mandanten
+
+**[`features/access-control.md`](./features/access-control.md)**
+
+Anmeldung über den Verzeichnisdienst · Kontenlebenszyklus über SCIM · Gruppen als Rechtesubjekt ·
+Berechtigungsdurchsetzung zur Abfragezeit · Organisation als harte Mandantengrenze.
+
+### G · Sicherheit, Nachweis & Prüfbarkeit
+
+**[`features/security-and-compliance.md`](./features/security-and-compliance.md)**
+
+Revisionssicheres Protokoll · Vollständigkeit nach DSGVO einschließlich Löschrecht und Datenexport · sichere
+Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit · Mitbestimmungsfähigkeit.
+
+### H · Monitoring, Kosten & Governance
+
+**[`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md)**
+
+Betriebsmetriken und Gesundheitsendpunkt · Grenzen je Nutzerin und Nutzer · Transparenz über Token- und
+Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Personenbezug.
+
+### I · Kanäle & Oberflächen
+
+**[`features/user-frontends.md`](./features/user-frontends.md)**
+
+Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
+an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
+
+### J · Betrieb & Deployment
+
+**[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
+ergänzend **[`deployment.md`](./deployment.md)**
+
+Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
+durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
+
+### K · Verwaltungs-Spezifika
+
+**[`features/public-sector.md`](./features/public-sector.md)**
+
+Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
+Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ---
 
-#### 4. Deployment & Infrastruktur
-**[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** — Betrieb und Deployment
+## Weitere Dokumentation
 
-- On-Premises-Deployments (Kubernetes, Docker Compose, Bare Metal)
-- Private Cloud (AWS, Azure, GCP)
-- Konfigurationsmanagement (Umgebungsvariablen, YAML)
-- Skalierungsanleitung (kleine → große Organisationen)
-- Hochverfügbarkeit & Disaster Recovery
-- Sicherheits-, Monitoring-, Backup-Strategien
-- Zero-Downtime-Upgrades
+### Architekturentscheidungen
 
-**Für:** DevOps Engineers, Systemadministratoren, Plattform-Teams
+- **[`decisions/`](./decisions/)** — alle ADRs. Einstiege:
+  - [0001](./decisions/0001-collaboration-workflow.md) — Zusammenarbeit von Menschen und KI im Projekt
+  - [0002](./decisions/0002-mvp-technology-stack.md) — Technologiestapel
+  - [0005](./decisions/0005-authentication-strategy.md) — Anmeldung und getrennte Auth-Profile
+  - [0006](./decisions/0006-openapi-dto-generation.md) — DTOs aus der OpenAPI-Spezifikation
+  - [0010](./decisions/0010-ein-chunk-invariante-evaluierungskorpus.md) bis
+    [0013](./decisions/0013-fehlerkriterium-retrieval-regression.md) — Evaluierung der Suchqualität
+
+### Recherche
+
+- **[`GraphRAG.md`](./GraphRAG.md)** — Wissensgraph als Ergänzung des Vektor-Retrievals:
+  Funktionsweise, Vergleich quelloffener Implementierungen, Betriebsaspekte. Entscheidungsgrundlage, keine
+  getroffene Entscheidung
+- **[`discussions/`](./discussions/)** — offene Erörterungen
+
+### Oberflächenentwürfe
+
+- **[`design/README.md`](./design/README.md)** — Entwürfe für Chat, Dokumentenübersicht und Einstellungen
+
+### Projekt und Mitarbeit
+
+- **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agenten-Rollen, Idee-bis-Merge-Workflow,
+  Kollaborationsregeln
+- **[`../CONTRIBUTING.md`](../CONTRIBUTING.md)** — Leitfaden für Beitragende
+- **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
+- **[`tagesreport.md`](./tagesreport.md)** — täglicher Report über abgeschlossene Vorgänge, gemergte Pull
+  Requests und neu angesetzte Arbeit; als Atom-Feed abonnierbar
+
+### Überholt
+
+- **[`features/document-sharing.md`](./features/document-sharing.md)** — raumübergreifendes Dokument-Teilen.
+  Durch das Asset-Modell in Bereich C gegenstandslos, nur noch als Historie erhalten
 
 ---
 
-#### 5. Spaces, Assets & Zugangskontrolle
-**[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)** — das Rechte- und Verteilungsmodell
+## Wie die Bereiche zusammenhängen
 
-- Spaces als Arbeitsräume; Assets als eigenständige, teilbare Objekte
-- Assoziation gegen Enthaltensein — zwei Objektklassen mit unterschiedlicher Rechtelogik
-- Wissensbibliotheken als Dokumentencontainer und Anker der rechtebewussten Suche
-- Nutzer und Gruppen als Rechtesubjekt; Verteilungsstufen bis zum Fachbereich
-- Chats und Artefakte im Space, Ableitungsleck und seine Behandlung
-- Freigabekette beim Teilen eines Agenten
-- Mitbestimmung und Personalvertretung
-
-**Ergänzend: [`features/access-control.md`](./features/access-control.md)** — Systemverwaltung und Nachweis
-
-- System-Admin-Rolle und Dokumentenfluss
-- Benutzerverzeichnis- und Gruppensynchronisation, Offboarding
-- Berechtigungsdurchsetzung zur Abfragezeit
-- Audit-Logging, Compliance, DSGVO
-
-**Für:** Sicherheits-Engineers, Compliance-Beauftragte, IT-Administratoren
-
----
-
-### UI-Design-Entwürfe
-
-- **[`design/README.md`](./design/README.md)** — UI-Design-Prototypen aus Google Stitch (HTML + Screenshots)
-  - Chat-Schnittstelle, Dokument-Browser, Systemeinstellungen
-  - Design-Thema: Dunkelmodus, `#137fec`, Inter-Schrift
-
-### Architektur & Entscheidungen
-
-- **[`decisions/0001-collaboration-workflow.md`](./decisions/0001-collaboration-workflow.md)** — Wie Menschen und KI an diesem Projekt zusammenarbeiten
-- **[`AGENT-ORGANIZATION.md`](./AGENT-ORGANIZATION.md)** — Agenten-Rollen (PM, Entwickler, Reviewer, QA, Marketing), der Idee-bis-Merge-Workflow und Kollaborationsregeln
-
-### Technische Recherche
-
-- **[`GraphRAG.md`](./GraphRAG.md)** — Recherche zu GraphRAG als Ergänzung des Vektor-RAG: Funktionsweise, Vergleich der Open-Source-Implementierungen, Kosten- und Betriebsaspekte, Empfehlung für OPAA. Entscheidungsgrundlage, keine getroffene Entscheidung
-
-### Projektfortschritt
-
-- **[`tagesreport.md`](./tagesreport.md)** — Täglicher Report über abgeschlossene Issues, gemergte Pull Requests und neu angesetzte Arbeit, veröffentlicht auf GitHub Pages und abonnierbar als Atom-Feed
-
-## Feature-Abhängigkeitskarte
-
-Wie Features verbunden sind:
+Nicht alle elf Bereiche stehen nebeneinander. Einige tragen, einige setzen auf, zwei liegen quer über
+allem.
 
 ```
-Benutzer-Frontends (Web, Chat, API)
-    ↓
-Orchestrierungsschicht
-    ├→ Spaces, Assets & Zugangskontrolle (Berechtigungen prüfen)
-    ├→ Daten-Indizierung & RAG (Dokumente abrufen)
-    └→ LLM-Integration (Antwort generieren)
+I  Kanäle & Oberflächen  (Web, REST-API, Team-Chats)
+        │  Frage geht ein
+        ▼
+   ORCHESTRIERUNG
+        ├─► F  Identität & Rechte      — wer fragt, was darf er lesen
+        ├─► C  Spaces & Assets         — welcher Suchbereich, welches Asset
+        ├─► A  Wissensschicht          — Fundstellen holen, ranken, belegen
+        ├─► E  Modelle                 — womit formuliert wird, in welchen Grenzen
+        └─► D  Agenten & Werkzeuge     — wenn nicht gefragt, sondern erledigt wird
 
-Daten-Indizierung & RAG
-    ├→ Unterstützte Datenquellen (Konnektoren)
-    ├→ Benutzer-Dokument-Uploads (über Frontends)
-    └→ Dokumentenspeicher-Backends + Vektor-Datenbanken
+A  Wissensschicht
+        ▲ speist sich aus
+        └─ B  Wissensquellen & Konnektoren  ─► Wissensbibliotheken (Rechteanker in C)
 
-Deployment & Infrastruktur
-    └→ Alle anderen Features (Infrastruktur für alle)
+G  Sicherheit & Nachweis   ── quer über allem: protokolliert jede Handlung
+H  Monitoring & Governance ── quer über allem: aggregierte Auswertung, keine Person
+K  Verwaltungs-Spezifika   ── wirkt in A (Amtssprache), I (Barrierefreiheit), B (e-Akte)
+J  Betrieb & Deployment    ── trägt alles übrige
 ```
 
-## Lesepfade nach Rolle
+**Die drei Abhängigkeiten, die wirklich binden:**
 
-### Ich bin Product Manager
-→ Mit [VISION.md](./VISION.md) beginnen und alle Feature-Spezifikationen überfliegen (30 Min.)
-→ Dann in Anwendungsfälle, Designprinzipien, Offene Fragen in jeder Spezifikation eintauchen
+1. **C vor A.** Die Wissensbibliothek ist der Rechteanker; ohne sie ist rechtebewusste Suche nicht möglich.
+2. **F vor C.** Ohne Personen und Gruppen aus dem Verzeichnisdienst gibt es kein Rechtesubjekt.
+3. **A vor D.** Ein Agent ohne belegte Wissensbindung erfüllt keines der beiden Leitprinzipien.
 
-### Ich bin Backend-/Full-Stack-Entwickler
-→ Zuerst [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Dann [VISION.md](./VISION.md) Abschnitt Systemarchitektur (5 Min.)
-→ Dann alle Feature-Spezifikationen in der Reihenfolge: [Benutzer-Frontends](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) → [LLM-Integration](./features/llm-integration.md) → [Deployment](./features/deployment-infrastructure.md) → [Zugangskontrolle](./features/access-control.md)
+Den tatsächlichen Stand je Bereich führt [STATUS.md](./STATUS.md).
 
-### Ich bin DevOps-/Plattform-Engineer
-→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Dann [VISION.md](./VISION.md) Systemarchitektur (5 Min.)
-→ Fokus auf: [Deployment & Infrastruktur](./features/deployment-infrastructure.md) und [Zugangskontrolle](./features/access-control.md)
-→ Überfliegen: Daten-Indizierung, LLM-Integration für Integrationspunkte
-
-### Ich bin Data-/ML-Engineer
-→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Dann auf [Daten-Indizierung & RAG](./features/data-indexing-rag.md) und [LLM-Integration](./features/llm-integration.md) fokussieren
-→ Verstehen: Wie Embeddings funktionieren, Vektor-Datenbank-Auswahl, Modellauswahl
-
-### Ich bin Sicherheits-/Compliance-Beauftragter
-→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Dann auf [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) fokussieren
-→ Auch lesen: Sicherheitsabschnitt in [Deployment & Infrastruktur](./features/deployment-infrastructure.md)
-→ Prüfen: Datenverarbeitung in [Daten-Indizierung & RAG](./features/data-indexing-rag.md)
-
-### Ich bin KI-/ML-Forscher
-→ [CONCEPTS.md](./CONCEPTS.md) lesen (10 Min.)
-→ Auf [LLM-Integration](./features/llm-integration.md) und [Daten-Indizierung & RAG](./features/data-indexing-rag.md) fokussieren
-→ Prüfen: Offene Fragen in jeder Spezifikation für Forschungsmöglichkeiten
+---
 
 ## Häufige Fragen
 
 **Wo fange ich an?**
-→ [GETTING-STARTED.md](./GETTING-STARTED.md) lesen
+→ [GETTING-STARTED.md](./GETTING-STARTED.md), Lesepfad nach Publikum
 
-**Was ist RAG?**
-→ Siehe [CONCEPTS.md](./CONCEPTS.md) — RAG-Abschnitt, dann [Daten-Indizierung & RAG](./features/data-indexing-rag.md)
+**Was heißt Belegbarkeit, Verteilbarkeit, Zitierzwang?**
+→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Die beiden Leitbegriffe"
 
-**Wie deployee ich OPAA?**
-→ [Deployment & Infrastruktur](./features/deployment-infrastructure.md) lesen
+**Was ist heute wirklich gebaut?**
+→ [STATUS.md](./STATUS.md) — und nur dort
 
-**Wie kontrolliere ich, wer was sieht?**
-→ [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) lesen
+**Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
+→ [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) und
+[`features/access-control.md`](./features/access-control.md)
 
-**Welche LLM-Modelle werden unterstützt?**
-→ [LLM-Integration](./features/llm-integration.md) lesen — Abschnitt Unterstützte LLM-Anbieter
+**Läuft OPAA ohne Internetverbindung?**
+→ Ja, das ist ein vorgesehenes Szenario. Siehe
+[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)
 
-**Wie indiziere ich meine Dokumente?**
-→ [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Unterstützte Datenquellen
+**Welche Modelle werden unterstützt?**
+→ Jede OpenAI-kompatible Schnittstelle, einschließlich lokal betriebener Modelle. Siehe
+[`features/llm-integration.md`](./features/llm-integration.md)
 
-**Können Benutzer eigene Dokumente hochladen?**
-→ Ja! [Daten-Indizierung & RAG](./features/data-indexing-rag.md) lesen — Abschnitt Benutzer-Dokument-Upload und [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — Abschnitt Dokumente und rechtebewusste Suche
+**Können mehrere Häuser dieselbe Installation nutzen?**
+→ Ja, die Organisation ist die harte Mandantengrenze. Siehe
+[`features/access-control.md`](./features/access-control.md)
 
-**Kann ich mein eigenes LLM verwenden?**
-→ Ja! Siehe [LLM-Integration](./features/llm-integration.md) — Abschnitt OpenAI-kompatible APIs
+**Was bedeutet „C5-fähig"?**
+→ Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
+[CONCEPTS.md](./CONCEPTS.md) und
+[`features/security-and-compliance.md`](./features/security-and-compliance.md)
+
+**Was heißt das für die Personalvertretung?**
+→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und
+[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)
+
+**Kann ich eigene Dokumente hochladen?**
+→ Ja. Siehe [`features/knowledge-sources.md`](./features/knowledge-sources.md) und
+[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)

@@ -1,118 +1,163 @@
 # OPAA Konzepte & Glossar
 
-Dieses Dokument erläutert die wichtigsten Konzepte und die in der gesamten OPAA-Dokumentation verwendete Terminologie.
+Dieses Dokument erläutert die Begriffe, die in der gesamten OPAA-Dokumentation verwendet werden. Die
+Beispiele sind der öffentlichen Verwaltung entnommen, weil OPAA für sie gebaut wird — siehe
+[VISION.md](./VISION.md) und [ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md).
+
+Das Glossar erklärt das **Zielbild**. Was davon heute tatsächlich im Code steht, führt allein
+[STATUS.md](./STATUS.md); ein Begriff in diesem Glossar ist keine Aussage über den Umsetzungsstand.
+
+---
+
+## Die beiden Leitbegriffe
+
+### Belegbarkeit
+
+Die Eigenschaft, dass jede Aussage des Systems auf eine nachprüfbare Quelle zurückgeführt werden kann —
+und zwar so, dass die Prüfung auch Jahre später noch möglich ist.
+
+Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen dafür gerade. Belegbarkeit
+ist deshalb kein Komfortmerkmal, sondern die Voraussetzung dafür, dass eine Antwort überhaupt verwendet
+werden darf. Sie setzt sich aus mehreren Bausteinen zusammen: [Fundstelle und
+Quellenbindung](#fundstelle-und-quellenbindung), [Konfidenz](#konfidenz), [erklärbares
+Chunking](#erklärbares-chunking) und im schärfsten Fall dem [Zitierzwang](#zitierzwang).
+
+- **Beispiel:** Eine Sachbearbeiterin fragt nach der Frist für einen Widerspruch. Die Antwort nennt den
+  Paragrafen, die Dienstanweisung in ihrer geltenden Fassung und die Textstelle, an der es steht. Sie
+  springt mit einem Klick dorthin und übernimmt die Aussage erst danach in ihren Bescheid.
+
+---
+
+### Verteilbarkeit
+
+Die Eigenschaft, dass eine einmal erarbeitete KI-Fähigkeit von einer Person zu einem Team, einem Referat
+und schließlich der ganzen Organisation wandern kann, ohne kopiert oder neu erfunden zu werden.
+
+Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von wenigen zu allen
+kommt. Ohne Antwort darauf entsteht Schatten-KI: Einzelne basteln private Prompts, kopieren Amtsdaten in
+Verbraucherwerkzeuge, und das Können bleibt in Köpfen. OPAA beantwortet die Frage über [KI-Assets](#ki-asset)
+und [Verteilungsstufen](#verteilungsstufe).
+
+- **Beispiel:** Ein Referat entwickelt eine Arbeitsweise, mit der Stellungnahmen im Anhörungsverfahren
+  vorbereitet werden. Statt sie mündlich weiterzugeben, wird sie ein benannter Agent mit Beschreibung,
+  Fassung und Freigabe — und steht nach der Prüfung dem ganzen Amt zur Verfügung.
 
 ---
 
 ## Kernkonzepte
 
-### Wissensbasis / Organisationswissen
+### Wissensbestand des Hauses
 
-Die gesammelten Informationen, Dokumente und Daten, die über die Systeme einer Organisation gespeichert sind.
+Die Gesamtheit der Informationen, Dokumente und Daten, die in den Systemen einer Behörde liegen.
 
-- **Beispiel:** Unternehmens-Wiki-Seiten, E-Mail-Archive, Richtliniendokumente, Team-Entscheidungsaufzeichnungen
-- **Herausforderung:** Über mehrere Systeme verteilt (Confluence, Gmail, SharePoint, Dateiserver)
-- **OPAAs Rolle:** Einheitlicher Zugang durch intelligente Suche
-
-### RAG (Retrieval-Augmented Generation)
-
-Eine Technik, die Informationsabruf mit Sprachgenerierung kombiniert. Anstatt dass das LLM Antworten nur aus seinen Trainingsdaten generiert, ruft RAG zunächst relevante Dokumente ab und verwendet diese dann, um genaue, fundierte Antworten zu generieren.
-
-**Wie es funktioniert:**
-1. Benutzer stellt eine Frage
-2. System ruft relevante Dokumente aus der Wissensbasis ab
-3. LLM liest diese Dokumente
-4. LLM generiert eine Antwort basierend auf den abgerufenen Dokumenten
-5. Antwort enthält Quellen (Attribution)
-
-**Warum es wichtig ist:**
-- Antworten basieren auf echten Organisationsdokumenten
-- Reduziert Halluzinationen (LLM erfindet keine Fakten)
-- Jede Antwort ist durch Prüfung der Quelle verifizierbar
-- Hält Informationen aktuell (neue Dokumente werden automatisch verwendet)
+- **Beispiel:** Dienstanweisungen, Erlasse und Rundschreiben, Wiki-Seiten des Hauses, Postfächer der
+  Funktionsadressen, Ablagen auf dem Netzlaufwerk, Vorgänge aus Fachverfahren, Protokolle von
+  Dienstbesprechungen
+- **Schwierigkeit:** Der Bestand ist über viele Systeme verteilt, und wer eine Frist sucht, sucht ihn ab
+- **Rolle von OPAA:** Ein Zugang über alle Bestände hinweg, mit belegter Antwort statt Trefferliste
 
 ---
 
-### Embedding (Vektor-Embedding)
+### RAG (Retrieval-Augmented Generation)
 
-Eine numerische Darstellung von Text, die seine Bedeutung erfasst. Ein Embedding ist eine Liste von Zahlen (ein "Vektor"), der den semantischen Inhalt eines Dokuments oder einer Frage kodiert.
+Eine Technik, die den Abruf von Informationen mit der Erzeugung von Sprache verbindet. Statt dass das
+Sprachmodell allein aus seinen Trainingsdaten antwortet, holt RAG zuerst die passenden Textstellen aus dem
+Wissensbestand und lässt das Modell **nur auf dieser Grundlage** formulieren.
 
-**Einfache Erklärung:**
-- Ein Dokument über "Remote-Arbeit-Richtlinie" könnte als `[0.21, -0.18, 0.45, ..., 0.32]` (100s-1000s von Zahlen) dargestellt werden
-- Eine Frage über "von zu Hause arbeiten" erzeugt einen ähnlichen Vektor `[0.20, -0.17, 0.46, ..., 0.31]`
-- Ähnliche Vektoren = ähnliche Bedeutung
-- Das System verwendet diese Ähnlichkeit, um relevante Dokumente zu finden
+**Wie es abläuft:**
+1. Eine Frage wird gestellt
+2. Das System ruft die passenden Textstellen aus den lesbaren Wissensbibliotheken ab
+3. Das Sprachmodell liest diese Textstellen
+4. Es formuliert eine Antwort auf ihrer Grundlage
+5. Die Antwort trägt ihre Fundstellen
 
-**Warum es wichtig ist:**
-- Ermöglicht **semantische Suche** (Suche nach Bedeutung, nicht nur Schlüsselwörtern)
-- "Kann ich remote arbeiten?" findet Dokumente über "Fernarbeit" auch wenn diese genauen Wörter nicht in der Frage stehen
-- Mächtiger als Schlüsselwort-Matching
+**Warum das trägt:**
+- Antworten stützen sich auf die Unterlagen des Hauses, nicht auf allgemeines Weltwissen
+- Das Erfinden von Fakten wird eingegrenzt (siehe [Halluzination](#halluzination))
+- Jede Aussage ist durch einen Blick in die Quelle nachprüfbar
+- Neue Fassungen einer Dienstanweisung wirken, sobald sie indiziert sind — das Modell muss nicht neu
+  trainiert werden
+
+---
+
+### Embedding (Vektor-Einbettung)
+
+Eine numerische Darstellung von Text, die dessen Bedeutung erfasst. Ein Embedding ist eine Liste von Zahlen
+(ein „Vektor"), die den Inhalt eines Textstücks oder einer Frage kodiert.
+
+**Einfach erklärt:**
+- Eine Dienstanweisung zur Telearbeit wird zu `[0,21, -0,18, 0,45, …, 0,32]` (hunderte bis tausende Zahlen)
+- Die Frage „Darf ich von zu Hause arbeiten?" erzeugt einen ähnlichen Vektor `[0,20, -0,17, 0,46, …, 0,31]`
+- Ähnliche Vektoren bedeuten ähnlichen Sinn
+- Über diese Ähnlichkeit findet das System die passenden Stellen
+
+**Warum das wichtig ist:**
+- Es ermöglicht die [semantische Suche](#semantische-suche) — Suche nach Sinn statt nach Zeichenketten
+- „Darf ich von zu Hause arbeiten?" findet die Regelung zur Telearbeit, auch wenn das Wort „zu Hause"
+  darin nicht vorkommt
 
 ---
 
 ### Vektor-Datenbank
 
-Eine spezialisierte Datenbank, die für die Speicherung und Suche von Embeddings (Vektoren) optimiert ist.
+Eine Datenbank, die auf das Speichern und Durchsuchen von Embeddings ausgelegt ist.
 
-**Häufige Beispiele:**
-- **Elasticsearch** — Allzweck-Suchmaschine mit Vektor-Unterstützung
-- **PostgreSQL + pgvector** — Traditionelle SQL-Datenbank mit Vektor-Erweiterung
-- **Milvus** — Open-Source, konzipiert für groß angelegte Vektorsuche
-- **Cloud-Optionen** — Pinecone, Weaviate, Qdrant
+**Beispiele:**
+- **PostgreSQL mit pgvector** — relationale Datenbank mit Vektor-Erweiterung; die Grundlage in OPAA
+- **Elasticsearch** — Suchmaschine mit Vektor-Unterstützung
+- **Milvus, Qdrant, Weaviate** — quelloffene Systeme für große Vektorbestände
 
-**Warum separat von regulären Datenbanken:**
-- Traditionelle SQL-Datenbanken (MySQL, PostgreSQL) sind für exakte Treffer optimiert
-- Vektor-Datenbanken sind für **Ähnlichkeitssuche** optimiert ("finde die 10 ähnlichsten Vektoren")
-- Viel schneller und effizienter für semantische Suche
+**Warum eine eigene Gattung:**
+- Klassische SQL-Datenbanken sind auf exakte Treffer optimiert
+- Vektor-Datenbanken sind auf **Ähnlichkeitssuche** optimiert („finde die zehn nächstliegenden Vektoren")
+- Für die semantische Suche ist das um Größenordnungen schneller
 
 ---
 
 ### Chunk / Chunking
 
-Große Dokumente in kleinere, handhabbare Teile aufteilen.
+Das Zerlegen großer Dokumente in kleinere, handhabbare Stücke.
 
 **Warum nötig:**
-- Ein 50-seitiges Richtliniendokument würde ein riesiges Embedding erzeugen
-- Stattdessen in 50 kleinere Chunks aufteilen (Absätze oder Abschnitte)
-- Jeder Chunk erhält sein eigenes Embedding
-- Granularere Suchergebnisse
+- Eine fünfzigseitige Dienstanweisung ergäbe ein einziges, unscharfes Embedding
+- Stattdessen wird sie in Abschnitte zerlegt, jeder mit eigenem Embedding
+- Die Suche liefert dann die einschlägige Passage statt des ganzen Dokuments
 
 **Beispiel:**
 ```
-Dokument: "Unternehmens-Richtlinienhandbuch" (10.000 Wörter)
+Dokument: „Dienstanweisung Personalangelegenheiten" (10.000 Wörter)
   ↓
 Chunks:
-  Chunk 1: "Einstellungsprozess" (200 Wörter)
-  Chunk 2: "Remote-Arbeit" (300 Wörter)
-  Chunk 3: "Ausgaben-Richtlinie" (250 Wörter)
-  ...
+  Chunk 1: „Einstellungsverfahren" (200 Wörter)
+  Chunk 2: „Telearbeit und mobiles Arbeiten" (300 Wörter)
+  Chunk 3: „Reisekosten" (250 Wörter)
+  …
 ```
 
-Wenn der Benutzer nach "Remote-Arbeit" sucht, gibt das System speziell Chunk 2 zurück, nicht das gesamte 10.000-Wort-Handbuch.
+Wer nach mobilem Arbeiten fragt, bekommt Chunk 2 — nicht das ganze Werk.
+
+Wie die Zerlegung zustande kam, gehört zur Belegbarkeit: siehe [erklärbares Chunking](#erklärbares-chunking).
 
 ---
 
-### LLM (Large Language Model)
+### LLM (großes Sprachmodell)
 
-Ein KI-Modell, das auf großen Mengen von Textdaten trainiert wurde und menschenähnlichen Text verstehen und generieren kann.
-
-**Beispiele:**
-- GPT-4, GPT-3.5-turbo (OpenAI)
-- Claude (Anthropic)
-- Llama, Mistral (Open-Source)
-- Ollama (lokal, kleinere Modelle)
+Ein KI-Modell, das auf großen Textmengen trainiert wurde und Sprache verstehen und erzeugen kann.
 
 **Im OPAA-Kontext:**
-- LLM liest die abgerufenen Dokumente
-- LLM generiert die Antwort
-- Verschiedene LLMs können ausgetauscht werden (OpenAI → lokal → Anthropic)
-- OPAA ist **modell-agnostisch** — die LLM-Wahl ist konfigurierbar
+- Das Modell liest die abgerufenen Textstellen und formuliert die Antwort
+- Modelle sind austauschbar; OPAA spricht jede OpenAI-kompatible Schnittstelle an
+- Der Vorrang liegt bei [lokal betriebenen Modellen](#lokal-betriebene-modelle)
+- Welche Modelle überhaupt erlaubt sind, entscheidet die Systemverwaltung über die
+  [Modell-Policy](#modell-policy-als-obergrenze), nicht die einzelne Nutzerin
 
 ---
 
 ### Space
 
-Ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen Fachbereich oder die eigene Arbeit. Der Space ist **kein Sicherheitssilo für Dokumente**, sondern der Ort, an dem gearbeitet wird und an dem die Ergebnisse dieser Arbeit liegen.
+Ein thematischer Arbeitsraum — für ein Vorhaben, ein Team, ein Referat oder die eigene Arbeit. Der Space ist
+**kein Sicherheitssilo für Dokumente**, sondern der Ort, an dem gearbeitet wird und an dem die Ergebnisse
+dieser Arbeit liegen.
 
 **Zweck:**
 - Chats und Artefakte thematisch bündeln
@@ -122,501 +167,774 @@ Ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen Fachbereich o
 **Flaches Modell:**
 Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt drei Arten:
 
-1. **Persönlicher Space** — automatisch je Nutzer, nicht teilbar, nicht löschbar
-2. **Projekt-Space** — von jedem Nutzer anlegbar, nicht im Verzeichnis gelistet, nur selbst eingeladene Mitglieder
-3. **Team-Space** — vom System-Admin angelegt, für Teams, Fachbereiche und hausweite Räume
+1. **Persönlicher Space** — automatisch je Nutzerin und Nutzer, nicht teilbar, nicht löschbar
+2. **Projekt-Space** — von jeder Person anlegbar, nicht im Verzeichnis gelistet, nur selbst eingeladene
+   Mitglieder
+3. **Team-Space** — von der Systemverwaltung angelegt, für Teams, Referate und hausweite Räume
 
-**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber vollen Zugriff auf die **abgelegten** space-eigenen Inhalte. Chats und Artefakte entstehen als Entwurf beim Ersteller und werden erst durch Ablegen sichtbar. Siehe [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
+**Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber
+vollen Zugriff auf die **abgelegten** space-eigenen Inhalte. Chats und Artefakte entstehen als Entwurf bei
+der Person, die sie erzeugt, und werden erst durch Ablegen sichtbar. Siehe [Spaces, Assets &
+Zugangskontrolle](./features/spaces-and-assets.md).
 
-**Analogie:**
-- Wie ein Confluence-Space: Er besitzt seine Seiten, verlinkt aber auf Fremdes, ohne daran Rechte zu vergeben.
+- **Beispiel:** Der Team-Space „Bauleitplanung" bündelt die Chats zum laufenden Verfahren; die
+  Rechtsquellen darin gehören dem Rechtsreferat und sind nur assoziiert.
 
 ---
 
 ### Asset
 
-Ein eigenständiges, teilbares Objekt mit genau einem Eigentümer und einer eigenen Rechteliste — eine **Wissensbibliothek**, ein **Agent** oder eine **Prompt-Bibliothek**.
+Siehe [KI-Asset](#ki-asset) — ein eigenständiges, teilbares Objekt mit genau einem Eigentümer und einer
+eigenen Rechteliste.
+
+---
+
+### KI-Asset
+
+Ein benanntes, beschriebenes, auffindbares Objekt, das eine KI-Fähigkeit oder einen Wissensbestand trägt und
+für sich geteilt, versioniert und freigegeben werden kann. Es gibt drei Gattungen: **Agent**,
+**Prompt-Bibliothek** und **[Wissensbibliothek](#wissensbibliothek)**.
+
+Der Begriff ist der Träger der [Verteilbarkeit](#verteilbarkeit). Ein Asset hat genau einen Eigentümer, eine
+eigene Rechteliste und eine Fassung — es ist damit das Gegenteil eines guten Prompts, der in einem
+Chatverlauf verschwindet.
 
 **Zweck:**
-- KI-Können und Wissen verteilbar machen, ohne es zu kopieren
+- Können und Wissen verteilbar machen, ohne es zu kopieren
 - Ein Bestand liegt einmal und wird an vielen Stellen genutzt
 
-**Assoziation:** Ein Asset wird in beliebig viele Spaces assoziiert. Die Assoziation ist reine Kuratierung und **gewährt keinerlei Zugriff**; sie stellt das Asset nur denen im Space bereit, die ohnehin ein Recht darauf haben.
+**Assoziation:** Ein Asset wird in beliebig viele Spaces assoziiert. Die Assoziation ist reine Kuratierung
+und **gewährt keinerlei Zugriff**; sie stellt das Asset nur denen im Space bereit, die ohnehin ein Recht
+darauf haben.
 
 **Merkregel:** Was im Space entsteht, gehört dem Space. Was assoziiert wird, behält seinen Eigentümer.
+
+- **Beispiel:** Der Agent „Vorprüfung Widerspruch" gehört dem Rechtsreferat, ist in vier Team-Spaces
+  assoziiert und trägt die Fassung 3. Wird Fassung 4 freigegeben, arbeiten alle vier Räume damit — ohne dass
+  irgendwo eine Kopie nachgezogen werden muss.
 
 ---
 
 ### Wissensbibliothek
 
-Der Dokumentencontainer. Jedes Dokument gehört zu genau einer Wissensbibliothek, und jeder Chunk trägt die Bibliotheks-Kennung als Filterachse der rechtebewussten Suche.
+Der Dokumentencontainer und der Rechteanker der Suche. Jedes Dokument gehört zu genau einer
+Wissensbibliothek, und jeder Chunk trägt die Bibliotheks-Kennung als Filterachse der
+[rechtebewussten Suche](#berechtigungsdurchsetzung-zur-abfragezeit).
 
-**Details zur persönlichen Ablage:**
-- Jeder Nutzer hat einen persönlichen Space und darin eine persönliche Wissensbibliothek "Meine Dokumente"
-- Automatisch erstellt, einer pro Nutzer, nicht löschbar (bei Offboarding deaktiviert)
-- Teilen läuft über die Bibliothek, nicht über den Raum: Ein direkter Grant an eine andere Person genügt, der persönliche Space bleibt privat
+Die Wissensbibliothek ist ein [KI-Asset](#ki-asset) und kein Ordner in einem Raum. Genau darauf beruht, dass
+eine Beschränkung an den **Daten** hängt und nicht am Arbeitsraum: Eine Bibliothek führt ihre Vorgabe „nur
+lokale Modelle" selbst mit sich, und ein Wechsel des Space umgeht sie nicht.
+
+**Persönliche Ablage:**
+- Jede Person hat einen persönlichen Space und darin eine persönliche Wissensbibliothek „Meine Dokumente"
+- Automatisch angelegt, eine je Person, nicht löschbar (beim Ausscheiden deaktiviert)
+- Geteilt wird über die Bibliothek, nicht über den Raum: Eine direkte Berechtigung für eine andere Person
+  genügt, der persönliche Space bleibt privat
+
+- **Beispiel:** Die Bibliothek „Rechtsquellen Soziales" gehört dem Rechtsreferat, ist für die Gruppe
+  „Amt 50" lesbar und in mehreren Team-Spaces assoziiert. Wer nicht in der Gruppe ist, bekommt daraus keinen
+  Treffer — und erfährt auch nicht, dass es Treffer gäbe.
+
+---
+
+### Verteilungsstufe
+
+Die Reichweite, für die ein [KI-Asset](#ki-asset) freigegeben ist. Die Stufen bauen aufeinander auf:
+
+1. **Persönlich** — nur die Person, der das Asset gehört
+2. **Team** — die Mitglieder eines Raums oder einer benannten Gruppe
+3. **Fachbereich** — eine Gruppe aus dem Verzeichnisdienst, die eine Organisationseinheit abbildet
+4. **Organisationsweit** — der Katalog des Hauses, erreichbar für alle Beschäftigten
+
+Der Sprung auf die nächste Stufe ist eine **Handlung mit Freigabe- und Prüfschritt**, keine Einstellung, die
+nebenbei verrutscht. Die [Organisation](#organisation-als-mandantengrenze) ist die Obergrenze: Es gibt keine
+Stufe darüber.
+
+- **Beispiel:** Eine Sachbearbeiterin baut sich einen Agenten für Aktenvermerke (persönlich). Ihr Team
+  übernimmt ihn (Team). Das Referat prüft ihn fachlich und gibt ihn frei (Fachbereich). Nach einer Prüfung
+  durch die Systemverwaltung steht er im hausweiten Katalog (organisationsweit).
 
 ---
 
 ### Rolle (in der Zugangskontrolle)
 
-Eine Reihe von Berechtigungen, die Benutzern zugewiesen werden. Bestimmt, welche Aktionen sie ausführen können.
+Ein Bündel von Rechten, das Personen oder Gruppen zugewiesen wird.
 
 **Systemweite Rolle:**
-- **System-Admin** — Organisationsweite Administration. Kann Team-Spaces anlegen, Konnektoren konfigurieren, Quellzuordnungen definieren, Gruppen und Verzeichnis-Synchronisation verwalten. Auf der Benutzer-Entität gespeichert. Er verwaltet das System, ist aber **nicht automatisch leseberechtigt** für alle Inhalte.
+- **System-Admin** — organisationsweite Verwaltung. Legt Team-Spaces an, richtet Konnektoren und
+  Quellzuordnungen ein, verwaltet Gruppen und den Verzeichnisabgleich. Er verwaltet das System, ist aber
+  **nicht automatisch leseberechtigt** für Inhalte.
 
-**Space-Rollen (pro Space-Mitgliedschaft) — regeln Mitarbeit und Kuratierung, nicht den Dokumentenzugriff:**
+**Space-Rollen (je Mitgliedschaft) — regeln Mitarbeit und Kuratierung, nicht den Dokumentenzugriff:**
 - **Member** — Space betreten, Chats führen, alle Chats und Artefakte des Space lesen
 - **Curator** — zusätzlich Assets assoziieren und lösen
 - **Admin** — zusätzlich Mitglieder, Einstellungen und Modell-Obergrenze verwalten, Inhalte moderieren
 
-Dazu trägt jeder Space einen **Verantwortlichen** als Attribut; nur er oder ein System-Admin darf den Space löschen.
+Dazu trägt jeder Space einen **Verantwortlichen** als Attribut; nur er oder ein System-Admin darf den Space
+löschen.
 
-**Asset-Rollen (pro Asset) — regeln den tatsächlichen Zugriff:**
+**Asset-Rollen (je Asset) — regeln den tatsächlichen Zugriff:**
 - **User** — benutzen, ohne die Konfiguration zu sehen
 - **Viewer** — zusätzlich die Konfiguration einsehen
 - **Editor** — zusätzlich ändern
 - **Manager** — zusätzlich teilen und Rechte vergeben
 - **Owner** — zusätzlich löschen und Eigentum übertragen
 
-Rechte werden an **Nutzer oder Gruppen** vergeben. Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe "Fachbereich".
+Rechte werden an **Personen oder Gruppen** vergeben. Gruppen bilden die Aufbauorganisation ab und tragen die
+[Verteilungsstufe](#verteilungsstufe) „Fachbereich".
 
 ---
 
-## Datenpipeline-Konzepte
-
-### Datenquelle
-
-Jedes System, in dem Organisationswissen gespeichert ist.
-
-**Beispiele:**
-- Confluence (Wiki-Plattform)
-- Jira, GitHub Issues, GitLab (Issue-Tracker)
-- Gmail (E-Mail)
-- S3, Google Drive, Dropbox (Cloud-Dateispeicher)
-- SharePoint (Dokumentenverwaltung)
-- GitHub, GitLab (Code-Dokumentation)
-
----
-
-### Dokumentenverarbeitungs-Pipeline
-
-Die automatisierten Schritte, die OPAA unternimmt, um Dokumente durchsuchbar zu machen.
-
-**Schritte:**
-1. **Entdeckung** — Dokumente in Datenquellen finden
-2. **Extraktion** — Textinhalt extrahieren (verarbeitet PDF, Word, usw.)
-3. **Chunking** — In kleinere Teile aufteilen
-4. **Embedding** — In numerische Vektoren umwandeln
-5. **Speicherung** — Embeddings in Vektor-Datenbank speichern
-6. **Indizierung** — Für Suche verfügbar machen
-
----
+## Retrieval und Belegbarkeit
 
 ### Semantische Suche
 
-Suche basierend auf **Bedeutung** statt exaktem Schlüsselwort-Matching.
+Suche nach **Sinn** statt nach exakter Zeichenkette.
 
 **Beispiel:**
 ```
-Frage: "Kann ich von zu Hause arbeiten?"
+Frage: „Darf ich von zu Hause arbeiten?"
 
-Schlüsselwort-Suche würde finden:
-  - "Von zu Hause arbeiten" ✓
-  - "Remote-Arbeit" ✗ (kein exakter Treffer)
-  - "Telearbeit" ✗ (kein exakter Treffer)
+Eine reine Stichwortsuche fände:
+  - „von zu Hause arbeiten"   ✓
+  - „Telearbeit"              ✗ (kein wörtlicher Treffer)
+  - „mobiles Arbeiten"        ✗ (kein wörtlicher Treffer)
 
-Semantische Suche findet:
-  - "Von zu Hause arbeiten" ✓
-  - "Remote-Arbeit" ✓
-  - "Telearbeit" ✓
-  - "Außerhalb des Büros arbeiten" ✓
+Die semantische Suche findet:
+  - „von zu Hause arbeiten"   ✓
+  - „Telearbeit"              ✓
+  - „mobiles Arbeiten"        ✓
+  - „Dienstort außerhalb der Dienststelle" ✓
 ```
+
+---
+
+### Hybride Suche
+
+Die Verbindung von semantischer Suche und klassischer Volltextsuche zu **einer** Trefferliste. Beide
+Verfahren laufen, ihre Ergebnisse werden zusammengeführt und gemeinsam bewertet.
+
+Der Grund ist ein praktischer: Die semantische Suche versteht Umschreibungen, versagt aber bei genau den
+Merkmalen, von denen Verwaltungsdaten leben — Aktenzeichen, Paragrafen, Fristangaben, Bezeichnungen von
+Formularen. Ein Aktenzeichen ist keine Bedeutung, sondern eine Zeichenkette, und die findet die
+Stichwortsuche zuverlässig. Umgekehrt findet die Stichwortsuche „mobiles Arbeiten" nicht, wenn nach „zu
+Hause" gefragt wird. Erst beide zusammen tragen.
+
+- **Beispiel:** Die Frage „Wie ist der Stand zu 32.1-114/2025?" trifft über die Volltextsuche exakt das
+  Aktenzeichen; die Frage „Wie war das noch mit den Fristen bei Nachbarwidersprüchen?" trifft über die
+  semantische Suche die einschlägige Passage der Dienstanweisung. Dieselbe Suchmaske beantwortet beides.
+
+---
+
+### Reranking
+
+Ein zweiter Bewertungsschritt: Aus einer größeren Menge grob gefundener Textstellen wählt ein eigenes,
+genaueres Modell diejenigen aus, die zur Frage wirklich passen, und bringt sie in eine neue Reihenfolge.
+
+Der erste Schritt muss schnell sein und holt deshalb bewusst zu viel. Der zweite Schritt darf langsam sein,
+weil er nur noch wenige Kandidaten ansieht — und er vergleicht Frage und Textstelle unmittelbar, statt nur
+zwei Vektoren aneinanderzuhalten. Was am Ende ins Sprachmodell geht, ist damit kürzer und besser.
+
+- **Beispiel:** Zur Frage nach der Widerspruchsfrist liefert die erste Stufe fünfzig Passagen, darunter auch
+  solche, in denen „Frist" in ganz anderem Zusammenhang steht. Das Reranking sortiert die einschlägige
+  Regelung nach oben und die Randtreffer aus, sodass die Antwort nicht auf einer Nebenstelle gründet.
+
+---
+
+### Erklärbares Chunking
+
+Die Eigenschaft, dass die Zerlegung eines Dokuments in Chunks nachvollziehbar dargestellt wird: Man kann
+ansehen, wo geschnitten wurde, welchem Abschnitt ein Chunk entstammt und welcher Ausschnitt in die Antwort
+eingeflossen ist.
+
+Das ist keine Bequemlichkeit für Entwicklerinnen. Wenn eine Antwort falsch ist, liegt die Ursache häufig im
+Schnitt — eine Tabelle wurde in der Mitte zerteilt, eine Ausnahmeregel vom Hauptsatz getrennt, eine Fußnote
+verlor ihren Bezug. Ohne Einsicht in die Zerlegung bleibt der Fehler unauffindbar und die
+[Belegbarkeit](#belegbarkeit) endet an der Dokumentgrenze.
+
+- **Beispiel:** Eine Auskunft nennt eine Gebühr ohne die Ermäßigung. Ein Blick auf die Zerlegung zeigt, dass
+  die Gebührentabelle zwischen Grundbetrag und Ermäßigungszeile geschnitten wurde. Die Ursache ist damit
+  benannt und behebbar, statt dem Modell angelastet zu werden.
+
+---
+
+### Fundstelle und Quellenbindung
+
+Die **Fundstelle** ist der Nachweis, den eine Antwort mitführt: welches Dokument, welche Fassung, welche
+Stelle darin. Die **Quellenbindung** ist die Eigenschaft des Systems, jede einzelne Aussage an genau die
+Textstelle zu binden, aus der sie stammt — im Englischen *grounded citation*.
+
+Der Unterschied ist wesentlich. Eine Liste verwendeter Dokumente am Ende einer Antwort ist noch keine
+Quellenbindung; sie sagt nur, was gelesen wurde. Gebunden ist eine Antwort erst, wenn zu **jeder** Aussage
+die tragende Stelle benannt ist und ein Sprung dorthin möglich ist.
+
+- **Beispiel:** „Der Widerspruch ist binnen eines Monats einzulegen [Dienstanweisung 12/2024, Abschnitt
+  4.2]." Der Verweis führt auf den Absatz, nicht auf die Datei — und nicht auf die Startseite des Wikis.
+
+---
+
+### Zitierzwang
+
+Ein Betriebsmodus, in dem das System **keine Antwort ohne belegte Quelle** ausgibt. Findet das Retrieval
+keine tragfähige Fundstelle, lautet die Antwort „nicht feststellbar" statt einer plausiblen Formulierung.
+
+Der Modus ist für haftungskritische Zusammenhänge gedacht und wird je Wissensbibliothek, Agent oder Space
+gesetzt. Er kostet bewusst Trefferquote: Lieber eine ausbleibende Auskunft als eine, die niemand
+verantworten kann.
+
+- **Beispiel:** Ein Agent für Bescheidentwürfe läuft unter Zitierzwang. Zur Frage nach einer Härtefallregel,
+  die im indizierten Bestand nicht vorkommt, antwortet er, dass sich dazu nichts feststellen lässt — und
+  nennt, in welchen Beständen er gesucht hat.
+
+---
+
+### Konfidenz
+
+Ein Maß dafür, wie gut die abgerufenen Textstellen die gestellte Frage tragen. Sie wird an der Antwort
+ausgewiesen, damit sichtbar ist, ob die Auskunft belastbar ist oder nachgeprüft gehört.
+
+**Anhaltspunkte:**
+- **0,9–1,0** — sehr belastbar, eindeutig einschlägig
+- **0,7–0,9** — belastbar, voraussichtlich einschlägig
+- **0,5–0,7** — unsicher, könnte einschlägig sein
+- **< 0,5** — nicht belastbar, voraussichtlich nicht einschlägig
+
+Konfidenz ist mehr als der Ähnlichkeitswert der Vektorsuche: In sie gehen auch ein, wie einig sich mehrere
+Fundstellen sind und ob die Frage überhaupt vollständig abgedeckt ist. Ein niedriger Wert kann den
+[Zitierzwang](#zitierzwang) auslösen.
+
+- **Beispiel:** Eine Auskunft zur Zuständigkeit erscheint mit niedriger Konfidenz, weil zwei
+  Dienstanweisungen einander widersprechen. Die Sachbearbeitung sieht das an der Antwort und klärt vor der
+  Verwendung.
 
 ---
 
 ### Berechtigungsdurchsetzung zur Abfragezeit
 
-Berechtigungen werden **als Teil der Vektorsuche selbst** durchgesetzt — die für den Benutzer lesbaren Wissensbibliotheken werden als Metadaten-Filter direkt in die Abfrage übergeben. Nicht autorisierte Chunks werden niemals geladen oder gerankt.
+Rechte werden **innerhalb der Vektorsuche** durchgesetzt: Die lesbaren Wissensbibliotheken gehen als
+Metadatenfilter in die Abfrage ein. Nicht freigegebene Chunks werden nie geladen und nie bewertet.
 
-**Wie es funktioniert:**
-1. System bestimmt die lesbaren Wissensbibliotheken des Benutzers und schneidet sie mit dem Suchbereich des Kontexts (Space bzw. gebundener Agent)
-2. Benutzer sucht: "Gehaltsrichtlinien"
-3. Vektorsuche gibt nur Chunks zurück, deren `library_id` im ermittelten Suchbereich liegt
-4. Benutzer sieht nur Dokumente, auf die er autorisiert ist zuzugreifen
+**Ablauf:**
+1. Das System ermittelt die lesbaren Wissensbibliotheken der fragenden Person und schneidet sie mit dem
+   Suchbereich des Kontexts (Space oder gebundener Agent)
+2. Die Frage lautet etwa: „Wie ist die Regelung zu Zulagen?"
+3. Die Vektorsuche liefert nur Chunks, deren Bibliothek im ermittelten Suchbereich liegt
+4. Es erscheinen ausschließlich Inhalte, für die eine Leseberechtigung besteht
 
 **Warum das wichtig ist:**
-- Benutzer wissen nicht, dass Dokumente existieren, die sie nicht sehen können
-- Ergebnisse wirken vollständig, auch wenn gefiltert
-- Keine Nachfilterung nötig — die Suche selbst ist berechtigungsbewusst
-- Berechtigungen ändern sich sofort (keine Neu-Indizierung nötig)
+- Niemand erfährt durch die Suche von der Existenz von Unterlagen, die er nicht lesen darf
+- Ergebnisse wirken vollständig, obwohl gefiltert
+- Keine Nachfilterung nötig — die Suche selbst ist rechtebewusst
+- Rechteänderungen wirken sofort, ohne Neu-Indizierung
 
----
-
-## Architektur-Konzepte
-
-### Orchestrierungsschicht
-
-Der zentrale Koordinator, der Benutzeranfragen verarbeitet.
-
-**Verantwortlichkeiten:**
-- Empfängt Anfrage (Frage) von jedem Frontend
-- Prüft Berechtigungen
-- Ruft RAG-Engine auf, um Dokumente abzurufen
-- Ruft LLM auf, um Antwort zu generieren
-- Formatiert und gibt Ergebnis zurück
-
-**Analogie:** Wie ein Restaurant-Host — nimmt Ihre Bestellung entgegen, koordiniert mit der Küche, liefert Ihr Essen
-
----
-
-### Frontend
-
-Die Benutzeroberfläche, über die Menschen mit OPAA interagieren.
-
-**Typen:**
-- **Web-UI** — Browserbasierte Chat-Schnittstelle
-- **Chat-Integrationen** — Bots in Mattermost, Slack, usw.
-- **REST-API** — Für programmatischen Zugang
-- **Benutzerdefiniert** — Jede auf der REST-API aufgebaute Schnittstelle
-
----
-
-### Datenquellen-Konnektor
-
-Software, die weiß, wie man sich mit einer bestimmten Datenquelle verbindet und Dokumente extrahiert.
-
-**Beispiele:**
-- Confluence-Konnektor — Weiß, wie man sich mit der Confluence-API authentifiziert, Seiten extrahiert
-- E-Mail-Konnektor — Weiß, wie man sich mit IMAP-Servern verbindet, E-Mails parst
-- S3-Konnektor — Weiß, wie man sich mit AWS authentifiziert, Dateien listet und herunterlädt
-- Google-Drive-Konnektor — Weiß, wie man Google-APIs verwendet, Dokumente herunterlädt
-- Jira-Konnektor — Weiß, wie man Issues, Kommentare und Anhänge liest
-
----
-
-### Benutzer-Dokument-Upload
-
-Das Hochladen eines Dokuments durch einen Benutzer in OPAA über eine Frontend-Schnittstelle (Web-UI, Chat, REST-API), im Gegensatz dazu, dass OPAA Dokumente über Konnektoren von konfigurierten Datenquellen abruft.
-
-**Wesentliche Unterschiede zur Konnektor-basierten Aufnahme:**
-- Benutzer schiebt aktiv Dokumente (vs. OPAA zieht aus Quellen)
-- Auf Anfrage durch Benutzeraktion ausgelöst (vs. geplant oder ereignisbasiert)
-- Dokumente landen standardmäßig in der persönlichen Wissensbibliothek des Benutzers
-- Originaldateien werden auf OPAAs konfigurierbarem Speicher-Backend gespeichert
-
-Siehe [Daten-Indizierung & RAG — Benutzer-Dokument-Upload](./features/data-indexing-rag.md#user-document-upload) für Details.
-
----
-
-### Speicher-Backend
-
-Das pluggbare Dateispeichersystem, in dem hochgeladene Dokumente gespeichert werden. Dies ist getrennt von der Vektor-Datenbank — das Speicher-Backend hält Originaldateien (PDF, DOCX, usw.) zum Herunterladen und Neu-Verarbeiten, während die Vektor-Datenbank Embeddings für die Suche hält.
-
-**Unterstützte Backends (zum Deployment-Zeitpunkt gewählt):**
-- **S3-kompatibler Objektspeicher** — AWS S3, MinIO (Cloud/Hybrid)
-- **Netzlaufwerk (SMB/NFS)** — Gemeinsames Dateisystem-Mount (On-Premises)
-- **Lokales Dateisystem** — Direkte Disk-Speicherung (Entwicklung/kleine Deployments)
-
----
-
-### Bestände mehrfach verwenden
-
-Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselbe **Wissensbibliothek** wird in mehreren Spaces assoziiert oder an weitere Nutzer und Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Vervielfachung von Chunks.
-
-**Status:** Durch das Asset-Modell gelöst. Das frühere Konzept eines workspace-übergreifenden Dokument-Teilens samt seiner offenen Sicherheitsfragen ist gegenstandslos — siehe [Dokument-Teilen](./features/document-sharing.md) (überholt).
-
----
-
-## Infrastruktur-Konzepte
-
-### On-Premises-Deployment
-
-OPAA läuft auf Ihren eigenen Servern, in Ihrem eigenen Rechenzentrum oder Büro.
-
-**Vorteile:**
-- Vollständige Datensouveränität (Daten verlassen nie Ihre Infrastruktur)
-- Keine externen API-Abhängigkeiten
-- Funktioniert in Air-Gap-Umgebungen
-- Erfüllt strenge Datenschutzanforderungen
-
-**Kompromiss:**
-- Sie verwalten Infrastruktur, Backups, Sicherheits-Patches
-
----
-
-### Cloud-Deployment
-
-OPAA läuft auf Cloud-Infrastruktur (AWS, Azure, GCP), die Sie besitzen oder kontrollieren.
-
-**Vorteile:**
-- Einfaches Skalieren
-- Verwaltete Backups und Disaster Recovery
-- Keine physischen Server zu warten
-- Cloud-verwaltete Vektor-Datenbanken nutzen
-
-**Kompromiss:**
-- Daten in Drittanbieter-Infrastruktur
-- Cloud-Kosten können mit der Skalierung wachsen
-
----
-
-### Container / Docker
-
-Eine Methode, OPAA und alle seine Abhängigkeiten in eine einzelne Einheit zu verpacken, die überall gleich läuft.
-
-**Warum es wichtig ist:**
-- "Funktioniert auf meinem Rechner"-Problem gelöst
-- Einfach auf verschiedene Server zu deployen
-- Einfach zu aktualisieren (einfach neues Container-Image ziehen)
-
----
-
-### Kubernetes (K8s)
-
-Ein Orchestrierungssystem zur Verwaltung von Containern in großem Maßstab.
-
-**Was es tut:**
-- Führt mehrere Kopien von OPAA für Redundanz aus
-- Startet fehlgeschlagene Instanzen automatisch neu
-- Verteilt Traffic auf Instanzen
-- Einfaches Skalieren (3 Instanzen → 10 Instanzen)
-
-**Für:** Organisationen mit 1000+ Mitarbeitern oder hohem Abfragevolumen
-
----
-
-### Konfigurationsmanagement
-
-Wege, OPAA ohne Code-Änderungen anzupassen.
-
-**Methoden:**
-- **Umgebungsvariablen** — `LLM_PROVIDER=openai`
-- **Konfigurationsdateien** — YAML-Dateien mit Einstellungen
-- **Admin-UI** — Web-Schnittstelle zum Ändern von Einstellungen
-
-**Warum es wichtig ist:**
-- Von OpenAI zu lokalem LLM mit einer Konfigurationsänderung wechseln
-- Vektor-Datenbank ohne Code-Änderungen wechseln
-- Organisationen passen an, ohne Code anzufassen
-
----
-
-## Qualitäts- & Leistungs-Konzepte
-
-### Konfidenz-Score
-
-Ein numerischer Score (0-1), der angibt, wie zuversichtlich das System ist, dass abgerufene Dokumente für die Frage relevant sind.
-
-**Skala:**
-- **0,9-1,0** — Sehr zuversichtlich, definitiv relevant
-- **0,7-0,9** — Zuversichtlich, wahrscheinlich relevant
-- **0,5-0,7** — Unsicher, könnte relevant sein
-- **< 0,5** — Nicht zuversichtlich, wahrscheinlich nicht relevant
-
-**Benutzernutzen:** Auf einen Blick sehen, ob der Antwort vertraut werden soll
-
----
-
-### Latenz
-
-Wie lange eine Abfrage von Frage bis Antwort dauert.
-
-**Ziele:**
-- Vektorsuche: < 500 ms
-- LLM-Generierung: 1-3 Sekunden
-- Gesamt: < 4 Sekunden
-
-**Einflussfaktoren:**
-- Größe der Wissensbasis
-- LLM-Modell (GPT-4 langsamer als 3.5-turbo)
-- Infrastruktur (lokale Modelle schneller als Cloud-APIs)
+Ein Agent liest **immer** mit den Rechten der aufrufenden Person. Einen Modus, in dem er mit eigenen Rechten
+liest, gibt es nicht.
 
 ---
 
 ### Halluzination
 
-Wenn ein LLM falsche Informationen generiert oder Fakten erfindet.
+Wenn ein Sprachmodell falsche Angaben erzeugt oder Sachverhalte erfindet.
 
-**OPAAs Schutz:**
-- RAG zwingt LLM, Quellen zu zitieren
-- LLM kann nur Dinge behaupten, die in abgerufenen Dokumenten erscheinen
-- Wenn Antwort nicht in Dokumenten ist, sagt das System "Ich weiß es nicht"
+**Wie OPAA gegensteuert:**
+- RAG bindet die Antwort an abgerufene Textstellen
+- Die [Quellenbindung](#fundstelle-und-quellenbindung) macht jede Aussage nachprüfbar
+- Der [Zitierzwang](#zitierzwang) unterbindet die Antwort, wo der Beleg fehlt
+- Die [Konfidenz](#konfidenz) zeigt an, wenn die Grundlage dünn ist
 
 ---
 
-## Daten- & Sicherheits-Konzepte
+## Agenten, Prompts und Werkzeuge
+
+### Aufgabenbeschreibung eines Agenten
+
+Die verbindliche Festlegung, was ein Agent tut und was nicht: Zweck, Zuschnitt der Aufgabe, gebundener
+Wissensbereich, erlaubte Werkzeuge, Grenzen und der Punkt, an dem eine Person entscheiden muss.
+
+Sie ist kein Prompt, sondern die fachliche Beschreibung, an der ein Agent geprüft und freigegeben wird —
+lesbar für die Fachaufsicht, nicht nur für die Person, die ihn gebaut hat. Ohne sie ist ein Agent nicht
+prüfbar und damit nicht [verteilbar](#verteilbarkeit).
+
+- **Beispiel:** „Prüft eingehende Widersprüche auf Frist, Form und Zuständigkeit. Liest ausschließlich aus
+  der Bibliothek ‚Rechtsquellen Soziales'. Erstellt einen Vermerk, versendet nichts. Bei unklarer
+  Zuständigkeit legt er dem Sachgebiet vor, statt zu entscheiden."
+
+---
+
+### Agenten-Prüfstand
+
+Eine Umgebung, in der ein Agent vor der Freigabe an festgelegten Fällen durchgespielt wird — mit
+Soll-Ergebnis, sichtbaren Fundstellen und einem Vergleich gegen die vorherige Fassung.
+
+Der Prüfstand macht die Freigabe zu einer belegbaren Entscheidung statt zu einem Bauchgefühl. Er zeigt
+außerdem, was eine Änderung an anderer Stelle kaputt macht: Wer den Prompt einer viel genutzten Fassung
+anpasst, sieht vorher, welche der hinterlegten Fälle danach anders ausgehen.
+
+- **Beispiel:** Vor der Freigabe der Fassung 4 laufen dreißig abgelegte Widersprüche durch den Prüfstand.
+  Achtundzwanzig ergeben das erwartete Ergebnis, zwei weichen ab — die Freigabe wartet, bis geklärt ist,
+  warum.
+
+---
+
+### Prüfagent
+
+Ein Agent, dessen Aufgabe nicht die Bearbeitung ist, sondern die Kontrolle des Ergebnisses eines anderen
+Agenten oder eines Menschen: Er prüft gegen die hinterlegten Quellen, sucht nach unbelegten Aussagen,
+fehlenden Pflichtangaben und Widersprüchen und meldet Befunde, statt selbst zu ändern.
+
+Das Vier-Augen-Prinzip ist in der Verwaltung ein vertrautes Mittel; der Prüfagent überträgt es auf
+KI-Ergebnisse. Er ersetzt die menschliche Verantwortung nicht — er sorgt dafür, dass sie an einer
+vorbereiteten Stelle ausgeübt wird.
+
+- **Beispiel:** Ein Prüfagent liest jeden Bescheidentwurf gegen die Rechtsquellenbibliothek und merkt an,
+  wenn eine Rechtsbehelfsbelehrung fehlt oder eine zitierte Fassung nicht mehr gilt.
+
+---
+
+## Modelle und zentrale Steuerung
+
+### Lokal betriebene Modelle
+
+Sprach- und Einbettungsmodelle, die auf Rechnern der Behörde oder ihres Rechenzentrums laufen. Kein Text
+verlässt dabei das Haus, und der Betrieb funktioniert ohne Netzanbindung.
+
+In OPAA sind lokal betriebene Modelle die **Voreinstellung**, nicht die Ausweichlösung. Eine nicht
+konfigurierte Installation spricht nicht nach außen. Ein Anbieter im Netz ist möglich, aber eine bewusste
+Freigabe der Systemverwaltung.
+
+- **Beispiel:** Ein Sozialamt betreibt Chat- und Einbettungsmodell auf eigener Hardware. Die Anlagen mit
+  Sozialdaten werden indiziert, ohne dass ein Byte davon eine externe Schnittstelle sieht.
+
+---
+
+### Modell-Policy als Obergrenze
+
+Die zentrale Festlegung der Systemverwaltung, welche Modelle für welche Aufgaben zulässig sind. Sie wirkt als
+**Obergrenze**, nicht als Vorschlag: Eine Ebene darunter — Space, Asset, einzelne Person — kann strenger
+sein, aber nie großzügiger.
+
+Damit ist die Frage „Wer darf welches Modell benutzen?" einmal beantwortet und nicht in jedem Referat neu.
+Eine Änderung an der Obergrenze wirkt sofort überall. Beschränkungen, die an den Daten hängen, kommen
+hinzu: Eine [Wissensbibliothek](#wissensbibliothek) mit der Vorgabe „nur lokale Modelle" senkt die Grenze
+überall dort, wo sie verwendet wird — unabhängig davon, wer wo fragt.
+
+- **Beispiel:** Die Systemverwaltung erlaubt hausweit ein lokales Modell und, nach Freigabe, ein externes
+  für Übersetzungen. Ein Referat schließt für seinen Space auch das aus. Ein Beschäftigter kann die Grenze
+  in keinem Fall anheben.
+
+---
+
+### Multi-Modell-Betrieb
+
+Verschiedene Modelle für verschiedene Aufgaben, um Qualität, Geschwindigkeit und Kosten auszubalancieren.
+
+**Beispiel:**
+- **Einbettungsmodell** (klein, lokal): wandelt Dokumente und Fragen in Vektoren
+- **Antwortmodell** (größer, lokal): formuliert die Antwort aus den abgerufenen Stellen
+- **Zusammenfassungsmodell** (klein): erzeugt Vorschautexte
+
+Die Zuordnung ist Sache der [Modell-Policy](#modell-policy-als-obergrenze). Ein Modell im Netz kommt nur dort
+in Betracht, wo es ausdrücklich freigegeben ist und die verarbeiteten Daten es zulassen.
+
+---
+
+## Datenpipeline
+
+### Wissensquelle
+
+Jedes System, in dem der Wissensbestand des Hauses liegt.
+
+**Beispiele:**
+- Wiki oder Intranet des Hauses
+- Netzlaufwerke und Dateiablagen
+- Funktionspostfächer
+- Fachverfahren und Vorgangsbearbeitung
+- Dokumentenmanagement und elektronische Akte
+- Uploads einzelner Beschäftigter
+
+---
+
+### Konnektor
+
+Software, die weiß, wie sie sich mit einer bestimmten Wissensquelle verbindet, Dokumente daraus liest und —
+wo die Quelle es hergibt — deren Leserechte mitführt.
+
+Jede Konnektorquelle indiziert in **genau eine** Wissensbibliothek. Damit bleibt der Rechteanker eindeutig.
+
+- **Beispiel:** Ein Konnektor auf das Netzlaufwerk des Bauamts liest die Ablage „Bauleitplanung" in die
+  gleichnamige Wissensbibliothek und übernimmt die Verzeichnisrechte aus dem Quellsystem.
+
+---
+
+### Dokumentenverarbeitung
+
+Die Schritte, mit denen OPAA ein Dokument durchsuchbar macht.
+
+1. **Auffinden** — Dokumente in den Wissensquellen entdecken
+2. **Auslesen** — Text extrahieren (PDF, DOCX, XLSX, PPTX, Markdown, Text)
+3. **Zerlegen** — in Chunks aufteilen
+4. **Einbetten** — in Vektoren umwandeln
+5. **Speichern** — Vektoren ablegen, Originaldatei im Speicher-Backend
+6. **Indizieren** — für die Suche verfügbar machen
+
+---
+
+### Upload durch Beschäftigte
+
+Das Hochladen eines Dokuments über eine Oberfläche (Web, REST-API) — im Unterschied dazu, dass OPAA
+Dokumente über einen Konnektor aus einer Quelle abholt.
+
+**Unterschiede zur Aufnahme über Konnektoren:**
+- Der Anstoß kommt von einer Person, nicht vom System
+- Er erfolgt bei Bedarf, nicht nach Zeitplan oder Ereignis
+- Das Dokument landet ohne andere Angabe in der persönlichen Wissensbibliothek
+- Die Originaldatei bleibt im Speicher-Backend erhalten
+
+Siehe [Daten-Indizierung & RAG](./features/data-indexing-rag.md).
+
+---
+
+### Speicher-Backend
+
+Der austauschbare Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
+die PDF- und DOCX-Dateien für Download und erneute Verarbeitung, dort die Embeddings für die Suche.
+
+**Mögliche Backends (bei der Installation gewählt):**
+- **Objektspeicher** (S3-kompatibel, etwa MinIO im eigenen Rechenzentrum)
+- **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus
+- **Lokales Dateisystem** — Entwicklung und kleine Installationen
+
+---
+
+### Indizierungsanstoß: nach Zeitplan oder nach Ereignis
+
+**Nach Zeitplan (Abfrage):** OPAA sieht in regelmäßigen Abständen in der Quelle nach. Einfach umzusetzen und
+mit jeder Quelle möglich; Änderungen wirken erst nach dem nächsten Lauf.
+
+**Nach Ereignis (Meldung):** Die Quelle meldet OPAA eine Änderung. Deutlich schneller, setzt aber voraus,
+dass die Quelle solche Meldungen abgibt.
+
+Beides ist vorgesehen; die Wahl hängt an der Quelle und daran, wie aktuell der Bestand sein muss.
+
+---
+
+### Bestände mehrfach verwenden
+
+Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselbe
+[Wissensbibliothek](#wissensbibliothek) wird in mehreren Spaces assoziiert oder an weitere Personen und
+Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Vervielfachung von Chunks.
+
+**Stand:** Durch das Asset-Modell gelöst. Das frühere Konzept eines raumübergreifenden Dokument-Teilens samt
+seiner offenen Sicherheitsfragen ist gegenstandslos — siehe
+[Dokument-Teilen](./features/document-sharing.md) (überholt).
+
+---
+
+## Sicherheit, Nachweis und Mitbestimmung
+
+### Revisionssicheres Protokoll
+
+Die unveränderliche Aufzeichnung, wer wann was getan hat und was dabei herauskam. „Revisionssicher" heißt:
+nachträglich nicht änderbar, vollständig, mit Zeitbezug, und der Zugriff auf das Protokoll wird selbst
+protokolliert.
+
+**Was festgehalten wird:**
+- Abfragen: Zeitpunkt, handelnde Person, Suchbereich, Zahl der Fundstellen
+- Zugriffe auf Dokumente: Zeitpunkt, Person, Dokument, Ergebnis
+- Verwaltungshandlungen: Rechteänderungen, Freigaben, Änderungen an Assets und an der Modell-Policy
+- Zugriffe auf das Protokoll selbst
+
+**Wozu:**
+- Nachweis gegenüber Aufsicht, Datenschutz und Rechnungsprüfung
+- Rekonstruktion eines Vorgangs Jahre später
+- Fehlersuche im Betrieb
+
+Es ist ausdrücklich **kein Auswertungspfad über Personen**: Aus dem Protokoll wird keine Rangliste und keine
+Leistungsbewertung gezogen. Siehe [Mitbestimmungsfähigkeit](#mitbestimmungsfähigkeit).
+
+- **Beispiel:** Zwei Jahre nach einem Bescheid fragt das Gericht, worauf sich die Behörde gestützt hat. Aus
+  dem Protokoll ergibt sich, welche Fassung welcher Dienstanweisung zum damaligen Zeitpunkt in die Antwort
+  eingegangen ist.
+
+---
+
+### C5-Fähigkeit
+
+Die Eigenschaft, so gebaut und dokumentiert zu sein, dass ein Betreiber eine Prüfung nach dem
+Kriterienkatalog C5 des BSI mit OPAA im Prüfumfang bestehen kann.
+
+**Ausdrücklich nicht dasselbe wie „zertifiziert".** C5 prüft den **Betrieb** eines Dienstes, nicht ein Stück
+Software. OPAA ist nicht zertifiziert und wird es als Software auch nicht werden; eine Formulierung wie
+„C5-zertifiziert" wäre schlicht falsch. Was OPAA leisten kann, ist die Zuarbeit: nachvollziehbare
+Konfiguration, sichere Voreinstellungen, Protokollierung, Software-Stückliste, Betriebsdokumentation.
+
+- **Beispiel:** Ein Rechenzentrum lässt seinen Betrieb prüfen und hat OPAA im Prüfumfang. Die Fragen des
+  Prüfers nach Protokollierung, Rechtekonzept und Schwachstellenmanagement lassen sich aus dem beantworten,
+  was OPAA mitbringt — die Aussage über das Ergebnis trifft der Prüfer, nicht das Produkt.
+
+---
+
+### SCIM
+
+*System for Cross-domain Identity Management* — ein standardisiertes Protokoll, über das ein
+Verzeichnisdienst Konten und Gruppen an eine Anwendung übergibt: anlegen, ändern, deaktivieren, löschen.
+
+Der Unterschied zu einem eigenen Abgleich ist der Lebenszyklus. Anmeldung allein sagt, wer gerade da ist;
+SCIM sagt auch, wer gegangen ist. Ohne diesen Weg bleiben Konten und Rechte bestehen, nachdem jemand die
+Behörde verlassen hat — genau der Befund, der bei jeder Prüfung auffällt.
+
+- **Beispiel:** Eine Beschäftigte wechselt vom Ordnungsamt ins Bauamt. Der Verzeichnisdienst meldet den
+  Gruppenwechsel über SCIM; ihre Leserechte auf die Bibliotheken des Ordnungsamts enden damit, ohne dass
+  jemand in OPAA nachpflegen muss.
+
+---
+
+### Organisation als Mandantengrenze
+
+Die Organisation ist die **harte** Trennlinie einer Installation: Keine Freigabe, keine Suche, kein
+Katalogtreffer und keine Verwaltungshandlung überschreitet sie.
+
+„Hart" heißt: Die Grenze ist nicht eine Einstellung, die man lockern kann, sondern eine Eigenschaft des
+Datenmodells. Sie ist damit die Voraussetzung dafür, dass ein Rechenzentrum mehrere Häuser auf einer
+Installation betreiben kann, ohne dass eines vom anderen etwas sieht. Sie ist zugleich die Obergrenze der
+[Verteilungsstufen](#verteilungsstufe).
+
+- **Beispiel:** Ein kommunales Rechenzentrum betreibt OPAA für elf Gemeinden. Eine Suche in Gemeinde A
+  liefert nie einen Chunk aus Gemeinde B, und die Systemverwaltung von A sieht die Nutzerinnen von B nicht.
+
+---
+
+### Mitbestimmungsfähigkeit
+
+Die Eigenschaft, mit den Anforderungen der Personalvertretung vereinbar zu sein, ohne dass dafür Funktionen
+abgeschaltet werden müssen.
+
+OPAA erzeugt Daten mit Personenbezug, und ein Rollout beginnt in aller Regel nicht ohne Dienstvereinbarung.
+Mitbestimmungsfähigkeit bedeutet konkret: Sichtbarkeit ist eine Handlung und keine Automatik, der
+persönliche Bereich bleibt unbeobachtet, Auswertungen sind aggregiert, und einen personenbezogenen
+Auswertungspfad gibt es nicht — nicht abgeschaltet, sondern nicht gebaut. Ranglisten existieren nicht.
+
+Damit wird die Dienstvereinbarung zu einer Konfigurationsaufgabe statt zu einem Projektrisiko.
+
+- **Beispiel:** Der Personalrat fragt, ob sich sehen lässt, wer wie viele Fragen stellt. Die Antwort ist,
+  dass Auswertungen nur je Organisationseinheit und ab einer Mindestgröße möglich sind — eine Ansicht je
+  Person ist im Produkt nicht vorgesehen.
+
+---
 
 ### Berechtigungs-Vererbung
 
-Dokumente erben Berechtigungen von ihrem Quellsystem.
+Dokumente führen die Rechte ihres Quellsystems mit.
 
-**Beispiel:**
-- Confluence-Seite hat Berechtigungen: "Nur Engineering-Team"
-- Wenn in OPAA indiziert, behält sie dieselben Berechtigungen
-- Nur Engineers können sie in OPAA-Suchen sehen
+- **Beispiel:** Ein Ordner auf dem Netzlaufwerk ist nur für das Personalreferat lesbar. Nach der Indizierung
+  gilt dieselbe Beschränkung in OPAA — die Inhalte erscheinen für niemanden sonst in der Suche.
 
-**Identity-Provider-Integration:**
-OPAA muss wissen, wer Benutzer sind und welchen Gruppen sie angehören. Dies wird typischerweise durch Verbindung zu einem organisatorischen Identity-Provider wie Keycloak, Active Directory oder Okta gehandhabt. Der genaue Integrationsansatz (direktes LDAP, OIDC, SAML) ist eine offene Frage, die während der Implementierung entschieden wird.
-
----
-
-### Audit-Logging
-
-Aufzeichnen, wer was wann getan hat und welches Ergebnis entstand.
-
-**Beispiele geloggter Aktionen:**
-- Benutzer hat gesucht: [Zeitstempel], [Benutzer], [Abfrage], [Ergebnisanzahl]
-- Benutzer hat auf Dokument zugegriffen: [Zeitstempel], [Benutzer], [Dokument], [Ergebnis]
-- Admin hat Berechtigung geändert: [Zeitstempel], [Admin], [was geändert], [Grund]
-
-**Anwendungsfälle:**
-- Compliance (beweisen, wer auf sensible Daten zugegriffen hat)
-- Debugging (verstehen, was schiefgelaufen ist)
-- Nutzungs-Analytics (wonach suchen Menschen?)
+Die Grundlage dafür ist die Anbindung an den Verzeichnisdienst des Hauses, aus dem Personen und Gruppen
+stammen (siehe [SCIM](#scim)).
 
 ---
 
 ### Verschlüsselung
 
-Daten in eine kodierte Form umwandeln, sodass nur autorisierte Benutzer sie lesen können.
+Daten so kodieren, dass nur Berechtigte sie lesen können.
 
-**Typen:**
-- **Im Transit** — Daten verschlüsselt während der Übertragung über Netzwerke (TLS/HTTPS)
-- **Im Ruhezustand** — Daten verschlüsselt während der Speicherung auf Disk
-- **Ende-zu-Ende** — Daten auf dem Gerät des Benutzers verschlüsselt, niemals vom Server lesbar
+- **Auf dem Transportweg** — verschlüsselt während der Übertragung im Netz (TLS/HTTPS)
+- **Im Ruhezustand** — verschlüsselt auf dem Datenträger
+- **Ende zu Ende** — bereits auf dem Gerät verschlüsselt, für den Server nicht lesbar
 
 ---
 
-## Leistungsoptimierungs-Konzepte
+## Verwaltungs-Spezifika
+
+### Leichte Sprache und Amtssprache
+
+Zwei entgegengesetzte Umformulierungen desselben Sachverhalts, die beide zum Alltag einer Behörde gehören.
+
+**Leichte Sprache** richtet sich nach festen Regeln: kurze Hauptsätze, ein Gedanke je Satz, keine
+Verschachtelung, keine Fachwörter ohne Erklärung, keine Abkürzungen. Sie ist keine Stilfrage, sondern für
+viele Empfänger die Voraussetzung dafür, einen Bescheid zu verstehen — und ein Baustein der Barrierefreiheit.
+
+**Amtssprache** geht in die Gegenrichtung: aus einem Entwurf wird eine Fassung, die den Anforderungen an
+Bescheide und Vermerke genügt — richtiger Fachbegriff, saubere Rechtsbezüge, angemessene Form der Anrede.
+
+Beide sind Textwerkzeuge auf demselben Text; welche Richtung gebraucht wird, entscheidet der Empfänger.
+
+- **Beispiel:** Aus „Der Antrag wird gemäß § 60 Abs. 1 SGB I abgelehnt, da die erforderlichen Nachweise
+  trotz Aufforderung nicht beigebracht wurden" wird in Leichter Sprache: „Wir können Ihren Antrag nicht
+  bewilligen. Der Grund: Uns fehlen Unterlagen. Wir haben Sie am 3. März darum gebeten." Der rechtliche
+  Gehalt bleibt; nur der Zugang ändert sich.
+
+---
+
+## Betrieb
+
+### Betrieb im eigenen Haus (On-Premises)
+
+OPAA läuft auf Servern der Behörde oder ihres Rechenzentrums.
+
+**Vorteile:**
+- Vollständige Datenhoheit — Daten verlassen die eigene Infrastruktur nicht
+- Keine Abhängigkeit von externen Schnittstellen
+- Betrieb ohne Netzanbindung möglich
+- Erfüllt strenge Anforderungen an Datenschutz und Geheimhaltung
+
+**Preis dafür:**
+- Infrastruktur, Sicherungen und Sicherheitsaktualisierungen liegen beim Betreiber
+
+---
+
+### Betrieb ohne Netzanbindung (air-gapped)
+
+Eine Installation ohne jede Verbindung nach außen. Mit lokal betriebenen Modellen und ohne externe
+Konnektoren ist das ein **vorgesehenes** Szenario, keine Ausnahme.
+
+Was dafür nötig ist, geht über eine Einstellung hinaus: übertragbare Abbilder, mitgelieferte Modellgewichte,
+Aktualisierung ohne Paketquellen im Netz, eine Software-Stückliste zum Mitliefern.
+
+- **Beispiel:** Ein Bereich, in dem Sicherheitsüberprüfungen bearbeitet werden, betreibt OPAA in einem Netz
+  ohne Übergang. Die Lieferung kommt als Datenträger, die Modelle liegen bei.
+
+---
+
+### Container / Docker
+
+Eine Methode, OPAA mit allen Abhängigkeiten so zu verpacken, dass es überall gleich läuft.
+
+**Warum das zählt:**
+- Die Installation ist reproduzierbar statt handgemacht
+- Aktualisieren heißt, ein neues Abbild einzuspielen
+- Dieselbe Lieferung funktioniert in der Testumgebung und im Wirkbetrieb
+
+---
+
+### Kubernetes
+
+Ein System zur Verwaltung vieler Container.
+
+**Was es leistet:**
+- Mehrere Instanzen für Ausfallsicherheit
+- Automatischer Neustart ausgefallener Instanzen
+- Verteilung der Last
+- Wachstum ohne Umbau
+
+**Wofür:** größere Häuser und Rechenzentren, die mehrere Organisationen bedienen.
+
+---
+
+### Konfigurationsverwaltung
+
+Wege, OPAA ohne Eingriff in den Quellcode anzupassen.
+
+- **Umgebungsvariablen** — etwa die Wahl des Modellanbieters
+- **Konfigurationsdateien** — YAML-Dateien mit Einstellungen
+- **Verwaltungsoberfläche** — Einstellungen im Browser
+
+So wird ein Modell ausgetauscht, ohne dass ein Referat seine Agenten anfassen muss.
+
+---
+
+### Latenz
+
+Die Zeit von der Frage bis zur Antwort.
+
+**Anhaltspunkte:**
+- Vektorsuche: unter 500 ms
+- Antwortgenerierung: 1–3 Sekunden
+- Insgesamt: unter 4 Sekunden
+
+**Einflussgrößen:** Größe des Bestands, gewähltes Modell, verfügbare Hardware. Reranking und Zitierzwang
+kosten Zeit — und sind sie wert.
+
+---
 
 ### Caching
 
-Zuvor berechnete Ergebnisse speichern, damit sie nicht neu berechnet werden müssen.
+Bereits berechnete Ergebnisse aufheben, statt sie erneut zu berechnen.
 
-**Beispiele in OPAA:**
-- Häufige Fragen cachen (nicht neu einbetten oder neu generieren)
-- Benutzerberechtigungen cachen (nicht bei jeder Anfrage erneut prüfen)
-- Dokument-Embeddings cachen (unveränderte Dokumente nicht neu einbetten)
+- Häufige Fragen nicht erneut einbetten
+- Rechte nicht bei jeder Anfrage neu ermitteln
+- Unveränderte Dokumente nicht erneut einbetten (erkannt über Prüfsummen)
 
-**Kompromiss:** Verbraucht mehr Speicher, aber spart Rechenleistung und Geld
-
----
-
-### Batch-Verarbeitung
-
-Mehrere Elemente zusammen statt einzeln verarbeiten.
-
-**Beispiel:**
-- 1.000 Dokumente einzeln indizieren: langsam
-- 1.000 Dokumente in Batches von 100 indizieren: schneller (effizienter)
-
-**Wenn in OPAA verwendet:**
-- Während der Indizierung (Batch-Embedding-Generierung)
-- Während der Berichtserstellung (Batch-Abfragen)
+**Preis dafür:** mehr Speicher gegen weniger Rechenaufwand.
 
 ---
 
-### Multi-Modell-Strategie
+### Stapelverarbeitung
 
-Verschiedene KI-Modelle für verschiedene Aufgaben verwenden, um Kosten, Geschwindigkeit und Qualität zu optimieren.
-
-**Beispiel:**
-- **Embedding-Modell** (lokal, günstig): Konvertiert Dokumente und Fragen in Vektoren für die Suche
-- **Reasoning-Modell** (Cloud, leistungsstark): Generiert die endgültige Antwort aus abgerufenen Dokumenten
-- **Zusammenfassungsmodell** (mittlere Stufe): Erstellt Dokumentzusammenfassungen für Vorschauen
-
-Das bedeutet, eine Organisation kann ein lokales Embedding-Modell on-premises (kostenlos, schnell) betreiben, während sie ein Cloud-basiertes Reasoning-Modell (höhere Qualität) nur für die Antwortgenerierung verwendet — das Beste aus beiden Welten kombinierend.
+Mehrere Elemente gemeinsam statt einzeln verarbeiten — etwa beim Einbetten während der Indizierung. Tausend
+Dokumente in Bündeln sind deutlich schneller als tausend einzelne Vorgänge.
 
 ---
 
-### Kostenoptimierung
-
-Strategien zur Reduzierung von LLM-API-Kosten.
-
-**Techniken:**
-- Multi-Modell-Strategie verwenden (günstige Modelle für einfache Aufgaben, leistungsstarke Modelle nur wenn nötig)
-- Antworten auf häufige Fragen cachen
-- Lokale Modelle verwenden (kostenlos nach Infrastrukturkosten)
-- Anfragen außerhalb der Stoßzeiten bündeln
-
----
-
-## Verwandte Konzepte (Nicht direkt in OPAA)
+## Verwandte Begriffe
 
 ### Wissensgraph
 
-Eine strukturierte Darstellung von Informationen und wie Konzepte miteinander in Beziehung stehen.
+Eine strukturierte Darstellung von Sachverhalten und ihren Beziehungen zueinander.
 
 **Beispiel:**
 ```
-Person: Hans Müller
-  ├── Arbeitet bei: Beispiel GmbH
-  ├── Abteilung: Engineering
-  └── Vorgesetzter: Maria Schmidt
+Dienstanweisung 12/2024
+  ├── ersetzt: Dienstanweisung 04/2019
+  ├── gilt für: Amt 50
+  └── beruht auf: § 84 SGB IX
 
-Dokument: Remote-Arbeit-Richtlinie
-  └── Gilt für: Engineering-Abteilung
+Vorgang 32.1-114/2025
+  ├── zuständig: Sachgebiet 32.1
+  └── betrifft: Widerspruch
 ```
 
-**Status in OPAA:** Außerhalb des MVP-Rahmens, mögliche zukünftige Erweiterung
+**Stand in OPAA:** als Ergänzung des Vektor-Retrievals in Phase 3 vorgesehen, nicht im Fundament. Die
+Recherchegrundlage steht in [GraphRAG.md](./GraphRAG.md).
 
 ---
 
-### Indizierungs-Auslöser: Geplant vs. Ereignisbasiert
+## Schnellreferenz
 
-Es gibt zwei Ansätze, um den Index aktuell zu halten:
-
-**Geplante Indizierung (Polling):**
-- OPAA prüft Datenquellen nach einem regulären Zeitplan (z. B. jede Stunde, täglich um 2 Uhr)
-- Einfach zu implementieren, funktioniert mit jeder Datenquelle
-- Kompromiss: Änderungen sind erst nach dem nächsten geplanten Lauf sichtbar
-
-**Ereignisbasierte Indizierung (Push):**
-- Datenquellen benachrichtigen OPAA, wenn sich Dokumente ändern (über Webhooks, Ereignisse oder APIs)
-- Änderungen werden viel schneller indiziert (Minuten statt Stunden)
-- Erfordert, dass die Datenquelle Ereignisbenachrichtigungen unterstützt
-- Beispiel: Confluence sendet einen Webhook, wenn eine Seite aktualisiert wird → OPAA indiziert diese Seite sofort neu
-
-OPAA unterstützt beide Modelle. Die Wahl hängt von den Fähigkeiten der Datenquelle und den Aktualitätsanforderungen der Organisation ab.
-
-### Echtzeit-Synchronisation
-
-OPAA sofort aktualisieren, wenn Quelldokumente sich ändern (innerhalb von Sekunden).
-
-**Beispiel:** Benutzer bearbeitet Confluence-Seite → OPAA aktualisiert automatisch innerhalb von Sekunden
-
-**Status in OPAA:** Kein primäres Ziel — ereignisbasierte Indizierung bietet nahezu-Echtzeit-Aktualisierungen (Minuten), was für die meisten Anwendungsfälle ausreicht. Echte Echtzeit-Synchronisation (Sekunden) kann später für bestimmte Datenquellen hinzugefügt werden.
-
----
-
-## Schnellreferenz-Tabelle
-
-| Begriff | Definition | Beispiel |
-|---------|-----------|---------|
-| **RAG** | Retrieval + KI-Generierung | Frage stellen → Dokumente abrufen → LLM antwortet |
-| **Embedding** | Vektor, der Textbedeutung repräsentiert | [0,21, -0,18, 0,45, ...] |
-| **Chunk** | Teil eines Dokuments | Seite 3 eines 50-seitigen Handbuchs |
-| **Semantisch** | Basierend auf Bedeutung, nicht Schlüsselwörtern | "Remote-Arbeit" ≈ "von zu Hause arbeiten" |
-| **LLM** | KI-Sprachmodell | GPT-4, Claude, Llama |
-| **Space** | Thematischer Arbeitsraum (flach, keine Hierarchie); trägt Chats und Artefakte | "Projekt Phoenix" |
-| **Asset** | Eigenständiges, teilbares Objekt mit eigenem Eigentümer und eigener Rechteliste | Wissensbibliothek, Agent, Prompt-Bibliothek |
-| **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | "Rechtsquellen Soziales" |
-| **Benutzer-Upload** | Benutzer schiebt Dokument in OPAA | Drag-and-Drop in Web-UI |
-| **Speicher-Backend** | Pluggbarer Dateispeicher für Uploads | S3, Netzlaufwerk, lokal |
-| **Assoziation** | Ein Asset in einem Space bereitstellen — reine Kuratierung, gewährt keine Rechte | "Rechtsquellen" in fünf Team-Spaces |
-| **System-Admin** | Systemweite Rolle für organisationsweite Administration, je Organisation | Konnektor-Konfiguration, Anlegen von Team-Spaces |
-| **Space-Rolle** | Mitarbeit und Kuratierung im Arbeitsraum | Member, Curator, Admin |
+| Begriff | Kurz | Beispiel |
+|---|---|---|
+| **Belegbarkeit** | Jede Aussage auf eine prüfbare Quelle zurückführbar | Antwort nennt Dienstanweisung und Abschnitt |
+| **Verteilbarkeit** | Können wandert von einer Person in die Organisation | Agent eines Referats wird hausweiter Standard |
+| **RAG** | Abruf plus Erzeugung | Frage → Textstellen abrufen → Modell antwortet |
+| **Embedding** | Vektor, der Bedeutung abbildet | [0,21, -0,18, 0,45, …] |
+| **Chunk** | Abschnitt eines Dokuments | Abschnitt „Telearbeit" der Dienstanweisung |
+| **Erklärbares Chunking** | Die Zerlegung ist einsehbar | Sichtbar, dass eine Gebührentabelle zerschnitten wurde |
+| **Semantische Suche** | Suche nach Sinn | „mobiles Arbeiten" ≈ „von zu Hause arbeiten" |
+| **Hybride Suche** | Semantik und Volltext zusammen | Aktenzeichen exakt, Umschreibung sinngemäß |
+| **Reranking** | Zweite, genauere Bewertung der Treffer | 50 grobe Treffer → 5 einschlägige |
+| **Fundstelle** | Der Nachweis in der Antwort | „Dienstanweisung 12/2024, Abschnitt 4.2" |
+| **Quellenbindung** | Jede Aussage an ihre Textstelle gebunden | Sprung in den Absatz, nicht auf die Datei |
+| **Zitierzwang** | Ohne Beleg keine Antwort | „Dazu lässt sich nichts feststellen" |
+| **Konfidenz** | Wie belastbar die Grundlage ist | 0,4 — Auskunft vor Verwendung prüfen |
+| **Space** | Thematischer Arbeitsraum, flach; trägt Chats und Artefakte | „Bauleitplanung" |
+| **KI-Asset** | Benanntes, teilbares Objekt mit Eigentümer und Rechten | Agent, Prompt-Bibliothek, Wissensbibliothek |
+| **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | „Rechtsquellen Soziales" |
+| **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Team-Spaces |
+| **Verteilungsstufe** | Reichweite der Freigabe | persönlich → Team → Fachbereich → organisationsweit |
+| **Aufgabenbeschreibung** | Was ein Agent tut und was nicht | „Prüft Frist, Form, Zuständigkeit; versendet nichts" |
+| **Agenten-Prüfstand** | Durchlauf an Testfällen vor der Freigabe | 30 Altfälle, 2 Abweichungen |
+| **Prüfagent** | Kontrolliert Ergebnisse gegen die Quellen | Findet fehlende Rechtsbehelfsbelehrung |
+| **Lokale Modelle** | Modelle auf eigener Hardware; Voreinstellung | Chat und Einbettung im eigenen Rechenzentrum |
+| **Modell-Policy** | Zentrale Obergrenze der zulässigen Modelle | Referat darf strenger sein, nie großzügiger |
+| **System-Admin** | Systemweite Rolle je Organisation | Konnektoren einrichten, Team-Spaces anlegen |
+| **Space-Rolle** | Mitarbeit und Kuratierung im Raum | Member, Curator, Admin |
 | **Asset-Rolle** | Tatsächlicher Zugriff auf ein Asset | User, Viewer, Editor, Manager, Owner |
-| **Konnektor** | Datenquellen-Verbindung; jede Quelle indiziert in genau eine Wissensbibliothek | Confluence-Server mit Space→Bibliothek-Zuordnungen |
-| **Vektor-DB** | Für Ähnlichkeitssuche optimierte Datenbank | Elasticsearch, Milvus, pgvector |
-| **Latenz** | Zeit bis zur Antwort | < 4 Sekunden Ziel |
-| **Halluzination** | LLM erfindet Fakten | LLM: "Unsere Richtlinie ist X" (nicht wahr) |
+| **Konnektor** | Anbindung an eine Wissensquelle | Netzlaufwerk → eine Wissensbibliothek |
+| **Revisionssicheres Protokoll** | Unveränderliche Aufzeichnung des Handelns | Rekonstruktion eines Vorgangs nach zwei Jahren |
+| **C5-Fähigkeit** | Auf die Prüfung des Betreibers ausgelegt — **nicht** zertifiziert | Betreiber besteht die Prüfung mit OPAA im Umfang |
+| **SCIM** | Standard für den Lebenszyklus von Konten | Wechsel des Amts beendet alte Leserechte |
+| **Mandantengrenze** | Organisation als harte Trennlinie | Elf Gemeinden, eine Installation, keine Überschneidung |
+| **Mitbestimmungsfähigkeit** | Kein personenbezogener Auswertungspfad | Auswertung nur aggregiert, keine Ranglisten |
+| **Leichte Sprache** | Feste Regeln für verständliche Texte | Ablehnung in kurzen Hauptsätzen |
+| **Halluzination** | Modell erfindet Sachverhalte | „Die Frist beträgt drei Monate" — frei erfunden |
+| **Latenz** | Zeit bis zur Antwort | Ziel unter 4 Sekunden |
 
 ---
 
-## Mehr erfahren
+## Weiterlesen
 
-- [VISION.md](./VISION.md) für vollständiges Systemdesign lesen
-- Spezifische Feature-Spezifikationen in `features/` für detaillierte Informationen lesen
-- Siehe [INDEX.md](./INDEX.md) für Lesepfade nach Rolle
+- [VISION.md](./VISION.md) — Nordstern, Leitprinzipien, Themenbereiche und Phasen
+- [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
+- [STATUS.md](./STATUS.md) — was davon heute gebaut ist
+- [INDEX.md](./INDEX.md) — vollständiger Dokumentationsindex
+- [GETTING-STARTED.md](./GETTING-STARTED.md) — Lesepfade nach Publikum
