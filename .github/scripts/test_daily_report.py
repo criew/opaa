@@ -162,6 +162,137 @@ def test_nummern_werden_nachsichtig_gelesen(wert, erwartet):
 
 
 # --------------------------------------------------------------------------
+# Zuordnung der Tickets zu Epics
+# --------------------------------------------------------------------------
+
+
+def _api_issue(nummer: int, *, state: str = "open", labels=(), body: str = "") -> dict:
+    return {
+        "number": nummer,
+        "title": f"Titel {nummer}",
+        "html_url": f"https://github.com/criew/opaa/issues/{nummer}",
+        "state": state,
+        "labels": [{"name": name} for name in labels],
+        "body": body,
+    }
+
+
+@pytest.fixture
+def repo_issues(monkeypatch):
+    """Stellt die Issue-Liste des Repositories bereit und gibt sie zurück."""
+    liste: list[dict] = []
+    monkeypatch.setattr(dr, "gh_api", lambda pfad, **kwargs: liste)
+    return liste
+
+
+def _sub_issues(monkeypatch, kinder: dict[int, list[int]]):
+    monkeypatch.setattr(dr, "fetch_sub_issues", lambda repo, nummern: kinder)
+
+
+def test_tickets_kommen_aus_den_sub_issues(repo_issues, monkeypatch):
+    repo_issues += [
+        _api_issue(1, labels=["epic"]),
+        _api_issue(2, state="closed"),
+        _api_issue(3),
+    ]
+    _sub_issues(monkeypatch, {1: [2, 3]})
+
+    (epic,) = dr.collect_epics("criew/opaa")
+    assert epic["tickets"] == [2, 3]
+    assert (epic["tickets_closed"], epic["tickets_total"]) == (1, 2)
+
+
+def test_sub_issues_haben_vorrang_vor_der_ticketliste(repo_issues, monkeypatch):
+    """Eine veraltete Liste im Body darf die gepflegte Beziehung nicht verdrängen."""
+    repo_issues += [
+        _api_issue(1, labels=["epic"], body="- [ ] #9 veraltet"),
+        _api_issue(2),
+        _api_issue(9),
+    ]
+    _sub_issues(monkeypatch, {1: [2]})
+
+    (epic,) = dr.collect_epics("criew/opaa")
+    assert epic["tickets"] == [2]
+
+
+def test_ohne_sub_issues_greift_die_ticketliste(repo_issues, monkeypatch):
+    """Ein Epic, das noch nicht migriert ist, bleibt im Report sichtbar."""
+    repo_issues += [
+        _api_issue(1, labels=["epic"], body="- [x] #2 erledigt\n- [ ] #3 offen"),
+        _api_issue(2, state="closed"),
+        _api_issue(3),
+    ]
+    _sub_issues(monkeypatch, {})
+
+    (epic,) = dr.collect_epics("criew/opaa")
+    assert epic["tickets"] == [2, 3]
+    assert epic["tickets_closed"] == 1
+
+
+def test_ein_epic_ist_kein_ticket_eines_anderen(repo_issues, monkeypatch):
+    """Ein untergeordnetes Epic bekommt einen eigenen Abschnitt, keinen Ticketplatz."""
+    repo_issues += [
+        _api_issue(1, labels=["epic"]),
+        _api_issue(5, labels=["epic"]),
+        _api_issue(6),
+        _api_issue(7),
+    ]
+    _sub_issues(monkeypatch, {1: [5, 6], 5: [7]})
+
+    epics = {epic["number"]: epic["tickets"] for epic in dr.collect_epics("criew/opaa")}
+    assert epics == {1: [6], 5: [7]}
+
+
+def test_unbekannte_nummern_werden_verworfen(repo_issues, monkeypatch):
+    """Ein Sub-Issue ohne zugehöriges Issue im Repository zählt nicht mit."""
+    repo_issues += [_api_issue(1, labels=["epic"]), _api_issue(2)]
+    _sub_issues(monkeypatch, {1: [2, 999]})
+
+    (epic,) = dr.collect_epics("criew/opaa")
+    assert epic["tickets"] == [2]
+
+
+def test_epic_ohne_tickets_entfaellt(repo_issues, monkeypatch):
+    """Epic #60 nummeriert Befunde als "- [ ] **#1 …**" — das sind keine Tickets."""
+    repo_issues += [
+        _api_issue(1, labels=["epic"], body="- [ ] **#1 CORS Wildcard Headers**"),
+        _api_issue(2),
+    ]
+    _sub_issues(monkeypatch, {})
+
+    assert dr.collect_epics("criew/opaa") == []
+
+
+def test_sub_issues_fremder_repositories_werden_verworfen(monkeypatch):
+    """Deren Nummer wäre im Kontext dieses Repositories mehrdeutig."""
+    monkeypatch.setattr(
+        dr,
+        "gh_graphql",
+        lambda repo, felder: {
+            "e1": {
+                "subIssues": {
+                    "nodes": [
+                        {"number": 2, "repository": {"nameWithOwner": "criew/opaa"}},
+                        {"number": 3, "repository": {"nameWithOwner": "fremd/repo"}},
+                    ]
+                }
+            }
+        },
+    )
+    assert dr.fetch_sub_issues("criew/opaa", [1]) == {1: [2]}
+
+
+def test_fehlgeschlagene_sub_issue_abfrage_bleibt_folgenlos(monkeypatch):
+    """Der Aufrufer fällt dann auf die Ticketlisten zurück."""
+
+    def fehlschlag(repo, felder):
+        raise RuntimeError("GraphQL-Abfrage fehlgeschlagen: 502")
+
+    monkeypatch.setattr(dr, "gh_graphql", fehlschlag)
+    assert dr.fetch_sub_issues("criew/opaa", [1]) == {}
+
+
+# --------------------------------------------------------------------------
 # Rendering
 # --------------------------------------------------------------------------
 
