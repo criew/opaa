@@ -86,7 +86,8 @@ begründet:
 - **Datenbank:** PostgreSQL mit pgvector, Schemaverwaltung über Liquibase
 - **Frontend:** React, TypeScript, Material UI, Vite
 - **Modelle:** jede OpenAI-kompatible Schnittstelle. **Voreingestellt sind lokal betriebene Modelle** für
-  Chat und Einbettung; ein Cloud-Anbieter ist konfigurierbar, aber nicht voreingestellt.
+  Chat und Einbettung; ein anderer Anbieter ist konfigurierbar, aber nicht voreingestellt — und wer
+  ihn wählt, gibt dessen Adresse ausdrücklich an, weil es dafür keine Voreinstellung gibt.
 - **Betrieb:** Docker Compose; Kubernetes und Betrieb ohne Netzanbindung sind Ziel, aber noch nicht gebaut
 
 ## Mitwirken

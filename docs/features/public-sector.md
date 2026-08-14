@@ -4,8 +4,7 @@
 > Amtssprache als Textwerkzeug sowie die Revisionssicherheit gehören in **Phase 1**;
 > Barrierefreiheit nach BITV und der Feinschliff der Amtssprache in **Phase 3**; die Anbindung an
 > elektronische Akte und Dokumentenmanagement in **Phase 4** und nur projektgetrieben. Der Assistent
-> für Bürgerinnen und Bürger und ein öffentlich eingebettetes Widget sind Ausblick; siehe
-> [#357](https://github.com/criew/opaa/issues/357).
+> für Bürgerinnen und Bürger und ein öffentlich eingebettetes Widget bleiben Ausblick der **Phase 4**.
 
 ## Motivation
 
@@ -32,8 +31,8 @@ unterscheidet.
    und der Belegpflicht darüber, worauf eine Aussage beruhte. Einzeln trägt keines von beiden.
 4. **Die Anbindung an elektronische Akte und Dokumentenmanagement ist eine projektgetriebene Option**
    — sie wird gebaut, wenn ein konkretes Einführungsvorhaben sie trägt, sonst nicht.
-5. **Der Bürger-Scope ist Ausblick.** Er wird festgehalten, damit er Entscheidungen der ersten Phase
-   nicht unbemerkt beeinflusst — nicht, um ihn einzuplanen.
+5. **Der Bürger-Scope ist Ausblick der Phase 4.** Er wird festgehalten, damit er Entscheidungen der
+   ersten Phase nicht unbemerkt beeinflusst — nicht, um ihn einzuplanen.
 
 ---
 
@@ -176,18 +175,17 @@ bewusster Platzhalter.
 ## Ausblick: Assistent für Bürgerinnen und Bürger
 
 Ein Assistent, der sich an Bürgerinnen und Bürger richtet, und ein öffentlich in eine Webseite
-eingebettetes Widget sind **Ausblick, nicht Fundament**. Der primäre Nutzerkreis von OPAA ist die
-interne Verwaltung.
+eingebettetes Widget sind **Ausblick der Phase 4, nicht Fundament**. Der primäre Nutzerkreis von OPAA
+ist die interne Verwaltung.
 
 Der Unterschied ist nicht die Oberfläche, sondern alles dahinter: ein anonymer statt eines
 angemeldeten Gegenübers, eine Außenwirkung statt einer internen Zuarbeit, eine Auskunft, die als
 Aussage der Behörde gelesen wird, und ein Missbrauchsrisiko, das im Innenverhältnis nicht besteht.
 
 Festgehalten wird das hier aus einem einzigen Grund: **damit Entscheidungen der ersten Phase diesen
-Weg nicht unbemerkt verbauen.** Welche das sind — Rechtemodell, Mandantentrennung, Umgang mit
-anonymem Zugriff, Barrierefreiheit — und welche davon billig offenzuhalten sind, wird in
-[#357](https://github.com/criew/opaa/issues/357) geklärt. Hier wird nichts davon entschieden und
-nichts eingeplant.
+Weg nicht unbemerkt verbauen** — betroffen sind Rechtemodell, Mandantentrennung, der Umgang mit
+anonymem Zugriff und die Barrierefreiheit. Eine gesonderte Anforderungsliste wird dafür nicht geführt,
+und vorgezogen wird nichts.
 
 ---
 
@@ -215,8 +213,6 @@ nichts eingeplant.
   Prüfung, durch eine externe Begutachtung oder durch beides?
 - Welche Aufbewahrungsfristen sind voreingestellt, und welche muss ein Haus zwingend selbst festlegen?
 - Welches Zielsystem für die elektronische Akte wird zuerst angebunden, falls ein Vorhaben es trägt?
-- Bürger-Scope: welche Entscheidungen der ersten Phase sind billig offenzuhalten? Siehe
-  [#357](https://github.com/criew/opaa/issues/357).
 
 ---
 

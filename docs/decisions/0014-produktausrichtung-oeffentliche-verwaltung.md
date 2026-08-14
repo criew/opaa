@@ -82,7 +82,7 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
-| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
+| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
 
 Die Prüfung dieser Punkte läuft über ein eigenes Epic mit je einer Entscheidungsvorlage. Bis dahin bleibt
@@ -149,6 +149,52 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bereits abgedeckt.
 - **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Standardposition der Modellanbieter
+
+- **Punkt:** Cloud-Modelle als Standardeinstellung aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung; daran
+  ändert sich nichts, und es ist keine Zwischenlösung. Zwei Festlegungen kommen hinzu. Erstens: Eine
+  **technische Sperre wird nicht gebaut** — es gibt keinen Mechanismus, der Modellaufrufe an Ziele
+  außerhalb festgelegter Netzbereiche verweigert. Die Zusicherung, dass keine Daten an ein Modell
+  außerhalb des Hauses gehen, ruht damit auf der Konfiguration und nicht auf einer Durchsetzung; wer
+  sie nachweisen muss, weist die Konfiguration nach und sichert den Netzweg außerhalb von OPAA ab. Das
+  gilt für den heutigen Stand und schließt eine spätere Durchsetzung nicht aus: Die zentralen
+  Modellvorgaben aus Themenbereich E, die als Obergrenze wirken, bleiben Teil von Phase 1 und sind der
+  Ort, an dem eine Durchsetzung einhängt. Zweitens: Die **Basis-Adresse der openai-kompatiblen
+  Schnittstelle verliert ihre Voreinstellung**, bei der gemeinsamen Adresse wie bei den davon
+  abgeleiteten Werten für Chat und Einbettung. Wer diesen Anbieter wählt, gibt die Adresse an; fehlt
+  sie, bricht der Start mit einer Meldung ab, die die fehlende Variable benennt. Der Standardfall —
+  lokal betriebene Modelle — startet unverändert ohne jede zusätzliche Konfiguration.
+- **Begründung:** Für die Sperre: Die Voreinstellung ist bereits lokal, und wer sie ändert, tut es
+  absichtlich; ein Durchsetzungsmechanismus ohne die verwalteten Modelle und Vorgaben, an die er
+  gehört, wäre eine zweite Wahrheit neben der Konfiguration und würde eine Sicherheit vortäuschen, die
+  er nicht trägt. Offen benannt zu werden ist mehr wert als eine halbe Sperre. Für die Adresse:
+  Anbietername und Zieladresse sind zwei verschiedene Dinge — `openai` bezeichnet das Protokoll, das
+  auch lokal betriebene Modellserver sprechen. Wer im Haus einen solchen Server als
+  „openai-kompatibel" einbindet und die Adresse nicht setzt, erbte mit einer Voreinstellung
+  stillschweigend ein Ziel außerhalb des Hauses, ohne dass es an einer Fehlermeldung auffiele. Genau
+  dieser Fall soll nicht mehr möglich sein.
+- **Verweis:** [#353](https://github.com/criew/opaa/issues/353) ·
+  [features/llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut) ·
+  [deployment.md](../deployment.md#llm-anbieter)
+
+### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
+
+- **Punkt:** Ob der Bürger-Scope — ein Assistent für Bürgerinnen und Bürger und ein öffentlich in eine
+  Webseite eingebettetes Widget — eine eigene Führung im Dokumentenbestand erhält.
+- **Entscheidung:** Der Bürger-Scope bleibt Ausblick der Phase 4. Es wird dafür keine gesonderte Notiz
+  und kein eigener Abschnitt angelegt, keine Anforderungsliste geführt und nichts vorgezogen — auch die
+  Barrierefreiheit nach BITV nicht, die in Phase 3 verbleibt. Die Stellen, die den Bürger-Scope bisher
+  als offene Frage geführt haben, sind auf diesen entschiedenen Stand gebracht.
+- **Begründung:** Der Ausblick ist bereits in [VISION.md](../VISION.md) (Phase 4) und in
+  [features/public-sector.md](../features/public-sector.md) beschrieben; eine dritte Fassung desselben
+  Sachverhalts erzeugt Pflegeaufwand und Widerspruchsrisiko, ohne etwas hinzuzufügen. Eine zusätzliche
+  Anforderungsliste für einen Nutzerkreis, der nicht adressiert wird, bindet Aufmerksamkeit ohne
+  Nutzen. Was Entscheidungen der ersten Phase an dieser Stelle verbauen könnten, ist erhoben und am
+  Vorgang dokumentiert, damit es beim späteren Aufgreifen nicht neu erarbeitet werden muss.
+- **Verweis:** [#357](https://github.com/criew/opaa/issues/357) ·
+  [features/public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger)
 
 ### 14.08.2026 — Anbieternamen im Bestand
 
