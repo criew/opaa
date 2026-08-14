@@ -56,6 +56,12 @@ Drei Zustände werden unterschieden:
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
+- **Überlappung beim Zerlegen.** `ChunkingService` verwendet den Token-Splitter ohne Überlappung. Ohne
+  sie wird eine Definition regelmäßig von ihrer Überschrift getrennt und der Beleg dadurch unbrauchbar —
+  das ist keine Feinjustierung, sondern eine Lücke in der Belegbarkeit.
+- **Nur fünf Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.pptx`; im Netzweg
+  zusätzlich `.doc`), ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte
+  Extraktor kann mehr. Die beiden Indizierungswege führen dabei **unterschiedliche** Listen.
 - Konfidenz als eigenständige, erklärte Größe (heute nur Ähnlichkeitswert)
 
 **Geplant (Phase 2 und später)**
@@ -137,9 +143,11 @@ nicht vertreten.
 - **Lokal betriebene Modelle sind die Voreinstellung**, für Chat und Einbettung. Ein Cloud-Anbieter ist
   konfigurierbar, aber nicht voreingestellt; ohne gesetzten Schlüssel greift ein Platzhalter. Eine
   unkonfigurierte Installation redet nicht nach außen.
-- Streaming der Antworten an die Oberfläche
 
 **Geplant (Phase 1)**
+- **Ausgabe im Fluss.** Die Antwort erscheint heute am Stück. `AnswerGenerationService` ruft das Modell
+  blockierend auf, die Schnittstelle kennt keinen Ereignisstrom und die Oberfläche empfängt keinen. Für
+  die wahrgenommene Antwortzeit ist das der wichtigste Einzelfaktor.
 - **Modellverwaltung** — Modelle sind heute Konfiguration, keine verwaltbaren Objekte
 - **Zentrale Vorgaben als Obergrenze** — es gibt keine technische Sperre, die Cloud-Nutzung ausschließt
   oder je Wissensbibliothek beschränkt. Wer das heute will, verlässt sich auf die Konfiguration.
@@ -210,17 +218,31 @@ nicht vertreten.
 ## I · Kanäle & Oberflächen
 
 **Gebaut**
-- Weboberfläche: Chat mit Quellenangaben, Dokumentenübersicht, Space- und Gruppenverwaltung,
+- Weboberfläche: Chat mit Quellenangaben und Eingrenzung auf Spaces, Space- und Gruppenverwaltung,
   Einstellungen (`frontend/src/pages/`)
-- REST-API unter `/api/v1` — Abfrage, Indizierung, Spaces, Bibliotheken, Gruppen, Verzeichnisabgleich
+- REST-API unter `/api/v1` — Abfrage, Indizierung, Spaces, Bibliotheken samt Rechtevergabe, Gruppen,
+  Verzeichnisabgleich, Systemverwaltung
+- Ratenbegrenzung je Netzadresse und global je Endpunkt (`io.opaa.api.RateLimitFilter`)
 - E2E-Prüfung als Rauchtest (`e2e/`, ADR-0009)
+
+**Nicht gebaut — sieht aber gebaut aus**
+- **Die Dokumentenseite ist ein Platzhalter.** `DocumentsPage.tsx` zeigt „Demnächst verfügbar"; der
+  Endpunkt `/api/v1/libraries/{id}/documents` existiert, die Oberfläche dazu nicht.
+- **Die Bewertung von Antworten ist nur Oberfläche.** `FeedbackButtons.tsx` hält den Zustand lokal, zeigt
+  „Feedback folgt in Kürze" und trägt einen entsprechenden Vermerk im Code. Es gibt weder Endpunkt noch
+  Speicherung — die Rückkopplungsschleife aus Themenbereich A hat damit keine Datenquelle.
+- **Gespräche überleben kein Neuladen.** Der Verlauf liegt nur im Speicher des Browsers; das
+  serverseitige Gesprächsgedächtnis aus Themenbereich A ist davon unberührt, aber nicht dasselbe.
+- **Es gibt keine Verwaltung von API-Tokens.** Die Einstellungsseite kennt nur das Farbschema.
 
 **Nicht gebaut**
 - **Kein einziger Chat-Kanal.** Weder ein self-hosted Team-Chat noch ein Verbraucher-Messenger. Die
   Dokumentation nannte bisher mehrere davon; welche im Zielbild bleiben, wird in #352 geklärt.
 
 **Geplant**
-- Anbindung an self-hosted Team-Chats (Phase 3) · Erweiterungen für Office und Browser (Phase 4)
+- Dokumentenseite, Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205),
+  Token-Verwaltung (Phase 1) · Anbindung an self-hosted Team-Chats (Phase 3) · Erweiterungen für Office
+  und Browser (Phase 4)
 
 > Offen: unsichtbares Menüsymbol im mobilen Kopfbereich (#193); vollständige Mehrsprachigkeit der
 > Anwendung (#145).
