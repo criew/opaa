@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OPAA — Tagesreport</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.summary p { margin: 0 0 .9rem; }
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+.tag {
+  display: inline-block;
+  font-size: .72rem;
+  padding: .1rem .45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-right: .3rem;
+  color: var(--muted);
+}
+.status { font-weight: 600; }
+.status.ok { color: #1a7f37; }
+.status.bad { color: #cf222e; }
+@media (prefers-color-scheme: dark) {
+  .status.ok { color: #3fb950; }
+  .status.bad { color: #f85149; }
+}
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>OPAA — Tagesreport</h1>
+<p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="feed.xml">Feed abonnieren</a> ·
+<a href="https://github.com/criew/opaa">Repository</a></p>
+</header>
+
+<ul class="items">
+<li><a href="reports/2026-08-04.html">Dienstag, 4. August 2026</a><span class="meta">2 abgeschlossen · 2 gemergt · 2 neu</span></li>
+<li><a href="reports/2026-08-03.html">Montag, 3. August 2026</a><span class="meta">9 abgeschlossen · 9 gemergt · 7 neu</span></li>
+<li><a href="reports/2026-08-02.html">Sonntag, 2. August 2026</a><span class="meta">24 abgeschlossen · 29 gemergt · 74 neu</span></li>
+<li><a href="reports/2026-08-01.html">Samstag, 1. August 2026</a><span class="meta">2 abgeschlossen · 2 gemergt · 3 neu</span></li>
+</ul>
+
+<footer>
+Automatisch erzeugt aus Issues und Pull Requests von
+<a href="https://github.com/criew/opaa">criew/opaa</a>.
+</footer>
+</main>
+</body>
+</html>

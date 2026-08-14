@@ -1,94 +1,735 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OPAA — Tagesreport</title>
-<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="feed.xml">
-<style>:root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --muted: #5c6370;
-  --line: #e2e5e9;
-  --accent: #2f6feb;
-  --card: #f7f8fa;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --fg: #e6e8eb;
-    --muted: #9aa1ab;
-    --line: #2a2e35;
-    --accent: #6ea0ff;
-    --card: #1b1e24;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPAA — souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung</title>
+<meta name="description" content="OPAA macht das Wissen Ihres Hauses belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze Organisation — im eigenen Rechenzentrum, quelloffen unter AGPL-3.0.">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
   }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  padding: 2rem 1.25rem 4rem;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-main { max-width: 46rem; margin: 0 auto; }
-a { color: var(--accent); }
-header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
-h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
-h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
-.sub { color: var(--muted); font-size: .9rem; margin: 0; }
-.summary p { margin: 0 0 .9rem; }
-ul.items { list-style: none; margin: 0; padding: 0; }
-ul.items li {
-  padding: .7rem .9rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  margin-bottom: .5rem;
-  background: var(--card);
-}
-.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
-.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
-.tag {
-  display: inline-block;
-  font-size: .72rem;
-  padding: .1rem .45rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-right: .3rem;
-  color: var(--muted);
-}
-.status { font-weight: 600; }
-.status.ok { color: #1a7f37; }
-.status.bad { color: #cf222e; }
-@media (prefers-color-scheme: dark) {
-  .status.ok { color: #3fb950; }
-  .status.bad { color: #f85149; }
-}
-footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
-.empty { color: var(--muted); font-style: italic; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    line-height: 1.6;
+  }
+
+  /* === NAV === */
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #21262d;
+  }
+
+  .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 17px;
+    color: white;
+  }
+
+  .logo-text {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-link {
+    color: #8b949e;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .nav-link:hover {
+    color: #e6edf3;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .nav-link svg {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  /* === MOBILE NAV === */
+  .nav-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    padding: 8px;
+  }
+
+  .nav-hamburger svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* === SECTIONS === */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* === HERO === */
+  .hero {
+    padding-top: 120px;
+    padding-bottom: 64px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(19, 127, 236, 0.15);
+    border: 1px solid rgba(19, 127, 236, 0.3);
+    color: #58a6ff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 .accent {
+    background: linear-gradient(135deg, #137fec, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 18px;
+    color: #8b949e;
+    max-width: 640px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(19, 127, 236, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(19, 127, 236, 0.4);
+  }
+
+  .btn-secondary {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+  }
+
+  .btn-secondary:hover {
+    background: #30363d;
+    color: #e6edf3;
+  }
+
+  .btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* === SCREENSHOTS === */
+  .screenshots {
+    padding: 48px 0 64px;
+  }
+
+  .screenshots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .screenshot-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .screenshot-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .screenshot-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .screenshot-info {
+    padding: 16px 20px;
+  }
+
+  .screenshot-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .dot-blue { background: #137fec; }
+  .dot-green { background: #2ea043; }
+
+  .screenshot-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #c9d1d9;
+    display: inline;
+    vertical-align: middle;
+  }
+
+  .screenshot-info p {
+    font-size: 13px;
+    color: #6e7681;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* === FEATURES === */
+  .features {
+    padding: 64px 0;
+  }
+
+  .section-title {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .section-title h2 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .section-title p {
+    color: #8b949e;
+    font-size: 16px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+
+  .feature-card {
+    background: linear-gradient(135deg, rgba(19, 127, 236, 0.06) 0%, rgba(14, 165, 233, 0.03) 100%);
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    padding: 24px 16px;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(19, 127, 236, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    background: rgba(19, 127, 236, 0.12);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+
+  .feature-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .feature-card p {
+    font-size: 12px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+
+  /* === COMPARISON === */
+  .comparison {
+    padding: 64px 0;
+  }
+
+  .comp-wrapper {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 14px;
+    padding: 32px;
+    overflow-x: auto;
+  }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .comp-table th, .comp-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    text-align: left;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .comp-table th {
+    font-weight: 700;
+    color: #c9d1d9;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .comp-table th:first-child { width: 25%; }
+  .comp-table th:nth-child(2) { color: #58a6ff; }
+
+  .comp-table td { color: #8b949e; }
+  .comp-table td:nth-child(2) { color: #c9d1d9; font-weight: 500; }
+
+  .comp-table tr:last-child td { border-bottom: none; }
+
+  .check { color: #2ea043; font-weight: 700; }
+  .cross { color: #6e7681; }
+
+  .comp-note {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #6e7681;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 1px solid #21262d;
+    padding: 32px 0;
+    margin-top: 48px;
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .tech-stack {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tech-tag {
+    background: #21262d;
+    color: #8b949e;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+  }
+
+  .footer-right {
+    text-align: right;
+  }
+
+  .footer-right a {
+    color: #58a6ff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .footer-right a:hover { text-decoration: underline; }
+
+  .footer-links {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #6e7681;
+  }
+
+  .footer-license {
+    font-size: 12px;
+    color: #6e7681;
+    margin-top: 4px;
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 900px) {
+    .features-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .nav-links .nav-link {
+      display: none;
+    }
+
+    .nav-hamburger {
+      display: block;
+    }
+
+    .nav-links.open .nav-link {
+      display: block;
+    }
+
+    .nav-links.open {
+      position: absolute;
+      top: 64px;
+      left: 0;
+      right: 0;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #21262d;
+      padding: 16px 24px;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .screenshots-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .comp-wrapper {
+      padding: 16px;
+    }
+
+    .footer-inner {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .footer-right {
+      text-align: center;
+    }
+
+    .tech-stack {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero h1 {
+      font-size: 28px;
+    }
+
+    .hero p {
+      font-size: 15px;
+    }
+  }
 </style>
 </head>
 <body>
-<main>
-<header>
-<h1>OPAA — Tagesreport</h1>
-<p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
-<a href="feed.xml">Feed abonnieren</a> ·
-<a href="https://github.com/criew/opaa">Repository</a></p>
-</header>
 
-<ul class="items">
-<li><a href="reports/2026-08-04.html">Dienstag, 4. August 2026</a><span class="meta">2 abgeschlossen · 2 gemergt · 2 neu</span></li>
-<li><a href="reports/2026-08-03.html">Montag, 3. August 2026</a><span class="meta">9 abgeschlossen · 9 gemergt · 7 neu</span></li>
-<li><a href="reports/2026-08-02.html">Sonntag, 2. August 2026</a><span class="meta">24 abgeschlossen · 29 gemergt · 74 neu</span></li>
-<li><a href="reports/2026-08-01.html">Samstag, 1. August 2026</a><span class="meta">2 abgeschlossen · 2 gemergt · 3 neu</span></li>
-</ul>
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo-area">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">OPAA</div>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a class="nav-link" href="https://opaa.ewerlin.com" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span>Demo</span>
+      </a>
+      <a class="nav-link" href="report/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>
+        <span>Fortschritt</span>
+      </a>
+      <a class="nav-link" href="https://github.com/criew/opaa" target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
 
-<footer>
-Automatisch erzeugt aus Issues und Pull Requests von
-<a href="https://github.com/criew/opaa">criew/opaa</a>.
+<!-- HERO -->
+<section class="hero section">
+  <div class="hero-badge">Quelloffen &bull; Betrieb im eigenen Haus &bull; AGPL-3.0</div>
+  <h1>
+    <span>Antworten mit Fundstelle.</span><br>
+    <span class="accent">KI, die im ganzen Haus ankommt.</span>
+  </h1>
+  <p>
+    OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
+    belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
+    Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
+  </p>
+  <div class="hero-buttons">
+    <a class="btn btn-primary" href="https://opaa.ewerlin.com" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <span>Demo ansehen</span>
+    </a>
+    <a class="btn btn-secondary" href="https://github.com/criew/opaa" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<section class="screenshots section">
+  <div class="screenshots-grid">
+    <div class="screenshot-card">
+      <img src="img/chat-interface.png" alt="Antwort mit Fundstelle in der Weboberfläche">
+      <div class="screenshot-info">
+        <span class="screenshot-dot dot-blue"></span>
+        <h3>Antwort mit Fundstelle</h3>
+        <p>
+          Die Frage in Umgangssprache, die Antwort mit Fundstelle und Vertraulichkeitsstufe — mit einem Klick
+          zur Textstelle im Originaldokument.
+        </p>
+      </div>
+    </div>
+    <div class="screenshot-card">
+      <img src="img/document-browser.png" alt="Übersicht der Wissensbestände in der Weboberfläche">
+      <div class="screenshot-info">
+        <span class="screenshot-dot dot-green"></span>
+        <h3>Wissensbibliotheken im Blick</h3>
+        <p>
+          Die Bestände eines Hauses an einer Stelle, jeder mit eigenen Rechten — durchsucht wird nur, was die
+          fragende Person lesen darf.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features section">
+  <div class="section-title">
+    <h2>Warum OPAA?</h2>
+    <p>Wissen, das belegt ist &middot; Agenten, die Aufgaben übernehmen &middot; KI, die alle erreicht</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f512;</div>
+      <h3>Im eigenen Haus</h3>
+      <p>
+        Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung. Die Daten bleiben,
+        wo sie hingehören.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f4d6;</div>
+      <h3>Jede Aussage belegt</h3>
+      <p>
+        Die Fundstelle steht in der Antwort. Wo es haftungskritisch wird, ergeht ohne Beleg keine Antwort —
+        lieber „nicht feststellbar".
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f501;</div>
+      <h3>Verteilbar statt einmalig</h3>
+      <p>
+        Agenten, Prompt-Bibliotheken und Wissensbibliotheken sind teilbare Assets. Die gute Arbeitsweise
+        einer Abteilung wird zum Standard aller.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f50c;</div>
+      <h3>Eigene Modelle</h3>
+      <p>
+        Eigene, lokal betriebene Modelle zuerst — zentral vorgegeben und an einer Stelle austauschbar, ohne
+        dass Fachbereiche etwas anfassen.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x26a1;</div>
+      <h3>Quelloffen</h3>
+      <p>
+        AGPL-3.0, der vollständige Funktionsumfang ist quelloffen. Prüfbar statt zugesichert; Entwicklung im
+        Offenen.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="comparison section">
+  <div class="section-title">
+    <h2>Was in einer Behörde zählt</h2>
+    <p>Sechs Fragen, an denen sich in einem Haus entscheidet, ob KI überhaupt eingesetzt werden darf.</p>
+  </div>
+  <div class="comp-wrapper">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>OPAA</th>
+          <th>Gehostete KI-Dienste</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Datenhoheit</td>
+          <td><span class="check">&#x2713;</span> Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung</td>
+          <td><span class="cross">&#x2717;</span> Verarbeitung beim Betreiber des Dienstes; Datenhoheit ist eine Zusage, keine Eigenschaft</td>
+        </tr>
+        <tr>
+          <td>Eigene Modelle</td>
+          <td><span class="check">&#x2713;</span> Eigene, lokal betriebene Modelle zuerst; zentral vorgegeben und an einer Stelle austauschbar</td>
+          <td><span class="cross">&#x2717;</span> Welches Modell rechnet, entscheidet der Dienst — auch wenn er es wechselt</td>
+        </tr>
+        <tr>
+          <td>Belegpflicht</td>
+          <td><span class="check">&#x2713;</span> Jede Aussage mit Fundstelle; für haftungskritische Zusammenhänge schaltbar auf „ohne Beleg keine Antwort"</td>
+          <td><span class="cross">&#x2717;</span> Quellenangaben, wo vorhanden, sind eine Beigabe der Antwort und nicht erzwingbar</td>
+        </tr>
+        <tr>
+          <td>Nachweis gegenüber Prüfern</td>
+          <td><span class="check">&#x2713;</span> Revisionssicheres Protokoll im eigenen Haus; darauf ausgelegt, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang besteht</td>
+          <td><span class="cross">&#x2717;</span> Nachweisbar ist, was der Dienst herausgibt — der Prüfpfad endet an der Systemgrenze</td>
+        </tr>
+        <tr>
+          <td>Mitbestimmung</td>
+          <td><span class="check">&#x2713;</span> Kein personenbezogener Auswertungspfad, keine Ranglisten, Sichtbarkeit als Handlung; die Dienstvereinbarung wird zur Konfigurationsaufgabe</td>
+          <td><span class="cross">&#x2717;</span> Welche personenbezogenen Auswertungen möglich sind, legt der Dienst fest und kann es ändern</td>
+        </tr>
+        <tr>
+          <td>Offenheit</td>
+          <td><span class="check">&#x2713;</span> AGPL-3.0, vollständiger Funktionsumfang quelloffen und damit prüfbar</td>
+          <td><span class="cross">&#x2717;</span> Das Verhalten ist zugesichert, nicht nachlesbar</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="comp-note">
+    OPAA ist im Aufbau. Diese Seite beschreibt das Zielbild; den Umsetzungsstand führt das Repository.
+  </p>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="section footer-inner">
+    <div class="tech-stack">
+      <span class="tech-tag">React 19</span>
+      <span class="tech-tag">TypeScript</span>
+      <span class="tech-tag">Java 21</span>
+      <span class="tech-tag">Spring Boot</span>
+      <span class="tech-tag">Spring AI</span>
+      <span class="tech-tag">PostgreSQL + pgvector</span>
+      <span class="tech-tag">Docker</span>
+    </div>
+    <div class="footer-right">
+      <a href="https://github.com/criew/opaa" target="_blank">github.com/criew/opaa</a>
+      <div class="footer-links">
+        <a href="report/">Fortschrittsbericht</a> &bull;
+        <a href="https://opaa.ewerlin.com" target="_blank">Testinstallation</a>
+      </div>
+      <div class="footer-license">AGPL-3.0 &bull; quelloffen</div>
+    </div>
+  </div>
 </footer>
-</main>
+
 </body>
 </html>
