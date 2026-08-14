@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,20 +16,37 @@ public class DocumentService {
 
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
 
-  private static final Set<String> SUPPORTED_EXTENSIONS =
-      Set.of(".md", ".txt", ".pdf", ".docx", ".pptx");
+  /**
+   * Everything found below the document directory, split into what will be indexed and what was
+   * rejected because of its format. The rejected files are carried out of here on purpose: they
+   * belong in the indexing job's counters, not in a filter nobody sees (issue #375).
+   */
+  public record DiscoveredFiles(List<Path> supported, List<Path> rejected) {
 
-  public List<Path> discoverFiles(Path directory) throws IOException {
+    static DiscoveredFiles empty() {
+      return new DiscoveredFiles(List.of(), List.of());
+    }
+
+    public int totalFound() {
+      return supported.size() + rejected.size();
+    }
+  }
+
+  public DiscoveredFiles discoverFiles(Path directory) throws IOException {
     if (!Files.exists(directory)) {
       log.warn("Document directory does not exist: {}", directory);
-      return List.of();
+      return DiscoveredFiles.empty();
     }
     if (!Files.isDirectory(directory)) {
       log.warn("Path is not a directory: {}", directory);
-      return List.of();
+      return DiscoveredFiles.empty();
     }
     try (Stream<Path> walk = Files.walk(directory)) {
-      return walk.filter(Files::isRegularFile).filter(this::isSupportedFormat).toList();
+      Map<Boolean, List<Path>> partitioned =
+          walk.filter(Files::isRegularFile)
+              .collect(Collectors.partitioningBy(this::isSupportedFormat));
+      return new DiscoveredFiles(
+          partitioned.getOrDefault(true, List.of()), partitioned.getOrDefault(false, List.of()));
     }
   }
 
@@ -40,7 +58,6 @@ public class DocumentService {
   }
 
   boolean isSupportedFormat(Path file) {
-    String name = file.getFileName().toString().toLowerCase();
-    return SUPPORTED_EXTENSIONS.stream().anyMatch(name::endsWith);
+    return SupportedDocumentFormats.isSupported(file.getFileName().toString());
   }
 }

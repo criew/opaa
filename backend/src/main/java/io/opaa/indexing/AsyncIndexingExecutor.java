@@ -36,10 +36,21 @@ public class AsyncIndexingExecutor {
 
     try {
       Path documentDir = Path.of(properties.documentPath());
-      List<Path> files = documentService.discoverFiles(documentDir);
-      log.info("Discovered {} files for indexing in {}", files.size(), documentDir);
+      DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(documentDir);
+      List<Path> files = discovered.supported();
+      log.info(
+          "Discovered {} files in {}, {} of them indexable",
+          discovered.totalFound(),
+          documentDir,
+          files.size());
 
-      indexingJobService.setTotalDocuments(jobId, files.size());
+      // Issue #375: rejected documents are part of the job, not invisible. They count towards the
+      // total and are reported as skipped, so nobody has to guess why the number of indexed
+      // documents is lower than the number of files in the directory.
+      skipped += reportRejected(discovered.rejected());
+
+      indexingJobService.setTotalDocuments(jobId, discovered.totalFound());
+      indexingJobService.updateProgress(jobId, processed, failed, skipped);
 
       for (Path file : files) {
         String fileName = file.getFileName().toString();
@@ -67,5 +78,18 @@ public class AsyncIndexingExecutor {
       log.error("Indexing failed unexpectedly", e);
       indexingJobService.failJob(jobId, e.getMessage());
     }
+  }
+
+  /** Names every rejected document in the log and returns how many there were. */
+  private int reportRejected(List<Path> rejected) {
+    if (rejected.isEmpty()) {
+      return 0;
+    }
+    log.warn(
+        "Rejected {} document(s) because of an unsupported format (supported: {}): {}",
+        rejected.size(),
+        SupportedDocumentFormats.extensions(),
+        rejected.stream().map(p -> p.getFileName().toString()).toList());
+    return rejected.size();
   }
 }
