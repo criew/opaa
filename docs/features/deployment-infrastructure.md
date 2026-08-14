@@ -3,8 +3,9 @@
 > **Status: Entwurf.** Themenbereich J der Produktvision. Phasenlage: Betrieb mit Docker Compose,
 > Kubernetes mit Hochverfügbarkeit und der Betrieb ohne Netzanbindung gehören in **Phase 1**; die
 > Andockung an die Bausteine des souveränen Arbeitsplatzes in **Phase 4**. Der Umfang der
-> Speicher-Abstraktion wird in [#351](https://github.com/criew/opaa/issues/351) geklärt, die Zukunft
-> von Cloud-Deployment und betreutem Dienst in [#350](https://github.com/criew/opaa/issues/350).
+> Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)),
+> die Zukunft von Cloud-Deployment und betreutem Dienst wird in
+> [#350](https://github.com/criew/opaa/issues/350) geklärt.
 >
 > Diese Spezifikation beschreibt das **Zielbild**. Der tatsächlich verfügbare Betriebsweg ist in
 > [deployment.md](../deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
@@ -34,8 +35,9 @@ Dieses Dokument beschreibt die Betriebsformen, ihre Voraussetzungen und ihre Gre
    Hochverfügbarkeit für große. Der Unterschied liegt in der Betriebsform, nicht im Produkt.
 3. **Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario**, keine Ausnahme und kein Sonderfall.
    Er bestimmt Entwurfsentscheidungen mit, statt nachträglich ermöglicht zu werden.
-4. **Speicher ist austauschbar.** Objektspeicher, Netzlaufwerk und lokales Dateisystem bedienen
-   unterschiedliche Rechenzentren; der Umfang der Abstraktion ist offen.
+4. **Der Dateispeicher ist austauschbar — durch Einhängen, nicht durch eine Abstraktion.** OPAA
+   schreibt und liest gegen genau ein konfiguriertes Verzeichnis; ein Netzlaufwerk hängt der Betrieb
+   dort ein. Objektbasierter Speicher ist als eigener Weg vorgesehen, aber **nicht gebaut**.
 5. **Mandantenfähiger Betrieb ist der Hebel für die Fläche.** Ein Rechenzentrum betreibt eine
    Installation für viele Häuser, die einzeln nie beschaffen würden.
 6. **Die gesamte Konfiguration liegt außerhalb des Abbilds** — in Umgebungsvariablen und
@@ -121,25 +123,70 @@ eine Absichtserklärung.
 
 ## Speicher-Backends
 
-Die Anwendung schreibt keine Dokumente an einen festen Ort, sondern gegen eine Abstraktion. Der
-Grund ist nicht Wahlfreiheit als Selbstzweck, sondern die Wirklichkeit der Rechenzentren: Das eine
-hat objektbasierten Speicher, das nächste ein Netzlaufwerk, und die kleine Installation hat ein
-Verzeichnis.
+Die Wirklichkeit der Rechenzentren ist unterschiedlich: Das eine hat objektbasierten Speicher, das
+nächste ein Netzlaufwerk, und die kleine Installation hat ein Verzeichnis. Der Weg dorthin führt
+jedoch nicht über eine Speicher-Abstraktion in der Anwendung.
 
-| Backend | Typischer Einsatz |
-|---|---|
-| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände |
-| **Netzlaufwerk** (SMB/NFS) | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen |
-| **Lokales Dateisystem** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung |
+**Das Dateisystem ist der Vertrag.** OPAA schreibt und liest Quelldokumente gegen genau ein
+konfiguriertes Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`, Standard `./documents`). Was hinter diesem
+Verzeichnis hängt, entscheidet der Betrieb durch Einhängen — nicht die Anwendung durch eine
+Konfigurationsvariante. Eine Abstraktion über mehrere Speicherarten ist **nicht gebaut** und für die
+beiden dateibasierten Fälle auch nicht vorgesehen.
+
+Das löst den größeren Teil der Frage ohne eine Zeile Arbeit: **Ein Netzlaufwerk braucht keine
+Abstraktion.** SMB und NFS werden vom Betriebssystem eingehängt und sehen für die Anwendung aus wie
+ein gewöhnliches Verzeichnis.
+
+| Backend | Typischer Einsatz | Heute gebaut |
+|---|---|---|
+| **Lokales Dateisystem** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | **ja** — das konfigurierte Verzeichnis ist der einzige Weg |
+| **Netzlaufwerk** (SMB/NFS) | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | **ja**, ohne eigenen Pfad im Code — das Netzlaufwerk wird auf das konfigurierte Verzeichnis eingehängt |
+| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände | **nein** — Zielbild, braucht als einziges einen eigenen Pfad im Code |
 
 Unabhängig vom Backend gilt: **Das Quelldokument ist der Beleg.** Es wird nicht nur eingebettet,
 sondern bleibt greifbar, damit der Sprung von der Antwort zur Fundstelle möglich bleibt. Ein Speicher,
 der nur den Index hält, macht die Belegbarkeit unmöglich.
 
 Der Metadatenbestand und der Vektorindex liegen in PostgreSQL mit pgvector (siehe
-[ADR-0002](../decisions/0002-mvp-technology-stack.md)). Welche Backends dauerhaft geführt werden und
-ob ein selbst betriebener Objektspeicher in den mitgelieferten Compose-Stapel gehört, ist offen und
-wird in [#351](https://github.com/criew/opaa/issues/351) entschieden.
+[ADR-0002](../decisions/0002-mvp-technology-stack.md)).
+
+### Betriebshinweise zum eingehängten Netzlaufwerk
+
+Dass die Anwendung keinen Unterschied sieht, heißt nicht, dass es keinen gibt. Drei Punkte gehören in
+die Betriebsplanung:
+
+- **Rechte des Dienstkontos auf der Freigabe.** Das Konto, unter dem OPAA läuft, braucht auf dem
+  eingehängten Pfad Lese- und Schreibrechte. Bei SMB entscheiden zusätzlich die Zuordnung von
+  Benutzerkennungen beim Einhängen und die Rechte der Freigabe selbst; ein Bestand, der für Menschen
+  lesbar ist, ist deshalb nicht automatisch für den Dienst lesbar.
+- **Verhalten bei Verbindungsabbruch während eines Indizierungslaufs.** Reißt die Verbindung mitten im
+  Lauf, meldet das Dateisystem Ein-/Ausgabefehler statt „Datei nicht vorhanden". Der Lauf bricht ab und
+  muss wiederholt werden; der Betrieb sollte die Einhängeoptionen so wählen, dass ein Abbruch zu einem
+  Fehler führt und nicht zu einem unbegrenzt hängenden Prozess.
+- **Keine Sperren wie auf einem lokalen Dateisystem.** Ein eingehängtes Netzlaufwerk garantiert keine
+  Dateisperren. Wo zwei Installationen oder zwei Instanzen auf dasselbe Verzeichnis zeigen, ist die
+  gegenseitige Abgrenzung eine Sache der Betriebsführung, nicht des Dateisystems.
+
+### Objektbasierter Speicher: eigener Weg, ohne Termin
+
+Objektbasierter Speicher ist der einzige der drei Fälle, der wirklich einen eigenen Pfad im Code
+braucht. Er wird als eigener Weg geführt, jedoch **ohne Termin**.
+
+Der Grund, warum er kommt, ist der **mandantenfähige Rechenzentrumsbetrieb**: Dort ist ein geteiltes
+Netzlaufwerk über viele Häuser hinweg der unangenehmere Weg — bei der Trennung der Mandanten, bei
+Kontingenten je Haus und bei der Sicherung. Er gehört damit in dieselbe Phase wie der mandantenfähige
+Betrieb (**Phase 1**), ohne dass daraus eine Reihenfolge oder ein Zeitpunkt folgt.
+
+Einhänge-Werkzeuge, die objektbasierten Speicher als Verzeichnis erscheinen lassen, gibt es. Sie
+haben aber Nachteile bei Latenz und Konsistenz und bilden die Semantik eines Dateisystems nur
+näherungsweise ab. Sie sind eine Notlösung für den Einzelfall, kein Ersatz für den eigenen Weg.
+
+### Kein Objektspeicher-Dienst im mitgelieferten Compose-Stapel
+
+Der mitgelieferte Stapel bleibt schlank: Datenbank, Anmeldung, Backend, Frontend. Ein zusätzlicher
+Dienst für objektbasierten Speicher wäre etwas, das kleine Installationen nie brauchen und das den
+Einstieg schwerer macht, statt ihn zu erleichtern. Wer objektbasierten Speicher betreibt, bringt ihn
+ohnehin mit.
 
 ---
 
@@ -472,8 +519,10 @@ Installation berührt.
 
 - Cloud-Deployment und betreuter Dienst: bleiben, entfallen oder werden umformuliert? Entscheidung in
   [#350](https://github.com/criew/opaa/issues/350).
-- Umfang der Speicher-Abstraktion und Zusammensetzung des mitgelieferten Stapels: Entscheidung in
-  [#351](https://github.com/criew/opaa/issues/351).
+- Wie der Weg zu objektbasiertem Speicher im Einzelnen aussieht — Kontingente, Trennung der Mandanten
+  und Sicherung je Organisation —, ist offen. Dass er als eigener Weg geführt wird und dass kein
+  solcher Dienst in den mitgelieferten Stapel gehört, ist entschieden (siehe
+  [Speicher-Backends](#speicher-backends), [#351](https://github.com/criew/opaa/issues/351)).
 - **Zuordnung von Netzsicherheit und Transportverschlüsselung ist zu klären.** Beides steht hier,
   weil Netztrennung, vorgelagerter Zugangsweg und Zertifikatsverwaltung Betriebsthemen sind und beim
   Betreiber liegen. Ebenso vertretbar wäre die Spezifikation zu Sicherheit und Nachweisführung, die
