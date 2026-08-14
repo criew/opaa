@@ -142,15 +142,18 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void aUserOnlyGrantDoesNotAllowReadingConfiguration() {
-    // #202's central distinction: USER can use the asset but not see its configuration.
+  void theLowestGrantAllowsReadingButNotManaging() {
+    // #330 dropped the USER rank that sat below VIEWER, so the lowest grant that still exists
+    // carries read access to the configuration. Replaces aUserOnlyGrantDoesNotAllowReadingConfigu-
+    // ration, which asserted exactly the distinction that was removed.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
     AssetGrant grant =
-        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.USER, null, userId);
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.VIEWER, null, userId);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
 
-    assertThat(accessService.canRead(library, userId, false)).isFalse();
+    assertThat(accessService.canRead(library, userId, false)).isTrue();
+    assertThat(accessService.canManage(library, userId, false)).isFalse();
   }
 
   @Test

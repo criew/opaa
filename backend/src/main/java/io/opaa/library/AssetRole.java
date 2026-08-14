@@ -7,16 +7,15 @@ package io.opaa.library;
  * so "I have admin rights here" always refers to a space and "I have manager/owner rights" always
  * refers to an asset.
  *
- * <p>Declared in ascending order so {@link #atLeast(AssetRole)} can compare via {@link #ordinal()};
- * the separation between {@link #USER} (use without seeing configuration) and {@link #VIEWER} (see
- * configuration) is the feature's central gain - a vetted agent or library can be rolled out widely
- * without exposing its sources to every user of it.
+ * <p>Declared in ascending order so {@link #atLeast(AssetRole)} can compare via {@link #ordinal()}.
+ *
+ * <p>An earlier draft placed a {@code USER} rank below {@link #VIEWER} that allowed using an asset
+ * without seeing its configuration. It was dropped in #330: for an agent the guarantee is not
+ * enforceable, because whoever may invoke it can ask it for its own instructions, and for a library
+ * it runs largely empty, because cited answers expose the document titles anyway.
  */
 public enum AssetRole {
-  /** Use the asset (query a library, invoke an agent) without seeing its configuration. */
-  USER,
-
-  /** Additionally see the configuration: description, bound libraries, document list. */
+  /** Use the asset (query a library, invoke an agent) and see its configuration. */
   VIEWER,
 
   /** Additionally change the configuration. */
