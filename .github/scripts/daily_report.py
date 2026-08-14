@@ -857,6 +857,10 @@ h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .empty { color: var(--muted); font-style: italic; }
 
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
 .linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
 .linkbar a {
   display: inline-flex;
@@ -1133,7 +1137,36 @@ def render_zeitraum(data: dict) -> str:
     return hinweis
 
 
-def render_report(data: dict, test_url: str) -> str:
+def render_blaettern(vorheriger: str | None, naechster: str | None) -> str:
+    """Verlinkt die benachbarten Berichtstage.
+
+    Nachbarn sind die im Bestand tatsächlich vorhandenen Tage, nicht die
+    Kalendertage: Tage ohne Bewegung erzeugen keinen Report und werden
+    übersprungen. Am Rand des Bestands entfällt der jeweilige Link.
+    """
+    teile: list[str] = []
+    if vorheriger:
+        tag = Date.fromisoformat(vorheriger)
+        teile.append(
+            f'<a href="{vorheriger}.html" rel="prev" '
+            f'title="{html.escape(german_date(tag))}">← Vorheriger Tag</a>'
+        )
+    teile.append('<a href="../index.html">Alle Reports</a>')
+    if naechster:
+        tag = Date.fromisoformat(naechster)
+        teile.append(
+            f'<a href="{naechster}.html" rel="next" '
+            f'title="{html.escape(german_date(tag))}">Nächster Tag →</a>'
+        )
+    return f'<nav class="blaettern">{" · ".join(teile)}</nav>'
+
+
+def render_report(
+    data: dict,
+    test_url: str,
+    vorheriger: str | None = None,
+    naechster: str | None = None,
+) -> str:
     day = Date.fromisoformat(data["date"])
     repo = data["repo"]
     highlights = data.get("highlights") or {}
@@ -1146,7 +1179,7 @@ def render_report(data: dict, test_url: str) -> str:
 
     body = f"""<header>
 <h1>Tagesreport {html.escape(german_date(day))}</h1>
-<p class="sub"><a href="../index.html">Alle Reports</a></p>
+{render_blaettern(vorheriger, naechster)}
 {render_linkbar(repo, data.get("ci"), test_url)}
 </header>
 
@@ -1160,6 +1193,36 @@ Erzeugt am {html.escape(data["generated_at"][:16].replace("T", " um "))} Uhr ·
 {render_zeitraum(data)}
 </footer>"""
     return page(f"Tagesreport {day.isoformat()}", body, feed_href="../feed.xml")
+
+
+def render_latest(reports: list[dict]) -> str:
+    """Erzeugt eine feste Adresse, die stets zum jüngsten Report führt.
+
+    GitHub Pages liefert ausschließlich statische Dateien, eine echte
+    Weiterleitung über den Server ist also nicht möglich. Stattdessen leitet
+    die Seite selbst weiter — per `meta refresh`, ergänzt um einen sichtbaren
+    Link für den Fall, dass das unterbunden ist. Der Umweg über eine Kopie des
+    Reports scheidet aus: an der Adresse ließe sich dann nicht ablesen,
+    welcher Tag gerade zu sehen ist.
+    """
+    ziel = f"reports/{reports[0]['date']}.html" if reports else "index.html"
+    beschriftung = (
+        f"Tagesreport {german_date(Date.fromisoformat(reports[0]['date']))}"
+        if reports
+        else "Übersicht"
+    )
+    body = f"""<header>
+<h1>Aktueller Tagesreport</h1>
+<p class="sub">Weiterleitung zu
+<a href="{ziel}">{html.escape(beschriftung)}</a> …</p>
+</header>"""
+    seite = page("Aktueller Tagesreport", body, feed_href="feed.xml")
+    return seite.replace(
+        "</head>",
+        f'<meta http-equiv="refresh" content="0; url={ziel}">\n'
+        f'<link rel="canonical" href="{ziel}">\n</head>',
+        1,
+    )
 
 
 def render_index(reports: list[dict], repo: str) -> str:
@@ -1186,6 +1249,7 @@ def render_index(reports: list[dict], repo: str) -> str:
     body = f"""<header>
 <h1>OPAA — Tagesreport</h1>
 <p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="latest.html">Aktueller Tag</a> ·
 <a href="../">Projektseite</a> ·
 <a href="feed.xml">Feed abonnieren</a> ·
 <a href="https://github.com/{html.escape(repo)}">Repository</a></p>
@@ -1281,6 +1345,17 @@ def load_existing(data_dir: Path) -> list[dict]:
     return reports
 
 
+def nachbarn(reports: list[dict], i: int) -> tuple[str | None, str | None]:
+    """Liefert die Berichtstage vor und nach `reports[i]`.
+
+    Der Bestand liegt neueste zuerst: der ältere Nachbar folgt im Bestand,
+    der neuere steht davor. Am Rand fehlt der jeweilige Nachbar.
+    """
+    vorheriger = reports[i + 1]["date"] if i + 1 < len(reports) else None
+    naechster = reports[i - 1]["date"] if i > 0 else None
+    return vorheriger, naechster
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", required=True, help="Repository als owner/name")
@@ -1340,13 +1415,15 @@ def main() -> int:
     # Eine Layoutänderung wirkt so rückwirkend auf den gesamten Bestand, ohne
     # dass die Daten erneut von GitHub geholt werden müssten.
     reports = load_existing(data_dir)
-    for bericht in reports:
+    for i, bericht in enumerate(reports):
+        vorheriger, naechster = nachbarn(reports, i)
         (reports_dir / f"{bericht['date']}.html").write_text(
-            render_report(bericht, test_url), encoding="utf-8"
+            render_report(bericht, test_url, vorheriger, naechster), encoding="utf-8"
         )
 
     site_url = args.site_url.rstrip("/") or f"https://github.com/{args.repo}"
     (output / "index.html").write_text(render_index(reports, args.repo), encoding="utf-8")
+    (output / "latest.html").write_text(render_latest(reports), encoding="utf-8")
     (output / "feed.xml").write_text(
         render_feed(reports, args.repo, site_url), encoding="utf-8"
     )

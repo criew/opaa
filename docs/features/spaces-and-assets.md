@@ -953,6 +953,8 @@ Dieser Abschnitt hält fest, welche naheliegenden Modelle geprüft und aus welch
 
 Die entscheidende Frage ist, was passiert, wenn ein Objekt in mehreren Containern mit unterschiedlichen Rechten liegt. Vier Systeme wurden untersucht:
 
+> Die Namen stehen hier als nachprüfbarer Sachbeleg für eine technische Aussage, nicht zur Positionierung von OPAA — die Grenze dieser Ausnahme regelt [MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen).
+
 | System | Container | Objekt in mehreren Containern? | Rechteanker |
 |---|---|---|---|
 | **Confluence** | Space | Nein — eine Seite liegt in genau einem Space | Space-Permission ist der Boden; Page-Restriction kann nur **einschränken**, nie erweitern |

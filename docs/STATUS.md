@@ -254,8 +254,9 @@ nicht vertreten.
 - **Es gibt keine Verwaltung von API-Tokens.** Die Einstellungsseite kennt nur das Farbschema.
 
 **Nicht gebaut**
-- **Kein einziger Chat-Kanal.** Weder ein self-hosted Team-Chat noch ein Verbraucher-Messenger. Die
-  Dokumentation nannte bisher mehrere davon; welche im Zielbild bleiben, wird in #352 geklärt.
+- **Kein einziger Chat-Kanal.** Im Zielbild stehen ausschließlich selbst betriebene Team-Chats
+  (Matrix, Mattermost, Rocket.Chat) in Phase 3; fremd betriebene Verbraucherdienste sind gestrichen
+  (#352). Gebaut ist davon nichts.
 
 **Geplant**
 - Dokumentenseite, Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205),
@@ -273,11 +274,19 @@ nicht vertreten.
 - Docker Compose für den gesamten Stapel (`docker-compose.yml`, `keycloak/`)
 - PostgreSQL mit pgvector; Schemaverwaltung über Liquibase
 - Öffentliche Testinstanz (siehe [deployment.md](./deployment.md))
+- Dokumentenspeicher: **genau ein konfiguriertes Verzeichnis** (`OPAA_INDEXING_DOCUMENT_PATH`,
+  Standard `./documents`). Ein Netzlaufwerk wird dorthin eingehängt und braucht deshalb nichts
+  Zusätzliches im Code
+
+**Nicht gebaut**
+- **Keine Speicher-Abstraktion.** Es gibt keine wählbaren Speicher-Backends, sondern das eine
+  Verzeichnis. Objektbasierter Speicher ist entschieden als eigener Weg ohne Termin (#351); ein
+  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel
 
 **Geplant (Phase 1)**
 - Kubernetes mit Hochverfügbarkeit · **Betrieb ohne Netzanbindung** — die übertragbare Lieferung aus
   Abbildern, Modellgewichten und Stückliste ist heute nirgends geschnitten
-- Umfang der Speicher-Abstraktion (#351)
+- Objektbasierter Dokumentenspeicher für den mandantenfähigen Rechenzentrumsbetrieb (#351)
 
 > Der Docker-Build überspringt die Tests (#68). Härtungsanforderungen für erreichbare
 > Compose-Installationen sind nicht dokumentiert (#250).
@@ -296,7 +305,7 @@ im Code und im Backlog leer.
 - Barrierefreiheit nach BITV · Feinschliff der Amtssprache
 
 **Geplant (Phase 4)**
-- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger (#357)
+- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger
 
 ---
 
