@@ -149,3 +149,28 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bereits abgedeckt.
 - **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Nachweis der Organisationsgrenze
+
+- **Punkt:** Der mandantenfähige Betrieb durch ein Rechenzentrum setzt voraus, dass die
+  Organisationsgrenze über die Anwendungsschicht hinaus abgesichert ist. Wie ihre Einhaltung dauerhaft
+  nachgewiesen wird, war offen.
+- **Entscheidung:** Die Grenze wird in drei Schichten gehalten — Anwendung, Datenbank und ein
+  struktureller Prüflauf gegen das Schema. Der Prüflauf prüft nicht Verhalten, sondern Aufbau: Jede
+  Tabelle mit Organisations-Zugehörigkeit muss ihre Verweise auf organisationsgebundene Objekte
+  zusammengesetzt führen, also die Organisation in der Beziehung mitführen. Er läuft gegen das
+  tatsächliche Schema einer echten Datenbank, nicht gegen die Migrationsdateien. Zusätzlich sind die
+  beiden offenen Befunde — die einseitige Absicherung auf Datenbankebene und die fehlende
+  Durchsetzung im Verwaltungspfad — als **Voraussetzung dafür markiert, dass überhaupt eine zweite
+  Organisation angelegt wird**.
+- **Begründung:** Ein Verhaltenstest belegt, dass ein bekannter Weg heute versperrt ist; er verhindert
+  nicht, dass die nächste Änderung am Datenmodell einen neuen Weg öffnet. Genau so ist die bestehende
+  Lücke entstanden. Der Prüflauf schließt deshalb die Klasse des Fehlers statt des Einzelfalls und
+  macht die Regel überprüfbar statt erinnerungspflichtig. Die Vorziehung der beiden Befunde folgt
+  daraus, dass beide Lücken bei genau einer Organisation nicht ausnutzbar sind und mit dem Anlegen der
+  zweiten gleichzeitig scharf werden — im Betrieb, nicht im Test. Das ist kein diffuses Risiko,
+  sondern ein Zeitpunkt, den jemand festlegt, und er lässt sich vorher absichern.
+- **Verweis:** [#356](https://github.com/criew/opaa/issues/356) ·
+  [#289](https://github.com/criew/opaa/issues/289) ·
+  [#271](https://github.com/criew/opaa/issues/271) ·
+  [features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird)

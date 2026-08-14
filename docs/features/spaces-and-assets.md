@@ -836,6 +836,20 @@ In der ersten Ausbaustufe gibt es genau eine Organisation. Die Ebene wird trotzd
 
 Damit ruht die Mandantentrennung nicht mehr auf dem Space. Das ist notwendig, weil der Space bewusst kein Sicherheitssilo mehr ist.
 
+### Wie die Grenze gehalten wird
+
+Eine Zusage dieser Härte ruht nicht auf einer einzelnen Prüfung. Die Grenze wird in **drei Schichten** gehalten, und jede leistet etwas, das die anderen nicht leisten können:
+
+| Schicht | Was sie leistet | Was sie nicht leistet |
+|---|---|---|
+| **Anwendung** | Jeder Lese- und Schreibpfad löst fremde Kennungen ausschließlich innerhalb der Organisation des Aufrufenden auf. Wer nach einem Objekt einer anderen Organisation fragt, bekommt die Antwort „nicht gefunden" — nicht „nicht erlaubt", damit die Existenz nicht preisgegeben wird | Sie muss in jedem neuen Dienst erneut richtig umgesetzt werden. Genau die Pfade, die Kennungen aus einer Anfrage auflösen, sind die fehleranfälligen |
+| **Datenbank** | Die Zugehörigkeit steht nicht nur auf dem Objekt, sondern ist Teil der Beziehung: Ein Verweis auf ein organisationsgebundenes Objekt führt die Organisation mit. Eine Zeile, die zwei Organisationen mischt, ist damit nicht abweisbar, sondern nicht anlegbar | Sie wirkt nur dort, wo die Beziehung auch tatsächlich so geführt ist. Ein einfacher Verweis, der die Organisation nicht mitführt, sieht im Betrieb unauffällig aus |
+| **Struktureller Prüflauf** | Er prüft nicht Verhalten, sondern Aufbau: Jede Tabelle mit Organisations-Zugehörigkeit muss ihre Verweise auf organisationsgebundene Objekte zusammengesetzt führen. Eine neue Tabelle, die das verletzt, fällt beim nächsten Lauf auf — ohne dass jemand daran denken muss | Er ersetzt keine der beiden anderen Schichten. Er stellt nur sicher, dass die mittlere vollständig bleibt |
+
+Die dritte Schicht ist die Lehre aus einem konkreten Befund: Die Datenbankebene ist heute **einseitig** abgesichert. Die Seite des besitzenden Objekts führt die Organisation mit, die Nutzerseite nicht. Ein Verhaltenstest, der heute grün ist, hätte das nicht verhindert und verhindert auch nicht, dass die nächste Änderung am Datenmodell erneut einen Verweis ohne Organisation anlegt. Der Prüflauf schließt deshalb **die Klasse des Fehlers, nicht den Einzelfall**.
+
+Solange genau eine Organisation existiert, ist keine der offenen Lücken ausnutzbar. Der Tag, an dem die zweite dazukommt, ist der Tag, an dem sie **alle gleichzeitig** scharf werden — im Betrieb, nicht im Test. Das ist kein theoretisches Risiko, sondern ein Zeitpunkt, den jemand festlegt: Die Absicherung der Datenbankebene ([#289](https://github.com/criew/opaa/issues/289)) und die Durchsetzung im Verwaltungspfad ([#271](https://github.com/criew/opaa/issues/271)) sind Voraussetzung dafür, dass überhaupt eine zweite Organisation angelegt wird.
+
 ---
 
 ## Was aus der Zusage zur Nicht-Sichtbarkeit wird
