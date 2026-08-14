@@ -132,8 +132,8 @@ Sitzung.
 
 ### Was übernommen wird
 
-OPAA gleicht mit dem Verzeichnisdienst ab — bevorzugt über eine Bereitstellungsschnittstelle, die
-Änderungen aktiv meldet, ersatzweise über einen wiederkehrenden Abgleich:
+OPAA gleicht mit dem Verzeichnisdienst ab — bevorzugt über eine Bereitstellungsschnittstelle nach
+**SCIM**, die Änderungen aktiv meldet, ersatzweise über einen wiederkehrenden Abgleich:
 
 ```
 Abgleich: ereignisgesteuert, ersatzweise turnusmäßig (z. B. alle 6 Stunden)
