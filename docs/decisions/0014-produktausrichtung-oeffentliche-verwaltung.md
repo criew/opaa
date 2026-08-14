@@ -83,6 +83,10 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
+
+| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
+| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
+| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
 
 Die Prüfung dieser Punkte läuft über ein eigenes Epic mit je einer Entscheidungsvorlage. Bis dahin bleibt
@@ -233,3 +237,24 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   Kontingenten und Sicherung der unangenehmere Weg ist.
 - **Verweis:** [#351](https://github.com/criew/opaa/issues/351) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends)
+
+### 14.08.2026 — Verbraucher-Chatkanäle
+
+- **Punkt:** Verbraucher-Chatkanäle aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** Im Zielbild der Chat-Kanäle bleiben ausschließlich selbst betriebene Team-Chats:
+  der Chat-Baustein des souveränen Arbeitsplatzes auf Basis des Matrix-Protokolls sowie Mattermost und
+  Rocket.Chat, alle drei in Phase 3. Kanäle über fremd betriebene Verbraucherdienste entfallen
+  ersatzlos. Die REST-API bleibt der offene Weg für jeden weiteren Kanal: Wer einen braucht, baut ihn
+  dagegen — das ist ausdrücklich vorgesehen, aber weder zugesagt noch gepflegt. Gebaut ist heute kein
+  einziger Chat-Kanal; geändert wird allein das Versprechen in der Dokumentation.
+- **Begründung:** Tragend ist, dass ein Chat-Kanal kein Ausgabeweg ist, sondern ein Zugang — er muss
+  die Identität der fragenden Person verlässlich auf ein OPAA-Konto abbilden, sonst greift die
+  rechtebewusste Suche ins Leere und der Kanal wird zum Umgehungsweg um das gesamte Rechtemodell; bei
+  einem selbst betriebenen Team-Chat hängt diese Identität an derselben zentralen Anmeldung wie OPAA,
+  bei einem Verbraucherdienst dagegen an einer Telefonnummer oder einem privaten Konto, sodass die
+  Zuordnung eine Vertrauensannahme bleibt statt einer Prüfung. Hinzu kommt, dass jede Nachricht an
+  einen fremd betriebenen Dienst eine Übermittlung ist und bei einem Frage-Antwort-System nicht nur die
+  Antwort das Haus verlässt, sondern auch die Frage, die über einen Vorgang oft mehr verrät als die
+  Antwort.
+- **Verweis:** [#352](https://github.com/criew/opaa/issues/352) ·
+  [features/user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats)
