@@ -1,10 +1,10 @@
 package io.opaa.eval;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Loads and fingerprints the golden-query dataset (see {@link GoldenCase}). */
 public final class GoldenDataset {
@@ -13,7 +13,7 @@ public final class GoldenDataset {
 
   public static List<GoldenCase> load(Path jsonFile) throws IOException {
     byte[] bytes = Files.readAllBytes(jsonFile);
-    GoldenCase[] cases = new ObjectMapper().readValue(bytes, GoldenCase[].class);
+    GoldenCase[] cases = JsonMapper.builder().build().readValue(bytes, GoldenCase[].class);
     return List.of(cases);
   }
 

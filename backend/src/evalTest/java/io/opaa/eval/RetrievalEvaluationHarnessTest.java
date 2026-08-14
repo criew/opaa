@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
@@ -50,6 +49,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Retrieval-quality evaluation harness (issue #227). Indexes the frozen `eval/corpus/`
@@ -258,7 +258,7 @@ class RetrievalEvaluationHarnessTest {
           "GET /api/tags on the Ollama container failed with status " + response.statusCode());
     }
     OllamaTagsResponse tags =
-        new ObjectMapper().readValue(response.body(), OllamaTagsResponse.class);
+        JsonMapper.builder().build().readValue(response.body(), OllamaTagsResponse.class);
     return tags.models().stream()
         .filter(m -> EMBEDDING_MODEL.equals(m.name()))
         .map(OllamaModelTag::digest)

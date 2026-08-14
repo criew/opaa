@@ -1,12 +1,12 @@
 package io.opaa.eval;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Writes the {@link EvaluationReport} as JSON and as a human-readable text summary. */
 public final class ReportWriter {
@@ -15,7 +15,7 @@ public final class ReportWriter {
 
   public static void writeJson(EvaluationReport report, Path target) throws IOException {
     Files.createDirectories(target.getParent());
-    ObjectMapper mapper = new ObjectMapper();
+    JsonMapper mapper = JsonMapper.builder().build();
     Files.writeString(
         target,
         mapper.writerWithDefaultPrettyPrinter().writeValueAsString(report),
