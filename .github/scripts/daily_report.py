@@ -10,8 +10,11 @@ Aus den gespeicherten Rohdaten aller bisherigen Tage werden sämtliche Seiten
 jedes Mal neu erzeugt, damit sich Layoutänderungen rückwirkend auf alle
 Reports auswirken.
 
+Die Seiten liegen unterhalb von report/ auf der veröffentlichten Seite; im
+Wurzelverzeichnis steht die Landing Page aus page/ (siehe page/README.md).
+
 Aufruf:
-    daily_report.py --repo criew/opaa --date 2026-08-01 --output site/
+    daily_report.py --repo criew/opaa --date 2026-08-01 --output site/report
 
 Benötigt die GitHub-CLI (`gh`) mit gültigem Token. Ein API-Schlüssel für die
 Zusammenfassung ist optional; fehlt er, treten die Titel der Vorgänge an die
@@ -1183,6 +1186,7 @@ def render_index(reports: list[dict], repo: str) -> str:
     body = f"""<header>
 <h1>OPAA — Tagesreport</h1>
 <p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="../">Projektseite</a> ·
 <a href="feed.xml">Feed abonnieren</a> ·
 <a href="https://github.com/{html.escape(repo)}">Repository</a></p>
 </header>
