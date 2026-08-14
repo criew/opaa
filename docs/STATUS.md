@@ -237,8 +237,9 @@ nicht vertreten.
 - **Es gibt keine Verwaltung von API-Tokens.** Die Einstellungsseite kennt nur das Farbschema.
 
 **Nicht gebaut**
-- **Kein einziger Chat-Kanal.** Weder ein self-hosted Team-Chat noch ein Verbraucher-Messenger. Die
-  Dokumentation nannte bisher mehrere davon; welche im Zielbild bleiben, wird in #352 geklärt.
+- **Kein einziger Chat-Kanal.** Im Zielbild stehen ausschließlich selbst betriebene Team-Chats
+  (Matrix, Mattermost, Rocket.Chat) in Phase 3; fremd betriebene Verbraucherdienste sind gestrichen
+  (#352). Gebaut ist davon nichts.
 
 **Geplant**
 - Dokumentenseite, Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205),

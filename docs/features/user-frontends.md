@@ -2,8 +2,9 @@
 
 > **Status: Entwurf.** Themenbereich I der Produktvision. Phasenlage: Web-Oberfläche und REST-API
 > gehören in **Phase 1**, die Anbindung an self-hosted Team-Chats in **Phase 3**, Erweiterungen für
-> Office und Browser in **Phase 4**. Das Zielbild der Chat-Kanäle ist offen und wird in
-> [#352](https://github.com/criew/opaa/issues/352) geklärt.
+> Office und Browser in **Phase 4**. Das Zielbild der Chat-Kanäle ist entschieden
+> ([#352](https://github.com/criew/opaa/issues/352)): Es bleiben ausschließlich selbst betriebene
+> Team-Chats.
 
 ## Motivation
 
@@ -31,8 +32,9 @@ Reihenfolge sie entstehen.
    und mit deren Leserechten; ein Kanal-Konto mit erweiterter Sicht gibt es nicht.
 4. **Jede Antwort führt ihre Belege mit** — in jedem Kanal. Wo ein Kanal Quellenangaben nicht
    darstellen kann, ist er kein geeigneter Kanal.
-5. **Team-Chats sind Ausbau, nicht Fundament.** Sie holen OPAA an den Ort, an dem Teams ohnehin
-   sprechen, setzen aber die tragenden Fähigkeiten voraus.
+5. **Selbst betriebene Team-Chats sind Ausbau, nicht Fundament.** Sie holen OPAA an den Ort, an dem
+   Teams ohnehin sprechen, setzen aber die tragenden Fähigkeiten voraus. Fremd betriebene
+   Verbraucherdienste sind kein Kanal — wer einen weiteren braucht, baut ihn gegen die REST-API.
 6. **Erweiterungen für Office und Browser bleiben eine spätere Option** mit hohem Aufwand je
    Erweiterung und entsprechend hoher Begründungslast.
 
@@ -269,41 +271,54 @@ Nicht jede Plattform ist als Kanal geeignet. Verbindliche Bedingungen:
    überschreiten, die für die zugrunde liegenden Daten gilt.
 4. **Protokollierbarkeit.** Anfrage und Antwort müssen zurechenbar im Protokoll landen.
 
-### Self-hosted Team-Chats
+### Die Kanäle im Zielbild
 
-Tragend sind die selbst betriebenen Team-Chats, weil sie alle vier Bedingungen erfüllen können. Dazu
-gehört ausdrücklich der **Chat-Baustein des souveränen Arbeitsplatzes**, der auf dem offenen
-**Matrix**-Protokoll aufsetzt: Wo ein Haus diesen Arbeitsplatz einführt, ist der Chat bereits
-vorhanden, im eigenen Betrieb und an den Verzeichnisdienst angebunden. Ein Kanal dorthin ist damit
-eine Anbindung an vorhandene Infrastruktur und nicht die Einführung eines weiteren Systems.
-
-Daneben stehen die verbreiteten, selbst betriebenen Team-Chat-Plattformen, die dieselben Bedingungen
-erfüllen und in vielen Häusern bereits laufen.
-
-### Die heute genannten Kanäle
-
-Der bisherige Stand dieses Dokuments nannte eine Reihe von Chat-Plattformen. Sie werden hier **nicht
-stillschweigend gestrichen** — die Entscheidung darüber steht aus:
+Im Zielbild bleiben **ausschließlich selbst betriebene Team-Chats**, weil nur sie alle vier Bedingungen
+erfüllen können. Dazu gehört ausdrücklich der **Chat-Baustein des souveränen Arbeitsplatzes**, der auf
+dem offenen **Matrix**-Protokoll aufsetzt: Wo ein Haus diesen Arbeitsplatz einführt, ist der Chat
+bereits vorhanden, im eigenen Betrieb und an den Verzeichnisdienst angebunden. Ein Kanal dorthin ist
+damit eine Anbindung an vorhandene Infrastruktur und nicht die Einführung eines weiteren Systems.
+Daneben stehen mit **Mattermost** und **Rocket.Chat** zwei verbreitete, selbst betriebene
+Team-Chat-Plattformen, die dieselben Bedingungen erfüllen und in vielen Häusern bereits laufen.
 
 | Kanal | Heute gebaut | Einordnung |
 |---|---|---|
 | Web-Oberfläche | ja | Fundament, Phase 1 |
 | REST-API | ja | Fundament, Phase 1, Grundlage aller weiteren Kanäle |
-| Chat-Baustein des souveränen Arbeitsplatzes (Matrix) | nein | Ausbau, Phase 3 — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
-| Weitere self-hosted Team-Chats (Mattermost, Rocket.Chat) | nein | Ausbau, Phase 3 — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
-| Slack | nein | offen — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
-| Telegram | nein | offen — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
-| Signal | nein | offen — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
-| WhatsApp | nein | offen — Zielbild in [#352](https://github.com/criew/opaa/issues/352) |
+| Chat-Baustein des souveränen Arbeitsplatzes (Matrix) | nein | Ausbau, Phase 3 |
+| Mattermost | nein | Ausbau, Phase 3 |
+| Rocket.Chat | nein | Ausbau, Phase 3 |
 
-**Zwei Feststellungen, die unabhängig von der Entscheidung gelten:**
+**Gebaut ist heute kein einziger Chat-Kanal.** Die Web-Oberfläche und die REST-API sind die einzigen
+realen Zugänge. Frühere Aufzählungen in diesem Repository beschrieben eine Absicht, keinen Zustand.
 
-- **Gebaut ist heute keiner dieser Chat-Kanäle.** Die Web-Oberfläche und die REST-API sind die einzigen
-  realen Zugänge. Frühere Aufzählungen in diesem Repository beschrieben eine Absicht, keinen Zustand.
-- **Für Kanäle über fremd betriebene Verbraucherdienste sind die Bedingungen 3 und 4 oben zu klären**,
-  bevor über ihren Nutzen gesprochen wird. Diese Klärung ist Gegenstand von
-  [#352](https://github.com/criew/opaa/issues/352); hier wird sie weder vorweggenommen noch
-  präjudiziert.
+### Warum fremd betriebene Verbraucherdienste entfallen
+
+Kanäle über fremd betriebene Verbraucherdienste — genannt waren Slack, Telegram, Signal und WhatsApp —
+entfallen ersatzlos. Dafür gibt es zwei Sachgründe.
+
+**Ein Chat-Kanal ist kein Ausgabeweg, sondern ein Zugang.** Das ist der tragende Grund, und er gilt
+unabhängig davon, wie schutzbedürftig die Daten im Einzelfall sind. Ein Kanal muss die Identität der
+fragenden Person verlässlich auf ein OPAA-Konto abbilden (Bedingung 1); gelingt das nicht, greift die
+rechtebewusste Suche ins Leere und der Kanal wird zum Umgehungsweg um das gesamte Rechtemodell. Bei
+einem selbst betriebenen Team-Chat hängt die Identität an derselben zentralen Anmeldung wie OPAA — die
+Zuordnung ist eine Prüfung. Bei einem Verbraucherdienst hängt sie an einer Telefonnummer oder einem
+privaten Konto. Das ist kein Dienstkonto, und eine nachträgliche Verknüpfung ist eine
+Vertrauensannahme, keine Prüfung.
+
+**Jede Nachricht an einen fremd betriebenen Dienst ist eine Übermittlung** (Bedingung 3). Das
+kollidiert mit der Zusage, dass Daten das Haus nicht verlassen, und für einen erheblichen Teil der
+Verwaltungsdaten mit dem Recht. Bei einem Frage-Antwort-System wiegt das doppelt: Nicht nur die Antwort
+verlässt das Haus, sondern auch die **Frage** — und die verrät oft mehr über einen Vorgang als die
+Antwort.
+
+### Die REST-API bleibt der offene Weg
+
+Die Streichung ist keine Abschottung. Die REST-API ist das Fundament aller Kanäle, und wer einen
+weiteren braucht — eine andere Chat-Plattform, ein Fachverfahren, ein hauseigenes Werkzeug —, baut ihn
+dagegen. Das ist ausdrücklich vorgesehen. Zugesagt, gepflegt und dokumentiert sind die oben genannten
+Kanäle; darüber hinaus steht die Schnittstelle offen, und die vier Bedingungen sind der Maßstab, an dem
+ein selbst gebauter Kanal zu messen ist.
 
 ---
 
@@ -357,8 +372,6 @@ Sicherheitsgrenze des Systems.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Welche Chat-Kanäle bleiben im Zielbild, welche entfallen, welche werden zur Option ohne Zusage?
-  Entscheidung in [#352](https://github.com/criew/opaa/issues/352).
 - Wie weit reicht ein maschineller Zugang: nur Abfragen, oder auch das Verwalten von Beständen? Ein
   Zugang, der indizieren darf, ist betrieblich etwas anderes als einer, der nur fragt.
 - Wie lange werden Rückmeldungen aufbewahrt, und wer darf die aggregierte Auswertung sehen — die

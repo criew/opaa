@@ -81,7 +81,7 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 |---|---|
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst |
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
-| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
+| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
 
@@ -106,3 +106,31 @@ Preise, keine Aufwands- oder Kostenschätzungen. Abgrenzungen werden mit dem Sac
 - [USE-CASES.md](../USE-CASES.md) — Anwendungsfälle im Verwaltungsalltag
 - [ADR-0002](0002-mvp-technology-stack.md) — Technologieentscheidungen des Fundaments
 - [features/spaces-and-assets.md](../features/spaces-and-assets.md) — das Verteilungsmodell
+
+## Nachträge: entschiedene Punkte
+
+Die Tabelle unter [Was schwieriger wird](#was-schwieriger-wird) benennt Punkte, die dieser ADR
+ausdrücklich **nicht** entscheidet. Sobald einer davon entschieden ist, kommt er hier als Nachtrag
+hinzu — der ADR selbst bleibt im Wortlaut unverändert, damit erkennbar bleibt, was wann galt. Jeder
+Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
+
+### 14.08.2026 — Verbraucher-Chatkanäle
+
+- **Punkt:** Verbraucher-Chatkanäle aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** Im Zielbild der Chat-Kanäle bleiben ausschließlich selbst betriebene Team-Chats:
+  der Chat-Baustein des souveränen Arbeitsplatzes auf Basis des Matrix-Protokolls sowie Mattermost und
+  Rocket.Chat, alle drei in Phase 3. Kanäle über fremd betriebene Verbraucherdienste entfallen
+  ersatzlos. Die REST-API bleibt der offene Weg für jeden weiteren Kanal: Wer einen braucht, baut ihn
+  dagegen — das ist ausdrücklich vorgesehen, aber weder zugesagt noch gepflegt. Gebaut ist heute kein
+  einziger Chat-Kanal; geändert wird allein das Versprechen in der Dokumentation.
+- **Begründung:** Tragend ist, dass ein Chat-Kanal kein Ausgabeweg ist, sondern ein Zugang — er muss
+  die Identität der fragenden Person verlässlich auf ein OPAA-Konto abbilden, sonst greift die
+  rechtebewusste Suche ins Leere und der Kanal wird zum Umgehungsweg um das gesamte Rechtemodell; bei
+  einem selbst betriebenen Team-Chat hängt diese Identität an derselben zentralen Anmeldung wie OPAA,
+  bei einem Verbraucherdienst dagegen an einer Telefonnummer oder einem privaten Konto, sodass die
+  Zuordnung eine Vertrauensannahme bleibt statt einer Prüfung. Hinzu kommt, dass jede Nachricht an
+  einen fremd betriebenen Dienst eine Übermittlung ist und bei einem Frage-Antwort-System nicht nur die
+  Antwort das Haus verlässt, sondern auch die Frage, die über einen Vorgang oft mehr verrät als die
+  Antwort.
+- **Verweis:** [#352](https://github.com/criew/opaa/issues/352) ·
+  [features/user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats)
