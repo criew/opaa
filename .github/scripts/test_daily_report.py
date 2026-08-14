@@ -344,6 +344,37 @@ def test_linkleiste_enthaelt_alle_einstiege(report):
     assert TEST_URL in seite
 
 
+def test_nachbarn_folgen_der_zeitrichtung():
+    """Der Bestand liegt neueste zuerst — „vorheriger" ist der ältere Tag."""
+    bestand = [{"date": "2026-08-04"}, {"date": "2026-08-02"}, {"date": "2026-08-01"}]
+    assert dr.nachbarn(bestand, 0) == ("2026-08-02", None)
+    assert dr.nachbarn(bestand, 1) == ("2026-08-01", "2026-08-04")
+    assert dr.nachbarn(bestand, 2) == (None, "2026-08-02")
+
+
+def test_blaettern_verlinkt_beide_nachbarn(report):
+    seite = dr.render_report(report, TEST_URL, "2026-08-01", "2026-08-04")
+    assert 'href="2026-08-01.html" rel="prev"' in seite
+    assert 'href="2026-08-04.html" rel="next"' in seite
+    assert 'href="../index.html"' in seite
+
+
+def test_blaettern_laesst_fehlende_nachbarn_weg(report):
+    """Am Rand des Bestands darf kein Link ins Leere zeigen."""
+    juengster = dr.render_report(report, TEST_URL, "2026-08-01", None)
+    assert "rel=\"next\"" not in juengster
+    assert "Vorheriger Tag" in juengster
+
+    aeltester = dr.render_report(report, TEST_URL, None, "2026-08-04")
+    assert "rel=\"prev\"" not in aeltester
+    assert "Nächster Tag" in aeltester
+
+    einziger = dr.render_report(report, TEST_URL)
+    assert "Vorheriger Tag" not in einziger
+    assert "Nächster Tag" not in einziger
+    assert 'href="../index.html"' in einziger
+
+
 def test_ci_punkt_ist_gruen_bei_erfolg(report):
     assert 'dot green' in dr.render_report(report, TEST_URL)
 
