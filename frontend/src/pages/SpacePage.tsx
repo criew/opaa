@@ -15,7 +15,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceRoleLabel, spaceKindLabel } from '../utils/labels'
+import { spaceRoleLabel } from '../utils/labels'
 
 function canManage(role: string | undefined): boolean {
   return role === 'ADMIN'
@@ -82,12 +82,9 @@ export default function SpacePage() {
             <Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                 <Typography variant="h5">{space.name}</Typography>
-                <Chip
-                  label={spaceKindLabel(space.kind)}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
+                {space.isDefault && (
+                  <Chip label="Standard" size="small" color="primary" variant="outlined" />
+                )}
               </Stack>
               <Typography color="text.secondary">
                 {space.description || 'Keine Beschreibung hinterlegt.'}

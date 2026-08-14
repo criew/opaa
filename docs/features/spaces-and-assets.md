@@ -11,9 +11,9 @@ Dieses Dokument beschreibt das abgelöste Modell: **Assets** (Wissensbibliotheke
 ## Überblick
 
 1. **Assets** gehören ihrem Eigentümer und tragen ihre eigenen Rechte. Sie werden in Spaces *assoziiert* — die Assoziation gewährt keinerlei Zugriff.
-2. **Spaces** sind Arbeitsräume. Chats und Artefakte entstehen *in* einem Space und gehören ihm — sie entstehen als **Entwurf beim Ersteller** und werden für alle Mitglieder sichtbar, wenn er sie **ablegt**.
+2. **Spaces** sind Arbeitsräume. Chats und Artefakte entstehen *in* einem Space und gehören ihm — sie sind **zunächst privat** und werden für alle Mitglieder sichtbar, sobald der Ersteller sie **in den Space teilt**.
 3. **Dokumente** liegen in Wissensbibliotheken, nicht in Spaces. Die rechtebewusste Vektorsuche filtert über die Bibliothek.
-4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Ablage, Standard-Suchbereich, Modell-Policy und Zurechnung — aber keine Rechte an Assets.
+4. **Ein Chat läuft immer in einem Space.** Der Space bestimmt Aufbewahrung, Standard-Suchbereich, Modell-Policy und Zurechnung — aber keine Rechte an Assets.
 5. **Rechte gelten für Nutzer und Gruppen.** Gruppen bilden die Aufbauorganisation ab und tragen die Verteilungsstufe „Fachbereich".
 6. **Ein Agent liest immer mit den Rechten des Nutzers.** Damit ein geteilter Agent funktioniert, wird sein Wissen mitfreigegeben — es gibt keinen Umgehungsweg.
 7. **Verteilt wird per Referenz, nicht per Kopie.** Verbesserungen wirken sofort bei allen; wer abweichen muss, erzeugt einen gekennzeichneten Abkömmling.
@@ -32,13 +32,13 @@ Aus dieser Regel folgen zwei Objektklassen mit **bewusst unterschiedlicher Recht
 |---|---|---|
 | Beispiele | Wissensbibliothek, Agent, Prompt-Bibliothek | Chat, Artefakt (Excel, Chart; später Bericht, Entwurf, Auswertung) |
 | Beziehung zum Space | Assoziation: 0..n Spaces, optional, jederzeit lösbar | Enthaltensein: genau 1 Space, zwingend, nicht lösbar |
-| Rechteanker | **eigene ACL am Asset** | **Ersteller**, bis er ablegt — danach **Space-Mitgliedschaft** |
+| Rechteanker | **eigene ACL am Asset** | **Ersteller**, solange privat — danach **Space-Mitgliedschaft** |
 | Entstehung | anderswo erzeugt, hineingereicht | im Space erzeugt |
 
 **Präzise Fassung der Grundregel — beide Hälften gelten:**
 
 - Space-Mitgliedschaft gewährt **keinen** Zugriff auf assoziierte Assets und deren Dokumente.
-- Space-Mitgliedschaft gewährt **vollen** Zugriff auf **abgelegte** space-eigene Inhalte. Entwürfe gehören ausschließlich ihrem Ersteller — auch Space-Admins und System-Admins sehen sie nicht.
+- Space-Mitgliedschaft gewährt **vollen** Zugriff auf **geteilte** space-eigene Inhalte. Private Inhalte gehören ausschließlich ihrem Ersteller — auch Space-Admins und System-Admins sehen sie nicht.
 
 Ein pauschaler Satz in nur eine Richtung („der Space trägt keine Rechte" oder „der Space trägt die Rechte") wäre falsch.
 
@@ -289,6 +289,15 @@ An ihr hängen die Verwaisung, der Zustand von Strikt-Spaces und die Nachweisbar
 - **Verhalten bei nicht erreichbarem Verzeichnis: last-known-good.** Der letzte bekannte Stand bleibt in Kraft, es werden **keine** Rechte entzogen, und der Zustand wird gemeldet. Ein Entzug aufgrund fehlender Information wäre der schlechtere Fehler: Er legt die Arbeit still, ohne die Sicherheit zu erhöhen.
 - **Eine Protokollzeile je bewirkter Rechteänderung**, nicht je Lauf. Ohne sie ist im Nachhinein nicht feststellbar, warum jemand ab einem bestimmten Tag etwas nicht mehr sehen konnte.
 
+### Gruppengebundene Spaces sind mitbetroffen
+
+Ein Space mit `memberSource = GROUP` leitet seine Mitgliederliste aus einer Verzeichnisgruppe ab (siehe [Gruppengebundene Spaces](#gruppengebundene-spaces)). Ein Synchronisationslauf ändert damit nicht nur Grants an Assets, sondern auch **den Leserkreis geteilter Inhalte**: Wer neu in ein Referat kommt, sieht ab dem nächsten Lauf alle dort geteilten Chats und Artefakte; wer es verlässt, verliert den Zugang.
+
+Das ist fachlich richtig — er gehört dazu beziehungsweise nicht mehr —, aber es ist eine Rechteänderung ohne menschlichen Entscheidungspunkt, und sie trifft Inhalte, für die ein Beschäftigter persönlich die Weitergabe verantwortet hat. Deshalb gilt zusätzlich:
+
+- **Die Autoren-Benachrichtigung löst auch bei Sync-Zuwachs aus.** Die unter [Chats](#chats) zugesagte Nachricht „der Leserkreis eines von dir geteilten Inhalts hat sich wesentlich erweitert" darf nicht davon abhängen, ob ein Mensch das Mitglied aufgenommen hat oder ein Verzeichnislauf. Andernfalls ist die Zusage genau dort wirkungslos, wo der Zuwachs am wenigsten sichtbar ist.
+- **Der Zuwachs zählt als Mitgliederaufnahme**, auch für die Prüfung eines Strikt-Space (siehe [Der Strikt-Modus](#der-strikt-modus)). Da ein Verzeichnislauf nicht an Ort und Stelle abgelehnt werden kann, geht ein Strikt-Space, dessen Voraussetzung dadurch bricht, in den Zustand „Voraussetzung verletzt".
+
 ### Reorganisation, Umbenennung, Zusammenlegung
 
 In einer Behörde findet alle paar Jahre eine Reorganisation statt. Umbenennung und Zusammenlegung sind dabei die häufigeren Fälle, nicht die Auflösung.
@@ -313,19 +322,30 @@ Ein Space ist ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen
 2. **Standard-Suchbereich** für Chats ohne gebundenen Agenten — verengend, nie erweiternd.
 3. **Policy-Kontext** — welche Modelle hier zulässig sind, als Obergrenze.
 4. **Verfügbarkeitsrahmen** — welche Assets hier angeboten werden, gefiltert auf den Zugriff des jeweiligen Nutzers.
-5. **Zurechnungspunkt** für Nutzungsstatistik, Kostenzuordnung und Audit; zugleich Vorauswahl für die Ablage neuer Uploads.
+5. **Zurechnungspunkt** für Nutzungsstatistik, Kostenzuordnung und Audit; zugleich Vorauswahl beim Hochladen neuer Dokumente.
 
-### Space-Arten
+### Es gibt nur eine Art von Space
 
-| `kind` | Anlage durch | Zweck |
-|---|---|---|
-| `PERSONAL` | automatisch, genau einer je Nutzer | eigene Arbeit, eigene Ablage |
-| `PROJECT` | jeder Nutzer | eigene Vorhaben, nur selbst eingeladene Mitglieder |
-| `TEAM` | System-Admin | Team, Fachbereich, organisationsweite Räume |
+**Alle Spaces sind gleich gebaut.** Ein Raum für die eigene Arbeit, ein Projektraum und ein Referatsraum unterscheiden sich nur darin, wer Mitglied ist und woher die Mitgliedschaft kommt — nicht in ihrem Typ. Zwei Attribute genügen:
 
-Nutzer dürfen also eigene Projekt-Spaces anlegen, aber keine Team- oder Fachbereichsräume gründen. Persönliche Spaces können nicht gelöscht und nicht geteilt werden.
+| Attribut | Bedeutung |
+|---|---|
+| `isDefault` | Der beim ersten Login automatisch erzeugte Space. Genau einer je Nutzer, nicht löschbar. Ansonsten ein Space wie jeder andere |
+| `memberSource` | `MANUAL` — Mitglieder werden eingeladen; `GROUP` — die Mitgliedschaft folgt einer Gruppe aus dem Verzeichnis |
 
-Space-Namen sind **nicht global eindeutig**. Zwei Nutzer dürfen beide einen Projekt-Space „Phoenix" haben. Eindeutigkeit gilt höchstens je Organisation und Name.
+Daraus folgt:
+
+- **Jeder Nutzer darf beliebig viele Spaces anlegen**, auch mehrere, in denen er allein arbeitet. Fünf kleine Vorhaben dürfen fünf Räume haben; die frühere Regel „genau ein persönlicher Space je Nutzer" entfällt.
+- **„Persönlich" ist kein Typ, sondern ein Zustand:** ein Space, in dem niemand sonst Mitglied ist. Er braucht keine Sonderbehandlung, weil private Inhalte ohnehin nur ihrem Ersteller gehören (siehe [Die Grundregel](#die-grundregel-zunächst-privat-sichtbar-durch-teilen)).
+- **Gruppengebundene Spaces legt nur der System-Admin an.** Das ist eine Berechtigung, keine Space-Art.
+
+Space-Namen sind **nicht global eindeutig**. Zwei Nutzer dürfen beide einen Space „Phoenix" haben. Eindeutigkeit gilt höchstens je Organisation und Name.
+
+#### Gruppengebundene Spaces
+
+Bei `memberSource = GROUP` wird die Mitgliederliste nicht gepflegt, sondern abgeleitet: Wer laut Verzeichnis der Gruppe angehört, ist Mitglied des Space. Das erspart die doppelte Pflege von Referatszugehörigkeit und Raumzugehörigkeit — macht einen Synchronisationslauf aber zu einem Ereignis, das Lesezugriff auf geteilte Inhalte erteilt und entzieht. Was daraus folgt, steht unter [Verzeichnissynchronisation als Rechteereignis](#verzeichnissynchronisation-als-rechteereignis).
+
+Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vierzig Referate ergäben vierzig Räume, von denen die meisten leer blieben. Die Bindung ist eine bewusste Entscheidung beim Anlegen.
 
 ### Space-Sichtbarkeit
 
@@ -333,7 +353,7 @@ Mitgliedschaft und Assetzugriff sind entkoppelt; deshalb braucht der Space eine 
 
 | `visibility` | Bedeutung |
 |---|---|
-| `PRIVATE` | nur Mitglieder wissen, dass er existiert — zwingend für persönliche Spaces, Vorgabe für Projekt-Spaces |
+| `PRIVATE` | nur Mitglieder wissen, dass er existiert — Vorgabe für jeden neu angelegten Space |
 | `DISCOVERABLE` | im Space-Verzeichnis sichtbar, Beitritt auf Antrag |
 | `OPEN` | im Verzeichnis sichtbar, Selbstbeitritt mit einem Klick |
 
@@ -343,9 +363,9 @@ Mitgliedschaft und Assetzugriff sind entkoppelt; deshalb braucht der Space eine 
 
 | Rolle | Darf |
 |---|---|
-| `MEMBER` | Space betreten; Chats anlegen und führen; **alle abgelegten** Chats und Artefakte des Space lesen; kuratierte Assets sehen — gefiltert auf den eigenen Zugriff |
+| `MEMBER` | Space betreten; Chats anlegen und führen; **alle geteilten** Chats und Artefakte des Space lesen; kuratierte Assets sehen — gefiltert auf den eigenen Zugriff |
 | `CURATOR` | zusätzlich Assets assoziieren und lösen, Inhalte ordnen |
-| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, abgelegte Inhalte **zurückziehen** (nicht löschen) |
+| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, geteilte Inhalte **zurückziehen** (nicht löschen) |
 
 Dazu trägt jeder Space eine `ownerId` als **Attribut** — den fachlich Verantwortlichen, der im Verzeichnis ausgewiesen wird. Einen Space löschen oder die Verantwortung übertragen darf nur der Verantwortliche selbst oder ein System-Admin.
 
@@ -355,7 +375,7 @@ Warum drei statt der bisherigen vier Rollen:
 - `OWNER` als eigener Rang trug sein Gewicht daraus, dass eine Workspace-Löschung alle Dokumente vernichtete. Das ist nicht mehr so — Dokumente liegen in Bibliotheken, die anderen gehören. Der Schutz bleibt über das `ownerId`-Attribut erhalten, ohne vierte Rangstufe.
 - `ADMIN` gewinnt dagegen an Gewicht, weil Policy-Obergrenze und Mitgliederverwaltung an ihm hängen.
 
-**Grenze der Admin-Rechte:** Ein Space-Admin kann abgelegte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann Entwürfe anderer Mitglieder **nicht sehen** — auch nicht als Admin.
+**Grenze der Admin-Rechte:** Ein Space-Admin kann geteilte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann die privaten Inhalte anderer Mitglieder **nicht sehen** — auch nicht als Admin.
 
 ### Assets in einen Space assoziieren
 
@@ -363,18 +383,18 @@ Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen S
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
 
-**Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Ablegen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
+**Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Teilen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.
 
 **Selbstschutz des Eigentümers.** Ein Bibliotheks-Eigentümer kann seine Bibliothek als **strikt-only** kennzeichnen. Die Kennzeichnung wirkt an **zwei** Stellen, und die zweite ist die wichtigere:
 
 - Die Bibliothek darf nur in Strikt-Spaces bereitgestellt werden.
 - **Sie darf nur von Agenten gebunden werden, die selbst ausschließlich in Strikt-Spaces aufrufbar sind.**
 
-Ohne die zweite Regel liefe die Kennzeichnung ins Leere: Sie würde die Assoziation begrenzen — die dieses Dokument an anderer Stelle ausdrücklich für harmlos erklärt — und den verbliebenen Weg offen lassen. Eine Sachbearbeiterin mit persönlichem Grant auf eine geschützte Bibliothek könnte sonst in einem gewöhnlichen Space einen daran gebundenen Agenten aufrufen, weil der Space den Agenten nicht verengt, und das Ergebnis anschließend ablegen. Erst die Bindungsregel macht aus der Kennzeichnung ein Werkzeug gegen das Ableitungsleck.
+Ohne die zweite Regel liefe die Kennzeichnung ins Leere: Sie würde die Assoziation begrenzen — die dieses Dokument an anderer Stelle ausdrücklich für harmlos erklärt — und den verbliebenen Weg offen lassen. Eine Sachbearbeiterin mit persönlichem Grant auf eine geschützte Bibliothek könnte sonst in einem gewöhnlichen Space einen daran gebundenen Agenten aufrufen, weil der Space den Agenten nicht verengt, und das Ergebnis anschließend teilen. Erst die Bindungsregel macht aus der Kennzeichnung ein Werkzeug gegen das Ableitungsleck.
 
 **Nachträgliche Umstellung auf strikt-only** ist möglich, aber nicht stillschweigend: Bestehen bereits Bereitstellungen in Nicht-Strikt-Spaces oder Bindungen durch entsprechende Agenten, zeigt das System sie auf und der Eigentümer entscheidet — lösen oder abbrechen. Es gibt keinen Zustandswechsel im Hintergrund.
 
-**Was die Kennzeichnung nicht leistet:** Sie gilt für die Bibliothek als Ganzes, nicht je Bereitstellung. Für einen Bestand, der in den meisten Räumen breit verfügbar sein soll und nur in einem einzelnen gemischten Projektraum eine Prüfung verdiente, ist sie das falsche Werkzeug — der Eigentümer müsste im Voraus über künftige Verwendungen entscheiden, die er noch nicht kennt. Für diesen Fall bleiben die Benachrichtigung, das Lösen der Bereitstellung und die Nennung des Eigentümers im Ablagedialog.
+**Was die Kennzeichnung nicht leistet:** Sie gilt für die Bibliothek als Ganzes, nicht je Bereitstellung. Für einen Bestand, der in den meisten Räumen breit verfügbar sein soll und nur in einem einzelnen gemischten Projektraum eine Prüfung verdiente, ist sie das falsche Werkzeug — der Eigentümer müsste im Voraus über künftige Verwendungen entscheiden, die er noch nicht kennt. Für diesen Fall bleiben die Benachrichtigung, das Lösen der Bereitstellung und die Nennung des Eigentümers im Teilen-Dialog.
 
 **Folge für die Oberfläche:** Zwei Mitglieder desselben Space sehen unterschiedlich viele Assets. Das ist gewollt, wirkt aber ohne Erklärung wie ein Fehler und muss in der Oberfläche einmal deutlich benannt werden.
 
@@ -404,87 +424,92 @@ Voraussetzung ist eine **benannte pflegende Stelle**. Deshalb ist der Eigentüme
 
 ## Space-eigene Inhalte: Chats und Artefakte
 
-### Die Grundregel: entstehen als Entwurf, sichtbar durch Ablegen
+### Die Grundregel: zunächst privat, sichtbar durch Teilen
 
 Für **alle** space-eigenen Inhalte — Chats, Artefakte und alles, was später hinzukommt — gilt eine einzige Regel:
 
-> **Was du erzeugst, gehört zunächst dir. Sichtbar für den Space wird es, wenn du es dort ablegst.**
+> **Was du erzeugst, gehört zunächst dir. Sichtbar für den Space wird es, wenn du es dort teilst.**
 
 Das ist die vertrauteste Regel der Verwaltung überhaupt: Was zur Akte gegeben wird, sehen alle. Was auf dem Schreibtisch liegt, nicht. Es gibt keinen Sonderweg, keine von der Herkunft abhängige Ausnahme und keinen Modus, den man sich merken müsste.
 
 | Status | Sichtbar für |
 |---|---|
-| `DRAFT` | nur den Ersteller |
-| `PLACED` | alle Mitglieder des Space |
+| `PRIVATE` | nur den Ersteller |
+| `SHARED` | alle Mitglieder des Space |
 | `SUPERSEDED` | alle Mitglieder, als überholt gekennzeichnet |
 | `WITHDRAWN` | niemand außer Ersteller und Space-Admin, bleibt nachweisbar |
 
-Das Ablegen ist **eine bewusste, protokollierte Handlung** des Erstellers. Es ist die Stelle, an der er die Verantwortung für die Weitergabe übernimmt — und die einzige Stelle, an der Inhalte aus seinem Arbeitsbereich in den Leserkreis des Space übergehen.
+Das Teilen ist **eine bewusste, protokollierte Handlung** des Erstellers. Es ist die Stelle, an der er die Verantwortung für die Weitergabe übernimmt — und die einzige Stelle, an der Inhalte aus seinem Arbeitsbereich in den Leserkreis des Space übergehen.
 
-**Was diese Regel kostet, ausdrücklich benannt:** Sie tauscht automatische gegen freiwillige Transparenz. Ein Chat, den niemand ablegt, ist für die Organisation nicht vorhanden, und es gibt keine Garantie, dass Wertvolles abgelegt wird. Die Gegenrechnung: Automatische Sichtbarkeit erzeugt Ausweichverhalten — gearbeitet wird dann im persönlichen Space oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Die freiwillige Variante dürfte am Ende mehr sichtbar machen als die erzwungene, aber das ist eine Annahme über Verhalten und keine Gewissheit. Das Ablegen muss deshalb **ein Klick** sein und darf nie hinter einem Menü liegen.
+<!-- „Teilen" bezeichnet damit zwei Vorgänge: ein Asset teilen heißt Rechte vergeben, einen Chat in
+den Space teilen heißt ihn für die Mitglieder sichtbar machen. Die Objekte sind verschieden genug,
+dass der jeweilige Satz eindeutig bleibt; wo Verwechslungsgefahr besteht, heißt es „in den Space
+teilen". -->
+
+**Was diese Regel kostet, ausdrücklich benannt:** Sie tauscht automatische gegen freiwillige Transparenz. Ein Chat, den niemand teilt, ist für die Organisation nicht vorhanden, und es gibt keine Garantie, dass Wertvolles geteilt wird. Die Gegenrechnung: Automatische Sichtbarkeit erzeugt Ausweichverhalten — gearbeitet wird dann in einem Raum, in dem man allein ist, oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Die freiwillige Variante dürfte am Ende mehr sichtbar machen als die erzwungene, aber das ist eine Annahme über Verhalten und keine Gewissheit. Das Teilen muss deshalb **ein Klick** sein und darf nie hinter einem Menü liegen.
 
 ### Chats
 
 Ein Chat ist ein **persistentes Objekt im Space**, kein flüchtiger Kontext. Ein Space enthält n Chats.
 
-Ein Chat entsteht als `DRAFT` und ist ausschließlich für seinen Autor sichtbar. Erst wenn der Autor ihn im Space ablegt, sehen ihn alle Mitglieder. Damit existiert der Denkraum vor der Ablage: die unfertige Einschätzung, die schwierige Personalsache, die dreimal gestellte Rückfrage, bei der man unsicher ist — all das findet statt, ohne dass jemand mitliest, und niemand muss dafür den Space wechseln oder auf E-Mail ausweichen.
+Ein Chat entsteht als `PRIVATE` und ist ausschließlich für seinen Autor sichtbar. Erst wenn der Autor ihn in den Space teilt, sehen ihn alle Mitglieder. Damit existiert der Denkraum vor dem Teilen: die unfertige Einschätzung, die schwierige Personalsache, die dreimal gestellte Rückfrage, bei der man unsicher ist — all das findet statt, ohne dass jemand mitliest, und niemand muss dafür den Space wechseln oder auf E-Mail ausweichen.
 
 **Konsequenz für die Nutzerführung.** Verbindlich:
 
-- Der Chat zeigt dauerhaft seinen Status und, sobald abgelegt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
-- Beim Ablegen wird der Leserkreis benannt, **bevor** die Ablage wirksam wird.
-- Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Ablagedialog**. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
-- Der Hinweis nennt **den Eigentümer der betroffenen Bibliothek**, nicht aber Anzahlen oder Inhalte. Ohne diese Angabe kann der Ablegende nicht abwägen, ob die Weitergabe vertretbar ist — er weiß sonst nur, dass „irgendetwas eingeschränkt" ist, und klickt den Hinweis weg. Der Name der verantwortlichen Stelle ist, anders als der Inhalt, kein schützenswertes Geheimnis; er erlaubt im Zweifel eine kurze Rückfrage statt einer Entscheidung in Unkenntnis.
+- Der Chat zeigt dauerhaft seinen Status und, sobald geteilt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
+- Beim Teilen wird der Leserkreis benannt, **bevor** es wirksam wird.
+- Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Teilen-Dialog**. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
+- Der Hinweis nennt **den Eigentümer der betroffenen Bibliothek**, nicht aber Anzahlen oder Inhalte. Ohne diese Angabe kann der Teilende nicht abwägen, ob die Weitergabe vertretbar ist — er weiß sonst nur, dass „irgendetwas eingeschränkt" ist, und klickt den Hinweis weg. Der Name der verantwortlichen Stelle ist, anders als der Inhalt, kein schützenswertes Geheimnis; er erlaubt im Zweifel eine kurze Rückfrage statt einer Entscheidung in Unkenntnis.
 - Der Wechsel des Space ist eine sichtbare Handlung, nie eine stillschweigende Voreinstellung.
-- Der Autor kann einen abgelegten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
-- **Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm abgelegten Inhalts wesentlich erweitert** — bei Aufnahme neuer Mitglieder, insbesondere externer Personen, und bei Öffnung des Space. Ohne diese Nachricht wäre die Ablageentscheidung nachträglich eine andere geworden als die, die er getroffen hat: Er hat im Februar sieben Kolleginnen und den Referatsleiter zugestimmt, nicht der externen Beraterin, die im Juni dazukommt. Die Legitimation des ganzen Modells ruht darauf, dass der Ersteller weiß, was er tut; das Zurückziehen ist nur dann ein Werkzeug, wenn er von der Änderung erfährt.
+- Der Autor kann einen geteilten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
+- **Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm geteilten Inhalts wesentlich erweitert** — bei Aufnahme neuer Mitglieder, insbesondere externer Personen, bei Öffnung des Space und bei Zuwachs über einen Verzeichnislauf in einem gruppengebundenen Space. Ohne diese Nachricht wäre die Entscheidung zu teilen nachträglich eine andere geworden als die, die er getroffen hat: Er hat im Februar sieben Kolleginnen und den Referatsleiter zugestimmt, nicht der externen Beraterin, die im Juni dazukommt. Die Legitimation des ganzen Modells ruht darauf, dass der Ersteller weiß, was er tut; das Zurückziehen ist nur dann ein Werkzeug, wenn er von der Änderung erfährt.
 
 Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich; ist er es nicht, bestimmt ihn der Space.
 
 Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
 
-#### Entwürfe: der Hauptbestand des Systems
+#### Private Inhalte: der Hauptbestand des Systems
 
-Das Ablage-Modell dreht die Mengenverhältnisse um. **Nicht der Entwurf ist die Ausnahme, sondern die Ablage.** Die meisten Chats werden nie abgelegt — Rückfragen, Fehlversuche, Verworfenes. Entwürfe sind damit der Hauptbestand, nicht der Bodensatz, und brauchen dieselbe Sorgfalt wie abgelegte Inhalte.
+Das Modell dreht die Mengenverhältnisse um. **Nicht der private Inhalt ist die Ausnahme, sondern das Teilen.** Die meisten Chats werden nie geteilt — Rückfragen, Fehlversuche, Verworfenes. Private Inhalte sind damit der Hauptbestand, nicht der Bodensatz, und brauchen dieselbe Sorgfalt wie geteilte.
 
-**Entwürfe sind nicht Teil der Akte.** Dieser Satz muss vor der Einführung gesagt sein und nicht im ersten Widerspruchsverfahren auffallen. Es gilt dieselbe Aussage wie für ein persönliches E-Mail-Postfach: Was aktenrelevant ist, wird abgelegt oder in eine Wissensbibliothek überführt.
+**Private Inhalte sind nicht Teil der Akte.** Dieser Satz muss vor der Einführung gesagt sein und nicht im ersten Widerspruchsverfahren auffallen. Es gilt dieselbe Aussage wie für ein persönliches E-Mail-Postfach: Was aktenrelevant ist, wird geteilt oder in eine Wissensbibliothek überführt.
 
 #### Nichts verschwindet ohne Ansage
 
 Niemand räumt den Schreibtisch eines Kollegen ohne Vorwarnung ab. Verbindlich:
 
 - **Vorwarnung vor Fristablauf** an den Autor, rechtzeitig genug, um zu handeln. Das Exportrecht nützt nur, wer weiß, dass er es ausüben muss.
-- **Verlängerungsmöglichkeit.** Ein Vorgang, der ein Jahr ruht, ist Verwaltungsalltag — Widerspruch, Gerichtsverfahren, Rückstellung. Ein Entwurf dazu darf nicht ablaufen, nur weil nichts passiert ist.
-- **Eine Liste „deine offenen Entwürfe"** für den Autor, damit ein vergessener Entwurf sichtbar wird, bevor die Frist ihn löscht.
-- **Export schließt Entwürfe ein.**
+- **Verlängerungsmöglichkeit.** Ein Vorgang, der ein Jahr ruht, ist Verwaltungsalltag — Widerspruch, Gerichtsverfahren, Rückstellung. Ein privater Chat dazu darf nicht ablaufen, nur weil nichts passiert ist.
+- **Eine Liste „deine privaten Inhalte"** für den Autor, damit ein vergessener Chat sichtbar wird, bevor die Frist ihn löscht.
+- **Export schließt private Inhalte ein.**
 
-#### Wer die Frist des persönlichen Space setzt
+#### Wer die Frist für private Inhalte setzt
 
-Der überwiegende Teil der Entwürfe liegt im persönlichen Space. Stellt der Nutzer dessen Aufbewahrungsfrist selbst ein, läuft sie nie ab und der Bestand wächst unbegrenzt. Deshalb setzt sie der **System-Admin** — was bedeutet, dass das System Arbeit löscht, die niemand sonst je gesehen hat. Das ist nur mit den beiden Sicherungen oben vertretbar und ohne sie nicht.
+Der überwiegende Teil aller Inhalte bleibt privat. Stellt der Nutzer deren Aufbewahrungsfrist selbst ein, läuft sie nie ab und der Bestand wächst unbegrenzt. Deshalb setzt sie der **System-Admin** — was bedeutet, dass das System Arbeit löscht, die niemand sonst je gesehen hat. Das ist nur mit den beiden Sicherungen oben vertretbar und ohne sie nicht.
 
 #### Was beim Ausscheiden geschieht
 
-Für Assets gilt: Der Zugang wird nie durch die Eigentumsfrage aufgehalten, das Objekt bleibt nutzbar, die Zuständigkeit wird nachgezogen. Für Entwürfe ist die Lage anders, weil niemand sie sehen darf — auch kein Nachfolger. Deshalb gilt:
+Für Assets gilt: Der Zugang wird nie durch die Eigentumsfrage aufgehalten, das Objekt bleibt nutzbar, die Zuständigkeit wird nachgezogen. Für private Inhalte ist die Lage anders, weil niemand sie sehen darf — auch kein Nachfolger. Deshalb gilt:
 
-1. **Im geordneten Austritt** wird der Autor vor der Deaktivierung aufgefordert, seine Entwürfe abzulegen oder zu exportieren. Das löst den Regelfall.
-2. **Als Auffangregel** werden Entwürfe eines ausgeschiedenen Nutzers nach einer benannten Frist gelöscht.
+1. **Im geordneten Austritt** wird der Autor vor der Deaktivierung aufgefordert, seine privaten Inhalte zu teilen oder zu exportieren. Das löst den Regelfall.
+2. **Als Auffangregel** werden private Inhalte eines ausgeschiedenen Nutzers nach einer benannten Frist gelöscht.
 
-**Entwürfe werden nicht für Dritte lesbar gemacht** — auch nicht für Nachfolger, auch nicht im Vier-Augen-Verfahren. Die Zusage, dass dort niemand mitliest, ist zu wertvoll, um sie für den Einzelfall aufzugeben. Der Preis ist, dass eine halbfertige Einschätzung zu einem laufenden Vorgang mit dem Ausscheiden verloren geht; deshalb ist die Ablage-Aufforderung im Austrittsverfahren die eigentliche Lösung und die Löschung nur das Netz darunter.
+**Private Inhalte werden nicht für Dritte lesbar gemacht** — auch nicht für Nachfolger, auch nicht im Vier-Augen-Verfahren. Die Zusage, dass dort niemand mitliest, ist zu wertvoll, um sie für den Einzelfall aufzugeben. Der Preis ist, dass eine halbfertige Einschätzung zu einem laufenden Vorgang mit dem Ausscheiden verloren geht; deshalb ist die Aufforderung zu teilen im Austrittsverfahren die eigentliche Lösung und die Löschung nur das Netz darunter.
 
 #### Speicherbedarf ohne Auswertungspfad
 
-Entwürfe treiben das Speicherwachstum, und wegen des Zitierzwangs enthalten sie wörtliche Passagen aus den Quelldokumenten. Der Betrieb muss die Kapazität planen können, ohne dass jemand in fremde Daten sieht. Ein Speicherbericht je Nutzer wäre wörtlich eine Gruppierung von Chatdaten nach Person und ist damit ausgeschlossen. Stattdessen:
+Private Inhalte treiben das Speicherwachstum, und wegen des Zitierzwangs enthalten sie wörtliche Passagen aus den Quelldokumenten. Der Betrieb muss die Kapazität planen können, ohne dass jemand in fremde Daten sieht. Ein Speicherbericht je Nutzer wäre wörtlich eine Gruppierung von Chatdaten nach Person und ist damit ausgeschlossen. Stattdessen:
 
 - **Belegung nur aggregiert je Organisationseinheit**, mit derselben Mindestgruppengröße wie die Nutzungsstatistik.
-- **Eine technisch durchgesetzte Obergrenze je Konto statt eines Berichts.** Eine Quote braucht keinen Auswertungspfad: Das System setzt sie durch und meldet sie **dem Betroffenen selbst**. Damit ist auch der Ausreißerfall beherrschbar — ein Konto, das durch eine fehlgeschlagene Automatisierung Millionen Entwürfe erzeugt.
+- **Eine technisch durchgesetzte Obergrenze je Konto statt eines Berichts.** Eine Quote braucht keinen Auswertungspfad: Das System setzt sie durch und meldet sie **dem Betroffenen selbst**. Damit ist auch der Ausreißerfall beherrschbar — ein Konto, das durch eine fehlgeschlagene Automatisierung Millionen private Chats erzeugt.
 
-#### Was über Entwürfe nicht angezeigt wird
+#### Was über private Inhalte nicht angezeigt wird
 
-Es gibt **keinen Entwurfszähler, keine Aktivitätsanzeige und keine Fortschrittsanzeige** über die Entwürfe einer anderen Person. Ob die Ablage überhaupt genutzt wird, ist nur **aggregiert je Organisationseinheit oberhalb der Mindestgruppengröße** messbar — nie je Person und nie je Space unterhalb der Schwelle. Das ist ein bewusst gezahlter Preis: Genauer zu messen hieße, die Zusage zu brechen, die das Konzept gegenüber der Personalvertretung trägt.
+Es gibt **keinen Zähler, keine Aktivitätsanzeige und keine Fortschrittsanzeige** über die privaten Inhalte einer anderen Person. Ob das Teilen überhaupt genutzt wird, ist nur **aggregiert je Organisationseinheit oberhalb der Mindestgruppengröße** messbar — nie je Person und nie je Space unterhalb der Schwelle. Das ist ein bewusst gezahlter Preis: Genauer zu messen hieße, die Zusage zu brechen, die das Konzept gegenüber der Personalvertretung trägt.
 
 ### Chats sind vor fremder Löschung geschützt
 
-Für Chats gilt dasselbe wie für Assets: **Zurückziehen statt Löschen.** Ein Space-Admin kann einen abgelegten Chat aus dem Space entfernen — er kann ihn nicht beseitigen. Der Chat bleibt für seinen Autor und im Nachweis erhalten, die Entfernung wird mit Grund protokolliert.
+Für Chats gilt dasselbe wie für Assets: **Zurückziehen statt Löschen.** Ein Space-Admin kann einen geteilten Chat aus dem Space entfernen — er kann ihn nicht beseitigen. Der Chat bleibt für seinen Autor und im Nachweis erhalten, die Entfernung wird mit Grund protokolliert.
 
 Der Grund ist derselbe wie bei Assets: Ein Chat kann eine fachliche Einschätzung dokumentieren, auf die sich später jemand beruft. Es wäre nicht vertretbar, für Assets „Rückruf durch Deaktivieren, nie durch Löschen" zu fordern und die Arbeitsspuren der Beschäftigten schlechter zu stellen.
 
@@ -492,7 +517,7 @@ Der Autor kann seinen Chat jederzeit exportieren.
 
 ### Artefakte
 
-In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Für sie gilt **dieselbe** Regel wie für Chats — sie entstehen als Entwurf beim Ersteller und werden durch Ablegen space-sichtbar. Kein Sonderweg, keine Abhängigkeit von der Herkunft der Daten.
+In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Für sie gilt **dieselbe** Regel wie für Chats — sie sind zunächst privat und werden durch Teilen space-sichtbar. Kein Sonderweg, keine Abhängigkeit von der Herkunft der Daten.
 
 Die Objektklasse ist bewusst allgemein gehalten, damit weitere Ergebnistypen ohne Modelländerung hinzukommen können.
 
@@ -502,7 +527,7 @@ Die Objektklasse ist bewusst allgemein gehalten, damit weitere Ergebnistypen ohn
 - **Versionierung:** Ein neues Artefakt kann ein bestehendes ersetzen. Das ersetzte wird `SUPERSEDED`, bleibt aber auffindbar.
 - **Herkunftskennzeichnung:** Jedes Artefakt zeigt, aus welchen Bibliotheken es abgeleitet wurde, und ist auf seinen Ursprungs-Chat rückführbar.
 - **Zurückziehen:** durch Ersteller und Space-Admin, mit Grund protokolliert — kein Löschen.
-- **Aufbewahrung:** Je Space konfigurierbare Frist, damit Projekt-Spaces nicht unbegrenzt wachsen. Entwürfe unterliegen ihr ebenso. Die Frist ist mit den Fach- und Rechtsbehelfsfristen abzustimmen: Sonst wird genau die Spur gelöscht, die nach dem Grundsatz „deaktivieren statt löschen" für ein laufendes Widerspruchsverfahren erhalten bleiben soll. Das Produkt warnt, wenn die eingestellte Frist kürzer ist als die konfigurierte Rechtsbehelfsfrist — analog zur Warnung bei der Audit-Frist.
+- **Aufbewahrung:** Je Space konfigurierbare Frist, damit Spaces nicht unbegrenzt wachsen. Private Inhalte unterliegen ihr ebenso. Die Frist ist mit den Fach- und Rechtsbehelfsfristen abzustimmen: Sonst wird genau die Spur gelöscht, die nach dem Grundsatz „deaktivieren statt löschen" für ein laufendes Widerspruchsverfahren erhalten bleiben soll. Das Produkt warnt, wenn die eingestellte Frist kürzer ist als die konfigurierte Rechtsbehelfsfrist — analog zur Warnung bei der Audit-Frist.
 - **Übergang ins Wissen:** Ein Artefakt kann in eine Wissensbibliothek übernommen werden und wird dabei zu einem Dokument. **Ab dann gelten die Rechte der Bibliothek, nicht mehr die des Space.** Das ist der Rückweg aus der space-eigenen in die assoziierte Welt und der einzige Weg, auf dem ein Ergebnis dauerhaft und rechtegeführt wird.
 
 ### Warum Chats und Artefakte keine Assets sind
@@ -511,7 +536,7 @@ Der Gedanke, alles einheitlich als Asset zu modellieren, ist naheliegend, trägt
 
 1. **Kardinalität und Lebenszyklus passen nicht.** Assets sind wenige, benannt, kuratiert, versioniert, katalogfähig. Chats und Artefakte sind viele, oft unbenannt, häufig wegwerfbar. Katalog, Freigabe-Workflow, Export/Import und Agenten-Prüfstand sind auf sie nicht anwendbar.
 2. **Die Beziehung ist eine andere.** Ein Asset liegt in 0..n Spaces, optional. Ein Chat liegt in genau einem Space, zwingend. Das ist Komposition, nicht Assoziation.
-3. **Die Rechtelogik wäre die falsche.** Wäre ein Chat ein Asset, gewährte der Space nichts an ihm — die Chats eines Projekt-Space wären für die Projektmitglieder unsichtbar. Das ist das Gegenteil des Gewollten.
+3. **Die Rechtelogik wäre die falsche.** Wäre ein Chat ein Asset, gewährte der Space nichts an ihm — die Chats eines Space wären für seine Mitglieder unsichtbar. Das ist das Gegenteil des Gewollten.
 4. **Das Sicherheitsprofil ist asymmetrisch.** Ein geteiltes Asset gibt eine *Fähigkeit* weiter, ein geteilter Chat oder ein Artefakt gibt *Ergebnisse* weiter. Dafür braucht es eigene Regeln, die nicht vom Asset geerbt werden dürfen.
 
 ---
@@ -547,7 +572,7 @@ In beiden Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers
 
 Der Space **verengt** den ungebundenen Chat, **verengt aber nicht den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos.
 
-**Der persönliche Space ist die Ausnahme von der Verengung:** Dort ist der Suchbereich **alles, was der Nutzer lesen darf** — es gibt in einem Ein-Personen-Raum nichts zu kuratieren. Damit steht der persönliche Space fachlich nie schlechter da als ein Team-Space, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
+**Ein Space ohne assoziierte Bibliotheken verengt nicht:** Dort ist der Suchbereich **alles, was der Nutzer lesen darf**. Das ersetzt die frühere Sonderregel für den persönlichen Space und kommt ohne Space-Art aus — in einem Raum, in dem nichts kuratiert wurde, gibt es nichts zu verengen. Damit steht ein Raum, in dem jemand allein arbeitet, fachlich nie schlechter da als ein gemeinsamer, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
 
 Ein Space, in dem der Nutzer auf keine assoziierte Bibliothek Zugriff hat, ist ein **zulässiger Zustand, kein Fehler**: Der Suchbereich ist leer, und im Zitierzwang-Modus verweigert das System folgerichtig die Antwort. Die Meldung darf dabei **keine Anzahlen nennen**. Zulässig: „In diesem Space ist für dich derzeit kein Wissen verfügbar." Unzulässig: „3 von 4 Bibliotheken sind für dich gesperrt."
 
@@ -612,11 +637,11 @@ Wissen fließt aus einer Bibliothek mit **engem** Leserkreis in ein space-eigene
 
 ### Warum das Problem klein geworden ist
 
-Mit der Ablage-Regel (siehe [Space-eigene Inhalte](#die-grundregel-entstehen-als-entwurf-sichtbar-durch-ablegen)) ist der Übergang **kein automatischer Vorgang mehr, sondern eine Handlung**. Nichts fließt in den Leserkreis des Space, ohne dass ein Mensch es dorthin legt — und dieser Mensch ist immer jemand, der die Inhalte selbst lesen durfte.
+Mit der Grundregel (siehe [Space-eigene Inhalte](#die-grundregel-zunächst-privat-sichtbar-durch-teilen)) ist der Übergang **kein automatischer Vorgang mehr, sondern eine Handlung**. Nichts fließt in den Leserkreis des Space, ohne dass ein Mensch es dorthin legt — und dieser Mensch ist immer jemand, der die Inhalte selbst lesen durfte.
 
-Das entspricht dem Verwaltungshandeln: Wer etwas lesen darf, darf es seinen Kollegen **im Rahmen der Zweckbindung des Bestands** berichten und verantwortet das. Die Einschränkung ist wesentlich und nicht bloß vorsichtshalber angefügt: Bei Sozialdaten, Personalakten und Steuerdaten ist die Weitergabe an nicht zuständige Kollegen gerade nicht zulässig, auch wenn der Zugriff selbst rechtmäßig war. Die Ablage entbindet niemanden von der Zweckbindung, die für den Bestand ohnehin gilt. Neu ist nur, dass die Weitergabe sichtbar, zurechenbar und protokolliert ist statt beiläufig.
+Das entspricht dem Verwaltungshandeln: Wer etwas lesen darf, darf es seinen Kollegen **im Rahmen der Zweckbindung des Bestands** berichten und verantwortet das. Die Einschränkung ist wesentlich und nicht bloß vorsichtshalber angefügt: Bei Sozialdaten, Personalakten und Steuerdaten ist die Weitergabe an nicht zuständige Kollegen gerade nicht zulässig, auch wenn der Zugriff selbst rechtmäßig war. Das Teilen entbindet niemanden von der Zweckbindung, die für den Bestand ohnehin gilt. Neu ist nur, dass die Weitergabe sichtbar, zurechenbar und protokolliert ist statt beiläufig.
 
-**Wichtig — das Leck ist damit nicht verschwunden, sondern in einen verantworteten Akt überführt.** Ein abgelegter Chat kann weiterhin Passagen enthalten, die andere Space-Mitglieder nie hätten öffnen dürfen. Der Unterschied ist, dass es jetzt eine Person gibt, die diese Entscheidung getroffen hat, und einen Zeitpunkt, an dem sie getroffen wurde.
+**Wichtig — das Leck ist damit nicht verschwunden, sondern in einen verantworteten Akt überführt.** Ein geteilter Chat kann weiterhin Passagen enthalten, die andere Space-Mitglieder nie hätten öffnen dürfen. Der Unterschied ist, dass es jetzt eine Person gibt, die diese Entscheidung getroffen hat, und einen Zeitpunkt, an dem sie getroffen wurde.
 
 ### Was daraufhin entfallen ist
 
@@ -624,14 +649,14 @@ Drei Mechanismen aus einem früheren Entwurf sind ersatzlos gestrichen, weil sie
 
 | Entfallen | Grund |
 |---|---|
-| **Bestätigungspflicht des Space-`CURATOR` bei gemischter Assoziation** | Die Assoziation setzt niemanden mehr etwas aus. Sie stellt eine Bibliothek bereit; sichtbar wird ein Ergebnis erst durch das Ablegen |
+| **Bestätigungspflicht des Space-`CURATOR` bei gemischter Assoziation** | Die Assoziation setzt niemanden mehr etwas aus. Sie stellt eine Bibliothek bereit; sichtbar wird ein Ergebnis erst durch das Teilen |
 | **Dauerhafte Kennzeichnung gemischter Spaces** | In einer realen Behörde fallen Leserkreise praktisch nie exakt zusammen — ein Teilzeitbeschäftigter, eine externe Kraft, ein Abgeordneter genügt. Damit wäre so gut wie *jeder* Space gekennzeichnet, und ein Warnzeichen, das an allem klebt, informiert über nichts |
 | **Herkunftsabhängiger Sonderweg bei Artefakten** | Ein Ergebnis war mal sofort sichtbar und mal nicht, ohne dass der Ersteller den Unterschied erklären konnte. Jetzt gilt für alles dieselbe Regel |
 
 Was **bleibt**, ist das Billige und Wirksame:
 
-1. **Herkunftsverfolgung.** Jeder Chat und jedes Artefakt führt mit, aus welchen Bibliotheken tatsächlich Treffer stammten — Grundlage für den Hinweis im Ablagedialog, für den Nachweis und für die Kennzeichnung am Artefakt.
-2. **Hinweis im Ablagedialog**, wenn der Inhalt aus Bibliotheken stammt, die nicht alle Mitglieder lesen dürfen — ohne Anzahlen, ohne Namen, und ohne zusätzlichen Dialog: die Information steht dort, wo die Entscheidung ohnehin fällt.
+1. **Herkunftsverfolgung.** Jeder Chat und jedes Artefakt führt mit, aus welchen Bibliotheken tatsächlich Treffer stammten — Grundlage für den Hinweis im Teilen-Dialog, für den Nachweis und für die Kennzeichnung am Artefakt.
+2. **Hinweis im Teilen-Dialog**, wenn der Inhalt aus Bibliotheken stammt, die nicht alle Mitglieder lesen dürfen — ohne Anzahlen, ohne Namen, und ohne zusätzlichen Dialog: die Information steht dort, wo die Entscheidung ohnehin fällt.
 3. **Zitat-Sprungmarken bleiben rechtegeprüft.** Der Sprung in das Quelldokument wird beim Klick gegen die Rechte des Lesenden geprüft und gegebenenfalls verweigert. Das verhindert das Weiterhangeln vom Zitat in den vollen Bestand.
 4. **Benachrichtigung des Bibliotheks-Eigentümers**, wenn seine Bibliothek in einem Space bereitgestellt wird, dessen Mitglieder nicht sämtlich Lesezugriff haben (siehe [Assets in einen Space assoziieren](#assets-in-einen-space-assoziieren)).
 
@@ -664,7 +689,7 @@ Die Bedingung „alle Mitglieder dürfen alles lesen" hängt an Größen, die si
 Das System löst dann **weder Assoziationen automatisch** (das entzöge einem ganzen Team sein Wissen, weil eine Person versetzt wurde) **noch entfernt es Mitglieder** (das koppelte eine Rechteänderung an einer Bibliothek an die Mitgliedschaft in einem Arbeitsraum). Stattdessen geht der Space in den Zustand **„Voraussetzung verletzt"**:
 
 - Bestehende Inhalte bleiben unangetastet und lesbar.
-- **Neue Ablagen und Agentenaufrufe sind gesperrt**, bis der Zustand behoben ist.
+- **Neues Teilen und Agentenaufrufe sind gesperrt**, bis der Zustand behoben ist.
 
 Das ist fail-closed für neue Exposition, ohne etwas zu zerstören, und es gibt keinen stillschweigenden Zustandswechsel im Hintergrund. Ein Sperrzustand ohne Zuständigen wäre allerdings nur die halbe Regelung — er erzeugt **Arbeitsstillstand**, und zwar in genau dem Raum, für den dieses Dokument den Strikt-Modus empfiehlt. Deshalb gilt derselbe Zuschnitt wie bei „Nachfolge offen":
 
@@ -717,8 +742,8 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | **Asset / Katalog** | **Umformuliert:** Der Nutzer sieht nur Assets, auf die er Zugriff hat, oder die bewusst zur Auffindbarkeit veröffentlicht wurden |
 | **Space-Ansicht** | Nur zugängliche Assets; Meldungen nennen keine Anzahlen |
 | **Agent** | **Unverändert.** Ein Agent liest immer mit den Rechten des Nutzers; es gibt keinen Umgehungsweg |
-| **Entwurf** | **Unverändert.** Ein nicht abgelegter Chat oder ein nicht abgelegtes Artefakt ist ausschließlich für seinen Ersteller sichtbar — auch für Space-Admins und System-Admins nicht |
-| **Abgelegter Inhalt** | **Gilt nicht — und das ist eine bewusste Handlung.** Wer ablegt, gibt weiter, was er selbst lesen durfte, und verantwortet das. Der Vorgang wird protokolliert |
+| **Privater Inhalt** | **Unverändert.** Ein nicht geteilter Chat oder ein nicht geteiltes Artefakt ist ausschließlich für seinen Ersteller sichtbar — auch für Space-Admins und System-Admins nicht |
+| **Geteilter Inhalt** | **Gilt nicht — und das ist eine bewusste Handlung.** Wer teilt, gibt weiter, was er selbst lesen durfte, und verantwortet das. Der Vorgang wird protokolliert |
 
 ---
 
@@ -726,8 +751,8 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 
 | Bestand | Behandlung |
 |---|---|
-| Persönliche Workspaces | werden persönliche Spaces; zusätzlich entsteht je Nutzer eine persönliche Wissensbibliothek „Meine Dokumente", die dort assoziiert wird |
-| Gemeinsame Workspaces | werden Team-Spaces |
+| Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`); zusätzlich entsteht je Nutzer eine persönliche Wissensbibliothek „Meine Dokumente", die dort assoziiert wird |
+| Gemeinsame Workspaces | werden gewöhnliche Spaces mit `memberSource = MANUAL` |
 | Mitgliedschaften | `VIEWER→MEMBER`, `EDITOR→CURATOR`, `ADMIN→ADMIN`, `OWNER→ADMIN`; die Verantwortlichkeit steckt bereits im `ownerId`-Attribut |
 | Bestehende Dokumente | haben heute **keine** Workspace-Zuordnung. Sie werden einer System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** ist. Eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar |
 | Global eindeutige Namen | entfallen |
@@ -766,7 +791,7 @@ Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 - **Selbstauskunft.** Jede Person kann ihre eigenen Daten einsehen und exportieren. Das ist keine Überwachung, sondern das Auskunftsrecht der betroffenen Person. Sie ist **nicht delegierbar**: Der Export geht an die Person selbst und ist für niemanden sonst auslösbar — weder über eine Vertretungsfunktion noch durch einen Admin „im Auftrag“ noch in ein fremdes Postfach.
 - **Anlassbezogene Klärung** bei einem konkreten Sicherheitsvorfall — über den Audit-Pfad, mit dokumentiertem Anlass, im Vier-Augen-Prinzip unter Beteiligung der Personalvertretung und mit eigenem Protokolleintrag über den Zugriff. Ein Produkt ohne jede Möglichkeit, einen Vorfall aufzuklären, wäre nicht betreibbar; ein Produkt, in dem diese Aufklärung der Normalweg ist, wäre nicht zustimmungsfähig.
 
-**Diese Ausnahme ist inhaltlich begrenzt, nicht nur formal.** Nach der Streichung des Auswertungspfads ist sie der einzige verbliebene Weg von den Daten zu einer Person — und damit auch der einzige, der an die Verhaltensspur aus dem Entwurfsraum heranreicht. Alles, was jemand wissen will, drückt künftig durch dieses eine Nadelöhr; ein dokumentierter Anlass ist schnell geschrieben, und zwei Augen sind schnell gefunden, wenn beide derselben Leitung berichten. Deshalb gilt:
+**Diese Ausnahme ist inhaltlich begrenzt, nicht nur formal.** Nach der Streichung des Auswertungspfads ist sie der einzige verbliebene Weg von den Daten zu einer Person — und damit auch der einzige, der an die Verhaltensspur aus dem privaten Arbeitsbereich heranreicht. Alles, was jemand wissen will, drückt künftig durch dieses eine Nadelöhr; ein dokumentierter Anlass ist schnell geschrieben, und zwei Augen sind schnell gefunden, wenn beide derselben Leitung berichten. Deshalb gilt:
 
 1. **Zweckausschluss.** Der Pfad steht für arbeitsrechtliche, disziplinarische und leistungsbezogene Fragen **nicht** zur Verfügung — auch dann nicht, wenn ein Sachverhalt beides berührt.
 2. **Umfangsbegrenzung vorab.** Person, Zeitraum und Zweck werden vor der Freigabe festgelegt und begrenzen die Abfrage **technisch**. Sonst klärt man einen Vorfall vom Mai und liest dabei zwei Jahre.
@@ -788,27 +813,28 @@ Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 | **Governance-Änderungen sind protokollpflichtig** | Jede Änderung an Aufbewahrung, Aggregation, Statistik oder Audit-Einstellungen wird protokolliert und angezeigt — sonst bleibt eine spätere Abweichung von der Dienstvereinbarung unbemerkt |
 | **Auskunft für die Personalvertretung** | Export, welche personenbeziehbaren Daten erhoben werden, in welcher Granularität und wie lange sie liegen — vor dem Rollout einmal vollständig vorlegbar |
 
-### Wirkung des Ablage-Modells
+### Wirkung der Grundregel
 
-Die Ablage-Regel ist zugleich die wichtigste Antwort auf die häufigste Sorge der Beschäftigten. Weil ein Chat erst durch eine **Handlung seines Autors** sichtbar wird, entsteht Sichtbarkeit nicht mehr nebenbei:
+Sie ist zugleich die wichtigste Antwort auf die häufigste Sorge der Beschäftigten. Weil ein Chat erst durch eine **Handlung seines Autors** sichtbar wird, entsteht Sichtbarkeit nicht mehr nebenbei:
 
-- Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, an der jemand unsicher ist, liegt im Entwurf und wird nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
-- Die Führungskraft, die in aller Regel Mitglied des Team-Space ist, sieht abgelegte Arbeitsergebnisse — nicht den Arbeitsweg dorthin.
-- Wer ablegt, tut es bewusst; das ist gegenüber der Personalvertretung darstellbar, anders als eine Sichtbarkeit, die im Hintergrund entsteht.
+- Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, an der jemand unsicher ist, bleibt privat und wird nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
+- Die Führungskraft, die in aller Regel Mitglied des gemeinsamen Space ist, sieht geteilte Arbeitsergebnisse — nicht den Arbeitsweg dorthin.
+- Wer teilt, tut es bewusst; das ist gegenüber der Personalvertretung darstellbar, anders als eine Sichtbarkeit, die im Hintergrund entsteht.
 
-### Der persönliche Space ist unbeobachtet
+### Private Inhalte sind unbeobachtet
 
 Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 
-- Inhalte des persönlichen Space und **alle Entwürfe** sind für System-Admins, Revision und Dienststellenleitung **nicht lesbar**. Ein System-Admin kann im Rahmen des Offboardings einen persönlichen Space deaktivieren; er kann ihn nicht einsehen.
-- **Geschützt ist der Inhalt, nicht die Tatsache der Nutzung.** Der Protokollsatz entsteht bei jeder Abfrage, unabhängig davon, ob ein Chat abgelegt ist und in welchem Space er läuft. Wer im persönlichen Space arbeitet, tut das inhaltlich unbeobachtet — dass er arbeitet, wann und wie oft, wird protokolliert. Das gehört ausgesprochen, damit eine Auskunft an die Beschäftigten stimmt: *„Dass du arbeitest, wird protokolliert. Was du schreibst, nicht. Und es gibt keine Funktion, die das nach dir sortiert."* Der einzige Weg, der von dieser Spur noch zu einer Person führt, ist die anlassbezogene Klärung — deshalb ist deren Begrenzung so wichtig.
-- Der persönliche Space steht fachlich **nicht schlechter** da als ein Team-Space: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ohne diese Zusage wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum faktisch.
+- **Alle privaten Inhalte** sind für System-Admins, Revision und Dienststellenleitung **nicht lesbar** — in jedem Space, nicht nur in einem dafür vorgesehenen. Ein System-Admin kann im Rahmen des Offboardings einen Space deaktivieren; er kann ihn nicht einsehen.
+- Diese Zusage ist durch den Wegfall der Space-Arten **stärker** geworden, nicht schwächer: Sie hängt nicht mehr daran, dass jemand im richtigen Raum gearbeitet hat.
+- **Geschützt ist der Inhalt, nicht die Tatsache der Nutzung.** Der Protokollsatz entsteht bei jeder Abfrage, unabhängig davon, ob ein Chat geteilt ist und in welchem Space er läuft. Wer privat arbeitet, tut das inhaltlich unbeobachtet — dass er arbeitet, wann und wie oft, wird protokolliert. Das gehört ausgesprochen, damit eine Auskunft an die Beschäftigten stimmt: *„Dass du arbeitest, wird protokolliert. Was du schreibst, nicht. Und es gibt keine Funktion, die das nach dir sortiert."* Der einzige Weg, der von dieser Spur noch zu einer Person führt, ist die anlassbezogene Klärung — deshalb ist deren Begrenzung so wichtig.
+- Ein Raum, in dem jemand allein arbeitet, steht fachlich **nicht schlechter** da als ein gemeinsamer: Der Suchbereich umfasst dort alles, was der Nutzer lesen darf (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)). Ohne diese Zusage wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum faktisch.
 
 ### Was das Produkt nicht regeln kann
 
-- **Freiwilligkeit.** Ob die Nutzung verpflichtend wird und ob Beschäftigten ein Nachteil entsteht, die den Assistenten nicht oder nur im persönlichen Space nutzen, entscheidet die Dienststelle. Das gehört in die Dienstvereinbarung.
+- **Freiwilligkeit.** Ob die Nutzung verpflichtend wird und ob Beschäftigten ein Nachteil entsteht, die den Assistenten nicht oder nur für sich nutzen, entscheidet die Dienststelle. Das gehört in die Dienstvereinbarung.
 - **Die Höhe der Mindestgruppengröße.** In einem Referat mit vier Beschäftigten ist auch ein Aggregatwert personenbeziehbar, sobald zwei im Urlaub sind. Das Produkt setzt eine Voreinstellung und erzwingt eine Untergrenze; die angemessene Zahl folgt aus dem tatsächlichen Zuschnitt der Einheiten.
-- **Die Aufnahme externer Personen** in Spaces mit abgelegten Inhalten ist aus Beschäftigtensicht die heikelste Konstellation — Externe erhalten Einblick in die Arbeitsergebnisse namentlich bekannter Beschäftigter. Das Produkt kennzeichnet externe Konten, verlangt bei der Aufnahme eine ausdrückliche Bestätigung und protokolliert sie. Ob der Vorgang mitbestimmungspflichtig ist, entscheidet die Dienststelle.
+- **Die Aufnahme externer Personen** in Spaces mit geteilten Inhalten ist aus Beschäftigtensicht die heikelste Konstellation — Externe erhalten Einblick in die Arbeitsergebnisse namentlich bekannter Beschäftigter. Das Produkt kennzeichnet externe Konten, verlangt bei der Aufnahme eine ausdrückliche Bestätigung und protokolliert sie. Ob der Vorgang mitbestimmungspflichtig ist, entscheidet die Dienststelle.
 - **Ob der Umfang des Protokollsatzes für eine C5-Prüfung erforderlich ist.** Sollte ein Feld zwingend sein, das hier als verzichtbar behandelt wird, ist das schriftlich zu begründen und das Feld aus Berichten und Exporten auszuschließen.
 
 ---
@@ -846,12 +872,14 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
   Mit den Kuratoren entfallen auch die konfigurierbare Größenschwelle und die Sonderbehandlung des Umgehungswegs über `AD_HOC`-Gruppen: Ohne Zustimmungspflicht gibt es nichts zu umgehen. Die Aufbauorganisation bleibt als Herkunft der Gruppen und als Aggregationsachse erhalten. Wer die Annahmeseite später doch braucht, kann sie als Rolle *in* der Gruppe ergänzen — so löst es Langdock —, ohne das Rechtemodell anzufassen.
 - **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, organisationsweit — kombiniert mit `visibility` und `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
-- **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Projekt-Space wären für die Projektmitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
+- **Drei Space-Arten (`PERSONAL`, `PROJECT`, `TEAM`).** Verworfen zugunsten eines einzigen Typs mit den Attributen `isDefault` und `memberSource`. `PERSONAL` war nichts anderes als „ein Space, in dem nur eine Person Mitglied ist", und alles, was daran hing, hängt in Wahrheit woanders: der unverengte Suchbereich an der Abwesenheit assoziierter Bibliotheken, die Zusage an die Personalvertretung am Privatstatus der Inhalte, die Aufbewahrungsfrist ebenso. `TEAM` unterschied sich von `PROJECT` nur darin, wer ihn anlegen darf — eine Berechtigung, keine Art. Entscheidend ist, dass die Grundregel die Arten überflüssig macht: Wenn private Inhalte ohnehin nur ihrem Ersteller gehören, ist jeder Space, in dem nichts geteilt wird, faktisch privat. Nebenwirkung der Streichung, ausdrücklich gewollt: Ein Nutzer darf beliebig viele Räume anlegen, in denen er allein arbeitet, statt genau einen.
+- **Die Statusnamen `DRAFT` und `PLACED`.** Ersetzt durch `PRIVATE` und `SHARED`. „Entwurf" und „ablegen" sind Aktenjargon für einen Vorgang, den jeder aus jedem Werkzeug kennt; die Sache wird davon nicht präziser, nur fremder. Bewusst in Kauf genommen wird, dass „teilen" nun zwei Vorgänge bezeichnet — ein Asset teilen heißt Rechte vergeben, einen Chat in den Space teilen heißt ihn sichtbar machen. Die Objekte sind verschieden genug, dass der jeweilige Satz eindeutig bleibt; wo es eng wird, heißt es „in den Space teilen".
+- **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Space wären für seine Mitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
 
 ### Sichtbarkeit und Ableitungsleck
 
-- **Chats automatisch space-sichtbar.** Zunächst so entschieden, dann revidiert. Die Regel war einfach und vorhersagbar, erzeugte aber Ausweichverhalten: Gearbeitet wird dann im persönlichen Space oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Sie war zudem der einzige Grund für das Ableitungsleck in seiner scharfen Form und für die halbe Kennzeichnungsmaschinerie. Der Preis der Revision ist der Tausch automatischer gegen freiwillige Transparenz — ein Chat, den niemand ablegt, ist für die Organisation nicht vorhanden. Deshalb muss das Ablegen ein Klick sein.
-- **Harte Invariante: Bibliothek nur assoziierbar, wenn alle Space-Mitglieder Lesezugriff haben.** Das ist der Strikt-Modus als Pflicht. Drei Gründe gegen die Pflichtform: Sie hängt von einer Größe ab, die sich außerhalb des Systems ändert (eine Verzeichnissynchronisation bricht sie bei jedem Referatswechsel), sie lässt bei Verletzung nur schlechte Optionen (Assoziationen automatisch lösen, Mitglieder entfernen oder den Zustand dulden), und sie macht referatsübergreifende Projekt-Spaces — den eigentlichen Anwendungsfall — entweder unmöglich oder erzwingt die Vollfreigabe aller Bestände an alle Beteiligten. Als wählbarer [Strikt-Modus](#der-strikt-modus) bleibt sie erhalten.
+- **Chats automatisch space-sichtbar.** Zunächst so entschieden, dann revidiert. Die Regel war einfach und vorhersagbar, erzeugte aber Ausweichverhalten: Gearbeitet wird dann in einem Raum, in dem man allein ist, oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Sie war zudem der einzige Grund für das Ableitungsleck in seiner scharfen Form und für die halbe Kennzeichnungsmaschinerie. Der Preis der Revision ist der Tausch automatischer gegen freiwillige Transparenz — ein Chat, den niemand teilt, ist für die Organisation nicht vorhanden. Deshalb muss das Teilen ein Klick sein.
+- **Harte Invariante: Bibliothek nur assoziierbar, wenn alle Space-Mitglieder Lesezugriff haben.** Das ist der Strikt-Modus als Pflicht. Drei Gründe gegen die Pflichtform: Sie hängt von einer Größe ab, die sich außerhalb des Systems ändert (eine Verzeichnissynchronisation bricht sie bei jedem Referatswechsel), sie lässt bei Verletzung nur schlechte Optionen (Assoziationen automatisch lösen, Mitglieder entfernen oder den Zustand dulden), und sie macht referatsübergreifende Projekträume — den eigentlichen Anwendungsfall — entweder unmöglich oder erzwingt die Vollfreigabe aller Bestände an alle Beteiligten. Als wählbarer [Strikt-Modus](#der-strikt-modus) bleibt sie erhalten.
 - **Zitat-Redaktion beim Lesen.** Verworfen als unvollständig, nicht bloß aufwendig: Der Antworttext trägt die Information weiter, und ein je Leser unterschiedlicher Verlauf zerstört den gemeinsamen Arbeitsraum. Siehe [Warum Zitat-Redaktion weiterhin nicht gebaut wird](#warum-zitat-redaktion-weiterhin-nicht-gebaut-wird).
 - **Agent liest mit eigenen Rechten (Rechtedelegation).** Zunächst als admin-aktivierbare Ausnahme vorgesehen, dann vollständig verworfen. Mit der [Freigabekette](#einen-agenten-weitergeben-die-freigabekette) gibt es bereits einen Weg, auf dem ein geteilter Agent beim Empfänger funktioniert; ein zweiter wäre redundant und zugleich der riskantere von beiden. Bewusst in Kauf genommen: Ein Agent, dessen Wissen nicht freigegeben werden darf, ist nicht teilbar.
 
@@ -874,7 +902,7 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 - Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art und für die Mindestgruppengröße bei Auswertungen.
 - Verschachtelte Gruppen im Verzeichnis (Gruppe als Mitglied einer Gruppe) — Auflösungsregel offen.
-- Voreinstellung der Aufbewahrungsfrist für Entwürfe — lang genug, um „vergessen, aber noch rettbar" von „endgültig verloren" zu trennen.
+- Voreinstellung der Aufbewahrungsfrist für private Inhalte — lang genug, um „vergessen, aber noch rettbar" von „endgültig verloren" zu trennen.
 - Freigabe- und Review-Workflow sowie Versionierung von Assets — bewusst außerhalb dieser Ausbaustufe.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
 - Konkreter Aktualisierungsweg für mitgelieferte Assets in einem Netz ohne Internetanbindung (Signatur, Prüfung, Einspielung).
@@ -885,4 +913,3 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 - [Zugangskontrolle](./access-control.md) — Systemverwaltung, Nutzerverwaltung, Audit und Compliance
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
-- [Diskussion: Workspace-Konzept](../discussions/discussion-workspace-concept.md) — Vorgeschichte und abgelöste Annahmen

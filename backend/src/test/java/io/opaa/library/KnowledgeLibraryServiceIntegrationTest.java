@@ -22,7 +22,6 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
-import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import java.time.Instant;
@@ -800,8 +799,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryResponse library =
         libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), libraryOwner);
     var space =
-        spaceService.createSpace(
-            new SpaceRequest("Team Leistungsgewaehrung", SpaceKind.PROJECT), spaceAdmin, false);
+        spaceService.createSpace(new SpaceRequest("Team Leistungsgewaehrung"), spaceAdmin, false);
     createdSpaceIds.add(space.getId());
 
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), spaceAdmin, false))

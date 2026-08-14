@@ -8,7 +8,6 @@ export type QueryMetadata = components['schemas']['QueryMetadata']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']
-export type SpaceKind = components['schemas']['SpaceKind']
 export type SpaceVisibility = components['schemas']['SpaceVisibility']
 export type SpaceRequest = components['schemas']['SpaceRequest']
 export type SpaceUpdateRequest = components['schemas']['SpaceUpdateRequest']

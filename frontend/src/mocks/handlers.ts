@@ -121,7 +121,6 @@ export const handlers = [
     const body = (await request.json()) as {
       name: string
       description?: string
-      kind?: 'PERSONAL' | 'PROJECT' | 'TEAM'
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({ error: 'Der Name des Space ist erforderlich' }, { status: 400 })
@@ -132,7 +131,7 @@ export const handlers = [
       id,
       name: body.name.trim(),
       description: body.description?.trim() ?? null,
-      kind: body.kind ?? 'PROJECT',
+      isDefault: false,
       visibility: 'PRIVATE',
       memberCount: 1,
       userRole: 'ADMIN',
