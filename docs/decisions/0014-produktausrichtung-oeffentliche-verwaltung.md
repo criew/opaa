@@ -79,7 +79,7 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 
 | Punkt | Spannung zur neuen Ausrichtung |
 |---|---|
-| Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst |
+| Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
@@ -113,6 +113,22 @@ Die Tabelle unter [Was schwieriger wird](#was-schwieriger-wird) benennt Punkte, 
 ausdrücklich **nicht** entscheidet. Sobald einer davon entschieden ist, kommt er hier als Nachtrag
 hinzu — der ADR selbst bleibt im Wortlaut unverändert, damit erkennbar bleibt, was wann galt. Jeder
 Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
+
+### 14.08.2026 — Austauschbare Vektorspeicher
+
+- **Punkt:** Austauschbare Vektorspeicher aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** PostgreSQL mit pgvector ist der unterstützte Vektorspeicher und der einzige. Weitere
+  Vektorspeicher werden nicht zugesagt. Der Zugriff läuft über die portable Schnittstelle des
+  eingesetzten Rahmenwerks; ein Wechsel ist technisch möglich, wird aber nicht unterstützt, nicht
+  geprüft und nicht dokumentiert. Der Code bleibt unverändert — geändert wird allein das Versprechen in
+  der Dokumentation.
+- **Begründung:** Eine Betreiberin in der öffentlichen Verwaltung wählt den Vektorspeicher in aller
+  Regel nicht selbst, sodass der zugesagten Wahlfreiheit kein Bedarf gegenübersteht, während jede
+  zusätzlich zugesagte Variante dauerhaft Integrationstest, Betriebsleitfaden und Unterstützung im
+  Fehlerfall kostet. Dass pgvector bei sehr großen Beständen an Grenzen stößt, benennt ADR-0002 selbst
+  und wird als bekannter Punkt geführt; tritt er ein, ist das eine neue Entscheidung mit eigenem ADR.
+- **Verweis:** [#348](https://github.com/criew/opaa/issues/348) ·
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner)
 
 ### 14.08.2026 — Verbraucher-Chatkanäle
 

@@ -266,10 +266,43 @@ Bibliotheken verweisen, die inzwischen anders berechtigt oder gelöscht sind. Li
 zusammen, entschärft sich das; liegen sie getrennt, nicht. Ein Konsistenzprüflauf gleicht beide Seiten ab
 und meldet Abweichungen.
 
-> **Nicht Gegenstand dieses Dokuments:** ob der Vektorspeicher austauschbar sein soll und welche
-> Speicher unterstützt werden. [ADR-0002](../decisions/0002-mvp-technology-stack.md) hat die
-> Technologiebasis gewählt; ob das Versprechen der Austauschbarkeit zur neuen Ausrichtung passt, wird in
-> **Issue #348** eigens entschieden. Bis dahin trifft diese Spezifikation dazu keine Aussage.
+### Der Vektorspeicher: PostgreSQL mit pgvector, und sonst keiner
+
+OPAA speichert Vektoren in **PostgreSQL mit pgvector**. Das ist der unterstützte Vektorspeicher, und er
+ist der einzige. Es gibt bei der Installation keine Auswahl und keine Zusage, dass weitere hinzukommen.
+
+Technisch läuft der Zugriff über die portable Vektorspeicher-Schnittstelle des eingesetzten Rahmenwerks,
+einschließlich der rechtebewussten Filterung. Ein Wechsel auf einen anderen Vektorspeicher ist damit
+möglich — aber er wird **nicht unterstützt, nicht geprüft und nicht dokumentiert**: kein
+Integrationstest, kein Betriebsleitfaden, keine Unterstützung im Fehlerfall. Wer ihn dennoch vornimmt,
+verlässt den unterstützten Stand.
+
+**Warum diese Festlegung für ein Verwaltungsprodukt die richtige ist**
+
+- **Die Betreiberin wählt den Vektorspeicher in aller Regel nicht selbst.** Wer OPAA in einem
+  Behördenrechenzentrum oder ohne Netzanbindung betreibt, hat Vorgaben zu Datenbankbetrieb, Sicherung
+  und Wiederherstellung — aber praktisch nie die Anforderung, gerade dieses Bauteil auszutauschen. Eine
+  Wahlmöglichkeit, die niemand ausübt, ist kein Nutzen, sondern nur eine weitere Entscheidung, die bei
+  der Einführung getroffen werden muss.
+- **Jede zugesagte Variante kostet dauerhaft.** Eine Zusage ist erst eingelöst, wenn ein
+  Integrationstest sie absichert, ein Betriebsleitfaden sie beschreibt und jemand im Fehlerfall dafür
+  einsteht. Diesem laufenden Aufwand steht kein Bedarf gegenüber.
+- **Weniger bewegliche Teile heißt weniger Nachweislast.** Ein Betreiber, der eine Prüfung besteht,
+  weist Sicherung, Verschlüsselung und Zugriffswege *einer* Datenbank nach. Metadatenbestand und
+  Vektorindex liegen ohnehin in derselben PostgreSQL-Instanz; ein zweites System zöge einen zweiten
+  Nachweispfad, eine zweite Rechteprüfung und einen zweiten Wiederherstellungsplan nach sich.
+- **Die Abstraktion bleibt trotzdem — sie kostet nichts.** Sie kommt aus dem Rahmenwerk und wird nicht
+  von diesem Projekt gepflegt. Deshalb wird auch nichts ausgebaut: Es ändert sich das Versprechen, nicht
+  der Code.
+
+**Die bekannte Grenze:** [ADR-0002](../decisions/0002-mvp-technology-stack.md) benennt selbst, dass
+pgvector bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen stößt. Das wird hier
+nicht verschwiegen, sondern als bekannter Punkt geführt. Tritt der Fall in einer realen Installation
+ein, ist das eine neue Entscheidung mit eigenem ADR — keine Überraschung und kein stillschweigend
+eingelöstes Versprechen.
+
+Entschieden in [#348](https://github.com/criew/opaa/issues/348), festgehalten als Nachtrag in
+[ADR-0014](../decisions/0014-produktausrichtung-oeffentliche-verwaltung.md).
 
 ---
 
@@ -617,6 +650,11 @@ Idee wieder aufgemacht werden.
   [Wissensquellen und Konnektoren](./knowledge-sources.md#geklärte-fragen) mit **Issue #119** erfasst.
 - **Verweigerung ist ein Ergebnis, kein Fehler.** „Nicht feststellbar" wird protokolliert und zählt in
   der Auswertung nicht als Störung — sonst entsteht Druck, die Schwelle zu senken.
+- **Ein Vektorspeicher, und zwar PostgreSQL mit pgvector — ja.** Austauschbare Vektorspeicher werden
+  nicht zugesagt. Der Zugriff läuft zwar über eine portable Schnittstelle des Rahmenwerks, ein Wechsel
+  wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert (siehe
+  [Der Vektorspeicher](#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner), entschieden in
+  [#348](https://github.com/criew/opaa/issues/348)).
 
 ---
 
