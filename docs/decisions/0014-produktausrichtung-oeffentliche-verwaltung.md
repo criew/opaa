@@ -80,6 +80,10 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 | Punkt | Spannung zur neuen Ausrichtung |
 |---|---|
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
+| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
+| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
+| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
+
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit |
 | Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe |
@@ -129,6 +133,110 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   und wird als bekannter Punkt geführt; tritt er ein, ist das eine neue Entscheidung mit eigenem ADR.
 - **Verweis:** [#348](https://github.com/criew/opaa/issues/348) ·
   [features/data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner)
+
+### 14.08.2026 — Cloud-Betrieb und betreuter Dienst
+
+- **Punkt:** Der Betrieb in einer angemieteten Cloud-Umgebung als eigenes Betriebsmodell und ein vom
+  Projektteam betreuter Dienst.
+- **Entscheidung:** Beides entfällt als Betriebsmodell. Der Betrieb außerhalb des eigenen Hauses wird
+  als Möglichkeit beschrieben, nicht als Angebot: OPAA läuft dort, wo eine Container-Umgebung und
+  PostgreSQL mit pgvector stehen, und wo das ist, entscheidet die verantwortliche Stelle. Anbieternamen
+  und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung außerhalb des eigenen
+  Hauses bleiben als benannter Fall bestehen, unter der Bedingung, dass dort keine echten Daten liegen.
+  Ein vom Projektteam betreuter Dienst wird ersatzlos gestrichen.
+- **Begründung:** Entscheidend ist nicht der Ort, sondern wer Verantwortlicher der Verarbeitung ist —
+  ein Rechenzentrum der Verwaltung ist ebenfalls nicht das eigene Haus und trotzdem unproblematisch,
+  während für einen erheblichen Teil der Verwaltungsdaten die Verarbeitung außerhalb der eigenen
+  Verantwortungssphäre rechtlich ausgeschlossen ist. Ein betreuter Dienst würde das Projekt selbst zum
+  Betreiber machen und eine Erwartung an Verfügbarkeit und Haftung erzeugen, die ein quelloffenes
+  Vorhaben nicht einlöst; der Bedarf ist über den mandantenfähigen Betrieb durch ein Rechenzentrum
+  bereits abgedeckt.
+- **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
+  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Standardposition der Modellanbieter
+
+- **Punkt:** Cloud-Modelle als Standardeinstellung aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung; daran
+  ändert sich nichts, und es ist keine Zwischenlösung. Zwei Festlegungen kommen hinzu. Erstens: Eine
+  **technische Sperre wird nicht gebaut** — es gibt keinen Mechanismus, der Modellaufrufe an Ziele
+  außerhalb festgelegter Netzbereiche verweigert. Die Zusicherung, dass keine Daten an ein Modell
+  außerhalb des Hauses gehen, ruht damit auf der Konfiguration und nicht auf einer Durchsetzung; wer
+  sie nachweisen muss, weist die Konfiguration nach und sichert den Netzweg außerhalb von OPAA ab. Das
+  gilt für den heutigen Stand und schließt eine spätere Durchsetzung nicht aus: Die zentralen
+  Modellvorgaben aus Themenbereich E, die als Obergrenze wirken, bleiben Teil von Phase 1 und sind der
+  Ort, an dem eine Durchsetzung einhängt. Zweitens: Die **Basis-Adresse der openai-kompatiblen
+  Schnittstelle verliert ihre Voreinstellung**, bei der gemeinsamen Adresse wie bei den davon
+  abgeleiteten Werten für Chat und Einbettung. Wer diesen Anbieter wählt, gibt die Adresse an; fehlt
+  sie, bricht der Start mit einer Meldung ab, die die fehlende Variable benennt. Der Standardfall —
+  lokal betriebene Modelle — startet unverändert ohne jede zusätzliche Konfiguration.
+- **Begründung:** Für die Sperre: Die Voreinstellung ist bereits lokal, und wer sie ändert, tut es
+  absichtlich; ein Durchsetzungsmechanismus ohne die verwalteten Modelle und Vorgaben, an die er
+  gehört, wäre eine zweite Wahrheit neben der Konfiguration und würde eine Sicherheit vortäuschen, die
+  er nicht trägt. Offen benannt zu werden ist mehr wert als eine halbe Sperre. Für die Adresse:
+  Anbietername und Zieladresse sind zwei verschiedene Dinge — `openai` bezeichnet das Protokoll, das
+  auch lokal betriebene Modellserver sprechen. Wer im Haus einen solchen Server als
+  „openai-kompatibel" einbindet und die Adresse nicht setzt, erbte mit einer Voreinstellung
+  stillschweigend ein Ziel außerhalb des Hauses, ohne dass es an einer Fehlermeldung auffiele. Genau
+  dieser Fall soll nicht mehr möglich sein.
+- **Verweis:** [#353](https://github.com/criew/opaa/issues/353) ·
+  [features/llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut) ·
+  [deployment.md](../deployment.md#llm-anbieter)
+
+### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
+
+- **Punkt:** Ob der Bürger-Scope — ein Assistent für Bürgerinnen und Bürger und ein öffentlich in eine
+  Webseite eingebettetes Widget — eine eigene Führung im Dokumentenbestand erhält.
+- **Entscheidung:** Der Bürger-Scope bleibt Ausblick der Phase 4. Es wird dafür keine gesonderte Notiz
+  und kein eigener Abschnitt angelegt, keine Anforderungsliste geführt und nichts vorgezogen — auch die
+  Barrierefreiheit nach BITV nicht, die in Phase 3 verbleibt. Die Stellen, die den Bürger-Scope bisher
+  als offene Frage geführt haben, sind auf diesen entschiedenen Stand gebracht.
+- **Begründung:** Der Ausblick ist bereits in [VISION.md](../VISION.md) (Phase 4) und in
+  [features/public-sector.md](../features/public-sector.md) beschrieben; eine dritte Fassung desselben
+  Sachverhalts erzeugt Pflegeaufwand und Widerspruchsrisiko, ohne etwas hinzuzufügen. Eine zusätzliche
+  Anforderungsliste für einen Nutzerkreis, der nicht adressiert wird, bindet Aufmerksamkeit ohne
+  Nutzen. Was Entscheidungen der ersten Phase an dieser Stelle verbauen könnten, ist erhoben und am
+  Vorgang dokumentiert, damit es beim späteren Aufgreifen nicht neu erarbeitet werden muss.
+- **Verweis:** [#357](https://github.com/criew/opaa/issues/357) ·
+  [features/public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger)
+
+### 14.08.2026 — Anbieternamen im Bestand
+
+- **Punkt:** Ob die pauschale Fassung „keine Namen von Mitbewerbern" aus dem Abschnitt „Was in der
+  Dokumentation nicht vorkommt" auch die vorhandenen Nennungen in der Vorbild-Analyse der
+  Rechtemodelle und in der Recherche-Anweisung an die Product-Manager-Rolle erfasst.
+- **Entscheidung:** Nein. Unzulässig bleibt die Nennung zur Positionierung — ein Name, der OPAA
+  einordnet, eine Marktlage beschreibt oder einen Kaufgrund liefert. Zulässig ist die Nennung als
+  nachprüfbarer Sachbeleg für eine technische Behauptung über ein fremdes System, die den eigenen
+  Entwurf trägt, ebenso die Nennung als Arbeitsanweisung an eine interne Rolle. Beide bestehenden
+  Stellen bleiben unverändert und tragen je einen Hinweis auf die Regel. Der ADR-Wortlaut bleibt
+  unverändert; dieser Nachtrag präzisiert ihn.
+- **Begründung:** Die Vorbild-Analyse belegt, dass die gewählte Rechtekonstruktion in keinem der
+  untersuchten Systeme ein Vorbild hat. Anonymisiert wäre diese Aussage nicht mehr nachprüfbar und
+  damit wertlos — und ein bereits entschiedener Punkt käme in einem halben Jahr als neue Idee
+  wieder. Eine Anweisung an eine interne Rolle ist kein Text über OPAA und erreicht niemanden, der
+  sich ein Bild vom Produkt macht. Ohne diese geschriebene Grenze wird der scheinbare Widerspruch
+  bei jeder Durchsicht neu ausdiskutiert oder in gutem Glauben weggeräumt.
+- **Verweis:** [#367](https://github.com/criew/opaa/issues/367) ·
+  [market/MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen)
+
+### 14.08.2026 — Umfang der Speicher-Abstraktion für Dokumente
+
+- **Punkt:** Umfang der Abstraktion über Speicher-Backends für Originaldokumente.
+- **Entscheidung:** Das Dateisystem ist der Vertrag. OPAA schreibt und liest Quelldokumente gegen genau
+  ein konfiguriertes Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht und ist für
+  die dateibasierten Fälle auch nicht vorgesehen. Ein Netzlaufwerk (SMB/NFS) wird vom Betrieb dorthin
+  eingehängt. Objektbasierter Speicher wird als eigener Weg geführt, aber ohne Termin; ein
+  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel. Der Code bleibt unverändert —
+  geändert wird allein das Versprechen in der Dokumentation.
+- **Begründung:** Zwei der drei bisher zugesagten Backends sind mit dem heutigen Code bereits abgedeckt,
+  weil ein eingehängtes Netzlaufwerk für die Anwendung wie ein Verzeichnis aussieht, sodass der
+  zugesagten Abstraktion in diesen Fällen kein Bedarf gegenübersteht. Objektbasierter Speicher braucht
+  als einziger einen eigenen Pfad im Code und bleibt deshalb als Weg bestehen; der Grund dafür ist der
+  mandantenfähige Rechenzentrumsbetrieb, in dem ein geteiltes Netzlaufwerk bei Mandantentrennung,
+  Kontingenten und Sicherung der unangenehmere Weg ist.
+- **Verweis:** [#351](https://github.com/criew/opaa/issues/351) ·
+  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends)
 
 ### 14.08.2026 — Verbraucher-Chatkanäle
 

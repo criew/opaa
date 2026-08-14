@@ -381,8 +381,8 @@ Sicherheitsgrenze des Systems.
 - Wie stellt ein Kanal mit knappem Nachrichtenformat mehrere Fundstellen dar, ohne dass die Antwort
   unlesbar wird?
 - Ein Assistent für Bürgerinnen und Bürger und ein öffentlich eingebettetes Widget wären ein Kanal mit
-  anderem Nutzerkreis und anderen Haftungsfragen. Sie sind Ausblick, nicht Fundament; siehe
-  [#357](https://github.com/criew/opaa/issues/357) und [public-sector.md](./public-sector.md).
+  anderem Nutzerkreis und anderen Haftungsfragen. Sie sind Ausblick der Phase 4, nicht Fundament;
+  siehe [public-sector.md](./public-sector.md).
 - Native Anwendungen für Mobilgeräte sind bewusst nicht vorgesehen (siehe [VISION.md](../VISION.md)).
 
 ---

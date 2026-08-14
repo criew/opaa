@@ -3,8 +3,7 @@
 > **Status: Entwurf.** Themenbereich J der Produktvision. Phasenlage: Betrieb mit Docker Compose,
 > Kubernetes mit Hochverfügbarkeit und der Betrieb ohne Netzanbindung gehören in **Phase 1**; die
 > Andockung an die Bausteine des souveränen Arbeitsplatzes in **Phase 4**. Der Umfang der
-> Speicher-Abstraktion wird in [#351](https://github.com/criew/opaa/issues/351) geklärt, die Zukunft
-> von Cloud-Deployment und betreutem Dienst in [#350](https://github.com/criew/opaa/issues/350).
+> Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)).
 >
 > Diese Spezifikation beschreibt das **Zielbild**. Der tatsächlich verfügbare Betriebsweg ist in
 > [deployment.md](../deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
@@ -29,14 +28,16 @@ Dieses Dokument beschreibt die Betriebsformen, ihre Voraussetzungen und ihre Gre
 ## Überblick
 
 1. **Betrieb im eigenen Verantwortungsbereich ist der Standard.** Alles Weitere ist eine Abweichung,
-   die begründet werden muss — nicht umgekehrt.
+   die begründet werden muss — nicht umgekehrt. Maßgeblich ist dabei die Verantwortlichkeit, nicht
+   die Entfernung zum eigenen Serverraum.
 2. **Zwei Größenordnungen, eine Codebasis.** Docker Compose für kleine Installationen, Kubernetes mit
    Hochverfügbarkeit für große. Der Unterschied liegt in der Betriebsform, nicht im Produkt.
 3. **Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario**, keine Ausnahme und kein Sonderfall.
    Er bestimmt Entwurfsentscheidungen mit, statt nachträglich ermöglicht zu werden.
-4. **Der Dateispeicher ist austauschbar.** Objektspeicher, Netzlaufwerk und lokales Dateisystem bedienen
-   unterschiedliche Rechenzentren; der Umfang der Abstraktion ist offen. Der **Vektorspeicher** ist davon
-   ausgenommen — er ist auf pgvector festgelegt.
+4. **Der Dateispeicher ist austauschbar — durch Einhängen, nicht durch eine Abstraktion.** OPAA
+   schreibt und liest gegen genau ein konfiguriertes Verzeichnis; ein Netzlaufwerk hängt der Betrieb
+   dort ein. Objektbasierter Speicher ist als eigener Weg vorgesehen, aber **nicht gebaut**. Der
+   **Vektorspeicher** ist davon ausgenommen — er ist auf pgvector festgelegt.
 5. **Mandantenfähiger Betrieb ist der Hebel für die Fläche.** Ein Rechenzentrum betreibt eine
    Installation für viele Häuser, die einzeln nie beschaffen würden.
 6. **Die gesamte Konfiguration liegt außerhalb des Abbilds** — in Umgebungsvariablen und
@@ -122,16 +123,25 @@ eine Absichtserklärung.
 
 ## Speicher-Backends
 
-Die Anwendung schreibt keine Dokumente an einen festen Ort, sondern gegen eine Abstraktion. Der
-Grund ist nicht Wahlfreiheit als Selbstzweck, sondern die Wirklichkeit der Rechenzentren: Das eine
-hat objektbasierten Speicher, das nächste ein Netzlaufwerk, und die kleine Installation hat ein
-Verzeichnis.
+Die Wirklichkeit der Rechenzentren ist unterschiedlich: Das eine hat objektbasierten Speicher, das
+nächste ein Netzlaufwerk, und die kleine Installation hat ein Verzeichnis. Der Weg dorthin führt
+jedoch nicht über eine Speicher-Abstraktion in der Anwendung.
 
-| Backend | Typischer Einsatz |
-|---|---|
-| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände |
-| **Netzlaufwerk** (SMB/NFS) | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen |
-| **Lokales Dateisystem** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung |
+**Das Dateisystem ist der Vertrag.** OPAA schreibt und liest Quelldokumente gegen genau ein
+konfiguriertes Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`, Standard `./documents`). Was hinter diesem
+Verzeichnis hängt, entscheidet der Betrieb durch Einhängen — nicht die Anwendung durch eine
+Konfigurationsvariante. Eine Abstraktion über mehrere Speicherarten ist **nicht gebaut** und für die
+beiden dateibasierten Fälle auch nicht vorgesehen.
+
+Das löst den größeren Teil der Frage ohne eine Zeile Arbeit: **Ein Netzlaufwerk braucht keine
+Abstraktion.** SMB und NFS werden vom Betriebssystem eingehängt und sehen für die Anwendung aus wie
+ein gewöhnliches Verzeichnis.
+
+| Backend | Typischer Einsatz | Heute gebaut |
+|---|---|---|
+| **Lokales Dateisystem** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | **ja** — das konfigurierte Verzeichnis ist der einzige Weg |
+| **Netzlaufwerk** (SMB/NFS) | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | **ja**, ohne eigenen Pfad im Code — das Netzlaufwerk wird auf das konfigurierte Verzeichnis eingehängt |
+| **Objektspeicher** (S3-kompatibel, auch selbst betrieben) | Rechenzentrumsbetrieb, mandantenfähige Installationen, große Bestände | **nein** — Zielbild, braucht als einziges einen eigenen Pfad im Code |
 
 Unabhängig vom Backend gilt: **Das Quelldokument ist der Beleg.** Es wird nicht nur eingebettet,
 sondern bleibt greifbar, damit der Sprung von der Antwort zur Fundstelle möglich bleibt. Ein Speicher,
@@ -143,9 +153,44 @@ Der Metadatenbestand und der Vektorindex liegen in PostgreSQL mit pgvector (sieh
 eine portable Schnittstelle des eingesetzten Rahmenwerks, ein Wechsel wird aber nicht unterstützt, nicht
 geprüft und nicht dokumentiert — Begründung in
 [Daten-Indizierung & RAG](./data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
-Welche Backends für Originaldateien dauerhaft geführt werden und
-ob ein selbst betriebener Objektspeicher in den mitgelieferten Compose-Stapel gehört, ist offen und
-wird in [#351](https://github.com/criew/opaa/issues/351) entschieden.
+
+### Betriebshinweise zum eingehängten Netzlaufwerk
+
+Dass die Anwendung keinen Unterschied sieht, heißt nicht, dass es keinen gibt. Drei Punkte gehören in
+die Betriebsplanung:
+
+- **Rechte des Dienstkontos auf der Freigabe.** Das Konto, unter dem OPAA läuft, braucht auf dem
+  eingehängten Pfad Lese- und Schreibrechte. Bei SMB entscheiden zusätzlich die Zuordnung von
+  Benutzerkennungen beim Einhängen und die Rechte der Freigabe selbst; ein Bestand, der für Menschen
+  lesbar ist, ist deshalb nicht automatisch für den Dienst lesbar.
+- **Verhalten bei Verbindungsabbruch während eines Indizierungslaufs.** Reißt die Verbindung mitten im
+  Lauf, meldet das Dateisystem Ein-/Ausgabefehler statt „Datei nicht vorhanden". Der Lauf bricht ab und
+  muss wiederholt werden; der Betrieb sollte die Einhängeoptionen so wählen, dass ein Abbruch zu einem
+  Fehler führt und nicht zu einem unbegrenzt hängenden Prozess.
+- **Keine Sperren wie auf einem lokalen Dateisystem.** Ein eingehängtes Netzlaufwerk garantiert keine
+  Dateisperren. Wo zwei Installationen oder zwei Instanzen auf dasselbe Verzeichnis zeigen, ist die
+  gegenseitige Abgrenzung eine Sache der Betriebsführung, nicht des Dateisystems.
+
+### Objektbasierter Speicher: eigener Weg, ohne Termin
+
+Objektbasierter Speicher ist der einzige der drei Fälle, der wirklich einen eigenen Pfad im Code
+braucht. Er wird als eigener Weg geführt, jedoch **ohne Termin**.
+
+Der Grund, warum er kommt, ist der **mandantenfähige Rechenzentrumsbetrieb**: Dort ist ein geteiltes
+Netzlaufwerk über viele Häuser hinweg der unangenehmere Weg — bei der Trennung der Mandanten, bei
+Kontingenten je Haus und bei der Sicherung. Er gehört damit in dieselbe Phase wie der mandantenfähige
+Betrieb (**Phase 1**), ohne dass daraus eine Reihenfolge oder ein Zeitpunkt folgt.
+
+Einhänge-Werkzeuge, die objektbasierten Speicher als Verzeichnis erscheinen lassen, gibt es. Sie
+haben aber Nachteile bei Latenz und Konsistenz und bilden die Semantik eines Dateisystems nur
+näherungsweise ab. Sie sind eine Notlösung für den Einzelfall, kein Ersatz für den eigenen Weg.
+
+### Kein Objektspeicher-Dienst im mitgelieferten Compose-Stapel
+
+Der mitgelieferte Stapel bleibt schlank: Datenbank, Anmeldung, Backend, Frontend. Ein zusätzlicher
+Dienst für objektbasierten Speicher wäre etwas, das kleine Installationen nie brauchen und das den
+Einstieg schwerer macht, statt ihn zu erleichtern. Wer objektbasierten Speicher betreibt, bringt ihn
+ohnehin mit.
 
 ---
 
@@ -204,24 +249,62 @@ gegenüber anderen Umgebungen. Der Umfang dieser Anbindung gehört in Phase 4 un
 
 ---
 
-## Cloud-Deployment und betreuter Dienst
+## Wo eine Installation stehen darf
 
-Der bisherige Stand dieses Dokuments nannte neben dem Betrieb im eigenen Haus zwei weitere Modelle:
-den Betrieb in einer angemieteten Cloud-Umgebung und einen vom Projektteam betreuten Dienst. Beide
-stehen **weiterhin hier** und werden nicht stillschweigend gestrichen.
+OPAA braucht eine Container-Umgebung, PostgreSQL mit pgvector und, wo Modelle im Haus laufen,
+Rechenleistung für den Modellbetrieb. Mehr nicht. Weil die gesamte Konfiguration außerhalb des
+Abbilds liegt und der Dateispeicher austauschbar ist, ist eine Installation technisch dieselbe, gleich wo
+sie steht.
 
-Offen ist, wie sie sich zur Ausrichtung auf Souveränität verhalten:
+Daraus folgt: **Der Ort ist keine Produktentscheidung.** OPAA schreibt ihn nicht vor, nennt keine
+Betreiber und liefert keine anbieterspezifischen Anleitungen. Wo eine Installation steht, entscheidet
+die verantwortliche Stelle — und mit ihr die rechtliche Zulässigkeit. Es gibt deshalb kein zweites
+Betriebsmodell neben dem Betrieb im eigenen Verantwortungsbereich, sondern nur die Frage, wie weit
+dieser Verantwortungsbereich reicht.
 
-- Ist der Betrieb in einer angemieteten Cloud-Umgebung für die Zielgruppe ein realistischer Weg, oder
-  untergräbt das Angebot die Zusage, dass Daten das Haus nicht verlassen?
-- Passt ein vom Projektteam betreuter Dienst zu einem quelloffenen Produkt, das von Rechenzentren
-  mandantenfähig betrieben werden soll?
+### Nicht der Ort entscheidet, sondern die Verantwortlichkeit
 
-Diese Fragen werden in [#350](https://github.com/criew/opaa/issues/350) entschieden. Bis dahin wird
-hier weder etwas entfernt noch etwas zugesagt. Festhalten lässt sich unabhängig davon nur das
-Technische: Da die gesamte Konfiguration außerhalb des Abbilds liegt und der Dateispeicher austauschbar
-ist, wäre ein solcher Betrieb technisch dieselbe Installation an einem anderen Ort. Die Frage ist
-keine technische, sondern eine der Zusage.
+Ein Rechenzentrum des Landes oder ein kommunaler IT-Dienstleister ist ebenfalls nicht das eigene
+Haus — und trotzdem ist der Betrieb dort unproblematisch. Der Grund ist nicht die Entfernung, sondern
+die Zurechnung: Die Verantwortung ist vertraglich geregelt, die betreibende Stelle ist selbst Teil
+der Verwaltung, und die Weisungslage ist eindeutig. Genau darin unterscheidet sich dieser Fall vom
+Betrieb bei einem beliebigen Anbieter angemieteter Infrastruktur.
+
+Die Frage lautet also nicht „im eigenen Haus oder außerhalb", sondern: **Wer ist Verantwortlicher der
+Verarbeitung, und in welchem Rahmen ist er es?**
+
+### Die rechtliche Schranke
+
+Für einen erheblichen Teil der Verwaltungsdaten ist die Verarbeitung außerhalb der eigenen
+Verantwortungssphäre rechtlich ausgeschlossen. Das Steuergeheimnis nach § 30 AO ist das schärfste,
+aber nicht das einzige Beispiel; das Sozialgeheimnis und die Bestände aus Sicherheitsüberprüfungen
+stehen unter vergleichbaren Bindungen.
+
+Das ist hier als Feststellung genannt und nicht als Auslegung. Welche Daten wo verarbeitet werden
+dürfen, prüft die verantwortliche Stelle mit ihrem Datenschutzbeauftragten — dieses Dokument
+entscheidet das nicht und ersetzt die Prüfung nicht.
+
+### Erprobung und Schulung
+
+Wer OPAA vor einer Beschaffung ausprobieren oder Beschäftigte daran schulen will, tut das nicht im
+Produktivnetz und nicht mit echten Vorgangsdaten. Eine Umgebung außerhalb des eigenen Hauses ist für
+diesen Fall ein legitimer Weg, und er wird hier ausdrücklich benannt.
+
+Die Bedingung, die ihn trägt, ist einfach und nicht verhandelbar: **Dort liegen keine echten Daten.**
+Testbestände, öffentlich verfügbare Unterlagen oder synthetische Beispiele — mehr nicht. Sobald echte
+Vorgänge ins Spiel kommen, gilt wieder der vorstehende Abschnitt, und die Umgebung ist die falsche.
+
+### Kein vom Projekt betreuter Dienst
+
+Das Projekt liefert Software, keinen Betrieb. Ein vom Projektteam betreuter Dienst ist nicht
+vorgesehen — weder heute noch als Ausblick. Er würde das Projekt selbst zum Betreiber machen und eine
+Erwartung an Verfügbarkeit, Erreichbarkeit und Haftung erzeugen, die ein quelloffenes Vorhaben nicht
+einlöst.
+
+Der Bedarf dahinter ist real und hat bereits seinen Weg: Wer betreuten Betrieb braucht, beauftragt
+ein Rechenzentrum. Das ist oben als
+[mandantenfähiger Betrieb](#mandantenfähiger-betrieb-durch-ein-rechenzentrum) beschrieben und bleibt
+unverändert der vorgesehene Pfad.
 
 ---
 
@@ -476,10 +559,10 @@ Installation berührt.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Cloud-Deployment und betreuter Dienst: bleiben, entfallen oder werden umformuliert? Entscheidung in
-  [#350](https://github.com/criew/opaa/issues/350).
-- Umfang der Speicher-Abstraktion und Zusammensetzung des mitgelieferten Stapels: Entscheidung in
-  [#351](https://github.com/criew/opaa/issues/351).
+- Wie der Weg zu objektbasiertem Speicher im Einzelnen aussieht — Kontingente, Trennung der Mandanten
+  und Sicherung je Organisation —, ist offen. Dass er als eigener Weg geführt wird und dass kein
+  solcher Dienst in den mitgelieferten Stapel gehört, ist entschieden (siehe
+  [Speicher-Backends](#speicher-backends)).
 - **Zuordnung von Netzsicherheit und Transportverschlüsselung ist zu klären.** Beides steht hier,
   weil Netztrennung, vorgelagerter Zugangsweg und Zertifikatsverwaltung Betriebsthemen sind und beim
   Betreiber liegen. Ebenso vertretbar wäre die Spezifikation zu Sicherheit und Nachweisführung, die

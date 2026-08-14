@@ -95,9 +95,10 @@ Zwei Sicherungen gehören dazu:
   Ausweichablage für ganze Netzlaufwerke, und zwar an der Kuratierung vorbei.
 
 Beide sind entschieden und als **Issue #119** erfasst (siehe [Geklärte Fragen](#geklärte-fragen)), aber
-noch nicht gebaut — ebenso wenig wie der Upload selbst. Wo die Originale abgelegt werden, entscheidet
-die Installation; die Wahl des Dokumentenspeichers ist in
-[Deployment und Infrastruktur](./deployment-infrastructure.md) beschrieben.
+noch nicht gebaut — ebenso wenig wie der Upload selbst. Die Originale liegen in dem einen Verzeichnis,
+das die Installation dafür konfiguriert; ob dahinter ein lokales Dateisystem oder ein eingehängtes
+Netzlaufwerk steht, entscheidet der Betrieb und nicht die Anwendung (siehe
+[Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)).
 
 Ein Upload ist **statisch**. Ändert sich das Original außerhalb von OPAA, merkt das niemand. Deshalb
 führt jedes hochgeladene Dokument seinen Übergabezeitpunkt sichtbar mit, und die Antwort weist bei

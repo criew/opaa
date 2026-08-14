@@ -31,18 +31,22 @@ spring:
     model:
       chat: ${OPAA_AI_CHAT_PROVIDER:ollama}
       embedding: ${OPAA_AI_EMBEDDING_PROVIDER:ollama}
+    # "openai" names the wire protocol, not a vendor: locally operated model
+    # servers speak the same API. There is deliberately no default base URL —
+    # whoever selects this provider must state the target address, otherwise
+    # OpenAiBaseUrlGuard refuses to start. See docs/features/llm-integration.md.
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
-      base-url: ${OPAA_OPENAI_BASE_URL:https://api.openai.com}
+      base-url: ${OPAA_OPENAI_BASE_URL:}
       chat:
         api-key: ${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
+        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:}}
         model: ${OPAA_OPENAI_CHAT_MODEL:gpt-4o}
         temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:0.7}
         max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:2000}
       embedding:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:https://api.openai.com}}
+        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:}}
         model: ${OPAA_OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
     ollama:
       chat:

@@ -602,13 +602,20 @@ Siehe [Daten-Indizierung & RAG](./features/data-indexing-rag.md).
 
 ### Speicher-Backend
 
-Der austauschbare Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
+Der Dateispeicher für Originaldateien. Er ist von der Vektor-Datenbank getrennt: Hier liegen
 die PDF- und DOCX-Dateien für Download und erneute Verarbeitung, dort die Embeddings für die Suche.
 
-**Mögliche Backends (bei der Installation gewählt):**
-- **Objektspeicher** (S3-kompatibel, etwa MinIO im eigenen Rechenzentrum)
-- **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus
-- **Lokales Dateisystem** — Entwicklung und kleine Installationen
+**Gebaut ist genau ein Weg: ein Verzeichnis.** OPAA schreibt und liest gegen ein konfiguriertes
+Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht. Das Dateisystem ist der
+Vertrag — was dahinter hängt, entscheidet der Betrieb:
+
+- **Lokales Dateisystem** — Erprobung und kleine Installationen
+- **Netzlaufwerk** (SMB/NFS) — der Regelfall im Haus; es wird vom Betriebssystem auf das konfigurierte
+  Verzeichnis eingehängt und braucht deshalb keinen eigenen Weg in der Anwendung
+- **Objektspeicher** (S3-kompatibel) — **Zielbild, nicht gebaut**; er ist der einzige Fall, der einen
+  eigenen Pfad im Code braucht
+
+Näheres in [Betrieb & Deployment](./features/deployment-infrastructure.md#speicher-backends).
 
 ---
 
@@ -808,11 +815,19 @@ Der Betrieb auf gemieteter Infrastruktur eines Anbieters statt im eigenen Rechen
 dieselbe Installation an einem anderen Ort; der Unterschied liegt darin, wer die Maschinen betreibt, auf
 denen die Daten liegen.
 
-**Ob das im Zielbild bleibt, ist offen.** Die bisherige Dokumentation nennt es als eine von drei
-Betriebsformen. Das steht in Spannung zum Betrieb im eigenen Haus als Standard und zur Betriebsfähigkeit
-ohne Netzanbindung — und für einen erheblichen Teil der Verwaltungsdaten ist es rechtlich ohnehin
-ausgeschlossen. Die Frage wird in [#350](https://github.com/criew/opaa/issues/350) geklärt und ist hier
-bewusst nicht vorweggenommen.
+**Es ist kein eigenes Betriebsmodell von OPAA.** OPAA läuft dort, wo eine Container-Umgebung und
+PostgreSQL mit pgvector stehen; wo das ist, entscheidet die verantwortliche Stelle. Entscheidend ist dabei
+nicht der Ort, sondern die Verantwortlichkeit — ein Rechenzentrum der Verwaltung ist ebenfalls nicht das
+eigene Haus und trotzdem unproblematisch, weil die Verantwortung dort vertraglich geregelt ist. Für einen
+erheblichen Teil der Verwaltungsdaten ist die Verarbeitung außerhalb der eigenen Verantwortungssphäre
+rechtlich ausgeschlossen; § 30 AO ist das schärfste Beispiel. Ein legitimer Fall bleibt die Erprobung und
+Schulung außerhalb des eigenen Hauses — unter der Bedingung, dass dort keine echten Daten liegen.
+
+- **Beispiel:** Ein Haus stellt vor der Beschaffung eine Demonstrationsumgebung auf gemieteter
+  Infrastruktur bereit, gefüllt mit synthetischen Vorgängen. Für den Wirkbetrieb wandert dieselbe
+  Installation anschließend ins Rechenzentrum des Landes.
+
+Siehe [Betrieb & Deployment](./features/deployment-infrastructure.md).
 
 ---
 

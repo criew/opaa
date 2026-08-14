@@ -39,8 +39,11 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 
 1. **Modelle sind verwaltete Objekte**, keine Konfigurationszeilen. Sie werden hinterlegt, beschrieben,
    freigegeben, ersetzt und abgeschaltet.
-2. **Lokal betriebene Modelle sind die Voreinstellung.** Ohne ausdrückliche Freigabe der Behörde ist kein
-   Aufruf außerhalb des Hauses möglich; der Betrieb ohne Netzanbindung ist vorgesehen, nicht behelfsweise.
+2. **Lokal betriebene Modelle sind die Voreinstellung** — das ist umgesetzt und entschieden. Im Zielbild
+   ist ohne ausdrückliche Freigabe der Behörde kein Aufruf außerhalb des Hauses möglich; heute trägt
+   diese Zusicherung die Konfiguration, nicht eine technische Durchsetzung (siehe
+   [Was heute gilt und was nicht](#was-heute-gilt-und-was-nicht-gebaut)). Der Betrieb ohne
+   Netzanbindung ist vorgesehen, nicht behelfsweise.
 3. **Vorgaben wirken ausschließlich als Obergrenze.** Es gilt immer die restriktivste Festlegung aus
    Systemvorgabe, Space, den beteiligten Wissensbibliotheken und dem eingesetzten Agenten. **Keine Ebene
    kann erweitern, was eine andere eingeschränkt hat.**
@@ -109,6 +112,50 @@ Daraus folgen drei Eigenschaften, die zusammengehören:
 - **Keine automatische Auswahl des jeweils stärksten Modells.** Ein Verfahren, das je nach Frage das
   beste verfügbare Modell wählt, führt genau an dem Punkt nach außen, an dem es fachlich anspruchsvoll
   wird — und das ist regelmäßig der Punkt mit den schutzbedürftigsten Daten.
+
+### Was heute gilt und was nicht **(gebaut)**
+
+Das Zielbild oben beschreibt verwaltete Modelle mit Freigabestatus. Davon ist heute die
+Voreinstellung umgesetzt, und zwar in der Konfiguration:
+
+**Lokal betriebene Modelle sind die Voreinstellung, für Chat und für Einbettung.** Eine Installation,
+an der niemand etwas konfiguriert, ruft kein Modell außerhalb des Hauses auf. Das ist entschieden und
+bleibt so; es ist keine Zwischenlösung.
+
+**Eine technische Durchsetzung gibt es nicht.** Es existiert kein Mechanismus, der einen Modellaufruf
+an ein Ziel außerhalb festgelegter Netzbereiche verweigert. Wer die Voreinstellung ändert, kann jedes
+erreichbare Ziel eintragen, und OPAA hält ihn nicht auf. Das ist bewusst so entschieden: Die
+Voreinstellung ist bereits lokal, und wer sie ändert, tut es absichtlich.
+
+Daraus folgt eine Aussage, die nicht beschönigt gehört: **Die Zusicherung, dass keine Daten an ein
+Modell außerhalb des Hauses gehen, ruht heute auf der Konfiguration und nicht auf einer technischen
+Durchsetzung.** Wer sie gegenüber Prüfern nachweisen muss, weist die Konfiguration nach — und sichert
+den Netzweg außerhalb von OPAA ab, etwa über die Firewall-Regeln der Umgebung, in der das Backend
+läuft.
+
+Das ist eine Festlegung für den heutigen Stand, kein Verzicht auf Dauer. Die
+[zentralen Vorgaben als Obergrenze](#vorgaben-als-obergrenze) bleiben Teil von Phase 1; sie sind der
+Ort, an dem eine Durchsetzung später sinnvoll einhängt, weil dort ohnehin entschieden wird, welche
+Modelle für einen Vorgang zulässig sind.
+
+### Anbietername und Zieladresse sind zwei verschiedene Dinge **(gebaut)**
+
+Die Anbieterangabe (`ollama` oder `openai`) benennt das Protokoll, über das OPAA das Modell anspricht
+— nicht das Ziel, an das die Daten gehen. Dieselbe openai-kompatible Schnittstelle bedienen auch
+lokal betriebene Modellserver.
+
+Deshalb hat die Basis-Adresse **keine Voreinstellung**. Wer für Chat oder Einbettung den
+openai-kompatiblen Anbieter wählt, muss die Adresse angeben; fehlt sie, bricht der Start mit einer
+Meldung ab, die die fehlende Variable benennt.
+
+Der Grund liegt im Fehlerfall: Wer im Haus einen Modellserver mit openai-kompatibler Schnittstelle
+einbindet und dabei nur den Anbieter setzt, erbte mit einer Voreinstellung stillschweigend ein Ziel
+außerhalb des Hauses — die Installation liefe, die Daten gingen an die falsche Stelle, und niemand
+würde es an einer Fehlermeldung bemerken. Ein lautes Scheitern beim Start ist dem vorzuziehen.
+
+Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
+getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
+[deployment.md](../deployment.md#llm-anbieter).
 
 ---
 

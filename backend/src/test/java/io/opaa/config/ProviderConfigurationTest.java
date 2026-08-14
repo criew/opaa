@@ -79,6 +79,16 @@ class ProviderConfigurationTest {
   }
 
   @Test
+  void openAiBaseUrlHasNoDefault() {
+    // "openai" names the protocol, not a vendor. An address outside the organisation must never be
+    // inherited by an installation that did not ask for it, so the base URL stays empty until it is
+    // configured — see OpenAiBaseUrlGuard.
+    assertThat(environment.getProperty("spring.ai.openai.base-url")).isEmpty();
+    assertThat(environment.getProperty("spring.ai.openai.chat.base-url")).isEmpty();
+    assertThat(environment.getProperty("spring.ai.openai.embedding.base-url")).isEmpty();
+  }
+
+  @Test
   void ollamaConfigurationIsAvailableForSwitching() {
     assertThat(environment.getProperty("spring.ai.ollama.chat.model")).isEqualTo("phi3:mini");
     assertThat(environment.getProperty("spring.ai.ollama.embedding.model"))
