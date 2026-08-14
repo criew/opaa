@@ -136,7 +136,7 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
 - Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
-- Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass einer der Maintainer (`criew` oder `bigpuritz`) den PR merged, sobald CI grün ist
+- Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass ein Maintainer des Projekts den PR merged, sobald CI grün ist
 - Kein Agent merged jemals einen PR
 - Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
 - PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
@@ -165,16 +165,13 @@ Bei reinen Dokumentationsänderungen überspringen. Vor jedem Push müssen alle 
 - `frontend/` — React-Frontend (Vite-Projekt)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
+- `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend
 
 ## Contributor License Agreement
 
-OPAA verlangt von allen Beitragenden, die [Contributor License Agreement](./CLA.md) zu unterzeichnen, bevor ein Pull Request zusammengeführt werden kann. Der menschliche Betreiber des KI-Agenten ist für die Unterzeichnung verantwortlich — nicht die KI selbst.
+Ohne unterzeichnete [Contributor License Agreement](./CLA.md) kann kein Pull Request zusammengeführt werden. **Ein Agent unterzeichnet nie selbst** — verantwortlich ist der menschliche Betreiber, einmal pro GitHub-Account.
 
-**So unterzeichnen:** Posten Sie folgenden Kommentar im ersten PR:
-
-> I have read the CLA Document and I hereby sign the CLA
-
-Die Unterschrift wird automatisch erfasst und muss nur einmal pro GitHub-Account geleistet werden.
+Verfahren und Wortlaut des Unterzeichnungskommentars stehen in [CONTRIBUTING.md](./CONTRIBUTING.md#contributor-license-agreement-cla).
 
 ## Agenten-Verhalten
 
