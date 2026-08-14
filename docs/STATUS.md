@@ -128,6 +128,13 @@ Drei Zustände werden unterschieden:
 > Die Organisationsgrenze ist auf Datenbankebene noch nicht symmetrisch abgesichert (#289), und der
 > Verwaltungspfad setzt sie nicht durch (#271). Beides muss zu sein, bevor eine zweite Organisation
 > auf derselben Installation läuft.
+>
+> Beide Lücken sind heute **nicht ausnutzbar**, weil genau eine Organisation existiert — und beide
+> werden **gleichzeitig** scharf, sobald eine zweite dazukommt. #289 und #271 sind deshalb als
+> Voraussetzung für den mandantenfähigen Betrieb markiert und vorgezogen; hinzu kommt ein
+> struktureller Prüflauf gegen das Schema, der verhindert, dass eine künftige Migration die
+> Datenbankebene erneut löchrig macht (siehe
+> [features/spaces-and-assets.md](./features/spaces-and-assets.md#wie-die-grenze-gehalten-wird)).
 
 ---
 

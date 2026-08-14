@@ -147,6 +147,14 @@ Wer den Endpunkt aufrufen darf, kann im Feld `url` eine beliebige Adresse angebe
 
 **Konsequenz für den Betrieb:** Die Rolle `SYSTEM_ADMIN` ist auf der Testinstanz wie ein Serverzugang zu behandeln und entsprechend sparsam zu vergeben. Eine Zielprüfung im Code (Blockliste privater Adressbereiche) wird als Härtung für den Fall weiterer Adminkonten in #267 geführt.
 
+## Vor der Inbetriebnahme: mandantenfähiger Betrieb
+
+Eine Installation wird heute mit **genau einer** Organisation ausgeliefert. Solange das so bleibt, ist die Mandantengrenze unkritisch — es gibt nichts, was sie überschreiten könnte.
+
+**Mandantenfähiger Betrieb — mehr als eine Organisation auf derselben Installation — setzt zwei Vorgänge voraus, die heute offen sind:** die symmetrische Absicherung der Organisationsgrenze auf Datenbankebene ([#289](https://github.com/criew/opaa/issues/289)) und ihre Durchsetzung im Verwaltungspfad ([#271](https://github.com/criew/opaa/issues/271)). Beide Lücken sind bei einer Organisation nicht ausnutzbar und werden mit dem Anlegen der zweiten gleichzeitig scharf. Wer eine zweite Organisation anlegt, bevor beide erledigt sind, betreibt die Installation ohne durchgesetzte Mandantentrennung.
+
+Hintergrund und die drei Schichten, in denen die Grenze gehalten wird: [features/spaces-and-assets.md](./features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
+
 ## Schnellstart
 
 ```bash
