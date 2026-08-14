@@ -172,11 +172,15 @@ def count_issues(repo: str, qualifier: str) -> int | None:
     return response.get("total_count")
 
 
-# Ticketlisten in Epics folgen der Vorlage "- [ ] #123 titel". Die Nummer muss
+# Rückfall für Epics, deren Tickets noch nicht als Sub-Issues eingetragen sind:
+# Ticketlisten folgen der früheren Vorlage "- [ ] #123 titel", die Nummer muss
 # unmittelbar auf die Checkbox folgen. Epic #60 nummeriert seine Befunde dagegen
 # als "- [ ] **#1 CORS Wildcard Headers**" — solche Marker sind keine
 # Issue-Referenzen und werden durch diese Bedingung ausgeschlossen.
 TICKET_MUSTER = re.compile(r"^\s*[-*]\s*\[[ xX]\]\s*#(\d+)\b", re.MULTILINE)
+
+# Ein Epic mit mehr Kindern gibt es nicht; GitHub begrenzt Sub-Issues auf 100.
+SUB_ISSUE_LIMIT = 100
 
 
 def simplify_issue(item: dict) -> dict:
@@ -193,6 +197,73 @@ def simplify_issue(item: dict) -> dict:
     }
 
 
+def gh_graphql(repo: str, felder: str) -> dict:
+    """Führt eine GraphQL-Abfrage auf dem Repository aus.
+
+    Erwartet die Auswahl innerhalb von `repository` und gibt deren Ergebnis
+    zurück. Mehrere Knoten werden über Aliasse in einer einzigen Abfrage
+    geholt, statt je Vorgang einmal anzufragen.
+    """
+    besitzer, name = repo.split("/", 1)
+    query = f'{{ repository(owner: "{besitzer}", name: "{name}") {{\n{felder}\n}} }}'
+    ergebnis = subprocess.run(
+        ["gh", "api", "graphql", "-f", f"query={query}"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if ergebnis.returncode != 0:
+        raise RuntimeError(f"GraphQL-Abfrage fehlgeschlagen: {ergebnis.stderr.strip()}")
+    antwort = json.loads(ergebnis.stdout)
+    if antwort.get("errors"):
+        meldungen = "; ".join(
+            fehler.get("message", "") for fehler in antwort["errors"]
+        )
+        raise RuntimeError(f"GraphQL-Abfrage fehlgeschlagen: {meldungen}")
+    return (antwort.get("data") or {}).get("repository") or {}
+
+
+def fetch_sub_issues(repo: str, epic_nummern: list[int]) -> dict[int, list[int]]:
+    """Holt die Sub-Issues der Epics als Nummernlisten.
+
+    Sub-Issues sind die von GitHub selbst gepflegte Eltern-Kind-Beziehung und
+    damit die verlässliche Zuordnung. Kinder aus anderen Repositories werden
+    verworfen: Ihre Nummer wäre im Kontext dieses Repositories mehrdeutig.
+
+    Schlägt die Abfrage fehl, ist das Ergebnis leer und der Aufrufer fällt auf
+    die Ticketlisten in den Epic-Bodies zurück.
+    """
+    if not epic_nummern:
+        return {}
+
+    felder = "\n".join(
+        f"    e{nummer}: issue(number: {nummer}) "
+        f"{{ subIssues(first: {SUB_ISSUE_LIMIT}) "
+        "{ nodes { number repository { nameWithOwner } } } }"
+        for nummer in epic_nummern
+    )
+    try:
+        daten = gh_graphql(repo, felder)
+    except (RuntimeError, json.JSONDecodeError, ValueError) as error:
+        print(
+            f"Sub-Issues nicht abrufbar, weiche auf die Ticketlisten aus: {error}",
+            file=sys.stderr,
+        )
+        return {}
+
+    kinder: dict[int, list[int]] = {}
+    for nummer in epic_nummern:
+        knoten = ((daten.get(f"e{nummer}") or {}).get("subIssues") or {}).get(
+            "nodes", []
+        )
+        kinder[nummer] = [
+            eintrag["number"]
+            for eintrag in knoten
+            if (eintrag.get("repository") or {}).get("nameWithOwner") == repo
+        ]
+    return kinder
+
+
 def add_closing_references(repo: str, pull_requests: list[dict]) -> None:
     """Trägt die von GitHub verknüpften Issues in die Pull Requests ein.
 
@@ -204,25 +275,15 @@ def add_closing_references(repo: str, pull_requests: list[dict]) -> None:
     if not pull_requests:
         return
 
-    besitzer, name = repo.split("/", 1)
     felder = "\n".join(
         f'    p{pr["number"]}: pullRequest(number: {pr["number"]}) '
         "{ closingIssuesReferences(first: 20) { nodes { number } } }"
         for pr in pull_requests
     )
-    query = f'{{ repository(owner: "{besitzer}", name: "{name}") {{\n{felder}\n}} }}'
 
     try:
-        antwort = json.loads(
-            subprocess.run(
-                ["gh", "api", "graphql", "-f", f"query={query}"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            ).stdout
-        )
-        daten = (antwort.get("data") or {}).get("repository") or {}
-    except (json.JSONDecodeError, ValueError) as error:
+        daten = gh_graphql(repo, felder)
+    except (RuntimeError, json.JSONDecodeError, ValueError) as error:
         print(f"Verknüpfte Issues nicht abrufbar: {error}", file=sys.stderr)
         return
 
@@ -269,12 +330,14 @@ def ci_status(repo: str) -> dict | None:
 
 
 def collect_epics(repo: str) -> list[dict]:
-    """Erhebt die Epics samt Ticketliste und Fortschritt.
+    """Erhebt die Epics samt Tickets und Fortschritt.
 
-    Native Sub-Issues werden im Repository nicht verwendet — die Zuordnung
-    steht als Ticketliste im Body des Epic-Issues. Der Status aller Tickets
-    wird über einen einzigen Abruf aller Issues ermittelt statt über eine
-    Abfrage je Ticket.
+    Maßgeblich sind die nativen Sub-Issues eines Epics. Nur wenn ein Epic
+    keine hat, wird auf die Ticketliste in seinem Body zurückgegriffen — so
+    fällt während der Migration eines Epics kein Reporttag aus.
+
+    Der Status aller Tickets wird über einen einzigen Abruf aller Issues
+    ermittelt statt über eine Abfrage je Ticket.
     """
     try:
         alle = gh_api(
@@ -298,22 +361,38 @@ def collect_epics(repo: str) -> list[dict]:
         if "epic" in {label["name"] for label in item.get("labels", [])}
     }
 
+    sub_issues = fetch_sub_issues(repo, sorted(epic_nummern))
+
     epics: list[dict] = []
     for item in nur_issues:
         labels = {label["name"] for label in item.get("labels", [])}
         if "epic" not in labels:
             continue
-        tickets = sorted(
-            {
-                int(nummer)
-                for nummer in TICKET_MUSTER.findall(item.get("body") or "")
-                # Ein Epic ist kein Ticket eines anderen Epics, und eine Nummer
-                # ohne zugehöriges Issue ist ein Aufzählungsmarker.
-                if int(nummer) != item["number"]
-                and int(nummer) in bekannte_issues
-                and int(nummer) not in epic_nummern
-            }
-        )
+
+        def gueltig(nummern: list[int]) -> list[int]:
+            # Ein Epic ist kein Ticket eines anderen Epics, und eine Nummer
+            # ohne zugehöriges Issue ist ein Aufzählungsmarker.
+            return sorted(
+                {
+                    nummer
+                    for nummer in nummern
+                    if nummer != item["number"]
+                    and nummer in bekannte_issues
+                    and nummer not in epic_nummern
+                }
+            )
+
+        tickets = gueltig(sub_issues.get(item["number"], []))
+        if not tickets:
+            tickets = gueltig(
+                [int(nummer) for nummer in TICKET_MUSTER.findall(item.get("body") or "")]
+            )
+            if tickets:
+                print(
+                    f"Epic #{item['number']} hat keine Sub-Issues — verwende die "
+                    "Ticketliste aus dem Body.",
+                    file=sys.stderr,
+                )
         if not tickets:
             continue
         erledigt = sum(
