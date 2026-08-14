@@ -38,7 +38,7 @@ Das GitHub-Epic und Child-Issues erstellen. Die Issue-URLs und eine Ein-Absatz-Z
 
 ### Grooming-Modus
 
-Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issues verfeinern: fehlende Abnahmekriterien, Umfang, Labels und Größe hinzufügen; Duplikate und veraltete Issues markieren; Dokumentations-Drift abgleichen (z. B. `docs/MVP-STATUS.md` gegenüber tatsächlichem Stand, gegen Code und geschlossene Issues verifiziert); eine Prioritätsreihenfolge vorschlagen, nicht anordnen. Issues niemals selbst schließen; Schließung mit Begründung empfehlen.
+Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issues verfeinern: fehlende Abnahmekriterien, Umfang, Labels und Größe hinzufügen; Duplikate und veraltete Issues markieren; Dokumentations-Drift abgleichen (z. B. `docs/STATUS.md` gegenüber tatsächlichem Stand, gegen Code und geschlossene Issues verifiziert); eine Prioritätsreihenfolge vorschlagen, nicht anordnen. Issues niemals selbst schließen; Schließung mit Begründung empfehlen.
 
 ## Hausmuster
 

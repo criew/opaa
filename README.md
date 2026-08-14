@@ -1,108 +1,104 @@
 # OPAA: Open Project AI Assistant
 
-**Ein unternehmenstauglicher, selbst gehosteter KI-Assistent, der Ihr organisationales Wissen in sofortige Antworten verwandelt.**
+**Antworten mit Fundstelle. KI, die im ganzen Haus ankommt.**
 
-OPAA transformiert verstreutes Wissen — gespeichert in Wikis, E-Mails, Dokumenten und Dateien — in eine einheitliche Intelligenzschicht. Stellen Sie Fragen in natürlicher Sprache und erhalten Sie quellengestützte Antworten aus Ihrer gesamten Wissensbasis, unabhängig davon, wo diese gespeichert ist.
+OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
+belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
+Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
 
-## Was ist OPAA?
+## Drei Säulen
 
-OPAA ist ein **quelloffenes RAG-System (Retrieval-Augmented Generation)** für Organisationen, die Folgendes benötigen:
-- 🔍 **Einheitliche Suche** über Confluence, E-Mail, Dateisysteme und benutzerdefinierte Quellen
-- 🧠 **Intelligentes Q&A** mit konfigurierbaren LLM-Anbietern (OpenAI, Anthropic, lokale Modelle)
-- 🏢 **On-Premises-Betrieb** mit vollständiger Datensouveränität
-- 🔐 **Multi-Team-Unterstützung** mit Workspace-Isolation und feingranularen Berechtigungen
-- ⚙️ **Flexible Architektur** — Datenbanken, LLMs und Datenquellen austauschen ohne Codeänderungen
+- **Wissen** — verstreutes Wissen aus Akten, Wikis, Postfächern und Dateiablagen wird befragbar und
+  **nachweisbar**. Jede Aussage nennt ihre Fundstelle.
+- **Agenten** — wiederkehrende Aufgaben werden automatisiert, von reinem Lesen bis zu schreibenden
+  Aktionen mit Freigabe, immer an das Wissen des Hauses gebunden.
+- **KI für Teams und Organisation** — gemeinsame Arbeitsräume, teilbare Agenten und Prompt-Bibliotheken,
+  zentral gesetzte Modellvorgaben.
 
-## Hauptfunktionen
+## Zwei Leitprinzipien
 
-- **Mehrere Benutzeroberflächen:** Web-Chat, Chat-Bot-Integrationen (Mattermost, RocketChat, Slack, Telegram, Signal, WhatsApp), REST-API
-- **Flexible Datenquellen:** Confluence, Jira, E-Mail-Archive, Dateisysteme, Cloud-Speicher, Issue-Tracker, benutzerdefinierte APIs
-- **Konfigurierbare LLM-Anbieter:** OpenAI, Anthropic, Open-Source-Modelle oder lokale Deployments
-- **Mehrere Vektordatenbanken:** Elasticsearch, PostgreSQL + pgvector, Milvus oder Cloud-Optionen
-- **Workspace-Isolation:** Multi-Team-Unterstützung mit rollenbasierter Zugriffskontrolle
-- **Audit & Compliance:** Vollständige Audit-Protokollierung, Berechtigungsdurchsetzung, DSGVO/HIPAA-Unterstützung
-- **Enterprise-Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP oder Offline-Umgebungen
+**Belegbarkeit.** Eine Auskunft in der Verwaltung ist keine Meinung — jemand steht mit seinem Namen dafür
+gerade, und Jahre später muss nachvollziehbar sein, worauf sie sich stützte. OPAA bindet jede Aussage an
+ihre Quelle und lässt sich für haftungskritische Zusammenhänge so schalten, dass ohne Beleg keine Antwort
+ergeht.
 
-## Schnellstart
+**Verteilbarkeit.** Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von
+wenigen zu allen kommt. OPAA macht Agenten, Prompts und Wissensbestände zu benannten, teilbaren,
+versionierbaren Objekten, die über Freigabestufen von einer Person bis in die ganze Organisation wandern.
 
-**Dokumentation lesen:**
-
-1. **Neu bei OPAA?** Hier anfangen: [GETTING-STARTED.md](docs/GETTING-STARTED.md) (5 Min.)
-2. **Schlüsselkonzepte erlernen:** [CONCEPTS.md](docs/CONCEPTS.md) (10 Min.)
-3. **Die vollständige Vision:** [VISION.md](docs/VISION.md) (15 Min.)
-4. **Tiefer in Features eintauchen:** Siehe [INDEX.md](docs/INDEX.md) für rollenbasierte Lesepfade
-
-**Selbst ausprobieren:** Eine öffentliche Test-/Demo-Instanz läuft unter [opaa.ewerlin.com](https://opaa.ewerlin.com) (Anmeldung über Keycloak erforderlich, kein anonymer Zugang). Details siehe [Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
-
-## Dokumentation
-
-Vollständige Dokumentation in `docs/`:
-
-### Kernvision & Konzepte
-- **[VISION.md](docs/VISION.md)** — Vollständige Produktvision, Anwendungsfälle, Architektur, Prinzipien
-- **[CONCEPTS.md](docs/CONCEPTS.md)** — Glossar und Erklärung der Schlüsselkonzepte
-- **[GETTING-STARTED.md](docs/GETTING-STARTED.md)** — Anleitung zur richtigen Dokumentation
-- **[INDEX.md](docs/INDEX.md)** — Vollständiger Dokumentationsindex mit rollenbasierten Lesepfaden
-
-### Feature-Spezifikationen
-Detaillierte Spezifikationen für jedes Hauptfeature:
-
-1. **[Benutzeroberflächen](docs/features/user-frontends.md)** — Web-UI, Chat-Integrationen, REST-API
-2. **[Datenindizierung & RAG](docs/features/data-indexing-rag.md)** — Dokumentindizierung, semantische Suche, Retrieval
-3. **[LLM-Integration](docs/features/llm-integration.md)** — Modellkonfiguration, Anbieter, Kostenoptimierung
-4. **[Deployment & Infrastruktur](docs/features/deployment-infrastructure.md)** — On-Premises, Cloud, Betrieb, Skalierung
-5. **[Zugriffskontrolle & Workspaces](docs/features/access-control-workspaces.md)** — Berechtigungen, Mandantenfähigkeit, Audit-Protokollierung
-
-### Architektur & Entscheidungen
-- **[Architekturentscheidungen](docs/decisions/)** — Designbegründungen und technische Entscheidungen
+Die vollständige Begründung steht in
+[ADR-0014](docs/decisions/0014-produktausrichtung-oeffentliche-verwaltung.md).
 
 ## Anwendungsfälle
 
-### Enterprise-Wissensdrehscheibe
-Ein Fortune-500-Unternehmen mit mehr als 5.000 Mitarbeitern nutzt OPAA, um interne Wikis, Dokumentationen und archivierte E-Mails durchsuchbar zu machen. Mitarbeiter fragen „Was ist unser Genehmigungsverfahren für internationale Einstellungen?" und erhalten sofortige, quellengestützte Antworten bei vollständiger Daten-Governance-Compliance.
+Zehn ausgearbeitete Fälle stehen in [USE-CASES.md](docs/USE-CASES.md). Drei davon in Kurzform:
 
-### Team-Produktivitätsmultiplikator
-Ein SaaS-Unternehmen mit 50 Mitarbeitern setzt OPAA mit Mattermost-Integration ein. Teammitglieder stellen Fragen an „@opaa-bot". Das System durchsucht Wikis, Projektdokumentationen und Entscheidungsprotokolle. Wöchentliche Berichte werden durch automatisierte Abfragen generiert.
+**Fachfrage zur Rechtslage belegt beantworten.** Die Antwort steckt in einem Schreiben, einem
+Anwendungserlass, zwei Verfügungen und einer internen Arbeitsanweisung — verteilt über Netzlaufwerk,
+Intranet und eine Ordnerstruktur, die niemand mehr vollständig kennt. OPAA nennt jede Aussage mit
+Fundstelle und verweigert die Antwort, wo nichts belegt ist.
 
-### Customer-Success-Wissensdatenbank
-Das Support-Team nutzt OPAA für bessere Kundenantworten. Anstatt mehrere Systeme zu durchsuchen, fragen sie OPAA nach Produktinformationen und teilen quellengestützte Antworten mit Kunden.
+**Aus einem guten Agenten den Standard machen.** Ein Sachgebiet hat eine Arbeitsweise entwickelt, die
+trägt. Statt sie herumzumailen, wird sie als geprüftes, freigegebenes Asset eine Stufe höher gereicht —
+nachvollziehbar, wer wann welche Fassung freigegeben hat.
 
-### Compliance & Audit-Trail
-Eine Gesundheitsorganisation nutzt OPAA, um Compliance-Richtlinien und Audit-Dokumente zu indizieren. Auf Nachfrage liefert das System genaue Quellenangaben für Audit-Trails.
+**KI zentral steuern statt lokal dulden.** Ohne zentrale Vorgabe basteln Einzelne private Prompts und
+kopieren Amtsdaten in Verbraucherwerkzeuge. Einmal festgelegt, welche Modelle erlaubt sind und welche
+Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 
-## Kerndesignprinzipien
+## Dokumentation
 
-- 🔧 **Konfigurierbarkeit zuerst** — Jede Komponente ist austauschbar (LLM, Vektordatenbank, Datenquellen)
-- 🏢 **On-Premises als Standard** — Daten verbleiben in Ihrer Infrastruktur, nicht bei externen Diensten
-- 🔌 **Erweiterbare Architektur** — Plugin-System für Datenquellen, LLM-Adapter, benutzerdefinierte Frontends
-- 🔐 **Sicherheit & Datenschutz eingebaut** — Workspace-Isolation, Berechtigungen, Audit-Trails, keine Datenprotokollierung
-- 📖 **Quellenangabe immer** — Jede Antwort enthält Quelldokumente und Konfidenzwerte
+**Einstieg**
 
-## Status
+1. [GETTING-STARTED.md](docs/GETTING-STARTED.md) — welches Dokument für welche Rolle
+2. [CONCEPTS.md](docs/CONCEPTS.md) — Begriffe und Glossar
+3. [VISION.md](docs/VISION.md) — Nordstern, elf Themenbereiche, vier Phasen
+4. [STATUS.md](docs/STATUS.md) — was davon heute gebaut ist
+5. [INDEX.md](docs/INDEX.md) — vollständiger Dokumentationsindex
 
-OPAA befindet sich in der **frühen Produktdefinitionsphase**. Die Dokumentation beschreibt die vollständige Vision und den Funktionsumfang. Die Implementierungs-Roadmap folgt in Kürze.
+**Spezifikationen** — je Themenbereich eine, verlinkt aus der Übersichtstabelle in
+[VISION.md](docs/VISION.md#die-elf-themenbereiche).
+
+**Entscheidungen** — [docs/decisions/](docs/decisions/).
+
+## Ausprobieren
+
+Eine öffentliche Test- und Demo-Instanz läuft unter [opaa.ewerlin.com](https://opaa.ewerlin.com)
+(Anmeldung erforderlich, kein anonymer Zugang). Details in der
+[Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
+
+## Stand
+
+OPAA ist im Aufbau. Das Fundament steht — Aufnahme und Indizierung von Dokumenten, Abfrage mit
+Quellenangaben, Anmeldung über den Verzeichnisdienst, Spaces und Wissensbibliotheken mit eigenen Rechten,
+Betrieb über Docker Compose. Das Space- und Asset-Modell und die Messbarkeit der Suchqualität sind im Bau.
+
+Tragende Teile der Vision sind noch nicht gebaut, darunter der Zitierzwang, die hybride Suche, die Agenten
+und das revisionssichere Protokoll. [STATUS.md](docs/STATUS.md) führt das je Themenbereich auf, ohne es zu
+beschönigen.
+
+## Technologie
+
+Die Entscheidungen sind getroffen und in [ADR-0002](docs/decisions/0002-mvp-technology-stack.md)
+begründet:
+
+- **Backend:** Java 21, Spring Boot, Spring AI (Gradle, Kotlin DSL)
+- **Datenbank:** PostgreSQL mit pgvector, Schemaverwaltung über Liquibase
+- **Frontend:** React, TypeScript, Material UI, Vite
+- **Modelle:** jede OpenAI-kompatible Schnittstelle. **Voreingestellt sind lokal betriebene Modelle** für
+  Chat und Einbettung; ein Cloud-Anbieter ist konfigurierbar, aber nicht voreingestellt.
+- **Betrieb:** Docker Compose; Kubernetes und Betrieb ohne Netzanbindung sind Ziel, aber noch nicht gebaut
 
 ## Mitwirken
 
-Siehe [CONTRIBUTING.md](CONTRIBUTING.md) für Richtlinien zur Mitarbeit.
+[CONTRIBUTING.md](CONTRIBUTING.md) beschreibt den Weg von der Idee bis zum Merge. Menschen und KI-Agenten
+verwenden denselben Workflow: dieselben Issues, dieselbe Branch-Benennung, dasselbe PR-Template.
 
-**Für KI-Agenten:** Lesen Sie [AGENTS.md](AGENTS.md) für Projektkonventionen und Kollaborationsrichtlinien.
+**Für KI-Agenten:** [AGENTS.md](AGENTS.md) enthält die Projektkonventionen,
+[docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md) die Rollen und den Arbeitsfluss.
 
-## Technologiestack
-
-Technologieentscheidungen werden während der Implementierung getroffen. OPAA ist bewusst **technologieagnostisch**:
-
-- **LLM-Anbieter:** Beliebige OpenAI-kompatible API (OpenAI, Anthropic Claude, Ollama, vLLM, usw.)
-- **Vektordatenbank:** Elasticsearch, PostgreSQL + pgvector, Milvus, Cloud-Alternativen
-- **Deployment:** Kubernetes, Docker Compose, AWS, Azure, GCP oder On-Premises
-- **Datenquellen:** Confluence, Jira, Gmail, S3, SharePoint, Google Drive, Dropbox, Issue-Tracker und mehr
+Ohne unterzeichnete [Contributor License Agreement](CLA.md) kann kein Pull Request zusammengeführt werden.
 
 ## Lizenz
 
-[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) — Frei und quelloffen. Kommerzielle Lizenzen für Organisationen verfügbar, die die AGPL-Bedingungen nicht einhalten können. Siehe [CLA.md](CLA.md) für Anforderungen an Beitragende.
-
-## Nächste Schritte
-
-- **Mehr erfahren?** Beginnen Sie mit [CONCEPTS.md](docs/CONCEPTS.md)
-- **Beitragen?** Siehe [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Feedback zur Vision?** Öffnen Sie ein Issue oder eine Diskussion auf GitHub
+[GNU Affero General Public License v3.0](LICENSE). Der Funktionsumfang ist vollständig quelloffen.
