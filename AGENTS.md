@@ -136,6 +136,8 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 - Beim Erstellen eines GitHub-Issues IMMER passende Labels basierend auf dem Inhalt zuweisen
 - Vorhandene Labels verwenden (z. B. `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, usw.)
 - Issue-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
+- **Epics führen ihre Tickets als native Sub-Issues**, nicht als Checkliste im Body. GitHub führt Status und Fortschritt dann selbst, und der Tagesreport liest dieselbe Beziehung. Aufbau des Epic-Bodys: [.github/ISSUE_TEMPLATE/epic.md](.github/ISSUE_TEMPLATE/epic.md)
+- Ein bereits angelegtes Issue wird nachträglich verknüpft über `gh api -X POST repos/{owner}/{repo}/issues/{epic}/sub_issues -F sub_issue_id={id}` — `{id}` ist die Objekt-ID des Kind-Issues (`gh api repos/{owner}/{repo}/issues/{nr} --jq .id`), nicht seine Nummer
 
 ### Pull Requests
 
