@@ -160,3 +160,7 @@ Repository; Marketing-Material übernimmt ihn, statt einen eigenen zu behaupten.
 
 Jedes dieser Assets nennt dieselbe Kernbotschaft in denselben Worten. Abweichende Formulierungen für
 dieselbe Sache sind kein Stilmittel, sondern ein Fehler.
+
+Bekannte Abweichung: Die Bildsprache der Landing-Page (`page/img/`) stammt noch aus der früheren,
+firmenorientierten Ausrichtung und wird erneuert, sobald ein Verwaltungskorpus für neue Aufnahmen
+vorliegt ([#370](https://github.com/criew/opaa/issues/370)).
