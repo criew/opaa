@@ -1,7 +1,11 @@
 {
   "repo": "criew/opaa",
   "date": "2026-08-01",
-  "generated_at": "2026-08-02T23:46:51.324844+02:00",
+  "generated_at": "2026-08-14T16:53:08.120935+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-01T00:00:00+02:00",
+  "window_end": "2026-08-01T23:59:59+02:00",
   "closed_issues": [
     {
       "number": 188,
@@ -108,42 +112,34 @@
   ],
   "open_pull_requests": [
     {
-      "number": 292,
-      "title": "test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)",
-      "url": "https://github.com/criew/opaa/pull/292",
+      "number": 381,
+      "title": "docs(public-sector): Bürgerassistent als Ausblick der Phase 4 festschreiben",
+      "url": "https://github.com/criew/opaa/pull/381",
       "author": "criew",
       "labels": [
-        "enhancement",
-        "backend",
-        "evaluation"
+        "documentation"
       ],
       "body": "",
       "closes": []
     },
     {
-      "number": 287,
-      "title": "fix(auth): Erstanmeldung nach #280 wieder funktionsfähig machen",
-      "url": "https://github.com/criew/opaa/pull/287",
+      "number": 380,
+      "title": "docs(deployment): Umfang der Speicher-Abstraktion für Dokumente festlegen",
+      "url": "https://github.com/criew/opaa/pull/380",
       "author": "criew",
       "labels": [
-        "bug",
-        "backend",
-        "size:S"
+        "documentation"
       ],
       "body": "",
       "closes": []
     },
     {
-      "number": 283,
-      "title": "Gruppen als Rechtesubjekt einfuehren",
-      "url": "https://github.com/criew/opaa/pull/283",
+      "number": 379,
+      "title": "docs(channels): Zielbild der Chat-Kanäle auf selbst betriebene Team-Chats festlegen",
+      "url": "https://github.com/criew/opaa/pull/379",
       "author": "criew",
       "labels": [
-        "enhancement",
-        "backend",
-        "frontend",
-        "size:M",
-        "auth"
+        "documentation"
       ],
       "body": "",
       "closes": []
@@ -162,13 +158,29 @@
       "closes": []
     }
   ],
+  "open_issues_total": 78,
   "ci": {
-    "conclusion": "in_progress",
-    "url": "https://github.com/criew/opaa/actions/runs/30768608350",
-    "title": "Merge pull request #291 from criew/feature/290_epic-zuordnung-korrigi…",
-    "finished_at": "2026-08-02T21:46:03Z"
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/31811166850",
+    "title": "Merge pull request #378 from criew/feature/350_cloud-betrieb-festlegen",
+    "finished_at": "2026-08-14T14:49:18Z"
   },
-  "summary": "Projektsetup und Dokumentation wurden heute vorangebracht. Drei neue Tickets wurden angelegt: die Frontend-Abhängigkeiten (#189) und Backend-Abhängigkeiten (#188) sollen auf aktuelle Versionen aktualisiert werden, und die Projektsprache soll auf Deutsch umgestellt werden (#186). Zwei dieser Vorgänge wurden bereits abgeschlossen und zwei weitere gemergt, darunter die Dokumentationsübersetzung (#187) mit 50 übersetzten Markdown-Dateien und die Backend-Migration zu Spring Boot 4.1 (#190).",
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": null,
+        "text": "Frontend-Dependencies aktualisiert (MUI 9, Vite 8, TypeScript 6, ESLint 10)"
+      },
+      {
+        "nummer": null,
+        "text": "Backend zu Spring Boot 4.1 und Spring AI 2.0 migriert"
+      },
+      {
+        "nummer": null,
+        "text": "Projektdokumentation ins Deutsche übersetzt"
+      }
+    ]
+  },
   "epics": [],
   "ohne_epic": {
     "opened": [

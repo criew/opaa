@@ -2,47 +2,70 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>OPAA — Tagesreport</title>
   <subtitle>Was sich im Projekt bewegt hat, Tag für Tag</subtitle>
-  <link href="https://criew.github.io/opaa/feed.xml" rel="self"/>
-  <link href="https://criew.github.io/opaa/"/>
-  <id>https://criew.github.io/opaa/</id>
+  <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
+  <link href="https://criew.github.io/opaa/report/"/>
+  <id>https://criew.github.io/opaa/report/</id>
   <updated>2026-08-05T03:42:59Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
     <title>Tagesreport Dienstag, 4. August 2026</title>
-    <link href="https://criew.github.io/opaa/reports/2026-08-04.html"/>
-    <id>https://criew.github.io/opaa/reports/2026-08-04.html</id>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-04.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-04.html</id>
     <updated>2026-08-05T03:42:59Z</updated>
-    <summary type="text">Im Epic Space and asset model — replace the workspace model wurden heute Fortschritte bei der Implementierung von Asset-Rechten erzielt. Das Ticket #202 zur Asset-Berechtigung und rechtebewussten Vektorsuche wurde abgeschlossen und der entsprechende Pull Request #309 gemergt. Damit ist ein zentraler Angelpunkt des Epics realisiert, das bisher bei 5 von 25 erledigten Tickets steht.
-
-Bei den Vorgängen ohne Epic-Bezug lag der Fokus auf Verbesserungen der CI-Pipeline und Qualitätssicherung. Das Ticket #312 zur Verbesserung des Zeitfensters im Tagesreport wurde abgeschlossen und gemergt, um Lücken und Mehrdeutigkeiten bei der Tagesabgrenzung zu beheben. Gleichzeitig wurde eine automatische Retrieval-Regression erkannt, die zur Anlage von Ticket #311 führte.</summary>
+    <summary type="text">Epic: Space and asset model — replace the workspace model:
+— Asset permissions and permission-aware vector search
+Sonstiges:
+— fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen
+— fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen
+— Retrieval-Regression erkannt (automatischer Lauf)</summary>
   </entry>
   <entry>
     <title>Tagesreport Montag, 3. August 2026</title>
-    <link href="https://criew.github.io/opaa/reports/2026-08-03.html"/>
-    <id>https://criew.github.io/opaa/reports/2026-08-03.html</id>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-03.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-03.html</id>
     <updated>2026-08-04T07:16:20Z</updated>
-    <summary type="text">Epic #198 „Space and asset model — replace the workspace model&quot; machte heute Fortschritte bei der Umsetzung: drei Tickets wurden abgeschlossen und drei gemergt, womit vier von 25 Tickets erledigt sind. Die gemergte PR #305 führt die KnowledgeLibrary als ersten Asset-Typ ein und migriert Dokumente in diesen Container. PR #297 behandelt die Verzeichnissynchronisation als Rechteereignis mit stabiler Identifikation über die externe ID, und PR #283 etabliert Gruppen als zweiten Rechtesubjekt-Typ neben Nutzern.
-
-Epic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression&quot; erreichte heute sechs von 14 abgeschlossenen Tickets durch zwei Merges. PR #301 führt den Retrieval-Regressionsjob in GitHub Actions gegen eine committete Baseline aus und vergleicht dabei Fixpunkte wie Korpus-Manifest und Embedding-Modell-Digest. PR #292 implementiert den JUnit-Integrationstest für Retrieval-Metriken, der Hit Rate, MRR, nDCG und Recall berechnet.
-
-Außerhalb der Epics wurden sieben neue Tickets angelegt und vier abgeschlossen. Drei Merges adressierten Transaktions- und Authentifizierungsprobleme: PR #303 dokumentiert den Umgang mit Transaktionen in der Entwicklerrolle, PR #299 behebt eine Race Condition bei paralleler Erstanmeldung auf der Unique-Constraint, und PR #298 stellt FK-abhängige Space-Tests auf das echte Liquibase-Schema um. PR #296 präzisiert die Branch-Regel und macht Reproduktionsnachweise verbindlich.</summary>
+    <summary type="text">Epic: Space and asset model — replace the workspace model:
+— Verzeichnissynchronisation als Rechteereignis behandeln
+— Knowledge library as the document container, with data migration
+— Introduce groups as permission subjects
+Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
+— ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten
+— test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)
+Sonstiges:
+— docs(agents): Umgang mit Transaktionen in die Entwickler-Rollendefinition aufnehmen
+— docs(agents): Branch-Regel für Fehlerbehebungen und Hotfixes klarstellen
+— fix(auth): Race bei paralleler Erstanmeldung erzeugt 500er auf uq_users_subject_issuer
+— test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen</summary>
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 2. August 2026</title>
-    <link href="https://criew.github.io/opaa/reports/2026-08-02.html"/>
-    <id>https://criew.github.io/opaa/reports/2026-08-02.html</id>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-02.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-02.html</id>
     <updated>2026-08-03T07:58:50Z</updated>
-    <summary type="text">Epic #198 „Space and asset model — replace the workspace model&quot; verzeichnet 3 von 25 Tickets als erledigt. Heute wurden 25 Tickets neu angelegt und eines abgeschlossen. Mit dem Merge von #254 liegt die mechanische Umbenennung von Workspace zu Space vor, einschließlich neuer Rollenverteilung und Organisationsgrenze. Die Tickets #243 bis #199 decken die komplexere Mechanik ab: Driftschutz für Abkömmlinge, Konsistenzprüfung zwischen Vektorspeicher und Datenbank, Befristung von Grants, Nachfolge ausgeschiedener Eigentümer, Audit-Governance und Historisierung von Rechten.
-
-Epic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression&quot; zeigt 5 von 14 Tickets erledigt. Heute kamen 14 Tickets hinzu und vier wurden abgeschlossen. Mit den Merges von #273, #251 und #249 liegen ein versioniertes Golden Dataset mit 121 kuratierten Fällen, ein E2E-Grundgerüst mit Playwright und ein deterministischer Korpus-Generator für 1.448 Comic-Charaktere vor. Die neuen Tickets decken Dokumentation, Demo-Ausrollung und Retrieval-Regression ab.
-
-Ohne Epic-Bezug wurden 35 Tickets angelegt, 19 abgeschlossen und 24 gemergt. Im Bereich Authentifizierung behoben die Merges #287, #280 und #294 Regressions- und Race-Condition-Fehler bei der Erstanmeldung und der Anlage persönlicher Spaces. Die Merges #286, #281, #278 und #277 stabilisierten die Report-Infrastruktur und das Golden Dataset. Dokumentation wurde in #270, #269, #264 und #275 korrigiert und ergänzt, etwa zur Testinstanz opaa.ewerlin.com und zur ADR-Nummernkollision. Weitere Merges betrafen Sicherheit (#246), Abhängigkeits-Updates (#191) und Spracheinstellung (#223, #222, #220).</summary>
+    <summary type="text">Epic: Space and asset model — replace the workspace model:
+— Rename workspace to space, add organization scope and reshape space roles
+— Driftschutz für Abkömmlinge: Fristen und automatische Deaktivierung
+— Konsistenzprüflauf zwischen Vektorspeicher und Datenbank
+— Befristung und Rezertifizierung von Einzelgrants
+Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
+— docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben
+— test(e2e): Grundgerüst für browserbasierte End-to-End-Tests
+— feat(eval): Golden Dataset aus dem Frontmatter des Korpus ableiten
+— feat(eval): Korpus-Generator für die Domäne Comichelden
+Sonstiges:
+— fix(ci): Fehlzuordnungen im Epic-Report beheben
+— feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen
+— fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset
+— feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</summary>
   </entry>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>
-    <link href="https://criew.github.io/opaa/reports/2026-08-01.html"/>
-    <id>https://criew.github.io/opaa/reports/2026-08-01.html</id>
-    <updated>2026-08-02T21:46:51Z</updated>
-    <summary type="text">Projektsetup und Dokumentation wurden heute vorangebracht. Drei neue Tickets wurden angelegt: die Frontend-Abhängigkeiten (#189) und Backend-Abhängigkeiten (#188) sollen auf aktuelle Versionen aktualisiert werden, und die Projektsprache soll auf Deutsch umgestellt werden (#186). Zwei dieser Vorgänge wurden bereits abgeschlossen und zwei weitere gemergt, darunter die Dokumentationsübersetzung (#187) mit 50 übersetzten Markdown-Dateien und die Backend-Migration zu Spring Boot 4.1 (#190).</summary>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-01.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-01.html</id>
+    <updated>2026-08-14T14:53:08Z</updated>
+    <summary type="text">Sonstiges:
+— Frontend-Dependencies aktualisiert (MUI 9, Vite 8, TypeScript 6, ESLint 10)
+— Backend zu Spring Boot 4.1 und Spring AI 2.0 migriert
+— Projektdokumentation ins Deutsche übersetzt</summary>
   </entry>
 </feed>

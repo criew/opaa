@@ -13,6 +13,8 @@
   --line: #e2e5e9;
   --accent: #2f6feb;
   --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -22,6 +24,8 @@
     --line: #2a2e35;
     --accent: #6ea0ff;
     --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
   }
 }
 * { box-sizing: border-box; }
@@ -38,7 +42,92 @@ header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-b
 h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
 h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .sub { color: var(--muted); font-size: .9rem; margin: 0; }
-.summary p { margin: 0 0 .9rem; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
 ul.items { list-style: none; margin: 0; padding: 0; }
 ul.items li {
   padding: .7rem .9rem;
@@ -47,26 +136,10 @@ ul.items li {
   margin-bottom: .5rem;
   background: var(--card);
 }
-.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
-.tag {
-  display: inline-block;
-  font-size: .72rem;
-  padding: .1rem .45rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-right: .3rem;
-  color: var(--muted);
-}
-.status { font-weight: 600; }
-.status.ok { color: #1a7f37; }
-.status.bad { color: #cf222e; }
-@media (prefers-color-scheme: dark) {
-  .status.ok { color: #3fb950; }
-  .status.bad { color: #f85149; }
-}
+
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
-.empty { color: var(--muted); font-style: italic; }
+.status.bad { color: var(--red); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -74,6 +147,7 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 <header>
 <h1>OPAA — Tagesreport</h1>
 <p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="../">Projektseite</a> ·
 <a href="feed.xml">Feed abonnieren</a> ·
 <a href="https://github.com/criew/opaa">Repository</a></p>
 </header>

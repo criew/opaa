@@ -13,6 +13,8 @@
   --line: #e2e5e9;
   --accent: #2f6feb;
   --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -22,6 +24,8 @@
     --line: #2a2e35;
     --accent: #6ea0ff;
     --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
   }
 }
 * { box-sizing: border-box; }
@@ -38,7 +42,92 @@ header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-b
 h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
 h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .sub { color: var(--muted); font-size: .9rem; margin: 0; }
-.summary p { margin: 0 0 .9rem; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
 ul.items { list-style: none; margin: 0; padding: 0; }
 ul.items li {
   padding: .7rem .9rem;
@@ -47,90 +136,50 @@ ul.items li {
   margin-bottom: .5rem;
   background: var(--card);
 }
-.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
-.tag {
-  display: inline-block;
-  font-size: .72rem;
-  padding: .1rem .45rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-right: .3rem;
-  color: var(--muted);
-}
-.status { font-weight: 600; }
-.status.ok { color: #1a7f37; }
-.status.bad { color: #cf222e; }
-@media (prefers-color-scheme: dark) {
-  .status.ok { color: #3fb950; }
-  .status.bad { color: #f85149; }
-}
+
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
-.empty { color: var(--muted); font-style: italic; }
+.status.bad { color: var(--red); font-weight: 600; }
 </style>
 </head>
 <body>
 <main>
 <header>
 <h1>Tagesreport Montag, 3. August 2026</h1>
-<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/criew/opaa">criew/opaa</a></p>
+<p class="sub"><a href="../index.html">Alle Reports</a></p>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/30826947865" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
 </header>
 
-<section class="summary">
-<p>Epic #198 „Space and asset model — replace the workspace model&quot; machte heute Fortschritte bei der Umsetzung: drei Tickets wurden abgeschlossen und drei gemergt, womit vier von 25 Tickets erledigt sind. Die gemergte PR #305 führt die KnowledgeLibrary als ersten Asset-Typ ein und migriert Dokumente in diesen Container. PR #297 behandelt die Verzeichnissynchronisation als Rechteereignis mit stabiler Identifikation über die externe ID, und PR #283 etabliert Gruppen als zweiten Rechtesubjekt-Typ neben Nutzern.</p>
-<p>Epic #224 „Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression&quot; erreichte heute sechs von 14 abgeschlossenen Tickets durch zwei Merges. PR #301 führt den Retrieval-Regressionsjob in GitHub Actions gegen eine committete Baseline aus und vergleicht dabei Fixpunkte wie Korpus-Manifest und Embedding-Modell-Digest. PR #292 implementiert den JUnit-Integrationstest für Retrieval-Metriken, der Hit Rate, MRR, nDCG und Recall berechnet.</p>
-<p>Außerhalb der Epics wurden sieben neue Tickets angelegt und vier abgeschlossen. Drei Merges adressierten Transaktions- und Authentifizierungsprobleme: PR #303 dokumentiert den Umgang mit Transaktionen in der Entwicklerrolle, PR #299 behebt eine Race Condition bei paralleler Erstanmeldung auf der Unique-Constraint, und PR #298 stellt FK-abhängige Space-Tests auf das echte Liquibase-Schema um. PR #296 präzisiert die Branch-Regel und macht Reproduktionsnachweise verbindlich.</p>
-</section>
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">—</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+7</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">9</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">9</div><div class="kpi-label">PRs gemergt</div></div></div>
 
-<h2>Abgeschlossene Issues</h2>
-<ul class="items">
-<li><span class="num">#302</span><a href="https://github.com/criew/opaa/issues/302">docs(agents): Umgang mit Transaktionen in die Entwickler-Rollendefinition aufnehmen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#295</span><a href="https://github.com/criew/opaa/issues/295">docs(agents): Branch-Regel für Fehlerbehebungen und Hotfixes klarstellen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#293</span><a href="https://github.com/criew/opaa/issues/293">fix(auth): Race bei paralleler Erstanmeldung erzeugt 500er auf uq_users_subject_issuer</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span><span class="tag">auth</span>criew</span></li>
-<li><span class="num">#288</span><a href="https://github.com/criew/opaa/issues/288">test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:M</span>criew</span></li>
-<li><span class="num">#237</span><a href="https://github.com/criew/opaa/issues/237">Verzeichnissynchronisation als Rechteereignis behandeln</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">security</span><span class="tag">auth</span>criew</span></li>
-<li><span class="num">#228</span><a href="https://github.com/criew/opaa/issues/228">ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">size:M</span><span class="tag">ci</span><span class="tag">evaluation</span>criew</span></li>
-<li><span class="num">#227</span><a href="https://github.com/criew/opaa/issues/227">test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">evaluation</span>criew</span></li>
-<li><span class="num">#201</span><a href="https://github.com/criew/opaa/issues/201">Knowledge library as the document container, with data migration</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
-<li><span class="num">#200</span><a href="https://github.com/criew/opaa/issues/200">Introduce groups as permission subjects</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
-</ul>
-
-<h2>Gemergte Pull Requests</h2>
-<ul class="items">
-<li><span class="num">#305</span><a href="https://github.com/criew/opaa/pull/305">feat(library): Wissensbibliothek als Dokumentencontainer mit Migration</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>33 Dateien, +3776 / −112</span></li>
-<li><span class="num">#303</span><a href="https://github.com/criew/opaa/pull/303">docs(agents): Umgang mit Transaktionen in die Entwicklerrolle aufnehmen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>1 Datei, +13 / −0</span></li>
-<li><span class="num">#301</span><a href="https://github.com/criew/opaa/pull/301">ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten</a><span class="meta"><span class="tag">enhancement</span><span class="tag">ci</span><span class="tag">evaluation</span>16 Dateien, +1994 / −14</span></li>
-<li><span class="num">#299</span><a href="https://github.com/criew/opaa/pull/299">fix(auth): Race bei paralleler Erstanmeldung auf uq_users_subject_issuer behoben</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">auth</span>3 Dateien, +282 / −50</span></li>
-<li><span class="num">#298</span><a href="https://github.com/criew/opaa/pull/298">test(backend): FK-abhängige Space-Tests auf echtes Liquibase-Schema umstellen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:M</span>6 Dateien, +229 / −82</span></li>
-<li><span class="num">#297</span><a href="https://github.com/criew/opaa/pull/297">feat(group): Verzeichnissynchronisation als Rechteereignis behandeln</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span><span class="tag">security</span><span class="tag">auth</span>27 Dateien, +2634 / −1</span></li>
-<li><span class="num">#296</span><a href="https://github.com/criew/opaa/pull/296">docs(agents): Branch-Regel klarstellen und Reproduktionsnachweis verbindlich machen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>4 Dateien, +22 / −2</span></li>
-<li><span class="num">#292</span><a href="https://github.com/criew/opaa/pull/292">test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">evaluation</span>15 Dateien, +1661 / −6</span></li>
-<li><span class="num">#283</span><a href="https://github.com/criew/opaa/pull/283">Gruppen als Rechtesubjekt einfuehren</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">auth</span>30 Dateien, +3127 / −7</span></li>
-</ul>
-
-<h2>Neu angelegte Issues</h2>
-<ul class="items">
-<li><span class="num">#310</span><a href="https://github.com/criew/opaa/issues/310">fix(api): GlobalExceptionHandler mappt ResponseStatusException und DataIntegrityViolationException nicht</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#308</span><a href="https://github.com/criew/opaa/issues/308">test(backend): GroupServiceIntegrationTest auf echtes Liquibase-Schema umstellen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#307</span><a href="https://github.com/criew/opaa/issues/307">fix(auth): Gleichzeitige Erstanmeldungen verschiedener Nutzer erschöpfen den Connection-Pool</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
-<li><span class="num">#306</span><a href="https://github.com/criew/opaa/issues/306">eval(baseline): Fallzahlbasierte Regressionsprüfung für Paare mit Toleranz &lt; 1/n</a><span class="meta"><span class="tag">size:M</span><span class="tag">ci</span><span class="tag">evaluation</span>criew</span></li>
-<li><span class="num">#304</span><a href="https://github.com/criew/opaa/issues/304">eval(golden): category:crosslingual und language:de sind identische Fallmengen</a><span class="meta"><span class="tag">size:S</span><span class="tag">evaluation</span>criew</span></li>
-<li><span class="num">#302</span><a href="https://github.com/criew/opaa/issues/302">docs(agents): Umgang mit Transaktionen in die Entwickler-Rollendefinition aufnehmen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#300</span><a href="https://github.com/criew/opaa/issues/300">fix(group): DirectorySyncStatusRecorder behandelt Race auf uk_directory_sync_status_organization nicht</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
-</ul>
-
-<h2>Offen zum Tagesende</h2>
-<ul class="items">
-<li><span class="num">#309</span><a href="https://github.com/criew/opaa/pull/309">feat(library): Asset-Rechte und rechtebewusste Vektorsuche</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">security</span>criew</span></li>
-<li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
-</ul>
-
-<h2>Stand der CI</h2>
-<p>Hauptbranch: <span class="status ok">grün</span> — <a href="https://github.com/criew/opaa/actions/runs/30826947865">Merge pull request #305 from criew/feature/201_wissensbibliothek</a></p>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/198">#198</a> Epic: Space and asset model — replace the workspace model</span>
+<span class="epic-progress">4 / 25 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 16%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/237">#237</a></span>Verzeichnissynchronisation als Rechteereignis behandeln</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/201">#201</a></span>Knowledge library as the document container, with data migration</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/200">#200</a></span>Introduce groups as permission subjects</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/305">#305</a></span>feat(library): Wissensbibliothek als Dokumentencontainer mit Migration (+3776/−112, 33 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/297">#297</a></span>feat(group): Verzeichnissynchronisation als Rechteereignis behandeln (+2634/−1, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/283">#283</a></span>Gruppen als Rechtesubjekt einfuehren (+3127/−7, 30 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/224">#224</a> Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression</span>
+<span class="epic-progress">6 / 14 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 43%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/228">#228</a></span>ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/227">#227</a></span>test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/301">#301</a></span>ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten (+1994/−14, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/292">#292</a></span>test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall) (+1661/−6, 15 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/302">#302</a></span>docs(agents): Umgang mit Transaktionen in die Entwickler-Rollendefinition aufnehmen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/295">#295</a></span>docs(agents): Branch-Regel für Fehlerbehebungen und Hotfixes klarstellen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/293">#293</a></span>fix(auth): Race bei paralleler Erstanmeldung erzeugt 500er auf uq_users_subject_issuer</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/288">#288</a></span>test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/303">#303</a></span>docs(agents): Umgang mit Transaktionen in die Entwicklerrolle aufnehmen (+13/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/299">#299</a></span>fix(auth): Race bei paralleler Erstanmeldung auf uq_users_subject_issuer behoben (+282/−50, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/298">#298</a></span>test(backend): FK-abhängige Space-Tests auf echtes Liquibase-Schema umstellen (+229/−82, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/296">#296</a></span>docs(agents): Branch-Regel klarstellen und Reproduktionsnachweis verbindlich machen (+22/−2, 4 Dateien)</li></ul></div>
+</div>
 
 <footer>
 Erzeugt am 2026-08-04 um 09:16 Uhr ·
 <a href="../feed.xml">Feed abonnieren</a>
+
 </footer>
 </main>
 </body>

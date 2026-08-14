@@ -13,6 +13,8 @@
   --line: #e2e5e9;
   --accent: #2f6feb;
   --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -22,6 +24,8 @@
     --line: #2a2e35;
     --accent: #6ea0ff;
     --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
   }
 }
 * { box-sizing: border-box; }
@@ -38,7 +42,92 @@ header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-b
 h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
 h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .sub { color: var(--muted); font-size: .9rem; margin: 0; }
-.summary p { margin: 0 0 .9rem; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
 ul.items { list-style: none; margin: 0; padding: 0; }
 ul.items li {
   padding: .7rem .9rem;
@@ -47,72 +136,32 @@ ul.items li {
   margin-bottom: .5rem;
   background: var(--card);
 }
-.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
-.tag {
-  display: inline-block;
-  font-size: .72rem;
-  padding: .1rem .45rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-right: .3rem;
-  color: var(--muted);
-}
-.status { font-weight: 600; }
-.status.ok { color: #1a7f37; }
-.status.bad { color: #cf222e; }
-@media (prefers-color-scheme: dark) {
-  .status.ok { color: #3fb950; }
-  .status.bad { color: #f85149; }
-}
+
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
-.empty { color: var(--muted); font-style: italic; }
+.status.bad { color: var(--red); font-weight: 600; }
 </style>
 </head>
 <body>
 <main>
 <header>
 <h1>Tagesreport Samstag, 1. August 2026</h1>
-<p class="sub"><a href="../index.html">Alle Reports</a> · <a href="https://github.com/criew/opaa">criew/opaa</a></p>
+<p class="sub"><a href="../index.html">Alle Reports</a></p>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/31811166850" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
 </header>
 
-<section class="summary">
-<p>Projektsetup und Dokumentation wurden heute vorangebracht. Drei neue Tickets wurden angelegt: die Frontend-Abhängigkeiten (#189) und Backend-Abhängigkeiten (#188) sollen auf aktuelle Versionen aktualisiert werden, und die Projektsprache soll auf Deutsch umgestellt werden (#186). Zwei dieser Vorgänge wurden bereits abgeschlossen und zwei weitere gemergt, darunter die Dokumentationsübersetzung (#187) mit 50 übersetzten Markdown-Dateien und die Backend-Migration zu Spring Boot 4.1 (#190).</p>
-</section>
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">78</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+3</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">2</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">2</div><div class="kpi-label">PRs gemergt</div></div></div>
 
-<h2>Abgeschlossene Issues</h2>
-<ul class="items">
-<li><span class="num">#188</span><a href="https://github.com/criew/opaa/issues/188">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
-<li><span class="num">#186</span><a href="https://github.com/criew/opaa/issues/186">Projektsprache auf Deutsch umstellen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>criew</span></li>
-</ul>
-
-<h2>Gemergte Pull Requests</h2>
-<ul class="items">
-<li><span class="num">#190</span><a href="https://github.com/criew/opaa/pull/190">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>36 Dateien, +189 / −130</span></li>
-<li><span class="num">#187</span><a href="https://github.com/criew/opaa/pull/187">docs: Dokumentation ins Deutsche übersetzen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>50 Dateien, +3994 / −3994</span></li>
-</ul>
-
-<h2>Neu angelegte Issues</h2>
-<ul class="items">
-<li><span class="num">#189</span><a href="https://github.com/criew/opaa/issues/189">chore(frontend): bump all frontend dependencies to latest stable (MUI 9, Vite 8, TypeScript 6, ESLint 10)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">frontend</span><span class="tag">size:L</span>criew</span></li>
-<li><span class="num">#188</span><a href="https://github.com/criew/opaa/issues/188">chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">size:L</span>criew</span></li>
-<li><span class="num">#186</span><a href="https://github.com/criew/opaa/issues/186">Projektsprache auf Deutsch umstellen</a><span class="meta"><span class="tag">documentation</span><span class="tag">size:L</span>criew</span></li>
-</ul>
-
-<h2>Offen zum Tagesende</h2>
-<ul class="items">
-<li><span class="num">#292</span><a href="https://github.com/criew/opaa/pull/292">test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">evaluation</span>criew</span></li>
-<li><span class="num">#287</span><a href="https://github.com/criew/opaa/pull/287">fix(auth): Erstanmeldung nach #280 wieder funktionsfähig machen</a><span class="meta"><span class="tag">bug</span><span class="tag">backend</span><span class="tag">size:S</span>criew</span></li>
-<li><span class="num">#283</span><a href="https://github.com/criew/opaa/pull/283">Gruppen als Rechtesubjekt einfuehren</a><span class="meta"><span class="tag">enhancement</span><span class="tag">backend</span><span class="tag">frontend</span><span class="tag">size:M</span><span class="tag">auth</span>criew</span></li>
-<li><span class="num">#161</span><a href="https://github.com/criew/opaa/pull/161">docs: plugin architecture deep dive for all three variants</a><span class="meta"><span class="tag">documentation</span><span class="tag">enhancement</span><span class="tag">backend</span>bigpuritz</span></li>
-</ul>
-
-<h2>Stand der CI</h2>
-<p>Hauptbranch: <span class="status bad">in_progress</span> — <a href="https://github.com/criew/opaa/actions/runs/30768608350">Merge pull request #291 from criew/feature/290_epic-zuordnung-korrigi…</a></p>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Frontend-Dependencies aktualisiert (MUI 9, Vite 8, TypeScript 6, ESLint 10)</li><li>Backend zu Spring Boot 4.1 und Spring AI 2.0 migriert</li><li>Projektdokumentation ins Deutsche übersetzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/190">#190</a></span>chore(backend): migrate to Spring Boot 4.1 and bump all backend dependencies (+189/−130, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/187">#187</a></span>docs: Dokumentation ins Deutsche übersetzen (+3994/−3994, 50 Dateien)</li></ul></div>
+</div>
 
 <footer>
-Erzeugt am 2026-08-02 um 23:46 Uhr ·
+Erzeugt am 2026-08-14 um 16:53 Uhr ·
 <a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-01T00:00:00 bis 2026-08-01T23:59:59 (Europe/Berlin)</span>
 </footer>
 </main>
 </body>
