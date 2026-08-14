@@ -6,7 +6,7 @@ Akzeptiert
 
 ## Kontext
 
-OPAA benötigt einen Technologie-Stack, um das in [docs/MVP.md](../MVP.md) definierte MVP zu implementieren. Das MVP umfasst ein Frage-Antwort-System mit Dokument-Indizierung (RAG), ein Web-Frontend und eine LLM-Integrationsschicht. Kernanforderungen sind:
+OPAA benötigt einen Technologie-Stack, um das damals in `docs/MVP.md` definierte MVP zu implementieren. Dieses Dokument ist inzwischen abgelöst — der Umsetzungsstand wird in [STATUS.md](../STATUS.md), das Zielbild in [VISION.md](../VISION.md) geführt. Der hier beschriebene Kontext bleibt als Entscheidungsgrundlage stehen. Das MVP umfasste ein Frage-Antwort-System mit Dokument-Indizierung (RAG), ein Web-Frontend und eine LLM-Integrationsschicht. Kernanforderungen sind:
 
 - Enterprise-Tauglichkeit und langfristige Wartbarkeit
 - Starke KI/ML-Ökosystem-Unterstützung (LLM, Embeddings, Vektorsuche)

@@ -1,265 +1,214 @@
 # Einstieg in die OPAA-Dokumentation
 
-Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden hilft Ihnen, die richtigen Dokumente für Ihre Bedürfnisse zu finden.
+Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden führt Sie zu den Dokumenten, die zu Ihrer Frage
+passen. Er ist nicht nach Software-Rollen geschnitten, sondern nach dem, was Sie in einer Behörde
+verantworten.
 
 ---
 
-## Schnellnavigation nach Rolle
+## Für alle: die ersten zwanzig Minuten
 
-### Ich bin neu bei OPAA
+1. **[README](../README.md)** — was OPAA ist und für wen
+2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien Belegbarkeit und Verteilbarkeit
+3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
 
-1. **[README](../README.md)** (2 Min.) — Was ist OPAA?
-2. **[CONCEPTS.md](./CONCEPTS.md)** (10 Min.) — Schlüsselbegriffe lernen (RAG, Embeddings, Spaces, Assets, usw.)
-3. **[VISION.md](./VISION.md)** (15 Min.) — Die vollständige Produktvision sehen
-4. Dann: In Feature-Spezifikationen basierend auf Ihrer Rolle eintauchen (siehe unten)
+Danach in den Lesepfad wechseln, der zu Ihnen passt.
+
+> **Ein Hinweis vorweg.** [VISION.md](./VISION.md) beschreibt das Zielbild, [STATUS.md](./STATUS.md) den
+> tatsächlich gebauten Stand. Wenn Sie eine Entscheidung auf eine Fähigkeit stützen wollen, prüfen Sie
+> beides. OPAA ist im Aufbau, und die Dokumentation sagt das an jeder Stelle.
 
 ---
 
-## Rollenbasierte Lesepfade
+## Fachbereich und Amtsleitung
 
-### Projektmanager / Product Owner
-
-**Ziel:** Vollständige Produktvision und Roadmap verstehen
+**Ihre Frage:** Was tut OPAA im Alltag, und kann ich mich auf das Ergebnis verlassen?
 
 **Lesepfad:**
-1. [VISION.md](./VISION.md) — Zusammenfassung, Problem, Anwendungsfälle, Designprinzipien (15 Min.)
-2. Alle Feature-Spezifikationen überfliegen: Nur die Abschnitte **Motivation** und **Design** lesen (20 Min.)
-3. Offene Fragen am Ende jeder Feature-Spezifikation für zukünftige Erweiterungen prüfen (10 Min.)
 
-**Wichtige Abschnitte:**
-- VISION: "Unterstützte Anwendungsfälle" — Was Kunden tun können
-- VISION: "Kern-Designprinzipien" — Produktphilosophie
-- Jedes Feature: "Motivation" — Warum dieses Feature wichtig ist
+1. [VISION.md](./VISION.md) — Nordstern und die beiden Leitprinzipien
+2. [USE-CASES.md](./USE-CASES.md) — die Abläufe, um die es geht
+3. [CONCEPTS.md](./CONCEPTS.md) — nur die Abschnitte **Belegbarkeit**, **Verteilbarkeit**, **Fundstelle und
+   Quellenbindung**, **Zitierzwang**, **Konfidenz**
+4. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — wie eine gute Arbeitsweise vom
+   Einzelfall zum geprüften Standard wird
+5. [`features/public-sector.md`](./features/public-sector.md) — Leichte Sprache, Amtssprache,
+   Barrierefreiheit
+6. [STATUS.md](./STATUS.md) — was davon heute geht
 
-**Zeitaufwand:** ~45 Minuten
+**Worauf es dabei ankommt:**
 
----
-
-### Backend- / Full-Stack-Entwickler
-
-**Ziel:** Systemarchitektur und Integrationspunkte verstehen
-
-**Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Systemarchitektur und alle Abschnitte lesen (15 Min.)
-3. **Features in dieser Reihenfolge vertiefen:**
-   - [Benutzer-Frontends](./features/user-frontends.md) — Wie Anfragen eingehen (10 Min.)
-   - [Orchestrierungsschicht](./features/user-frontends.md) → [Daten-Indizierung](./features/data-indexing-rag.md) — Zentrale Logik (12 Min.)
-   - [LLM-Integration](./features/llm-integration.md) — Antwortgenerierung (10 Min.)
-   - [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — Rechte- und Verteilungsmodell (15 Min.)
-
-**Wichtige Abschnitte:**
-- VISION: "Systemarchitektur" — Datenfluss
-- VISION: "Kernsystemkomponenten" — Verantwortlichkeiten
-- Jedes Feature: "Integrationspunkte" — Wie sie verbunden sind
-
-**Zeitaufwand:** ~1 Stunde 15 Minuten
+- Eine Antwort nennt ihre Fundstelle, und Sie springen mit einem Klick dorthin
+- Wo nichts belegbar ist, wird nichts behauptet — im Zitierzwang ergeht gar keine Antwort
+- Was Ihr Bereich an Arbeitsweise entwickelt, wird ein benanntes, freigegebenes, nachvollziehbares Asset
+- Nachvollziehbar bleibt auch, wer wann welche Fassung freigegeben hat
 
 ---
 
-### DevOps- / Infrastruktur-Engineer
+## Behörden-IT und Betrieb
 
-**Ziel:** OPAA im großen Maßstab deployen und betreiben
+**Ihre Frage:** Was muss ich betreiben, aktuell halten und gegenüber Prüfern erklären?
 
 **Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Abschnitt Systemarchitektur (5 Min.)
-3. **Fokus auf:**
-   - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — **Vertieft** (20 Min.)
-   - [Zugangskontrolle](./features/access-control.md) — Sicherheit & Audit-Logging (10 Min.)
-4. Für Integrationspunkte überfliegen:
-   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Speicherung & Skalierung (5 Min.)
-   - [LLM-Integration](./features/llm-integration.md) — Konfiguration & Kosten (5 Min.)
 
-**Wichtige Abschnitte:**
-- Deployment: Deployment-Optionen (Kubernetes, Docker Compose, Cloud)
-- Deployment: Skalierungsüberlegungen (Größenbestimmung für kleine/mittlere/große Org.)
-- Deployment: Hochverfügbarkeit & Disaster Recovery
-- Deployment: Sicherheit & Monitoring
+1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Betrieb**, **Modelle und zentrale Steuerung**,
+   **Retrieval und Belegbarkeit**
+2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
+3. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — **vertieft**;
+   ergänzend [deployment.md](./deployment.md) für die vorhandene Installation
+4. [`features/llm-integration.md`](./features/llm-integration.md) — Modellverwaltung, Modell-Policy als
+   Obergrenze, lokal betriebene Modelle
+5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
+6. [`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md) — Metriken, Grenzen,
+   Kostentransparenz
+7. [`features/data-indexing-rag.md`](./features/data-indexing-rag.md) und
+   [`features/knowledge-sources.md`](./features/knowledge-sources.md) — was indiziert wird und wie oft
+8. [STATUS.md](./STATUS.md), Bereiche **J**, **E**, **F**, **H** — der ehrliche Stand
 
-**Zeitaufwand:** ~55 Minuten
+**Worauf es dabei ankommt:**
+
+- Betrieb im eigenen Rechenzentrum bis hin zur Installation ohne Netzanbindung
+- Lokal betriebene Modelle sind die Voreinstellung; eine unkonfigurierte Installation spricht nicht nach
+  außen
+- Modelle sind austauschbar, ohne dass ein Fachbereich seine Agenten anfassen muss
+- Quelloffen und damit prüfbar, statt zugesichert
+
+**Für Beitragende mit Betriebshintergrund:** Build- und Testbefehle stehen in
+[AGENTS.md](../AGENTS.md), der Technologiestapel in
+[ADR-0002](./decisions/0002-mvp-technology-stack.md), die Anmeldung in
+[ADR-0005](./decisions/0005-authentication-strategy.md).
 
 ---
 
-### Data- / ML-Engineer
+## Datenschutz, Informationssicherheit und Personalvertretung
 
-**Ziel:** Datenpipeline und LLM-Konfiguration verstehen
+**Ihre Frage:** Wo liegen die Daten, was wird ausgewertet — und was ausdrücklich nicht?
 
 **Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Systemarchitektur (5 Min.)
-3. **Vertiefen in:**
-   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — **Vertieft** (15 Min.)
-   - [LLM-Integration](./features/llm-integration.md) — **Vertieft** (15 Min.)
-4. Für Kontext überfliegen:
-   - [Benutzer-Frontends](./features/user-frontends.md) — Woher Abfragen kommen (5 Min.)
-   - [Deployment](./features/deployment-infrastructure.md) — Skalierungsüberlegungen (5 Min.)
 
-**Wichtige Abschnitte:**
-- Daten-Indizierung: Dokumentenverarbeitungs-Pipeline (Chunking-, Embedding-Strategien)
-- Daten-Indizierung: Unterstützte Vektor-Datenbanken (Abwägungen)
-- LLM-Integration: LLM-Anbieter & Konfiguration
-- LLM-Integration: Kostenoptimierungsstrategien
-- Beide: Offene Fragen für Forschungsmöglichkeiten
+1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Sicherheit, Nachweis und Mitbestimmung** sowie
+   **Berechtigungsdurchsetzung zur Abfragezeit**
+2. [`features/security-and-compliance.md`](./features/security-and-compliance.md) — **vertieft**:
+   revisionssicheres Protokoll, Vollständigkeit nach DSGVO, C5-Fähigkeit
+3. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — Rechtemodell, Freigabekette,
+   Mitbestimmung
+4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
+5. [`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md) — was ausgewertet wird
+   und in welcher Aggregation
+6. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — Verschlüsselung,
+   Netztrennung, Sicherung
+7. [STATUS.md](./STATUS.md), Bereich **G** — die derzeit größte Lücke, offen benannt
 
-**Zeitaufwand:** ~55 Minuten
+**Worauf es dabei ankommt:**
+
+- Daten verlassen das Haus nicht; der Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario
+- Die Rechteprüfung sitzt **in** der Suche, nicht dahinter: Was jemand nicht lesen darf, wird nicht geladen
+  und nicht gerankt
+- Beschränkungen hängen an den Daten, nicht am Arbeitsraum — ein Raumwechsel umgeht sie nicht
+- Sichtbarkeit ist eine Handlung, keine Automatik; der persönliche Bereich bleibt unbeobachtet
+- Es gibt keinen personenbezogenen Auswertungspfad und keine Ranglisten — nicht abgeschaltet, sondern nicht
+  gebaut
+- OPAA ist **nicht zertifiziert**. Das Ziel ist, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang
+  besteht
 
 ---
 
-### Sicherheits- / Compliance-Beauftragter
+## Beitragende
 
-**Ziel:** Sicherstellen, dass OPAA Sicherheits- und Compliance-Anforderungen erfüllt
-
-**Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Abschnitt Designprinzipien (5 Min.)
-3. **Vertiefen in:**
-   - [Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md) — **Vertieft** (20 Min.)
-   - [Deployment & Infrastruktur](./features/deployment-infrastructure.md) — Abschnitt Sicherheit (10 Min.)
-4. Prüfen:
-   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Berechtigungen & Datenverarbeitung (5 Min.)
-   - [LLM-Integration](./features/llm-integration.md) — Sicherheit & verantwortungsvolle Nutzung (5 Min.)
-
-**Wichtige Abschnitte:**
-- Zugangskontrolle: Audit-Logging & Compliance
-- Zugangskontrolle: Berechtigungsdurchsetzung zur Abfragezeit
-- Deployment: Abschnitt Sicherheit (Verschlüsselung, Netzwerk, Zugangskontrolle)
-- Deployment: Compliance-Unterstützung (DSGVO, HIPAA, SOC 2)
-- VISION: Designprinzipien — "Sicherheit & Datenschutz eingebaut"
-
-**Zeitaufwand:** ~50 Minuten
-
----
-
-### UX- / Frontend-Designer
-
-**Ziel:** Benutzer-Workflows und Schnittstellenanforderungen verstehen
+**Ihre Frage:** Wie arbeite ich mit — und woran?
 
 **Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Anwendungsfälle & Designprinzipien (10 Min.)
-3. **Vertiefen in:**
-   - [Benutzer-Frontends](./features/user-frontends.md) — **Vertieft** (15 Min.)
-4. Kontext verstehen:
-   - [Zugangskontrolle](./features/access-control.md) — Wie Berechtigungen UX beeinflussen (5 Min.)
-   - [Daten-Indizierung](./features/data-indexing-rag.md) — Suche & Retrieval aus Benutzerperspektive (5 Min.)
 
-**Wichtige Abschnitte:**
-- Benutzer-Frontends: Abschnitt Benutzererfahrung (alle Screens und Workflows)
-- Benutzer-Frontends: Features (Fragen stellen, Dokument-Browser, Feedback)
-- Benutzer-Frontends: Konfiguration (was Admins anpassen können)
-- VISION: Anwendungsfälle (reale Szenarien)
+1. [CONCEPTS.md](./CONCEPTS.md) — vollständig, es ist die gemeinsame Sprache im Repository
+2. [VISION.md](./VISION.md) — besonders die elf Themenbereiche und die vier Phasen
+3. [STATUS.md](./STATUS.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K** sind heute im Code
+   und im Backlog leer, Bereich **G** ist die größte Lücke gegenüber Phase 1
+4. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — Ablauf, Branch-Regel, Contributor License Agreement
+5. [`../AGENTS.md`](../AGENTS.md) — Konventionen, Build- und Testbefehle, Pre-Push-Checkliste
+6. [AGENT-ORGANIZATION.md](./AGENT-ORGANIZATION.md) — Rollen und der Weg von der Idee bis zum Merge
+7. [`decisions/`](./decisions/) — vor jeder größeren strukturellen Änderung zu lesen
+8. Die Spezifikation des Bereichs, an dem Sie arbeiten wollen — siehe [INDEX.md](./INDEX.md)
 
-**Zeitaufwand:** ~45 Minuten
+**Worauf es dabei ankommt:**
 
----
-
-### KI-/ML-Forscher
-
-**Ziel:** Forschungsmöglichkeiten und technische Tiefe identifizieren
-
-**Lesepfad:**
-1. [CONCEPTS.md](./CONCEPTS.md) — Terminologie lernen (10 Min.)
-2. [VISION.md](./VISION.md) — Architekturüberblick (5 Min.)
-3. **Vertiefen in:**
-   - [LLM-Integration](./features/llm-integration.md) — Modellauswahl & Optimierung (15 Min.)
-   - [Daten-Indizierung & RAG](./features/data-indexing-rag.md) — Retrieval- & Ranking-Strategien (15 Min.)
-4. Für zukünftige Arbeit prüfen:
-   - Offene Fragen in jeder Feature-Spezifikation (10 Min.)
-
-**Wichtige Abschnitte:**
-- LLM-Integration: Multi-Modell-Strategien, Erweiterte LLM-Features, Kostenoptimierung
-- Daten-Indizierung: Retrieval & Ranking, Erweiterte Features (Re-Ranking, semantisches Caching)
-- Alle Spezifikationen: Abschnitt "Offene Fragen / Zukünftige Erweiterungen"
-- Bedenken: Möglichkeiten bei Halluzinationsreduktion, Kontextverständnis, Ranking
-
-**Zeitaufwand:** ~55 Minuten
+- Projektsprache ist Deutsch; Englisch bleibt dem Quellcode vorbehalten
+- Jeder Branch hängt an einem Issue, jeder PR an einer logischen Änderung
+- Ohne unterzeichnete [CLA](../CLA.md) wird kein Pull Request zusammengeführt
+- Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen; KI-Beiträge werden im PR offengelegt
 
 ---
 
 ## Lesestrategien
 
-### Strategie 1: "Großes Bild zuerst"
-Geeignet für: Product Manager, Führungskräfte
-1. VISION.md-Zusammenfassung & Anwendungsfälle lesen
-2. Feature-Spezifikations-Einleitungen überfliegen
-3. In Bereiche spezifischen Interesses vertiefen
+**Großes Bild zuerst** — für Leitung und Entscheidungsvorbereitung: VISION.md, dann USE-CASES.md, dann
+gezielt in eine Spezifikation.
 
-### Strategie 2: "Lernen während des Tuns"
-Geeignet für: Entwickler, die an einem Feature beginnen
-1. CONCEPTS.md lesen
-2. Die eigene Feature-Spezifikation vollständig lesen
-3. Verwandte Feature-Spezifikationen lesen, wenn Abhängigkeiten auftauchen
-4. VISION.md für architektonischen Kontext referenzieren
+**Lernen während des Tuns** — für Beitragende: CONCEPTS.md, dann die eigene Spezifikation vollständig, dann
+die angrenzenden, sobald eine Abhängigkeit auftaucht.
 
-### Strategie 3: "Technisches Tiefen-Tauchen"
-Geeignet für: Architekten, leitende Entwickler
-1. CONCEPTS.md lesen
-2. VISION.md vollständig lesen
-3. Alle Feature-Spezifikationen in der Reihenfolge lesen (sie bauen aufeinander auf)
-4. Notizen zu Integrationspunkten und Abhängigkeiten machen
+**Prüfen statt lesen** — für Datenschutz, Informationssicherheit und Prüfung: mit STATUS.md beginnen, nicht
+mit VISION.md. Was dort nicht als gebaut steht, ist ein Vorhaben.
 
 ---
 
 ## Häufige Fragen
 
-**F: Wie lange dauert es, alles zu lesen?**
-A: ~2 Stunden für vollständiges Verständnis, 1 Stunde für rollenspezifischen Pfad.
+**Woher weiß ich, ob eine beschriebene Fähigkeit existiert?**
+→ Aus [STATUS.md](./STATUS.md). Feature-Spezifikationen beschreiben das Zielbild.
 
-**F: Kann ich nur eine Feature-Spezifikation lesen?**
-A: Ja, aber zuerst den Abschnitt VISION.md Systemarchitektur für den Kontext lesen.
+**Kann ich nur eine Spezifikation lesen?**
+→ Ja, aber lesen Sie zuvor „Systemüberblick" in [VISION.md](./VISION.md) für den Zusammenhang.
 
-**F: Wo finde ich die Antwort auf [spezifische Frage]?**
-A: Siehe [INDEX.md](./INDEX.md) — Abschnitt "Häufige Fragen".
+**Wo finde ich die Antwort auf eine bestimmte Frage?**
+→ [INDEX.md](./INDEX.md), Abschnitt „Häufige Fragen".
 
-**F: Gibt es Code-Beispiele?**
-A: Dies sind Produkt-/Design-Dokumente, keine technischen Spezifikationen.
-Code befindet sich in der tatsächlichen Implementierung.
+**Ein Begriff sagt mir nichts.**
+→ [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Schnellreferenz".
 
-**F: Was wenn ich durch Terminologie verwirrt bin?**
-A: Zu [CONCEPTS.md](./CONCEPTS.md) springen und nach dem Begriff suchen.
-
----
-
-## Nächste Schritte nach dem Lesen
-
-### Feedback geben
-- Fehler oder Unklarheit entdeckt? Ein Issue in GitHub öffnen
-- Einen Vorschlag haben? Im Pull Request kommentieren oder eine Discussion öffnen
-
-### Beitragen
-- An der Vision mithelfen wollen? Siehe [CONTRIBUTING.md](../CONTRIBUTING.md)
-- KI-Agenten: Siehe [AGENTS.md](../AGENTS.md) für Kollaborations-Leitlinien
-
-### Implementierung
-- Bereit zu bauen? Prüfen, ob es ein vorhandenes [GitHub-Issue](https://github.com/yourusername/opaa/issues) für das Feature gibt
-- Branch erstellen und mit dem Coding beginnen (Konventionen in AGENTS.md folgen)
+**Gibt es Code-Beispiele in diesen Dokumenten?**
+→ Nein. Es sind Produkt- und Entwurfsdokumente; der Code liegt in `backend/` und `frontend/`.
 
 ---
 
-## Dokumenten-Karte (Kurzreferenz)
+## Dokumentenkarte
 
 ```
-Haupt-Einstiegspunkte:
-├── README.md (was ist OPAA)
-├── GETTING-STARTED.md (diese Datei)
-├── CONCEPTS.md (Terminologie)
-└── VISION.md (vollständige Vision)
+Einstieg
+├── README.md              — was OPAA ist und für wen
+├── docs/VISION.md         — Zielbild: Prinzipien, elf Bereiche, vier Phasen
+├── docs/USE-CASES.md      — Abläufe aus dem Verwaltungsalltag
+├── docs/CONCEPTS.md       — Begriffe und Glossar
+├── docs/STATUS.md         — was heute gebaut ist
+├── docs/INDEX.md          — vollständiger Index
+└── docs/GETTING-STARTED.md — diese Datei
 
-Feature-Spezifikationen:
-├── features/user-frontends.md
-├── features/data-indexing-rag.md
-├── features/llm-integration.md
-├── features/deployment-infrastructure.md
-└── features/spaces-and-assets.md
+Spezifikationen (docs/features/) — je Themenbereich
+├── A  data-indexing-rag.md · search-quality-evaluation.md
+├── B  knowledge-sources.md
+├── C  spaces-and-assets.md
+├── D  agents-and-tools.md
+├── E  llm-integration.md
+├── F  access-control.md
+├── G  security-and-compliance.md
+├── H  monitoring-and-governance.md
+├── I  user-frontends.md
+├── J  deployment-infrastructure.md
+└── K  public-sector.md
+    (document-sharing.md ist überholt und nur als Historie erhalten)
 
-Navigation:
-├── INDEX.md (vollständiger Index & Lesepfade)
+Entscheidungen und Recherche
+├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung
+├── docs/discussions/      — offene Erörterungen
+├── docs/GraphRAG.md       — Wissensgraph als Ergänzung des Vektor-Retrievals
+└── docs/design/           — Oberflächenentwürfe
 
-Architektur:
-└── decisions/0001-collaboration-workflow.md
+Mitarbeit
+├── CONTRIBUTING.md        — Leitfaden für Beitragende
+├── CLA.md                 — Contributor License Agreement
+├── AGENTS.md              — Konventionen und Befehle
+├── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
+└── docs/tagesreport.md    — täglicher Projektbericht
+
+Betrieb
+└── docs/deployment.md     — die vorhandene Installation
 ```
-
----
-
-**Bereit einzutauchen? Mit Ihrer Rolle oben beginnen!**

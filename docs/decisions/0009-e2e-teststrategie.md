@@ -46,8 +46,9 @@ vorherigen Verhalten; die `:-`-Form bleibt auch bei einer gesetzten, aber leeren
 verhaltensneutral). Zusätzlich wurden die vier `container_name`-Festlegungen entfernt (Compose
 vergibt sonst projektpräfixierte Namen von selbst) — **das ändert das Verhalten für bestehende
 Nutzung einmalig**: Container heißen fortan `opaa-postgres-1`/`opaa-backend-1`/`opaa-frontend-1`
-statt `opaa-postgres`/`opaa-backend`/`opaa-frontend` (`docs/MVP-VERIFICATION.md` entsprechend
-aktualisiert; wer selbst Skripte oder Aliase mit den alten Namen hat, muss sie anpassen).
+statt `opaa-postgres`/`opaa-backend`/`opaa-frontend` (die damalige Verifizierungsübersicht
+`docs/MVP-VERIFICATION.md` wurde entsprechend aktualisiert; sie ist inzwischen abgelöst — wer selbst
+Skripte oder Aliase mit den alten Namen hat, muss sie anpassen).
 
 Jeder Lauf beginnt und endet mit `docker compose down -v` unter diesem Projektnamen — eine
 definierte, reproduzierbare Ausgangslage, ohne Container oder Volumes fremder Projekte anzufassen.
