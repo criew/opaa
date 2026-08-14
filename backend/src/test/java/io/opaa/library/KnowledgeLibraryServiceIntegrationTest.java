@@ -773,7 +773,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
     grantService.upsertGrant(
         library.getId(),
-        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.USER),
+        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         owner,
         false);
 

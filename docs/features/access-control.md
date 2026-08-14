@@ -102,7 +102,7 @@ Wenn ein Nutzer die Organisation verlässt:
 
 1. Die Verzeichnis-Synchronisation entfernt ihn; er kann sich nicht mehr anmelden.
 2. **Die Deaktivierung wird nie durch offene Eigentumsfragen aufgehalten.** Eine Regel, die das verlangt, wird am Freitagnachmittag umgangen und schützt dann gerade nicht.
-3. Seine Assets gehen in den Zustand **„Nachfolge offen"**: nutzbar und mit unveränderten Rechten, aber mit **eingefrorener Reichweite** — keine neuen Grants, keine höhere Freigabestufe, keine neue Bereitstellung. Zuständig für die Nachfolge ist der Kurator seiner Organisationseinheit, mit Frist und Eskalation.
+3. Seine Assets gehen in den Zustand **„Nachfolge offen"**: nutzbar und mit unveränderten Rechten, aber mit **eingefrorener Reichweite** — keine neuen Grants, keine höhere Freigabestufe, keine neue Bereitstellung. Zuständig für die Nachfolge ist der System-Admin; der Vorgang erscheint mit Frist auf der Governance-Arbeitsliste.
 4. Für zentral gepflegte Bestände ist Gruppen-Eigentum der Regelfall und verhindert das Problem von vornherein.
 5. Sein persönlicher Space wird deaktiviert, nicht gelöscht (Nachweisgründe) — und **nicht lesbar gemacht**. Entwürfe darin bleiben unzugänglich. Chats und Artefakte unterliegen der Aufbewahrungsregel.
 
