@@ -43,14 +43,19 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 # Backend (aus backend/)
 ./gradlew build
 ./gradlew test
-./gradlew bootRun
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
+
+# Backend starten — das Auth-Profil MUSS gesetzt sein, sonst bricht der Start
+# mit einer Meldung von AuthProfileGuard ab (siehe ADR-0005).
+SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun
 
 # Frontend (aus frontend/)
 npm ci                                  # Abhängigkeiten installieren
 VITE_ENABLE_MOCKS=true npm run dev      # Dev-Server mit MSW-Mocks
 npm run dev                             # Dev-Server (benötigt Backend auf :8080)
+# Im dev-Auth-Modus laufen Anfragen als "dev-admin"; auf einen regulären Nutzer
+# wechseln mit http://localhost:5173/?devUser=dev-user
 npm run build                           # Production-Build
 npm run lint                            # Lint (ESLint)
 npm run test                            # Tests (Vitest)
