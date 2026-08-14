@@ -19,11 +19,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 /**
- * {@link SpaceService#ensurePersonalSpace}'s race handling (#265) is now entirely delegated to
- * {@link SpaceRepository#insertPersonalSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING} (#201/
+ * {@link SpaceService#ensureDefaultSpace}'s race handling (#265) is now entirely delegated to
+ * {@link SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING} (#201/
  * #305 code review) - there is no more application-level catch-and-reread branch to simulate here,
  * unlike the version of this test that predates that change. What remains testable at the unit
- * level is the one decision {@link SpaceService#ensurePersonalSpace} itself still makes: skip the
+ * level is the one decision {@link SpaceService#ensureDefaultSpace} itself still makes: skip the
  * insert attempt entirely when {@code existsByOwnerIdAndKind} already reports a personal space,
  * otherwise delegate to the repository. A {@link PlatformTransactionManager} is still mocked here
  * (not a real one) because {@link SpaceService} constructs its own {@link
@@ -48,15 +48,15 @@ class SpaceServiceTest {
   }
 
   @Test
-  void ensurePersonalSpaceInsertsWhenNoPersonalSpaceExistsYet() {
+  void ensureDefaultSpaceInsertsWhenNoPersonalSpaceExistsYet() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
+    when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(false);
 
-    spaceService.ensurePersonalSpace(userId, organizationId);
+    spaceService.ensureDefaultSpace(userId, organizationId);
 
     verify(spaceRepository)
-        .insertPersonalSpaceIfAbsent(
+        .insertDefaultSpaceIfAbsent(
             any(UUID.class),
             any(UUID.class),
             any(String.class),
@@ -66,15 +66,15 @@ class SpaceServiceTest {
   }
 
   @Test
-  void ensurePersonalSpaceIsANoOpWhenAPersonalSpaceAlreadyExists() {
+  void ensureDefaultSpaceIsANoOpWhenAPersonalSpaceAlreadyExists() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(true);
+    when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(true);
 
-    spaceService.ensurePersonalSpace(userId, organizationId);
+    spaceService.ensureDefaultSpace(userId, organizationId);
 
     verify(spaceRepository, never())
-        .insertPersonalSpaceIfAbsent(
+        .insertDefaultSpaceIfAbsent(
             any(UUID.class),
             any(UUID.class),
             any(String.class),
@@ -84,7 +84,7 @@ class SpaceServiceTest {
   }
 
   @Test
-  void ensurePersonalSpacePropagatesAnyFailureFromTheInsert() {
+  void ensureDefaultSpacePropagatesAnyFailureFromTheInsert() {
     // A genuine failure other than the partial-unique-index conflict (which the repository method
     // itself absorbs via ON CONFLICT ... DO NOTHING and therefore never throws for) - e.g. a
     // dangling ownerId violating fk_spaces_owner - must still surface to the caller, not be
@@ -92,12 +92,12 @@ class SpaceServiceTest {
     // whatever the repository throws propagates as-is.
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
+    when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(false);
     DataIntegrityViolationException violation =
         new DataIntegrityViolationException("fk_spaces_owner violation");
     doThrow(violation)
         .when(spaceRepository)
-        .insertPersonalSpaceIfAbsent(
+        .insertDefaultSpaceIfAbsent(
             any(UUID.class),
             any(UUID.class),
             any(String.class),
@@ -105,17 +105,17 @@ class SpaceServiceTest {
             eq(userId),
             eq(organizationId));
 
-    assertThatThrownBy(() -> spaceService.ensurePersonalSpace(userId, organizationId))
+    assertThatThrownBy(() -> spaceService.ensureDefaultSpace(userId, organizationId))
         .isSameAs(violation);
   }
 
   @Test
-  void ensurePersonalSpaceDoesNotThrowWhenTheInsertSucceedsOrIsANoOp() {
+  void ensureDefaultSpaceDoesNotThrowWhenTheInsertSucceedsOrIsANoOp() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
-    when(spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)).thenReturn(false);
+    when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(false);
 
-    assertThatCode(() -> spaceService.ensurePersonalSpace(userId, organizationId))
+    assertThatCode(() -> spaceService.ensureDefaultSpace(userId, organizationId))
         .doesNotThrowAnyException();
   }
 }

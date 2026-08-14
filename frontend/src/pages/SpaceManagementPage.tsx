@@ -149,7 +149,7 @@ export default function SpaceManagementPage() {
                 Einstellungen speichern
               </Button>
             )}
-            {isOwner && space.kind !== 'PERSONAL' && (
+            {isOwner && !space.isDefault && (
               <Button
                 color="error"
                 variant="outlined"
@@ -181,9 +181,10 @@ export default function SpaceManagementPage() {
             Mitglieder
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          {space.kind === 'PERSONAL' ? (
+          {space.isDefault && space.memberCount === 1 ? (
             <Alert severity="info">
-              Dies ist Ihr persönlicher Space. Die Mitgliederverwaltung ist deaktiviert.
+              Dies ist Ihr Standard-Space. Sie arbeiten hier allein — Sie können jederzeit
+              Mitglieder hinzufügen.
             </Alert>
           ) : (
             <Stack spacing={1.5}>

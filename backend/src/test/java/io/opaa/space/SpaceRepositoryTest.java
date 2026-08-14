@@ -101,12 +101,11 @@ class SpaceRepositoryTest {
     UUID userB = createUser();
 
     Space eng =
-        new Space(
-            "Engineering", "Engineering docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, userA, org);
+        new Space("Engineering", "Engineering docs", false, SpaceVisibility.PRIVATE, userA, org);
     eng.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, org));
     eng.addMembership(new SpaceMembership(userB, SpaceRole.CURATOR, org));
 
-    Space hr = new Space("HR", "HR docs", SpaceKind.TEAM, SpaceVisibility.PRIVATE, userB, org);
+    Space hr = new Space("HR", "HR docs", false, SpaceVisibility.PRIVATE, userB, org);
     hr.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, org));
 
     spaceRepository.saveAll(List.of(eng, hr));
@@ -124,9 +123,7 @@ class SpaceRepositoryTest {
   void findBySpaceIdReturnsMembersForSpace() {
     UUID owner = createUser();
     UUID curator = createUser();
-    Space space =
-        new Space(
-            "Phoenix", "Project space", SpaceKind.PROJECT, SpaceVisibility.PRIVATE, owner, org);
+    Space space = new Space("Phoenix", "Project space", false, SpaceVisibility.PRIVATE, owner, org);
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, org));
     space.addMembership(new SpaceMembership(curator, SpaceRole.CURATOR, org));
 
@@ -144,8 +141,7 @@ class SpaceRepositoryTest {
   void deletingSpaceRemovesMemberships() {
     UUID owner = createUser();
     Space space =
-        new Space(
-            "Company", "Company-wide space", SpaceKind.TEAM, SpaceVisibility.PRIVATE, owner, org);
+        new Space("Company", "Company-wide space", false, SpaceVisibility.PRIVATE, owner, org);
     space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, org));
 
     Space savedSpace = spaceRepository.save(space);
@@ -164,12 +160,10 @@ class SpaceRepositoryTest {
     UUID userA = createUser();
     UUID userB = createUser();
     Space projectA =
-        new Space(
-            "Phoenix", "User A's project", SpaceKind.PROJECT, SpaceVisibility.PRIVATE, userA, org);
+        new Space("Phoenix", "User A's project", false, SpaceVisibility.PRIVATE, userA, org);
     projectA.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, org));
     Space projectB =
-        new Space(
-            "Phoenix", "User B's project", SpaceKind.PROJECT, SpaceVisibility.PRIVATE, userB, org);
+        new Space("Phoenix", "User B's project", false, SpaceVisibility.PRIVATE, userB, org);
     projectB.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, org));
 
     List<Space> saved = spaceRepository.saveAll(List.of(projectA, projectB));
@@ -185,12 +179,7 @@ class SpaceRepositoryTest {
     UUID nonExistentOwner = UUID.randomUUID();
     Space space =
         new Space(
-            "Ghost",
-            "Owner does not exist",
-            SpaceKind.PROJECT,
-            SpaceVisibility.PRIVATE,
-            nonExistentOwner,
-            org);
+            "Ghost", "Owner does not exist", false, SpaceVisibility.PRIVATE, nonExistentOwner, org);
 
     assertThatThrownBy(() -> spaceRepository.saveAndFlush(space))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -205,7 +194,7 @@ class SpaceRepositoryTest {
         new Space(
             "Ghost",
             "Organization does not exist",
-            SpaceKind.PROJECT,
+            false,
             SpaceVisibility.PRIVATE,
             owner,
             nonExistentOrganization);
@@ -216,8 +205,8 @@ class SpaceRepositoryTest {
   }
 
   @Test
-  void insertPersonalSpaceIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
-    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertPersonalSpaceIfAbsent's
+  void insertDefaultSpaceIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
+    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertDefaultSpaceIfAbsent's
     // Javadoc) only ever suppresses the one named partial unique index - a genuinely dangling
     // owner must still violate fk_spaces_owner exactly as the entity-based save above does, not be
     // silently swallowed as if it were a race loss.
@@ -239,7 +228,7 @@ class SpaceRepositoryTest {
             () ->
                 transactionTemplate.executeWithoutResult(
                     status ->
-                        spaceRepository.insertPersonalSpaceIfAbsent(
+                        spaceRepository.insertDefaultSpaceIfAbsent(
                             UUID.randomUUID(),
                             UUID.randomUUID(),
                             "Meine Dokumente",

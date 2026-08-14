@@ -123,7 +123,7 @@ export default function Sidebar() {
                     sx={{ borderRadius: 2, mb: 0.5 }}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>
-                      {space.kind === 'PERSONAL' ? (
+                      {space.isDefault ? (
                         <PersonIcon color="primary" fontSize="small" />
                       ) : (
                         <WorkspacesIcon fontSize="small" />

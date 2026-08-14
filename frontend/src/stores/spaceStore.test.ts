@@ -9,7 +9,7 @@ vi.mock('../services/api', () => ({
       id: 'space-project',
       name: 'Engineering',
       description: 'Eng docs',
-      kind: 'PROJECT',
+      isDefault: false,
       visibility: 'PRIVATE',
       memberCount: 2,
       userRole: 'ADMIN',
@@ -20,7 +20,7 @@ vi.mock('../services/api', () => ({
       id: 'space-personal',
       name: 'Meine Dokumente',
       description: 'Private',
-      kind: 'PERSONAL',
+      isDefault: true,
       visibility: 'PRIVATE',
       memberCount: 1,
       userRole: 'ADMIN',
@@ -32,7 +32,7 @@ vi.mock('../services/api', () => ({
     id: spaceId,
     name: 'Meine Dokumente',
     description: 'Private',
-    kind: 'PERSONAL',
+    isDefault: true,
     visibility: 'PRIVATE',
     ownerId: 'u1',
     memberCount: 1,
@@ -58,7 +58,7 @@ describe('spaceStore', () => {
     })
   })
 
-  it('sorts personal space first', async () => {
+  it('sorts the default space first', async () => {
     await useSpaceStore.getState().loadSpaces()
     const names = useSpaceStore.getState().spaces.map((space) => space.name)
     expect(names[0]).toBe('Meine Dokumente')
@@ -74,7 +74,7 @@ describe('spaceStore', () => {
       id: 'space-new',
       name: 'New Space',
       description: 'desc',
-      kind: 'PROJECT',
+      isDefault: false,
       visibility: 'PRIVATE',
       ownerId: 'u1',
       memberCount: 1,

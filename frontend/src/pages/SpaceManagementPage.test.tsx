@@ -51,7 +51,7 @@ const personalSpace: SpaceResponse = {
   id: 'space-personal',
   name: 'Meine Dokumente',
   description: 'Private docs',
-  kind: 'PERSONAL',
+  isDefault: true,
   visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 1,
@@ -66,7 +66,7 @@ const teamSpace: SpaceResponse = {
   id: 'space-team',
   name: 'Team',
   description: 'Team docs',
-  kind: 'TEAM',
+  isDefault: false,
   visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 2,
@@ -106,11 +106,12 @@ describe('SpaceManagementPage', () => {
     })
   })
 
-  it('shows personal space message and disables member management', () => {
+  it('hints that the default space is worked in alone, without blocking member management', () => {
+    // #333: the default space is an ordinary space. The hint explains the empty member list; it
+    // no longer means members are forbidden.
     setSpaceState(personalSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
-    expect(screen.getByText(/persönlicher space/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /mitglied hinzufügen/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', () => {
