@@ -418,3 +418,20 @@ def test_feed_faellt_auf_fliesstext_alter_reports_zurueck(report):
     alt["highlights"] = {}
     alt["summary"] = "Fließtext aus der alten Fassung."
     assert dr.feed_text(alt) == "Fließtext aus der alten Fassung."
+
+
+# --------------------------------------------------------------------------
+# Übersichtsseite
+# --------------------------------------------------------------------------
+
+
+def test_uebersicht_verlinkt_die_projektseite(report):
+    """Der Report liegt unter /report/, die Landing-Page eine Ebene darüber."""
+    seite = dr.render_index([report], report["repo"])
+    assert '<a href="../">Projektseite</a>' in seite
+
+
+def test_uebersicht_verlinkt_die_einzelreports_relativ(report):
+    """Relative Links, damit das Verschieben des Unterverzeichnisses nichts bricht."""
+    seite = dr.render_index([report], report["repo"])
+    assert f'href="reports/{report["date"]}.html"' in seite

@@ -1,0 +1,86 @@
+name: Landing Page
+
+# Veröffentlicht den Inhalt von page/ als Startseite der GitHub Page.
+#
+# Die Seite wird aus dem Branch gh-pages ausgeliefert (Pages-Quelle: Branch,
+# nicht Actions-Deploy), weil dort auch die Rohdaten des Tagesreports liegen,
+# aus denen dieser bei jedem Lauf sämtliche Seiten neu erzeugt. Beide
+# Workflows schreiben deshalb in denselben Branch, aber in getrennte Bereiche:
+# dieser hier das Wurzelverzeichnis, der Tagesreport ausschließlich report/.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "page/**"
+      - ".github/workflows/landing-page.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # Teilt die Gruppe mit dem Tagesreport: Beide committen auf gh-pages, ein
+  # paralleler Lauf würde beim Push gegeneinander laufen.
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Landing Page auschecken
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            page
+            .github/scripts
+          sparse-checkout-cone-mode: false
+          path: source
+
+      - name: Veröffentlichte Seite auschecken
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+        continue-on-error: true
+
+      - name: Seitenverzeichnis vorbereiten
+        run: mkdir -p site
+
+      - name: Altes Seitenlayout überführen
+        run: bash source/.github/scripts/migrate_pages_layout.sh site
+
+      - name: Landing Page übernehmen
+        run: |
+          # --delete räumt entfernte Dateien der Landing Page mit weg, lässt
+          # aber alles außerhalb von page/ unangetastet: report/ gehört dem
+          # Tagesreport, .git dem Branch selbst.
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'report/' \
+            --exclude '.nojekyll' \
+            source/page/ site/
+          # Ohne diese Datei schickt Pages die Seite durch Jekyll und
+          # unterschlägt dabei Verzeichnisse mit führendem Unterstrich.
+          touch site/.nojekyll
+
+      - name: Seite veröffentlichen
+        working-directory: site
+        run: |
+          if [ ! -d .git ]; then
+            git init -q
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "gh-pages" ]; then
+            git symbolic-ref HEAD refs/heads/gh-pages
+          fi
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Keine Änderungen zu veröffentlichen."
+            exit 0
+          fi
+          git commit -m "docs(page): Landing Page aktualisieren"
+          git push origin gh-pages

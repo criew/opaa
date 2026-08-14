@@ -21,7 +21,9 @@ permissions:
   actions: read
 
 concurrency:
-  group: daily-report
+  # Teilt die Gruppe mit der Landing Page: Beide committen auf gh-pages, ein
+  # paralleler Lauf würde beim Push gegeneinander laufen.
+  group: gh-pages
   cancel-in-progress: false
 
 jobs:
@@ -42,7 +44,10 @@ jobs:
         continue-on-error: true
 
       - name: Seitenverzeichnis vorbereiten
-        run: mkdir -p site
+        run: mkdir -p site/report
+
+      - name: Altes Seitenlayout überführen
+        run: bash .github/scripts/migrate_pages_layout.sh site
 
       - name: Zeitzonendaten bereitstellen
         run: python -m pip install --quiet tzdata
@@ -65,8 +70,11 @@ jobs:
           python .github/scripts/daily_report.py \
             --repo "${{ github.repository }}" \
             --date "${{ inputs.date }}" \
-            --output site \
-            --site-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+            --output site/report \
+            --site-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/report"
+
+      - name: Auslieferung ohne Jekyll sicherstellen
+        run: touch site/.nojekyll
 
       - name: Seite veröffentlichen
         working-directory: site
