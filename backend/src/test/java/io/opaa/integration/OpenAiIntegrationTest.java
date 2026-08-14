@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -31,6 +32,7 @@ import org.testcontainers.utility.DockerImageName;
  * variable is set.
  */
 @SpringBootTest
+@ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfEnvironmentVariable(named = "OPAA_OPENAI_API_KEY", matches = ".+")
 class OpenAiIntegrationTest {

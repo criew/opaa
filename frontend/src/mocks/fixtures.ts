@@ -8,7 +8,7 @@ import type {
   GroupListResponse,
   GroupResponse,
 } from '../types/api'
-import type { AuthConfig, AuthUser, LoginResponse } from '../types/auth'
+import type { AuthConfig, AuthUser } from '../types/auth'
 
 export const mockHealthResponse: HealthResponse = {
   status: 'UP',
@@ -205,12 +205,7 @@ export const mockErrorResponse = {
   timestamp: '2025-01-15T10:30:00Z',
 }
 
-export const mockAuthConfig: AuthConfig = { mode: 'mock' }
-
-export const mockLoginResponse: LoginResponse = {
-  accessToken: 'mock-jwt-token',
-  expiresIn: 3600,
-}
+export const mockAuthConfig: AuthConfig = { mode: 'dev' }
 
 export const mockUser: AuthUser = {
   id: 'mock-user-id',

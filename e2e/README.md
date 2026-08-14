@@ -79,48 +79,42 @@ npx playwright test   # ohne laufenden Stack
 
 Der Test schlägt mit `net::ERR_CONNECTION_REFUSED` fehl und legt Trace/Screenshot ab.
 
-## Warum `basic` statt `mock`-Auth?
+## Warum der `dev`-Auth-Modus?
 
-OPAA unterstützt drei Auth-Modi (`opaa.auth.mode`: `mock`, `basic`, `oidc`). Für die E2E-Suite
-wurde bewusst **`basic`** gewählt, nicht der Standard-Modus `mock`:
+OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
+[ADR-0005](../docs/decisions/0005-authentication-strategy.md)). Die Suite läuft auf **`dev`**:
 
-- `mock` ist im Backend nur als Frontend-Signal implementiert (`/api/v1/auth/config` meldet
-  `mode: mock`, das Frontend überspringt daraufhin die Login-Seite) — es aktiviert keinen
-  eigenen Security-/Controller-Satz. Die Fach-Controller (`WorkspaceController` usw.) sind mit
-  `@Profile({"oidc", "basic"})` annotiert und existieren ohne aktives Spring-Profil `basic`/`oidc`
-  gar nicht; ohne eines der beiden bleibt außerdem Spring Boots generische
-  Security-Auto-Konfiguration aktiv und blockt alle Anfragen. `mock` ist für den vollständig über
-  Docker Compose laufenden Stack der E2E-Suite also nicht nutzbar — siehe Issue "`mock`-Modus
-  funktionsfähig machen oder aus Default und Doku entfernen" für den zugrunde liegenden Produktmangel.
-- `oidc` bräuchte zusätzlich Keycloak (siehe `docker-compose.yml`, Profil `oidc`) — mehr
-  bewegliche Teile, mehr Startzeit, ohne zusätzlichen Testwert für dieses Grundgerüst.
-- `basic` ist der einfachste Modus, der tatsächlich End-to-End funktioniert: kein externer
-  Identity-Provider, ein fester Testnutzer in `e2e.env` (siehe `OPAA_AUTH_BASIC_USERNAME`/
-  `OPAA_AUTH_BASIC_PASSWORD`, keine echten Secrets), und er übt das echte Login-Formular
-  (`frontend/src/pages/LoginPage.tsx`) aus.
+- `dev` authentifiziert jede Anfrage als einen der unter `opaa.auth.dev.users` konfigurierten
+  Nutzer — ohne Anmeldevorgang, ohne Token, ohne Secret. Die Filterkette ist ansonsten identisch
+  zur produktiven OIDC-Konfiguration, die Suite übt also dieselben Autorisierungsregeln aus.
+- `oidc` bräuchte zusätzlich Keycloak (siehe `docker-compose.yml`, Profil `oidc`): ein weiterer
+  Container, der Realm-Import und der Weiterleitungsablauf des Autorisierungscode-Flusses im
+  Prüfpfad — mehr Fehlerquellen ohne Aussagewert für die Fachszenarien. Der Anmeldeablauf selbst
+  ist bewusst nicht Teil der Suite.
 
-`e2e/fixtures/auth.ts` kapselt den Login-Ablauf als einzigen wiederverwendbaren Baustein; künftige
-Szenarien nutzen die `authenticatedPage`-Fixture, statt die Anmeldung zu kopieren.
+`e2e/fixtures/auth.ts` kapselt die Nutzerwahl als einzigen wiederverwendbaren Baustein: Der
+Query-Parameter `?devUser=<subject>` wird beim Laden der Anwendung ausgewertet, für die Dauer der
+Browser-Session gemerkt und als Header `X-OPAA-Dev-User` an alle API-Aufrufe angehängt. Künftige
+Szenarien nutzen die Fixtures `authenticatedPage` bzw. `regularUserPage`, statt das zu kopieren.
 
-### Secret-Handling
+### Keine Secrets
 
-`e2e/e2e.env` enthält absichtlich **kein** `OPAA_AUTH_BASIC_SECRET`. `scripts/run-e2e.mjs` erzeugt
-pro Lauf ein zufälliges JWT-Signing-Secret (`crypto.randomBytes(32)`) und reicht es ausschließlich
-über die Prozessumgebung an `docker-compose.e2e.yml` durch, das es in den Backend-Container
-injiziert. Es landet nie in einer Datei. Username/Passwort des Testnutzers sind unkritisch (nur
-innerhalb des E2E-Stacks gültig) und bleiben deshalb statisch in `e2e.env`.
+Der `dev`-Modus kennt weder Anmeldedaten noch einen Signaturschlüssel. `e2e/e2e.env` ist deshalb
+vollständig frei von Secrets und bewusst in git eingecheckt; `scripts/run-e2e.mjs` erzeugt und
+reicht nichts Vertrauliches mehr durch.
 
-### Bekannte Einschränkung: nur ein Testnutzer
+### Zwei Testnutzer
 
-Das `basic`-Profil (`application.yml`) definiert `opaa.auth.basic.users` derzeit als Liste mit
-genau einem Eintrag, gespeist aus `OPAA_AUTH_BASIC_USERNAME`/`OPAA_AUTH_BASIC_PASSWORD`. Der
-E2E-Stack hat also aktuell nur den einen Testnutzer `e2e-user`, der zugleich über
-`OPAA_INITIAL_ADMIN_EMAIL=e2e-user@opaa.local` zum `SYSTEM_ADMIN` gemacht wird (nötig für
-Indexing-/Admin-Endpunkte). Ein **nicht**-administrativer Zweitnutzer lässt sich damit nicht ohne
-Produktivcode-Änderung abbilden. Szenarien, die einen nicht-privilegierten Nutzer brauchen (z. B.
-Berechtigungsprüfungen), brauchen dafür #260 (mehrere `opaa.auth.basic.users`-Einträge
-konfigurierbar machen) — als Voraussetzung an #232 Szenario 5 verlinkt — oder weichen auf
-Rollenwechsel innerhalb eines Workspace-Memberships aus.
+Der `dev`-Modus bringt zwei Nutzer mit (`backend/src/main/resources/application.yml`,
+`opaa.auth.dev.users`):
+
+| Subject | E-Mail | Rolle |
+|---------|--------|-------|
+| `dev-admin` | `admin@opaa.local` | `SYSTEM_ADMIN` (entspricht dem Standardwert von `opaa.auth.initial-admin-email`) |
+| `dev-user` | `dev-user@opaa.local` | regulärer Nutzer |
+
+Szenarien, die Berechtigungsgrenzen prüfen, verwenden dafür die Fixture `regularUserPage`. Die
+frühere Einschränkung auf einen einzigen Testnutzer (#260) besteht nicht mehr.
 
 ## Serialisierungs-Konvention
 
@@ -135,7 +129,7 @@ nicht selbst absichern; sie dürfen nur nicht versuchen, `test.describe.configur
 
 Für neue Assertions bevorzugt in dieser Reihenfolge:
 
-1. `getByRole` (z. B. `getByRole('button', { name: 'Anmelden' })`) — am robustesten, testet
+1. `getByRole` (z. B. `getByRole('button', { name: 'Neuer Chat' })`) — am robustesten, testet
    zugleich Zugänglichkeit.
 2. `getByLabel` für Formularfelder.
 3. `data-testid` für alles andere, das sich nicht sinnvoll über Rolle/Label fassen lässt.

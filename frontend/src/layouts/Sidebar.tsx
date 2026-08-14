@@ -38,7 +38,6 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const clearMessages = useChatStore((state) => state.clearMessages)
   const user = useAuthStore((s) => s.user)
-  const mode = useAuthStore((s) => s.mode)
   const logout = useAuthStore((s) => s.logout)
   const spaces = useSpaceStore((s) => s.spaces)
   const isLoadingSpaces = useSpaceStore((s) => s.isLoadingList)
@@ -226,7 +225,7 @@ export default function Sidebar() {
 
       <Box sx={{ flexGrow: 1 }} />
 
-      {mode !== 'mock' && user && (
+      {user && (
         <>
           <Divider />
           <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>

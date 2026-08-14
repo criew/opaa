@@ -24,18 +24,18 @@ class UserInfoControllerTest {
         Jwt.withTokenValue("token")
             .header("alg", "HS256")
             .claim("sub", "admin")
-            .claim("iss", "opaa-basic")
+            .claim("iss", "opaa-dev")
             .claim("email", "admin@opaa.local")
             .claim("name", "admin")
             .build();
-    User user = new User("admin", "opaa-basic", "admin@opaa.local", "admin");
+    User user = new User("admin", "opaa-dev", "admin@opaa.local", "admin");
 
-    when(userService.findOrCreateUser("admin", "opaa-basic", "admin@opaa.local", "admin"))
+    when(userService.findOrCreateUser("admin", "opaa-dev", "admin@opaa.local", "admin"))
         .thenReturn(user);
 
     var response = userInfoController.me(jwt);
 
-    verify(userService).findOrCreateUser("admin", "opaa-basic", "admin@opaa.local", "admin");
+    verify(userService).findOrCreateUser("admin", "opaa-dev", "admin@opaa.local", "admin");
     assertThat(response.getEmail()).isEqualTo("admin@opaa.local");
     assertThat(response.getDisplayName()).isEqualTo("admin");
     assertThat(response.getId()).isEqualTo(user.getId());

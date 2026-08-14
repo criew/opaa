@@ -96,7 +96,7 @@ describe('SpaceManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAuthStore.setState({
-      mode: 'mock',
+      mode: 'dev',
       isAuthenticated: true,
       isLoading: false,
       user: { id: 'u1', email: 'owner@opaa.local', displayName: 'Owner', systemRole: 'USER' },

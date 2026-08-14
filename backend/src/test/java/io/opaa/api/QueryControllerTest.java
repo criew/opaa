@@ -33,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(QueryController.class)
-@ActiveProfiles({"test", "basic"})
+@ActiveProfiles({"test", "dev"})
 @Import(TestSecurityConfig.class)
 class QueryControllerTest {
 

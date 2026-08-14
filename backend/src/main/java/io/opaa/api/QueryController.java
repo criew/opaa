@@ -6,7 +6,6 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.query.QueryService;
 import jakarta.validation.Valid;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-@Profile({"oidc", "basic"})
 @RestController
 @RequestMapping("/api/v1")
 public class QueryController {

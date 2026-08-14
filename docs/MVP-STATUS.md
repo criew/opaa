@@ -93,7 +93,7 @@ Dieses Dokument verfolgt den MVP-Implementierungsstatus für jeden großen Featu
 - Persönlicher Workspace für Uploads
 - Gesprächshistorie
 - Feedback-Buttons (Daumen hoch/runter für Antworten)
-- Benutzer-Authentifizierung (Mock + Echt)
+- Benutzer-Authentifizierung (OIDC; `dev`-Modus für Entwicklung und Tests)
 - Einstellungsseite (API-Token-Verwaltung)
 
 #### REST-API
@@ -126,7 +126,7 @@ Dieses Dokument verfolgt den MVP-Implementierungsstatus für jeden großen Featu
 **MVP-Umfang:**
 - Einzelner Workspace pro Deployment
 - Benutzerrolle: Owner/User/Viewer (Grundstufen)
-- Authentifizierung: Mock-Anbieter + SSO-bereite Architektur
+- Authentifizierung: OIDC/SSO (siehe [ADR-0005](decisions/0005-authentication-strategy.md))
 - Dokument-Zugangskontrolle (Berechtigungen von Quelle erben)
 - Grundlegende Autorisierungs-Checks auf API-Endpunkten
 

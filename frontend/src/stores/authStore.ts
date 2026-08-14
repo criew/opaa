@@ -1,52 +1,9 @@
 import { create } from 'zustand'
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { AuthMode, AuthUser } from '../types/auth'
-import { getAuthConfig, login as apiLogin, getMe } from '../services/authApi'
+import { getAuthConfig, getMe } from '../services/authApi'
+import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import { useSpaceStore } from './spaceStore'
-
-// Basic auth keeps token/user only in this app session storage entry.
-// OIDC persistence is handled separately by oidc-client-ts userStore.
-const BASIC_AUTH_SESSION_KEY = 'opaa.basicAuth.session'
-
-interface BasicAuthSession {
-  token: string
-  user: AuthUser
-}
-
-function saveBasicSession(session: BasicAuthSession): void {
-  sessionStorage.setItem(BASIC_AUTH_SESSION_KEY, JSON.stringify(session))
-}
-
-function loadBasicSession(): BasicAuthSession | null {
-  const raw = sessionStorage.getItem(BASIC_AUTH_SESSION_KEY)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<BasicAuthSession>
-    if (
-      typeof parsed.token === 'string' &&
-      parsed.user !== null &&
-      typeof parsed.user === 'object' &&
-      typeof (parsed.user as AuthUser).id === 'string'
-    ) {
-      return {
-        token: parsed.token,
-        user: parsed.user as AuthUser,
-      }
-    }
-  } catch {
-    // Ignore malformed session data and proceed unauthenticated.
-  }
-
-  sessionStorage.removeItem(BASIC_AUTH_SESSION_KEY)
-  return null
-}
-
-function clearBasicSession(): void {
-  sessionStorage.removeItem(BASIC_AUTH_SESSION_KEY)
-}
 
 interface AuthState {
   mode: AuthMode | null
@@ -58,7 +15,6 @@ interface AuthState {
   userManager: UserManager | null
 
   initialize: () => Promise<void>
-  loginBasic: (username: string, password: string) => Promise<void>
   loginOidc: () => Promise<void>
   handleOidcCallback: () => Promise<void>
   logout: () => Promise<void>
@@ -79,36 +35,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const config = await getAuthConfig()
       set({ mode: config.mode })
 
-      if (config.mode === 'mock') {
-        set({ isAuthenticated: true, isLoading: false })
-        return
-      }
-
-      if (config.mode === 'basic') {
-        const session = loadBasicSession()
-        if (!session) {
-          set({ isLoading: false })
-          return
-        }
-
-        try {
-          const me = await getMe(session.token)
-          saveBasicSession({ token: session.token, user: me })
-          set({
-            token: session.token,
-            user: me,
-            isAuthenticated: true,
-            isLoading: false,
-          })
-        } catch {
-          clearBasicSession()
-          set({
-            token: null,
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          })
-        }
+      if (config.mode === 'dev') {
+        // No login and no token: the backend authenticates every request as the selected dev
+        // user. The user is still fetched so the UI shows a real identity and system role.
+        resolveDevUser()
+        const me = await getMe(null)
+        set({ user: me, isAuthenticated: true, isLoading: false })
         return
       }
 
@@ -141,28 +73,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ isLoading: false })
     } catch {
-      clearBasicSession()
-      set({ mode: 'mock', isAuthenticated: true, isLoading: false })
-    }
-  },
-
-  loginBasic: async (username: string, password: string) => {
-    set({ isLoading: true, error: null })
-    try {
-      const response = await apiLogin({ username, password })
-      const me = await getMe(response.accessToken)
-      saveBasicSession({ token: response.accessToken, user: me })
+      // Deliberately no fallback to an authenticated-looking state: a failing
+      // /api/v1/auth/config used to leave the user in a signed-in-looking but entirely
+      // non-functional UI, because the backend kept rejecting every request. Surfacing the
+      // failure is the honest outcome.
       set({
-        token: response.accessToken,
-        user: me,
-        isAuthenticated: true,
+        mode: null,
+        user: null,
+        token: null,
+        isAuthenticated: false,
         isLoading: false,
-      })
-    } catch (err) {
-      clearBasicSession()
-      set({
-        error: err instanceof Error ? err.message : 'Anmeldung fehlgeschlagen',
-        isLoading: false,
+        error: 'Die Authentifizierungskonfiguration konnte nicht geladen werden.',
       })
     }
   },
@@ -199,7 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (mode === 'oidc' && userManager) {
       await userManager.signoutRedirect()
     }
-    clearBasicSession()
+    clearDevUser()
     useSpaceStore.getState().reset()
     set({
       token: null,
