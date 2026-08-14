@@ -355,7 +355,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 |---|---|---|---|
 | **Chunk-Größe** | 1000 Token **(gebaut)** | Wie lang eine in sich verständliche Sinneinheit im Bestand ist | Mehr Zusammenhang je Fundstelle, aber unschärfere Treffer und längere Belegauszüge |
 | **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
-| **Überlappung** | keine **(gebaut: 0)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
+| **Überlappung** | 100 Token **(gebaut)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
 | **`top-k`** | 5 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber mehr Fragen ohne Antwort — im Zitierzwang mehr Verweigerungen |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
@@ -369,10 +369,20 @@ Drei Zusammenhänge sind dabei wesentlich:
 2. **Die Ähnlichkeitsschwelle ist zugleich die Schwelle des Zitierzwangs.** Sie zu senken, um weniger
    Verweigerungen zu erzeugen, verschiebt das Problem: Die Antworten werden dann auf schwächere Belege
    gestützt. Genau deshalb wird eine Verweigerung ausdrücklich nicht als Störung gemessen.
-3. **Fehlende Überlappung ist heute die auffälligste Lücke.** Ohne sie kann eine Definition von ihrer
-   Überschrift getrennt werden, und der Beleg zeigt eine Passage, der ihr Bezug fehlt. Die Zielgröße
-   ist eine Überlappung im Bereich eines Zehntels der Chunk-Größe; die tatsächliche Wahl wird gegen
-   die Referenzfälle gemessen und nicht gesetzt.
+3. **Die Überlappung entscheidet, ob ein Beleg seinen Bezug behält.** Ohne sie kann eine Definition
+   von ihrer Überschrift getrennt werden, und der Beleg zeigt eine Passage, der ihr Bezug fehlt.
+   Jeder Chunk wiederholt deshalb die letzten 100 Token seines Vorgängers — ein Zehntel der
+   Chunk-Größe, gezählt in derselben Tokenisierung.
+
+   Dieser Wert ist **gesetzt, nicht gemessen**, und das ist eine bewusste Aussage: Der
+   Evaluierungskorpus taugt für diese Frage nicht. Er unterliegt der Ein-Chunk-Invariante aus
+   [ADR-0010](../decisions/0010-ein-chunk-invariante-evaluierungskorpus.md) — jedes seiner 1448
+   Dokumente ergibt genau einen Chunk. Wo es keine zweite Chunk-Grenze gibt, kann eine Überlappung
+   nichts bewirken. Läufe mit 0, 100 und 200 Token liefern folgerichtig über alle 121 Referenzfälle
+   identische Kennzahlen (Hit Rate@5 0,5207 · MRR 0,4608 · nDCG@10 0,4453 · Recall@10 0,4896, in
+   allen drei Läufen bis auf die letzte Stelle gleich). Eine belastbare Messung braucht Referenzfälle
+   an mehrchunkigen Dokumenten; solange die fehlen, ist die Wahl fachlich begründet und ausdrücklich
+   als ungemessen gekennzeichnet.
 
 Diese Werte sind **je Installation konfigurierbar**. Im Zielbild kommt eine Festlegung je
 Wissensbibliothek hinzu: Rechtsquellen, Besprechungsnotizen und Tabellenwerke vertragen nicht dieselbe
