@@ -3,7 +3,7 @@
 > **Status: Überholt — durch das Asset-Modell abgelöst. Nicht umsetzen.**
 >
 > Dieses Feature beschrieb, wie einzelne Dokumente über Workspace-Grenzen hinweg geteilt werden.
-> Mit [ADR-0008](../decisions/0008-space-and-asset-model.md) entfällt der Bedarf: Dokumente liegen
+> Mit dem [Space- und Asset-Modell](./spaces-and-assets.md) entfällt der Bedarf: Dokumente liegen
 > in **Wissensbibliotheken**, die eigenständige, teilbare Assets mit eigener Rechteliste sind.
 >
 > - Ein Bestand soll mehreren Teams zur Verfügung stehen → die **Bibliothek** wird in mehreren

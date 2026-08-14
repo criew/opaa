@@ -1,8 +1,8 @@
 # Discussion: Workspace-Konzept und Berechtigungsmodell
 
 > **Status: Historisch — die hier festgehaltenen Entscheidungen sind durch das Space- und
-> Asset-Modell abgelöst.** Maßgeblich sind [ADR-0008](../decisions/0008-space-and-asset-model.md)
-> und [Spaces, Assets & Zugangskontrolle](../features/spaces-and-assets.md).
+> Asset-Modell abgelöst.** Maßgeblich ist
+> [Spaces, Assets & Zugangskontrolle](../features/spaces-and-assets.md).
 > Was von den damaligen Festlegungen trägt und was fiel, steht in
 > [Abschnitt 9](#9-nachtrag-was-vom-workspace-konzept-bleibt) am Ende dieses Dokuments.
 > Der übrige Text bleibt unverändert, damit die Entscheidungsgeschichte nachvollziehbar ist.
@@ -304,7 +304,7 @@ Außerdem in Abschnitt 7 verschoben:
 
 ## 9. Nachtrag: Was vom Workspace-Konzept bleibt
 
-Ergänzt nach der Entscheidung für das Space- und Asset-Modell ([ADR-0008](../decisions/0008-space-and-asset-model.md)).
+Ergänzt nach der Entscheidung für das [Space- und Asset-Modell](../features/spaces-and-assets.md).
 
 ### Was trägt
 

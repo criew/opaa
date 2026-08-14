@@ -806,6 +806,55 @@ Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 
 ---
 
+## Geprüfte und verworfene Alternativen
+
+Dieser Abschnitt hält fest, welche naheliegenden Modelle geprüft und aus welchem Grund verworfen wurden. Er steht hier, damit ein bereits entschiedener Punkt nicht in einem halben Jahr erneut als neue Idee auftaucht. Die Hauptlast des gewählten Modells ist bekannt und in Kauf genommen: **Zwei Rechtelogiken müssen nebeneinander verstanden werden** — ein Space-Admin darf das Regal umräumen, aber nicht die Bücher lesen.
+
+### Wie andere Systeme Container und geteiltes Objekt zueinander stellen
+
+Die entscheidende Frage ist, was passiert, wenn ein Objekt in mehreren Containern mit unterschiedlichen Rechten liegt. Vier Systeme wurden untersucht:
+
+| System | Container | Objekt in mehreren Containern? | Rechteanker |
+|---|---|---|---|
+| **Confluence** | Space | Nein — eine Seite liegt in genau einem Space | Space-Permission ist der Boden; Page-Restriction kann nur **einschränken**, nie erweitern |
+| **Notion** | Teamspace / Parent-Page | Nein — genau ein Parent; Verschieben ändert Rechte, Duplizieren erzeugt eine Kopie | Parent vererbt, Objekt kann überschreiben; Einladungen sind additiv |
+| **Langdock** | — | Container ist **nicht rechtetragend** | Assistants und Knowledge Folders tragen eigene Freigabelisten; Ordner sind Bibliotheksordnung, keine Rechteträger |
+| **Glean** | Collections | Ja, aber ohne Rechtewirkung | Per-Dokument-Rechte aus dem Quellsystem, zur Abfragezeit geprüft; Collections sind reine Kuratierung |
+
+**Kein einziges dieser Systeme kennt „Objekt liegt in mehreren rechtetragenden Containern".** Entweder es gibt genau einen rechtetragenden Container (Confluence, Notion) oder gar keinen (Langdock, Glean). Die naheliegende Kombination — mehrere Container, jeder rechtetragend — hat kein Vorbild und erzeugt Fragen, die niemand sonst beantworten musste: Welcher Container gewinnt bei widersprüchlichen Rechten? Darf jemand durch Hinzufügen zu einem Container Rechte verteilen, die er selbst nicht vergeben dürfte?
+
+Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — es wendet beide an, auf verschiedene Objektklassen: Für **Assets** gilt das Langdock/Glean-Muster (der Container trägt keine Rechte), für **space-eigene Inhalte** das Confluence-Muster (der Container trägt die Rechte). Die Trennlinie ist die Entstehung.
+
+### Rechtemodell
+
+- **Vereinigung — Space-Mitgliedschaft gewährt automatisch Asset-Rechte.** Bequem und intuitiv, aber ein Kurator könnte ein Asset, das ihm nicht gehört, in einen großen Space hängen und damit dessen Mitgliedern Zugriff verschaffen. Confluence verbietet genau diese Richtung ausdrücklich.
+- **Schnittmenge — Space-Rolle und Asset-Recht müssen beide erlauben.** Scheitert an der Mehrfachzuordnung (welcher Space ist maßgeblich, wenn das Asset in zweien mit unterschiedlichen Rollen liegt) und zerstört das direkte Teilen ohne gemeinsamen Space.
+- **Assoziation mit explizitem, gedeckeltem Grant.** Sicher, aber sie verlangt bei jeder Zuordnung eine zusätzliche Entscheidung durch den Asset-Verantwortlichen. Zugunsten des einfacheren und strikteren Modells verworfen.
+- **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, organisationsweit — kombiniert mit `visibility` und `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
+- **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Projekt-Space wären für die Projektmitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
+
+### Sichtbarkeit und Ableitungsleck
+
+- **Chats automatisch space-sichtbar.** Zunächst so entschieden, dann revidiert. Die Regel war einfach und vorhersagbar, erzeugte aber Ausweichverhalten: Gearbeitet wird dann im persönlichen Space oder außerhalb des Systems, und in den gemeinsamen Raum wandert nur das Vorzeigbare. Sie war zudem der einzige Grund für das Ableitungsleck in seiner scharfen Form und für die halbe Kennzeichnungsmaschinerie. Der Preis der Revision ist der Tausch automatischer gegen freiwillige Transparenz — ein Chat, den niemand ablegt, ist für die Organisation nicht vorhanden. Deshalb muss das Ablegen ein Klick sein.
+- **Harte Invariante: Bibliothek nur assoziierbar, wenn alle Space-Mitglieder Lesezugriff haben.** Das ist der Strikt-Modus als Pflicht. Drei Gründe gegen die Pflichtform: Sie hängt von einer Größe ab, die sich außerhalb des Systems ändert (eine Verzeichnissynchronisation bricht sie bei jedem Referatswechsel), sie lässt bei Verletzung nur schlechte Optionen (Assoziationen automatisch lösen, Mitglieder entfernen oder den Zustand dulden), und sie macht referatsübergreifende Projekt-Spaces — den eigentlichen Anwendungsfall — entweder unmöglich oder erzwingt die Vollfreigabe aller Bestände an alle Beteiligten. Als wählbarer [Strikt-Modus](#der-strikt-modus) bleibt sie erhalten.
+- **Zitat-Redaktion beim Lesen.** Verworfen als unvollständig, nicht bloß aufwendig: Der Antworttext trägt die Information weiter, und ein je Leser unterschiedlicher Verlauf zerstört den gemeinsamen Arbeitsraum. Siehe [Warum Zitat-Redaktion weiterhin nicht gebaut wird](#warum-zitat-redaktion-weiterhin-nicht-gebaut-wird).
+- **Agent liest mit eigenen Rechten (Rechtedelegation).** Zunächst als admin-aktivierbare Ausnahme vorgesehen, dann vollständig verworfen. Mit der [Freigabekette](#einen-agenten-weitergeben-die-freigabekette) gibt es bereits einen Weg, auf dem ein geteilter Agent beim Empfänger funktioniert; ein zweiter wäre redundant und zugleich der riskantere von beiden. Bewusst in Kauf genommen: Ein Agent, dessen Wissen nicht freigegeben werden darf, ist nicht teilbar.
+
+### Verteilung von Assets
+
+- **Kopie beim Verteilen.** Sie ist der Grund, warum heute veraltete Prompt-Fassungen per Mail kursieren. Verteilt wird per Referenz.
+- **Automatisches Zusammenführen von Abkömmling und Original.** Bei frei formulierten Aufgabenbeschreibungen ist ein verlässliches Zusammenführen nicht möglich; ein unzuverlässiges wäre schlimmer als keines. Der Verantwortliche sieht die Änderungen und entscheidet selbst.
+- **Abkömmling bei Deaktivierung des Originals sofort mitdeaktivieren.** Zu hart — es bricht die Arbeit einer Einheit zu einem willkürlichen Zeitpunkt ab. Stattdessen Prüfaufforderung mit Frist und automatischer Deaktivierung erst danach.
+- **Nur benachrichtigen, wenn das Original deaktiviert wird.** Zu schwach — genau dieser Fall (überholtes Original gesperrt, Abkömmling läuft unbemerkt weiter) ist der gefährlichste.
+- **Verfall — automatisches Löschen von Assets ohne Zuständigkeit.** In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter geklärter Einschränkung. Siehe [Eigentümerschaft und Verwaisung](#eigentümerschaft-und-verwaisung).
+
+### Protokollierung
+
+- **Die Rechtemenge je Abfrage mitschreiben.** Verworfen zugunsten der Historisierung von Grants und Gruppenmitgliedschaften: Das Mitschreiben erweitert das Protokoll um erhebliche personenbezogene Daten und bliebe trotzdem lückenanfällig. Die Prüferfrage ist die **Negativfrage** („belegen Sie, dass Frau K. am 3. März keinen Zugriff hatte"), und die kann ein Ereignisprotokoll nicht beantworten.
+- **Abschaltbare personenbezogene Auswertung.** Verworfen zugunsten des vollständigen Verzichts: Eine abschaltbare Statistik schützt nicht, weil das Audit-Log denselben Sachverhalt unabhängig davon erhebt und was heute aus ist, morgen an sein kann — mit rückwirkend auswertbaren Daten. Siehe [Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad).
+
+---
+
 ## Offene Punkte
 
 - Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art und für die Mindestgruppengröße bei Auswertungen.
@@ -819,7 +868,6 @@ Ausdrücklich zugesagt und nicht nur als Nebenwirkung gemeint:
 
 ## Verwandte Dokumente
 
-- [ADR-0008: Space- und Asset-Modell](../decisions/0008-space-and-asset-model.md) — Entscheidung mit Optionen und Konsequenzen
 - [Zugangskontrolle](./access-control.md) — Systemverwaltung, Nutzerverwaltung, Audit und Compliance
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
 - [Diskussion: Workspace-Konzept](../discussions/discussion-workspace-concept.md) — Vorgeschichte und abgelöste Annahmen
