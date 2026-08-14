@@ -796,6 +796,20 @@ Aktualisierung ohne Paketquellen im Netz, eine Software-Stückliste zum Mitliefe
 
 ---
 
+### Cloud-Deployment
+
+Der Betrieb auf gemieteter Infrastruktur eines Anbieters statt im eigenen Rechenzentrum. Technisch ist es
+dieselbe Installation an einem anderen Ort; der Unterschied liegt darin, wer die Maschinen betreibt, auf
+denen die Daten liegen.
+
+**Ob das im Zielbild bleibt, ist offen.** Die bisherige Dokumentation nennt es als eine von drei
+Betriebsformen. Das steht in Spannung zum Betrieb im eigenen Haus als Standard und zur Betriebsfähigkeit
+ohne Netzanbindung — und für einen erheblichen Teil der Verwaltungsdaten ist es rechtlich ohnehin
+ausgeschlossen. Die Frage wird in [#350](https://github.com/criew/opaa/issues/350) geklärt und ist hier
+bewusst nicht vorweggenommen.
+
+---
+
 ### Container / Docker
 
 Eine Methode, OPAA mit allen Abhängigkeiten so zu verpacken, dass es überall gleich läuft.
