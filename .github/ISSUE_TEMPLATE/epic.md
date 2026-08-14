@@ -12,15 +12,21 @@ Einleitungsabsatz: Was dieses Epic liefert und warum jetzt.
 
 Links zu den Feature-Spezifikationen in `docs/features/` und etwaigen Diskussionsdokumenten in `docs/discussions/`.
 
-### Tickets
+### Phasen
 
-<!-- Nach Phasen gruppieren. Größe in Klammern angeben. Abhaken, wenn Child-Issues geschlossen werden. -->
+<!--
+Die Tickets selbst werden als Sub-Issues eingetragen (Seitenleiste „Create sub-issue"
+bzw. bestehendes Issue verknüpfen), nicht als Checkliste im Body. GitHub führt damit
+Status und Fortschritt selbst; der Tagesreport liest dieselbe Beziehung.
 
-**Phase 1 — <name>**
-- [ ] #N — `feat(scope): ...` (M)
+Hier steht nur, was die Sub-Issue-Liste nicht ausdrücken kann: warum in dieser
+Reihenfolge geschnitten wurde. Die Reihenfolge der Sub-Issues lässt sich passend
+sortieren.
+-->
 
-**Phase 2 — <name>**
-- [ ] #N — `feat(scope): ...` (S)
+**Phase 1 — <name>.** Was diese Phase liefert und warum sie zuerst kommt.
+
+**Phase 2 — <name>.** Worauf sie aufbaut.
 
 ### Abhängigkeiten
 

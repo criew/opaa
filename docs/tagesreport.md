@@ -87,33 +87,36 @@ vorgegeben. Es liefert nur die Stichpunkte, und zwar strukturiert je Abschnitt,
 damit sie dem richtigen Epic zugeordnet werden können. Damit bleibt der Aufbau
 von Tag zu Tag gleich und die Zahlen stammen nicht aus einer Schätzung.
 
-Die Zuordnung stützt sich auf die Ticketliste im Body des Epic-Issues, da
-native Sub-Issues im Repository nicht verwendet werden:
+Die Zuordnung stützt sich auf die **Sub-Issues** des Epics — die von GitHub
+selbst gepflegte Eltern-Kind-Beziehung:
 
 | Schritt | Grundlage |
 | --- | --- |
 | Epics finden | Issues mit dem Label `epic` |
-| Tickets zuordnen | Checklisteneinträge `- [ ] #123 titel` im Body des Epics |
+| Tickets zuordnen | die Sub-Issues des Epics (GraphQL `subIssues`) |
 | Pull Requests zuordnen | die von GitHub verknüpften Issues (`closingIssuesReferences`) |
-| Fortschritt | Anteil geschlossener Tickets der Liste |
+| Fortschritt | Anteil geschlossener Sub-Issues |
 
-Damit ein Ticket erkannt wird, muss die Nummer **unmittelbar** auf die Checkbox
-folgen, so wie es die [Epic-Vorlage](../.github/ISSUE_TEMPLATE/epic.md) vorsieht.
-Eine Nummer im Fließtext ist ein Querverweis, kein Ticket. Zusätzlich muss die
-Nummer zu einem existierenden Issue gehören, und Epics zählen nicht als Tickets
-anderer Epics.
+Ein Epic zählt nicht als Ticket eines anderen Epics — es bekommt einen eigenen
+Abschnitt. Sub-Issues aus anderen Repositories werden verworfen, weil ihre
+Nummer hier mehrdeutig wäre.
 
-Diese Genauigkeit ist nötig, weil `#N` in Markdown mehrdeutig ist: Epic #60
-nummeriert seine Befunde als `- [ ] **#1 CORS Wildcard Headers**`. Ohne die
-Bedingung würde daraus ein Epic mit zwanzig erfundenen Tickets.
+Weder Epic-Body noch PR-Body werden nach `#N` durchsucht: Beschreibungen
+enthalten Zeichenfolgen wie `Closes #221` auch als Beispiel oder Zitat, und
+Epic #60 nummeriert seine Befunde als `**#1 CORS Wildcard Headers**`. Maßgeblich
+ist allein die Verknüpfung, die GitHub führt.
 
-Aus demselben Grund wird für Pull Requests **nicht** der Body ausgewertet:
-Beschreibungen enthalten Zeichenfolgen wie `Closes #221` auch als Beispiel oder
-Zitat. Maßgeblich ist allein die Verknüpfung, die GitHub selbst pflegt.
+**Rückfall auf die Ticketliste.** Hat ein Epic keine Sub-Issues, wertet das
+Skript ersatzweise Checklisteneinträge `- [ ] #123 titel` in seinem Body aus und
+vermerkt das im Protokoll des Laufs. Das war die frühere Grundlage und hält
+einen Reporttag am Leben, wenn ein neues Epic die Sub-Issues noch nicht gesetzt
+hat. Die Nummer muss dabei unmittelbar auf die Checkbox folgen und zu einem
+existierenden Issue gehören — sonst würden aus den zwanzig Befundmarkern von
+Epic #60 zwanzig erfundene Tickets.
 
-Ein Vorgang, der in keiner Ticketliste steht, wird **nicht** geraten, sondern
-unter „ohne Epic-Bezug" geführt. Wer die Zuordnung verbessern will, trägt die
-Ticketnummer im Epic nach; der nächste Lauf greift sie auf.
+Ein Vorgang, der zu keinem Epic gehört, wird **nicht** geraten, sondern unter
+„Sonstiges" geführt. Wer die Zuordnung verbessern will, trägt das Ticket im
+Epic als Sub-Issue nach; der nächste Lauf greift es auf.
 
 ## Aufbau
 
