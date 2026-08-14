@@ -109,6 +109,31 @@ des Musters „anders als X" oder „statt X". Eine Abgrenzung wird mit dem Sach
 in einer Behörde nicht taugt, nicht wer es sonst anbietet. Ein generischer Vergleich mit einer
 Produktkategorie („gehostete Dienste") ist zulässig, solange er keine Firma erkennbar macht.
 
+Unzulässig ist damit die Nennung **zur Positionierung**: ein Name, der OPAA einordnet, besser aussehen
+lässt, eine Marktlage beschreibt oder einen Kaufgrund liefert. Das gilt für jedes Material, das jemand
+liest, um sich ein Bild von OPAA zu machen — Landing-Page, Pitch, One-Pager, Einstieg im Repository,
+Vision.
+
+Zulässig ist die Nennung als **nachprüfbarer Sachbeleg**. Stellt ein Dokument eine technische Behauptung
+über ein fremdes System auf, die den eigenen Entwurf trägt, gehört der Name zum Beleg: Anonymisiert wäre
+die Aussage nicht mehr nachprüfbar und damit wertlos. So belegt die Vorbild-Analyse in
+[features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-andere-systeme-container-und-geteiltes-objekt-zueinander-stellen),
+dass die gewählte Rechtekonstruktion in keinem der untersuchten Systeme ein Vorbild hat — genau das
+verhindert, dass ein entschiedener Punkt in einem halben Jahr als neue Idee wiederkommt. Ebenfalls
+zulässig sind Namen als **Arbeitsanweisung an eine interne Rolle**, etwa als Startpunkt einer Recherche
+in `agents/roles/`; das ist kein Text über OPAA. Namen von Bausteinen des eigenen Stacks, von Modellen
+und von Quellsystemen, die OPAA anbindet, sind keine Mitbewerbernennung und von dieser Regel nicht
+berührt.
+
+Drei Fragen entscheiden den Einzelfall. Nur wenn alle drei zugunsten des Namens ausfallen, bleibt er:
+
+1. **Wozu steht der Name da?** Um OPAA einzuordnen oder zu empfehlen — dann streichen. Um eine konkrete
+   Behauptung über ein fremdes System nachprüfbar zu machen — dann bleibt er.
+2. **Was passiert, wenn man ihn entfernt?** Bleibt die Aussage richtig und nachprüfbar, war der Name
+   entbehrlich. Verliert sie ihre Nachprüfbarkeit, ist er Teil des Belegs.
+3. **Wer liest die Stelle?** Steht sie in einem Dokument, das jemand liest, um OPAA zu bewerten oder zu
+   beschaffen, ist der Name unzulässig — auch dann, wenn er sachlich zuträfe.
+
 **Keine Beteiligten.** Keine Namen von Personen, Unternehmen, Beratungen oder Partnern; keine Aussagen
 darüber, wer an OPAA mitarbeitet, es finanziert oder vertreibt.
 
