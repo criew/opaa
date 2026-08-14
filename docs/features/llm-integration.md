@@ -1,449 +1,393 @@
-# LLM-Integration
+# Modelle und zentrale Steuerung
+
+> **Status: Entwurf — wesentliche offene Fragen verbleiben.**
+
+**Themenbereich E** der [Produktvision](../VISION.md). **Phasenlage:** Modellverwaltung, Vorrang eigener
+Modelle, Vorgaben als Obergrenze, Voreinstellungen je Aufgabe und der Schutz vor Weitergabe
+personenbezogener Daten gehören in **Phase 1**. Sie sind die Voraussetzung dafür, dass eine Behörde OPAA
+überhaupt in Betrieb nehmen kann — nicht ein späterer Ausbau.
 
 ## Motivation
 
-Die Qualität von OPAAs Antworten hängt nicht nur davon ab, die richtigen Dokumente zu finden, sondern auch davon, wie diese Dokumente zur Antwortgenerierung verwendet werden. Verschiedene Organisationen haben unterschiedliche Anforderungen:
+Die Frage, welches Sprachmodell antwortet, ist in der öffentlichen Verwaltung keine
+Geschmacksentscheidung. Steuerdaten dürfen das Haus nicht in eine fremde Cloud verlassen; Sozialdaten
+und Personalvorgänge ebenso wenig. Zugleich soll eine Sachbearbeiterin nicht vor einer Auswahlliste
+sitzen, deren Einträge sie fachlich nicht beurteilen kann.
 
-- Einige möchten die neuesten Modelle von OpenAI für maximale Fähigkeit nutzen
-- Einige benötigen Open-Source-Modelle für Datenschutz und Kosten
-- Einige erfordern spezifische Modellversionen für Compliance
-- Einige möchten Anbieter wechseln, ohne Code neu zu schreiben
+Die bisherige Fassung dieser Spezifikation ging vom Gegenteil aus: Anbieter seien gleichwertig,
+Cloud-Modelle die Regel, die Konfiguration eine Sache von Umgebungsvariablen beim Aufsetzen. Das trägt
+nicht. Es fehlen drei Dinge:
 
-Dieses Feature stellt sicher, dass OPAA modell-agnostisch und zum Deployment-Zeitpunkt vollständig konfigurierbar ist.
+1. **Modelle müssen verwaltbar sein**, nicht in der Konfiguration eines Dienstes verdrahtet — mit
+   Eigenschaften, Zuständigkeit und Freigabestatus.
+2. **Eigene, lokal betriebene Modelle sind der Standard.** Ein Cloud-Modell ist die begründete Ausnahme,
+   die eine Behörde ausdrücklich erlaubt.
+3. **Eine Beschränkung muss an den Daten hängen**, nicht am Arbeitsraum. Eine Regel, die sich durch einen
+   Raumwechsel umgehen lässt, ist keine.
+
+Dieses Dokument beschreibt die Modellverwaltung und die zentrale Steuerung, die daraus folgt — und
+zugleich den zweiten Hebel der Verteilbarkeit: Was einmal zentral festgelegt ist, gilt überall, ohne dass
+irgendein Team seine Agenten anfassen muss.
 
 ---
 
 ## Überblick
 
-OPAAs LLM-Integration bietet:
-
-1. **Modell-Flexibilität** — Unterstützung für mehrere LLM-Anbieter und -Modelle
-2. **Konfiguration beim Deployment** — Modelle über Umgebungsvariablen wählen, keine Code-Änderungen
-3. **Anbieter-Abstraktion** — Anbieter wechseln ohne Anwendungsänderungen
-4. **Erweiterte Fähigkeiten** — Streaming-Antworten, Function Calling, Embeddings
-5. **Kosten- & Leistungsoptimierung** — Verschiedene Modelle für verschiedene Aufgaben verwenden
+1. **Modelle sind verwaltete Objekte**, keine Konfigurationszeilen. Sie werden hinterlegt, beschrieben,
+   freigegeben, ersetzt und abgeschaltet.
+2. **Lokal betriebene Modelle sind die Voreinstellung.** Ohne ausdrückliche Freigabe der Behörde ist kein
+   Aufruf außerhalb des Hauses möglich; der Betrieb ohne Netzanbindung ist vorgesehen, nicht behelfsweise.
+3. **Vorgaben wirken ausschließlich als Obergrenze.** Es gilt immer die restriktivste Festlegung aus
+   Systemvorgabe, Space, den beteiligten Wissensbibliotheken und dem eingesetzten Agenten. **Keine Ebene
+   kann erweitern, was eine andere eingeschränkt hat.**
+4. **Datenschutzrelevante Beschränkungen hängen an den Daten.** Eine Wissensbibliothek führt ihre Vorgabe
+   „nur lokale Modelle" selbst mit sich, unabhängig davon, wer wo fragt.
+5. **Je Aufgabe gibt es eine Voreinstellung** — Antwort, Einbettung, Reranking, Zusammenfassung,
+   Klassifizierung — samt Parametern. Nutzende bekommen eine sinnvolle Vorgabe statt einer Auswahl.
+6. **Mehrere Modelle nebeneinander sind der Normalfall**, weil die Aufgaben verschiedene Eigenschaften
+   verlangen.
+7. **Personenbezogene Daten werden vor der Weitergabe an ein Modell außerhalb des Hauses geprüft** — und
+   im Zweifel wird der Aufruf verweigert statt bereinigt.
+8. **Eine zentrale Änderung wirkt sofort überall**, ohne Nacharbeit in Spaces und Agenten.
 
 ---
 
-## Unterstützte LLM-Anbieter
+## Modellverwaltung
 
-### OpenAI-kompatible APIs
+### Der Modelleintrag
 
-Jeder Anbieter, der den OpenAI-API-Standard implementiert, wird unterstützt:
+Ein Modell ist ein verwaltetes Objekt mit Eigenschaften, das die Systemverwaltung anlegt und pflegt. Der
+Eintrag hält, was für Auswahl, Vorgabe und Nachweis gebraucht wird:
 
-**Primäre Anbieter:**
-- **OpenAI** (GPT-4, GPT-3.5-turbo)
-- **Azure OpenAI** (verwaltetes OpenAI in Azure)
-- **Anthropic Claude** (über Claude API)
-- **Open-Source über OpenAI-kompatible Server:**
-  - Ollama (lokal)
-  - LM Studio (lokal)
-  - Text Generation WebUI (lokal)
-  - vLLM (selbst gehostet)
-  - LocalAI (lokal)
+| Angabe | Wozu |
+|---|---|
+| Bezeichnung und Zweck | wofür das Modell im Haus vorgesehen ist, in Fachsprache |
+| Betriebsart | im eigenen Haus betrieben, im eigenen Rechenzentrumsverbund, oder außerhalb |
+| Endpunkt und Zugangsdaten | technische Anbindung |
+| Aufgabenarten | Antwort, Einbettung, Reranking, Bildverständnis |
+| Fähigkeiten | Kontextlänge, Werkzeugaufrufe, Bild- und Handschriftenverständnis, unterstützte Sprachen |
+| Freigabestatus | freigegeben, eingeschränkt freigegeben, gesperrt |
+| Datenklassen | welche Schutzstufen mit diesem Modell verarbeitet werden dürfen |
+| Zuständigkeit | wer im Haus für dieses Modell einsteht |
+| Stand und Nachfolge | wann eingeführt, wodurch ersetzt |
 
-**Warum OpenAI-kompatibel?**
-- De-facto-Standard für LLM-APIs
-- Gleiche Schnittstelle über viele Anbieter
-- Minimale Abstraktionsschicht
-- Einfach für Entwickler zu verstehen
+Die technische Anbindung erfolgt über eine **OpenAI-kompatible Schnittstelle**. Das ist hier eine
+Protokollbezeichnung und keine Aussage über einen Anbieter: Lokal betriebene Modellserver stellen
+dieselbe Schnittstelle bereit, weshalb sich Modelle unterschiedlicher Herkunft ohne
+Anwendungsänderung anbinden lassen.
 
-### Konfigurationsmuster
+Was bewusst **nicht** stattfindet: eine Empfehlung bestimmter Modelle oder Anbieter durch das Produkt.
+Welche Modelle geeignet und zulässig sind, entscheidet die Behörde; OPAA liefert dafür die Verwaltung,
+die Vorgaben und die Messbarkeit (siehe [Suchqualität](./search-quality-evaluation.md)).
 
-Alle LLM-Anbieter identisch konfiguriert:
+### Eigene Modelle zuerst
+
+Die Grundeinstellung einer Installation ist: **Es sind nur Modelle nutzbar, die im eigenen Haus oder im
+eigenen Rechenzentrumsverbund betrieben werden.**
+
+Ein Modell außerhalb wird erst nutzbar, wenn die Behörde es ausdrücklich erlaubt. Diese Erlaubnis ist
+ein Verwaltungsvorgang mit Zuständigem, Zeitpunkt und Begründung — kein Häkchen, das beiläufig gesetzt
+wird — und sie steht im Protokoll.
+
+Daraus folgen drei Eigenschaften, die zusammengehören:
+
+- **Betrieb ohne Netzanbindung ist der vorgesehene Fall**, nicht der Notbetrieb. Es gibt keine Fähigkeit,
+  die zwingend einen Aufruf nach außen verlangt. Fähigkeiten, die nur bestimmte Modelle mitbringen —
+  etwa Handschriftenverständnis —, entfallen dann sichtbar, statt heimlich ersetzt zu werden.
+- **Kein automatisches Ausweichen nach außen.** Ist das vorgesehene Modell nicht verfügbar, wird nicht
+  auf ein Cloud-Modell umgeschaltet. Ein Ausweichweg bleibt immer innerhalb dessen, was die Vorgaben für
+  den konkreten Vorgang zulassen.
+- **Keine automatische Auswahl des jeweils stärksten Modells.** Ein Verfahren, das je nach Frage das
+  beste verfügbare Modell wählt, führt genau an dem Punkt nach außen, an dem es fachlich anspruchsvoll
+  wird — und das ist regelmäßig der Punkt mit den schutzbedürftigsten Daten.
+
+---
+
+## Vorgaben als Obergrenze
+
+### Die Verrechnungsregel
+
+Vier Ebenen können festlegen, welche Modelle für einen Vorgang zulässig sind. Sie werden **geschnitten**,
+nie vereinigt:
 
 ```
-LLM_PROVIDER: "openai"           # oder "anthropic", "azure", "custom"
-LLM_API_KEY: "${OPENAI_API_KEY}"
-LLM_API_BASE: "https://api.openai.com/v1"  # kann jeder OpenAI-kompatible Endpunkt sein
-LLM_MODEL: "gpt-4"
+erlaubte Modelle = Systemvorgabe
+                 ∩ Vorgabe des Space
+                 ∩ Vorgabe jeder Wissensbibliothek im Suchbereich
+                 ∩ Vorgabe des eingesetzten Agenten
 ```
 
-### Modellauswahlkriterien
+Dieselbe Regel gilt für die übrigen Vorgaben, die an Modelle gebunden sind — zulässige Werkzeuge,
+Weitergabe nach außen, Zitierzwang. Es gibt genau eine Richtung: **Jede Ebene kann verschärfen, keine
+kann lockern.**
 
-Organisationen sollten basierend auf Folgendem wählen:
+Der Vorteil ist, dass sich die Frage „warum wurde hier dieses Modell verwendet?" immer beantworten lässt,
+und zwar ohne Kenntnis der Reihenfolge, in der die Einstellungen entstanden sind. Der Preis ist, dass
+eine einzelne strenge Bibliothek einen ganzen Vorgang einschränken kann — und genau das ist beabsichtigt.
 
-| Faktor | Überlegung |
-|--------|------------|
-| **Fähigkeit** | GPT-4 > GPT-3.5 > Open-Source-Modelle; basierend auf Antwortqualitätsbedarf wählen |
-| **Kosten** | Open-Source/Llama günstiger; GPT-4 teurer; Embedding-Modelle günstigste |
-| **Datenschutz** | Lokale Modelle am besten; on-premises vLLM gut; Cloud-Anbieter wenn Datenweitergabe OK |
-| **Geschwindigkeit** | GPT-3.5 < 2 s; Ollama variiert je nach Hardware; muss SLA erfüllen |
-| **Compliance** | Manche Branchen erfordern spezifische Modelle oder nur on-premises |
+Eine **Erklärung ist Teil der Antwort**: Nutzende können einsehen, welches Modell verwendet wurde und
+welche Ebene die Auswahl begrenzt hat. Ohne das entsteht der Eindruck von Willkür.
+
+### Wenn die Schnittmenge leer ist
+
+Der Fall tritt auf: Eine Bibliothek verlangt lokale Modelle, der Agent ist auf ein Modell festgelegt, das
+außerhalb läuft. Dann gibt es kein zulässiges Modell.
+
+OPAA **verweigert den Vorgang und benennt den Grund**. Es wird nicht auf ein anderes Modell
+zurückgefallen, und es wird nicht stillschweigend die strengere Bibliothek aus dem Suchbereich genommen,
+um den Vorgang doch noch zu ermöglichen — das wäre die gefährlichere Auflösung, weil sie eine
+Schutzvorgabe durch eine schlechtere Antwort ersetzt, ohne dass es jemand merkt.
+
+Die Meldung nennt die Ebene, an der es scheitert, und die zuständige Stelle. Sie nennt **keine
+Anzahlen** von Beständen, auf die die fragende Person keinen Zugriff hat.
+
+### Beschränkungen hängen an den Daten
+
+> **Datenschutzrelevante Modellbeschränkungen gehören an die Daten, nicht an den Raum.**
+
+Eine Wissensbibliothek mit Steuerdaten führt ihre Vorgabe „nur lokale Modelle" selbst mit sich. Sie gilt
+überall, wo diese Daten verwendet werden — in jedem Space, mit jedem Agenten, für jede Person.
+
+Der Grund liegt im Rechtemodell: Der Space hat keine Hoheit darüber, welche Bibliotheken in ihm auftauchen.
+Wer in einem Space kuratieren darf, kann jede Bibliothek bereitstellen, auf die er selbst Zugriff hat.
+Eine Bibliothek mit besonders geschützten Daten kann damit in einem Space landen, dessen Vorgabe
+Cloud-Modelle erlaubt. **Eine ausschließlich raumgebundene Vorgabe schützt genau diesen Fall nicht** —
+und es ist der Fall, der zählt.
+
+Die Vorgabe des Space bleibt sinnvoll: Ein Raum kann strenger sein als das Haus, etwa in der Revision.
+Aber er ist nicht die Sicherung. Dieselbe Festlegung steht aus der Sicht des Rechtemodells in
+[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md#modell-policies).
+
+**Praktische Folge:** Die Modellvorgabe ist eine Eigenschaft der Bibliothek und wird beim Anlegen
+gesetzt — von der Stelle, die den Bestand verantwortet. Bei konnektorgespeisten Bibliotheken setzt sie
+die Systemverwaltung mit der Zuordnung (siehe
+[Wissensquellen und Konnektoren](./knowledge-sources.md#eine-quelle-eine-wissensbibliothek)); der
+Eigentümer kann sie verschärfen, nicht lockern.
+
+### Sofortige Wirkung
+
+Eine zentrale Änderung wirkt **beim nächsten Vorgang**, überall. Wird ein Modell abgeschaltet — weil es
+abgekündigt wurde, weil ein Nachfolger bereitsteht oder weil eine Prüfung es untersagt —, greift das
+sofort, ohne dass ein Team seine Agenten anfassen muss.
+
+Damit das nicht zum Betriebsrisiko wird, gehören drei Dinge dazu:
+
+- **Vorher sichtbare Auswirkung.** Vor dem Abschalten zeigt die Systemverwaltung, wie viele Agenten,
+  Bibliotheken und Spaces betroffen sind und was an ihre Stelle tritt.
+- **Benannte Nachfolge.** Ein abgeschaltetes Modell trägt einen Nachfolger; Vorgänge laufen auf diesem
+  weiter, soweit die Vorgaben es zulassen. Wo kein zulässiger Nachfolger existiert, wird der Vorgang
+  verweigert — und die betroffene Stelle wird benachrichtigt, statt es an schlechteren Antworten zu
+  merken.
+- **Nachvollziehbarkeit alter Vorgänge.** Zu jeder erzeugten Antwort ist festgehalten, mit welchem Modell
+  und welchen Parametern sie entstanden ist. Ein Modellwechsel ändert nichts rückwirkend an dieser
+  Angabe.
+
+Ein Wechsel des **Einbettungsmodells** ist die eine Ausnahme von der sofortigen Wirkung: Er erfordert
+eine vollständige Neuindizierung, weil bestehende Vektoren nicht vergleichbar bleiben. Er wird deshalb
+als geplanter Vorgang behandelt und ist in
+[Wissensschicht und Retrieval](./data-indexing-rag.md#speicherung-und-filterachse) sowie in der
+Qualitätsmessung verankert.
+
+---
+
+## Voreinstellungen und Parameter je Aufgabe
+
+Nutzende sollen keine Modellauswahl treffen müssen. Sie sollen eine Aufgabe haben und ein Ergebnis
+bekommen. Die Zuordnung von Aufgabe zu Modell und Parametern trifft die Systemverwaltung einmal.
+
+| Aufgabe | Was zählt | Typische Vorgabe |
+|---|---|---|
+| **Antwort im Chat** | Belegtreue, Sprachqualität, Kontextlänge | wenig Streuung in der Erzeugung, ausreichende Kontextlänge für die übergebenen Passagen |
+| **Einbettung** | Trefferqualität, Stabilität über die Zeit | ein Modell, das selten gewechselt wird — jeder Wechsel kostet eine Neuindizierung |
+| **Reranking** | Genauigkeit bei kurzen Texten, Geschwindigkeit | ein spezialisiertes, kleineres Modell |
+| **Zusammenfassung** | Treue zum Ausgangstext | geringe Streuung, längenbegrenzt |
+| **Klassifizierung und Erkennung** | Verlässlichkeit, Geschwindigkeit | kleines Modell, feste Ausgabestruktur |
+| **Bildverständnis** | Fähigkeit des Modells | nur, wenn ein Modell mit dieser Fähigkeit freigegeben ist |
+
+Zu jeder Aufgabe gehören **Parameter** — Streuung der Erzeugung, Längenbegrenzung der Antwort,
+Kontextgrenze — und ein **Systemvorspann**, der Verhalten und Ton festlegt. Beides ist Teil der zentralen
+Vorgabe, nicht der Entscheidung im Einzelfall.
+
+Ein Agent kann davon abweichen, aber nur innerhalb der Obergrenze. Wo eine Aufgabe besondere Parameter
+braucht, ist das Teil seiner Aufgabenbeschreibung und damit prüfbar und versionierbar.
+
+Für den Systemvorspann gilt eine harte Regel: **Er ist nicht über den Chat änderbar.** Anweisungen aus
+Nutzereingaben oder aus dem Inhalt abgerufener Dokumente ersetzen ihn nicht. Das ist die Grundlage
+dafür, dass ein geprüfter Agent auch nach der Prüfung noch das tut, wofür er geprüft wurde.
+
+### Mehrere Modelle nebeneinander
+
+Es ist der Normalfall, dass eine Installation mehrere Modelle betreibt — und zwar nicht, um die stärkste
+Antwort zu finden, sondern weil die Aufgaben unterschiedliche Eigenschaften verlangen. Ein Modell für
+Einbettungen muss stabil sein, eines für das Reranking schnell, eines für die Antwort sprachfähig.
+
+Die Aufteilung hat zwei Nebenwirkungen, die bewusst in Kauf genommen werden:
+
+- **Mehr Betriebsaufwand.** Mehrere Modelle brauchen Rechenleistung, Überwachung und Pflege. Deshalb ist
+  die Zahl der Aufgabenarten begrenzt und jede Zuordnung begründet.
+- **Getrennte Beurteilung der Qualität.** Ein Wechsel am Einbettungsmodell wirkt anders als einer am
+  Antwortmodell; beide werden getrennt gegen dieselben Referenzfälle gemessen.
+
+Was ausdrücklich nicht vorgesehen ist: eine Verteilung von Anfragen auf Modelle nach geschätzter
+Schwierigkeit. Sie macht das Ergebnis unvorhersehbar, ist nicht reproduzierbar und würde die
+Modellvorgaben faktisch aushöhlen.
+
+---
+
+## Schutz vor Weitergabe personenbezogener Daten
+
+Wo ein Modell außerhalb des Hauses erlaubt ist, entsteht die Frage, was ihm übergeben wird. Frage,
+abgerufene Passagen und Verlauf enthalten in der Verwaltung regelmäßig Namen, Aktenzeichen,
+Steuernummern, Anschriften und Gesundheitsangaben.
+
+Drei Umgangsweisen kommen in Betracht.
+
+**Option 1 — Verweigern.** Wird in einem Aufruf an ein Modell außerhalb des Hauses ein personenbezogenes
+Merkmal erkannt, wird der Aufruf nicht ausgeführt. Die Person erhält den Hinweis, dass die Anfrage nur
+mit einem lokalen Modell möglich ist. Wirksam und einfach zu erklären, aber im Alltag hinderlich, wenn
+die Erkennung übervorsichtig ist.
+
+**Option 2 — Ersetzen und zurückübersetzen.** Erkannte Merkmale werden vor dem Aufruf durch Platzhalter
+ersetzt und in der Antwort wieder eingesetzt. Erhält die Arbeitsfähigkeit, verlagert aber das Risiko auf
+die Erkennungsgüte: Was nicht erkannt wird, geht hinaus. Und in der Verwaltung ist der Personenbezug oft
+nicht an einem Merkmal festzumachen, sondern ergibt sich aus dem Zusammenhang, den ein Erkennungsverfahren
+nicht sieht.
+
+**Option 3 — Nur lokale Modelle für alles.** Vollständig sicher und für viele Häuser die richtige
+Entscheidung. Als Produktvorgabe zu grob, weil sie auch dort greift, wo eine Behörde bewusst anders
+entschieden hat.
+
+**Empfehlung:** Option 1 als Verhalten in der Voreinstellung, kombiniert mit der eigentlichen Sicherung —
+den Beschränkungen an den Daten. Ein Bestand mit Personenbezug trägt „nur lokale Modelle" ohnehin selbst,
+sodass der Prüfschritt an der Grenze nach außen nur noch die Reste auffängt: Freitext in der Frage,
+eingefügte Ausschnitte, Anhänge.
+
+Option 2 wird ausdrücklich **nicht** verworfen, aber nur als bewusst zuschaltbare Erleichterung mit klar
+benannter Restunsicherheit — und nie als Ersatz für die Beschränkung am Bestand. Ein Verfahren, das
+Vertraulichkeit auf eine Mustererkennung stützt, ist keine Zusicherung, sondern eine Wahrscheinlichkeit.
+
+Unabhängig von der gewählten Option gilt:
+
+- **Jeder Aufruf nach außen ist protokolliert** — Modell, Zeitpunkt, Anlass, Umfang. Ohne Inhalte, aber
+  nachweisbar.
+- **Nutzende sehen vorher, dass ein Vorgang das Haus verlässt.** Diese Anzeige ist nicht abschaltbar.
+- **Kein Training mit Hausdaten.** Übergebene Daten dürfen beim Betreiber eines externen Modells nicht in
+  ein Training einfließen; wo das nicht zugesichert ist, kommt das Modell nicht in Frage. Sicherstellen
+  kann das nur der Betreibervertrag — OPAA kann es lediglich als Eigenschaft am Modelleintrag führen und
+  sichtbar machen.
 
 ---
 
 ## Antwortgenerierung
 
-### Antwortgenerierungs-Pipeline
-
-Wenn Benutzer eine Frage stellt:
-
-1. **Kontext-Vorbereitung:** Abgerufene Dokumente mit Metadaten formatiert
-2. **Prompt-Konstruktion:** Benutzerfrage + Dokumente + Systemanweisungen
-3. **Modell-Aufruf:** Konfiguriertes LLM aufrufen
-4. **Streaming:** Antwort zurück zum Benutzer streamen (nicht auf vollständige Generierung warten)
-5. **Nachverarbeitung:** Quellen extrahieren, Antwort formatieren
-
-### Prompt-Struktur
-
-System sendet an LLM:
+Die Erzeugung der Antwort ist der Punkt, an dem Modellsteuerung und Belegbarkeit zusammentreffen.
 
 ```
-System-Prompt:
-  "Sie sind ein hilfreicher Assistent zur Beantwortung von Fragen über unsere Organisation.
-   Verwenden Sie die bereitgestellten Dokumente für Antworten. Zitieren Sie immer Quellen.
-   Wenn Informationen nicht in den Dokumenten sind, sagen Sie dies."
-
-Kontext (abgerufene Dokumente):
-  Dokument 1 (Titel, Auszug)
-  Dokument 2 (Titel, Auszug)
-  ...
-
-Benutzerfrage:
-  "Was ist unsere Richtlinie zu X?"
-
-Aufgabenanweisungen:
-  "Antworten Sie nur anhand der bereitgestellten Dokumente.
-   Antwort formatieren als: [Direkte Antwort] Quellen: [Quellen auflisten]"
+Frage
+  ↓
+Suchbereich und Rechteprüfung          → spaces-and-assets.md
+  ↓
+Hybride Suche, Reranking, Auswahl      → data-indexing-rag.md
+  ↓
+Bestimmung des zulässigen Modells      ← Schnitt aller Vorgaben
+  ↓
+Zusammenstellung: Systemvorspann + Passagen mit Fundstellen + Frage
+  ↓
+Aufruf, Antwort im Fluss ausgegeben
+  ↓
+Belegprüfung: trägt jede Aussage eine Fundstelle?
+  ↓
+Ausgabe mit Fundstellen und Konfidenz — oder Verweigerung im Zitierzwang
 ```
 
-### Antwortformat
+Wesentlich ist die Reihenfolge: **Die Bestimmung des Modells folgt der Bestimmung des Suchbereichs.**
+Erst wenn feststeht, aus welchen Beständen geantwortet wird, steht fest, welche Modellvorgaben gelten.
+Eine Installation, die das Modell vorher festlegt, kann die datengebundene Beschränkung nicht einhalten.
 
-LLM generiert Antworten gemäß Prompt:
+Die **Belegprüfung nach der Erzeugung** ist in
+[Wissensschicht und Retrieval](./data-indexing-rag.md#zitierzwang) beschrieben. Für dieses Dokument ist
+nur festzuhalten: Sie ist kein Bestandteil des Systemvorspanns und verlässt sich nicht darauf, dass das
+Modell die Anweisung befolgt.
 
-```
-Antwort: "Laut unseren Richtliniendokumenten ist X unter folgenden
-Bedingungen erlaubt:
-1. Bedingung A
-2. Bedingung B
-3. Bedingung C
-
-Zusätzlicher Kontext aus neuesten Aktualisierungen..."
-
-Quellen:
-- Unternehmensrichtlinie zu X (aktualisiert Jan 2024)
-- Manager-Handbuch Abschnitt 3.2
-```
-
-OPAA dann:
-- Parst die Antwort
-- Verlinkt Quellen mit tatsächlichen Dokumenten
-- Fügt klickbare Dokument-Links hinzu
-- Zeigt dem Benutzer an
+**Bei Ausfall des Modells** wird nicht auf ein unzulässiges ausgewichen. Steht kein zulässiges Modell
+bereit, gibt OPAA die gefundenen Fundstellen ohne erzeugten Text aus und sagt, dass keine Antwort
+formuliert werden konnte. Das ist ein brauchbares Zwischenergebnis — die Recherche ist getan, nur die
+Formulierung fehlt.
 
 ---
 
-## Modellkonfiguration
+## Grenzen und Kontingente
 
-### Temperatur & Parameter
+Grenzen je Person, je Gruppe und für das Haus insgesamt sind vorgesehen. Sie schützen den Betrieb — bei
+lokalen Modellen ist die knappe Größe die Rechenleistung, nicht ein Budget.
 
-Jeder Modell-Anwendungsfall kann benutzerdefinierte Einstellungen haben:
+Zwei Festlegungen gehören dazu:
 
-```
-GenerierungsEinstellungen:
-  model: "gpt-4"
-  temperature: 0.5
-  top_p: 0.9
-  max_tokens: 1024
-  frequency_penalty: 0.0
-```
+- **Eine überschrittene Grenze ist eine Auskunft, kein Fehler.** Die betroffene Person erfährt, was gilt
+  und wann die Grenze wieder greift.
+- **Grenzen sind kein Auswertungspfad.** Die Verbrauchsmessung dient der Steuerung von Ressourcen, nicht
+  der Beobachtung von Personen. Auswertungen sind aggregiert und ohne Ranglisten; die Festlegungen dazu
+  stehen in
+  [Mitbestimmung und Personalvertretung](./spaces-and-assets.md#mitbestimmung-und-personalvertretung).
 
-**Parameter-Leitfaden:**
-- **temperature:**
-  - Niedrig (0,1-0,3): Faktischer, weniger kreativ (gut für Frage-Antwort)
-  - Hoch (0,7-0,9): Kreativer, weniger fokussiert (gut für Brainstorming)
-  - Empfohlen für OPAA: 0,3-0,5 (Balance zwischen Kreativität und Genauigkeit)
-
-- **max_tokens:**
-  - Begrenzt Antwortlänge
-  - Empfohlen: 1.024-2.048 für detaillierte Antworten
-  - Kürzer (512) für Chat-Plattformen verwenden
-
-- **top_p:**
-  - Kontrolliert Vielfalt (0-1)
-  - 0,9 ist guter Standard
-  - Niedriger für konservativere Antworten
-
-### Multi-Modell-Strategie
-
-OPAA unterstützt verschiedene Modelle für verschiedene Aufgaben:
-
-```
-Modellauswahl:
-  QA-Generierung: "gpt-4"                   # Beste Qualität
-  Embeddings: "text-embedding-3-small"       # Günstig, schnell
-  Zusammenfassung: "gpt-3.5-turbo"           # Schnell, ausreichend gut
-  Klassifizierung: "gpt-3.5-turbo"           # Kosteneffektiv
-```
-
-Vorteile:
-- Teure Modelle nur dort verwenden, wo nötig
-- Kosten vs. Qualität pro Aufgabe optimieren
-- Schnellere Antworten wo Geschwindigkeit wichtiger ist
-
-### Fallback-Strategie
-
-Wenn primäres Modell nicht verfügbar:
-
-```
-Primär: "gpt-4"
-Fallback: "gpt-3.5-turbo"  # Etwas niedrigere Qualität, immer verfügbar
-Fallback: "mistral-7b" (selbst gehostet)  # Letzter Ausweg
-```
-
-Wenn alle fehlschlagen, System:
-- Gibt abgerufene Dokumente ohne Generierung zurück
-- Zeigt Benutzer: "Ich fand relevante Dokumente, konnte aber keine Zusammenfassung generieren. Quellen unten."
-- Protokolliert Fehler für Admin-Überprüfung
-
----
-
-## Embedding-Modelle
-
-### Embedding-Konfiguration
-
-Getrennt vom Generierungsmodell:
-
-```
-EmbeddingEinstellungen:
-  model: "text-embedding-3-small"  # OpenAI
-  dimension: 1536
-  batch_size: 100
-```
-
-### Embedding-Modell-Auswahl
-
-Verschiedene Organisationen wählen basierend auf:
-- **OpenAI-Embeddings:** Beste Qualität, Cloud-basiert
-- **Open-Source:** All-MiniLM, ONNX-Modelle, lokale Alternativen
-- **Spezialisiert:** Domänenspezifische Embeddings für technische Dokumente
-
-**Wichtig:** Embedding-Modell-Wahl beeinflusst Suchqualität. Das Ändern des Embedding-Modells erfordert eine Neu-Indizierung aller Dokumente.
-
-### Modell-übergreifende Suche
-
-Erweitert: Verschiedene Embedding- und Generierungsmodelle verwenden:
-- Embedding von Jina.ai (technisch)
-- Generierung von Claude (Qualität)
-- Bessere Ergebnisse für spezialisierte Dokumente
-
----
-
-## Erweiterte LLM-Features
-
-### Streaming-Antworten
-
-OPAA streamt Antworten während der Generierung:
-- Benutzer sieht Antwort Zeichen-für-Zeichen erscheinen
-- Bessere UX (fühlt sich schneller an, interaktiv)
-- Kann Generierung stoppen, wenn Antwort abschweift
-
-### Function Calling
-
-Wenn LLM Function Calling unterstützt (GPT-4, Claude):
-
-```
-LLM kann Funktionen aufrufen:
-  get_document(id)     → vollständiges Dokument abrufen
-  search_more(query)   → eine weitere Suche durchführen
-  format_table(data)   → Daten als Tabelle formatieren
-```
-
-OPAA kann dies nutzen, um:
-- Automatisch vollständige Dokumente bei Bedarf abzurufen
-- Mehrstufiges Reasoning durchzuführen
-- Komplexe Antworten zu formatieren
-
-### Vision/Multimodal-Unterstützung
-
-Wenn Organisation visuelle Dokumente hat:
-- GPT-4-vision kann Bilder/PDFs analysieren
-- Kann Text aus gescannten Dokumenten extrahieren
-- Kann Fragen zu Diagrammen beantworten
-
----
-
-## Kostenoptimierung
-
-### Kostentreiber
-
-OPAA-Kosten hängen ab von:
-- **Embedding-Modell:** Günstigste (Bruchteile von Cent pro 1.000 Token)
-- **Generierungsmodell:** Teuerste (Dollar pro 1.000 Token)
-- **Abfragevolumen:** Mehr Fragen = höhere Kosten
-
-### Kostensenkungsstrategien
-
-1. **Günstigere Modelle wo möglich verwenden:**
-   - GPT-3.5-turbo statt GPT-4 verwenden (5x günstiger)
-   - Embeddings-small statt large verwenden
-   - Lokale Modelle verwenden (kostenlos nach Infrastrukturkosten)
-
-2. **Caching implementieren:**
-   - Häufige Fragen cachen
-   - Dokument-Embeddings cachen
-   - Unveränderte Dokumente nicht neu einbetten
-
-3. **Hybridansatz:**
-   - Lokale Modelle für 80% der Fragen verwenden
-   - GPT-4 nur für komplexe Abfragen verwenden
-   - Automatisches Routing basierend auf Fragenkomplexität
-
-4. **Batching:**
-   - Embedding-Generierung außerhalb der Stoßzeiten bündeln
-   - Fragenbeantwortung für Berichtserstellung bündeln
-
-**Typische Kosten:**
-- Kleine Organisation (100 Abfragen/Tag): 50-200 €/Monat
-- Große Organisation (10.000 Abfragen/Tag): 5.000-20.000 €/Monat
-- Mit lokalen Modellen: Infrastrukturkosten + Strom
-
----
-
-## Sicherheit & verantwortungsvolle Nutzung
-
-### Jailbreak-Prävention
-
-Das System ist so konzipiert, LLM-Jailbreaks zu verhindern:
-- Strikte System-Prompts begrenzen Modellverhalten
-- Abgerufene Dokumente beschränken Antworten auf Organisationswissen
-- Benutzer kann Modellanweisungen nicht direkt manipulieren
-- Systemanweisungen gesperrt (nicht über Chat änderbar)
-
-### Halluzinations-Minderung
-
-OPAA reduziert inhärent Halluzinationen:
-- Alle Antworten in abgerufenen Dokumenten verankert
-- Modell kann keine Fakten erfinden, die nicht in Quellen sind
-- Konfidenz-Scores angezeigt (0 Konfidenz = keine Quellen)
-- Benutzer können Behauptungen in Quelldokumenten verifizieren
-
-### Inhaltsfilterung
-
-Wenn Organisation es erfordert:
-- Profanitäts-Filterung
-- PII-Schwärzung
-- Maskierung sensibler Informationen
-
-Diese können als Nachverarbeitungsschritte hinzugefügt werden.
-
----
-
-## Rate Limiting & Kontingente
-
-### Rate Limits
-
-Konfigurierbar pro Benutzer/Workspace:
-
-```
-RateLimits:
-  pro_benutzer: 100 Abfragen/Tag
-  pro_team: 1.000 Abfragen/Tag
-  global: 10.000 Abfragen/Tag
-```
-
-### Token-Kontingente
-
-Kann auch nach Token kontingentieren (granularer):
-
-```
-TokenKontingente:
-  pro_benutzer: 50.000 Token/Tag
-  pro_team: 500.000 Token/Tag
-```
-
-Bei Überschreitung:
-- Benutzer sieht: "Tageskontingent überschritten. Morgen erneut versuchen."
-- Admin benachrichtigt
-- Abfrage noch für Audit geloggt
-
----
-
-## Monitoring & Observability
-
-### Was geloggt wird
-
-Für jede Abfrage loggt das System:
-- Benutzer-ID
-- Workspace
-- Frage (optional, kann für Datenschutz deaktiviert werden)
-- Anzahl abgerufener Dokumente
-- Verwendetes Modell
-- Generierungs-Token verwendet
-- Antwortzeit
-- Benutzer-Feedback (falls vorhanden)
-
-### Metrik-Dashboards
-
-Admins können sehen:
-- Häufigste gestellte Fragen
-- Modell-Leistung (Antwortqualität)
-- Kostenaufschlüsselung nach Benutzer/Workspace
-- API-Fehler und -Ausfälle
-- Modell-Latenzverteilung
-
-### Kosten-Tracking
-
-Detaillierte Kostenaufschlüsselung:
-- Kosten pro Abfrage
-- Kosten pro Benutzer
-- Kosten pro Modell
-- Trends über Zeit
-
----
-
-## LLM-Anbieter wechseln
-
-### Wie man wechselt
-
-1. **Konfiguration ändern:**
-   ```
-   ALT: LLM_API_KEY=sk-openai-xxx
-   NEU: LLM_API_KEY=sk-claude-xxx
-        LLM_MODEL="claude-3-sonnet"
-   ```
-
-2. **Dienst neu starten** (oder Hot-Reload)
-
-3. **Testen:** Frage stellen, Antwortqualität verifizieren
-
-**Das ist alles.** Keine Code-Änderungen, keine Datenmigration, keine Neu-Indizierung.
-
-### Überlegungen
-
-- Verschiedene Modelle können unterschiedliche Ausgabequalität haben
-- Verschiedene Modelle haben unterschiedliche Geschwindigkeit/Kosten
-- Neues Modell möglicherweise zuerst mit Teilmenge der Benutzer testen
-- Embedding-Modell kann unabhängig geändert werden (erfordert Neu-Indizierung)
+Die weitergehende Betrachtung von Verbrauch, Auslastung und Steuerung gehört zu Themenbereich H und wird
+dort beschrieben.
 
 ---
 
 ## Integrationspunkte
 
-- **Daten-Indizierung:** Verwendet Embedding-Modell zur Erstellung von Dokument-Embeddings
-- **Benutzer-Frontends:** Empfängt generierte Antworten, streamt an Benutzer
-- **Zugangskontrolle:** Respektiert Dokument-Berechtigungen vor der Antwort
-- **Deployment-Infrastruktur:** Verwaltet API-Anmeldeinformationen, Rate Limiting
+- **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Einbettungs-, Rerank- und Antwortmodell;
+  Zitierzwang und Belegprüfung; die Fähigkeitsabhängigkeit des Bildverständnisses.
+- **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — die Vorgaben von Space, Bibliothek
+  und Agent, ihre Verrechnung als Obergrenze und die Zuständigkeit für ihre Festlegung.
+- **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — die Modellvorgabe einer
+  konnektorgespeisten Bibliothek wird mit der Quellzuordnung gesetzt.
+- **[Zugangskontrolle](./access-control.md)** — Protokollierung von Modellaufrufen, Freigaben für
+  Modelle außerhalb des Hauses, Verwahrung der Zugangsdaten.
+- **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — Betrieb lokaler Modelle,
+  Rechenleistung, Netzwege und der Betrieb ohne Netzanbindung.
+- **[Suchqualität messbar machen](./search-quality-evaluation.md)** — jeder Modellwechsel ist ein
+  Eingriff mit Regressionsrisiko und wird gegen dieselben Referenzfälle gemessen.
+- **[ADR-0002](../decisions/0002-mvp-technology-stack.md)** — die gewählte Technologiebasis und die
+  Abstraktion, über die Modelle angebunden werden.
 
 ---
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Sollte OPAA feinabgestimmte Modelle spezifisch für die Organisation unterstützen?
-- Sollten wir automatische Modellauswahl basierend auf Fragenkomplexität implementieren?
-- Sollten wir Prompt-Engineering-Best-Practices unterstützen (Chain-of-Thought, usw.)?
-- Sollten wir A/B-Testing anbieten (verschiedenen Benutzern verschiedene Modelle zeigen)?
-- Sollte Kostenoptimierung automatisch sein (günstigstes funktionierendes Modell wählen)?
-- Sollten wir lokales Modell-Serving (CUDA, Apple Metal) nativ unterstützen?
+- Wie werden **Schutzstufen von Daten** benannt und gepflegt, damit die Zuordnung „welches Modell darf
+  diese Klasse verarbeiten" mehr ist als ein Freitextfeld? Ohne ein knappes, verbindliches Schema wird
+  die Zuordnung uneinheitlich gesetzt.
+- Darf ein Agent eine Modellvorgabe **verschärfen**, oder ist das allein Sache von Systemverwaltung und
+  Bibliothek? Verschärfen ist folgerichtig, kann aber dazu führen, dass ein geteilter Agent beim
+  Empfänger nicht läuft.
+- Wie wird ein **Modellwechsel geprüft**, bevor er hausweit gilt — Vergleichsläufe gegen Referenzfälle,
+  Freigabe für einen begrenzten Kreis, oder beides?
+- Soll eine Installation **eigens angepasste Modelle** aufnehmen können, und wie werden sie im
+  Modelleintrag von einem Standardmodell unterschieden?
+- Wie wird die **Erklärung der Modellauswahl** dargestellt, ohne Bestände preiszugeben, auf die die
+  fragende Person keinen Zugriff hat?
+- Wie werden **Fähigkeitsunterschiede** behandelt, wenn ein Agent eine Fähigkeit voraussetzt, die das
+  zulässige Modell nicht hat — Verweigerung, eingeschränkter Lauf mit Hinweis, oder Auswahl nach
+  Fähigkeit innerhalb der Obergrenze?
+- Wie belastbar lässt sich eine **Zusicherung „kein Training mit unseren Daten"** technisch abbilden,
+  oder bleibt sie eine reine Vertrags- und Dokumentationsangabe?
+- Ab welcher Größe lohnt eine **getrennte Betriebsumgebung für Modelle** gegenüber dem gemeinsamen
+  Betrieb mit der Anwendung?
 
 ---
 
 ## Erfolgs-Metriken
 
-- **Antwortqualität:** % der von Benutzern als hilfreich bewerteten Antworten
-- **Kosteneffizienz:** Kosten pro Abfrage, Kosten pro erfolgreicher Interaktion
-- **Latenz:** P95-Antwortzeit an Benutzer
-- **Modell-Leistung:** Fehlerraten, Halluzinationsraten
-- **API-Verfügbarkeit:** % erfolgreicher API-Aufrufe an LLM-Anbieter
-- **Benutzerakzeptanz:** Wachstum der Anzahl von Abfragen über Zeit
+- **Anteil der Vorgänge auf lokal betriebenen Modellen** — das unmittelbare Maß für die Souveränität der
+  Installation.
+- **Zahl der Vorgänge, die wegen leerer Schnittmenge verweigert wurden**, aufgeschlüsselt nach der
+  auslösenden Ebene. Dauerhaft hohe Werte deuten auf widersprüchliche Vorgaben hin, nicht auf ein
+  Nutzerproblem.
+- **Zeit bis zur Wirksamkeit einer zentralen Änderung** und Zahl der dafür nötigen Eingriffe in Spaces
+  und Agenten — die Zielgröße ist null.
+- **Anteil der Antworten mit nachvollziehbarer Modellangabe** im Protokoll.
+- **Verfügbarkeit der lokal betriebenen Modelle** und Anteil der Vorgänge ohne verfügbares Modell.
+- **Zahl der Aufrufe an Modelle außerhalb des Hauses** und deren Anlass, als Nachweis gegenüber Prüfung
+  und Personalvertretung.
