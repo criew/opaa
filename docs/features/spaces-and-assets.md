@@ -260,6 +260,112 @@ Für Wissensbibliotheken gilt dasselbe: Eine deaktivierte Bibliothek liefert kei
 
 Der Hinweis hängt an den Nachrichten, die das Asset tatsächlich genutzt haben — das setzt die Herkunftsverfolgung voraus, die ohnehin für das Ableitungsleck geführt wird.
 
+### Der Freigabeweg: vorschlagen, prüfen, freigeben, veröffentlichen
+
+Bis hierher ist die Reichweite eines Assets die Entscheidung einer einzigen Person: Ein `MANAGER` erteilt einen Grant, und niemand muss zustimmen (siehe [Freigabe an eine Gruppe braucht keine Zustimmung](#freigabe-an-eine-gruppe-braucht-keine-zustimmung)). Für ein Asset, auf das sich ein Referat stützt, genügt das. Für eines, auf das sich ein ganzes Amt stützt, nicht: Wer eine Auskunft mit seinem Namen trägt, muss Jahre später belegen können, **wer welche Fassung wann fachlich geprüft und freigegeben hat**.
+
+Der Freigabeweg hat vier Schritte:
+
+| Schritt | Wer handelt | Was entsteht |
+|---|---|---|
+| **Vorschlagen** | `MANAGER` oder `OWNER` des Assets | Eine benannte Fassung wird zur Prüfung für eine Freigabestufe eingereicht |
+| **Fachlich prüfen** | die für diese Stufe benannte prüfende Stelle | Prüfvermerk mit Ergebnis; bei Agenten gehört der Bericht des [Prüfstands](./agents-and-tools.md#agenten-prüfstand-vor-der-freigabe) zur Unterlage |
+| **Freigeben** | dieselbe Stelle | Freigabestempel an der **Version**: wer, wann, für welche Stufe, auf welcher Prüfgrundlage |
+| **Veröffentlichen** | `MANAGER` des Assets | Grants und `listed` werden gesetzt — der Schritt, der die Reichweite tatsächlich herstellt |
+
+**Der Freigabestempel hängt an der Version, nicht am Asset.** Sonst wäre er nach der ersten Änderung wertlos — und genau diese Frage stellt eine Revision: nicht „war der Agent freigegeben", sondern „war *diese* Fassung freigegeben, als *dieser* Bescheid erging".
+
+**Verhältnis zur Sofortwirkung von Verbesserungen.** [Referenz statt Kopie](#referenz-statt-kopie) sagt zu, dass eine Verbesserung sofort bei allen wirkt. Das gilt uneingeschränkt für Assets ohne Freigabestempel. Für ein freigegebenes Asset gilt es nicht: Dort bleibt die **geprüfte Fassung aktiv**, bis eine neue freigegeben ist; die neue läuft bis dahin als Entwurf und ist nur für den Eigentümer aufrufbar. Andernfalls wäre die Freigabe eine Momentaufnahme, die der nächste Tippfehler im Systemprompt aushebelt. Der Preis ist ehrlich zu benennen: Eine dringende fachliche Korrektur an einem freigegebenen Agenten braucht einen Prüfdurchlauf und ist damit nicht sofort wirksam. Wo das nicht hinnehmbar ist, bleibt das Deaktivieren (siehe [Rückruf durch Deaktivieren](#rückruf-durch-deaktivieren)) — lieber kein Agent als ein falscher.
+
+**Der Freigabeweg ist kein Zustimmungsvorbehalt der Empfänger.** Er beschreibt den Reifegrad des Assets, nicht die Annahmeseite. Ein Grant an eine Gruppe braucht weiterhin niemandes Einverständnis; was hinzukommt, ist die Anforderung, dass ein Asset ab der Stufe Fachbereich **fachlich geprüft** ist, bevor es dort ankommt.
+
+**Wer prüft.** Die prüfende Stelle wird je Freigabestufe benannt — als Person oder, besser, als Gruppe. Ist für eine Stufe keine Stelle benannt, ist die Stufe schlicht nicht erreichbar; das System erfindet keine Ersatzzuständigkeit und lässt die Prüfung auch nicht entfallen. Ein Vorschlag läuft nicht ins Leere: Er trägt eine Frist und erscheint nach Ablauf auf der Governance-Arbeitsliste des System-Admins — derselbe Mechanismus wie bei der Mitfreigabe von Wissen und bei offener Nachfolge.
+
+Die Zustände einer Version sind eine **eigene Achse**, unabhängig von `visibility` und `listed`:
+
+| Zustand | Bedeutung |
+|---|---|
+| `DRAFT` | in Arbeit, nur für Berechtigte am Asset aufrufbar |
+| `IN_REVIEW` | zur Prüfung eingereicht, unverändert bis zur Entscheidung |
+| `RELEASED` | freigegeben, mit Stempel und Prüfgrundlage |
+| `REJECTED` | mit Begründung zurückgewiesen; die Fassung bleibt erhalten und nachvollziehbar |
+
+*Phasenlage: Der Freigabeweg gehört zu Phase 3. Die Versionierung, auf der er aufsetzt, entsteht in Phase 2.*
+
+### Der Katalog
+
+Der Katalog ist die Antwort auf den Satz „das hätte ich gebraucht, ich wusste nur nicht, dass es das gibt". **KI-Assets sollen gefunden und nicht herumgemailt werden.**
+
+**Auffindbarkeit ist ein eigenes Merkmal, getrennt von der Zugänglichkeit.** Das Feld `listed` ist bereits unter [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit) eingeführt; hier steht, was daraus folgt. Vier Kombinationen sind möglich, und alle vier kommen vor:
+
+| | `listed = true` | `listed = false` |
+|---|---|---|
+| **zugänglich** | Regelfall für geprüfte Assets: nutzbar und im Katalog auffindbar | Regelfall für Arbeitsstände und für gezielt geteilte Assets: nutzbar, aber nicht beworben |
+| **nicht zugänglich** | Schaufenster: der Eintrag ist sichtbar, die Nutzung nicht — man erfährt, dass es etwas gibt, und an wen man sich wendet | Das Asset existiert für diesen Nutzer nicht |
+
+Der Fall unten links ist der einzige, der die Zusage zur Nicht-Sichtbarkeit berührt: Ein Katalogeintrag verrät die **Existenz** eines Assets. Deshalb ist `listed` standardmäßig `false` und die Listung eine ausdrückliche Entscheidung des Freigebenden.
+
+Ein Katalogeintrag enthält **Beschreibungen, keine Inhalte**:
+
+- Name, Kurzbeschreibung und der Anwendungsfall in einem Satz
+- die zuständige Stelle — bei Gruppen-Eigentum die Organisationseinheit, nicht eine Person
+- Fachbereich, abgeleitet aus der Gruppe, an die freigegeben wurde
+- Freigabestand: Stufe, aktive Version, Datum des Freigabestempels
+- Herkunft: mitgeliefert, lokal angelegt, abgeleitet oder importiert
+- Nutzungsangaben — aggregiert, siehe [Nutzungstransparenz](#nutzungstransparenz)
+
+Die Suche im Katalog läuft über die Assets, auf die der Nutzer Zugriff hat, **vereinigt** mit den gelisteten. Sie überschreitet **nie** die Organisationsgrenze (siehe [Organisation als Mandantengrenze](#organisation-als-mandantengrenze)).
+
+*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3.*
+
+### Vorlagenkatalog nach Fachbereich
+
+Ein leerer Katalog hilft niemandem, und die Frage „was macht man damit überhaupt" ist am ersten Tag die häufigste. Der **Vorlagenkatalog** beantwortet sie mit Beispielen statt mit Erklärungen: kuratierte Assets, nach Fachbereich geordnet — „so arbeitet die Rechtsbehelfsstelle", „so arbeitet die Kämmerei".
+
+- Der Vorlagenkatalog ist **kein zweites Objekt**, sondern eine Sicht auf den Katalog: kuratierte, gelistete Assets mit gepflegter Beschreibung und Fachbereichszuordnung.
+- Der Werksanteil kommt aus den mitgelieferten Assets (siehe [Mitgelieferte Assets](#mitgelieferte-assets)), der Rest aus dem, was die Behörde selbst freigegeben hat.
+- Wer eine Vorlage übernimmt, nutzt sie als Referenz oder passt sie über [Parameter](#anpassen-ohne-fork-parameter) an; erst wenn das nicht reicht, entsteht ein gekennzeichneter Abkömmling.
+
+*Phasenlage: Phase 3.*
+
+### Portabilität: Export und Import
+
+Ein Asset lässt sich als Paket **exportieren** und in einer anderen Installation **importieren** — von der Test- in die Produktivumgebung und, als spätere Ausbaustufe, von Haus zu Haus.
+
+| Im Paket enthalten | Nicht im Paket |
+|---|---|
+| Aufgabenbeschreibung, Konfiguration, Modellvorgaben | Dokumente und Chunks der gebundenen Wissensbibliotheken |
+| Parameterdeklaration und Vorbelegungen | Grants, Gruppen, Rechte jeder Art |
+| Prüffälle, sofern mit exportiert | Nutzungsdaten, Chats, Artefakte |
+| Versionsstand und Herkunftsangabe | der Freigabestempel als wirksame Freigabe |
+
+Daraus folgen drei Eigenschaften, die beim Import sichtbar gemacht werden müssen, weil sie sonst Enttäuschung erzeugen:
+
+1. **Wissen wandert nicht mit.** Ein exportierter Agent verweist auf Bibliotheken, die es beim Empfänger nicht gibt. Der Import benennt jede offene Bindung und der Agent ist erst aufrufbar, wenn sie zugeordnet ist. Die Zusage „ein geteilter Agent bringt sein Wissen mit" gilt **innerhalb** einer Installation über die [Freigabekette](#einen-agenten-weitergeben-die-freigabekette) — über Installationsgrenzen hinweg gilt sie nicht, weil das Wissen dem anderen Haus gehört.
+2. **Der Freigabestempel wandert nicht mit.** Er gilt für die Installation, in der er erteilt wurde. Das ist keine Förmelei: Der importierte Agent arbeitet auf anderen Beständen, und eine Prüfung, die dort galt, sagt hier nichts. Das Paket führt den fremden Stempel als **Herkunftsangabe** mit — nachlesbar, nicht wirksam.
+3. **Das importierte Asset ist ein neues Objekt** mit eigenem Eigentümer, `origin = LOCAL` und dauerhaft mitgeführter Herkunft (Quellinstallation, Fassung, Zeitpunkt).
+
+Der Export ist eine Handlung des `MANAGER` oder `OWNER` und wird protokolliert. Er enthält keine Dokumente und ist deshalb kein Weg, an Bestände zu kommen — wohl aber kann eine Aufgabenbeschreibung interne Festlegungen enthalten, und das genügt als Grund für die Protokollpflicht.
+
+*Phasenlage: Export und Import in Phase 2; der behördenübergreifende Austausch geprüfter Pakete in Phase 4.*
+
+### Nutzungstransparenz
+
+Kuratierung braucht eine Tatsachengrundlage: Welches Asset wird tatsächlich genutzt, welches liegt seit einem Jahr unbenutzt im Katalog, wo häufen sich schlechte Rückmeldungen. Dieselbe Grundlage belegt der Leitung, ob der KI-Rollout in der Fläche ankommt.
+
+Sichtbar sind je Asset:
+
+- Nutzungshäufigkeit, aufgeschlüsselt nach Organisationseinheit
+- Rückmeldungen aus der Nutzung, aggregiert
+- Zahl der Abkömmlinge und deren Versionsabstand zum Original
+- Alter der aktiven Fassung und Datum des letzten Freigabestempels
+
+**Die Auswertung ist ausschließlich aggregiert je Organisationseinheit, unterhalb der Mindestgruppengröße wird unterdrückt, und es gibt keine Ranglisten.** Das ist keine Einstellung, sondern eine Eigenschaft: Ein personenbezogener Auswertungspfad existiert nicht (siehe [Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad)). Auch der Eigentümer eines Assets sieht, **wie oft** und **in welcher Einheit** es genutzt wird — nicht, von wem.
+
+Die Nutzungsstatistik ist vollständig abschaltbar, ohne dass die Fachfunktion leidet.
+
+*Phasenlage: Phase 2, gemeinsam mit dem Katalog.*
+
 ### Mitgelieferte Assets
 
 OPAA liefert erprobte Verwaltungs-Agenten und -Prompts ab Werk aus. Sie sind ein eigener **Herkunftstyp**:
@@ -903,7 +1009,10 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 - Konkrete Voreinstellungen für Aufbewahrungsfristen je Space-Art und für die Mindestgruppengröße bei Auswertungen.
 - Verschachtelte Gruppen im Verzeichnis (Gruppe als Mitglied einer Gruppe) — Auflösungsregel offen.
 - Voreinstellung der Aufbewahrungsfrist für private Inhalte — lang genug, um „vergessen, aber noch rettbar" von „endgültig verloren" zu trennen.
-- Freigabe- und Review-Workflow sowie Versionierung von Assets — bewusst außerhalb dieser Ausbaustufe.
+- Freigabe- und Prüfworkflow sowie Versionierung von Assets sind unter [Verteilung von Assets](#verteilung-von-assets) beschrieben, liegen aber bewusst außerhalb der ersten Ausbaustufe.
+- Wer die fachliche Prüfung wahrnimmt, wenn eine Behörde für eine Freigabestufe keine Stelle benennt — die hier gewählte Antwort „dann ist die Stufe nicht erreichbar" ist streng und in einer Pilotbehörde noch nicht erprobt.
+- Voreinstellung der Frist, nach der ein unbearbeiteter Freigabevorschlag auf der Governance-Arbeitsliste erscheint.
+- Ob ein Freigabestempel über Installationsgrenzen hinweg nachweisbar bleiben soll (Signatur der Herkunftsinstallation) — heute wandert er als bloße Herkunftsangabe mit.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
 - Konkreter Aktualisierungsweg für mitgelieferte Assets in einem Netz ohne Internetanbindung (Signatur, Prüfung, Einspielung).
 
@@ -913,3 +1022,4 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 - [Zugangskontrolle](./access-control.md) — Systemverwaltung, Nutzerverwaltung, Audit und Compliance
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
+- [Agenten, Prompts & Werkzeuge](./agents-and-tools.md) — was in einem Agenten steckt, wie er entsteht und wie er vor der Freigabe geprüft wird
