@@ -191,7 +191,8 @@ Jede Auslassung hat einen Sachgrund. Keine davon ist eine Reaktion auf ein ander
 └──────────────────────────┬───────────────────────────────────┘
                            │
 ┌──────────────────────────▼───────────────────────────────────┐
-│  DOKUMENTENSPEICHER · Netzlaufwerk, objektbasiert, lokal     │
+│  DOKUMENTENSPEICHER · ein Verzeichnis · Netzlaufwerk durch   │
+│  Einhängen · objektbasiert als Zielbild                      │
 └──────────────────────────────────────────────────────────────┘
 
 Quer über alle Schichten: Identität und Rechte · revisionssicheres Protokoll ·

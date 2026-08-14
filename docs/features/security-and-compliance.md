@@ -1,6 +1,6 @@
 # Sicherheit, Nachweis & Prüfbarkeit
 
-> **Status: Entwurf — die Leitplanken stehen, der Schnitt des Protokolls ist offen.**
+> **Status: Entwurf — die Leitplanken stehen, der Schnitt der ersten Protokollstufe ist entschieden.**
 >
 > **Phasenlage:** Phase 1. Das revisionssichere Protokoll, die Vollständigkeit nach DSGVO, sichere
 > Voreinstellungen und die Mitbestimmungsfähigkeit gehören zum Fundament — ohne sie ergibt ein Start in
@@ -37,9 +37,9 @@ zweite erfüllt, ist einführbar und nicht betreibbar. OPAA muss beides zugleich
 
 ## Überblick
 
-1. **Revisionssicheres Protokoll** — wer, wann, was; Verwaltungsaktionen und Agentenaktionen; der
-   Zugriff auf Protokolldaten erzeugt selbst einen Eintrag; anbindbar an ein zentrales
-   Sicherheitsmonitoring.
+1. **Revisionssicheres Protokoll** — wer, wann, was; alles, was Zugriff verändert oder
+   Verwaltungshandeln ist; der Zugriff auf Protokolldaten erzeugt selbst einen Eintrag; anbindbar an ein
+   zentrales Sicherheitsmonitoring.
 2. **Historisierung der Rechte** — die Rechtemenge zu einem beliebigen Stichtag ist rekonstruierbar,
    statt sie bei jeder Abfrage mitzuschreiben.
 3. **Vollständigkeit nach DSGVO** — Löschung und Export, beides vollständig und beides ohne
@@ -60,58 +60,236 @@ deshalb im Zweifel gewinnt.
 
 ## Revisionssicheres Protokoll
 
-### Der Schnitt ist noch nicht entschieden
+### Der Schnitt der ersten Stufe
 
-Welche Ereignisse in welcher Tiefe protokolliert werden, was „revisionssicher" im Einzelnen bedeutet und
-welcher Schnitt die erste umsetzbare Stufe ist, wird **nicht in dieser Spezifikation entschieden**. Die
-Frage ist als eigene Arbeit erfasst und soll in einer Entscheidungsvorlage — möglichst als ADR —
-beantwortet werden. Dieses Kapitel beschreibt die Leitplanken, innerhalb derer diese Entscheidung fallen
-muss, und nicht ihr Ergebnis.
+Die erste Stufe protokolliert **alles, was Zugriff verändert oder Verwaltungshandeln ist** — und sonst
+nichts. Abfragen bleiben vollständig draußen: weder wer was gefragt hat noch welche Antwort erzeugt
+wurde.
 
-Zwei Anforderungen sind dabei gegeneinander abzuwägen: die Prüfbarkeit gegen die Festlegung, keinen
-personenbezogenen Auswertungspfad zu bauen. Beide sind verbindlich, und die Vorlage muss zeigen, wie sie
-zusammengehen.
+Diese Grenze ist keine Bequemlichkeit, sondern folgt dem Zielkonflikt, der dieses Kapitel trägt.
+Rechteereignisse fallen **selten** an, betreffen ganz überwiegend **Objekte** und beantworten genau die
+Prüferfrage. Abfrageereignisse fallen **ständig** an, betreffen ausschließlich **Verhalten** und ergeben
+in der Menge das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Wer beides in dieselbe Ablage
+schreibt, hat den Nachweis für die Prüfung und zugleich das Material für die Auswertung, die es nicht
+geben soll — und danach entscheidet nur noch die Zugriffsregel, nicht mehr der Datenbestand.
+
+Was aus der Prüfbarkeit dennoch gebraucht wird und trotzdem nicht ins Protokoll wandert, liefert die
+[Rechtehistorie](#nachweisbarkeit-historisierung-von-rechten): Sie beantwortet die Negativfrage aus dem
+Rechtestand, nicht aus einer Ereigniskette je Abfrage.
+
+### Der Zielkonflikt: Speicherung und Auswertbarkeit sind zu trennen
+
+Zwei verbindliche Anforderungen stehen gegeneinander:
+
+- **Prüfbarkeit verlangt Zurechenbarkeit.** Ein Prüfer will wissen, wer wann was getan hat. Ein
+  Protokoll ohne handelnde Person beantwortet keine einzige Prüffrage; „jemand hat den Zugriff auf die
+  Personalvorgänge erweitert" ist kein Nachweis, sondern ein Befund.
+- **Mitbestimmungsfähigkeit verlangt, dass es keinen personenbezogenen Auswertungspfad gibt** — nicht
+  abgeschaltet, sondern nicht gebaut (siehe [unten](#2-einen-personenbezogenen-auswertungspfad-gibt-es-nicht)).
+
+Beides zugleich geht nur, wenn **Speicherung und Auswertbarkeit getrennt** werden:
+
+> **Der Eintrag trägt die handelnde Person. Es gibt keine Oberfläche und keine Schnittstelle, die
+> Protokolldaten nach Person filtert, gruppiert oder sortiert.**
+
+Der Personenbezug wird also erhoben, aber er ist **kein Einstiegspunkt**. Jede Abfrage beginnt an einem
+Objekt, einem Zeitraum oder einer Ereignisart; die handelnde Person ist immer nur **Ergebnis**, nie
+Suchkriterium. Welche Wege das konkret bedeutet, steht unter
+[Zugriffswege](#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
 
 ### Der Protokollsatz
 
-Der heutige Arbeitsstand des Standardsatzes:
+Ein Eintrag beantwortet fünf Fragen: **wer, wann, was, an welchem Objekt, mit welchem Ergebnis.**
 
 ```json
 {
-  "timestamp": "2026-02-16T14:30:15Z",
-  "user_id": "user-123",
+  "event_id": "01J9…",
+  "recorded_at": "2026-02-16T14:30:15Z",
   "organization_id": "org-1",
-  "action": "search",
-  "space_id": "space-veranlagung",
-  "libraries_searched": ["lib-rechtsquellen"],
-  "results_count": 5,
-  "documents_accessed": ["doc-1", "doc-2"],
-  "result": "success"
+  "actor_kind": "USER",
+  "actor_ref": "pseud-7f3a…",
+  "event_type": "library.grant.revoked",
+  "object_type": "KNOWLEDGE_LIBRARY",
+  "object_id": "lib-personalvorgaenge",
+  "object_label": "Personalvorgänge",
+  "subject_kind": "GROUP",
+  "subject_ref": "grp-referat-z2",
+  "before": { "role": "READER", "expires_at": null },
+  "after": null,
+  "outcome": "SUCCESS",
+  "reason": null,
+  "correlation_ref": "sync-2026-02-16-06"
 }
 ```
 
+| Feld | Warum es dabei ist |
+|---|---|
+| `event_id` | eindeutige Kennung; macht einen Eintrag zitierbar, ohne ihn über Zeit und Person zu beschreiben |
+| `recorded_at` | Zeitpunkt der Aufzeichnung, in UTC; der Zeitpunkt ist die Achse jeder Prüfung |
+| `organization_id` | die Mandantengrenze gilt auch im Protokoll |
+| `actor_kind` | Person, Dienstkonto oder Systemvorgang (z. B. Verzeichnisabgleich) — trennt Handeln von Automatik |
+| `actor_ref` | **Pseudonymkennung** der handelnden Person; die Zuordnung liegt getrennt (siehe [Unveränderlichkeit und Löschrecht](#unveränderlichkeit-und-löschrecht)) |
+| `event_type` | Ereignisart aus einer **geschlossenen Liste**; eine offene Liste wäre nicht prüfbar und nicht abgrenzbar gegenüber der Personalvertretung |
+| `object_type`, `object_id` | das betroffene Objekt — der einzige zulässige Einstieg in die Auswertung |
+| `object_label` | die Bezeichnung **zum Zeitpunkt des Ereignisses**; ohne sie ist ein später umbenanntes oder gelöschtes Objekt in der Prüfung nicht mehr benennbar |
+| `subject_kind`, `subject_ref` | das betroffene Rechtesubjekt — Person (pseudonymisiert) oder Gruppe; ohne dieses Feld ist eine Rechtevergabe inhaltsleer |
+| `before`, `after` | die geänderten Werte, **eng begrenzt** auf das rechtlich Erhebliche (Rolle, Frist, Sichtbarkeit) — kein vollständiger Objektabzug |
+| `outcome` | erfolgreich, abgelehnt oder fehlgeschlagen; die **abgelehnte** Verwaltungsaktion ist für eine Prüfung oft die interessantere |
+| `reason` | Anlass, verpflichtend dort, wo ein Anlass verlangt ist — Zugriff auf Protokolldaten, anlassbezogene Klärung, bestätigter Verzeichnislauf |
+| `correlation_ref` | verbindet die Einträge **eines** Vorgangs, etwa die 412 Einzeländerungen eines Verzeichnislaufs; ersetzt den Sammeleintrag, den eine Prüfung nicht gebrauchen kann |
+
 **Die Netzadresse ist nicht Teil des Standardsatzes.** Sie unterscheidet Dienststelle von Heimarbeit und
-ist damit ein Anwesenheitsmerkmal. Sie kann für Sicherheitszwecke ausdrücklich eingeschaltet werden; dann
-ist die Einschaltung zu begründen, und das Feld bleibt aus Berichten und Exporten ausgeschlossen. Ob eine
-C5-Prüfung das Feld zwingend verlangt, ist offen; sollte das so sein, ist es schriftlich zu begründen.
+ist damit ein Anwesenheitsmerkmal — sie beantwortet keine Frage nach dem Recht, sondern eine nach dem
+Aufenthalt. Dieselbe Begründung schließt **Geräte- und Browserkennung** sowie **Standortangaben** aus.
+Die Netzadresse kann für Sicherheitszwecke ausdrücklich eingeschaltet werden; dann ist die Einschaltung
+zu begründen, und das Feld bleibt aus Berichten und Exporten ausgeschlossen. Ob eine C5-Prüfung das Feld
+zwingend verlangt, ist offen; sollte das so sein, ist es schriftlich zu begründen.
 
-### Besonders protokollpflichtige Handlungen
+### Die Ereignisse der ersten Stufe
 
-Handlungen, an denen sich Rechte, Reichweiten oder die Beobachtbarkeit ändern:
+Alles Folgende ist protokollpflichtig. Die Liste ist **geschlossen**: Was hier nicht steht, wird in der
+ersten Stufe nicht geschrieben.
 
-- Rechtevergabe und -entzug an Assets, einschließlich Mitfreigaben aus der Freigabekette
-- **Ablegen** eines Chats oder Artefakts im Space und **Zurückziehen** durch Ersteller oder Space-Admin
-- Aufnahme und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in einen Space mit
-  abgelegten Inhalten zusätzlich mit ausdrücklicher Bestätigung
+**Rechte an Assets**
+
+- Rechtevergabe, Rechteänderung und Rechteentzug an Wissensbibliotheken und weiteren Assets,
+  einschließlich Mitfreigaben aus der Freigabekette
+- Ablauf einer Befristung, sobald sie wirkt — ein Recht, das ohne Eintrag endet, ist im Nachweis eine
+  Lücke wie eines, das ohne Eintrag beginnt
+- Änderung von Freigabestufe oder Auffindbarkeit eines Assets (`visibility`, `listed`)
+- Aussetzen von Grants durch eine nachträglich gesenkte Freigabe-Obergrenze
+
+**Spaces, Bibliotheken und Gruppen**
+
+- Anlegen, Ändern und Löschen von Spaces, Wissensbibliotheken und Gruppen
+- Aufnahme, Rollenänderung und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in
+  einen Space mit geteilten Inhalten zusätzlich mit der ausdrücklichen Bestätigung im Eintrag
+- Aufnahme und Entfernen von Gruppenmitgliedern; Auflösung einer Gruppe
 - Bereitstellung einer Bibliothek in einem Space, dessen Mitglieder nicht sämtlich Lesezugriff haben
-- Änderung der Freigabestufe oder Auffindbarkeit eines Assets
-- Übernahme von Assets ohne Zuständigkeit und Eigentümerwechsel
-- Änderungen an Modell-Policies
-- **Änderungen an Governance-Einstellungen** — Aufbewahrungsfristen, Aggregation, Statistik,
-  Protokollkonfiguration. Ohne diesen Punkt bleibt eine spätere Abweichung von der Dienstvereinbarung
-  unbemerkt; die Änderung wird zusätzlich angezeigt
-- Jede bewirkte Rechteänderung aus einem Verzeichnissynchronisationslauf — je Änderung, nicht je Lauf
+- Eigentümerwechsel, Übernahme von Assets ohne Zuständigkeit und der Übergang in „Nachfolge offen"
+
+**Konten, Rollen und Verzeichnisabgleich**
+
+- Erteilung und Entzug der System-Admin-Rolle
 - Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung und Widerruf von API-Tokens
+- **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
+  über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
+  der bestätigenden Person und ihrem Anlass
+
+**Systemeinstellungen**
+
+- Governance-Einstellungen: Aufbewahrungsfristen, Mindestgruppengröße, Aggregation, Statistik
+- **Die Protokollkonfiguration selbst** — einschließlich des Einschaltens der Netzadresse. Ohne diesen
+  Punkt bleibt eine spätere Abweichung von der Dienstvereinbarung unbemerkt; die Änderung wird
+  zusätzlich angezeigt
+- Modellvorgaben und die Freigabe externer Modelle
+- Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
+
+**Zugriff auf die Protokolldaten selbst**
+
+- Jedes Lesen, jede Auswertung und jeder Export von Protokolldaten, einschließlich der **abgelehnten**
+  Versuche — siehe [unten](#der-zugriff-auf-protokolldaten-erzeugt-selbst-einen-eintrag)
+
+### Was ausdrücklich nicht protokolliert wird
+
+| Nicht protokolliert | Begründung |
+|---|---|
+| **Abfragen** — Frage, Suchbegriffe, angewandter Suchbereich, Trefferzahl | Das ist Verhalten, nicht Zugriffsänderung. In der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Die Prüfbarkeit hängt nicht daran: Die Negativfrage beantwortet die Rechtehistorie |
+| **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
+| **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
+| **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe |
+| **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie |
+
+**Spätere Stufen** — nicht verworfen, nur nicht hier: das Teilen und Zurückziehen von Chats und
+Artefakten (es ändert Reichweite und gehört dazu, sobald die Funktion existiert), Agentenaktionen mit
+aufrufender Person, Agentenversion und Freigabeschritt, sowie die Ausleitung an ein zentrales
+Sicherheitsmonitoring.
+
+### Der Sicherheitsgrad der ersten Stufe: einfaches Anfügen
+
+Die Ablage wird **nur beschrieben**. Das Anwendungskonto der Datenbank besitzt auf ihr das Recht zum
+Einfügen und zum begrenzten Lesen — **kein** `UPDATE`, **kein** `DELETE`, **kein** `TRUNCATE` und keine
+Rechte am Schema der Tabelle. Ein einmal geschriebener Satz kann durch die Anwendung nicht mehr geändert
+und nicht mehr entfernt werden, auch nicht durch einen Fehler in ihr und auch nicht durch eine über sie
+eingeschleuste Anweisung.
+
+Die [automatische Löschung](#aufbewahrung) braucht dennoch einen Weg, Sätze verschwinden zu lassen. Sie
+läuft deshalb **nicht über das Anwendungskonto**, sondern über ein getrenntes Wartungskonto, und sie
+entfernt **nie einen einzelnen Satz**, sondern immer eine vollständige abgelaufene Zeitscheibe (die
+Ablage ist nach Monaten unterteilt). Damit ist „löschen" eine Mengenoperation nach Fristablauf und kein
+Griff in einen einzelnen Vorgang.
+
+**Eine Prüfsummenverkettung gibt es in dieser Stufe nicht.** Das ist eine bewusste Abwägung, und ihre
+Grenze gehört ausgesprochen:
+
+> **Eine Manipulation durch jemanden mit direktem Datenbankzugang fällt nicht auf.** Wer als
+> Datenbankadministrator an der Anwendung vorbei schreibt, kann Sätze ändern oder entfernen, ohne dass
+> OPAA das erkennt oder belegen kann.
+
+Der Schutz der ersten Stufe stützt sich damit auf zwei Dinge, und nur auf sie: darauf, dass die
+**Anwendung** selbst kein Änderungsrecht hat — das ist der häufige und der wahrscheinliche Fall —, und
+darauf, dass der **direkte Datenbankzugang betrieblich beschränkt** ist. Dieser zweite Teil ist keine
+Produkteigenschaft: Er wird außerhalb von OPAA durch den Betreiber geregelt und nachgewiesen, über die
+Vergabe der Datenbankrechte, das Vier-Augen-Prinzip beim administrativen Zugang und die Protokollierung
+der Datenbank selbst. Genau danach wird eine Prüfung fragen, und die ehrliche Antwort lautet: OPAA
+liefert dafür keinen Nachweis, sondern setzt ihn voraus. Die
+[Verantwortungsmatrix](#zwei-wege--die-behörde-wählt) führt diesen Punkt auf der Betreiberseite.
+
+Die Verkettung der Einträge über Prüfsummen ist die naheliegende nächste Stufe und unter
+[Offene Fragen](#offene-fragen) geführt.
+
+### Zugriffswege: was es gibt und was es nicht gibt
+
+Hier erweist sich später, ob die Zusage gehalten wurde. Deshalb steht sie hier als Liste und nicht als
+Absicht.
+
+**Es gibt genau diese Abfragen:**
+
+| Einstieg | Beispiel | Warum zulässig |
+|---|---|---|
+| **nach Objekt** | „alle Ereignisse an der Bibliothek `Personalvorgänge`" | Das Objekt ist der Prüfgegenstand; die genannten Personen sind Ergebnis, nicht Filter |
+| **nach Zeitraum** | „alle Rechteänderungen zwischen dem 1. und dem 31. März" | beantwortet die Prüferfrage entlang der Zeitachse, ohne Personeneinstieg |
+| **nach Ereignisart** | „alle Änderungen an Systemeinstellungen im letzten Quartal" | prüft eine Kategorie von Verwaltungshandeln, nicht eine Person |
+| **nach Vorgang** | „alle Einträge des Verzeichnislaufs vom 16. Februar" | über `correlation_ref`; hält einen technischen Vorgang zusammen |
+
+Jede dieser Abfragen verlangt einen **Zeitraum** und ist in ihrer Ergebnismenge begrenzt. Eine Abfrage
+ohne Zeitgrenze ist ein Vollabzug und damit ein Auswertungspfad mit anderem Namen.
+
+**Es gibt diese Abfragen nicht — und zwar nicht abschaltbar, sondern nicht gebaut:**
+
+- **kein Filter nach handelnder Person.** Weder als Parameter, noch als Spaltenfilter, noch über eine
+  Sortierung. `actor_ref` ist ein Ausgabefeld, kein Eingabefeld
+- **keine Gruppierung und keine Zählung je Person** — kein „Aktionen je Beschäftigtem", auch nicht
+  aggregiert, auch nicht als Nebenprodukt einer anderen Auswertung
+- **keine Zeitreihe je Person**, in keiner Auflösung
+- **keine Freitextsuche über das Protokoll.** Sie wäre der bequemste Weg, einen Personenfilter durch die
+  Hintertür herzustellen — die Pseudonymkennung ist ein Text wie jeder andere
+- **kein Vollabzug ohne Objekt-, Zeitraum- oder Ereignisbezug**, auch nicht als Export
+- **keine Sicht „alle Ereignisse, bei denen Person X betroffen war"** über das Protokoll. Der berechtigte
+  Bedarf dahinter — welche Rechte hatte X wann — wird über die
+  [Rechtehistorie](#nachweisbarkeit-historisierung-von-rechten) beantwortet, die den Rechtestand
+  abbildet und nicht das Handeln einzelner Beschäftigter
+
+**Die eine Ausnahme, und sie ist eng:** Der Personenfilter existiert genau einmal, im freigegebenen
+Vorgang der [anlassbezogenen Klärung](#2-einen-personenbezogenen-auswertungspfad-gibt-es-nicht) — im
+Vier-Augen-Prinzip unter Beteiligung der Personalvertretung, mit vorab festgelegter Person, vorab
+festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** begrenzen. Ohne
+freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Der
+Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
+geht in den Jahresbericht an die Personalvertretung.
+
+Wer Protokolldaten liest, exportiert oder auswertet, erzeugt damit einen eigenen Protokolleintrag — mit
+Person, Zeitpunkt, Anlass und Umfang der Abfrage. Der Eintrag ist für die auswertende Stelle nicht
+unterdrückbar. **Auch der abgewiesene Versuch** erzeugt einen Eintrag; ein Zugriffsversuch, der nur bei
+Erfolg festgehalten wird, verschweigt genau den Fall, um dessentwillen protokolliert wird.
+
+Diese Einträge sind kein Sonderbestand: Sie liegen in derselben Ablage, unterliegen denselben Regeln und
+sind über dieselben — und nur über dieselben — Wege abfragbar. Wer ein Protokoll führen will, das den
+Blick ins Protokoll ausnimmt, führt keines.
+
+**Protokollierter Zugriff ist aber kein begrenzter Zugriff; beides ist nötig.** Deshalb zusätzlich:
+benannter Personenkreis, dokumentierter Anlass und die technisch durchgesetzte Trennung der
+Auswertungswege für Revision und Dienststellenleitung.
 
 ### Verwaltungsaktionen und Agentenaktionen
 
@@ -121,31 +299,58 @@ Zwei Kategorien, die über die gewöhnliche Nutzerhandlung hinausgehen und desha
   System-Admins nicht automatisch leseberechtigt sind, muss jeder Übernahme- und Verwaltungsakt sichtbar
   sein. Ein Admin, der ein Asset einer neuen Zuständigkeit zuweist, hinterlässt eine Spur, die er selbst
   nicht entfernen kann.
-- **Agentenaktionen.** Ein Agent handelt **immer mit den Rechten der aufrufenden Person**. Der
-  Protokolleintrag hält deshalb beides fest: die aufrufende Person und den ausführenden Agenten in seiner
-  konkreten Version. Bei schreibenden Aktionen kommt der Freigabeschritt hinzu — wer freigegeben hat,
-  wann, und was genau freigegeben wurde. Ein automatisierter Vorgang ohne benennbaren Menschen dahinter
-  ist in der Verwaltung nicht zurechenbar und damit nicht zulässig.
-
-### Der Zugriff auf Protokolldaten erzeugt selbst einen Eintrag
-
-Wer Protokolldaten liest, exportiert oder auswertet, erzeugt damit einen eigenen Protokolleintrag — mit
-Person, Zeitpunkt, Anlass und Umfang der Abfrage. Der Eintrag ist für die auswertende Stelle nicht
-unterdrückbar.
-
-**Protokollierter Zugriff ist aber kein begrenzter Zugriff; beides ist nötig.** Deshalb zusätzlich:
-benannter Personenkreis, dokumentierter Anlass und die technisch durchgesetzte Trennung der
-Auswertungswege für Revision und Dienststellenleitung.
+- **Agentenaktionen** — Teil einer späteren Stufe, weil es heute keine Agenten gibt; die Festlegung
+  steht hier, damit sie nicht später neu verhandelt wird. Ein Agent handelt **immer mit den Rechten der
+  aufrufenden Person**. Der Protokolleintrag hält deshalb beides fest: die aufrufende Person und den
+  ausführenden Agenten in seiner konkreten Version. Bei schreibenden Aktionen kommt der Freigabeschritt
+  hinzu — wer freigegeben hat, wann, und was genau freigegeben wurde. Ein automatisierter Vorgang ohne
+  benennbaren Menschen dahinter ist in der Verwaltung nicht zurechenbar und damit nicht zulässig.
 
 ### Aufbewahrung
 
-- **Frist mit Ober- und Untergrenze**, konfigurierbar, mit automatischer Löschung nach Ablauf. Eine reine
-  Untergrenze („mindestens ein Jahr") ist keine Regelung, sondern eine unbefristete Speicherung mit
-  Mindestdauer.
+Hier stehen zwei berechtigte Anliegen gegeneinander: Eine Prüfung greift **über Jahre** zurück — ein
+Rechnungshofverfahren zu einer Vergabe von 2026 wird 2029 geführt, und ein Testat wird jährlich
+erneuert. Die Datensparsamkeit verlangt umgekehrt, personenbeziehbare Daten so kurz wie möglich zu
+halten. Beides lässt sich nicht auflösen, nur begrenzen — und die Begrenzung gehört ins Produkt und
+nicht in die Auslegung des Einzelfalls.
+
+**Der Vorschlag:**
+
+| | Wert | Begründung |
+|---|---|---|
+| **Untergrenze** | 1 Jahr | Kürzer ist keine Nachweisfähigkeit: Ein jährlicher Prüfzyklus fände dann bereits Lücken im eigenen Zeitraum. Die Untergrenze ist durch die Konfiguration **nicht unterschreitbar** |
+| **Voreinstellung** | 3 Jahre | deckt den üblichen Abstand zwischen Vorgang und Prüfung, ohne in die Größenordnung der Aktenaufbewahrung zu geraten |
+| **Obergrenze** | 10 Jahre | Was länger liegt, dient keiner Prüfung mehr, sondern nur noch der Möglichkeit, es später doch auszuwerten. Die Obergrenze ist **nicht überschreitbar**, auch nicht durch Konfiguration |
+
+- **Automatische Löschung nach Ablauf**, monatsweise und ohne Zutun (siehe
+  [Sicherheitsgrad](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen)). Eine reine Untergrenze
+  („mindestens ein Jahr") ist keine Regelung, sondern eine unbefristete Speicherung mit Mindestdauer.
 - Die Protokollfrist muss **mindestens so lang** gewählt werden wie die Aufbewahrung der Inhalte, auf die
   sie sich bezieht. Sonst existiert ein Chatverlauf noch, aber es ist nicht mehr belegbar, wer ihn wann
   gelesen hat. Das Produkt warnt bei einer inkonsistenten Einstellung. Die konkrete Dauer folgt aus
   Fachrecht und Aktenordnung der einführenden Stelle.
+- Eine **Verkürzung** der Frist wirkt nur nach vorn und ist selbst protokollpflichtig; sie darf nicht das
+  Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet.
+
+### Der Auszug für die Personalvertretung
+
+Der Auszug ist kein Protokollbericht, sondern die **Beschreibung des Protokolls**. Er ist ohne Anlass,
+jederzeit und vollständig exportierbar — vor dem Rollout einmal als Grundlage der Dienstvereinbarung,
+danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
+
+**Er enthält:**
+
+- die vollständige Liste der Ereignisarten mit Zweck je Art
+- die vollständige Feldliste des Protokollsatzes, je Feld mit Granularität, Zweck und Frist
+- die geltenden Aufbewahrungsfristen und den Zeitpunkt ihrer letzten Änderung
+- die Liste der vorhandenen Abfragewege **und** die Liste der ausdrücklich nicht vorhandenen, jeweils mit
+  dem Ergebnis der automatisierten Prüfung darauf (siehe [Erfolgs-Metriken](#erfolgs-metriken))
+- ob die Netzadresse eingeschaltet ist, seit wann und mit welcher Begründung
+- Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum
+
+**Er enthält nicht:** keine Protokollsätze, keine Namen, keine Pseudonymkennungen, keine Zahlen je Person
+oder je Organisationseinheit und keine Objektlisten. Ein Auszug, der belegen soll, dass es keine
+personenbezogene Auswertung gibt, darf nicht selbst eine sein.
 
 ### Unveränderlichkeit und Löschrecht
 
@@ -200,9 +405,12 @@ entstünden zwei unvereinbare Aussagen — entweder wäre die Zusage „danach n
 zurückführbar" nicht haltbar, oder für ausgeschiedene Personen wäre nichts mehr belegbar, obwohl
 Prüfungen gerade sie häufig betreffen.
 
-**Regressionsprüfung gegen Filterfehler:** Enthält `libraries_searched` einer Abfrage eine Bibliothek, die
-nach der Historie zu diesem Zeitpunkt für den Nutzer nicht lesbar war, ist das ein beweisbarer
-Durchsetzungsfehler. Der Abgleich ist billig und wird als Prüfung geführt.
+**Regressionsprüfung gegen Filterfehler:** Wendet eine Abfrage einen Suchbereich an, der eine nach der
+Historie zu diesem Zeitpunkt nicht lesbare Bibliothek enthält, ist das ein beweisbarer
+Durchsetzungsfehler. Der Abgleich ist billig — er läuft aber als **automatisierte Prüfung gegen die
+Rechtehistorie**, nicht über eine Protokollzeile je Abfrage: Die erste Protokollstufe schreibt Abfragen
+bewusst nicht mit (siehe [Was ausdrücklich nicht protokolliert wird](#was-ausdrücklich-nicht-protokolliert-wird)).
+Die Prüfung braucht die Ereignisse auch nicht dauerhaft, sondern nur im Moment der Ausführung.
 
 Das ist bewusst **anders gelöst als über eine Protokollzeile je Abfrage**: Die Rechtemenge bei jeder Suche
 mitzuschreiben würde das Protokoll um eine erhebliche Menge personenbezogener Daten erweitern — genau das,
@@ -211,8 +419,8 @@ Aussage mit weniger Daten.
 
 **Folge für die Berichte:** Einen Bericht „abgelehnte Zugriffe" kann es nicht geben. Weil der Filter Teil
 der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren könnte — unberechtigte
-Chunks werden nie geladen. Was es gibt, ist der Nachweis über die Rechtehistorie und über den bei jeder
-Abfrage protokollierten **angewandten Suchbereich**.
+Chunks werden nie geladen. Was es gibt, ist der Nachweis über die **Rechtehistorie** — und er ist der
+stärkere, weil er den Zustand belegt und nicht das Ausbleiben eines Ereignisses.
 
 ---
 
@@ -255,12 +463,19 @@ geht ausschließlich an die betroffene Person, weder über eine Vertretungsfunkt
 
 ### Berichte
 
-- **Zugangsbericht:** wer hat wann worauf zugegriffen — mit der Einschränkung, dass er nicht nach Person
-  gruppiert oder sortiert werden kann
-- **Rechteänderungen:** wer hat wem was freigegeben, mit Rechtestand zum Stichtag aus der Historie
-- **Zugriff auf geschützte Bestände**
+- **Rechteänderungen an einem Objekt:** wer hat wem was freigegeben, mit Rechtestand zum Stichtag aus der
+  Historie — Einstieg über das Objekt und einen Zeitraum, nie über eine Person
+- **Verwaltungshandeln nach Ereignisart** in einem Zeitraum, etwa alle Änderungen an
+  Systemeinstellungen
+- **Auszug für die Personalvertretung** — die Beschreibung des Protokolls, nicht sein Inhalt
+  ([oben](#der-auszug-für-die-personalvertretung))
 - **Testzugang für die Personalvertretung** vor dem Rollout, damit sie die Zusagen selbst nachvollziehen
   kann statt sie zu glauben
+
+Einen **Zugangsbericht** „wer hat wann worauf zugegriffen" gibt es nicht. Er setzte voraus, dass
+Lesezugriffe und Abfragen mitgeschrieben werden — genau das, was die erste Stufe ausschließt. Was er
+beantworten sollte, beantwortet die Rechtehistorie: nicht wer gelesen **hat**, sondern wer lesen
+**durfte**.
 
 ---
 
@@ -483,9 +698,15 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 
 ## Offene Fragen
 
-- **Der Umfang des revisionssicheren Protokolls ist nicht entschieden** — welche Ereignisse, welche Tiefe,
-  welche erste umsetzbare Stufe und was „revisionssicher" im Einzelnen bedeutet. Die Klärung ist als
-  eigene Arbeit erfasst und soll als Entscheidungsvorlage erfolgen.
+- **Prüfsummenverkettung der Protokolleinträge** — die naheliegende nächste Stufe des Sicherheitsgrads
+  und die Antwort auf die benannte Grenze der ersten: Erst sie macht eine Manipulation mit direktem
+  Datenbankzugang erkennbar. Offen ist der Zuschnitt: Verkettung je Satz oder je Zeitabschnitt,
+  Veröffentlichung der Ankerwerte, und wie sich das Schwärzen des Personenbezugs beim Löschen eines
+  Kontos mit einer Kette verträgt (heute betrifft es nur die getrennte Zuordnungstabelle und lässt das
+  Protokoll unberührt — das bleibt auch mit Kette die richtige Auflösung, muss aber nachgewiesen werden).
+- **Ausleitung an ein zentrales Sicherheitsmonitoring** — welche Ereignisklassen, in welchem Format und
+  ab welcher Stufe. Der Umfang der ersten Stufe schreibt Anmeldeereignisse bewusst nicht mit; sie kommen
+  über diesen Weg oder gar nicht.
 - Verlangt eine C5-Prüfung die Netzadresse im Protokollsatz zwingend? Falls ja, ist die Ausnahme
   schriftlich zu begründen.
 - Wie wird die technische Trennung der Auswertungswege für Revision und Leitung konkret durchgesetzt —
@@ -504,7 +725,11 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 - **Vollständigkeit:** Kein Zugriff auf Protokolldaten ohne eigenen Eintrag; nachgewiesen durch Prüfung
   gegen alle Auswertungswege.
 - **Nachweis der Nichtexistenz:** Ein Test gegen sämtliche Auswertungsendpunkte belegt, dass keiner nach
-  Person gruppiert oder sortiert.
+  Person filtert, gruppiert oder sortiert — und dass jede Abfrage einen Objekt-, Zeitraum- oder
+  Ereignisbezug erzwingt.
+- **Unveränderlichkeit auf Datenbankebene:** Ein Test mit dem Anwendungskonto belegt, dass `UPDATE`,
+  `DELETE` und `TRUNCATE` auf der Protokollablage scheitern. Die Grenze dieses Nachweises ist benannt:
+  Er sagt nichts über einen Zugang an der Anwendung vorbei.
 - **Löschtreue:** Nach Ablauf der Höchstfrist existieren keine Sätze mehr; nach einer Kontolöschung ist
   kein Protokollsatz auf eine Person zurückführbar, und kein Satz wurde verändert.
 - **Einführungsreife:** Das Nachweispaket ist vor der ersten Prüfung vollständig vorlegbar — gemessen

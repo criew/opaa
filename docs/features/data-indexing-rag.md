@@ -34,7 +34,9 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 1. **Jede Aussage ist an ihre Fundstelle gebunden.** Nicht die Antwort als Ganzes trägt eine Quellenliste,
    sondern der einzelne Satz trägt seinen Beleg.
 2. **Zitierzwang ist ein schaltbarer Modus**, kein Dauerzustand und keine Formulierungsbitte an das
-   Modell. Ist er aktiv und findet sich kein belegender Treffer, verweigert OPAA die Antwort.
+   Modell. Ist er aktiv und findet sich kein belegender Treffer, verweigert OPAA die Antwort. Geschaltet
+   wird er **am Space**, verschärfbar durch eine Systemvorgabe; geprüft wird zunächst nur die **Form** des
+   Belegs, nicht seine inhaltliche Deckung (siehe [Zitierzwang](#zitierzwang)).
 3. **Konfidenz wird ausgewiesen**, getrennt nach Trefferqualität und Belegdeckung — zwei verschiedene
    Aussagen, die nicht zu einer Zahl verschmolzen werden.
 4. **Gesucht wird hybrid**: Vektorsuche und Volltextsuche laufen nebeneinander, ihre Ergebnisse werden
@@ -97,46 +99,174 @@ Drei Punkte machen den Unterschied zwischen einer Zusicherung und einer Bitte an
    Auswertung nicht als Störung. Wo „nicht feststellbar" als Ausfall gemessen wird, entsteht Druck, die
    Schwelle zu senken.
 
-Daraus folgt eine Einschränkung bei der Ausgabe: Weil die Prüfung an der fertigen Antwort ansetzt, kann
-im Zitierzwang **nicht im Fluss ausgegeben** werden — sonst wäre ein unbelegter Satz bereits gelesen,
-wenn die Prüfung urteilt. Die Abwägung dazu steht in
-[Modelle und zentrale Steuerung](./llm-integration.md#ausgabe-im-fluss).
+#### Zwei Stufen, und nur die erste gilt jetzt
+
+Die Belegprüfung zerfällt in zwei Stufen, die verschieden viel zusichern und verschieden viel kosten. Sie
+werden **getrennt entschieden und getrennt gebaut**, weil sonst die billige und wirksame Prüfung auf die
+teure und unsichere warten müsste.
+
+| | **Stufe 1 — Formprüfung** | **Stufe 2 — Deckungsprüfung** |
+|---|---|---|
+| Frage | Zeigt der Beleg auf eine tatsächlich abgerufene Fundstelle? | Trägt die zitierte Fundstelle die Aussage inhaltlich? |
+| Verfahren | deterministischer Abgleich gegen die Übergabemenge, kein zusätzlicher Modellaufruf | zweiter Modelldurchlauf je Antwort |
+| Ergebnis | Zusicherung — gleiche Eingabe, gleiches Urteil | Wahrscheinlichkeit — das prüfende Modell irrt ebenfalls |
+| Kosten | vernachlässigbar | Zeit und Rechenleistung je Antwort |
+| Stand | **entschieden, Phase 1** | **eigener Vorgang, noch nicht entschieden** |
+
+**Stufe 1 gilt jetzt.** Sie schließt die größte Lücke zum niedrigsten Preis: Heute wird nur geprüft, ob
+das Belegmuster überhaupt vorkommt — ein Modell, das die Form nachahmt, erzeugt damit einen Beleg, der
+auf nichts zeigt.
+
+**Stufe 2 ist ein eigener Vorgang.** Sie braucht einen zweiten Modelldurchlauf, kostet Zeit und
+Rechenleistung je Antwort und verwandelt den Zitierzwang von einer Zusicherung in eine Wahrscheinlichkeit.
+Sie ist außerdem ohne den Messaufbau aus [Suchqualität messbar
+machen](./search-quality-evaluation.md) nicht bewertbar: Eine Prüfung, deren Trefferquote niemand kennt,
+ist keine Prüfung, sondern eine zweite Meinung. Die Entscheidung darüber wird als eigene Vorlage
+vorbereitet.
+
+#### Was Stufe 1 prüft
+
+Drei Bedingungen, alle deterministisch, alle vor der Ausgabe:
+
+1. **Jeder Beleg zeigt auf eine übergebene Fundstelle.** Dokument-Kennung und Abschnittsnummer im Beleg
+   müssen zu einem der Chunks gehören, die für **diese** Antwort abgerufen und an das Modell übergeben
+   wurden. Auch die mitgeführte Dokumentbezeichnung muss zu dieser Kennung passen — ein Beleg, der die
+   richtige Kennung mit dem falschen Dokumentnamen verbindet, ist irreführender als gar keiner. Belege,
+   die diese Prüfung nicht bestehen, sind ungültig; sie werden nicht stillschweigend entfernt, sondern
+   zählen als fehlender Beleg.
+2. **Keine Fundstelle, keine Antwortgenerierung.** Ist die Menge der abgerufenen Chunks leer, wird
+   verweigert, **bevor** das Antwortmodell überhaupt gerufen wird. Heute läuft die Generierung mit null
+   Chunks weiter und erzeugt eine Antwort aus dem Modellwissen — im Zitierzwang genau der Fall, den er
+   verhindern soll.
+3. **Jede tragende Aussage führt einen gültigen Beleg.** Was „tragend" heißt, ist unten operationalisiert.
+
+**Was Stufe 1 ausdrücklich nicht prüft:** ob die zitierte Fundstelle die Aussage **inhaltlich trägt**. Ein
+formal gültiger Beleg ist der Nachweis, dass eine real abgerufene Passage benannt wurde — nicht der
+Nachweis, dass sie das behauptete aussagt. Ein Modell kann eine korrekt bestehende Fundstelle an einen Satz
+hängen, mit dem sie nichts zu tun hat, und Stufe 1 lässt das durch. Wer diesen Unterschied nicht kennt,
+liest aus dem Zitierzwang eine Zusicherung heraus, die er in Stufe 1 nicht gibt. **Er verhindert erfundene
+Belege, nicht falsche Schlüsse.**
+
+#### Was „tragende Aussage" heißt
+
+Der Begriff entscheidet über die Brauchbarkeit der ganzen Prüfung, und er ist ohne Bedeutungsverständnis
+nicht scharf zu ziehen. Der Vorschlag arbeitet deshalb auf **Abschnittsebene** und über eine Negativliste:
+
+- Die Antwort wird in Sinnabschnitte zerlegt — Absätze, Listenpunkte, Tabellenzeilen.
+- Ein Abschnitt gilt als **tragend**, außer er fällt unter eine der benannten Ausnahmen: Anrede und
+  Verabschiedung, Rückfrage an die fragende Person, Überschrift, Einleitungssatz einer Aufzählung, reine
+  Wiedergabe der Frage, Angabe über den Suchvorgang selbst und ausdrücklich als „nicht feststellbar"
+  gekennzeichnete Abschnitte.
+- Jeder tragende Abschnitt muss **mindestens einen gültigen Beleg** enthalten. Fehlt er in einem
+  Abschnitt, greift die Ausweisung nach Punkt 2 oben; fehlt er in allen, wird verweigert.
+
+Abschnitt statt Satz aus zwei Gründen: Der Systemprompt verlangt den Beleg ohnehin am Ende des Satzes
+**oder Absatzes**, der die Angabe verwendet, und eine verlässliche Satzgrenzenerkennung scheitert im
+Verwaltungsdeutsch regelmäßig an Abkürzungen und Fundstellenangaben („§ 30 AO", „i. V. m.", „Az.").
+
+**Die Unschärfe gehört benannt.** Die Negativliste ist eine Heuristik, und sie irrt in zwei Richtungen:
+
+- **Belegverdünnung** — das Modell fasst mehrere Aussagen in einen langen Absatz und hängt einen Beleg
+  ans Ende. Formal erfüllt, inhaltlich wertlos. Als Gegengewicht begrenzt Stufe 1 den Textumfang, den ein
+  einzelner Beleg stützen darf, auf einen Absatz und setzt eine Obergrenze für dessen Länge — als
+  Ausgangswert 1.000 Zeichen, gegen die Referenzfälle nachzujustieren. Das ist eine **Formregel, keine
+  Deckungsregel**; die eigentliche Antwort auf die Belegverdünnung ist Stufe 2.
+- **Unnötige Verweigerung** — ein rein überleitender Abschnitt wird als tragend gewertet und blockiert
+  eine ansonsten belegte Antwort. Der teurere der beiden Fehler für die Nutzenden, und deshalb der, der
+  in der Messung [Verweigerungsgüte](#erfolgs-metriken) sichtbar sein muss.
 
 #### Wo der Schalter sitzt
 
-Zu klären ist, auf welcher Ebene der Zitierzwang gesetzt wird. Drei Möglichkeiten stehen zur Wahl.
-
-**Option 1 — Systemweit.** Die Systemverwaltung schaltet ihn für die ganze Organisation ein oder aus.
-Einfach zu erklären und zu prüfen, aber grob: In einem Haus, das ihn für Auskünfte mit Außenwirkung
-braucht, blockiert er zugleich die Ideensammlung im Fachreferat.
-
-**Option 2 — Je Space.** Der Arbeitsraum bestimmt den Modus. Das passt zur bestehenden Rolle des Space,
-der ohnehin Aufbewahrung, Standard-Suchbereich und Zurechnung bestimmt. Schwäche: Der Space ist kein
-Sicherheitsanker; ein Bestand, der nur belegt verwendet werden darf, kann in einem Space landen, dessen
-Modus lockerer ist.
-
-**Option 3 — An der Wissensbibliothek.** Der Bestand führt seine Anforderung selbst mit — wie die
-Modellbeschränkung, die aus demselben Grund an den Daten hängt und nicht am Raum. Stark bei
-haftungskritischen Beständen, aber unbrauchbar als alleinige Ebene: Eine Bibliothek kann nicht wissen, ob
-gerade eine Auskunft oder eine Vorüberlegung entsteht.
-
-**Empfehlung:** Alle drei Ebenen, verrechnet als **Obergrenze in derselben Richtung wie die
-Modellvorgaben** — der Zitierzwang gilt, sobald **eine** beteiligte Ebene ihn verlangt. Keine Ebene kann
-ihn abschalten, den eine andere gesetzt hat.
+**Entschieden: am Space, mit einer Systemvorgabe darüber.** Ein Space ist im Zitierzwang oder er ist es
+nicht. Zusätzlich kann die Systemverwaltung ihn hausweit erzwingen; dann gilt er überall, unabhängig von
+der Einstellung des einzelnen Space.
 
 ```
-Zitierzwang aktiv  =  Systemvorgabe
-                   ∨  Space-Einstellung
-                   ∨  Anforderung einer Bibliothek im Suchbereich
-                   ∨  Anforderung des eingesetzten Agenten
+Zitierzwang aktiv  =  Systemvorgabe (erzwingend)
+                   ∨  Einstellung des Space
 ```
 
-Damit gibt es genau eine Verrechnungsregel für alle Vorgaben im System, und die strengste Festlegung
-gewinnt immer. Ein Agent, der für Auskünfte mit Außenwirkung gebaut ist, bringt seinen Zitierzwang mit,
-egal wo er läuft — dieselbe Eigenschaft, die einen geprüften Agenten überhaupt prüfbar macht.
+Die Verrechnung läuft in derselben Richtung wie die [Modellvorgaben](./llm-integration.md): Es gibt genau
+eine Richtung, und das ist Verschärfung. Ein Space kann den Zwang setzen, den die Systemvorgabe nicht
+verlangt; er kann den nicht abschalten, den sie verlangt.
 
-**Offen bleibt**, ob eine Bibliothek den Zitierzwang tatsächlich erzwingen können soll oder nur empfehlen
-darf; siehe [Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
+Der Space trägt den Schalter, weil er ohnehin bestimmt, in welchem Zusammenhang gearbeitet wird — Zweck,
+Standard-Suchbereich, Aufbewahrung und Zurechnung hängen bereits dort. Ein Raum für Auskünfte mit
+Außenwirkung und ein Raum für Vorüberlegungen sind verschiedene Räume, und der Modus folgt dieser
+Trennung ohne eine neue Verwaltungsebene.
+
+**Die Grenze dieser Wahl, ausgesprochen:** Der Zitierzwang ist **durch einen Raumwechsel umgehbar**.
+Dieselbe Wissensbibliothek kann in einem zweiten Space ohne Zitierzwang bereitgestellt werden; dort
+beantwortet OPAA dieselben Fragen aus demselben Bestand ohne Belegpflicht. Das ist genau die Schwäche, die
+das Rechtemodell bei den Zugriffsrechten bewusst vermeidet, indem die Beschränkung an den **Daten** hängt
+und nicht am Raum (siehe [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)).
+
+Für den Betrieb folgt daraus eine Pflicht, die das System nicht abnimmt: **Wer einen haftungskritischen
+Bestand führt, muss dessen Bereitstellung in Spaces ohne Zitierzwang organisatorisch verhindern.** Das
+System verhindert es nicht — es kennt die Anforderung des Bestands nicht. Wo diese Organisation nicht
+zugetraut wird, bleibt nur die hausweite Systemvorgabe, die den Zwang dann auch dort erzwingt, wo er nur
+bremst. Die Verankerung an der Wissensbibliothek wäre die stärkere Alternative und steht unter
+[Offene Fragen](#offene-fragen--zukünftige-erweiterungen).
+
+**Eine Voraussetzung fehlt heute:** Die Abfrage kennt den Space nicht. Sie läuft über alle für die
+fragende Person lesbaren Wissensbibliotheken, ohne Kontext, aus dem sich ein Modus ableiten ließe. Der
+Schalter am Space setzt deshalb voraus, dass die Abfrage einen Space-Bezug mitführt — das ist Teil des
+Umsetzungsschnitts und keine Nebensache.
+
+#### Was bei einer Verweigerung erscheint
+
+„Nicht feststellbar" ohne Begründung ist unbrauchbar: Es bleibt offen, ob die Frage falsch gestellt war,
+der Bestand fehlt oder das System klemmt. Die Verweigerung ist deshalb eine **Auskunft über den
+Suchvorgang** und enthält vier Angaben:
+
+| Angabe | Inhalt | Zweck |
+|---|---|---|
+| Wonach gesucht wurde | die tatsächlich verwendete Suchfrage, nicht nur die eingegebene | macht die Anreicherung aus dem Gesprächsverlauf sichtbar |
+| Wo gesucht wurde | die Namen der durchsuchten Wissensbibliotheken | zeigt, ob der erwartete Bestand überhaupt im Suchbereich lag |
+| Was gefunden wurde | Zahl der Treffer und Zahl der Treffer oberhalb der Belegschwelle | trennt „nichts gefunden" von „nichts Gutes genug gefunden" |
+| Woran es lag | ein Grund aus einer festen, kurzen Liste | benennt den nächsten sinnvollen Schritt |
+
+Die Gründe sind abschließend:
+
+1. **„Kein Treffer über der Belegschwelle."** Die Suche lief, es blieb nichts Belegfähiges übrig.
+2. **„Die erzeugte Antwort stützte sich nicht auf die gefundenen Stellen."** Es gab Fundstellen, aber die
+   Antwort führte keinen oder keinen gültigen Beleg. Hier hilft ein erneuter Versuch, dort nicht.
+
+**Die Meldung darf nicht verraten, was jemand nicht sehen darf.** Deshalb gilt: Genannt werden
+ausschließlich Bestände, die die fragende Person ohnehin lesen darf. Über alles andere sagt die Meldung
+nichts — auch nicht, wie viel es davon gibt. Wer auf keinen Bestand Zugriff hat und wer Zugriff hat, aber
+nichts findet, bekommt in Grund 1 **denselben Text**; unterschieden wird nur über die Liste der eigenen
+Bestände, die im ersten Fall leer ist. Damit bleibt die heutige bewusste Gleichbehandlung von „keine
+Leserechte" und „nichts gefunden" erhalten (siehe
+[Bindung der Aussage an die Fundstelle](#bindung-der-aussage-an-die-fundstelle) und
+[#202](https://github.com/criew/opaa/issues/202)).
+
+Eine Verweigerung wird **als Ergebnis** ausgeliefert, nicht als Fehler: reguläre Antwort mit
+Verweigerungskennzeichen, damit sie im Verlauf steht, protokollierbar ist und in der Auswertung nicht als
+Störung zählt.
+
+#### Wechselwirkung mit der Ausgabe im Fluss
+
+Die Prüfung setzt an der fertigen Antwort an. Erscheint der Text schrittweise, ist ein unbelegter Satz
+bereits gelesen, wenn das Urteil fällt — Gelesenes ist nicht widerrufbar. Im Zitierzwang kann deshalb
+entweder nicht im Fluss ausgegeben werden, oder der laufende Strom muss verworfen werden können.
+
+Diese Frage wird **hier nicht entschieden**. Sie gehört zur Ausgabeform und steht mit ihren drei Optionen
+und der Empfehlung in [Modelle und zentrale
+Steuerung](./llm-integration.md#ausgabe-im-fluss). Solange die Ausgabe im Fluss nicht gebaut ist — und sie
+ist es nicht —, entsteht der Konflikt praktisch nicht.
+
+#### Umsetzungsschnitt
+
+Der Schnitt ist in [#354](https://github.com/criew/opaa/issues/354) entschieden und in vier Vorgänge
+zerlegt:
+
+| Vorgang | Inhalt |
+|---|---|
+| [#386](https://github.com/criew/opaa/issues/386) | Belege gegen die abgerufenen Fundstellen prüfen — der deterministische Kern von Stufe 1 |
+| [#387](https://github.com/criew/opaa/issues/387) | Verweigerung mit Auskunft über den Suchvorgang, ohne Rückschluss auf Unlesbares |
+| [#388](https://github.com/criew/opaa/issues/388) | Schalter am Space und Systemvorgabe, mit Verrechnung und Space-Bezug der Abfrage |
+| [#389](https://github.com/criew/opaa/issues/389) | Entscheidungsvorlage zur inhaltlichen Deckungsprüfung — Stufe 2, endet mit einer Vorlage, nicht mit Code |
 
 ### Konfidenz
 
@@ -660,6 +790,15 @@ Idee wieder aufgemacht werden.
   [Wissensquellen und Konnektoren](./knowledge-sources.md#geklärte-fragen) mit **Issue #119** erfasst.
 - **Verweigerung ist ein Ergebnis, kein Fehler.** „Nicht feststellbar" wird protokolliert und zählt in
   der Auswertung nicht als Störung — sonst entsteht Druck, die Schwelle zu senken.
+- **Belegprüfung in zwei Stufen, zuerst nur die deterministische — ja.** Stufe 1 prüft ohne zusätzlichen
+  Modellaufruf, ob jeder Beleg auf eine tatsächlich abgerufene Fundstelle zeigt, ob überhaupt Fundstellen
+  vorlagen und ob jede tragende Aussage einen gültigen Beleg führt. Die inhaltliche Deckungsprüfung
+  (Stufe 2) wird getrennt entschieden (siehe [Zitierzwang](#zitierzwang), entschieden in
+  [#354](https://github.com/criew/opaa/issues/354)).
+- **Der Schalter sitzt am Space, mit erzwingender Systemvorgabe — ja.** Die Verankerung an der
+  Wissensbibliothek wäre die stärkere Wahl, kostet aber eine Ebene mehr; die bekannte Folge ist, dass der
+  Zitierzwang durch einen Raumwechsel umgehbar bleibt (siehe [Wo der Schalter
+  sitzt](#wo-der-schalter-sitzt)).
 - **Ein Vektorspeicher, und zwar PostgreSQL mit pgvector — ja.** Austauschbare Vektorspeicher werden
   nicht zugesagt. Der Zugriff läuft zwar über eine portable Schnittstelle des Rahmenwerks, ein Wechsel
   wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert (siehe
@@ -670,12 +809,24 @@ Idee wieder aufgemacht werden.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Soll eine Wissensbibliothek den Zitierzwang **erzwingen** können oder nur empfehlen? Erzwingen ist
-  konsequent, macht aber einen Bestand für explorative Arbeit unbrauchbar, sobald er in einem Space
-  bereitgestellt ist.
-- Wie wird die Belegprüfung technisch durchgeführt — regelbasierter Abgleich der Aussage mit der
-  gelieferten Passage, ein zweiter Modelldurchlauf, oder beides gestuft? Ein zweiter Durchlauf kostet
-  Zeit und ist selbst fehlbar.
+- Soll der Zitierzwang zusätzlich **an der Wissensbibliothek** verankert werden? Das ist die stärkere
+  Alternative zur entschiedenen Verankerung am Space: Der Bestand führt seine Anforderung mit, und der
+  Zwang ist nicht mehr durch einen Raumwechsel umgehbar — wie die Modellbeschränkung, die aus demselben
+  Grund an den Daten hängt. Der Preis ist eine Ebene mehr und ein Bestand, der für explorative Arbeit
+  unbrauchbar wird, sobald er irgendwo bereitgestellt ist. **Wieder aufzumachen, wenn sich die
+  organisatorische Absicherung im Betrieb als zu schwach erweist** — der Auslöser wäre ein Fall, in dem
+  ein haftungskritischer Bestand in einem Space ohne Zitierzwang gelandet ist.
+- Soll auch ein **Agent** den Zitierzwang mitbringen können, unabhängig davon, wo er läuft? Fachlich
+  naheliegend — ein Agent für Auskünfte mit Außenwirkung ist genau der Fall — und in
+  [Agenten, Prompts und Werkzeuge](./agents-and-tools.md) bereits vorausgesetzt. Die Ebene fügt sich in
+  dieselbe Verrechnungsrichtung ein, ist aber erst zu entscheiden, wenn es Agenten gibt.
+- Kommt die inhaltliche **Deckungsprüfung (Stufe 2)**, und in welcher Form — zweiter Modelldurchlauf über
+  die ganze Antwort, nur über die zweifelhaften Abschnitte, oder ein eigenes, kleines Prüfmodell? Sie
+  kostet Zeit und Rechenleistung je Antwort, ist selbst fehlbar und ohne Messaufbau nicht bewertbar. Eine
+  eigene Entscheidungsvorlage bereitet das vor ([#389](https://github.com/criew/opaa/issues/389)).
+- Soll der Beleg zusätzlich den **verwendeten Wortlaut** mitführen, damit sich deterministisch prüfen
+  lässt, ob die zitierte Passage überhaupt so im Chunk steht? Das wäre eine Verschärfung von Stufe 1 ohne
+  Modellaufruf, verlängert aber die Antwort und ist bei sinngemäßer Wiedergabe wirkungslos.
 - Welche Schwelle trennt „belegt" von „nicht feststellbar", und wird sie je Bestand gesetzt? Eine
   hausweite Zahl passt selten auf Rechtsquellen und Besprechungsnotizen zugleich.
 - Läuft das Reranking über ein eigenes Modell oder über das Antwortmodell? Ein eigenes Modell ist
