@@ -21,17 +21,17 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   @Query("select distinct s from Space s left join fetch s.memberships where s.id = :spaceId")
   Optional<Space> findByIdWithMemberships(@Param("spaceId") UUID spaceId);
 
-  boolean existsByOwnerIdAndKind(UUID ownerId, SpaceKind kind);
+  boolean existsByOwnerIdAndIsDefaultTrue(UUID ownerId);
 
   /**
-   * Inserts a personal space and its owner {@code ADMIN} membership in a single round trip,
-   * silently doing nothing if a personal space for {@code ownerId} already exists - see {@link
-   * SpaceService#ensurePersonalSpace} for the full reasoning (#201/#305 code review).
+   * Inserts the user's default space and its owner {@code ADMIN} membership in a single round trip,
+   * silently doing nothing if a default space for {@code ownerId} already exists - see {@link
+   * SpaceService#ensureDefaultSpace} for the full reasoning (#201/#305 code review).
    *
    * <p>The single native statement below is a CTE chain, not two independent inserts: {@code
-   * new_space} attempts the {@code spaces} insert with {@code ON CONFLICT (owner_id) WHERE kind =
-   * 'PERSONAL' DO NOTHING} (the partial unique index {@code uk_spaces_personal_owner}, migration
-   * 010) as the conflict target, and the {@code space_memberships} insert then {@code SELECT}s from
+   * new_space} attempts the {@code spaces} insert with {@code ON CONFLICT (owner_id) WHERE
+   * is_default DO NOTHING} (the partial unique index {@code uk_spaces_default_owner}, migration
+   * 015) as the conflict target, and the {@code space_memberships} insert then {@code SELECT}s from
    * {@code new_space} - zero rows (and therefore no membership insert either) if the conflict
    * fired, exactly one row (and therefore exactly one membership insert) if it did not. A losing
    * caller's membership insert is correctly skipped without a second query to find out whether it
@@ -42,16 +42,16 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
       value =
           "WITH new_space AS ("
               + "  INSERT INTO spaces"
-              + "    (id, name, description, kind, visibility, owner_id, organization_id, created_at, updated_at)"
+              + "    (id, name, description, is_default, visibility, owner_id, organization_id, created_at, updated_at)"
               + "  VALUES"
-              + "    (:spaceId, :name, :description, 'PERSONAL', 'PRIVATE', :ownerId, :organizationId, now(), now())"
-              + "  ON CONFLICT (owner_id) WHERE kind = 'PERSONAL' DO NOTHING"
+              + "    (:spaceId, :name, :description, true, 'PRIVATE', :ownerId, :organizationId, now(), now())"
+              + "  ON CONFLICT (owner_id) WHERE is_default DO NOTHING"
               + "  RETURNING id"
               + ") "
               + "INSERT INTO space_memberships (id, user_id, space_id, role, organization_id, created_at) "
               + "SELECT :membershipId, :ownerId, id, 'ADMIN', :organizationId, now() FROM new_space",
       nativeQuery = true)
-  void insertPersonalSpaceIfAbsent(
+  void insertDefaultSpaceIfAbsent(
       @Param("spaceId") UUID spaceId,
       @Param("membershipId") UUID membershipId,
       @Param("name") String name,

@@ -12,7 +12,7 @@ vi.mock('../services/api', () => ({
     id: 'space-new',
     name: 'Test',
     description: '',
-    kind: 'PROJECT',
+    isDefault: false,
     visibility: 'PRIVATE',
     ownerId: 'u1',
     memberCount: 1,

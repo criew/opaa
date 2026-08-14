@@ -8,7 +8,6 @@ import type {
   IndexingTriggerRequest,
   QueryRequest,
   QueryResponse,
-  SpaceKind,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRole,
@@ -152,17 +151,12 @@ export async function updateSpaceDetails(
   }
 }
 
-export async function createSpace(
-  name: string,
-  description: string,
-  kind: SpaceKind = 'PROJECT',
-): Promise<SpaceResponse> {
+export async function createSpace(name: string, description: string): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
     const { data } = await client.post<SpaceResponse>('/v1/spaces', {
       name,
       description,
-      kind,
       ownerId: currentUserId,
       initialMembers: [],
     })

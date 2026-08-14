@@ -15,7 +15,7 @@ describe('Sidebar', () => {
           id: 'space-personal',
           name: 'Meine Dokumente',
           description: 'Private',
-          kind: 'PERSONAL',
+          isDefault: true,
           visibility: 'PRIVATE',
           memberCount: 1,
           userRole: 'ADMIN',

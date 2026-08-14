@@ -28,9 +28,8 @@ public class Space {
   @Column(name = "description", length = 2000)
   private String description;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "kind", nullable = false, length = 20)
-  private SpaceKind kind;
+  @Column(name = "is_default", nullable = false)
+  private boolean isDefault;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "visibility", nullable = false, length = 20)
@@ -56,14 +55,14 @@ public class Space {
   public Space(
       String name,
       String description,
-      SpaceKind kind,
+      boolean isDefault,
       SpaceVisibility visibility,
       UUID ownerId,
       UUID organizationId) {
     this.id = UUID.randomUUID();
     this.name = name;
     this.description = description;
-    this.kind = kind;
+    this.isDefault = isDefault;
     this.visibility = visibility;
     this.ownerId = ownerId;
     this.organizationId = organizationId;
@@ -103,8 +102,14 @@ public class Space {
     this.ownerId = newOwnerId;
   }
 
-  public boolean isPersonal() {
-    return this.kind == SpaceKind.PERSONAL;
+  /**
+   * Whether this is the space created automatically on the user's first login. Exactly one per user
+   * and not deletable; in every other respect an ordinary space. Replaces the former {@code
+   * SpaceKind.PERSONAL} - see #333 and
+   * docs/features/spaces-and-assets.md#es-gibt-nur-eine-art-von-space.
+   */
+  public boolean isDefault() {
+    return isDefault;
   }
 
   public UUID getId() {
@@ -117,10 +122,6 @@ public class Space {
 
   public String getDescription() {
     return description;
-  }
-
-  public SpaceKind getKind() {
-    return kind;
   }
 
   public SpaceVisibility getVisibility() {
