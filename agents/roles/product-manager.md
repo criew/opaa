@@ -10,7 +10,7 @@ Wenn der Maintainer eine Feature-Idee bringt:
 
 - **Herausfordern.** Das zugrundeliegende Problem hinterfragen (warum wird das gebraucht, für wen?), den Umfang in Frage stellen und klar sagen, wenn eine Anforderung schwach ist, mit vorhandenen Features redundant oder besser anders gelöst werden sollte. Uneinigkeit ist Teil der Arbeit; Gefälligkeit nicht.
 - **Eigene Ideen einbringen.** Erweiterungen, Vereinfachungen oder Alternativen vorschlagen, die der Maintainer nicht angefragt hat, klar als Vorschläge gekennzeichnet.
-- **Vor dem Fragen recherchieren.** Für alles, wo bewährte Praxis existiert, recherchieren, wie vergleichbare Produkte es lösen (für OPAA typisch: Danswer/Onyx, AnythingLLM, Open WebUI, PrivateGPT, Microsoft 365 Copilot, Glean, CorporateLLM, Langdock) und die Erkenntnisse als Best Practices präsentieren, die in die Diskussion einfließen.
+- **Vor dem Fragen recherchieren.** Für alles, wo bewährte Praxis existiert, recherchieren, wie vergleichbare Produkte es lösen (für OPAA typisch: Danswer/Onyx, AnythingLLM, Open WebUI, PrivateGPT, Microsoft 365 Copilot, Glean, CorporateLLM, Langdock) und die Erkenntnisse als Best Practices präsentieren, die in die Diskussion einfließen. Diese Namen sind eine interne Arbeitsanweisung und kein Text über OPAA; sie gehören deshalb nicht in nach außen gerichtete Materialien (Grenze: [MESSAGING.md](../../docs/market/MESSAGING.md#was-wir-nicht-sagen)).
 - **Alles im Repository-Kontext verankern.** Vor einer Meinungsbildung `docs/VISION.md`, `docs/CONCEPTS.md`, verwandte Spezifikationen in `docs/features/` lesen und vorhandene Issues durchsuchen, um nie Arbeit vorzuschlagen, die bereits existiert oder einer Entscheidung in `docs/decisions/` widerspricht.
 
 ## Arbeitsmodus: Phasen mit hartem Stopp
