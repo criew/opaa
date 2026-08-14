@@ -45,14 +45,47 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 
 ### Was sie leistet
 
-| Bereich | Zweck |
-|---|---|
-| **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, zur Quellstelle springen, Konfidenz und durchsuchten Bereich sehen |
-| **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) |
-| **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen |
-| **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden |
-| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) |
-| **Systemverwaltung** | Modellvorgaben, Konnektoren, Rechte, Protokolle (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
+| Bereich | Zweck | Heute gebaut |
+|---|---|---|
+| **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
+| **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
+| **Suchfilter** | die Abfrage auf ausgewählte Arbeitsräume eingrenzen | ja — Eingrenzung auf Arbeitsräume; weitere Filter siehe unten |
+| **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
+| **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | nein — die Rechte- und Bestandsverwaltung besteht in der Schnittstelle, die Dokumentenseite der Oberfläche ist ein Platzhalter |
+| **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
+| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | teilweise — Bedienelement vorhanden, ohne Wirkung (siehe unten) |
+| **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
+| **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
+
+### Dokumentenübersicht, Gesprächsverwaltung und Suchfilter
+
+Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
+tatsächlichen Stand abgeglichen sind. Dokumentenübersicht und Gesprächsverwaltung sind **Zielbild**
+und heute nicht gebaut; die Dokumentenseite der Oberfläche zeigt einen Platzhalter.
+
+**Dokumentenübersicht.** Wer eine Antwort prüft, will den Bestand dahinter sehen können: welche
+Dokumente einer Wissensbibliothek indiziert sind, wann zuletzt, mit welchem Ergebnis — ausstehend,
+indiziert, fehlgeschlagen — und mit der Möglichkeit, ein Dokument im Original zu öffnen. Ohne diese
+Sicht ist eine ausbleibende Antwort nicht von einem lückenhaften Bestand zu unterscheiden, und genau
+diese Verwechslung untergräbt das Vertrauen in das System schneller als eine falsche Antwort.
+
+Die zugrunde liegende Abfrage besteht bereits in der Schnittstelle (`GET
+/api/v1/libraries/{id}/documents`); was fehlt, ist die Darstellung.
+
+**Gesprächsverwaltung.** Ein Gespräch überlebt heute das Neuladen der Seite nicht. Im Zielbild
+gehört ein Gespräch in einen Arbeitsraum: benannt, wiederauffindbar, für die Mitglieder des
+Arbeitsraums sichtbar, sobald der Autor es dort ablegt — bis dahin bleibt es Entwurf und damit beim
+Autor (siehe [spaces-and-assets.md](./spaces-and-assets.md)). Dazu gehören das Löschen des eigenen
+Verlaufs und ein Export des Gesprächs samt Fundstellen, weil ein Gesprächsergebnis in der Verwaltung
+regelmäßig in einen Vorgang übernommen wird.
+
+Die Aufbewahrungsdauer abgelegter Gespräche ist eine Betriebs- und Mitbestimmungsfrage, keine
+Voreinstellung des Produkts.
+
+**Suchfilter.** Gebaut ist die Eingrenzung auf ausgewählte Arbeitsräume. Im Zielbild kommen die
+Eingrenzung auf einzelne Wissensbibliotheken, auf den Dokumenttyp und auf den Stand der Indizierung
+hinzu. Ein Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die
+Sicht, sie erweitern sie nie.
 
 ### Belegbarkeit ist Oberfläche, nicht Beiwerk
 
@@ -70,6 +103,47 @@ Umsetzung ist eine Eigenschaft dieses Kanals, keine nachgelagerte Prüfung.
 
 ---
 
+## Rückmeldung zur Antwortqualität
+
+Die Rückmeldung schließt die Rückkopplungsschleife aus Themenbereich A: Ohne sie ist die einzige
+verfügbare Aussage über die Antwortqualität die Vermutung derer, die das System gebaut haben.
+
+**Stand:** Das Bedienelement — Zustimmung oder Ablehnung zu einer Antwort — ist in der Oberfläche
+vorhanden und beschriftet, hat aber **keine Wirkung**: Es gibt keinen Endpunkt, der eine Bewertung
+entgegennimmt, und keine Speicherung. Alles Weitere in diesem Abschnitt ist Zielbild.
+
+### Was bewertet wird
+
+- **Die Antwort als Ganzes** — zutreffend oder nicht. Das ist die niedrigschwelligste Form und
+  deshalb die einzige, die verlässlich genutzt wird.
+- **Die einzelne Fundstelle** — trug sie zur Antwort bei oder war sie ein Fehltreffer? Diese Angabe
+  ist die fachlich wertvollere, weil sie auf den Abruf zeigt und nicht auf die Formulierung.
+- **Ein freier Hinweis** in Textform, ausdrücklich freiwillig.
+
+### Was mit der Bewertung geschieht
+
+1. **Sie wird zur Frage gespeichert, nicht zur Person.** Festgehalten werden die Frage, die
+   gelieferten Fundstellen und die Bewertung — nicht, wer bewertet hat.
+2. **Sie fließt in die Suchqualitäts-Evaluierung ein.** Negativ bewertete Fragen sind die besten
+   Kandidaten für den Golden-Datensatz, gegen den Änderungen am Abruf geprüft werden (siehe
+   [search-quality-evaluation.md](./search-quality-evaluation.md)).
+3. **Sie zeigt der Systemverwaltung Muster, keine Fälle.** Häufungen — eine Wissensbibliothek mit
+   auffällig vielen Fehltreffern, ein Bestand, der veraltet ist — sind der eigentliche Ertrag.
+4. **Sie verändert keine Rechte und kein Ranking im laufenden Betrieb.** Eine Rückmeldung, die
+   unmittelbar auf die Trefferreihenfolge durchschlägt, wäre manipulierbar und nicht mehr
+   nachvollziehbar. Der Weg führt über eine geprüfte Änderung, nicht über die Bewertung selbst.
+
+### Die Grenze zur Mitbestimmung
+
+Rückmeldungen dürfen **keinen personenbezogenen Auswertungspfad** eröffnen. Es gibt weder eine
+Auswertung nach bewertender Person noch eine Rangfolge von Beschäftigten nach Zustimmung oder Menge
+der Rückmeldungen; Auswertungen sind aggregiert und nicht auf Einzelne rückführbar. Eine Bewertung
+ist eine Aussage über das System, nicht über die Person, die es bedient — wäre sie es, entstünde ein
+zur Leistungs- und Verhaltenskontrolle geeignetes Instrument und die Rückmeldung würde schlicht
+unterbleiben.
+
+---
+
 ## REST-API
 
 Die REST-API ist zugleich Zugang für eigene Anwendungen **und** die Grundlage aller weiteren Kanäle.
@@ -82,17 +156,97 @@ bräuchte, würde eine zweite Rechteprüfung und eine zweite Fehlerbehandlung er
   werden daraus erzeugt (siehe [ADR-0006](../decisions/0006-openapi-dto-generation.md)). Änderungen
   beginnen an der Spezifikation, nicht am Code.
 - **Anmeldung wie überall.** Zugang über den Verzeichnisdienst des Hauses; maschinelle Zugänge sind
-  eigene, nachvollziehbare Identitäten mit eigenen Rechten und nicht das Konto einer Person.
+  eigene, nachvollziehbare Identitäten mit eigenen Rechten und nicht das Konto einer Person
+  (Einzelheiten und Stand unter [Authentifizierung und Zugang](#authentifizierung-und-zugang)).
 - **Rechte der aufrufenden Person.** Ein Aufruf sieht genau die Wissensbibliotheken, die der
   aufrufenden Identität freigegeben sind. Die Prüfung sitzt in der Suche, nicht davor.
 - **Belege im Antwortformat.** Fundstellen, Konfidenz und der durchsuchte Bereich sind Teil der
   Antwort, nicht eine gesonderte Abfrage.
 - **Protokollierung.** Jeder Aufruf ist zurechenbar und erscheint im revisionssicheren Protokoll.
-- **Grenzen.** Anfragekontingente schützen den Betrieb und begrenzen Kosten; die Werte sind eine
-  Betriebsentscheidung und stehen nicht in dieser Spezifikation.
+- **Grenzen.** Anfragekontingente schützen den Betrieb und begrenzen den Modellverbrauch.
 
-Die tatsächlich vorhandenen Endpunkte ergeben sich aus der OpenAPI-Spezifikation im Backend. Sie werden
-hier bewusst nicht doppelt geführt — eine zweite Beschreibung veraltet und wird dann geglaubt.
+### Was die Schnittstelle anbietet
+
+Der folgende Katalog beschreibt den **Zweck** der Endpunkte — wozu man sie aufruft. Die formale
+Beschreibung, also Pfade, Felder und Fehlerbilder, steht in der OpenAPI-Spezifikation des Backends
+und wird hier nicht wiederholt; sie beantwortet das *Wie*, nicht das *Wozu*. Gruppiert ist nach
+Zweck, nicht nach Pfad.
+
+**Abfragen**
+
+| Zweck | Endpunkt | Heute gebaut |
+|---|---|---|
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; optional auf ausgewählte Arbeitsräume eingegrenzt | `POST /api/v1/query` | ja |
+| Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
+
+**Wissensbestände verwalten**
+
+| Zweck | Endpunkt | Heute gebaut |
+|---|---|---|
+| Wissensbibliotheken anlegen, umbenennen, beschreiben, auflisten, löschen | `/api/v1/libraries` und `/api/v1/libraries/{id}` | ja |
+| Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja (ohne Oberfläche) |
+| Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/libraries/{id}/grants` | ja |
+| Indizierung auslösen, wahlweise für den konfigurierten Bestand oder für eine angegebene Adresse; der Systemverwaltung vorbehalten | `POST /api/v1/indexing/trigger` | ja |
+| Stand des letzten Indizierungslaufs abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/indexing/status` | ja |
+| Dokument hochladen und wieder entfernen | — | nein — Zielbild; Bestände kommen heute über Konnektoren und den Indizierungslauf |
+
+**Arbeitsräume und Gruppen**
+
+| Zweck | Endpunkt | Heute gebaut |
+|---|---|---|
+| Arbeitsräume anlegen, ändern, auflisten, löschen | `/api/v1/spaces` und `/api/v1/spaces/{id}` | ja |
+| Mitglieder eines Arbeitsraums führen, Rolle ändern, Eigentum übergeben — damit ein Arbeitsraum beim Ausscheiden einer Person nicht verwaist | `/api/v1/spaces/{id}/members`, `/api/v1/spaces/{id}/transfer-ownership` | ja |
+| Gruppen als Rechtesubjekt führen und ihre Mitglieder verwalten | `/api/v1/admin/groups` | ja |
+
+**Systemverwaltung**
+
+| Zweck | Endpunkt | Heute gebaut |
+|---|---|---|
+| Benutzende auflisten und die Systemrolle einer Person setzen | `/api/v1/admin/users` | ja |
+| Abgleich mit dem Verzeichnisdienst des Hauses — zuerst als Probelauf ohne Wirkung, dann scharf, dazu der Stand des letzten Laufs | `/api/v1/admin/directory-sync` | ja |
+| Anmeldeverfahren der Installation erfragen, bevor eine Anmeldung beginnt | `GET /api/v1/auth/config` | ja |
+| Eigene Identität, Rollen und Zugehörigkeiten erfragen | `GET /api/v1/auth/me` | ja |
+| Betriebsbereitschaft prüfen — für Lastverteiler und Betriebsüberwachung | `GET /api/health` | ja |
+
+**Was der frühere Stand dieses Dokuments nannte und heute nicht existiert:** ein Endpunkt zum
+Hochladen von Dokumenten, ein eigener Such-Endpunkt neben der Abfrage, das Abrufen eines einzelnen
+Dokuments, das Auflisten der eigenen Uploads, ein Endpunkt für Rückmeldungen sowie
+Sammelverarbeitung mehrerer Fragen in einem Aufruf. Ersatzlos entfallen sind die Endpunkte zum
+**Teilen und Entteilen einzelner Dokumente über Workspace-Grenzen**: Zugriff wird an der
+Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter ist abgelöst (siehe
+[spaces-and-assets.md](./spaces-and-assets.md)).
+
+### Authentifizierung und Zugang
+
+**Gebaut:**
+
+- **Anmeldung über den Verzeichnisdienst des Hauses.** Die Schnittstelle nimmt ein Zugangsmerkmal
+  entgegen, das der Identitätsanbieter ausgestellt hat, und prüft es gegen dessen Signaturschlüssel.
+  Eine eigene Benutzer- und Passwortverwaltung gibt es nicht.
+- **Ein Entwicklungsmodus ohne echte Prüfung**, der ausschließlich Entwicklungs- und Testumgebungen
+  vorbehalten ist. Er muss ausdrücklich gewählt werden, und das System bricht den Start ab, wenn gar
+  kein Verfahren gesetzt ist — eine Installation ist nie versehentlich offen (siehe
+  [ADR-0005](../decisions/0005-authentication-strategy.md)).
+- **Rechte der aufrufenden Person.** Der Aufruf sieht, was dieser Identität freigegeben ist; einzelne
+  Endpunkte sind zusätzlich der Systemverwaltung vorbehalten.
+- **Anfragekontingente.** Sie greifen je aufrufender Netzadresse und zusätzlich für die Installation
+  insgesamt, in einem gleitenden Zeitfenster. Die Abfrage und das Auslösen der Indizierung haben getrennte, für
+  sich gesetzte Kontingente — der Indizierungspfad ist deutlich enger begrenzt, weil ein einzelner
+  Aufruf dort viel Arbeit auslöst. Alle Werte sind über Umgebungsvariablen einstellbar; die
+  ausgelieferten Voreinstellungen und ihre Bedeutung stehen in [deployment.md](../deployment.md).
+  Ein überschrittenes Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort.
+
+**Zielbild:**
+
+- **Maschinelle Zugänge als eigene Identität.** Ein Fachverfahren, das OPAA abfragt, bekommt einen
+  eigenen, benannten Zugang mit eigenen Rechten, eigener Gültigkeitsdauer und eigener
+  Widerrufbarkeit — nicht das Konto einer Person und nicht ein Dauerschlüssel ohne Ablauf. Ein
+  Zugang, der beim Ausscheiden einer Person weiterläuft, ist ein Prüfungsbefund.
+- **Selbstverwaltung eigener Zugänge** in den persönlichen Einstellungen: anlegen, benennen,
+  Gültigkeit sehen, widerrufen. Das Merkmal ist genau einmal sichtbar, danach nur noch sein Name.
+- **Kontingente je Zugang statt nur je Netzadresse**, damit ein einzelnes Fachverfahren die
+  Installation nicht für die Beschäftigten ausbremst. Hinter einem gemeinsamen Ausgangspunkt im
+  Behördennetz teilen sich heute alle dieselbe Adresse — das Kontingent trifft dann die Falschen.
 
 ---
 
@@ -205,6 +359,10 @@ Sicherheitsgrenze des Systems.
 
 - Welche Chat-Kanäle bleiben im Zielbild, welche entfallen, welche werden zur Option ohne Zusage?
   Entscheidung in [#352](https://github.com/criew/opaa/issues/352).
+- Wie weit reicht ein maschineller Zugang: nur Abfragen, oder auch das Verwalten von Beständen? Ein
+  Zugang, der indizieren darf, ist betrieblich etwas anderes als einer, der nur fragt.
+- Wie lange werden Rückmeldungen aufbewahrt, und wer darf die aggregierte Auswertung sehen — die
+  Systemverwaltung des Hauses, die Verantwortlichen einer Wissensbibliothek oder beide?
 - Wie werden Rückfragen in einem Chat-Strang einem Arbeitsraum zugeordnet — über eine feste Zuordnung
   des Kanals oder über eine Angabe je Strang?
 - Wie stellt ein Kanal mit knappem Nachrichtenformat mehrere Fundstellen dar, ohne dass die Antwort

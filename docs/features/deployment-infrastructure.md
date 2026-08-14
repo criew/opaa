@@ -239,6 +239,165 @@ keine technische, sondern eine der Zusage.
 
 ---
 
+## Aktualisierung im laufenden Betrieb
+
+Für ein Haus, das ein Wartungsfenster beantragen und ankündigen muss, ist die Frage „wie lange steht
+das System" keine Randnotiz, sondern der Unterschied zwischen einer Aktualisierung im Monatsrhythmus
+und einer im Jahresrhythmus. Je länger der Abstand, desto größer der Sprung — und desto größer das
+Risiko genau des Ausfalls, den das Wartungsfenster verhindern sollte.
+
+### Was heute gilt
+
+Der Compose-Stapel wird aktualisiert, indem neue Abbilder bezogen und die betroffenen Container neu
+erstellt werden. Das ist eine **kurze Unterbrechung**, keine unterbrechungsfreie Umschaltung: Es gibt
+eine Instanz je Dienst, und während des Neustarts ist sie nicht erreichbar. Der genaue Ablauf und was
+er mit dem Index macht, steht in [deployment.md](../deployment.md).
+
+### Zielbild für große Installationen
+
+- **Rollierende Aktualisierung.** Instanzen werden nacheinander ersetzt, jede neue muss ihre
+  Bereitschaftsprüfung bestehen, bevor die nächste alte weicht. Fällt die Prüfung durch, hält der
+  Vorgang an und der bisherige Stand läuft weiter. Voraussetzung ist, dass keine Instanz Zustand
+  hält, den nicht auch eine andere kennt.
+- **Blau-Grün-Umschaltung** als Alternative, wo eine Änderung nicht instanzweise ausrollbar ist: Der
+  neue Stand wird vollständig daneben aufgebaut und geprüft, dann schaltet der Lastverteiler um. Der
+  Rückweg ist die Umschaltung zurück, solange der alte Stand steht. Der Preis ist die doppelte
+  Ausstattung während der Umschaltung; der Gewinn ist ein Rückfallweg, der Sekunden statt Stunden
+  braucht.
+- **Ein Wartungsfenster bleibt für die Fälle**, die beides nicht erlauben — allen voran ein Wechsel
+  des Einbettungsmodells mit anschließender Neuindizierung und ein Hauptversionswechsel der
+  Datenbank. Diese Fälle werden benannt und nicht als „normale Aktualisierung" ausgegeben.
+
+### Abwärtskompatibilität zwischen Anwendung und Schema
+
+Beide Verfahren setzen voraus, dass **zwei Anwendungsstände kurzzeitig auf demselben Schema laufen
+können**. Das ist keine Betriebseinstellung, sondern eine Regel für die Entwicklung:
+
+1. **Schemaänderungen laufen nur vorwärts** und werden versioniert über Liquibase beim Start
+   angewendet. Es gibt keinen automatischen Rückbau; der Weg zurück ist die Wiederherstellung aus
+   der Sicherung.
+2. **Erweitern, dann umstellen, dann aufräumen — in getrennten Ausgaben.** Eine neue Spalte wird
+   zuerst hinzugefügt und optional befüllt, während der alte Stand sie ignoriert. Erst der nächste
+   Stand benutzt sie verbindlich. Entfernt wird erst, wenn kein laufender Stand sie mehr braucht.
+   Eine Änderung, die Spalten in derselben Ausgabe hinzufügt und entfernt, macht jede rollierende
+   Aktualisierung unmöglich.
+3. **Änderungssätze sind unveränderlich, sobald sie ausgeliefert sind.** Ein nachträglich
+   bearbeiteter Änderungssatz bringt jede bestehende Installation zum Stehen.
+4. **Die Schnittstelle bleibt in ihrer Version stabil.** Innerhalb einer Version werden Felder
+   ergänzt, nicht entfernt oder umgedeutet; eine brechende Änderung bekommt eine neue Version, und
+   die alte läuft eine benannte Übergangszeit weiter. Das gilt besonders für maschinelle Zugänge, die
+   niemand kurzfristig anpassen kann (siehe [user-frontends.md](./user-frontends.md)).
+
+---
+
+## Netzsicherheit und Transportverschlüsselung
+
+Betriebsthemen: Wer das Netz trennt, den vorgelagerten Zugangsweg betreibt und die Zertifikate
+verwaltet, ist der Betreiber — nicht die Anwendung. Deshalb steht dies hier und nicht in der
+Spezifikation zu Sicherheit und Nachweisführung; die endgültige Zuordnung ist offen (siehe
+[Offene Fragen](#offene-fragen--zukünftige-erweiterungen)).
+
+### Netztrennung
+
+- **Die Installation ist aus dem Behördennetz erreichbar, nicht aus dem Internet** — es sei denn, ein
+  Haus entscheidet ausdrücklich anders und trägt die Folgen. Der Standard ist die Erreichbarkeit von
+  innen.
+- **Getrennte Bereiche für Zugangsweg, Anwendung, Datenhaltung und Modellbetrieb.** Die Datenbank
+  nimmt Verbindungen nur von der Anwendung an, der Modellbetrieb nur von der Anwendung. Kein Dienst
+  ist aus dem Netz erreichbar, der es nicht sein muss.
+- **Ausgehende Verbindungen sind die Ausnahme und werden benannt.** In einer Installation ohne
+  Netzanbindung gibt es sie gar nicht; wo es sie gibt, sind es genau die freigegebenen Quellsysteme
+  und, sofern ausdrücklich erlaubt, ein Modellzugang außerhalb. Alles andere wird geblockt — das ist
+  zugleich die wirksamste Begrenzung des Risikos, dass ein Indizierungsauftrag den Server zu
+  Aufrufen an ungewollte Ziele bewegt.
+- **Verwaltungszugänge laufen getrennt** vom Nutzungsweg und nicht über dieselbe öffentlich
+  erreichbare Adresse.
+
+### Transportverschlüsselung
+
+- **Verschlüsselt auf allen Wegen**, auch innerhalb des Rechenzentrums. „Intern, also
+  vertrauenswürdig" ist keine tragfähige Annahme, wenn im selben Netz weitere Verfahren laufen.
+- **Ein vorgelagerter Zugangsweg terminiert die Verschlüsselung** und reicht an die Anwendung weiter;
+  die Anwendungscontainer binden nicht selbst nach außen. Genau so läuft es heute, einschließlich der
+  Bindung aller Container ausschließlich auf die lokale Adresse (siehe
+  [deployment.md](../deployment.md)).
+- **Zertifikate stammen aus der Verwaltung des Betreibers** — in einer abgeschotteten Umgebung
+  regelmäßig aus einer eigenen Zertifizierungsstelle des Hauses. Eine Installation, die für ihr
+  Zertifikat einen Dienst im Internet braucht, ist ohne Netzanbindung nicht betreibbar.
+- **Eine Abschaltung der Zertifikatsprüfung ist Erprobungen vorbehalten**, wird als solche kenntlich
+  gemacht und ist im Regelbetrieb ein Befund.
+- **Verschlüsselung im Ruhezustand** — Datenträger, Datenbank, Sicherungen — ist Sache der
+  Betriebsplattform und wird vom Produkt vorausgesetzt, nicht ersetzt.
+
+---
+
+## Betriebsüberwachung und Alarmierung
+
+Die Kennzahlen des Betriebs werden an die vorhandenen Werkzeuge des Rechenzentrums übergeben, nicht
+in einem mitgelieferten Sonderweg gehalten. Sie beschreiben den **Zustand des Systems**, nicht das
+Verhalten von Beschäftigten; der personenbezogene Auswertungspfad ist nicht vorgesehen.
+
+Die eigentliche Entscheidung ist nicht, was gemessen wird, sondern was jemanden **weckt**. Ein
+Alarmwesen, das zu viel meldet, wird stummgeschaltet, und dann meldet es gar nichts mehr.
+
+| Zustand | Folge |
+|---|---|
+| Anwendung nicht erreichbar oder Bereitschaftsprüfung dauerhaft negativ | **weckt** — der Dienst steht |
+| Datenbank nicht erreichbar oder Replikation abgerissen | **weckt** — Datenverlustrisiko |
+| Speicher der Datenbank oder des Dokumentenbestands vor dem Volllaufen | **weckt** — mit Vorlauf, nicht erst beim Anschlag |
+| Letzte Sicherung fehlgeschlagen oder ausgeblieben | **weckt** — eine ausgebliebene Sicherung fällt sonst erst im Ernstfall auf |
+| Anmeldung gegen den Verzeichnisdienst dauerhaft fehlerhaft | **weckt** — niemand kommt mehr hinein |
+| Fehlerquote der Abfragen dauerhaft über der gesetzten Schwelle | **weckt** |
+| Einzelner fehlgeschlagener Indizierungslauf | Auswertung — wiederholt fehlschlagende Läufe wecken |
+| Einzelne nicht verarbeitbare Dokumente | Auswertung — sie gehören in einen Bericht für die Fachverantwortlichen, nicht in die Nacht |
+| Antwortzeiten über dem Zielwert, ohne Ausfall | Auswertung — Grundlage für Ausbauentscheidungen |
+| Modellzugang zeitweise nicht erreichbar | Auswertung, sofern die Anwendung es sichtbar abfängt; dauerhaft weckt es |
+| Ausgeschöpftes Anfragekontingent | Auswertung — das Kontingent tut genau das, wofür es da ist |
+| Verbrauch gegenüber einem gesetzten Kontingent des Modellbetriebs | Auswertung, mit Schwellenmeldung vor dem Erreichen |
+
+Jeder weckende Alarm braucht eine hinterlegte Handlungsanweisung. Ein Alarm ohne beschriebene Reaktion
+erzeugt Wachdienst, aber keine Wiederherstellung.
+
+---
+
+## Skalierung und Zielwerte
+
+Die folgenden Werte sind **Zielwerte für den Entwurf**, keine Messergebnisse und keine Zusage. Sie
+sagen, woraufhin gebaut und geprüft wird; belastbare Zahlen entstehen erst in einer Installation
+unter Last. Aussagen zu Aufwand oder Kosten gehören ausdrücklich nicht hierher.
+
+| Größenordnung | Betriebsform | Zielwert gleichzeitig arbeitende Personen | Zielwert Bestand |
+|---|---|---|---|
+| **Klein** | Docker Compose, ein Wirtsystem | einige Dutzend angemeldete, davon eine einstellige Zahl gleichzeitig laufender Abfragen | Bestände in der Größenordnung eines Fachbereichs |
+| **Mittel** | Kubernetes, mehrere Instanzen je Dienst | mehrere Hundert angemeldete, mehrere Dutzend gleichzeitig laufender Abfragen | Bestände eines ganzen Hauses |
+| **Groß / mandantenfähig** | Kubernetes, waagerechte Skalierung, getrennte Ressourcen je Organisation | über die mittlere Größenordnung hinaus, begrenzt durch den Modellbetrieb | Bestände vieler Häuser nebeneinander |
+
+**Woran skaliert wird:**
+
+- **Waagerecht bei der Anwendung.** Die Anwendungsinstanzen halten keinen Zustand; mehr Last wird mit
+  mehr Instanzen beantwortet. Ein Zielwert, der nur durch eine größere Einzelmaschine erreichbar
+  wäre, ist ein Entwurfsfehler.
+- **Der Modellbetrieb ist der eigentliche Engpass.** Bei lokal betriebenen Modellen bestimmt die
+  verfügbare Rechenleistung die Zahl gleichzeitiger Antworten, nicht die Anwendung. Wer aufrüstet,
+  rüstet dort auf.
+- **Die Indizierung ist von der Abfrage zu entkoppeln.** Ein laufender Indizierungslauf darf die
+  Antwortzeiten nicht spürbar verschlechtern; große Läufe gehören in verkehrsarme Zeiten.
+- **Anfragekontingente je Organisation** sind das Mittel gegen gegenseitige Behinderung im
+  mandantenfähigen Betrieb.
+
+**Zielwerte für das Verhalten:**
+
+- Die Suche über den Bestand liefert ihre Treffer, bevor das Modell zu formulieren beginnt — der
+  spürbare Teil der Wartezeit entsteht beim Modell, nicht beim Abruf.
+- Eine vollständige Neuindizierung des Bestands ist innerhalb eines nächtlichen Zeitfensters
+  abzuschließen; ist sie das nicht, ist der Bestand zu groß für die gewählte Größenordnung.
+- Die laufende Fortschreibung des Index — nur geänderte Dokumente — bleibt weit darunter und läuft im
+  Regelbetrieb mit.
+- Ein Ausfall einer einzelnen Anwendungsinstanz bleibt für die Nutzenden folgenlos, sobald mehr als
+  eine Instanz läuft.
+
+---
+
 ## Sicherung und Wiederherstellung
 
 | Bestandteil | Wiederherstellbarkeit |
@@ -252,6 +411,42 @@ keine technische, sondern eine der Zusage.
 Eine Sicherung, deren Wiederherstellung nie geprüft wurde, ist keine Sicherung. Wiederherstellungs-
 und Ausfallübungen gehören in den Betriebsplan des Betreibers; das Produkt liefert dafür die
 Beschreibung der Bestandteile und ihrer Abhängigkeiten.
+
+### Notfallwiederherstellung
+
+Sichern ist die eine Hälfte, der Wiederanlauf die andere — und nur die zweite entscheidet, ob ein
+Ausfall überstanden wird. Die folgenden Werte sind **Zielwerte** und je Installation zwischen Haus
+und Betreiber zu vereinbaren; das Produkt ist so gebaut, dass sie erreichbar sind.
+
+| Kennzahl | Zielwert | Bedeutung |
+|---|---|---|
+| **Wiederherstellungszeit** (RTO) | wenige Stunden bis zum arbeitsfähigen System | Bis zu diesem Zeitpunkt sind Anmeldung, Arbeitsräume und belegte Antworten wieder verfügbar |
+| **Wiederherstellungspunkt** (RPO) | höchstens ein Tag für den Metadatenbestand | So viel Arbeit darf im schlimmsten Fall verloren gehen — betroffen sind Chats, Artefakte und Rechteänderungen seit der letzten Sicherung |
+| **Wiederherstellungszeit des Vektorindex** | nachrangig | Der Index darf länger brauchen: Er ist aus dem Bestand neu erzeugbar, und das System ist ohne ihn eingeschränkt, aber nicht unbrauchbar |
+
+Ein kürzerer Wiederherstellungspunkt ist erreichbar, kostet aber häufigere Sicherungen oder eine
+fortlaufende Übertragung der Datenbankänderungen. Das ist eine bewusste Entscheidung des Hauses und
+keine Voreinstellung.
+
+**Was ein Wiederherstellungstest umfasst.** Ein Test, der nur prüft, ob die Sicherungsdatei lesbar
+ist, prüft nichts:
+
+1. **Wiederherstellung auf ein leeres System**, nicht auf das laufende — nur so zeigt sich, ob die
+   Sicherung vollständig ist oder unbemerkt von vorhandenem Zustand zehrt.
+2. **Anwendung starten und Schemastand prüfen.** Die Versionsverwaltung des Schemas muss den Stand
+   erkennen und darf keine bereits angewendete Änderung erneut ausführen.
+3. **Fachliche Stichprobe:** Anmeldung, ein Arbeitsraum mit seinen Mitgliedern, eine Wissensbibliothek
+   mit ihren Freigaben, eine Abfrage mit belegter Antwort und ein Sprung in das Quelldokument. Erst
+   damit ist gezeigt, dass Metadaten, Rechte, Index und Dokumentenbestand **zueinander passen** — der
+   häufigste Fehler ist eine Sicherung, deren Teile aus verschiedenen Zeitpunkten stammen.
+4. **Rechteprobe:** Eine Person ohne Freigabe darf nach der Wiederherstellung nicht mehr sehen als
+   vorher. Ein Wiederanlauf, der Rechte verliert, ist schlimmer als ein Ausfall.
+5. **Zeit messen und festhalten**, gegen den vereinbarten Zielwert.
+6. **Ergebnis dokumentieren** — mit Datum, Stand und aufgetretenen Abweichungen. Der Nachweis
+   gegenüber einer Prüfung ist das Protokoll der Übung, nicht die Absichtserklärung.
+
+Die Übung wird wiederkehrend durchgeführt und zusätzlich nach jeder Änderung, die den Aufbau der
+Installation berührt.
 
 ---
 
@@ -279,6 +474,13 @@ Beschreibung der Bestandteile und ihrer Abhängigkeiten.
   [#350](https://github.com/criew/opaa/issues/350).
 - Umfang der Speicher-Abstraktion und Zusammensetzung des mitgelieferten Stapels: Entscheidung in
   [#351](https://github.com/criew/opaa/issues/351).
+- **Zuordnung von Netzsicherheit und Transportverschlüsselung ist zu klären.** Beides steht hier,
+  weil Netztrennung, vorgelagerter Zugangsweg und Zertifikatsverwaltung Betriebsthemen sind und beim
+  Betreiber liegen. Ebenso vertretbar wäre die Spezifikation zu Sicherheit und Nachweisführung, die
+  die übrigen Schutzziele führt. Zu vermeiden ist beides gleichzeitig — eine doppelt gepflegte
+  Beschreibung veraltet an einer der beiden Stellen.
+- Werden Wiederherstellungszeit- und Wiederherstellungspunktziele als Voreinstellung mitgeliefert
+  oder ausschließlich je Installation vereinbart?
 - Werden Bereitstellungsbeschreibungen für Kubernetes mitgeliefert und gepflegt, oder bleibt das
   Sache des Betreibers?
 - Wie wird eine Lieferung in ein abgeschottetes Netz praktisch gebündelt — Abbilder, Modellgewichte
@@ -296,6 +498,9 @@ Beschreibung der Bestandteile und ihrer Abhängigkeiten.
   Indizierung und Antworten.
 - Eine Aktualisierung erfordert keine Neuindizierung, solange das Einbettungsmodell unverändert
   bleibt.
-- Eine Wiederherstellung aus der Sicherung wurde geprüft und ist dokumentiert, nicht angenommen.
+- Eine Aktualisierung einer großen Installation ist ohne beantragtes Wartungsfenster möglich; die
+  Fälle, in denen das nicht gilt, sind vorher benannt.
+- Eine Wiederherstellung aus der Sicherung wurde geprüft und ist dokumentiert, nicht angenommen —
+  einschließlich der gemessenen Dauer gegen den vereinbarten Zielwert.
 - In einer mandantenfähigen Installation lässt sich für jedes Haus getrennt nachweisen, wer worauf
   zugegriffen hat.
