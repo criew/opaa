@@ -145,6 +145,18 @@ Die `similarityThreshold` aus der Produktivkonfiguration (`opaa.query.similarity
 Report nur informativ ausgewiesen — die Suchen im Lauf selbst verwenden `threshold=0.0`, weil die
 Ranking-Metriken die vollständige, ungefilterte Top-k-Reihenfolge brauchen.
 
+### Was dieser Korpus nicht messen kann
+
+Die Ein-Chunk-Invariante hat eine Kehrseite, die bei jeder Auswertung mitgedacht werden muss: **Alles,
+was erst zwischen zwei Chunks eines Dokuments wirkt, ist hier unsichtbar.** Das betrifft insbesondere
+die Chunk-Überlappung (`opaa.indexing.chunk-overlap`, Issue #374). Läufe mit 0, 100 und 200 Token
+Überlappung liefern über alle 121 Fälle bitgleiche Ergebnisse — nicht weil die Überlappung nichts
+brächte, sondern weil es in diesem Korpus keine einzige Chunk-Grenze gibt, an der sie greifen könnte.
+
+Der Report führt den verwendeten Wert deshalb als `chunkOverlap` mit: Zwei Reports lassen sich damit
+auseinanderhalten, aber ein Vergleich beantwortet die Frage nicht. Eine belastbare Aussage über die
+Überlappung braucht Referenzfälle an mehrchunkigen Dokumenten, also einen eigenen Teilkorpus.
+
 ### Kalibrierungshinweis
 
 Der Korpus ist absichtlich uniform (siehe `eval/golden/README.md`, Abschnitt „Kalibrierungshinweis

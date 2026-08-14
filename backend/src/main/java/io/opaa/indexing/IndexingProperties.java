@@ -8,10 +8,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param documentPath filesystem path where source documents are stored
  * @param chunkSize target token count per chunk. Default 1000: standard for token-based chunking —
  *     balances sufficient context per chunk against retrieval granularity. Valid range: 1–10 000.
- * @param chunkOverlap number of tokens each chunk repeats from the end of its predecessor, so that a
- *     statement straddling a chunk boundary survives in at least one chunk as a whole (issue #374).
- *     Must be smaller than {@code chunkSize}; 0 disables overlap. A negative value is normalised to
- *     0.
+ * @param chunkOverlap number of tokens each chunk repeats from the end of its predecessor, so that
+ *     a statement straddling a chunk boundary survives in at least one chunk as a whole (issue
+ *     #374). Must be smaller than {@code chunkSize}; 0 disables overlap. A negative value is
+ *     normalised to 0.
  * @param batchSize number of chunks sent to the embedding model in one call. Default 50: moderate
  *     batch size that avoids memory spikes during embedding generation. Valid range: 1–1 000.
  * @param retryAttempts number of retry attempts for transient failures. Default 3: standard retry

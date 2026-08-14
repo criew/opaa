@@ -41,9 +41,11 @@ public final class ReportWriter {
             cfg.ollamaImage()));
     sb.append(
         format(
-            "  chunkSize=%d (== Anwendungsdefault: %s), searchTopK=%d, pgvectorIndexType=%s\n",
+            "  chunkSize=%d (== Anwendungsdefault: %s), chunkOverlap=%d, searchTopK=%d, "
+                + "pgvectorIndexType=%s\n",
             cfg.chunkSize(),
             cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
             cfg.searchTopK(),
             cfg.pgvectorIndexType()));
     sb.append(

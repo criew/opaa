@@ -39,7 +39,9 @@ Drei Zustände werden unterschieden:
 
 **Gebaut**
 - Aufnahme, Zerlegung und Einbettung von Dokumenten (`io.opaa.indexing` — `ChunkingService`,
-  `DocumentIndexingService`, `FileProcessingService`)
+  `DocumentIndexingService`, `FileProcessingService`); die Zerlegung überlappt konfigurierbar
+  (`opaa.indexing.chunk-overlap`, 100 von 1000 Token), damit eine Aussage an einer Chunk-Grenze nicht
+  in zwei für sich unbrauchbare Hälften zerfällt
 - Abruf über Vektorähnlichkeit und Antwortgenerierung (`io.opaa.query` — `QueryService`,
   `AnswerGenerationService`)
 - **Quellenangaben in der Antwort** (`CitationParser`) mit Relevanzwert und Textauszug
@@ -58,9 +60,6 @@ Drei Zustände werden unterschieden:
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
-- **Überlappung beim Zerlegen.** `ChunkingService` verwendet den Token-Splitter ohne Überlappung. Ohne
-  sie wird eine Definition regelmäßig von ihrer Überschrift getrennt und der Beleg dadurch unbrauchbar —
-  das ist keine Feinjustierung, sondern eine Lücke in der Belegbarkeit.
 - **Nur fünf Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.pptx`; im Netzweg
   zusätzlich `.doc`), ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte
   Extraktor kann mehr. Die beiden Indizierungswege führen dabei **unterschiedliche** Listen.

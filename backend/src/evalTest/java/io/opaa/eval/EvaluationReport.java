@@ -32,6 +32,10 @@ public record EvaluationReport(
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,
+      // Issue #374: recorded so two reports can be told apart by the chunk overlap they were
+      // measured with. On a corpus where the Ein-Chunk-Invariante holds this value cannot change
+      // anything — overlap only exists between chunks — which is itself worth having in writing.
+      int chunkOverlap,
       int searchTopK,
       double productionSimilarityThreshold,
       String similarityThresholdNote,
