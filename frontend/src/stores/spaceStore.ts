@@ -35,8 +35,8 @@ interface SpaceState {
 
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
   return [...list].sort((a, b) => {
-    if (a.kind === 'PERSONAL' && b.kind !== 'PERSONAL') return -1
-    if (a.kind !== 'PERSONAL' && b.kind === 'PERSONAL') return 1
+    if (a.isDefault && !b.isDefault) return -1
+    if (!a.isDefault && b.isDefault) return 1
     return a.name.localeCompare(b.name)
   })
 }

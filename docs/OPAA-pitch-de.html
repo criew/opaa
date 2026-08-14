@@ -3,10 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OPAA — Open Project AI Assistant</title>
+<title>OPAA — souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   @page {
@@ -15,12 +13,9 @@
   }
 
   html, body {
-    width: 210mm;
-    height: 297mm;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: #0d1117;
     color: #e6edf3;
-    overflow: hidden;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -28,11 +23,23 @@
   .page {
     width: 210mm;
     height: 297mm;
+    margin: 0 auto;
     padding: 12mm 14mm 10mm 14mm;
     display: flex;
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    background: #0d1117;
+  }
+
+  .page + .page {
+    border-top: 1px solid #21262d;
+  }
+
+  @media print {
+    .page + .page { border-top: none; }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
   }
 
   /* === HEADER === */
@@ -40,7 +47,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 5mm;
+    margin-bottom: 6mm;
   }
 
   .logo-area {
@@ -84,18 +91,26 @@
     text-transform: uppercase;
   }
 
+  .page-mark {
+    font-size: 9px;
+    font-weight: 600;
+    color: #6e7681;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
   /* === HERO === */
   .hero {
     text-align: center;
-    margin-bottom: 5mm;
+    margin-bottom: 6mm;
   }
 
   .hero h1 {
-    font-size: 22px;
+    font-size: 23px;
     font-weight: 800;
     letter-spacing: -0.5px;
     line-height: 1.2;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .hero h1 .accent {
@@ -107,16 +122,26 @@
   .hero p {
     font-size: 11.5px;
     color: #8b949e;
-    line-height: 1.5;
-    max-width: 520px;
+    line-height: 1.55;
+    max-width: 540px;
     margin: 0 auto;
   }
 
-  /* === SCREENS (2 large) === */
+  /* === SECTION HEADS === */
+  h2.sec {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4mm;
+  }
+
+  /* === SCREENS === */
   .screens {
     display: flex;
     gap: 4mm;
-    margin-bottom: 5mm;
+    margin-bottom: 6mm;
   }
 
   .screen-card {
@@ -167,26 +192,32 @@
     line-height: 1.4;
   }
 
-  /* === BENEFITS (5 columns) === */
-  .benefits {
+  /* === CARD GRIDS === */
+  .grid-3 {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 3mm;
-    margin-bottom: 5mm;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4mm;
+    margin-bottom: 6mm;
   }
 
-  .benefit {
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4mm;
+    margin-bottom: 6mm;
+  }
+
+  .card {
     background: linear-gradient(135deg, rgba(19, 127, 236, 0.06) 0%, rgba(14, 165, 233, 0.03) 100%);
     border: 1px solid #21262d;
     border-radius: 10px;
-    padding: 9px 8px;
-    text-align: center;
+    padding: 12px 13px;
   }
 
-  .benefit-icon {
+  .card-icon {
     width: 30px;
     height: 30px;
-    margin: 0 auto 5px;
+    margin-bottom: 7px;
     background: rgba(19, 127, 236, 0.12);
     border-radius: 8px;
     display: flex;
@@ -195,69 +226,159 @@
     font-size: 15px;
   }
 
-  .benefit h3 {
-    font-size: 9px;
+  .card h3 {
+    font-size: 11px;
     font-weight: 700;
     color: #e6edf3;
-    margin-bottom: 3px;
+    margin-bottom: 5px;
     letter-spacing: -0.2px;
   }
 
-  .benefit p {
-    font-size: 7px;
+  .card p {
+    font-size: 9px;
     color: #8b949e;
-    line-height: 1.35;
+    line-height: 1.5;
   }
 
-  /* === COMPARISON === */
-  .comparison {
+  .card p + p { margin-top: 5px; }
+
+  .card .quote {
+    color: #58a6ff;
+    font-weight: 600;
+  }
+
+  /* === PLAIN BLOCK === */
+  .block {
     background: #161b22;
     border: 1px solid #21262d;
     border-radius: 10px;
-    padding: 8px 12px;
-    margin-bottom: 5mm;
+    padding: 12px 14px;
+    margin-bottom: 6mm;
   }
 
-  .comparison h2 {
-    font-size: 10px;
+  .block h3 {
+    font-size: 11px;
     font-weight: 700;
+    color: #e6edf3;
+    margin-bottom: 5px;
+  }
+
+  .block p {
+    font-size: 9.5px;
     color: #8b949e;
+    line-height: 1.55;
+  }
+
+  .block p + p { margin-top: 5px; }
+
+  .block ul {
+    list-style: none;
+    margin-top: 5px;
+  }
+
+  .block li {
+    font-size: 9.5px;
+    color: #8b949e;
+    line-height: 1.5;
+    padding-left: 12px;
+    position: relative;
+    margin-bottom: 3px;
+  }
+
+  .block li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: #58a6ff;
+  }
+
+  .block li strong { color: #c9d1d9; font-weight: 600; }
+
+  /* === USE CASES === */
+  .case {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-left: 3px solid #137fec;
+    border-radius: 10px;
+    padding: 11px 14px;
+    margin-bottom: 4mm;
+  }
+
+  .case-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .case-head h3 {
+    font-size: 11px;
+    font-weight: 700;
+    color: #e6edf3;
+  }
+
+  .case-role {
+    font-size: 8.5px;
+    color: #6e7681;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .case p {
+    font-size: 9.5px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+
+  .case p + p { margin-top: 4px; }
+
+  .case p strong { color: #c9d1d9; font-weight: 600; }
+
+  /* === PHASES === */
+  .phases {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3mm;
+    margin-bottom: 6mm;
+  }
+
+  .phase {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 10px 11px;
+  }
+
+  .phase-no {
+    font-size: 8px;
+    font-weight: 700;
+    color: #58a6ff;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 6px;
-    text-align: center;
+    margin-bottom: 4px;
   }
 
-  .comp-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .comp-table th, .comp-table td {
-    padding: 4px 8px;
-    font-size: 8.5px;
-    text-align: left;
-    border-bottom: 1px solid #21262d;
-  }
-
-  .comp-table th {
+  .phase h3 {
+    font-size: 10px;
     font-weight: 700;
-    color: #c9d1d9;
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #e6edf3;
+    margin-bottom: 4px;
+    line-height: 1.3;
   }
 
-  .comp-table th:first-child { width: 28%; }
-  .comp-table th:nth-child(2) { color: #58a6ff; }
+  .phase p {
+    font-size: 8.5px;
+    color: #8b949e;
+    line-height: 1.45;
+  }
 
-  .comp-table td { color: #8b949e; }
-  .comp-table td:nth-child(2) { color: #c9d1d9; font-weight: 500; }
-
-  .comp-table tr:last-child td { border-bottom: none; }
-
-  .check { color: #2ea043; font-weight: 700; }
-  .cross { color: #6e7681; }
+  .note {
+    font-size: 8.5px;
+    color: #6e7681;
+    line-height: 1.5;
+    margin-bottom: 5mm;
+  }
 
   /* === FOOTER === */
   .footer {
@@ -303,126 +424,280 @@
 </style>
 </head>
 <body>
+
+<!-- ============================ SEITE 1 ============================ -->
 <div class="page">
 
-  <!-- HEADER -->
   <div class="header">
     <div class="logo-area">
       <div class="logo-icon">O</div>
       <div class="logo-text">OPAA</div>
     </div>
-    <div class="badge">Open Source &bull; Self-Hosted &bull; AGPLv3</div>
+    <div class="badge">Quelloffen &bull; Betrieb im eigenen Haus &bull; AGPL-3.0</div>
   </div>
 
-  <!-- HERO -->
   <div class="hero">
-    <h1>Dein Firmenwissen. <span class="accent">Eine Frage entfernt.</span></h1>
-    <p>OPAA verbindet Wikis, E-Mails, SharePoint, Ticketsysteme und File Shares zu einem intelligenten Assistenten. Frag in natürlicher Sprache — erhalte Antworten mit Quellenangabe. Selbst gehostet, keine Daten verlassen dein Netzwerk.</p>
+    <h1>Antworten mit Fundstelle. <span class="accent">KI, die im ganzen Haus ankommt.</span></h1>
+    <p>OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
+      belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
+      Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.</p>
   </div>
 
-  <!-- SCREENS (2 large) -->
   <div class="screens">
     <div class="screen-card">
-      <img src="design/chat-interface.png" alt="Chat Interface">
+      <img src="design/chat-interface.png" alt="Antwort mit Fundstelle in der Weboberfläche">
       <div class="screen-label">
         <div class="screen-dot dot-blue"></div>
-        <span>KI-Chat mit Quellen</span>
+        <span>Antwort mit Fundstelle</span>
       </div>
-      <div class="screen-desc">Frage stellen, Antwort mit Originaldokumenten und Vertraulichkeitsstufe erhalten</div>
+      <div class="screen-desc">Die Frage in Umgangssprache, die Antwort mit Fundstelle und Vertraulichkeitsstufe — mit einem Klick zur Textstelle im Originaldokument.</div>
     </div>
     <div class="screen-card">
-      <img src="design/document-browser.png" alt="Document Browser">
+      <img src="design/document-browser.png" alt="Übersicht der Wissensbestände in der Weboberfläche">
       <div class="screen-label">
         <div class="screen-dot dot-green"></div>
-        <span>Dokumenten-Browser</span>
+        <span>Wissensbibliotheken im Blick</span>
       </div>
-      <div class="screen-desc">Alle Quellen durchsuchbar an einem Ort — mit KI-extrahierten Insights</div>
+      <div class="screen-desc">Die Bestände eines Hauses an einer Stelle, jeder mit eigenen Rechten — durchsucht wird nur, was die fragende Person lesen darf.</div>
     </div>
   </div>
 
-  <!-- BENEFITS (5 columns) -->
-  <div class="benefits">
-    <div class="benefit">
-      <div class="benefit-icon">🔒</div>
-      <h3>Digitale Souveränität</h3>
-      <p>Alle Daten bleiben in deiner Infrastruktur. Kein Cloud-Zwang.</p>
+  <h2 class="sec">Die Ausgangslage</h2>
+  <div class="block">
+    <p>Das Wissen eines Hauses liegt in Akten, Wikis, Postfächern, Dateiablagen und Fachverfahren. Wer eine
+      Rechtsfrage klären muss, sucht zwanzig Minuten, fragt erfahrene Kollegen — oder rät. Wissen geht mit
+      jeder Versetzung verloren.</p>
+    <p>Gleichzeitig entsteht KI im Haus an den Rändern: Einzelne erarbeiten sich gute Arbeitsweisen, geben
+      sie per Mail weiter, andere nutzen längst veraltete Kopien davon. Wo ein zulässiges Werkzeug fehlt,
+      landen Vorgangsdaten in frei verfügbaren Verbraucherdiensten. Niemand kann belegen, wer welche KI wofür
+      nutzt — und die Leitung fragt nach dem Fortschritt.</p>
+  </div>
+
+  <h2 class="sec">Drei Säulen</h2>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-icon">&#x1f4d6;</div>
+      <h3>Wissen</h3>
+      <p>Verstreutes Wissen wird befragbar und nachweisbar: hybride Suche über die Bestände, die eine Person
+        lesen darf, jede Aussage an ihre Fundstelle gebunden, mit Sprung zur Textstelle.</p>
     </div>
-    <div class="benefit">
-      <div class="benefit-icon">🔌</div>
-      <h3>Kein Vendor Lock-in</h3>
-      <p>Jede Komponente austauschbar — LLM, Datenbank, Quellen.</p>
+    <div class="card">
+      <div class="card-icon">&#x2699;</div>
+      <h3>Agenten</h3>
+      <p>Wiederkehrende Aufgaben werden übernommen — vom reinen Lesen bis zu schreibenden Aktionen, die erst
+        nach ausdrücklicher Freigabe durch einen Menschen ausgeführt werden. Immer an das Wissen des Hauses
+        gebunden.</p>
     </div>
-    <div class="benefit">
-      <div class="benefit-icon">📖</div>
-      <h3>Immer mit Quelle</h3>
-      <p>Jede Antwort zeigt das Originaldokument. Kein Halluzinieren.</p>
-    </div>
-    <div class="benefit">
-      <div class="benefit-icon">🎨</div>
-      <h3>Dein Branding</h3>
-      <p>Logo, Farben, Theme und KI-Modell frei konfigurierbar.</p>
-    </div>
-    <div class="benefit">
-      <div class="benefit-icon">⚡</div>
-      <h3>Open Source</h3>
-      <p>AGPLv3 Lizenz. Kostenlos selbst hosten. Kommerzielle Lizenzen verfügbar.</p>
+    <div class="card">
+      <div class="card-icon">&#x1f501;</div>
+      <h3>KI für Teams und Organisation</h3>
+      <p>Agenten, Prompt-Bibliotheken und Wissensbibliotheken sind benannte, teilbare Assets. Sie wandern über
+        Freigabestufen von einer Person bis in die ganze Organisation.</p>
     </div>
   </div>
 
-  <!-- COMPARISON -->
-  <div class="comparison">
-    <h2>OPAA vs. typische SaaS-Lösungen</h2>
-    <table class="comp-table">
-      <tr>
-        <th></th>
-        <th>OPAA</th>
-        <th>SaaS-Alternativen</th>
-      </tr>
-      <tr>
-        <td>Datenhoheit</td>
-        <td><span class="check">✓</span> Alles bleibt bei dir</td>
-        <td><span class="cross">✗</span> Daten in fremder Cloud</td>
-      </tr>
-      <tr>
-        <td>KI-Modell</td>
-        <td><span class="check">✓</span> Frei wählbar (OpenAI, Ollama, lokal)</td>
-        <td><span class="cross">✗</span> Vorgegeben, nicht änderbar</td>
-      </tr>
-      <tr>
-        <td>Datenquellen</td>
-        <td><span class="check">✓</span> Wikis, Mail, Ticketsysteme, S3, SharePoint …</td>
-        <td><span class="cross">✗</span> Meist nur eigene Plattform</td>
-      </tr>
-      <tr>
-        <td>Quellenangaben</td>
-        <td><span class="check">✓</span> Jede Antwort mit Originaldokument</td>
-        <td><span class="cross">✗</span> Oft Blackbox</td>
-      </tr>
-      <tr>
-        <td>Kosten</td>
-        <td><span class="check">✓</span> Open Source — keine Lizenzgebühren</td>
-        <td><span class="cross">✗</span> Per-User-Lizenz</td>
-      </tr>
-    </table>
-  </div>
-
-  <!-- FOOTER -->
   <div class="footer">
     <div class="tech-stack">
-      <span class="tech-tag">React 19</span>
-      <span class="tech-tag">TypeScript</span>
       <span class="tech-tag">Java 21</span>
       <span class="tech-tag">Spring Boot</span>
       <span class="tech-tag">Spring AI</span>
+      <span class="tech-tag">React 19</span>
+      <span class="tech-tag">TypeScript</span>
       <span class="tech-tag">PostgreSQL + pgvector</span>
       <span class="tech-tag">Docker</span>
     </div>
     <div class="footer-right">
       <a class="github-link" href="https://github.com/criew/opaa">github.com/criew/opaa</a>
-      <div class="license">AGPLv3 License &bull; Open Source</div>
+      <div class="license">AGPL-3.0 &bull; quelloffen &bull; Seite 1 von 3</div>
     </div>
   </div>
 
 </div>
+
+<!-- ============================ SEITE 2 ============================ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">OPAA</div>
+    </div>
+    <div class="page-mark">Belegbarkeit &middot; Verteilbarkeit &middot; Souveränität</div>
+  </div>
+
+  <h2 class="sec">Zwei Leitprinzipien</h2>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-icon">&#x2713;</div>
+      <h3>Belegbarkeit</h3>
+      <p class="quote">„Sie können der Antwort trauen, weil Sie sie nachprüfen können."</p>
+      <p>Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen dafür gerade, und
+        Jahre später muss nachvollziehbar sein, worauf sie sich stützte.</p>
+      <p>OPAA bindet jede Aussage an ihre Fundstelle und lässt sich für haftungskritische Zusammenhänge so
+        schalten, dass ohne Beleg keine Antwort ergeht. In dieser Lage ist „nicht feststellbar" das
+        brauchbarere Ergebnis als etwas, das plausibel klingt.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#x1f465;</div>
+      <h3>Verteilbarkeit</h3>
+      <p class="quote">„KI kommt bei allen an, nicht nur bei den paar Leuten, die es können."</p>
+      <p>Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von wenigen zu allen
+        kommt. Ohne Antwort darauf entsteht Schatten-KI.</p>
+      <p>OPAA macht Agenten, Prompts und Wissensbestände zu benannten, teilbaren, versionierbaren Objekten
+        mit Eigentümer und Freigabestempel. Einmal geprüft, überall nutzbar — die gute Arbeitsweise einer
+        Abteilung wird zum Standard aller.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Souveränität und Betrieb</h2>
+  <div class="block">
+    <ul>
+      <li><strong>Im eigenen Rechenzentrum.</strong> Docker Compose für den Start, Kubernetes mit
+        Hochverfügbarkeit im Ausbau, bis hin zum Betrieb ohne Netzanbindung. Daten verlassen das Haus nicht.</li>
+      <li><strong>Eigene Modelle zuerst.</strong> Eigene, lokal betriebene Modelle sind der Regelfall; welche
+        Modelle erlaubt sind, legt die Systemverwaltung fest. Kommt ein besseres Modell, wird es an einer
+        Stelle getauscht — die Agenten der Fachbereiche bleiben unangetastet.</li>
+      <li><strong>Rechte in der Suche, nicht dahinter.</strong> Was eine Person nicht lesen darf, wird nicht
+        geladen und nicht gerankt. Beschränkungen hängen an den Daten, nicht am Arbeitsraum, und sind damit
+        nicht durch einen Raumwechsel zu umgehen.</li>
+      <li><strong>Anschluss an das Haus.</strong> Anmeldung über den Verzeichnisdienst, Rollen und Gruppen aus
+        dem Verzeichnis, Deprovisionierung beim Ausscheiden.</li>
+      <li><strong>Nachweis statt Zusage.</strong> Revisionssicheres Protokoll, an das SIEM anschließbar, und
+        die Funktionen nach DSGVO. OPAA ist darauf ausgelegt, dass ein Betreiber die Prüfung mit OPAA im
+        Prüfumfang besteht; zertifiziert wird der Betrieb, nicht ein Stück Software.</li>
+      <li><strong>Quelloffen unter AGPL-3.0.</strong> Der vollständige Funktionsumfang ist quelloffen und
+        damit prüfbar — Verhalten zum Nachlesen statt zum Zusichern.</li>
+    </ul>
+  </div>
+
+  <h2 class="sec">Mitbestimmung</h2>
+  <div class="block">
+    <p>Ein Rollout beginnt in aller Regel nicht ohne Dienstvereinbarung. OPAA ist so gebaut, dass diese
+      Vereinbarung eine Konfigurationsaufgabe wird und kein Projektrisiko.</p>
+    <ul>
+      <li>Sichtbarkeit ist eine Handlung, keine Automatik; der persönliche Bereich ist unbeobachtet.</li>
+      <li>Einen personenbezogenen Auswertungspfad gibt es nicht — nicht abgeschaltet, sondern nicht gebaut.</li>
+      <li>Keine Ranglisten. Auswertungen zum Stand der Einführung sind aggregiert je Organisationseinheit.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <div class="tech-stack">
+      <span class="tech-tag">Rechtebewusste Suche</span>
+      <span class="tech-tag">Revisionssicheres Protokoll</span>
+      <span class="tech-tag">Betrieb ohne Netzanbindung</span>
+    </div>
+    <div class="footer-right">
+      <a class="github-link" href="https://github.com/criew/opaa">github.com/criew/opaa</a>
+      <div class="license">AGPL-3.0 &bull; quelloffen &bull; Seite 2 von 3</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================ SEITE 3 ============================ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">OPAA</div>
+    </div>
+    <div class="page-mark">Anwendungsfälle &middot; Phasen</div>
+  </div>
+
+  <h2 class="sec">Drei Anwendungsfälle</h2>
+
+  <div class="case">
+    <div class="case-head">
+      <h3>Fachfrage zur Rechtslage belegt beantworten</h3>
+      <div class="case-role">Sachbearbeitung</div>
+    </div>
+    <p><strong>Heute:</strong> Die Antwort steckt in einem Schreiben des Ministeriums, einem Anwendungserlass,
+      zwei Verfügungen und einer internen Arbeitsanweisung — verteilt über Netzlaufwerk, Intranet und eine
+      Ordnerstruktur, die niemand mehr vollständig kennt.</p>
+    <p><strong>Mit OPAA:</strong> Die Frage wird in Umgangssprache gestellt. Gesucht wird hybrid über die
+      Wissensbibliotheken, die diese Rolle lesen darf. Jede Aussage der Antwort nennt Dokument, Fundstelle und
+      Konfidenz; die Sachbearbeiterin prüft die Fundstelle selbst und übernimmt sie in den Vermerk. Ist die
+      Lage nicht belegbar, verweigert OPAA im Zitierzwang die Antwort, statt zu raten.</p>
+  </div>
+
+  <div class="case">
+    <div class="case-head">
+      <h3>Aus einem guten Agenten den Standard machen</h3>
+      <div class="case-role">Sachgebietsleitung</div>
+    </div>
+    <p><strong>Heute:</strong> Ein Kollege hat sich eine sehr gute Arbeitsweise mit KI erarbeitet. Er teilt sie
+      per Mail, drei Kollegen nutzen eine veraltete Kopie, der Rest weiß nichts davon. Wechselt er das Amt,
+      geht die Arbeitsweise mit ihm.</p>
+    <p><strong>Mit OPAA:</strong> Er baut seinen Agenten als Paket — Aufgabenbeschreibung, gebundene
+      Wissensbibliothek, erlaubte Werkzeuge, Modellwahl — und stellt ihn dem Team bereit; das Wissen kommt mit.
+      Die Sachgebietsleitung schlägt ihn für den Fachbereich vor: fachliche Prüfung, Test gegen Referenzfälle,
+      Freigabe mit Namen und Datum. Danach steht er im organisationsweiten Katalog, mit Version und Historie.</p>
+  </div>
+
+  <div class="case">
+    <div class="case-head">
+      <h3>Souverän betreiben und Modelle wechseln</h3>
+      <div class="case-role">IT-Leitung und Betrieb</div>
+    </div>
+    <p><strong>Heute:</strong> Der Betrieb muss ohne Internetzugang funktionieren, an das vorhandene
+      Identitätsmanagement andocken und prüffähige Protokolle liefern. Diese drei Anforderungen entscheiden vor
+      jeder Funktionsfrage darüber, ob eine Lösung im Haus überhaupt betrieben werden darf.</p>
+    <p><strong>Mit OPAA:</strong> Installation im eigenen Rechenzentrum, Anbindung an den Verzeichnisdienst
+      über Single Sign-on und SCIM, Protokoll an das SIEM. Die Modelle laufen lokal; kommt ein besseres, wird
+      es an einer Stelle getauscht, ohne dass ein Fachbereich seine Agenten anfasst.</p>
+  </div>
+
+  <h2 class="sec">Vier Phasen</h2>
+  <div class="phases">
+    <div class="phase">
+      <div class="phase-no">Phase 1</div>
+      <h3>Souveräner Wissensassistent</h3>
+      <p>Ein Haus kann sein Wissen befragbar, belegt und nachweisbar nutzen: Zitierzwang und Konfidenz,
+        hybride Suche, Uploads und lesende Konnektoren, Anmeldung über den Verzeichnisdienst,
+        revisionssicheres Protokoll, Betrieb bis ohne Netzanbindung.</p>
+    </div>
+    <div class="phase">
+      <div class="phase-no">Phase 2</div>
+      <h3>Agenten, Werkzeuge und teilbare Assets</h3>
+      <p>Von „fragen" zu „erledigen": Agenten als teilbare Pakete, Prüfstand vor der Freigabe, isolierte
+        Ausführungsumgebung für Auswertungen und Dateiverarbeitung, schreibende Aktionen mit menschlicher
+        Freigabe.</p>
+    </div>
+    <div class="phase">
+      <div class="phase-no">Phase 3</div>
+      <h3>Kollaboration und organisationsweiter Rollout</h3>
+      <p>Gemeinsame Räume, Freigabe- und Prüfworkflow, Versionierung, organisationsweiter Katalog,
+        Vorlagen nach Fachbereich, Barrierefreiheit nach BITV, Feinschliff der Amtssprache.</p>
+    </div>
+    <div class="phase">
+      <div class="phase-no">Phase 4</div>
+      <h3>Ökosystem und Ausblick</h3>
+      <p>Behördenübergreifender Austausch geprüfter Assets, tiefe Anbindung an den souveränen Arbeitsplatz,
+        Anbindung an elektronische Akten — bedarfsgetrieben, nicht fest eingeplant.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    Jede Phase ist für sich genutzt wertvoll. Die Nachweisfähigkeit gehört in die erste — ohne sie ergibt ein
+    Start in einer Behörde keinen Sinn. OPAA ist im Aufbau; welche Fähigkeit heute umgesetzt ist, führt das
+    Statusdokument im Repository, nicht diese Unterlage.
+  </div>
+
+  <div class="footer">
+    <div class="tech-stack">
+      <span class="tech-tag">Wissen</span>
+      <span class="tech-tag">Agenten</span>
+      <span class="tech-tag">KI für Teams und Organisation</span>
+    </div>
+    <div class="footer-right">
+      <a class="github-link" href="https://github.com/criew/opaa">github.com/criew/opaa</a>
+      <div class="license">AGPL-3.0 &bull; quelloffen &bull; Seite 3 von 3</div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>

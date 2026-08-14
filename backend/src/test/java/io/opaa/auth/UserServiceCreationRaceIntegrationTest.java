@@ -7,7 +7,6 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryOwnerType;
 import io.opaa.space.Space;
-import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +77,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * failure instead of throwing it (see that method's Javadoc) - a connection-pool timeout under load
  * would silently return a "successful" login without a personal library, self-healing only on a
  * later, unloaded login. The actual fix is at the source: {@code
- * SpaceRepository#insertPersonalSpaceIfAbsent} and {@code
+ * SpaceRepository#insertDefaultSpaceIfAbsent} and {@code
  * KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} now each provision in a single {@code
  * INSERT ... ON CONFLICT ... DO NOTHING} round trip instead of the previous
  * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence, roughly halving
@@ -147,11 +146,11 @@ class UserServiceCreationRaceIntegrationTest {
 
       // Every one of the CONCURRENT_LOGINS calls reaches findOrCreateUser's afterCommit hook for
       // the same user - unlike before this fix, where only the single winner of the user-creation
-      // race ever got that far. SpaceService.ensurePersonalSpace's own race handling (#265) must
+      // race ever got that far. SpaceService.ensureDefaultSpace's own race handling (#265) must
       // still collapse all of those into exactly one personal space.
       List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(persistedUser.getId());
       assertThat(spaces).hasSize(1);
-      assertThat(spaces.getFirst().getKind()).isEqualTo(SpaceKind.PERSONAL);
+      assertThat(spaces.getFirst().isDefault()).isEqualTo(true);
 
       // #201: KnowledgeLibraryService.ensurePersonalLibrary races the same CONCURRENT_LOGINS calls
       // for the same user, guarded by its own partial unique index. Exactly one personal library,

@@ -48,17 +48,10 @@ public class SpaceService {
   @Transactional
   public SpaceResponse createSpace(SpaceRequest request, UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
-    SpaceKind kind = request.getKind();
 
-    if (kind == SpaceKind.PERSONAL) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Persönliche Spaces werden automatisch angelegt");
-    }
-    if (kind == SpaceKind.TEAM && !systemAdmin) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Nur Systemadministratoren können Team-Spaces erstellen");
-    }
-
+    // #333 removed SpaceKind: every user may create any number of spaces, including ones they work
+    // in alone. Only the default space is special, and it is created automatically rather than
+    // through this endpoint - see ensureDefaultSpace.
     UUID ownerId = request.getOwnerId() != null ? request.getOwnerId() : currentUserId;
     if (!systemAdmin && !ownerId.equals(currentUserId)) {
       throw new ResponseStatusException(
@@ -78,7 +71,7 @@ public class SpaceService {
         buildValidatedSpace(
             request.getName(),
             request.getDescription(),
-            kind,
+            false,
             visibility,
             ownerId,
             currentUser.getOrganizationId());
@@ -130,7 +123,6 @@ public class SpaceService {
       UUID spaceId, UUID memberUserId, SpaceRole requestedRole, UUID currentUserId) {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
-    rejectPersonalSpaceMemberChanges(space);
     // Resolving the target user first also turns a non-existent userId into a clean 404 instead
     // of a raw foreign-key violation from the membership insert below.
     requireUserInOrganization(memberUserId, space.getOrganizationId());
@@ -242,9 +234,9 @@ public class SpaceService {
   public void deleteSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
 
-    if (space.isPersonal()) {
+    if (space.isDefault()) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Persönliche Spaces können nicht gelöscht werden");
+          HttpStatus.BAD_REQUEST, "Der Standard-Space kann nicht gelöscht werden");
     }
 
     boolean owner = space.getOwnerId().equals(currentUserId);
@@ -258,13 +250,13 @@ public class SpaceService {
   }
 
   /**
-   * Creates the automatic personal space (and its owner {@code ADMIN} membership) for a user if it
+   * Creates the automatic default space (and its owner {@code ADMIN} membership) for a user if it
    * does not exist yet.
    *
    * <p>Two concurrent first logins of the same user can both pass the {@code existsBy} check below
    * before either has inserted a row - the check alone cannot prevent that. The partial unique
-   * index {@code uk_spaces_personal_owner} (migration 010) is the actual guard, enforced through
-   * {@link SpaceRepository#insertPersonalSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}: at
+   * index {@code uk_spaces_default_owner} (migration 015) is the actual guard, enforced through
+   * {@link SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING}: at
    * most one of several concurrent calls for the same owner actually inserts a row, the rest are
    * silent no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second
    * query to re-read the winner's row, because this method returns {@code void} and the caller
@@ -311,14 +303,14 @@ public class SpaceService {
    * requiresNewTransactionTemplate} actually needs.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public void ensurePersonalSpace(UUID userId, UUID organizationId) {
-    if (spaceRepository.existsByOwnerIdAndKind(userId, SpaceKind.PERSONAL)) {
+  public void ensureDefaultSpace(UUID userId, UUID organizationId) {
+    if (spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)) {
       return;
     }
 
     requiresNewTransactionTemplate.executeWithoutResult(
         status ->
-            spaceRepository.insertPersonalSpaceIfAbsent(
+            spaceRepository.insertDefaultSpaceIfAbsent(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Meine Dokumente",
@@ -330,13 +322,13 @@ public class SpaceService {
   private Space buildValidatedSpace(
       String name,
       String description,
-      SpaceKind kind,
+      boolean isDefault,
       SpaceVisibility visibility,
       UUID ownerId,
       UUID organizationId) {
     String normalizedName = validateName(name);
     validateDescription(description);
-    return new Space(normalizedName, description, kind, visibility, ownerId, organizationId);
+    return new Space(normalizedName, description, isDefault, visibility, ownerId, organizationId);
   }
 
   private String validateName(String name) {
@@ -419,14 +411,6 @@ public class SpaceService {
     return membership;
   }
 
-  private void rejectPersonalSpaceMemberChanges(Space space) {
-    if (space.isPersonal()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "Zu persönlichen Spaces können keine Mitglieder hinzugefügt werden");
-    }
-  }
-
   private String resolveDisplayName(UUID userId) {
     return userRepository
         .findById(userId)
@@ -478,7 +462,7 @@ public class SpaceService {
     return new SpaceListResponse(
             space.getId(),
             space.getName(),
-            space.getKind(),
+            space.isDefault(),
             space.getMemberships().size(),
             space.getCreatedAt(),
             space.getUpdatedAt())
@@ -509,7 +493,7 @@ public class SpaceService {
     return new SpaceResponse(
             space.getId(),
             space.getName(),
-            space.getKind(),
+            space.isDefault(),
             space.getOwnerId(),
             members.size(),
             roleCounts,

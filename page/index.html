@@ -3,11 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OPAA — Open Project AI Assistant</title>
-<meta name="description" content="OPAA verbindet Wikis, E-Mails, SharePoint und mehr zu einem intelligenten KI-Assistenten. Self-hosted, Open Source, AGPLv3.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<title>OPAA — souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung</title>
+<meta name="description" content="OPAA macht das Wissen Ihres Hauses belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze Organisation — im eigenen Rechenzentrum, quelloffen unter AGPL-3.0.">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -16,7 +13,7 @@
   }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: #0d1117;
     color: #e6edf3;
     line-height: 1.6;
@@ -99,35 +96,6 @@
     height: 18px;
     vertical-align: middle;
     margin-right: 4px;
-  }
-
-  .lang-toggle {
-    display: flex;
-    background: #21262d;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-left: 8px;
-  }
-
-  .lang-btn {
-    background: none;
-    border: none;
-    color: #8b949e;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 6px 12px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-  }
-
-  .lang-btn.active {
-    background: #137fec;
-    color: white;
-  }
-
-  .lang-btn:hover:not(.active) {
-    color: #e6edf3;
   }
 
   /* === MOBILE NAV === */
@@ -419,6 +387,13 @@
   .check { color: #2ea043; font-weight: 700; }
   .cross { color: #6e7681; }
 
+  .comp-note {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #6e7681;
+  }
+
   /* === FOOTER === */
   .footer {
     border-top: 1px solid #21262d;
@@ -554,16 +529,12 @@
     <div class="nav-links" id="navLinks">
       <a class="nav-link" href="https://demo.opaa.ewerlin.com" target="_blank">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        <span data-de="Demo" data-en="Demo">Demo</span>
+        <span>Demo</span>
       </a>
       <a class="nav-link" href="https://github.com/criew/opaa" target="_blank">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         GitHub
       </a>
-      <div class="lang-toggle">
-        <button class="lang-btn active" id="langDe" onclick="setLang('de')">DE</button>
-        <button class="lang-btn" id="langEn" onclick="setLang('en')">EN</button>
-      </div>
     </div>
     <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -573,19 +544,20 @@
 
 <!-- HERO -->
 <section class="hero section">
-  <div class="hero-badge">Open Source &bull; Self-Hosted &bull; AGPLv3</div>
+  <div class="hero-badge">Quelloffen &bull; Betrieb im eigenen Haus &bull; AGPL-3.0</div>
   <h1>
-    <span data-de="Dein Firmenwissen." data-en="Your Company Knowledge.">Dein Firmenwissen.</span><br>
-    <span class="accent" data-de="Eine Frage entfernt." data-en="One Question Away.">Eine Frage entfernt.</span>
+    <span>Antworten mit Fundstelle.</span><br>
+    <span class="accent">KI, die im ganzen Haus ankommt.</span>
   </h1>
-  <p data-de="OPAA verbindet Wikis, E-Mails, SharePoint, Ticketsysteme und File Shares zu einem intelligenten Assistenten. Frag in natürlicher Sprache — erhalte Antworten mit Quellenangabe. Selbst gehostet, keine Daten verlassen dein Netzwerk."
-     data-en="OPAA connects wikis, emails, SharePoint, issue trackers and file shares into one intelligent assistant. Ask in natural language — get answers with source references. Self-hosted, no data ever leaves your network.">
-    OPAA verbindet Wikis, E-Mails, SharePoint, Ticketsysteme und File Shares zu einem intelligenten Assistenten. Frag in natürlicher Sprache — erhalte Antworten mit Quellenangabe. Selbst gehostet, keine Daten verlassen dein Netzwerk.
+  <p>
+    OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
+    belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
+    Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
   </p>
   <div class="hero-buttons">
     <a class="btn btn-primary" href="https://demo.opaa.ewerlin.com" target="_blank">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-      <span data-de="Demo ansehen" data-en="View Demo">Demo ansehen</span>
+      <span>Demo ansehen</span>
     </a>
     <a class="btn btn-secondary" href="https://github.com/criew/opaa" target="_blank">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -598,24 +570,24 @@
 <section class="screenshots section">
   <div class="screenshots-grid">
     <div class="screenshot-card">
-      <img src="img/chat-interface.png" alt="Chat Interface">
+      <img src="img/chat-interface.png" alt="Antwort mit Fundstelle in der Weboberfläche">
       <div class="screenshot-info">
         <span class="screenshot-dot dot-blue"></span>
-        <h3 data-de="KI-Chat mit Quellen" data-en="AI Chat with Sources">KI-Chat mit Quellen</h3>
-        <p data-de="Frage stellen, Antwort mit Originaldokumenten und Vertraulichkeitsstufe erhalten"
-           data-en="Ask a question, get answers with original documents and confidentiality levels">
-          Frage stellen, Antwort mit Originaldokumenten und Vertraulichkeitsstufe erhalten
+        <h3>Antwort mit Fundstelle</h3>
+        <p>
+          Die Frage in Umgangssprache, die Antwort mit Fundstelle und Vertraulichkeitsstufe — mit einem Klick
+          zur Textstelle im Originaldokument.
         </p>
       </div>
     </div>
     <div class="screenshot-card">
-      <img src="img/document-browser.png" alt="Document Browser">
+      <img src="img/document-browser.png" alt="Übersicht der Wissensbestände in der Weboberfläche">
       <div class="screenshot-info">
         <span class="screenshot-dot dot-green"></span>
-        <h3 data-de="Dokumenten-Browser" data-en="Document Browser">Dokumenten-Browser</h3>
-        <p data-de="Alle Quellen durchsuchbar an einem Ort — mit KI-extrahierten Insights"
-           data-en="All sources searchable in one place — with AI-extracted insights">
-          Alle Quellen durchsuchbar an einem Ort — mit KI-extrahierten Insights
+        <h3>Wissensbibliotheken im Blick</h3>
+        <p>
+          Die Bestände eines Hauses an einer Stelle, jeder mit eigenen Rechten — durchsucht wird nur, was die
+          fragende Person lesen darf.
         </p>
       </div>
     </div>
@@ -625,48 +597,48 @@
 <!-- FEATURES -->
 <section class="features section">
   <div class="section-title">
-    <h2 data-de="Warum OPAA?" data-en="Why OPAA?">Warum OPAA?</h2>
-    <p data-de="Dein Wissen. Deine Infrastruktur. Deine Regeln." data-en="Your knowledge. Your infrastructure. Your rules.">Dein Wissen. Deine Infrastruktur. Deine Regeln.</p>
+    <h2>Warum OPAA?</h2>
+    <p>Wissen, das belegt ist &middot; Agenten, die Aufgaben übernehmen &middot; KI, die alle erreicht</p>
   </div>
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon">&#x1f512;</div>
-      <h3 data-de="Digitale Souveränität" data-en="Digital Sovereignty">Digitale Souveränität</h3>
-      <p data-de="Alle Daten bleiben in deiner Infrastruktur. Kein Cloud-Zwang."
-         data-en="All data stays in your infrastructure. No cloud dependency.">
-        Alle Daten bleiben in deiner Infrastruktur. Kein Cloud-Zwang.
-      </p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&#x1f50c;</div>
-      <h3 data-de="Kein Vendor Lock-in" data-en="No Vendor Lock-in">Kein Vendor Lock-in</h3>
-      <p data-de="Jede Komponente austauschbar — LLM, Datenbank, Quellen."
-         data-en="Every component is swappable — LLM, database, data sources.">
-        Jede Komponente austauschbar — LLM, Datenbank, Quellen.
+      <h3>Im eigenen Haus</h3>
+      <p>
+        Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung. Die Daten bleiben,
+        wo sie hingehören.
       </p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x1f4d6;</div>
-      <h3 data-de="Immer mit Quelle" data-en="Always with Sources">Immer mit Quelle</h3>
-      <p data-de="Jede Antwort zeigt das Originaldokument. Kein Halluzinieren."
-         data-en="Every answer links to the original document. No guessing, no hallucinations.">
-        Jede Antwort zeigt das Originaldokument. Kein Halluzinieren.
+      <h3>Jede Aussage belegt</h3>
+      <p>
+        Die Fundstelle steht in der Antwort. Wo es haftungskritisch wird, ergeht ohne Beleg keine Antwort —
+        lieber „nicht feststellbar".
       </p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">&#x1f3a8;</div>
-      <h3 data-de="Dein Branding" data-en="Your Branding">Dein Branding</h3>
-      <p data-de="Logo, Farben, Theme und KI-Modell frei konfigurierbar."
-         data-en="Logo, colors, theme and AI model fully configurable.">
-        Logo, Farben, Theme und KI-Modell frei konfigurierbar.
+      <div class="feature-icon">&#x1f501;</div>
+      <h3>Verteilbar statt einmalig</h3>
+      <p>
+        Agenten, Prompt-Bibliotheken und Wissensbibliotheken sind teilbare Assets. Die gute Arbeitsweise
+        einer Abteilung wird zum Standard aller.
+      </p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x1f50c;</div>
+      <h3>Eigene Modelle</h3>
+      <p>
+        Eigene, lokal betriebene Modelle zuerst — zentral vorgegeben und an einer Stelle austauschbar, ohne
+        dass Fachbereiche etwas anfassen.
       </p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x26a1;</div>
-      <h3>Open Source</h3>
-      <p data-de="AGPLv3 Lizenz. Kostenlos selbst hosten. Kommerzielle Lizenzen verfügbar."
-         data-en="AGPLv3 license. Free to self-host and contribute. Commercial licenses available.">
-        AGPLv3 Lizenz. Kostenlos selbst hosten. Kommerzielle Lizenzen verfügbar.
+      <h3>Quelloffen</h3>
+      <p>
+        AGPL-3.0, der vollständige Funktionsumfang ist quelloffen. Prüfbar statt zugesichert; Entwicklung im
+        Offenen.
       </p>
     </div>
   </div>
@@ -675,7 +647,8 @@
 <!-- COMPARISON -->
 <section class="comparison section">
   <div class="section-title">
-    <h2 data-de="OPAA vs. typische SaaS-Lösungen" data-en="OPAA vs. Typical SaaS Solutions">OPAA vs. typische SaaS-Lösungen</h2>
+    <h2>Was in einer Behörde zählt</h2>
+    <p>Sechs Fragen, an denen sich in einem Haus entscheidet, ob KI überhaupt eingesetzt werden darf.</p>
   </div>
   <div class="comp-wrapper">
     <table class="comp-table">
@@ -683,38 +656,46 @@
         <tr>
           <th></th>
           <th>OPAA</th>
-          <th data-de="SaaS-Alternativen" data-en="SaaS Alternatives">SaaS-Alternativen</th>
+          <th>Gehostete KI-Dienste</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td data-de="Datenhoheit" data-en="Data Ownership">Datenhoheit</td>
-          <td><span class="check">&#x2713;</span> <span data-de="Alles bleibt bei dir" data-en="Everything stays with you">Alles bleibt bei dir</span></td>
-          <td><span class="cross">&#x2717;</span> <span data-de="Daten in fremder Cloud" data-en="Data in third-party cloud">Daten in fremder Cloud</span></td>
+          <td>Datenhoheit</td>
+          <td><span class="check">&#x2713;</span> Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung</td>
+          <td><span class="cross">&#x2717;</span> Verarbeitung beim Betreiber des Dienstes; Datenhoheit ist eine Zusage, keine Eigenschaft</td>
         </tr>
         <tr>
-          <td data-de="KI-Modell" data-en="AI Model">KI-Modell</td>
-          <td><span class="check">&#x2713;</span> <span data-de="Frei wählbar (OpenAI, Ollama, lokal)" data-en="Your choice (OpenAI, Ollama, local)">Frei wählbar (OpenAI, Ollama, lokal)</span></td>
-          <td><span class="cross">&#x2717;</span> <span data-de="Vorgegeben, nicht änderbar" data-en="Predetermined, not changeable">Vorgegeben, nicht änderbar</span></td>
+          <td>Eigene Modelle</td>
+          <td><span class="check">&#x2713;</span> Eigene, lokal betriebene Modelle zuerst; zentral vorgegeben und an einer Stelle austauschbar</td>
+          <td><span class="cross">&#x2717;</span> Welches Modell rechnet, entscheidet der Dienst — auch wenn er es wechselt</td>
         </tr>
         <tr>
-          <td data-de="Datenquellen" data-en="Data Sources">Datenquellen</td>
-          <td><span class="check">&#x2713;</span> <span data-de="Wikis, Mail, Ticketsysteme, S3, SharePoint ..." data-en="Wikis, email, issue trackers, S3, SharePoint ...">Wikis, Mail, Ticketsysteme, S3, SharePoint ...</span></td>
-          <td><span class="cross">&#x2717;</span> <span data-de="Meist nur eigene Plattform" data-en="Usually own platform only">Meist nur eigene Plattform</span></td>
+          <td>Belegpflicht</td>
+          <td><span class="check">&#x2713;</span> Jede Aussage mit Fundstelle; für haftungskritische Zusammenhänge schaltbar auf „ohne Beleg keine Antwort"</td>
+          <td><span class="cross">&#x2717;</span> Quellenangaben, wo vorhanden, sind eine Beigabe der Antwort und nicht erzwingbar</td>
         </tr>
         <tr>
-          <td data-de="Quellenangaben" data-en="Source References">Quellenangaben</td>
-          <td><span class="check">&#x2713;</span> <span data-de="Jede Antwort mit Originaldokument" data-en="Every answer with original document">Jede Antwort mit Originaldokument</span></td>
-          <td><span class="cross">&#x2717;</span> <span data-de="Oft Blackbox" data-en="Often a black box">Oft Blackbox</span></td>
+          <td>Nachweis gegenüber Prüfern</td>
+          <td><span class="check">&#x2713;</span> Revisionssicheres Protokoll im eigenen Haus; darauf ausgelegt, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang besteht</td>
+          <td><span class="cross">&#x2717;</span> Nachweisbar ist, was der Dienst herausgibt — der Prüfpfad endet an der Systemgrenze</td>
         </tr>
         <tr>
-          <td data-de="Kosten" data-en="Cost">Kosten</td>
-          <td><span class="check">&#x2713;</span> <span data-de="Open Source — keine Lizenzgebühren" data-en="Open Source — no license fees">Open Source — keine Lizenzgebühren</span></td>
-          <td><span class="cross">&#x2717;</span> <span data-de="Per-User-Lizenz" data-en="Per-user licensing">Per-User-Lizenz</span></td>
+          <td>Mitbestimmung</td>
+          <td><span class="check">&#x2713;</span> Kein personenbezogener Auswertungspfad, keine Ranglisten, Sichtbarkeit als Handlung; die Dienstvereinbarung wird zur Konfigurationsaufgabe</td>
+          <td><span class="cross">&#x2717;</span> Welche personenbezogenen Auswertungen möglich sind, legt der Dienst fest und kann es ändern</td>
+        </tr>
+        <tr>
+          <td>Offenheit</td>
+          <td><span class="check">&#x2713;</span> AGPL-3.0, vollständiger Funktionsumfang quelloffen und damit prüfbar</td>
+          <td><span class="cross">&#x2717;</span> Das Verhalten ist zugesichert, nicht nachlesbar</td>
         </tr>
       </tbody>
     </table>
   </div>
+  <p class="comp-note">
+    OPAA ist im Aufbau. Diese Seite beschreibt das Zielbild; den Umsetzungsstand führt das Repository.
+  </p>
 </section>
 
 <!-- FOOTER -->
@@ -731,35 +712,10 @@
     </div>
     <div class="footer-right">
       <a href="https://github.com/criew/opaa" target="_blank">github.com/criew/opaa</a>
-      <div class="footer-license">AGPLv3 License &bull; Open Source</div>
+      <div class="footer-license">AGPL-3.0 &bull; quelloffen</div>
     </div>
   </div>
 </footer>
-
-<script>
-  function setLang(lang) {
-    document.documentElement.lang = lang;
-    localStorage.setItem('opaa-lang', lang);
-
-    document.getElementById('langDe').classList.toggle('active', lang === 'de');
-    document.getElementById('langEn').classList.toggle('active', lang === 'en');
-
-    document.querySelectorAll('[data-de][data-en]').forEach(function(el) {
-      el.textContent = el.getAttribute('data-' + lang);
-    });
-  }
-
-  // Init: detect language
-  (function() {
-    var saved = localStorage.getItem('opaa-lang');
-    if (saved) {
-      setLang(saved);
-    } else {
-      var browserLang = (navigator.language || '').substring(0, 2);
-      setLang(browserLang === 'de' ? 'de' : 'en');
-    }
-  })();
-</script>
 
 </body>
 </html>

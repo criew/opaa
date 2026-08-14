@@ -73,7 +73,7 @@ public class UserService {
    * #createOrFetchUser}'s insert attempt and its fallback read are each just one more short-lived,
    * independently connection-scoped call - never two connections held by the same caller at once.
    * {@link #ensurePersonalAssetsAfterCommit} below (#201's personal space and personal library
-   * provisioning) follows the exact same reasoning: neither {@code ensurePersonalSpace} nor {@code
+   * provisioning) follows the exact same reasoning: neither {@code ensureDefaultSpace} nor {@code
    * ensurePersonalLibrary} ever runs inside an ambient transaction started here, for the same
    * connection-budget reason.
    */
@@ -109,7 +109,7 @@ public class UserService {
    * DataIntegrityViolationException} there rolls back only that one insert; nothing here is
    * poisoned by it, so the loser can simply read the row the winner has by now committed, instead
    * of surfacing a 500 for {@code uq_users_subject_issuer}. Same fallback-read pattern as {@code
-   * SpaceService#ensurePersonalSpace}, but without that method's {@code REQUIRES_NEW} - there is no
+   * SpaceService#ensureDefaultSpace}, but without that method's {@code REQUIRES_NEW} - there is no
    * ambient transaction here to escape from in the first place.
    */
   private User createOrFetchUser(String subject, String issuer, String email, String displayName) {
@@ -133,7 +133,7 @@ public class UserService {
   }
 
   /**
-   * Runs {@link SpaceService#ensurePersonalSpace} and {@link
+   * Runs {@link SpaceService#ensureDefaultSpace} and {@link
    * KnowledgeLibraryService#ensurePersonalLibrary} only after the {@code users} row they need has
    * been committed - and always together, so provisioning never silently produces a personal space
    * without its personal library or the other way round (#201's "creating a user creates a personal
@@ -141,12 +141,12 @@ public class UserService {
    *
    * <p>Historically (#265, fixed in the #280 follow-up), {@code findOrCreateUser} was
    * {@code @Transactional} and inserted the new user in a still-open transaction; {@code
-   * ensurePersonalSpace} inserts the personal space in its own {@code REQUIRES_NEW} transaction
-   * (see its Javadoc), on a separate connection with its own snapshot that could not see the
-   * uncommitted {@code users} row, so the insert violated {@code fk_spaces_owner} and the whole
-   * login failed. Deferring the call to {@link TransactionSynchronization#afterCommit()} fixed that
-   * by guaranteeing the user row was already committed and visible by the time the personal space
-   * was created. {@code ensurePersonalLibrary} (#201) inserts in its own {@code REQUIRES_NEW}
+   * ensureDefaultSpace} inserts the default space in its own {@code REQUIRES_NEW} transaction (see
+   * its Javadoc), on a separate connection with its own snapshot that could not see the uncommitted
+   * {@code users} row, so the insert violated {@code fk_spaces_owner} and the whole login failed.
+   * Deferring the call to {@link TransactionSynchronization#afterCommit()} fixed that by
+   * guaranteeing the user row was already committed and visible by the time the personal space was
+   * created. {@code ensurePersonalLibrary} (#201) inserts in its own {@code REQUIRES_NEW}
    * transaction the same way and is subject to exactly the same visibility requirement, so it is
    * called from this same method rather than from a second, parallel deferral mechanism.
    *
@@ -156,7 +156,7 @@ public class UserService {
    * synchronous branch. That remains correct for the same reason the {@code afterCommit} deferral
    * did - each {@link UserRepository} call in {@code findOrCreateUser} already committed
    * independently by the time control reaches here, so the user row this method's caller passes in
-   * is always already visible on any connection, including {@code ensurePersonalSpace}'s and {@code
+   * is always already visible on any connection, including {@code ensureDefaultSpace}'s and {@code
    * ensurePersonalLibrary}'s {@code REQUIRES_NEW} ones. The {@code isSynchronizationActive}/{@code
    * registerSynchronization} branch below is kept only as a defensive fallback for a caller running
    * inside its own transaction (there is none in production today) - it must not silently skip
@@ -178,7 +178,7 @@ public class UserService {
    * that is also the realistic production trigger (many requests for the *same* user's very first
    * login, e.g. several tabs opened at once): only the first thread to acquire the lock reaches the
    * database at all; by the time each following thread acquires it, the winner has already
-   * committed, so {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy}
+   * committed, so {@code ensureDefaultSpace}/{@code ensurePersonalLibrary}'s own {@code existsBy}
    * check returns {@code true} immediately and neither issues an insert, so neither needs a
    * connection either. Confirmed by {@code UserServiceCreationRaceIntegrationTest} passing
    * repeatedly at the unmodified production default pool size of 10 with this lock in place (see
@@ -244,10 +244,10 @@ public class UserService {
   }
 
   /**
-   * Attempts {@link SpaceService#ensurePersonalSpace} and {@link
+   * Attempts {@link SpaceService#ensureDefaultSpace} and {@link
    * KnowledgeLibraryService#ensurePersonalLibrary} independently of one another - the second call
    * always runs even if the first one throws, and vice versa. Neither call is wrapped in a
-   * transaction of its own here - each of {@code ensurePersonalSpace}/{@code ensurePersonalLibrary}
+   * transaction of its own here - each of {@code ensureDefaultSpace}/{@code ensurePersonalLibrary}
    * already opens its own self-contained {@code REQUIRES_NEW} transaction (see their Javadoc), so
    * nesting one here would only add an unused, connection-holding transaction around calls that do
    * not need one - the exact class of cost the pool-exhaustion regression in #299 was caused by.
@@ -267,17 +267,17 @@ public class UserService {
    * (if both occur) keeps them visible for operations without blocking the user.
    *
    * <p>Called unconditionally for every {@link #findOrCreateUser} invocation, not only for newly
-   * created users: both {@code ensurePersonalSpace} and {@code ensurePersonalLibrary} are
-   * idempotent (each checks for an existing row first), so a returning user whose personal library
-   * failed to provision on an earlier login - or who predates #201 entirely - gets one created on
-   * their next login instead of being left without one indefinitely, exactly because this method no
-   * longer aborts that next login on the earlier failure. See #294, already open for the general
+   * created users: both {@code ensureDefaultSpace} and {@code ensurePersonalLibrary} are idempotent
+   * (each checks for an existing row first), so a returning user whose personal library failed to
+   * provision on an earlier login - or who predates #201 entirely - gets one created on their next
+   * login instead of being left without one indefinitely, exactly because this method no longer
+   * aborts that next login on the earlier failure. See #294, already open for the general
    * "idempotent provisioning must not become a lockout" concern this addresses for personal
    * space/library specifically.
    */
   private void ensureBothPersonalAssets(UUID userId, UUID organizationId) {
     try {
-      spaceService.ensurePersonalSpace(userId, organizationId);
+      spaceService.ensureDefaultSpace(userId, organizationId);
     } catch (RuntimeException e) {
       log.error(
           "Failed to provision personal space for user {} (organization {}); will retry on next"

@@ -57,7 +57,7 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    verify(spaceService).ensurePersonalSpace(user.getId(), Organization.DEFAULT_ID);
+    verify(spaceService).ensureDefaultSpace(user.getId(), Organization.DEFAULT_ID);
     verify(libraryService).ensurePersonalLibrary(user.getId(), Organization.DEFAULT_ID);
   }
 
@@ -73,7 +73,7 @@ class UserServiceTest {
 
     assertThat(user.getEmail()).isEqualTo("new@example.com");
     assertThat(user.getDisplayName()).isEqualTo("New Name");
-    verify(spaceService).ensurePersonalSpace(existing.getId(), Organization.DEFAULT_ID);
+    verify(spaceService).ensureDefaultSpace(existing.getId(), Organization.DEFAULT_ID);
     verify(libraryService).ensurePersonalLibrary(existing.getId(), Organization.DEFAULT_ID);
   }
 
@@ -130,10 +130,10 @@ class UserServiceTest {
 
     userService.findOrCreateUser("sub1", "issuer1", "old@example.com", "Old Name");
 
-    // UserService no longer checks existence itself; both ensurePersonalSpace and
+    // UserService no longer checks existence itself; both ensureDefaultSpace and
     // ensurePersonalLibrary are idempotent and are always called, whether the user is new or
     // existing.
-    verify(spaceService).ensurePersonalSpace(existing.getId(), Organization.DEFAULT_ID);
+    verify(spaceService).ensureDefaultSpace(existing.getId(), Organization.DEFAULT_ID);
     verify(libraryService).ensurePersonalLibrary(existing.getId(), Organization.DEFAULT_ID);
   }
 
@@ -158,13 +158,13 @@ class UserServiceTest {
     when(authProperties.initialAdminEmail()).thenReturn(null);
     Mockito.doThrow(new RuntimeException("space provisioning failed"))
         .when(spaceService)
-        .ensurePersonalSpace(any(), any());
+        .ensureDefaultSpace(any(), any());
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
 
     assertThat(user.getSubject()).isEqualTo("sub1");
     InOrder inOrder = Mockito.inOrder(spaceService, libraryService);
-    inOrder.verify(spaceService).ensurePersonalSpace(any(), any());
+    inOrder.verify(spaceService).ensureDefaultSpace(any(), any());
     inOrder.verify(libraryService).ensurePersonalLibrary(any(), any());
   }
 
