@@ -288,7 +288,7 @@ im Code und im Backlog leer.
 - Barrierefreiheit nach BITV · Feinschliff der Amtssprache
 
 **Geplant (Phase 4)**
-- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger (#357)
+- Anbindung an elektronische Akte und Dokumentenmanagement · Assistent für Bürgerinnen und Bürger
 
 ---
 
