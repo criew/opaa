@@ -24,8 +24,17 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Verifies that the application context loads when chat and embedding providers are set to
  * different values, confirming independent configurability.
+ *
+ * <p>The embedding base URL is stated explicitly because there is no default one: selecting the
+ * "openai" provider without an address is rejected by {@link OpenAiBaseUrlGuard}. The address below
+ * is never called — the embedding model is replaced by {@link FakeEmbeddingModel}.
  */
-@SpringBootTest(properties = {"spring.ai.model.chat=ollama", "spring.ai.model.embedding=openai"})
+@SpringBootTest(
+    properties = {
+      "spring.ai.model.chat=ollama",
+      "spring.ai.model.embedding=openai",
+      "spring.ai.openai.embedding.base-url=http://model-server.invalid:8000/v1"
+    })
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class MixedProviderConfigurationTest {
@@ -59,5 +68,7 @@ class MixedProviderConfigurationTest {
   void contextLoadsWithDifferentChatAndEmbeddingProviders() {
     assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("ollama");
     assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
+    assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
+        .isEqualTo("http://model-server.invalid:8000/v1");
   }
 }
