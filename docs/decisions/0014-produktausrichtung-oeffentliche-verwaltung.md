@@ -149,3 +149,36 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bereits abgedeckt.
 - **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Umfang des revisionssicheren Protokolls
+
+- **Punkt:** Das revisionssichere Protokoll aus dem Abschnitt [Was schwieriger
+  wird](#was-schwieriger-wird) — eine Anforderung, für die es heute nichts gibt und deren Schnitt der
+  ADR offengelassen hat.
+- **Entscheidung:** Die erste Stufe protokolliert **alles, was Zugriff verändert oder
+  Verwaltungshandeln ist**: Rechte an Assets, Spaces, Wissensbibliotheken und Gruppen samt ihren
+  Mitgliedschaften, Rollenänderungen und Eigentumsübergänge, den Verzeichnisabgleich mit je einem
+  Eintrag pro bewirkter Änderung, Systemeinstellungen und Systemrollen sowie **jeden Zugriff auf die
+  Protokolldaten selbst**. **Nicht** protokolliert werden Abfragen und Antwortinhalte; sie bleiben in
+  der ersten Stufe vollständig draußen. Der Sicherheitsgrad ist **einfaches Anfügen**: eine Ablage, in
+  die nur geschrieben wird, mit auf Datenbankebene entzogenen Änderungs- und Löschrechten für das
+  Anwendungskonto — **ohne Prüfsummenverkettung**. Der Eintrag trägt die handelnde Person, aber es gibt
+  **keine Oberfläche und keine Schnittstelle, die nach Person filtert, gruppiert oder sortiert**;
+  Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
+  ein Jahr, Voreinstellung drei Jahre, Obergrenze zehn Jahre, mit automatischer Löschung.
+- **Begründung:** Zwei verbindliche Anforderungen stehen gegeneinander. Prüfbarkeit verlangt
+  Zurechenbarkeit — ein Protokoll ohne handelnde Person beantwortet keine Prüffrage. Mitbestimmung
+  verlangt, dass es keinen personenbezogenen Auswertungspfad gibt, und zwar als nicht gebaute statt als
+  abgeschaltete Funktion. Beides zugleich geht nur, wenn Speicherung und Auswertbarkeit getrennt
+  werden. Der Schnitt folgt derselben Logik: Rechteereignisse fallen selten an, betreffen Objekte und
+  beantworten die Prüferfrage; Abfrageereignisse fallen ständig an, betreffen Verhalten und ergeben in
+  der Menge genau das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Was aus der Prüfbarkeit
+  dennoch gebraucht wird, liefert die Rechtehistorie aus dem Rechtestand statt aus einer Ereigniskette
+  je Abfrage. **Die Grenze des gewählten Sicherheitsgrads wird bewusst in Kauf genommen und gehört
+  benannt:** Eine Manipulation durch jemanden mit direktem Datenbankzugang fällt ohne Verkettung nicht
+  auf und ist mit OPAA auch nicht nachweisbar. Der Schutz stützt sich darauf, dass die Anwendung selbst
+  kein Änderungsrecht hat, und darauf, dass der direkte Datenbankzugang betrieblich beschränkt und
+  außerhalb von OPAA nachgewiesen wird. Die Verkettung ist als nächste Stufe unter „Offene Fragen"
+  geführt, nicht verworfen.
+- **Verweis:** [#355](https://github.com/criew/opaa/issues/355) ·
+  [features/security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll)

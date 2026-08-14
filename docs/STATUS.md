@@ -27,7 +27,7 @@ Drei Zustände werden unterschieden:
 | **D** Agenten, Prompts & Werkzeuge | nichts gebaut, keine Vorgänge | Phase 2 schneiden |
 | **E** Modelle & zentrale Steuerung | lokal-first gebaut, zentrale Vorgaben fehlen | Modellverwaltung |
 | **F** Identität, Rechte & Mandanten | Anmeldung und Verzeichnisabgleich gebaut | rechtebewusste Suche vollenden |
-| **G** Sicherheit, Nachweis & Prüfbarkeit | **größte Lücke** — kein Protokoll | Umfang klären (#355) |
+| **G** Sicherheit, Nachweis & Prüfbarkeit | **größte Lücke** — kein Protokoll, Schnitt entschieden | Protokollablage bauen (#391) |
 | **H** Monitoring, Kosten & Governance | Betriebsmetriken gebaut, fachliche Auswertung fehlt | Phase 1 abgrenzen |
 | **I** Kanäle & Oberflächen | Web-Oberfläche und REST-API gebaut | weitere Kanäle offen (#352) |
 | **J** Betrieb & Deployment | Docker Compose gebaut | Kubernetes, Betrieb ohne Netz |
@@ -194,7 +194,15 @@ nicht vertreten.
 **Nicht gebaut**
 - **Revisionssicheres Protokoll.** Es gibt kein Audit-Paket im Code. Weder Verwaltungsaktionen noch
   Zugriffe auf Protokolldaten werden festgehalten. Ohne das besteht kein Betreiber eine Prüfung mit
-  OPAA im Prüfumfang. Umfang und Schnitt werden in #355 geklärt.
+  OPAA im Prüfumfang.
+  **Der Schnitt der ersten Stufe ist entschieden (#355, ADR-0014):** protokolliert wird alles, was
+  Zugriff verändert oder Verwaltungshandeln ist — Rechte, Spaces, Bibliotheken, Gruppen,
+  Rollenänderungen, Eigentumsübergänge, Verzeichnisabgleich, Systemeinstellungen und jeder Zugriff auf
+  die Protokolldaten selbst. Abfragen und Antwortinhalte bleiben draußen. Sicherheitsgrad: einfaches
+  Anfügen mit auf Datenbankebene entzogenen Änderungs- und Löschrechten, **ohne** Prüfsummenverkettung
+  — eine Manipulation mit direktem Datenbankzugang fällt damit nicht auf; das ist eine benannte Grenze
+  und liegt beim Betreiber. Umsetzung: #391 (Ablage), #392 (Erfassung), #393 (Zugriffsweg für die
+  Revision), #394 (Zugriff protokollieren), #395 (Aufbewahrung).
 - **Vollständigkeit nach DSGVO** — Löschrecht und Datenexport fehlen (#143)
 - Software-Stückliste, signierte Builds, automatisierte Sicherheitsprüfung im CI
 - Governance der Auswertung: kein personenbezogener Auswertungspfad (#239)
