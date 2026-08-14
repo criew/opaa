@@ -42,6 +42,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -71,7 +72,11 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code ./gradlew evaluateRetrieval}; needs Docker and pulls the {@code nomic-embed-text} model
  * into the Ollama Testcontainer on first run.
  */
+// AuthProfileGuard (ADR-0005) refuses to start the context without an auth profile, so the harness
+// declares one just like every other @SpringBootTest in this repository. Without it the run aborts
+// during context startup and never reaches a single measurement.
 @SpringBootTest
+@ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class RetrievalEvaluationHarnessTest {
 
@@ -422,6 +427,7 @@ class RetrievalEvaluationHarnessTest {
             EMBEDDING_DIMENSIONS,
             actualChunkSize,
             actualChunkSize == EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE,
+            indexingProperties.chunkOverlap(),
             SEARCH_TOP_K,
             PRODUCTION_SIMILARITY_THRESHOLD,
             "similarityThreshold=0.0 was used for every search in this run, not the production "

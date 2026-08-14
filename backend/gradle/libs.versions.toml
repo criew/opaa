@@ -6,6 +6,11 @@ spotless = "8.9.0"
 caffeine = "3.2.4"
 openapi-generator = "7.24.0"
 jjwt = "0.13.0"
+# Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
+# io.opaa.indexing.OverlappingTokenTextSplitter, so it is declared explicitly instead of being
+# relied on transitively. Must stay in sync with the version spring-ai-commons resolves to,
+# otherwise chunk size and chunk overlap would be counted in different tokenizations.
+jtokkit = "1.1.0"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
@@ -28,6 +33,7 @@ spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-st
 spring-ai-starter-vector-store-pgvector = { module = "org.springframework.ai:spring-ai-starter-vector-store-pgvector" }
 spring-ai-tika-document-reader = { module = "org.springframework.ai:spring-ai-tika-document-reader" }
 spring-ai-spring-boot-testcontainers = { module = "org.springframework.ai:spring-ai-spring-boot-testcontainers" }
+jtokkit = { module = "com.knuddels:jtokkit", version.ref = "jtokkit" }
 
 # Infrastructure (versions managed by Spring Boot BOM)
 # Spring Boot 4 moved the Liquibase auto-configuration into its own starter module

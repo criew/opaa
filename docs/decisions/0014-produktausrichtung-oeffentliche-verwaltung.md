@@ -81,7 +81,7 @@ stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nic
 |---|---|
 | Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss |
+| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
 | Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
 
@@ -233,3 +233,108 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   Kontingenten und Sicherung der unangenehmere Weg ist.
 - **Verweis:** [#351](https://github.com/criew/opaa/issues/351) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends)
+
+### 14.08.2026 — Verbraucher-Chatkanäle
+
+- **Punkt:** Verbraucher-Chatkanäle aus der Tabelle „Was schwieriger wird".
+- **Entscheidung:** Im Zielbild der Chat-Kanäle bleiben ausschließlich selbst betriebene Team-Chats:
+  der Chat-Baustein des souveränen Arbeitsplatzes auf Basis des Matrix-Protokolls sowie Mattermost und
+  Rocket.Chat, alle drei in Phase 3. Kanäle über fremd betriebene Verbraucherdienste entfallen
+  ersatzlos. Die REST-API bleibt der offene Weg für jeden weiteren Kanal: Wer einen braucht, baut ihn
+  dagegen — das ist ausdrücklich vorgesehen, aber weder zugesagt noch gepflegt. Gebaut ist heute kein
+  einziger Chat-Kanal; geändert wird allein das Versprechen in der Dokumentation.
+- **Begründung:** Tragend ist, dass ein Chat-Kanal kein Ausgabeweg ist, sondern ein Zugang — er muss
+  die Identität der fragenden Person verlässlich auf ein OPAA-Konto abbilden, sonst greift die
+  rechtebewusste Suche ins Leere und der Kanal wird zum Umgehungsweg um das gesamte Rechtemodell; bei
+  einem selbst betriebenen Team-Chat hängt diese Identität an derselben zentralen Anmeldung wie OPAA,
+  bei einem Verbraucherdienst dagegen an einer Telefonnummer oder einem privaten Konto, sodass die
+  Zuordnung eine Vertrauensannahme bleibt statt einer Prüfung. Hinzu kommt, dass jede Nachricht an
+  einen fremd betriebenen Dienst eine Übermittlung ist und bei einem Frage-Antwort-System nicht nur die
+  Antwort das Haus verlässt, sondern auch die Frage, die über einen Vorgang oft mehr verrät als die
+  Antwort.
+- **Verweis:** [#352](https://github.com/criew/opaa/issues/352) ·
+  [features/user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats)
+
+### 14.08.2026 — Umfang des revisionssicheren Protokolls
+
+- **Punkt:** Das revisionssichere Protokoll aus dem Abschnitt [Was schwieriger
+  wird](#was-schwieriger-wird) — eine Anforderung, für die es heute nichts gibt und deren Schnitt der
+  ADR offengelassen hat.
+- **Entscheidung:** Die erste Stufe protokolliert **alles, was Zugriff verändert oder
+  Verwaltungshandeln ist**: Rechte an Assets, Spaces, Wissensbibliotheken und Gruppen samt ihren
+  Mitgliedschaften, Rollenänderungen und Eigentumsübergänge, den Verzeichnisabgleich mit je einem
+  Eintrag pro bewirkter Änderung, Systemeinstellungen und Systemrollen sowie **jeden Zugriff auf die
+  Protokolldaten selbst**. **Nicht** protokolliert werden Abfragen und Antwortinhalte; sie bleiben in
+  der ersten Stufe vollständig draußen. Der Sicherheitsgrad ist **einfaches Anfügen**: eine Ablage, in
+  die nur geschrieben wird, mit auf Datenbankebene entzogenen Änderungs- und Löschrechten für das
+  Anwendungskonto — **ohne Prüfsummenverkettung**. Der Eintrag trägt die handelnde Person, aber es gibt
+  **keine Oberfläche und keine Schnittstelle, die nach Person filtert, gruppiert oder sortiert**;
+  Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
+  ein Jahr, Voreinstellung drei Jahre, Obergrenze zehn Jahre, mit automatischer Löschung.
+- **Begründung:** Zwei verbindliche Anforderungen stehen gegeneinander. Prüfbarkeit verlangt
+  Zurechenbarkeit — ein Protokoll ohne handelnde Person beantwortet keine Prüffrage. Mitbestimmung
+  verlangt, dass es keinen personenbezogenen Auswertungspfad gibt, und zwar als nicht gebaute statt als
+  abgeschaltete Funktion. Beides zugleich geht nur, wenn Speicherung und Auswertbarkeit getrennt
+  werden. Der Schnitt folgt derselben Logik: Rechteereignisse fallen selten an, betreffen Objekte und
+  beantworten die Prüferfrage; Abfrageereignisse fallen ständig an, betreffen Verhalten und ergeben in
+  der Menge genau das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Was aus der Prüfbarkeit
+  dennoch gebraucht wird, liefert die Rechtehistorie aus dem Rechtestand statt aus einer Ereigniskette
+  je Abfrage. **Die Grenze des gewählten Sicherheitsgrads wird bewusst in Kauf genommen und gehört
+  benannt:** Eine Manipulation durch jemanden mit direktem Datenbankzugang fällt ohne Verkettung nicht
+  auf und ist mit OPAA auch nicht nachweisbar. Der Schutz stützt sich darauf, dass die Anwendung selbst
+  kein Änderungsrecht hat, und darauf, dass der direkte Datenbankzugang betrieblich beschränkt und
+  außerhalb von OPAA nachgewiesen wird. Die Verkettung ist als nächste Stufe unter „Offene Fragen"
+  geführt, nicht verworfen.
+- **Verweis:** [#355](https://github.com/criew/opaa/issues/355) ·
+  [features/security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll)
+
+### 14.08.2026 — Zitierzwang: Schnitt der Belegprüfung und Ort des Schalters
+
+- **Punkt:** Die technische Ausformung des Leitprinzips Belegbarkeit — was der Zitierzwang prüft und auf
+  welcher Ebene er geschaltet wird.
+- **Entscheidung:** Die Belegprüfung wird in zwei Stufen geführt, von denen nur die erste jetzt gilt.
+  **Stufe 1** prüft deterministisch und ohne zusätzlichen Modellaufruf, dass jeder Beleg auf eine für
+  diese Antwort tatsächlich abgerufene Fundstelle zeigt, dass ohne abgerufene Fundstellen gar nicht erst
+  eine Antwort erzeugt wird und dass jede tragende Aussage einen gültigen Beleg führt. **Stufe 2**, die
+  inhaltliche Deckungsprüfung, ist ein eigener, noch nicht entschiedener Vorgang. Geschaltet wird der
+  Zitierzwang **am Space**; eine Systemvorgabe kann ihn hausweit erzwingen. Verschärfen kann jede Ebene,
+  abschalten keine.
+- **Begründung:** Stufe 1 kommt zuerst, weil sie die größte Lücke zum niedrigsten Preis schließt: Heute
+  wird nur das Vorkommen des Belegmusters geprüft, sodass ein Modell durch bloßes Nachahmen der Form
+  einen Beleg erzeugt, der auf nichts zeigt. Sie ist eine echte Zusicherung — gleiche Eingabe, gleiches
+  Urteil — während Stufe 2 einen zweiten Modelldurchlauf je Antwort braucht, selbst fehlbar ist und den
+  Zitierzwang damit von einer Zusicherung in eine Wahrscheinlichkeit verwandelt; ohne den Messaufbau der
+  Suchqualitäts-Evaluierung wäre ihre Güte zudem nicht bewertbar. Die Verankerung am Space ist
+  **ausdrücklich die schwächere von zwei Möglichkeiten**: Sie hängt den Zwang an den Raum statt an die
+  Daten und ist deshalb durch einen Raumwechsel umgehbar — dieselbe Wissensbibliothek in einem Space ohne
+  Zitierzwang liefert unbelegte Antworten. Gewählt wurde sie, weil der Space bereits Zweck, Suchbereich
+  und Zurechnung bestimmt und keine zusätzliche Verwaltungsebene entsteht; die Folge ist eine
+  organisatorische Pflicht des Betriebs, haftungskritische Bestände nicht in Spaces ohne Zitierzwang
+  bereitzustellen. Die Verankerung an der Wissensbibliothek bleibt als Alternative benannt.
+- **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
+  [features/data-indexing-rag.md](../features/data-indexing-rag.md#zitierzwang)
+
+### 14.08.2026 — Nachweis der Organisationsgrenze
+
+- **Punkt:** Der mandantenfähige Betrieb durch ein Rechenzentrum setzt voraus, dass die
+  Organisationsgrenze über die Anwendungsschicht hinaus abgesichert ist. Wie ihre Einhaltung dauerhaft
+  nachgewiesen wird, war offen.
+- **Entscheidung:** Die Grenze wird in drei Schichten gehalten — Anwendung, Datenbank und ein
+  struktureller Prüflauf gegen das Schema. Der Prüflauf prüft nicht Verhalten, sondern Aufbau: Jede
+  Tabelle mit Organisations-Zugehörigkeit muss ihre Verweise auf organisationsgebundene Objekte
+  zusammengesetzt führen, also die Organisation in der Beziehung mitführen. Er läuft gegen das
+  tatsächliche Schema einer echten Datenbank, nicht gegen die Migrationsdateien. Zusätzlich sind die
+  beiden offenen Befunde — die einseitige Absicherung auf Datenbankebene und die fehlende
+  Durchsetzung im Verwaltungspfad — als **Voraussetzung dafür markiert, dass überhaupt eine zweite
+  Organisation angelegt wird**.
+- **Begründung:** Ein Verhaltenstest belegt, dass ein bekannter Weg heute versperrt ist; er verhindert
+  nicht, dass die nächste Änderung am Datenmodell einen neuen Weg öffnet. Genau so ist die bestehende
+  Lücke entstanden. Der Prüflauf schließt deshalb die Klasse des Fehlers statt des Einzelfalls und
+  macht die Regel überprüfbar statt erinnerungspflichtig. Die Vorziehung der beiden Befunde folgt
+  daraus, dass beide Lücken bei genau einer Organisation nicht ausnutzbar sind und mit dem Anlegen der
+  zweiten gleichzeitig scharf werden — im Betrieb, nicht im Test. Das ist kein diffuses Risiko,
+  sondern ein Zeitpunkt, den jemand festlegt, und er lässt sich vorher absichern.
+- **Verweis:** [#356](https://github.com/criew/opaa/issues/356) ·
+  [#289](https://github.com/criew/opaa/issues/289) ·
+  [#271](https://github.com/criew/opaa/issues/271) ·
+  [features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird)

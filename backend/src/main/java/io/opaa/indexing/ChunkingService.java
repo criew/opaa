@@ -18,8 +18,11 @@ public class ChunkingService {
 
   public List<Document> chunkDocuments(String fileName, List<Document> documents) {
     log.info(
-        "Splitting up document '{}' into chunks (chunkSize={})", fileName, properties.chunkSize());
-    var splitter =
+        "Splitting up document '{}' into chunks (chunkSize={}, chunkOverlap={})",
+        fileName,
+        properties.chunkSize(),
+        properties.chunkOverlap());
+    var tokenSplitter =
         TokenTextSplitter.builder()
             .withChunkSize(properties.chunkSize())
             // avoids tiny chunks that lack sufficient context for retrieval
@@ -30,6 +33,9 @@ public class ChunkingService {
             .withMaxNumChunks(10000)
             .withKeepSeparator(true)
             .build();
+    // Overlap is not a TokenTextSplitter feature in Spring AI 2.0.0 — see
+    // OverlappingTokenTextSplitter for why it is needed and how it is applied.
+    var splitter = new OverlappingTokenTextSplitter(tokenSplitter, properties.chunkOverlap());
     return splitter.apply(documents);
   }
 }

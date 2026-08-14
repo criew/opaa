@@ -51,6 +51,9 @@ class DocumentIndexingIntegrationTest {
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 100);
+    // The application default overlap (100) is not smaller than the chunk size this test pins, and
+    // IndexingProperties rejects that combination outright instead of clamping it silently.
+    registry.add("opaa.indexing.chunk-overlap", () -> 10);
     registry.add("opaa.indexing.batch-size", () -> 10);
     registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
