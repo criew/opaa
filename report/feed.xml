@@ -22,19 +22,19 @@ Sonstiges:
     <title>Tagesreport Montag, 3. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-03.html"/>
     <id>https://criew.github.io/opaa/report/reports/2026-08-03.html</id>
-    <updated>2026-08-04T07:16:20Z</updated>
+    <updated>2026-08-14T14:55:18Z</updated>
     <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Verzeichnissynchronisation als Rechteereignis behandeln
-— Knowledge library as the document container, with data migration
-— Introduce groups as permission subjects
+— Verzeichnissynchronisation als Rechteereignis behandelt
+— Knowledge Library als Dokumentencontainer mit Migration eingeführt
+— Gruppen als Rechtesubjekte neben Nutzern etabliert
 Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
-— ci(eval): Retrieval-Regressionsjob mit Baseline und Schwellenwerten
-— test(eval): Retrieval-Metrik-Harness (Hit Rate, MRR, nDCG, Recall)
+— Retrieval-Regressionsjob mit Baseline und Schwellenwerten automatisiert
+— Retrieval-Metrik-Harness für Hit Rate, MRR, nDCG, Recall implementiert
 Sonstiges:
-— docs(agents): Umgang mit Transaktionen in die Entwickler-Rollendefinition aufnehmen
-— docs(agents): Branch-Regel für Fehlerbehebungen und Hotfixes klarstellen
-— fix(auth): Race bei paralleler Erstanmeldung erzeugt 500er auf uq_users_subject_issuer
-— test(backend): FK-abhängige Integrationstests auf echtes Liquibase-Schema umstellen</summary>
+— Race Condition bei paralleler Erstanmeldung auf uq_users_subject_issuer behoben
+— Space-Tests auf echtes Liquibase-Schema umgestellt
+— Transaktionsrichtlinien in Entwickler-Rollendefinition dokumentiert
+— Branch-Regel und Reproduktionsnachweis in Agenten-Richtlinien präzisiert</summary>
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 2. August 2026</title>
