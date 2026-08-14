@@ -149,3 +149,20 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   bereits abgedeckt.
 - **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
   [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
+
+### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
+
+- **Punkt:** Ob der Bürger-Scope — ein Assistent für Bürgerinnen und Bürger und ein öffentlich in eine
+  Webseite eingebettetes Widget — eine eigene Führung im Dokumentenbestand erhält.
+- **Entscheidung:** Der Bürger-Scope bleibt Ausblick der Phase 4. Es wird dafür keine gesonderte Notiz
+  und kein eigener Abschnitt angelegt, keine Anforderungsliste geführt und nichts vorgezogen — auch die
+  Barrierefreiheit nach BITV nicht, die in Phase 3 verbleibt. Die Stellen, die den Bürger-Scope bisher
+  als offene Frage geführt haben, sind auf diesen entschiedenen Stand gebracht.
+- **Begründung:** Der Ausblick ist bereits in [VISION.md](../VISION.md) (Phase 4) und in
+  [features/public-sector.md](../features/public-sector.md) beschrieben; eine dritte Fassung desselben
+  Sachverhalts erzeugt Pflegeaufwand und Widerspruchsrisiko, ohne etwas hinzuzufügen. Eine zusätzliche
+  Anforderungsliste für einen Nutzerkreis, der nicht adressiert wird, bindet Aufmerksamkeit ohne
+  Nutzen. Was Entscheidungen der ersten Phase an dieser Stelle verbauen könnten, ist erhoben und am
+  Vorgang dokumentiert, damit es beim späteren Aufgreifen nicht neu erarbeitet werden muss.
+- **Verweis:** [#357](https://github.com/criew/opaa/issues/357) ·
+  [features/public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger)
