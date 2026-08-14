@@ -63,7 +63,7 @@ docs: update architecture decision records
 2. Der Code Reviewer prüft die Änderung; offene Befunde und Konversationen werden vorher aufgelöst
 3. Einer der Maintainer merged den PR
 
-Ein formales Approval in GitHub ist dafür nicht erforderlich. Maintainer mit Merge-Recht sind [@criew](https://github.com/criew) und [@bigpuritz](https://github.com/bigpuritz).
+Ein formales Approval in GitHub ist dafür nicht erforderlich. Merge-Recht haben ausschließlich die Maintainer des Projekts; wer dazugehört, ergibt sich aus den Schreibrechten am Repository.
 
 ## Wann einen E2E-Test schreiben?
 
