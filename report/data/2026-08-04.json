@@ -1,7 +1,7 @@
 {
   "repo": "criew/opaa",
   "date": "2026-08-04",
-  "generated_at": "2026-08-05T05:42:59.725841+02:00",
+  "generated_at": "2026-08-14T16:53:35.804275+02:00",
   "timezone": "Europe/Berlin",
   "timezone_fallback": false,
   "window_start": "2026-08-04T00:00:00+02:00",
@@ -101,38 +101,45 @@
   ],
   "open_pull_requests": [
     {
-      "number": 316,
-      "title": "fix(group): Race auf uk_directory_sync_status_organization behandeln",
-      "url": "https://github.com/criew/opaa/pull/316",
+      "number": 382,
+      "title": "docs(market): Ausnahme für Anbieternamen als Sachbeleg festhalten",
+      "url": "https://github.com/criew/opaa/pull/382",
       "author": "criew",
       "labels": [
-        "bug",
-        "backend"
+        "documentation"
       ],
       "body": "",
       "closes": []
     },
     {
-      "number": 315,
-      "title": "fix(ci): Ollama-Modell-Cache im Retrieval-Regressionslauf trotz Timeout speichern",
-      "url": "https://github.com/criew/opaa/pull/315",
+      "number": 381,
+      "title": "docs(public-sector): Bürgerassistent als Ausblick der Phase 4 festschreiben",
+      "url": "https://github.com/criew/opaa/pull/381",
       "author": "criew",
       "labels": [
-        "bug",
-        "size:S",
-        "ci"
+        "documentation"
       ],
       "body": "",
       "closes": []
     },
     {
-      "number": 314,
-      "title": "fix(api): ResponseStatusException und DataIntegrityViolationException im GlobalExceptionHandler abbilden",
-      "url": "https://github.com/criew/opaa/pull/314",
+      "number": 380,
+      "title": "docs(deployment): Umfang der Speicher-Abstraktion für Dokumente festlegen",
+      "url": "https://github.com/criew/opaa/pull/380",
       "author": "criew",
       "labels": [
-        "bug",
-        "backend"
+        "documentation"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 379,
+      "title": "docs(channels): Zielbild der Chat-Kanäle auf selbst betriebene Team-Chats festlegen",
+      "url": "https://github.com/criew/opaa/pull/379",
+      "author": "criew",
+      "labels": [
+        "documentation"
       ],
       "body": "",
       "closes": []
@@ -151,19 +158,37 @@
       "closes": []
     }
   ],
+  "open_issues_total": 78,
   "ci": {
     "conclusion": "success",
-    "url": "https://github.com/criew/opaa/actions/runs/30889696305",
-    "title": "Merge pull request #309 from criew/feature/202_asset-rechte-vektorsuche",
-    "finished_at": "2026-08-04T07:57:19Z"
+    "url": "https://github.com/criew/opaa/actions/runs/31811166850",
+    "title": "Merge pull request #378 from criew/feature/350_cloud-betrieb-festlegen",
+    "finished_at": "2026-08-14T14:49:18Z"
   },
-  "summary": "Im Epic Space and asset model — replace the workspace model wurden heute Fortschritte bei der Implementierung von Asset-Rechten erzielt. Das Ticket #202 zur Asset-Berechtigung und rechtebewussten Vektorsuche wurde abgeschlossen und der entsprechende Pull Request #309 gemergt. Damit ist ein zentraler Angelpunkt des Epics realisiert, das bisher bei 5 von 25 erledigten Tickets steht.\n\nBei den Vorgängen ohne Epic-Bezug lag der Fokus auf Verbesserungen der CI-Pipeline und Qualitätssicherung. Das Ticket #312 zur Verbesserung des Zeitfensters im Tagesreport wurde abgeschlossen und gemergt, um Lücken und Mehrdeutigkeiten bei der Tagesabgrenzung zu beheben. Gleichzeitig wurde eine automatische Retrieval-Regression erkannt, die zur Anlage von Ticket #311 führte.",
+  "highlights": {
+    "198": [
+      {
+        "nummer": 202,
+        "text": "Asset-Rechte und rechtebewusste Vektorsuche implementiert"
+      }
+    ],
+    "sonstiges": [
+      {
+        "nummer": 312,
+        "text": "Zeitfenster des Tagesreports nachvollziehbar und lückenlos gemacht"
+      },
+      {
+        "nummer": 311,
+        "text": "Retrieval-Regression erkannt"
+      }
+    ]
+  },
   "epics": [
     {
       "number": 198,
       "title": "Epic: Space and asset model — replace the workspace model",
-      "tickets_total": 25,
-      "tickets_closed": 5,
+      "tickets_total": 28,
+      "tickets_closed": 8,
       "opened": [],
       "closed": [
         {

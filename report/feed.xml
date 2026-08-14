@@ -5,19 +5,18 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-05T03:42:59Z</updated>
+  <updated>2026-08-14T14:53:35Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
     <title>Tagesreport Dienstag, 4. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-04.html"/>
     <id>https://criew.github.io/opaa/report/reports/2026-08-04.html</id>
-    <updated>2026-08-05T03:42:59Z</updated>
+    <updated>2026-08-14T14:53:35Z</updated>
     <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Asset permissions and permission-aware vector search
+— Asset-Rechte und rechtebewusste Vektorsuche implementiert
 Sonstiges:
-— fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen
-— fix(ci): Zeitfenster des Tagesreports nachvollziehbar und lückenlos machen
-— Retrieval-Regression erkannt (automatischer Lauf)</summary>
+— Zeitfenster des Tagesreports nachvollziehbar und lückenlos gemacht
+— Retrieval-Regression erkannt</summary>
   </entry>
   <entry>
     <title>Tagesreport Montag, 3. August 2026</title>
