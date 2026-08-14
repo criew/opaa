@@ -34,8 +34,9 @@ Dieses Dokument beschreibt die Betriebsformen, ihre Voraussetzungen und ihre Gre
    Hochverfügbarkeit für große. Der Unterschied liegt in der Betriebsform, nicht im Produkt.
 3. **Betrieb ohne Netzanbindung ist ein vorgesehenes Szenario**, keine Ausnahme und kein Sonderfall.
    Er bestimmt Entwurfsentscheidungen mit, statt nachträglich ermöglicht zu werden.
-4. **Speicher ist austauschbar.** Objektspeicher, Netzlaufwerk und lokales Dateisystem bedienen
-   unterschiedliche Rechenzentren; der Umfang der Abstraktion ist offen.
+4. **Der Dateispeicher ist austauschbar.** Objektspeicher, Netzlaufwerk und lokales Dateisystem bedienen
+   unterschiedliche Rechenzentren; der Umfang der Abstraktion ist offen. Der **Vektorspeicher** ist davon
+   ausgenommen — er ist auf pgvector festgelegt.
 5. **Mandantenfähiger Betrieb ist der Hebel für die Fläche.** Ein Rechenzentrum betreibt eine
    Installation für viele Häuser, die einzeln nie beschaffen würden.
 6. **Die gesamte Konfiguration liegt außerhalb des Abbilds** — in Umgebungsvariablen und
@@ -137,7 +138,12 @@ sondern bleibt greifbar, damit der Sprung von der Antwort zur Fundstelle möglic
 der nur den Index hält, macht die Belegbarkeit unmöglich.
 
 Der Metadatenbestand und der Vektorindex liegen in PostgreSQL mit pgvector (siehe
-[ADR-0002](../decisions/0002-mvp-technology-stack.md)). Welche Backends dauerhaft geführt werden und
+[ADR-0002](../decisions/0002-mvp-technology-stack.md)). Anders als der Dateispeicher ist der
+**Vektorspeicher nicht wählbar**: pgvector ist der einzige unterstützte. Der Zugriff läuft zwar über
+eine portable Schnittstelle des eingesetzten Rahmenwerks, ein Wechsel wird aber nicht unterstützt, nicht
+geprüft und nicht dokumentiert — Begründung in
+[Daten-Indizierung & RAG](./data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
+Welche Backends für Originaldateien dauerhaft geführt werden und
 ob ein selbst betriebener Objektspeicher in den mitgelieferten Compose-Stapel gehört, ist offen und
 wird in [#351](https://github.com/criew/opaa/issues/351) entschieden.
 
@@ -202,7 +208,7 @@ gegenüber anderen Umgebungen. Der Umfang dieser Anbindung gehört in Phase 4 un
 
 OPAA braucht eine Container-Umgebung, PostgreSQL mit pgvector und, wo Modelle im Haus laufen,
 Rechenleistung für den Modellbetrieb. Mehr nicht. Weil die gesamte Konfiguration außerhalb des
-Abbilds liegt und der Speicher austauschbar ist, ist eine Installation technisch dieselbe, gleich wo
+Abbilds liegt und der Dateispeicher austauschbar ist, ist eine Installation technisch dieselbe, gleich wo
 sie steht.
 
 Daraus folgt: **Der Ort ist keine Produktentscheidung.** OPAA schreibt ihn nicht vor, nennt keine
