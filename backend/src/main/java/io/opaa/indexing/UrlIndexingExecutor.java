@@ -5,9 +5,10 @@ import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -16,9 +17,6 @@ import org.springframework.scheduling.annotation.Async;
 public class UrlIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(UrlIndexingExecutor.class);
-
-  private static final Set<String> SUPPORTED_EXTENSIONS =
-      Set.of(".md", ".txt", ".pdf", ".docx", ".pptx", ".doc");
 
   private final AutoindexCrawlerService crawlerService;
   private final UrlFileDownloader downloader;
@@ -81,16 +79,27 @@ public class UrlIndexingExecutor {
           crawlerService.crawl(
               url, proxyHost, proxyPort, username, password, request.insecureSsl());
 
-      // Step 2: Filter to supported file types
+      // Step 2: Split into supported and rejected file types
+      Map<Boolean, List<AutoindexCrawlerService.CrawledFileEntry>> byFormatSupport =
+          allFiles.stream()
+              .collect(Collectors.partitioningBy(UrlIndexingExecutor::isSupportedFormat));
       List<AutoindexCrawlerService.CrawledFileEntry> supportedFiles =
-          allFiles.stream().filter(this::isSupportedFormat).toList();
+          byFormatSupport.getOrDefault(true, List.of());
+      List<AutoindexCrawlerService.CrawledFileEntry> rejectedFiles =
+          byFormatSupport.getOrDefault(false, List.of());
 
       log.info(
           "Discovered {} files ({} supported) for URL indexing",
           allFiles.size(),
           supportedFiles.size());
 
-      indexingJobService.setTotalDocuments(jobId, supportedFiles.size());
+      // Issue #375: rejected documents are part of the job, not invisible. They count towards the
+      // total and are reported as skipped, so nobody has to guess why the number of indexed
+      // documents is lower than the number of files behind the URL.
+      skipped += reportRejected(rejectedFiles);
+
+      indexingJobService.setTotalDocuments(jobId, allFiles.size());
+      indexingJobService.updateProgress(jobId, processed, failed, skipped);
 
       // Build shared HttpClient and auth header for downloads
       HttpClient httpClient =
@@ -184,8 +193,20 @@ public class UrlIndexingExecutor {
         && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 
-  private boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
-    String name = entry.name().toLowerCase();
-    return SUPPORTED_EXTENSIONS.stream().anyMatch(name::endsWith);
+  static boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
+    return SupportedDocumentFormats.isSupported(entry.name());
+  }
+
+  /** Names every rejected document in the log and returns how many there were. */
+  private int reportRejected(List<AutoindexCrawlerService.CrawledFileEntry> rejected) {
+    if (rejected.isEmpty()) {
+      return 0;
+    }
+    log.warn(
+        "Rejected {} document(s) because of an unsupported format (supported: {}): {}",
+        rejected.size(),
+        SupportedDocumentFormats.extensions(),
+        rejected.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList());
+    return rejected.size();
   }
 }

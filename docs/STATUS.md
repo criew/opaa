@@ -68,9 +68,10 @@ Drei Zustände werden unterschieden:
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
-- **Nur fünf Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.pptx`; im Netzweg
-  zusätzlich `.doc`), ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte
-  Extraktor kann mehr. Die beiden Indizierungswege führen dabei **unterschiedliche** Listen.
+- **Nur sechs Dateiendungen werden verarbeitet** (`.md`, `.txt`, `.pdf`, `.docx`, `.doc`, `.pptx`),
+  ausgewählt über eine Endungsliste statt über den erkannten Inhalt. Der eingesetzte Extraktor kann
+  weit mehr — er meldet 245 unterstützte Medientypen. Die Umstellung auf Inhaltserkennung wird in
+  #404 geführt. Beide Indizierungswege führen inzwischen dieselbe Liste (#375).
 - Konfidenz als eigenständige, erklärte Größe (heute nur Ähnlichkeitswert)
 
 **Geplant (Phase 2 und später)**
@@ -83,7 +84,10 @@ Drei Zustände werden unterschieden:
 **Gebaut**
 - Upload über die Weboberfläche und die REST-API; Aufnahme aus einem konfigurierten Verzeichnis
 - Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `UrlFileDownloader`, `AutoindexCrawlerService`)
-- Formate: Markdown, Text, PDF, DOCX, XLSX, PPTX
+- Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
+  (`SupportedDocumentFormats`) und für beide Aufnahmewege verbindlich; ein abgewiesenes Dokument
+  zählt im Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
+  gehören nicht dazu — das stand hier bisher falsch
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
 - Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, `/api/v1/indexing`)
 

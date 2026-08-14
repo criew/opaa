@@ -480,7 +480,7 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Typklasse | Gebaut | Zielbild |
 |---|---|---|
 | Textdokument mit Gliederung | Markdown (`.md`), Klartext (`.txt`) | AsciiDoc (`.adoc`), reStructuredText |
-| Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`; im Netzweg zusätzlich `.doc`) | OpenDocument-Text (`.odt`), RTF |
+| Seitenlayout-Dokument | PDF (`.pdf`), Word (`.docx`, `.doc`) | OpenDocument-Text (`.odt`), RTF |
 | Tabellenkalkulation | — | Excel (`.xlsx`, `.xls`), OpenDocument (`.ods`), CSV |
 | Präsentation | PowerPoint (`.pptx`) | OpenDocument (`.odp`) |
 | Auszeichnungssprache | — | HTML, XML |
@@ -488,20 +488,23 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
 
-Zwei Einschränkungen des gebauten Stands gehören dazu, weil sie sonst überraschen:
+Die Liste gilt für **beide Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im Dateisystem
+und den Weg über eine Verzeichnisliste im Netz (siehe
+[Wissensquellen und Konnektoren](./knowledge-sources.md#erreichbare-verzeichnislisten-im-netz-gebaut)).
+Sie ist an genau einer Stelle im Code geführt; dieselbe Datei wird deshalb unabhängig davon, wie sie
+hereinkommt, gleich behandelt.
 
-- **Die Auswahl der Formate ist heute eine Endungsliste, keine Inhaltserkennung.** Die im Überblick
-  beschriebene Erkennung anhand des tatsächlichen Inhalts ist Zielbild. Der eingesetzte Extraktor
-  beherrscht mehr Formate, als die Liste zulässt — die Begrenzung ist eine bewusste Auswahl, keine
-  Grenze der Extraktion, und lässt sich entsprechend erweitern.
-- **Die zugelassenen Endungen unterscheiden sich zwischen den Wegen.** Der Weg über ein Verzeichnis im
-  Dateisystem und der Weg über eine Verzeichnisliste im Netz (siehe
-  [Wissensquellen und Konnektoren](./knowledge-sources.md#erreichbare-verzeichnislisten-im-netz-gebaut))
-  führen getrennte Listen. Das ist eine Abweichung, keine Absicht.
+Eine Einschränkung des gebauten Stands gehört dazu, weil sie sonst überrascht:
 
-Im Zielbild werden Dateien mit nicht zugelassenem Format **nicht stillschweigend übersprungen**,
-sondern je Lauf als nicht verarbeitet ausgewiesen. Heute fallen sie ohne Vermerk aus der Auswahl —
-mit der Folge, dass eine Fachseite einen Bestand für erschlossen halten kann, von dem ein Teil nie im
+**Die Auswahl der Formate ist heute eine Endungsliste, keine Inhaltserkennung.** Die im Überblick
+beschriebene Erkennung anhand des tatsächlichen Inhalts ist Zielbild und wird in
+[#404](https://github.com/criew/opaa/issues/404) geführt. Der eingesetzte Extraktor beherrscht weit
+mehr Formate, als die Liste zulässt — er meldet auf dem aktuellen Classpath 245 unterstützte
+Medientypen. Die Begrenzung ist also eine bewusste fachliche Auswahl, keine Grenze der Extraktion.
+
+Dateien mit nicht zugelassenem Format werden **nicht stillschweigend übersprungen**: Sie zählen zur
+Gesamtzahl des Indizierungslaufs, erscheinen dort als übersprungen und werden namentlich protokolliert.
+Ohne diesen Ausweis könnte eine Fachseite einen Bestand für erschlossen halten, von dem ein Teil nie im
 Index angekommen ist.
 
 ### Erklärbares und darstellbares Chunking

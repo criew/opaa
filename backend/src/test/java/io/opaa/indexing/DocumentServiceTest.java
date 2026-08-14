@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,12 +20,17 @@ class DocumentServiceTest {
     Files.writeString(tempDir.resolve("notes.txt"), "Some notes");
     Files.writeString(tempDir.resolve("data.csv"), "a,b,c");
 
-    List<Path> files = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir);
 
-    assertThat(files).hasSize(2);
-    assertThat(files)
+    assertThat(discovered.supported()).hasSize(2);
+    assertThat(discovered.supported())
         .extracting(p -> p.getFileName().toString())
         .containsOnly("readme.md", "notes.txt");
+    // Issue #375: the rejected file is handed back, not swallowed by the filter.
+    assertThat(discovered.rejected())
+        .extracting(p -> p.getFileName().toString())
+        .containsOnly("data.csv");
+    assertThat(discovered.totalFound()).isEqualTo(3);
   }
 
   @Test
@@ -36,23 +40,23 @@ class DocumentServiceTest {
     Files.writeString(subDir.resolve("deep.md"), "# Deep");
     Files.writeString(tempDir.resolve("top.txt"), "Top");
 
-    List<Path> files = service.discoverFiles(tempDir);
-
-    assertThat(files).hasSize(2);
+    assertThat(service.discoverFiles(tempDir).supported()).hasSize(2);
   }
 
   @Test
   void discoverFilesReturnsEmptyForNonexistentDir() throws IOException {
-    List<Path> files = service.discoverFiles(tempDir.resolve("nonexistent"));
+    var discovered = service.discoverFiles(tempDir.resolve("nonexistent"));
 
-    assertThat(files).isEmpty();
+    assertThat(discovered.supported()).isEmpty();
+    assertThat(discovered.rejected()).isEmpty();
   }
 
   @Test
   void discoverFilesReturnsEmptyForEmptyDir() throws IOException {
-    List<Path> files = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir);
 
-    assertThat(files).isEmpty();
+    assertThat(discovered.supported()).isEmpty();
+    assertThat(discovered.rejected()).isEmpty();
   }
 
   @Test
@@ -62,6 +66,8 @@ class DocumentServiceTest {
     assertThat(service.isSupportedFormat(Path.of("doc.pdf"))).isTrue();
     assertThat(service.isSupportedFormat(Path.of("doc.docx"))).isTrue();
     assertThat(service.isSupportedFormat(Path.of("doc.pptx"))).isTrue();
+    // Issue #375: legacy .doc used to be accepted on the network path only.
+    assertThat(service.isSupportedFormat(Path.of("doc.doc"))).isTrue();
   }
 
   @Test
