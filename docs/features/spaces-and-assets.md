@@ -913,4 +913,3 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 - [Zugangskontrolle](./access-control.md) — Systemverwaltung, Nutzerverwaltung, Audit und Compliance
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
-- [Diskussion: Workspace-Konzept](../discussions/discussion-workspace-concept.md) — Vorgeschichte und abgelöste Annahmen

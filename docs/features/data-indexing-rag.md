@@ -508,6 +508,12 @@ Das System warnt Admins bei:
 - Längerer Indizierung als erwartet (> 2 Stunden)
 - Nahezu vollständiger Vektordatenbank-Speicher
 
+### Quelle ohne Zielbibliothek
+
+Wird eine Wissensbibliothek gelöscht, in die eine Konnektor-Quelle indiziert, zeigt deren Zuordnung ins Leere. Der Lauf **bricht deshalb nicht ab**: Er protokolliert eine Warnung und **überspringt die betroffene Quelle**, bis ein System-Admin die Zuordnung korrigiert. Die übrigen Quellen desselben Konnektors laufen normal weiter.
+
+Ein Abbruch des gesamten Laufs wäre der schlechtere Fehler — eine einzelne gelöschte Bibliothek würde die Aktualisierung aller anderen Bestände stilllegen. Ein stillschweigendes Anlegen einer Ersatzbibliothek scheidet ebenfalls aus: Wer sie sehen darf, ist eine fachliche Entscheidung des Eigentümers und keine, die ein Indizierungslauf treffen kann.
+
 ### Indizierungsauslöser
 
 Indizierung kann starten:
