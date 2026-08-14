@@ -52,9 +52,13 @@ OPAA benötigt einen Technologie-Stack, um das in [docs/MVP.md](../MVP.md) defin
 - Dies unterstützt sowohl Cloud-Anbieter (OpenAI) als auch lokale Modelle (Ollama) über dieselbe Schnittstelle.
 - LLM und Embedding-Modell sind **unabhängig konfiguriert**, was gemischte Setups ermöglicht (z. B. lokale Embeddings + Cloud-LLM).
 
+### Authentifizierung: Keycloak + OAuth2 Resource Server
+
+- **Keycloak** dient als Identity Provider; das Backend ist ein OAuth2 Resource Server und validiert JWTs. Begründung und Alternativen: [ADR-0005](./0005-authentication-strategy.md).
+
 ### Deployment: Docker Compose + Lokale Entwicklung
 
-- **Docker Compose** mit drei Containern (Frontend, Backend, PostgreSQL) bietet ein Einbefehl-Deployment (`docker compose up`).
+- **Docker Compose** mit vier Containern (Frontend, Backend, PostgreSQL, Keycloak) bietet ein Einbefehl-Deployment (`docker compose up`).
 - Lokale Entwicklung wird ohne Docker unterstützt (`./gradlew bootRun` + `npm run dev` + lokales PostgreSQL).
 
 ### Testing: Testcontainers + GitHub Actions

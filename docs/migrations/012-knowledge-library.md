@@ -5,8 +5,7 @@ Begleitdokument zu
 ([Issue #201](https://github.com/criew/opaa/issues/201)). Führt `knowledge_libraries` als ersten
 Asset-Typ ein und weist jedem bestehenden Dokument eine Bibliothek zu — der Rechteanker wird damit
 zum ersten Mal eingezogen, nicht verschoben (siehe
-[docs/features/spaces-and-assets.md](../features/spaces-and-assets.md#dokumente-liegen-in-bibliotheken)
-und [ADR-0008](../decisions/0008-space-and-asset-model.md)).
+[docs/features/spaces-and-assets.md](../features/spaces-and-assets.md#dokumente-liegen-in-bibliotheken)).
 
 ## Was migriert wird
 

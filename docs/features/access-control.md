@@ -1,6 +1,6 @@
 # Zugangskontrolle: Systemverwaltung, Identität & Audit
 
-> **Hinweis:** Das Space-, Asset- und Rechtemodell ist in [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) beschrieben und in [ADR-0008](../decisions/0008-space-and-asset-model.md) entschieden. Dieses Dokument behandelt die davon unabhängigen Themen: Systemverwaltung, Benutzeridentität, Audit und Compliance. Das frühere Workspace-Konzept in diesem Dokument ist abgelöst.
+> **Hinweis:** Das Space-, Asset- und Rechtemodell ist in [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) beschrieben und entschieden. Dieses Dokument behandelt die davon unabhängigen Themen: Systemverwaltung, Benutzeridentität, Audit und Compliance. Das frühere Workspace-Konzept in diesem Dokument ist abgelöst.
 
 ## Motivation
 
@@ -271,12 +271,11 @@ Die Aufnahme externer Personen ist besonders folgenreich, weil ihnen damit alle 
 - **Leistung:** Rechteprüfung erhöht die Abfragezeit um weniger als 50 ms
 - **Genauigkeit:** keine unbeabsichtigten Zugriffe
 - **Ablagequote:** nur **aggregiert je Organisationseinheit oberhalb der Mindestgruppengröße** messbar, nie je Person. Ob das Ablage-Modell trägt, wird damit nur grob und spät erkennbar sein — ein bewusst gezahlter Preis: Genauer zu messen hieße, die Zusage zu brechen, die das Konzept gegenüber der Personalvertretung am stärksten macht.
-- **Verständlichkeit:** Anteil der Support-Anfragen, die sich auf „warum sehe ich das nicht“ beziehen, sinkt über die ersten drei Monate. (Die frühere Formulierung „Nutzer verstehen den Unterschied ohne Schulung“ ist gestrichen — ADR-0008 bezeichnet dieselbe Sache als „Hauptlast des Modells“; eine Metrik, deren Erfüllung die eigene Architekturentscheidung für unwahrscheinlich erklärt, ist keine Metrik.)
+- **Verständlichkeit:** Anteil der Support-Anfragen, die sich auf „warum sehe ich das nicht“ beziehen, sinkt über die ersten drei Monate. (Die frühere Formulierung „Nutzer verstehen den Unterschied ohne Schulung“ ist gestrichen — [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md#geprüfte-und-verworfene-alternativen) bezeichnet dieselbe Sache als „Hauptlast des Modells“; eine Metrik, deren Erfüllung die eigene Architekturentscheidung für unwahrscheinlich erklärt, ist keine Metrik.)
 
 ---
 
 ## Verwandte Dokumente
 
 - [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) — das Rechtemodell
-- [ADR-0008: Space- und Asset-Modell](../decisions/0008-space-and-asset-model.md)
 - [Daten-Indizierung & RAG](./data-indexing-rag.md)
