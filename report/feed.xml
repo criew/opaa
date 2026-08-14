@@ -40,22 +40,20 @@ Sonstiges:
     <title>Tagesreport Sonntag, 2. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-02.html"/>
     <id>https://criew.github.io/opaa/report/reports/2026-08-02.html</id>
-    <updated>2026-08-03T07:58:50Z</updated>
+    <updated>2026-08-14T14:54:41Z</updated>
     <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Rename workspace to space, add organization scope and reshape space roles
-— Driftschutz für Abkömmlinge: Fristen und automatische Deaktivierung
-— Konsistenzprüflauf zwischen Vektorspeicher und Datenbank
-— Befristung und Rezertifizierung von Einzelgrants
+— Workspace in Space umbenannt, Organisationsgrenze und Rollen neu geschnitten
+— Gruppen als Rechtesubjekte eingeführt
+— 25 weitere Tickets für Asset-Modell angelegt
 Epic: Suchqualität messbar machen — Demo-Korpus und Retrieval-Regression:
-— docs: bestehende öffentliche Instanz opaa.ewerlin.com in der Deployment-Dokumentation beschreiben
-— test(e2e): Grundgerüst für browserbasierte End-to-End-Tests
-— feat(eval): Golden Dataset aus dem Frontmatter des Korpus ableiten
-— feat(eval): Korpus-Generator für die Domäne Comichelden
+— Korpus-Generator für Comichelden implementiert
+— Golden Dataset aus Frontmatter abgeleitet
+— Grundgerüst für browserbasierte End-to-End-Tests
+— 14 Tickets zur Suchqualitätsmessung angelegt
 Sonstiges:
-— fix(ci): Fehlzuordnungen im Epic-Report beheben
-— feat(ci): Report-Zusammenfassung an Epics ausrichten und kürzen
-— fix(eval): Sentinel-Feldbezogenheit und Ground-Truth-Fingerabdruck im Golden Dataset
-— feat(ci): Anthropic als Anbieter für die Report-Zusammenfassung unterstützen</summary>
+— Race Condition bei paralleler Erstanmeldung behoben
+— Erstanmeldung nach Regression wiederhergestellt
+— Report-Zusammenfassung an Epics ausgerichtet</summary>
   </entry>
   <entry>
     <title>Tagesreport Samstag, 1. August 2026</title>
