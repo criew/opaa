@@ -29,7 +29,7 @@ describe('api service', () => {
           return HttpResponse.json({
             id: 'space-1',
             name: 'Renamed',
-            kind: 'PROJECT',
+            isDefault: false,
             visibility: 'PRIVATE',
             ownerId: 'u1',
             memberCount: 1,

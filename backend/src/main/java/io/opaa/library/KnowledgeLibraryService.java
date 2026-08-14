@@ -300,7 +300,7 @@ public class KnowledgeLibraryService {
 
   /**
    * Creates the automatic personal library "Meine Dokumente" for a user if it does not exist yet.
-   * Mirrors {@code SpaceService#ensurePersonalSpace} exactly, including its {@code ON CONFLICT ...
+   * Mirrors {@code SpaceService#ensureDefaultSpace} exactly, including its {@code ON CONFLICT ...
    * DO NOTHING} race handling via the partial unique index {@code
    * uk_knowledge_libraries_personal_owner} (migration 012) - see that method's Javadoc for the full
    * reasoning, not repeated here. Both are called from the same {@code UserService} post-commit
@@ -308,7 +308,7 @@ public class KnowledgeLibraryService {
    * visible on this method's own connection (see {@code
    * UserService#ensurePersonalAssetsAfterCommit} for why the call is deferred to after commit).
    *
-   * <p>Called independently of (not nested inside) {@code SpaceService#ensurePersonalSpace}'s own
+   * <p>Called independently of (not nested inside) {@code SpaceService#ensureDefaultSpace}'s own
    * transaction, so a failure creating the library never rolls back an already-committed personal
    * space and vice versa - each keeps the same self-contained failure boundary #265 established for
    * the personal space alone. "Atomically" in #201's acceptance criteria is satisfied at the level
@@ -321,8 +321,8 @@ public class KnowledgeLibraryService {
    * connection) for this method's entire duration, while {@code requiresNewTransactionTemplate}
    * below opens a <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction
    * - two connections held by one caller at once, the same class of bug #299 fixed in {@code
-   * UserService.findOrCreateUser}. {@code SpaceService#ensurePersonalSpace} had the identical
-   * defect and is fixed the same way, in this same PR (#201/#305 code review) - not deferred to a
+   * UserService.findOrCreateUser}. {@code SpaceService#ensureDefaultSpace} had the identical defect
+   * and is fixed the same way, in this same PR (#201/#305 code review) - not deferred to a
    * follow-up issue, because the fix is one annotation and both methods are exercised together by
    * {@link io.opaa.auth.UserServiceCreationRaceIntegrationTest}. {@code NOT_SUPPORTED} suspends any
    * ambient transaction for this method's duration (there normally is none, since {@code

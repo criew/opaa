@@ -8,7 +8,6 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.space.Space;
-import io.opaa.space.SpaceKind;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import java.util.List;
@@ -35,24 +34,24 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * and {@code SpaceRepositoryTest}. This is deliberate: the regression this test guards against
  * (follow-up to #265/#280) only manifests with real foreign-key constraints and real, separately
  * committed transactions. Even after #288, neither {@code SpaceServiceIntegrationTest} (calls
- * {@code ensurePersonalSpace} directly on an already-committed user, never from inside {@code
+ * {@code ensureDefaultSpace} directly on an already-committed user, never from inside {@code
  * UserService}'s still-open transaction) nor {@code SpaceServiceTest} (mocked {@link
  * org.springframework.transaction.PlatformTransactionManager} - no real connection, no real
  * propagation, no real visibility semantics) can exercise it - the regression is specific to the
  * transaction-ordering interaction between {@code UserService} and {@code SpaceService}, not to
  * schema alone.
  *
- * <p><b>The regression:</b> {@code SpaceService.ensurePersonalSpace} (#265) runs its insert in its
+ * <p><b>The regression:</b> {@code SpaceService.ensureDefaultSpace} (#265) runs its insert in its
  * own {@code REQUIRES_NEW} transaction, on its own connection with its own snapshot, so that a
  * constraint violation there does not poison the caller's transaction. {@code
  * UserService.findOrCreateUser} is itself {@code @Transactional} and - before this fix - called
- * {@code ensurePersonalSpace} from inside that still-open transaction. The {@code users} row it had
+ * {@code ensureDefaultSpace} from inside that still-open transaction. The {@code users} row it had
  * just inserted was not committed yet, so it was invisible on the {@code REQUIRES_NEW} connection,
  * and the personal-space insert failed on {@code fk_spaces_owner} for every single first login (not
  * just concurrent ones) - the whole outer transaction then rolled back, so not even the user was
  * created. {@link #firstLoginCreatesUserAndPersonalSpaceAndPersonalLibraryWithoutError()}
  * reproduces this with a single call and no concurrency at all. {@code UserService} now defers the
- * {@code ensurePersonalSpace} call (and, since #201, {@code ensurePersonalLibrary} alongside it) to
+ * {@code ensureDefaultSpace} call (and, since #201, {@code ensurePersonalLibrary} alongside it) to
  * a {@code TransactionSynchronization#afterCommit} callback, guaranteeing the user row is committed
  * and visible by the time the personal space and personal library are created.
  */
@@ -91,7 +90,7 @@ class UserServicePersonalSpaceIntegrationTest {
     User user = userRepository.findBySubjectAndIssuer(subject, "test-issuer").orElseThrow();
     List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(user.getId());
     assertThat(spaces).hasSize(1);
-    assertThat(spaces.getFirst().getKind()).isEqualTo(SpaceKind.PERSONAL);
+    assertThat(spaces.getFirst().isDefault()).isEqualTo(true);
 
     // #201: a personal space never arrives without its personal library, from the very first
     // login - not just eventually via a later, separate provisioning step.
@@ -152,14 +151,14 @@ class UserServicePersonalSpaceIntegrationTest {
                   () -> {
                     ready.countDown();
                     start.await();
-                    spaceService.ensurePersonalSpace(user.getId(), user.getOrganizationId());
+                    spaceService.ensureDefaultSpace(user.getId(), user.getOrganizationId());
                     return null;
                   }),
               executor.submit(
                   () -> {
                     ready.countDown();
                     start.await();
-                    spaceService.ensurePersonalSpace(user.getId(), user.getOrganizationId());
+                    spaceService.ensureDefaultSpace(user.getId(), user.getOrganizationId());
                     return null;
                   }));
       ready.await();

@@ -1078,11 +1078,6 @@ components:
       enum: [MEMBER, CURATOR, ADMIN]
       example: CURATOR
 
-    SpaceKind:
-      type: string
-      enum: [PERSONAL, PROJECT, TEAM]
-      example: PROJECT
-
     SpaceVisibility:
       type: string
       enum: [PRIVATE, DISCOVERABLE, OPEN]
@@ -1090,7 +1085,7 @@ components:
 
     SpaceRequest:
       type: object
-      required: [name, kind]
+      required: [name]
       properties:
         name:
           type: string
@@ -1102,8 +1097,6 @@ components:
           maxLength: 2000
           nullable: true
           example: Engineering project space
-        kind:
-          $ref: "#/components/schemas/SpaceKind"
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
@@ -1121,10 +1114,9 @@ components:
       type: object
       required: [name]
       description: >
-        Body for updating an existing space. Deliberately narrower than SpaceRequest: kind and
-        ownerId cannot be changed here (kind is fixed at creation, ownership changes go through
-        the dedicated transfer-ownership endpoint), and initialMembers has no meaning for an
-        update.
+        Body for updating an existing space. Deliberately narrower than SpaceRequest: ownerId
+        cannot be changed here (ownership changes go through the dedicated transfer-ownership
+        endpoint), and initialMembers has no meaning for an update.
       properties:
         name:
           type: string
@@ -1151,7 +1143,7 @@ components:
 
     SpaceListResponse:
       type: object
-      required: [id, name, kind, memberCount, createdAt, updatedAt]
+      required: [id, name, isDefault, memberCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1162,8 +1154,10 @@ components:
         description:
           type: string
           nullable: true
-        kind:
-          $ref: "#/components/schemas/SpaceKind"
+        isDefault:
+          type: boolean
+          description: True for the space created automatically on first login.
+          example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
@@ -1196,7 +1190,7 @@ components:
 
     SpaceResponse:
       type: object
-      required: [id, name, kind, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
+      required: [id, name, isDefault, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1207,8 +1201,12 @@ components:
         description:
           type: string
           nullable: true
-        kind:
-          $ref: "#/components/schemas/SpaceKind"
+        isDefault:
+          type: boolean
+          description: >
+            True for the space created automatically on first login. Exactly one per user and not
+            deletable; an ordinary space in every other respect.
+          example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
         ownerId:
