@@ -66,6 +66,7 @@ documents/
 
 # Claude
 /.claude/settings.local.json
+/.claude/worktrees/
 **/.claude/agent-memory/
 
 tmp
