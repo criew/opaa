@@ -195,3 +195,23 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   Vorgang dokumentiert, damit es beim späteren Aufgreifen nicht neu erarbeitet werden muss.
 - **Verweis:** [#357](https://github.com/criew/opaa/issues/357) ·
   [features/public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger)
+
+### 14.08.2026 — Anbieternamen im Bestand
+
+- **Punkt:** Ob die pauschale Fassung „keine Namen von Mitbewerbern" aus dem Abschnitt „Was in der
+  Dokumentation nicht vorkommt" auch die vorhandenen Nennungen in der Vorbild-Analyse der
+  Rechtemodelle und in der Recherche-Anweisung an die Product-Manager-Rolle erfasst.
+- **Entscheidung:** Nein. Unzulässig bleibt die Nennung zur Positionierung — ein Name, der OPAA
+  einordnet, eine Marktlage beschreibt oder einen Kaufgrund liefert. Zulässig ist die Nennung als
+  nachprüfbarer Sachbeleg für eine technische Behauptung über ein fremdes System, die den eigenen
+  Entwurf trägt, ebenso die Nennung als Arbeitsanweisung an eine interne Rolle. Beide bestehenden
+  Stellen bleiben unverändert und tragen je einen Hinweis auf die Regel. Der ADR-Wortlaut bleibt
+  unverändert; dieser Nachtrag präzisiert ihn.
+- **Begründung:** Die Vorbild-Analyse belegt, dass die gewählte Rechtekonstruktion in keinem der
+  untersuchten Systeme ein Vorbild hat. Anonymisiert wäre diese Aussage nicht mehr nachprüfbar und
+  damit wertlos — und ein bereits entschiedener Punkt käme in einem halben Jahr als neue Idee
+  wieder. Eine Anweisung an eine interne Rolle ist kein Text über OPAA und erreicht niemanden, der
+  sich ein Bild vom Produkt macht. Ohne diese geschriebene Grenze wird der scheinbare Widerspruch
+  bei jeder Durchsicht neu ausdiskutiert oder in gutem Glauben weggeräumt.
+- **Verweis:** [#367](https://github.com/criew/opaa/issues/367) ·
+  [market/MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen)
