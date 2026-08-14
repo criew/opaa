@@ -53,8 +53,16 @@ Drei Zustände werden unterschieden:
   `eval/`, ADR-0010 bis ADR-0013). Der Messvertrag steht, die Fallmengen wachsen noch.
 
 **Geplant (Phase 1)**
-- **Zitierzwang** — heute gibt es Quellenangaben, aber keine Verweigerung ohne Beleg. Das schärfste
-  Leitprinzip der Vision hat noch keine Umsetzung; der Schnitt wird in #354 geklärt.
+- **Zitierzwang, Stufe 1 (Formprüfung)** — heute gibt es Quellenangaben, aber keine Verweigerung ohne
+  Beleg: `CitationParser` prüft nur, ob das Belegmuster vorkommt, nicht, ob die Kennung zu einem
+  abgerufenen Chunk gehört, und die Antwortgenerierung läuft auch mit null Fundstellen weiter. Der
+  Schnitt ist in #354 entschieden — deterministische Prüfung ohne zweiten Modelldurchlauf, Schalter am
+  Space mit erzwingender Systemvorgabe, Verweigerung als Ergebnis mit Auskunft über den Suchvorgang.
+  Umsetzung in #386, #387 und #388.
+- **Zitierzwang, Stufe 2 (inhaltliche Deckungsprüfung)** — ob die zitierte Fundstelle die Aussage
+  tatsächlich trägt, prüft Stufe 1 nicht. Die Prüfung braucht einen zweiten Modelldurchlauf und den
+  Messaufbau aus Epic #224; sie ist ein **eigener, noch nicht entschiedener Vorgang** (#389) und keiner
+  Phase zugeordnet.
 - **Hybride Suche und Reranking** — es gibt weder Volltextsuche noch einen Reranker im Code. Reine
   Vektorsuche versagt genau bei attributreichen Fachdaten.
 - **Erklärbares Chunking** — die Zerlegung ist heute nicht nachvollziehbar dargestellt.
