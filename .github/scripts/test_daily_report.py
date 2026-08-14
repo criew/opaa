@@ -344,6 +344,18 @@ def test_linkleiste_enthaelt_alle_einstiege(report):
     assert TEST_URL in seite
 
 
+def test_latest_leitet_auf_den_juengsten_report(report):
+    seite = dr.render_latest([{"date": "2026-08-04"}, {"date": "2026-08-01"}])
+    assert 'content="0; url=reports/2026-08-04.html"' in seite
+    # Ohne Weiterleitung bleibt ein anklickbarer Weg zum Ziel.
+    assert 'href="reports/2026-08-04.html"' in seite
+
+
+def test_latest_ohne_bestand_zeigt_auf_die_uebersicht():
+    seite = dr.render_latest([])
+    assert 'content="0; url=index.html"' in seite
+
+
 def test_nachbarn_folgen_der_zeitrichtung():
     """Der Bestand liegt neueste zuerst — „vorheriger" ist der ältere Tag."""
     bestand = [{"date": "2026-08-04"}, {"date": "2026-08-02"}, {"date": "2026-08-01"}]

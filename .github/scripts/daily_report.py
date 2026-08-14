@@ -1195,6 +1195,36 @@ Erzeugt am {html.escape(data["generated_at"][:16].replace("T", " um "))} Uhr ·
     return page(f"Tagesreport {day.isoformat()}", body, feed_href="../feed.xml")
 
 
+def render_latest(reports: list[dict]) -> str:
+    """Erzeugt eine feste Adresse, die stets zum jüngsten Report führt.
+
+    GitHub Pages liefert ausschließlich statische Dateien, eine echte
+    Weiterleitung über den Server ist also nicht möglich. Stattdessen leitet
+    die Seite selbst weiter — per `meta refresh`, ergänzt um einen sichtbaren
+    Link für den Fall, dass das unterbunden ist. Der Umweg über eine Kopie des
+    Reports scheidet aus: an der Adresse ließe sich dann nicht ablesen,
+    welcher Tag gerade zu sehen ist.
+    """
+    ziel = f"reports/{reports[0]['date']}.html" if reports else "index.html"
+    beschriftung = (
+        f"Tagesreport {german_date(Date.fromisoformat(reports[0]['date']))}"
+        if reports
+        else "Übersicht"
+    )
+    body = f"""<header>
+<h1>Aktueller Tagesreport</h1>
+<p class="sub">Weiterleitung zu
+<a href="{ziel}">{html.escape(beschriftung)}</a> …</p>
+</header>"""
+    seite = page("Aktueller Tagesreport", body, feed_href="feed.xml")
+    return seite.replace(
+        "</head>",
+        f'<meta http-equiv="refresh" content="0; url={ziel}">\n'
+        f'<link rel="canonical" href="{ziel}">\n</head>',
+        1,
+    )
+
+
 def render_index(reports: list[dict], repo: str) -> str:
     if reports:
         rows = ['<ul class="items">']
@@ -1219,6 +1249,7 @@ def render_index(reports: list[dict], repo: str) -> str:
     body = f"""<header>
 <h1>OPAA — Tagesreport</h1>
 <p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="latest.html">Aktueller Tag</a> ·
 <a href="../">Projektseite</a> ·
 <a href="feed.xml">Feed abonnieren</a> ·
 <a href="https://github.com/{html.escape(repo)}">Repository</a></p>
@@ -1392,6 +1423,7 @@ def main() -> int:
 
     site_url = args.site_url.rstrip("/") or f"https://github.com/{args.repo}"
     (output / "index.html").write_text(render_index(reports, args.repo), encoding="utf-8")
+    (output / "latest.html").write_text(render_latest(reports), encoding="utf-8")
     (output / "feed.xml").write_text(
         render_feed(reports, args.repo, site_url), encoding="utf-8"
     )

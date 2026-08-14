@@ -4,8 +4,17 @@ Ein täglich laufender Workflow trägt zusammen, was im Projekt passiert ist, un
 veröffentlicht das Ergebnis als Seite auf GitHub Pages. Über einen Atom-Feed
 lässt sich der Report abonnieren.
 
-- **Seite:** https://criew.github.io/opaa/
-- **Feed:** https://criew.github.io/opaa/feed.xml
+- **Übersicht:** https://criew.github.io/opaa/report/
+- **Aktueller Tag:** https://criew.github.io/opaa/report/latest.html
+- **Feed:** https://criew.github.io/opaa/report/feed.xml
+
+`latest.html` ist die feste Adresse zum Bookmarken: Sie führt stets zum
+jüngsten vorhandenen Report. GitHub Pages liefert nur statische Dateien, eine
+serverseitige Weiterleitung gibt es dort nicht — die Seite leitet deshalb selbst
+weiter (`meta refresh`) und trägt für den Fall, dass das unterbunden ist, einen
+sichtbaren Link zum Ziel. Die Adresse in der Adresszeile wird dabei zum
+konkreten Tag, sodass sich ein geteilter Link immer auf einen festen Tag
+bezieht.
 
 ## Was im Report steht
 
