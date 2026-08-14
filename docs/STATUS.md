@@ -101,7 +101,8 @@ Drei Zustände werden unterschieden:
   (`io.opaa.library` — `KnowledgeLibrary`, `AssetGrant`, `AssetRole`, `LibraryAccessService`)
 - Organisation als Mandantenklammer (`io.opaa.organization`)
 - Oberfläche für Space- und Gruppenverwaltung (`SpaceManagementPage`, `GroupManagementPage`)
-- Migrationen bis `014-drop-asset-role-user.yaml`
+- Migrationen bis `015-replace-space-kind-with-is-default.yaml` — die Space-Arten sind durch Attribute
+  ersetzt (#333)
 
 **Im Bau** — Epic #198 mit #203 bis #216
 - Assoziation von Assets an Spaces als reine Kuratierung (#203) · strenger Modus (#204) · dauerhafte

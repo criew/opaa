@@ -91,7 +91,7 @@ alles bestehen.
 Umgekehrt entstehen Anforderungen, für die es heute nichts gibt: Zitierzwang, hybride Suche mit Reranking,
 Agenten-Onboarding und -Prüfstand, zentrale Modellvorgaben, SCIM-Lebenszyklus, revisionssicheres
 Protokoll, Leichte Sprache, Barrierefreiheit nach BITV. Der Abstand zwischen Anspruch und Stand wird damit
-sichtbar größer — das ist beabsichtigt und wird in einem eigenen Statusdokument offen geführt statt
+sichtbar größer — das ist beabsichtigt und wird in [STATUS.md](../STATUS.md) offen geführt statt
 beschönigt.
 
 ### Was in der Dokumentation nicht vorkommt

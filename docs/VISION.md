@@ -70,19 +70,16 @@ an Barrierefreiheit und Missbrauchsschutz.
 | | Bereich | Worum es geht | Spezifikation |
 |---|---|---|---|
 | **A** | Wissensschicht & Retrieval | Zitierzwang, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) · [search-quality-evaluation.md](./features/search-quality-evaluation.md) |
-| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Spiegelung der Rechte aus dem Quellsystem | `features/knowledge-sources.md` *(in Arbeit)* |
+| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Spiegelung der Rechte aus dem Quellsystem | [knowledge-sources.md](./features/knowledge-sources.md) |
 | **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [spaces-and-assets.md](./features/spaces-and-assets.md) |
-| **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | `features/agents-and-tools.md` *(in Arbeit)* |
+| **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [agents-and-tools.md](./features/agents-and-tools.md) |
 | **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [llm-integration.md](./features/llm-integration.md) |
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [access-control.md](./features/access-control.md) |
-| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | `features/security-and-compliance.md` *(in Arbeit)* |
-| **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | `features/monitoring-and-governance.md` *(in Arbeit)* |
+| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [security-and-compliance.md](./features/security-and-compliance.md) |
+| **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [monitoring-and-governance.md](./features/monitoring-and-governance.md) |
 | **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats | [user-frontends.md](./features/user-frontends.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [deployment-infrastructure.md](./features/deployment-infrastructure.md) |
-| **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | `features/public-sector.md` *(in Arbeit)* |
-
-Die mit *(in Arbeit)* gekennzeichneten Spezifikationen entstehen im Zuge der Neuausrichtung; bis dahin
-gilt die Beschreibung in dieser Tabelle.
+| **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [public-sector.md](./features/public-sector.md) |
 
 ---
 
@@ -127,8 +124,7 @@ Tiefe Anbindung an den souveränen Arbeitsplatz · behördenübergreifender Aust
 Assistent für Bürgerinnen und Bürger · Erweiterungen für Office und Browser · Anbindung an elektronische
 Akten und Dokumentenmanagement.
 
-Der tatsächliche Umsetzungsstand gegen diese Phasen wird in einem eigenen Statusdokument geführt, das
-die bisherige MVP-Statusübersicht ablöst.
+Den tatsächlichen Umsetzungsstand gegen diese Phasen führt [STATUS.md](./STATUS.md).
 
 ---
 
@@ -249,4 +245,5 @@ Vorgabe der Systemverwaltung, keine Entscheidung der einzelnen Nutzerin.
 
 - [USE-CASES.md](./USE-CASES.md) — wie sich das im Arbeitsalltag anfühlt
 - [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar
+- [STATUS.md](./STATUS.md) — was davon heute gebaut ist
 - [decisions/](./decisions/) — die Architekturentscheidungen dahinter
