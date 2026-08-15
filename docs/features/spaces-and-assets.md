@@ -100,6 +100,13 @@ lesbare_Bibliotheken(u) =
 
 **Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
 
+**Der Ausdruck kennt keine Ausnahme — auch nicht für die System-Bibliothek.** Sie ist beim Anlegen
+`PRIVATE` und ohne Grants, fällt also von sich aus aus jeder lesbaren Menge heraus; sie ist aber
+keine Bibliothek mit eigenen Regeln. Beide Wege, auf denen Rechte geprüft werden — die Anzeige einer
+einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das nicht
+taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
+([#406](https://github.com/criew/opaa/issues/406)).
+
 ### Gruppen als Rechtesubjekt
 
 Eine Rechteliste verweist auf **einen Nutzer oder eine Gruppe**. Gruppen sind kein Nachtrag, sondern tragend:

@@ -110,17 +110,28 @@ public class LibraryAccessService {
   }
 
   /**
-   * The highest {@link AssetRole} the user holds on the library, or {@code null} if none. System
-   * libraries are fail-closed to system admins regardless of any grant, mirroring the previous
-   * behaviour this class replaces. Organization-wide visibility grants {@link AssetRole#VIEWER} to
-   * every user of the same organization - the same level the pre-#202 {@code canRead} granted for
-   * {@code LibraryVisibility#ORGANIZATION}, kept unchanged here since #202's mandate is fixing the
+   * The highest {@link AssetRole} the user holds on the library, or {@code null} if none.
+   * Organization-wide visibility grants {@link AssetRole#VIEWER} to every user of the same
+   * organization - the same level the pre-#202 {@code canRead} granted for {@code
+   * LibraryVisibility#ORGANIZATION}, kept unchanged here since #202's mandate is fixing the
    * group-ownership overreach, not narrowing this path.
+   *
+   * <p>System libraries used to short-circuit here to "system admins only, regardless of any
+   * grant". That special case is gone (#406): it made this method disagree with {@link
+   * #readableLibraryIds}, which never had it, so the same library could be readable through the
+   * search and forbidden through the library API - two answers to one question. The formula in
+   * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten knows no such exception, and
+   * both paths now implement it alike.
+   *
+   * <p>The fail-closed guarantee #201 set for the migration target is unaffected, because it never
+   * depended on this branch: the system library is seeded {@code PRIVATE} with no grants
+   * (012-seed-system-library), so the formula excludes everyone by itself. What changes is that
+   * opening it is now a deliberate decision rather than an impossibility - and one only a system
+   * admin can take, since granting or changing visibility requires {@code MANAGER}, which on a
+   * library with no owner and no grants nobody else can hold. The specification asks for exactly
+   * that: no organization-wide default, not a bulk of documents no one can ever reach.
    */
   public AssetRole effectiveRole(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    if (library.isSystemLibrary()) {
-      return systemAdmin ? AssetRole.OWNER : null;
-    }
     if (systemAdmin) {
       return AssetRole.OWNER;
     }
@@ -157,6 +168,12 @@ public class LibraryAccessService {
    * specification section. No system-admin bypass: the vector search always reads with the calling
    * user's own rights, with no second rights context (see #202 scope and ADR-0008 §5) - unlike
    * {@link #effectiveRole}, which still fail-opens system admins for library administration.
+   *
+   * <p>That remaining asymmetry is intentional and points the safe way: an admin may administer
+   * every library but retrieves only from those the formula grants them, so nothing an admin reads
+   * in a chat can come from a library they were not granted. Which libraries the formula covers is
+   * decided identically in both methods since #406 - the system library no longer being an
+   * exception here or there.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     Instant now = Instant.now();

@@ -50,6 +50,22 @@ class LibraryAccessServiceTest {
     return library;
   }
 
+  /**
+   * The system library has no factory on purpose - only the migration creates one - so it is mocked
+   * here rather than built. Only what {@code effectiveRole} reads is stubbed.
+   */
+  private KnowledgeLibrary systemLibrary(UUID libraryId, LibraryVisibility visibility) {
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    when(library.getId()).thenReturn(libraryId);
+    when(library.getVisibility()).thenReturn(visibility);
+    when(library.isSystemLibrary()).thenReturn(true);
+    return library;
+  }
+
+  private AssetGrant userGrant(UUID libraryId, UUID subjectUserId, AssetRole role) {
+    return AssetGrant.forUser(libraryId, organizationId, subjectUserId, role, null, subjectUserId);
+  }
+
   private void setId(KnowledgeLibrary library, UUID id) {
     try {
       var field = KnowledgeLibrary.class.getDeclaredField("id");
@@ -61,14 +77,41 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void systemLibraryIsReadableOnlyBySystemAdminsRegardlessOfGrants() {
-    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
-    when(systemLibrary.isSystemLibrary()).thenReturn(true);
+  void theSeededSystemLibraryIsClosedToOrdinaryUsers() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.PRIVATE);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
 
+    // The fail-closed default #201 asks for. Since #406 it follows from the library's state -
+    // PRIVATE, no grants - instead of a special case, which is why the grant list is consulted now
+    // where the old short-circuit skipped it.
     assertThat(accessService.canRead(systemLibrary, userId, false)).isFalse();
     assertThat(accessService.canRead(systemLibrary, userId, true)).isTrue();
-    // Never even asks for the grant list - the fail-closed check short-circuits first.
-    verify(grantRepository, never()).findByLibraryId(any());
+  }
+
+  @Test
+  void anOpenedSystemLibraryIsReadableLikeAnyOther() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.ORGANIZATION);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
+
+    // Before #406 this returned false while readableLibraryIds - which never knew the special
+    // case - already included the library: the search retrieved from it and the library API denied
+    // it. One formula, one answer.
+    assertThat(accessService.canRead(systemLibrary, userId, false)).isTrue();
+  }
+
+  @Test
+  void aGrantOnTheSystemLibraryCounts() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.PRIVATE);
+    when(grantRepository.findByLibraryId(libraryId))
+        .thenReturn(List.of(userGrant(libraryId, userId, AssetRole.VIEWER)));
+
+    // Grants used to be ignored outright on a system library. They are the narrower way to open the
+    // migrated stock - one person rather than the whole organization - and silently dropping them
+    // left only the wider one.
+    assertThat(accessService.canRead(systemLibrary, userId, false)).isTrue();
   }
 
   @Test

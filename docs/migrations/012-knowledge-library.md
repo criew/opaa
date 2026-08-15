@@ -50,15 +50,26 @@ zugewiesen:
 
 - `owner_type = SYSTEM`, kein individueller Eigentümer.
 - `visibility = PRIVATE`, `listed = false`.
-- Lesbar **ausschließlich für Systemadministratoren** — durchgesetzt in
-  `KnowledgeLibraryService#canRead`/`#canManage`, die für eine `SYSTEM`-Bibliothek unabhängig von
-  jeder anderen Prüfung `systemAdmin` verlangen.
+- Damit für niemanden lesbar außer für Systemadministratoren — **das ergibt sich aus diesem Zustand**
+  unter der gewöhnlichen Rechteformel, seit [#406](https://github.com/criew/opaa/issues/406) nicht
+  mehr aus einer Sonderregel in `LibraryAccessService#effectiveRole`.
 - Kann nicht gelöscht werden (`KnowledgeLibraryService#deleteLibrary`).
 - Kann nicht über die öffentliche API angelegt werden (`LibraryOwnerType.SYSTEM` wird in
   `KnowledgeLibraryService#createLibrary` mit `400` abgelehnt) — nur diese Migration erzeugt sie.
 
 Eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar; das
 ist die explizite Vorgabe aus #198s Migrationsabschnitt und den Abnahmekriterien von #201.
+
+**Voreinstellung, nicht Einbahnstraße.** Die ursprüngliche Fassung setzte das als Sonderregel um: Für
+eine `SYSTEM`-Bibliothek verlangte `effectiveRole` `systemAdmin`, unabhängig von Grants und
+Sichtbarkeit. Das ging über die Vorgabe hinaus und hatte eine Folge, die erst im Betrieb sichtbar
+wurde: Die Indexierung legt **alles** in dieser Bibliothek ab (`FileProcessingService`), und die
+Suche liest immer mit den Rechten des Fragenden, ohne Admin-Umgehung. Ein Bestand, den niemand mehr
+öffnen konnte, war damit für niemanden auffindbar — auch nicht für Administratoren.
+
+Seit #406 gilt die Formel einheitlich. Der Ausgangszustand bleibt geschlossen; das Öffnen ist eine
+bewusste Entscheidung, die nur ein Systemadministrator treffen kann, weil `MANAGER` auf einer
+Bibliothek ohne Eigentümer und ohne Grants sonst niemand hält.
 
 ## Reihenfolge der Changesets (Anwendung)
 
