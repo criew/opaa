@@ -1,0 +1,58 @@
+databaseChangeLog:
+  # Ein changeSet, das die Filterachse der rechtebewussten Vektorsuche (#202) auf Chunks
+  # nachträgt, die vor deren Einführung indiziert wurden (#408).
+  #
+  # Migration 012 hat documents.library_id per Backfill befüllt, die Metadaten der zugehörigen
+  # Chunks im vector_store aber nicht - die liegen als JSON in einer eigenen Tabelle. Seitdem
+  # trägt jeder neu geschriebene Chunk die Felder (FileProcessingService#storeChunks), jeder
+  # ältere nicht. QueryService#libraryFilter filtert genau auf library_id, also findet die Suche
+  # einen Altbestand nie, egal welche Rechte der Fragende hat. Sichtbar wird das nirgends: Die
+  # Dokumente stehen weiter als INDEXED in der Übersicht, und eine Antwort ohne Fundstellen ist
+  # von "dazu gibt es nichts" nicht zu unterscheiden.
+  #
+  # Rollback: bewusst ein No-op, siehe den rollback-Block des changeSets.
+
+  - changeSet:
+      id: 016-backfill-vector-store-library-metadata
+      author: opaa
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: vector_store
+      comment: >
+        Trägt library_id und organization_id aus documents in die Chunk-Metadaten nach, für jeden
+        Chunk, der sie noch nicht führt. Verbunden wird über metadata->>'document_id', das schon
+        die erste Fassung von storeChunks geschrieben hat. Die Precondition ist nötig, weil
+        vector_store nicht unter Liquibase-Kontrolle steht, sondern von Spring AI beim Start
+        angelegt wird (PgVectorStore#initializeSchema, initialize-schema: true in
+        application.yml). Auf einer frischen Installation läuft Liquibase, bevor es die Tabelle
+        gibt; MARK_RAN vermerkt das changeSet dann als erledigt, was richtig ist - es gibt dort
+        keinen Altbestand, und jeder danach geschriebene Chunk trägt die Felder ohnehin.
+        metadata ist vom Typ json, nicht jsonb: PgVectorStore legt die Spalte fest so an, deshalb
+        der Umweg über ::jsonb für die Verkettung und zurück. Chunks, deren document_id auf kein
+        Dokument mehr zeigt, bleiben unverändert - für sie gibt es keine Bibliothek, die man
+        eintragen könnte; sie waren schon vor dieser Migration unauffindbar und sind Datenmüll,
+        dessen Aufräumen nicht hierher gehört.
+      changes:
+        - sql:
+            sql: >
+              UPDATE vector_store v
+              SET metadata = (
+                    v.metadata::jsonb
+                    || jsonb_build_object(
+                         'library_id', d.library_id::text,
+                         'organization_id', d.organization_id::text)
+                  )::json
+              FROM documents d
+              WHERE d.id::text = v.metadata->>'document_id'
+                AND NOT jsonb_exists(v.metadata::jsonb, 'library_id');
+      rollback:
+        - sql:
+            comment: >
+              Nicht umkehrbar: Die Felder wieder zu entfernen träfe auch jeden Chunk, den
+              storeChunks seither regulär mit ihnen geschrieben hat - an den Metadaten ist beides
+              nicht zu unterscheiden. Das Ergebnis wäre schlimmer als der Ausgangszustand, weil
+              dann auch der neue Bestand unauffindbar würde. Bewusst ein No-op, damit der
+              Rollback der umgebenden, verlustfreien changeSets nicht blockiert - dieselbe
+              Begründung wie bei 012-backfill-document-library-id.
+            sql: "SELECT 1;"
