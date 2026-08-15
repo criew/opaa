@@ -489,9 +489,21 @@ class RetrievalEvaluationHarnessTest {
     return List.copyOf(seen);
   }
 
+  /**
+   * Waits for the corpus to finish indexing. The 45-minute budget is deliberate and matches the
+   * runtime the CI job already documents: on a GitHub Actions runner (2 vCPU shared between the
+   * Postgres, Ollama and application containers) the 1448-document corpus takes roughly 38 minutes,
+   * with the sequential Ollama embedding latency dominating — see the {@code timeout-minutes}
+   * comment in {@code .github/workflows/retrieval-regression.yml}. The previous 30 minutes
+   * contradicted that measurement and only ever passed on a fast runner: PR #415 stalled at 1121 of
+   * 1448 documents (~1.6 s/document), while the nightly run before it managed ~0.85 s/document and
+   * finished with minutes to spare. The budget must also stay comfortably below the workflow's
+   * {@code timeout-minutes} so a genuinely stuck indexing run fails here — with a diagnosable test
+   * failure — instead of being killed as a cancelled job.
+   */
   private void awaitJobCompletion(IndexingJob job) {
     await()
-        .atMost(30, TimeUnit.MINUTES)
+        .atMost(45, TimeUnit.MINUTES)
         .pollInterval(2, TimeUnit.SECONDS)
         .until(
             () -> {

@@ -61,6 +61,15 @@ dependencies {
 // `check`/`build`/`test` on purpose (see the `evalTest` source set comment above) — invoke
 // explicitly with `./gradlew evaluateRetrieval`. Needs Docker; downloads the `nomic-embed-text`
 // model into the Ollama Testcontainer on first run.
+//
+// Produces the report, and only the report: BaselineRegressionTest is excluded because it consumes
+// a report that this very task writes (issue #414). Without the filter, JUnit runs it alphabetically
+// before RetrievalEvaluationHarnessTest — that is, before build/eval-reports/retrieval-metrics.json
+// exists — so the task fails on its "No report found" guard before checkRetrievalBaseline ever gets
+// a turn. The three tasks split the evalTest source set along these roles: evalUnitTest = pure
+// metric math (Docker-free, part of `check`), evaluateRetrieval = produce the report (needs
+// Docker), checkRetrievalBaseline = compare the report against the baseline (Docker-free, depends
+// on evaluateRetrieval).
 tasks.register<Test>("evaluateRetrieval") {
     description = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
         "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check."
@@ -68,6 +77,9 @@ tasks.register<Test>("evaluateRetrieval") {
     testClassesDirs = sourceSets["evalTest"].output.classesDirs
     classpath = sourceSets["evalTest"].runtimeClasspath
     useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*BaselineRegressionTest")
+    }
     outputs.upToDateWhen { false }
     jvmArgs("-XX:+EnableDynamicAgentLoading")
     systemProperty("file.encoding", "UTF-8")
