@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
+import io.opaa.library.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -245,6 +246,55 @@ class QueryIntegrationTest {
       assertThat(response.getSources()).isEmpty();
     } finally {
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  @Test
+  void indexedContentInTheSystemLibraryIsReachableOnceItIsOpened() {
+    // The case that made a fully indexed corpus useless on the test instance (#406): everything the
+    // indexing pipeline writes lands in the system library (FileProcessingService), and nothing
+    // could ever open it. This test walks the whole query chain for that library - closed first,
+    // then opened - because neither half alone would have caught it: the closed state was correct
+    // and stayed correct, and no test ever asked what happens after.
+    var doc =
+        new Document(
+            "Batman ist 188 cm gross.",
+            Map.of(
+                "file_name",
+                "batman.md",
+                "document_id",
+                "doc-batman",
+                "chunk_index",
+                0,
+                "library_id",
+                KnowledgeLibrary.SYSTEM_LIBRARY_ID.toString()));
+    vectorStore.add(List.of(doc));
+
+    var assistantMessage =
+        new AssistantMessage("I don't have enough context to answer that question.");
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(assistantMessage))));
+
+    QueryResponse closed = queryService.query("Wie gross ist Batman?", null, userId);
+    assertThat(closed.getSources()).isEmpty();
+
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET visibility = 'ORGANIZATION' WHERE id = ?",
+        KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+    try {
+      var answer =
+          new AssistantMessage("Batman ist 188 cm gross. 【source: doc-batman#0 | batman.md】");
+      when(chatModel.call(any(Prompt.class)))
+          .thenReturn(new ChatResponse(List.of(new Generation(answer))));
+
+      QueryResponse opened = queryService.query("Wie gross ist Batman?", null, userId);
+
+      assertThat(opened.getSources()).hasSize(1);
+      assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
+    } finally {
+      jdbcTemplate.update(
+          "UPDATE knowledge_libraries SET visibility = 'PRIVATE' WHERE id = ?",
+          KnowledgeLibrary.SYSTEM_LIBRARY_ID);
     }
   }
 

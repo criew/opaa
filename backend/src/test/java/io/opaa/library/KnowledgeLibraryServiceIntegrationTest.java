@@ -281,7 +281,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void systemLibraryIsReadableOnlyBySystemAdminsRegardlessOfVisibility() {
+  void theSeededSystemLibraryIsClosedToOrdinaryUsers() {
     KnowledgeLibrary systemLibrary =
         libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
     UUID regularUser = createUser(systemLibrary.getOrganizationId());
@@ -298,6 +298,63 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryResponse response =
         libraryService.getLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, systemAdmin, true);
     assertThat(response.getId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+  }
+
+  @Test
+  void bothRightsPathsAgreeOnTheSystemLibraryBeforeAndAfterItIsOpened() {
+    KnowledgeLibrary systemLibrary =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    UUID organizationId = systemLibrary.getOrganizationId();
+    UUID regularUser = createUser(organizationId);
+
+    // #406: the library API asked effectiveRole, the search asked readableLibraryIds, and only the
+    // former knew a system-library special case. Asserting both together is the point - either one
+    // alone was green while the pair contradicted each other.
+    assertThat(accessService.canRead(systemLibrary, regularUser, false)).isFalse();
+    assertThat(accessService.readableLibraryIds(regularUser, organizationId))
+        .doesNotContain(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+
+    openSystemLibraryToTheOrganization();
+
+    KnowledgeLibrary opened =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    assertThat(accessService.canRead(opened, regularUser, false)).isTrue();
+    assertThat(accessService.readableLibraryIds(regularUser, organizationId))
+        .contains(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+  }
+
+  @Test
+  void openingTheSystemLibraryRequiresASystemAdmin() {
+    KnowledgeLibrary systemLibrary =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    UUID regularUser = createUser(systemLibrary.getOrganizationId());
+
+    LibraryUpdateRequest request = new LibraryUpdateRequest();
+    request.setName(systemLibrary.getName());
+    request.setVisibility(LibraryVisibility.ORGANIZATION);
+
+    // The migrated stock stays an administrative decision: nobody else can hold MANAGER on a
+    // library with no owner and no grants, so nobody else can widen it.
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    KnowledgeLibrary.SYSTEM_LIBRARY_ID, request, regularUser, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  private void openSystemLibraryToTheOrganization() {
+    KnowledgeLibrary systemLibrary =
+        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
+    UUID systemAdmin = createUser(systemLibrary.getOrganizationId());
+    LibraryUpdateRequest request = new LibraryUpdateRequest();
+    request.setName(systemLibrary.getName());
+    request.setDescription(systemLibrary.getDescription());
+    request.setVisibility(LibraryVisibility.ORGANIZATION);
+    libraryService.updateLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, request, systemAdmin, true);
   }
 
   @Test

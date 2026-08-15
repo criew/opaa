@@ -43,10 +43,19 @@ import org.springframework.web.server.ResponseStatusException;
  * (succession instead of blocking) is what regulates that case, not this class.
  *
  * <p>{@link LibraryOwnerType#SYSTEM} libraries (exactly one per organization, see {@link
- * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by construction: {@link
- * LibraryAccessService#effectiveRole} requires {@code systemAdmin} for them regardless of any
- * grant, and {@link #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright -
- * only the migration (012-seed-system-library) ever creates one.
+ * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by their seeded state, not by a special case
+ * in the rights model (#406): {@code PRIVATE} with no grants excludes everyone under the ordinary
+ * formula, and {@link #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright
+ * - only the migration (012-seed-system-library) ever creates one. {@link #deleteLibrary} still
+ * refuses to remove it.
+ *
+ * <p>What that state does <b>not</b> do any more is make the library permanently unreachable. Its
+ * whole content is what the indexing pipeline writes ({@code FileProcessingService}), so a rule
+ * that no grant and no visibility could ever open it did not protect a migrated remnant - it made
+ * every indexed document unfindable for everyone, system admins included, since the search reads
+ * with the asking user's own rights and never bypasses them. Widening it requires {@code MANAGER},
+ * which on a library with no owner and no grants only a system admin holds; the decision therefore
+ * stays where #201 put it, but it can now actually be taken.
  */
 @Service
 @Transactional(readOnly = true)
