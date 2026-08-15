@@ -22,8 +22,8 @@ import java.util.TreeSet;
  *       threshold) still match what the baseline was measured under? If not, no metric comparison
  *       is meaningful and none is attempted.
  *   <li>Only if the baseline is valid: does every group's metrics stay within tolerance of the
- *       baseline, and do the four overall metrics clear an independent, baseline-relative hard
- *       floor?
+ *       baseline, and do the four overall metrics clear a hard floor combining a baseline-relative
+ *       and a fixed absolute component (see {@link #HARD_FLOOR_FRACTION_OF_BASELINE})?
  * </ol>
  *
  * <h2>Tolerance formula (ADR-0013)</h2>
@@ -51,14 +51,42 @@ import java.util.TreeSet;
  *       replaces. The cap can only tighten the tolerance, never loosen it.
  * </ul>
  *
- * There is deliberately no separate absolute floor or cap term (unlike the tolerance formula this
- * replaced): ADR-0013 found that a single absolute bound binds at both ends of the score range at
- * once — too loose for weak, low-{@code n} groups and, simultaneously, exactly at the one-case
- * boundary for others. Expressing the tolerance in cases and combining it with a relative (not
- * absolute) cap avoids that collision. ADR-0013's own "Offen" section acknowledges this still does
- * not fully protect every metric in the smallest, weakest groups against a single case flipping
- * (e.g. {@code category:numeric_range}'s {@code hitRateAt5}) — that residual edge case is tracked
- * there, not silently claimed as solved here.
+ * There is deliberately no separate absolute floor or cap term for the *tolerance* (unlike the
+ * formula this replaced): ADR-0013 found that a single absolute bound binds at both ends of the
+ * score range at once — too loose for weak, low-{@code n} groups and, simultaneously, exactly at
+ * the one-case boundary for others. Expressing the tolerance in cases and combining it with a
+ * relative (not absolute) cap avoids that collision. (The hard *floor* below is a separate concern
+ * and does combine a relative and an absolute term — see {@link #HARD_FLOOR_FRACTION_OF_BASELINE}.)
+ *
+ * <p>ADR-0013's own "Offen" section acknowledges a residual gap: whenever a group/metric pair's
+ * tolerance is tighter than the shift a single case can cause ({@code 1/n}), one case flipping can
+ * still fail that pair even though nothing changed elsewhere. As measured against the current
+ * baseline this affects six pairs, not one, all in the two weakest categories:
+ *
+ * <table>
+ *   <caption>Pairs where tolerance &lt; one case's worth of shift (1/n)</caption>
+ *   <tr><th>Group / metric</th><th>Tolerance</th><th>1/n</th><th>Ratio</th></tr>
+ *   <tr><td>{@code numeric_range} / {@code recallAt10}</td><td>0.0150</td><td>0.0625</td><td>0.24</td></tr>
+ *   <tr><td>{@code numeric_range} / {@code ndcgAt10}</td><td>0.0158</td><td>0.0625</td><td>0.25</td></tr>
+ *   <tr><td>{@code numeric_range} / {@code mrr}</td><td>0.0253</td><td>0.0625</td><td>0.40</td></tr>
+ *   <tr><td>{@code multi_attribute_filter} / {@code ndcgAt10}</td><td>0.0343</td><td>0.0476</td><td>0.72</td></tr>
+ *   <tr><td>{@code numeric_range} / {@code hitRateAt5}</td><td>0.0470</td><td>0.0625</td><td>0.75</td></tr>
+ *   <tr><td>{@code multi_attribute_filter} / {@code recallAt10}</td><td>0.0398</td><td>0.0476</td><td>0.83</td></tr>
+ * </table>
+ *
+ * For {@code numeric_range}'s {@code ndcgAt10} it is enough for a single one of the 16 queries to
+ * drop from rank 1 to rank 3 — no lost hit required — to breach the tolerance more than twice over.
+ * This is a known, deliberately deferred gap (tracked as issue #306, from ADR-0013's "Offen"
+ * section), not silently claimed as solved here: a case-count-based check (e.g. "the number of
+ * cases with {@code ndcgAt10 > 0} may drop by at most one") would close it exactly, without needing
+ * more calibration evidence, but is out of scope for this class.
+ *
+ * <p>The downgrade of this gap from "must-fix before merge" to "tracked follow-up" rests on four
+ * bit-identical {@code checkRetrievalBaseline} runs across three different machines reproducing
+ * these exact tolerance-vs-one-case numbers with zero delta in the affected groups — see ADR-0013's
+ * Nachtrag. That evidence is real but comes entirely from developer/reviewer machines; the first
+ * scheduled run on GitHub Actions' own runner hardware is the actual first test of whether this
+ * tightness holds outside that sample.
  *
  * <p>Comparisons apply a small epsilon (see {@link #EPSILON}) so a boundary case that is
  * mathematically exactly on the tolerance line does not fail on floating-point rounding alone (PR
@@ -74,16 +102,36 @@ public final class BaselineComparator {
   static final double RELATIVE_CAP_FRACTION = 0.25;
 
   /**
-   * Independent, baseline-relative sanity bound applied only to the four overall (micro-averaged)
-   * metrics — see class Javadoc and ADR-0013, decision 4. Deliberately expressed as a fraction of
-   * the *currently committed* baseline value, not a fixed absolute number: a fixed floor erodes
-   * silently as the baseline itself is (legitimately or not) lowered over successive PRs, while a
-   * baseline-relative floor tightens or loosens together with whatever is currently committed. Its
-   * purpose remains a second, independent-of-the-primary-tolerance-formula backstop against
-   * catastrophic breakage (e.g. an empty or misconfigured vector store), not the primary regression
-   * signal — the tolerance above is expected to trigger long before this floor would.
+   * Baseline-relative component of the hard floor applied only to the four overall (micro-averaged)
+   * metrics — see class Javadoc and ADR-0013, decision 4, plus the correction recorded in the ADR's
+   * Nachtrag from the second PR #301 review round.
+   *
+   * <p><b>Deliberately combined with {@link #HARD_FLOOR_ABSOLUTE_HIT_RATE} et al. via {@code
+   * max(...)}, not used alone.</b> A purely baseline-relative floor turned out to be two different
+   * things pretending to be one: at {@code 0.8 * baselineValue} it sits *above* the primary
+   * tolerance for every overall metric (tolerance ≈ 0.021 vs. a floor gap of 0.2 * baselineValue ≈
+   * 0.089–0.104), so it could never fire while the baseline is valid — the tolerance check always
+   * triggers first. And because it scales with whatever baseline is currently committed, it tracks
+   * a baseline down if that baseline itself erodes over several PRs, instead of anchoring against
+   * that erosion — the opposite of what a "hard floor" is for. A fixed absolute floor alone has the
+   * opposite problem (it erodes to irrelevance as scores improve over time, per the original PR
+   * #301 review). Combining both via {@code max} gives each term the job it can actually do: the
+   * relative term still matters once a future baseline is measured much lower than today's, the
+   * absolute term is the anchor that does not move when the baseline file itself is changed.
    */
   static final double HARD_FLOOR_FRACTION_OF_BASELINE = 0.8;
+
+  /**
+   * Fixed, baseline-independent floors for the four overall metrics — the values this class used
+   * exclusively before the (reverted) all-relative attempt above. See {@link
+   * #HARD_FLOOR_FRACTION_OF_BASELINE} for why they are combined with, not replaced by, the relative
+   * term.
+   */
+  static final double HARD_FLOOR_ABSOLUTE_HIT_RATE = 0.30;
+
+  static final double HARD_FLOOR_ABSOLUTE_MRR = 0.25;
+  static final double HARD_FLOOR_ABSOLUTE_NDCG = 0.25;
+  static final double HARD_FLOOR_ABSOLUTE_RECALL = 0.25;
 
   /**
    * Epsilon for the boundary comparison — see class Javadoc, last paragraph. Deliberately much
@@ -306,9 +354,16 @@ public final class BaselineComparator {
         base.hitRateAt5(),
         current.hitRateAt5(),
         nEff,
-        applyHardFloor);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_HIT_RATE : null);
     addMetricCheck(
-        checks, groupKey, "mrr", current.n(), base.mrr(), current.mrr(), nEff, applyHardFloor);
+        checks,
+        groupKey,
+        "mrr",
+        current.n(),
+        base.mrr(),
+        current.mrr(),
+        nEff,
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_MRR : null);
     addMetricCheck(
         checks,
         groupKey,
@@ -317,7 +372,7 @@ public final class BaselineComparator {
         base.ndcgAt10(),
         current.ndcgAt10(),
         nEff,
-        applyHardFloor);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_NDCG : null);
     addMetricCheck(
         checks,
         groupKey,
@@ -326,7 +381,7 @@ public final class BaselineComparator {
         base.recallAt10(),
         current.recallAt10(),
         nEff,
-        applyHardFloor);
+        applyHardFloor ? HARD_FLOOR_ABSOLUTE_RECALL : null);
   }
 
   private static void addMetricCheck(
@@ -337,12 +392,17 @@ public final class BaselineComparator {
       double baselineValue,
       double currentValue,
       int nEff,
-      boolean applyHardFloor) {
+      Double absoluteHardFloor) {
     double delta = currentValue - baselineValue;
     double tolerance = toleranceFor(baselineValue, nEff);
     boolean withinTolerance = delta >= -tolerance - EPSILON;
+    // ADR-0013 Nachtrag (second PR #301 review round): the hard floor combines a baseline-relative
+    // component with a fixed absolute one via max(...) — see HARD_FLOOR_FRACTION_OF_BASELINE's
+    // Javadoc for why neither alone is sufficient.
     double hardFloor =
-        applyHardFloor ? HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue : Double.NEGATIVE_INFINITY;
+        absoluteHardFloor == null
+            ? Double.NEGATIVE_INFINITY
+            : Math.max(HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue, absoluteHardFloor);
     boolean passesHardFloor = currentValue >= hardFloor - EPSILON;
     checks.add(
         new MetricCheck(
