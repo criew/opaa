@@ -22,7 +22,7 @@ Drei Zustände werden unterschieden:
 | Themenbereich | Stand | Nächster Schritt |
 |---|---|---|
 | **A** Wissensschicht & Retrieval | Grundlage gebaut, Kern der Vision fehlt | Zitierzwang, hybride Suche, Reranking |
-| **B** Wissensquellen & Konnektoren | Uploads und URL-Indizierung gebaut, Konnektoren fehlen | erster lesender Konnektor |
+| **B** Wissensquellen & Konnektoren | Verzeichnis- und URL-Aufnahme gebaut; **kein Upload**, kein Konnektor | Upload durch Beschäftigte, erster lesender Konnektor |
 | **C** Spaces, Assets & Verteilung | **im Bau** | Epic #198 |
 | **D** Agenten, Prompts & Werkzeuge | nichts gebaut, keine Vorgänge | Phase 2 schneiden |
 | **E** Modelle & zentrale Steuerung | lokal-first gebaut, zentrale Vorgaben fehlen | Modellverwaltung |
@@ -82,7 +82,7 @@ Drei Zustände werden unterschieden:
 ## B · Wissensquellen & Konnektoren
 
 **Gebaut**
-- Upload über die Weboberfläche und die REST-API; Aufnahme aus einem konfigurierten Verzeichnis
+- Aufnahme aus einem konfigurierten Verzeichnis (`OPAA_INDEXING_DOCUMENT_PATH`)
 - Indizierung aus dem Netz über URL (`UrlIndexingExecutor`, `UrlFileDownloader`, `AutoindexCrawlerService`)
 - Formate: Markdown, Text, PDF, DOCX, DOC, PPTX — an einer Stelle festgelegt
   (`SupportedDocumentFormats`) und für beide Aufnahmewege verbindlich; ein abgewiesenes Dokument
@@ -91,7 +91,16 @@ Drei Zustände werden unterschieden:
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
 - Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, `/api/v1/indexing`)
 
+**Nicht gebaut — obwohl es hier lange anders stand**
+- **Es gibt keinen Upload.** Kein `multipart`-Endpunkt in der OpenAPI-Spezifikation, kein
+  `MultipartFile` im Code, und `documents` führt keine einbringende Person. Beide Aufnahmewege gehen
+  über die Systemverwaltung; eine Sachbearbeiterin kann heute kein einziges Dokument einbringen.
+  `features/knowledge-sources.md` sagt das korrekt, dieses Dokument tat es bis zum 15.08.2026 nicht.
+  Daran hängt auch das Speicherkontingent aus #119 — es hätte nichts, woran es greifen könnte.
+
 **Geplant (Phase 1)**
+- **Der Upload durch Beschäftigte**, mit einbringender Person am Dokument als Voraussetzung für
+  Kontingent, Dublettenmeldung und Zurechenbarkeit
 - **Der erste Konnektor.** Bisher gibt es keinen — weder zu einer Dateiablage noch zu einem Wiki, einem
   Postfach oder einem Vorgangssystem. Was existiert, ist die Aufnahme über Verzeichnis und URL.
 - Selbst aktualisierende Wissensblöcke; Zeitpläne und Prioritäten
