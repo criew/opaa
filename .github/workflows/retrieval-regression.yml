@@ -65,6 +65,14 @@ jobs:
     # sind zwei zusätzliche, statische Setter-Aufrufe pro Dokument, keine zusätzlichen
     # Datenbank-Roundtrips). 60 Minuten geben dem gemessenen ~44-Minuten-Vollauf wieder eine
     # reale Marge, statt bei jedem Lauf erneut ins Limit zu laufen.
+    #
+    # Update (Issue #414): dieses Zeitbudget hat ein Gegenstück im Test selbst — den
+    # Awaitility-Timeout in `awaitJobCompletion` (RetrievalEvaluationHarnessTest). Der blieb bei der
+    # Anhebung oben auf 30 Minuten stehen und widersprach damit derselben Messung, auf der die 60
+    # Minuten hier beruhen; PR #415 lief prompt hinein (1121 von 1448 Dokumenten). Er steht jetzt
+    # auf 45 Minuten und muss unter `timeout-minutes` bleiben, damit eine hängende Indizierung als
+    # diagnostizierbarer Testfehlschlag endet statt als abgebrochener Job. Wer eines der beiden
+    # Limits anfasst, prüft das andere mit.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
