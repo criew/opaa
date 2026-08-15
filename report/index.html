@@ -45,6 +45,10 @@ h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
 .num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
 .empty { color: var(--muted); font-style: italic; }
 
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
 .linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
 .linkbar a {
   display: inline-flex;
@@ -147,12 +151,14 @@ footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--lin
 <header>
 <h1>OPAA — Tagesreport</h1>
 <p class="sub">Was sich im Projekt bewegt hat, Tag für Tag ·
+<a href="latest.html">Aktueller Tag</a> ·
 <a href="../">Projektseite</a> ·
 <a href="feed.xml">Feed abonnieren</a> ·
 <a href="https://github.com/criew/opaa">Repository</a></p>
 </header>
 
 <ul class="items">
+<li><a href="reports/2026-08-14.html">Freitag, 14. August 2026</a><span class="meta">50 abgeschlossen · 39 gemergt · 53 neu</span></li>
 <li><a href="reports/2026-08-04.html">Dienstag, 4. August 2026</a><span class="meta">2 abgeschlossen · 2 gemergt · 2 neu</span></li>
 <li><a href="reports/2026-08-03.html">Montag, 3. August 2026</a><span class="meta">9 abgeschlossen · 9 gemergt · 7 neu</span></li>
 <li><a href="reports/2026-08-02.html">Sonntag, 2. August 2026</a><span class="meta">24 abgeschlossen · 29 gemergt · 74 neu</span></li>

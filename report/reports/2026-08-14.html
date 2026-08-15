@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-08-14</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 14. August 2026</h1>
+<nav class="blaettern"><a href="2026-08-04.html" rel="prev" title="Dienstag, 4. August 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/31821728512" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">82</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+53</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">50</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">39</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/344">#344</a> Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen</span>
+<span class="epic-progress">11 / 12 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 92%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/375">#375</a></span>Dateisystem- und Netzindizierung verwenden einheitliche Endungslisten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/374">#374</a></span>Chunk-Überlappung konfigurierbar gemacht</li><li>Revisionssicheres Audit-Logging, Zitierzwang, Organisationsgrenze, Modellanbieter und Storage-Abstraktion entschieden</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/405">#405</a></span>fix(indexing): Zulässige Dateitypen für beide Indizierungswege vereinheitlichen (+225/−51, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/402">#402</a></span>fix(indexing): Chunk-Überlappung konfigurierbar machen (+236/−17, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/398">#398</a></span>docs(security): Umfang des revisionssicheren Protokolls schneiden (+335/−69, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/397">#397</a></span>docs(features): Nachweisweg der Organisationsgrenze festhalten (+54/−0, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/396">#396</a></span>docs(query): Zitierzwang in zwei Stufen schneiden und am Space verankern (+224/−39, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/384">#384</a></span>feat(config): Basis-Adresse der Modellanbieter ohne Voreinstellung (+315/−33, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/381">#381</a></span>docs(public-sector): Bürgerassistent als Ausblick der Phase 4 festschreiben (+28/−15, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/380">#380</a></span>docs(deployment): Umfang der Speicher-Abstraktion für Dokumente festlegen (+110/−28, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/379">#379</a></span>docs(channels): Zielbild der Chat-Kanäle auf selbst betriebene Team-Chats festlegen (+76/−37, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/378">#378</a></span>docs: Cloud-Betrieb als Möglichkeit fassen, betreuten Dienst streichen (+89/−25, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/377">#377</a></span>docs(vectorstore): pgvector als einzigen unterstützten Vektorspeicher festlegen (+89/−12, 6 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/338">#338</a> Epic: Produktvision auf die öffentliche Verwaltung ausrichten</span>
+<span class="epic-progress">5 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 71%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/359">#359</a></span>Produktvision, ADR und Use-Cases auf öffentliche Verwaltung ausgerichtet</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/372">#372</a></span>README und Einstiegsdokumente neu gefasst</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/369">#369</a></span>Landing-Page, Pitch und One-Pager auf Verwaltungston umgestellt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/382">#382</a></span>docs(market): Ausnahme für Anbieternamen als Sachbeleg festhalten (+48/−1, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/372">#372</a></span>docs: Einstiegsdokumente und Umsetzungsstand an die neue Ausrichtung angleichen (+1389/−1429, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/369">#369</a></span>docs(marketing): Landing-Page, Pitch und One-Pager auf den Verwaltungston umstellen (+1083/−691, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/364">#364</a></span>docs: Backlog gegen die neue Produktausrichtung sichten (+337/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/359">#359</a></span>docs: Produktvision, ADR und Anwendungsfälle auf die neue Ausrichtung umstellen (+775/−308, 3 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/198">#198</a> Epic: Space and asset model — replace the workspace model</span>
+<span class="epic-progress">8 / 28 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 29%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/345">#345</a></span>Space-Arten durch Attribute ersetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/331">#331</a></span>Rechtemodell verschlankt: Asset-Rolle USER und Gruppenrollen gestrichen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/345">#345</a></span>feat(space): Space-Arten durch Attribute ersetzen, Inhalte privat statt Entwurf (+729/−758, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/331">#331</a></span>feat(library): Rechtemodell verschlanken — Asset-Rolle USER und Gruppenrollen streichen (+401/−45, 9 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/107">#107</a> feat: Introduce Workspaces &amp; Access Control</span>
+<span class="epic-progress">16 / 18 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 89%"></div></div>
+<ul><li>Workspace-Lifecycle, Audit-Logging, Connector-Integration und Chunk-Metadaten umgesetzt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Audit-Logging, Organisationsgrenze und Zitierzwang implementiert</li><li>Landing-Page als Startseite, Tagesreport mit Blättern zwischen Tagen</li><li>Auth-Modi auf oidc und dev reduziert, ADR-Bestand aktualisiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/403">#403</a></span>fix(docs): Doppelte Tabellenzeilen in ADR-0014 entfernen (+1/−5, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/399">#399</a></span>docs(marketing): Produktnamen in der Marketing-Rolle durch Gattungen ersetzen (+7/−2, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/385">#385</a></span>feat(report): Blättern zwischen Berichtstagen und feste Adresse für den aktuellen Tag (+141/−6, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/376">#376</a></span>feat(pages): Landing Page als Startseite, Tagesreport nach report/ verschieben (+208/−7, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/371">#371</a></span>docs(features): Identität, Nachweisbarkeit und Governance neu fassen (F, G, H) (+1054/−138, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/368">#368</a></span>docs(features): Wissensschicht, Wissensquellen und Modellsteuerung neu fassen (A, B, E) (+1508/−829, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/366">#366</a></span>docs(features): Kanäle, Betrieb und Verwaltungs-Spezifika neu fassen (I, J, K) (+998/−894, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/365">#365</a></span>docs(features): Verteilungsmodell ergänzen und Agentenspezifikation anlegen (C, D) (+432/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/347">#347</a></span>docs(agents): Sub-Issue-Regel für Epics in AGENTS.md aufnehmen (+2/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/337">#337</a></span>feat(space): Space-Arten durch Attribute ersetzen, Inhalte privat statt Entwurf (+729/−758, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/336">#336</a></span>feat(report): Epics auf native GitHub-Sub-Issues umstellen (+277/−58, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/334">#334</a></span>docs: verpflichtendes Auth-Profil in den Startbefehlen nennen (+12/−3, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/328">#328</a></span>feat(auth)!: Auth-Modi auf oidc und dev reduzieren (+800/−977, 67 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/327">#327</a></span>docs: ADR-Bestand entschlacken und auf den tatsächlichen Stand bringen (+92/−204, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/325">#325</a></span>chore(backend): evalTest-Sourceset auf Jackson 3 umstellen, ADR-0007 entfernen (+13/−68, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/322">#322</a></span>feat(ci): Tagesreport auf Management Summary umstellen (+799/−152, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/320">#320</a></span>docs: Agentenanweisungen entpersonalisieren, eval/ ergänzen und Duplikat auflösen (+8/−41, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/318">#318</a></span>docs: GraphRAG-Recherche aufnehmen und Repository-Hygiene (+150/−0, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/316">#316</a></span>fix(group): Race auf uk_directory_sync_status_organization behandeln (+221/−6, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/315">#315</a></span>fix(ci): Ollama-Modell-Cache im Retrieval-Regressionslauf trotz Timeout speichern (+44/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/314">#314</a></span>fix(api): ResponseStatusException und DataIntegrityViolationException im GlobalExceptionHandler abbilden (+165/−0, 2 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-08-15 um 03:56 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-08-14T00:00:00 bis 2026-08-14T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

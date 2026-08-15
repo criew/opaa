@@ -5,8 +5,31 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-14T14:53:35Z</updated>
+  <updated>2026-08-15T01:56:22Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 14. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-14.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-14.html</id>
+    <updated>2026-08-15T01:56:22Z</updated>
+    <summary type="text">Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen:
+— Dateisystem- und Netzindizierung verwenden einheitliche Endungslisten
+— Chunk-Überlappung konfigurierbar gemacht
+— Revisionssicheres Audit-Logging, Zitierzwang, Organisationsgrenze, Modellanbieter und Storage-Abstraktion entschieden
+Epic: Produktvision auf die öffentliche Verwaltung ausrichten:
+— Produktvision, ADR und Use-Cases auf öffentliche Verwaltung ausgerichtet
+— README und Einstiegsdokumente neu gefasst
+— Landing-Page, Pitch und One-Pager auf Verwaltungston umgestellt
+Epic: Space and asset model — replace the workspace model:
+— Space-Arten durch Attribute ersetzt
+— Rechtemodell verschlankt: Asset-Rolle USER und Gruppenrollen gestrichen
+feat: Introduce Workspaces &amp; Access Control:
+— Workspace-Lifecycle, Audit-Logging, Connector-Integration und Chunk-Metadaten umgesetzt
+Sonstiges:
+— Audit-Logging, Organisationsgrenze und Zitierzwang implementiert
+— Landing-Page als Startseite, Tagesreport mit Blättern zwischen Tagen
+— Auth-Modi auf oidc und dev reduziert, ADR-Bestand aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 4. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-04.html"/>
