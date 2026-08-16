@@ -1,0 +1,731 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-08-15",
+  "generated_at": "2026-08-16T04:05:37.158119+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-15T00:00:00+02:00",
+  "window_end": "2026-08-15T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 416,
+      "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen — harte Untergrenze, Sechsfachbefund, Baseline-Diff",
+      "url": "https://github.com/criew/opaa/issues/416",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Problem\n\nDie zweite Review-Runde zu PR #301 ist nie in `main` gelandet. Sie existiert als Commit `e67acfd` auf dem Branch `feature/228_retrieval-regressionsjob` — datiert auf den 03.08.2026, 10:45 UTC, also rund zweieinhalb Stunden **nach** dem Merge von PR #301 (08:19 UTC). Der Commit wurde auf den bereits abgeschlossenen Branch gesetzt und nie in einem neuen PR nachgereicht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite nicht.\n\nAlle drei Kernbefunde treffen auf den heutigen Stand von `main` unverändert zu.\n\n## 1. Die harte Untergrenze ist wirkungslos\n\n`BaselineComparator.java` berechnet die harte Untergrenze als `HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue` mit dem Faktor 0,8. Das ist zugleich zu locker und zu weich:\n\n- **Sie kann nie auslösen.** Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei etwa 0,021 und schlägt damit immer zuerst zu.\n- **Sie wandert mit.** Weil sie sich rein auf den *aktuell committeten* Baselinewert bezieht, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern — das Gegenteil dessen, wofür eine harte Untergrenze da ist.\n\nDer Commit ersetzt das durch `max(0,8 × Baselinewert, feste Untergrenze)` mit den absoluten Werten 0,30 (HitRate@5) und je 0,25 (MRR, nDCG@10, Recall@10). Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term ist der Anker, der sich nicht bewegt, wenn die Baseline-Datei selbst geändert wird.\n\n## 2. Der Einzelfall in der Dokumentation ist in Wahrheit ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschreiben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Tatsächlich betrifft sie sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen (#306); korrigiert wird ihre Beschreibung, damit sie mit Zahlen statt mit einem Beispiel dasteht.\n\n## 3. Die Baseline-Absenkungsprüfung hängt am Label\n\n`diff_baseline.py` läuft ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugt damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Der Commit löst sie in einen eigenen Workflow `.github/workflows/baseline-diff.yml` heraus, der für jeden PR mit Änderungen unter `eval/baseline/**` läuft.\n\n## Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe. Fehlt das Feld oder ist es falsch, weitet sich die Toleranz dieser Gruppe sonst stillschweigend auf den größtmöglichen Wert.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landet sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar wird von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Abnahmekriterien\n\n- [ ] Harte Untergrenze kombiniert relativen und absoluten Term über `max(...)`, mit Tests für beide Zweige\n- [ ] `Baseline.load()` weist Gruppen ohne gültiges `distinctExpectedDocumentSets` zurück\n- [ ] `.github/workflows/baseline-diff.yml` läuft label-unabhängig für PRs, die `eval/baseline/**` ändern; die entsprechenden Schritte entfallen im Retrieval-Job\n- [ ] Sechsfachbefund in Javadoc, ADR-0013 und `eval/baseline/README.md` mit Zahlen belegt\n- [ ] Cache-Export prüft Vollständigkeit zusätzlich zur Größe\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013",
+      "closes": []
+    },
+    {
+      "number": 414,
+      "title": "ci(eval): evaluateRetrieval führt BaselineRegressionTest ohne Report aus und schlägt fehl",
+      "url": "https://github.com/criew/opaa/issues/414",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Problem\n\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — **nicht** wegen einer Retrieval-Regression, sondern wegen eines Fehlers in der Gradle-Task-Konfiguration.\n\nFehlgeschlagen ist `BaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline()` an `BaselineRegressionTest.java:38`. Das ist der `fail(…)`-Zweig *„No report found …\"* — also der Wächter dafür, dass der Test ohne vorher erzeugten Report läuft, nicht die eigentliche Baseline-Prüfung.\n\n## Ursache\n\n`tasks.register<Test>(\"evaluateRetrieval\")` in `backend/build.gradle.kts` hat keinen `filter`-Block und führt deshalb **alle** Klassen des `evalTest`-Sourcesets aus — einschließlich `BaselineRegressionTest`. JUnit startet den alphabetisch vor `RetrievalEvaluationHarnessTest`:\n\n- `03:01:21` — `BaselineRegressionTest` läuft, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\n\n`evalUnitTest` schließt beide Klassen korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest` — nur `evaluateRetrieval` selbst filtert nichts. Der Javadoc von `BaselineRegressionTest` beschreibt die beabsichtigte Aufteilung bereits korrekt; die Task-Konfiguration setzt sie nur nicht um.\n\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Vergleich tatsächlich durchführen soll — nie gestartet wurde.\n\n## Warum erst jetzt\n\nAlle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) überhaupt bis zur Auswertung durchlief. Der Fehler war seit Einführung von `BaselineRegressionTest` latent vorhanden.\n\n## Es liegt keine Retrieval-Regression vor\n\nDie Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json`:\n\n| Metrik | Lauf | Baseline |\n| --- | --- | --- |\n| HitRate@5 | 0.521 | 0.521 |\n| MRR | 0.461 | 0.461 |\n| nDCG@10 | 0.445 | 0.445 |\n| Recall@10 | 0.490 | 0.490 |\n\n1448 Dokumente indiziert, Ein-Chunk-Invariante hält (0 Verletzungen).\n\n## Abnahmekriterien\n\n- [ ] `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`\n- [ ] `./gradlew evaluateRetrieval --tests \"*BaselineRegressionTest\"` selektiert keinen Test mehr (Reproduktionsnachweis: vor dem Fix läuft der Test und schlägt mit *„No report found\"* fehl)\n- [ ] Kommentar in `build.gradle.kts` hält die Rollenverteilung der drei Tasks fest\n\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs), Epic #224",
+      "closes": []
+    },
+    {
+      "number": 410,
+      "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+      "url": "https://github.com/criew/opaa/issues/410",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:S"
+      ],
+      "body": "## Kontext\n\nDie Sichtung in `docs/discussions/discussion-backlog-neuausrichtung.md` ist abgearbeitet. Alle vier Kategorietabellen haben ihren Zweck erfüllt:\n\n- **Kategorie 1** verlangte keine Handlung — die Vorgänge tragen die neue Ausrichtung unverändert.\n- **Kategorie 2** ist umformuliert (#224, #234, #119, #123, #143, #144, #145).\n- **Kategorie 3** ist aufgelöst: #77 an die Entscheidung zu #348 angeschlossen, #106 samt seiner Kinder #126–#130 an #349 gehängt, #54 als abgelöst durch #205 geschlossen, #60 und #63 mit vollständiger Bilanz geschlossen.\n- **Kategorie 4** ist entschieden: #76 mit Begründung geschlossen.\n\nDie Tabellen beschreiben damit einen Zustand, den es nicht mehr gibt, und würden beim nächsten Lesen in die Irre führen. Der Abschnitt **Lücken** bleibt — er ist die einzige Aussage des Dokuments, die weiter gilt.\n\n## Der zweite Punkt\n\nBei der Umformulierung von #119 ist aufgefallen, dass `docs/STATUS.md` unter Bereich B **Upload über die Weboberfläche und die REST-API** als gebaut führt. Das stimmt nicht: Es gibt keinen `multipart`-Endpunkt in `backend/src/main/resources/openapi/opaa-api.yaml`, kein `MultipartFile` im Code, und `documents` führt keine einbringende Person. Die einzigen Aufnahmewege sind das konfigurierte Verzeichnis und die URL-Indizierung.\n\n`docs/features/knowledge-sources.md` sagt es bereits richtig (\"der Upload gehört zum Zielbild\", \"noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, war zu großzügig.\n\n## Umfang\n\n- Die vier Kategorietabellen aus `discussion-backlog-neuausrichtung.md` entfernen, den Abschnitt **Lücken** und die empfohlenen nächsten Schritte behalten, die Einleitung auf den abgeschlossenen Stand umstellen\n- `docs/STATUS.md`, Bereich B: den Upload aus **Gebaut** herausnehmen und als Zielbild führen; die Kurzübersicht mitziehen\n\n## Abnahmekriterien\n\n- [ ] Das Sichtungsdokument enthält keine Kategorietabelle mehr und sagt, was aus den Vorgängen geworden ist\n- [ ] `STATUS.md` behauptet keinen Upload mehr\n- [ ] Keine toten Verweise",
+      "closes": []
+    },
+    {
+      "number": 408,
+      "title": "fix(indexing): Vor #202 indizierte Chunks tragen kein library_id und sind dauerhaft unauffindbar",
+      "url": "https://github.com/criew/opaa/issues/408",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M"
+      ],
+      "body": "@-",
+      "closes": []
+    },
+    {
+      "number": 406,
+      "title": "fix(query): Über die Indexierung eingespielte Dokumente sind im Chat für niemanden auffindbar",
+      "url": "https://github.com/criew/opaa/issues/406",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M"
+      ],
+      "body": "@-",
+      "closes": []
+    },
+    {
+      "number": 344,
+      "title": "Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen",
+      "url": "https://github.com/criew/opaa/issues/344",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "epic"
+      ],
+      "body": "Die neue Produktausrichtung (#338) stellt eine Reihe von Konzepten und Abstraktionen in Frage, die aus der Zeit des generischen Enterprise-Wissensmanagements stammen. Dieses Epic **prüft sie, es streicht sie nicht**: Jedes Sub-Issue formuliert eine Frage und endet mit einer Entscheidungsvorlage an den Maintainer. Erst danach wird etwas entfernt, umgebaut oder bewusst beibehalten.\n\n### Hintergrund\n\nEin Teil dieser Abstraktionen ist gebaut, ein Teil eingeplant, ein Teil nur versprochen. Sie stillschweigend aus der Dokumentation zu entfernen, würde eine Konsistenz vortäuschen, die im Code nicht existiert — und genau diese Lücke zwischen Zusage und Wirklichkeit ist der Grund, warum das Repository überhaupt umgebaut wird.\n\nUmgekehrt gilt: Eine Abstraktion, die keinen Zweck mehr hat, kostet dauerhaft Pflege. Beides lässt sich nur entscheiden, wenn man je Punkt nachsieht, was gebaut ist und wem es nützt.\n\nBezug: `docs/decisions/0002-mvp-technology-stack.md` (Festlegung auf pgvector), `docs/features/deployment-infrastructure.md`, `docs/features/user-frontends.md`, `docs/features/llm-integration.md`.\n\n### Phasen\n\n**Phase 1 — Was das Zielbild direkt widerspricht.** Vektorspeicher-Austauschbarkeit, Cloud-Deployment und Managed Service, Chat-Kanäle, Modellanbieter-Standard. Hier steht eine Zusage im Repository, die das neue Zielbild nicht mehr trägt.\n\n**Phase 2 — Was das Zielbild verlangt, aber fehlt.** Zitierzwang in der Query-Pipeline, revisionssicheres Audit-Logging, Absicherung der Organisationsgrenze. Hier fehlt Substanz, die Phase 1 des Produkts voraussetzt.\n\n**Phase 3 — Was offengehalten werden muss.** Verhältnis von Plugin-Architektur und MCP, Umfang der Storage-Abstraktion, Bürgerassistent als späterer Ausblick. Hier geht es darum, sich nichts zu verbauen.\n\n### Abhängigkeiten\n\nDie Sub-Issues sind weitgehend unabhängig. Zwei Kopplungen bestehen:\n\n```\nZitierzwang ──> (Phase-1-Schnitt der Retrieval-Arbeit)\nAudit-Logging ──> #239 (kein personenbezogener Auswertungspfad)\nOrganisationsgrenze ──> #289, #271\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Jeder Punkt hat eine Entscheidungsvorlage mit Empfehlung\n- [ ] Für jeden Punkt ist belegt, was heute tatsächlich im Code existiert\n- [ ] Nichts wurde entfernt oder umgebaut, ohne dass der Maintainer freigegeben hat\n- [ ] Punkte mit Architekturwirkung münden in einen ADR-Entwurf\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Die Umsetzung der Entscheidungen — daraus entstehen eigene Issues\n- Der Dokumentationsumbau selbst (#338)\n\n### Referenzen\n\n- #338 — Produktvision auf die öffentliche Verwaltung ausrichten\n- `docs/decisions/0002-mvp-technology-stack.md`",
+      "closes": []
+    },
+    {
+      "number": 340,
+      "title": "docs: Feature-Spezifikationen entlang der elf Themenbereiche neu schneiden",
+      "url": "https://github.com/criew/opaa/issues/340",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:L"
+      ],
+      "body": "Teil von #338. Setzt das Vision-Issue voraus.\n\nZielbild: jeder Themenbereich hat genau eine zuständige Spezifikation. Bestehende Dokumente werden zugeordnet und überarbeitet, statt neben neuen weiterzuleben.\n\n| Bereich | Datei | Vorgehen |\n|---|---|---|\n| A Wissensschicht & Retrieval | `features/data-indexing-rag.md` | Überarbeiten: Zitierzwang, Confidence, grounded Citations, Hybrid-Suche (Vektor + BM25 + Reranking), Deep Document Understanding mit erklärbarem Chunking, Bild- und Handschrifterkennung modellabhängig, Deep Research, GraphRAG als Ausbaustufe |\n| A (Qualität) | `features/search-quality-evaluation.md` | Bleibt. Einordnung als Teil von A und Verweis auf den Agenten-Prüfstand ergänzen |\n| B Wissensquellen & Konnektoren | `features/knowledge-sources.md` (neu) | Aus `data-indexing-rag.md` herauslösen: Uploads gegen Konnektoren, selbst-aktualisierende Wissensblöcke, read-only gegen read/write, Rechte-Spiegelung, Lebenszyklus |\n| C Spaces, Assets, Verteilung | `features/spaces-and-assets.md` | Bleibt Leitdokument. Ergänzen: Verteilungsstufen bis organisationsweiter Katalog, Freigabe- und Review-Workflow, Versionierung, Auffindbarkeit, Portabilität, Vorlagenkatalog |\n| D Agenten, Prompts, Werkzeuge | `features/agents-and-tools.md` (neu) | Agenten als portable Assets, Agenten-Onboarding (Aufgabenbeschreibung statt Freitext-Prompt), Agenten-Prüfstand mit fünf Prüfkategorien, Prüfagenten als maschinelles Vier-Augen-Prinzip, Sandbox, Textwerkzeuge, read/write mit Human-in-the-loop, MCP |\n| E Modelle & zentrale Steuerung | `features/llm-integration.md` | Umschreiben: BYOM lokal-first, Modell-Datenbank, zentrale Modell-Policies als Obergrenze, Beschränkung hängt an den Daten statt am Raum, Multi-Modell-Strategie, PII-Filter |\n| F Identität, Rechte, Mandanten | `features/access-control.md` | Ergänzen: SCIM-Lebenszyklus, IP-Restriktionen, Rollenmodell schärfen. Das Rechtemodell bleibt in `spaces-and-assets.md` |\n| G Sicherheit, Audit, C5 | `features/security-and-compliance.md` (neu) | Aus `access-control.md` herauslösen und ausbauen: revisionssicheres Audit, DSGVO-Vollständigkeit, sichere Defaults, SBOM, C5-Fähigkeit statt C5-Zertifizierung, Mitbestimmungsfähigkeit |\n| H Monitoring, Kosten, Governance | `features/monitoring-and-governance.md` (neu) | Limits, Kostentransparenz, Analytics, Transparenz über den KI-Rollout — durchgehend aggregiert, ohne personenbezogenen Auswertungspfad |\n| I Kanäle & Frontends | `features/user-frontends.md` | Umschreiben: Web-UI und REST-API als Fundament, Matrix/Element und Mattermost/RocketChat als Ausbau. Slack, Telegram, WhatsApp und Signal nicht stillschweigend streichen, sondern in das Prüf-Epic geben |\n| J Betrieb & Deployment | `features/deployment-infrastructure.md` | Umschreiben: Compose → Kubernetes/HA → air-gapped, openDesk-Andockung, mandantenfähiger Betrieb durch Rechenzentren. Cloud-Deployment und Managed Service ebenfalls ins Prüf-Epic, nicht sofort entfernen |\n| K Verwaltungs-Spezifika | `features/public-sector.md` (neu) | Leichte Sprache und Amtssprache, BITV-Barrierefreiheit, Revisionssicherheit, eAkte- und DMS-Konnektoren als projektgetriebene Option, Bürgerassistent als Ausblick |\n\n`features/document-sharing.md` bleibt unverändert — es trägt bereits den korrekten Überholt-Hinweis.\n\n## Abnahmekriterien\n\n- [ ] Alle neuen Spezifikationen folgen `docs/features/TEMPLATE.md` und nennen ihre Phasenlage\n- [ ] Jeder Themenbereich aus `docs/VISION.md` verweist auf eine existierende Datei\n- [ ] `spaces-and-assets.md` bleibt das einzige Dokument, das das Rechtemodell normativ beschreibt\n- [ ] Keine Anbieternamen, keine Preise, keine Aufwandszahlen",
+      "closes": []
+    },
+    {
+      "number": 338,
+      "title": "Epic: Produktvision auf die öffentliche Verwaltung ausrichten",
+      "url": "https://github.com/criew/opaa/issues/338",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "epic"
+      ],
+      "body": "Die Produktvision von OPAA ist geschärft worden: Aus einem generischen Enterprise-Wissensmanagement ist eine **souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung** geworden. Sie steht auf drei Säulen — Wissen, Agenten, KI für Teams und Organisation — und auf zwei Leitprinzipien: **Belegbarkeit** (jede Aussage an ihre Quelle gebunden, bis hin zum Zitierzwang) und **Verteilbarkeit** (KI-Können wird zum teilbaren Asset und kommt in der ganzen Organisation an). Dieses Epic bringt das Repository auf diesen Stand.\n\n### Hintergrund\n\nDas Repository bildet die neue Ausrichtung heute nur an einer Stelle ab. Die jüngsten Dokumente sprechen bereits die neue Sprache:\n\n- `docs/features/spaces-and-assets.md` — Assets, Wissensbibliotheken, Verteilungsstufen, Mitbestimmung\n- `docs/features/access-control.md` — Systemverwaltung, Identität, Audit\n- `docs/features/search-quality-evaluation.md` — Retrieval-Regression und Demo-Korpus\n\nAlles davor tut es nicht:\n\n- `docs/VISION.md` beschreibt ein Fortune-500-Unternehmen, ein SaaS-Team und eine Support-Abteilung\n- `README.md` verspricht austauschbare Vektordatenbanken sowie Slack, Telegram und WhatsApp\n- `docs/MVP-STATUS.md` meldet einen vollständigen MVP und verweist dabei auf `frontend/src/pages/Chat.tsx` und `io/opaa/llm/` — beides existiert nicht\n- `page/index.html` und die Pitch-Dokumente verkaufen „Dein Firmenwissen\" an Firmen, im Du und zweisprachig\n\nZiel ist ein Repository, das durchgehend dieselbe Geschichte erzählt: eine schlanke, lesbare Produktvision, Feature-Spezifikationen entlang der elf Themenbereiche, ein ehrlicher Umsetzungsstand, Marketing-Assets im Verwaltungston — und ein Backlog, dem man ansieht, worauf das Produkt hinausläuft.\n\n### Phasen\n\nDie Reihenfolge ergibt sich daraus, worauf sich der jeweils nächste Schritt beruft.\n\n**Phase 1 — Der Anker.** ADR zur Produktausrichtung, neue `docs/VISION.md`, `docs/USE-CASES.md`. Ohne diesen Schritt ist alles Weitere eine unbegründete Massenänderung; jeder folgende Schritt beruft sich auf den ADR und die Themenbereiche A–K.\n\n**Phase 2 — Die Tiefe.** Feature-Spezifikationen entlang der elf Themenbereiche neu geschnitten. Sie brauchen die Gliederung aus Phase 1, weil dort festgelegt wird, welcher Bereich welche Spezifikation bekommt.\n\n**Phase 3 — Die Einstiege.** README, Konzepte, Index, Einstiegsleitfaden und ein neues Statusdokument. Kommt nach Phase 2, weil diese Dokumente auf die Spezifikationen verlinken.\n\n**Phase 4 — Das Außen.** Messaging-Wahrheitsquelle, Landing-Page, Pitch, One-Pager. Braucht nur den Anker aus Phase 1 und kann parallel zu Phase 3 laufen.\n\n**Phase 5 — Der Backlog.** Sichtung aller offenen Issues und das Prüf-Epic für die Konzepte, die durch die neue Ausrichtung fragwürdig werden. Läuft parallel, wird aber vom Anker eingerahmt.\n\n### Verbindliche Grenzen für alle Inhalte\n\nNicht ins Repository übernommen wird — weder als Text noch als Andeutung:\n\n- **Wettbewerber.** Keine Anbieternamen, keine Vergleichsmatrix, keine Formulierungen des Musters „statt X\". Abgrenzungen werden mit dem **Sachgrund** begründet, nicht mit einem Mitbewerber.\n- **Beteiligte und Partner.** Keine Personen, Firmen, Beratungen oder Gesellschaftskonstrukte.\n- **Referenzkunden**, Pilotbehörden, konkrete Häuser.\n- **Geschäftsmodell, Preise, Erlösaufteilung, Aufwands- und Kostenschätzungen.**\n\nÜbernommen wird ausschließlich die Produkt- und Anwendungsebene: Nordstern, Leitprinzipien, Themenbereiche, Phasen, Abgrenzungen mit Sachbegründung, Anwendungsfälle.\n\n### Abhängigkeiten\n\n```\n#339 ──> #340 ──> #341\n  ├────> #342\n  └────> #343 ──> #344\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Jeder der elf Themenbereiche ist in `docs/VISION.md` benannt und verweist auf eine existierende Spezifikation\n- [ ] Kein Dokument im Repository beschreibt OPAA noch als generisches Enterprise-Wissensmanagement\n- [ ] `docs/STATUS.md` behauptet nichts, was im Code nicht existiert\n- [ ] Alle Marketing-Assets leiten sich aus `docs/market/MESSAGING.md` ab, siezen und sind deutschsprachig\n- [ ] Kein Anbietername, kein Preis, keine Aufwandszahl, kein Referenzkunde im gesamten geänderten Bestand\n- [ ] Kein Feature wurde entfernt und kein Issue geschlossen, ohne dass der Maintainer gefragt wurde\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Codeänderungen jeder Art — die Abstraktionen, die durch die neue Ausrichtung fragwürdig werden, werden in #344 **geprüft**, nicht umgebaut\n- Die laufenden Umbauten am Space- und Asset-Modell (#198) und an der Suchqualität (#224)\n\n### Referenzen\n\n- `docs/features/spaces-and-assets.md`\n- `docs/features/search-quality-evaluation.md`\n- `docs/decisions/0002-mvp-technology-stack.md`",
+      "closes": []
+    },
+    {
+      "number": 76,
+      "title": "🔵 [LOW] SQL Injection Risk in Future Migrations",
+      "url": "https://github.com/criew/opaa/issues/76",
+      "author": "bigpuritz",
+      "labels": [
+        "backend",
+        "size:S",
+        "security"
+      ],
+      "body": "# SQL Injection Risk in Future Migrations\n\nPart of #60 (Security & Code Review Findings)\n\n## Priority: 🔵 LOW\n\n## Problem\n\nCurrent Liquibase migrations use hardcoded values (safe), but pattern could lead to SQL injection if extended.\n\n**File:** `backend/src/main/resources/db/changelog/changes/002-create-documents-table.yaml:45`\n\n```yaml\nsql: >\n  ALTER TABLE documents\n  ADD CONSTRAINT chk_documents_status\n  CHECK (status IN ('PENDING', 'INDEXED', 'FAILED'));  # ✅ Currently safe\n```\n\n## Risk\n\nFuture scenarios that could introduce vulnerabilities:\n1. Admin UI to add new status values dynamically\n2. Configuration-driven constraints\n3. User-provided enum values\n\n## Anti-patterns to Avoid\n\n```yaml\n# ❌ NEVER DO THIS:\nsql: >\n  ALTER TABLE documents\n  ADD CONSTRAINT chk_documents_status\n  CHECK (status IN (${STATUS_VALUES}));\n```\n\n## Solution\n\nFor dynamic constraints, use application-level validation:\n\n```java\n@Entity\npublic class Document {\n    @Column(nullable = false)\n    @Enumerated(EnumType.STRING)\n    private DocumentStatus status;  // Java enum = safe\n}\n\n// If dynamic values needed:\n@Component\npublic class DocumentValidator {\n    @Value(\"${opaa.document.allowed-statuses}\")\n    private Set<String> allowedStatuses;\n    \n    public void validate(String status) {\n        if (!allowedStatuses.contains(status)) {\n            throw new IllegalArgumentException(\"Invalid status\");\n        }\n    }\n}\n```\n\n## Guidelines\n\n1. **Static constraints** → Liquibase SQL is fine\n2. **Dynamic constraints** → Use Java validation\n3. **Never interpolate** user input into SQL\n4. **Code review** all SQL migrations\n\n## Definition of Done\n\n- [ ] Document SQL injection prevention guidelines\n- [ ] Add to code review checklist\n- [ ] Consider static analysis for SQL\n- [ ] Training materials for team\n- [ ] Migration template with security notes",
+      "closes": []
+    },
+    {
+      "number": 63,
+      "title": "🚨 [CRITICAL] No Authentication/Authorization Implementation",
+      "url": "https://github.com/criew/opaa/issues/63",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:L",
+        "security",
+        "auth"
+      ],
+      "body": "# No Authentication/Authorization Implementation\n\nPart of #60 (Security & Code Review Findings)\n\n## Priority: 🚨 CRITICAL\n\n## Problem\n\nAll API endpoints are completely public with no authentication or authorization. According to VISION.md, OPAA should support:\n- Multi-workspace isolation\n- Role-based access control (RBAC)\n- Audit logging with user attribution\n\nCurrently anyone can:\n- Index documents into the system\n- Query the knowledge base (incurring LLM costs)\n- Access all indexed data\n\n## Risk\n\n- **Production deployment blocker** - Cannot deploy without auth\n- **Data exposure** - All indexed documents are publicly accessible\n- **Cost liability** - Anyone can trigger expensive LLM operations\n- **Compliance violation** - No audit trail, no user attribution\n\n## Solution\n\n### Phase 1: Basic Authentication\n```java\n@EnableWebSecurity\npublic class SecurityConfig {\n    // JWT or OAuth2 implementation\n}\n```\n\n### Phase 2: Workspace Isolation\n- Add `workspace_id` to all tables\n- Filter queries by user's workspace access\n- Row-level security in PostgreSQL\n\n### Phase 3: RBAC\n- User roles: ADMIN, EDITOR, VIEWER\n- Permission matrix for endpoints\n- Audit logging with user context\n\n## Definition of Done\n\n- [ ] Authentication mechanism implemented (JWT/OAuth2)\n- [ ] All endpoints protected (except health check)\n- [ ] User context available in services\n- [ ] Frontend auth flow implemented\n- [ ] Workspace isolation at data layer\n- [ ] Basic RBAC (at least admin/user roles)\n- [ ] Audit logging includes user identity",
+      "closes": []
+    },
+    {
+      "number": 60,
+      "title": "🔍 Security & Code Review Findings (20 Issues)",
+      "url": "https://github.com/criew/opaa/issues/60",
+      "author": "bigpuritz",
+      "labels": [
+        "epic",
+        "security"
+      ],
+      "body": "# 🔍 Security & Code Review Findings\n\nCode Review durchgeführt am 2026-02-27 mit Claude Opus 4.6. Vollständige Analyse aller Backend-, Frontend-, Config- und Docker-Files.\n\n## 📋 Summary\n\n- **20 Issues** identifiziert\n- **5 Critical** Security-Probleme (Production-Blocker)\n- **3 High Priority** Bugs/Issues\n- **5 Medium Priority** Code-Quality-Probleme\n- **7 Low Priority** Code Smells\n\n## 🚨 Critical Security Issues (Production Blocker)\n\n### Security Tasks\n\n- [ ] **#1 CORS Wildcard Headers** - `CorsConfig.java` erlaubt `allowedHeaders(\"*\")` → Whitelist nötig\n  - File: `backend/src/main/java/io/opaa/api/CorsConfig.java:17`\n  - Fix: `.allowedHeaders(\"Content-Type\", \"Authorization\", \"X-Requested-With\")`\n  - Risk: CORS-Bypass, Request Smuggling bei Auth-Implementation\n\n- [ ] **#2 Missing Rate Limiting** - Keine Rate Limits auf Query/Indexing Endpoints\n  - Risk: LLM API-Kosten-Explosion, DoS-Attacken\n  - Fix: Spring Bucket4j oder Nginx-Level Rate Limiting implementieren\n\n- [ ] **#3 No Authentication/Authorization** - Alle Endpoints sind public\n  - Risk: Jeder kann Dokumente indexieren, Queries stellen, Kosten verursachen\n  - Fix: Spring Security + JWT/OAuth2 implementieren\n\n- [ ] **#4 conversationId Input Validation fehlt** - Keine Format/Längen-Validierung\n  - File: `backend/src/main/java/io/opaa/query/QueryService.java:54`\n  - Risk: Memory Exhaustion, Injection bei Persistierung\n  - Fix: Regex-Validation `^[a-zA-Z0-9-]{1,50}$`\n\n- [ ] **#5 No Observability** - Keine Metrics, Tracing, erweiterte Health Checks\n  - Fix: Spring Boot Actuator + Micrometer hinzufügen\n\n## ⚠️ High Priority Issues\n\n### Code Quality Tasks\n\n- [ ] **#6 Missing Transaction Boundaries** - QueryService hat keine @Transactional\n  - File: `backend/src/main/java/io/opaa/query/QueryService.java:51`\n  - Risk: Race Conditions bei parallelem Indexing\n  - Fix: `@Transactional(readOnly = true)` auf query() Methode\n\n- [ ] **#7 Spotless Config Missing** - ADR-0002 Violation\n  - File: `backend/build.gradle.kts:50`\n  - Problem: Spotless declared aber nicht konfiguriert\n  - Fix: googleJavaFormat() Config hinzufügen\n\n- [ ] **#8 Docker Build skips Tests** - Tests werden übersprungen\n  - File: `backend/Dockerfile:10`\n  - Problem: `./gradlew bootJar -x test`\n  - Fix: `./gradlew build` verwenden (inkludiert Tests)\n\n## 🟡 Medium Priority Issues\n\n### Stability Tasks\n\n- [ ] **#9 ChatMemory Lifecycle unklar** - Potential Memory Leak\n  - Problem: Keine Eviction Policy, unbegrenztes Wachstum\n  - Fix: TTL oder Max Size implementieren\n\n- [ ] **#10 Error Boundary nicht verwendet** - Frontend Crash Handling\n  - Problem: ErrorBoundary existiert aber wird nicht verwendet\n  - Fix: In App.tsx oder main.tsx wrappen\n\n- [ ] **#11 Sensitive Error Disclosure** - AI Exception Messages in Logs\n  - File: `backend/src/main/java/io/opaa/api/GlobalExceptionHandler.java`\n  - Risk: API Keys könnten in Fehlermeldungen leaken\n  - Fix: Message Sanitization vor Logging\n\n## 🔵 Low Priority (Code Quality)\n\n### Refactoring Tasks\n\n- [ ] **#12 Magic Numbers ohne Dokumentation**\n  - Files: `QueryService.java`, `application.yml`\n  - Problem: DEFAULT_TOP_K=5, SIMILARITY_THRESHOLD=0.3 ohne Rationale\n  - Fix: Javadoc mit Begründung ergänzen\n\n- [ ] **#13 Inconsistent Mock Profile Naming**\n  - Problem: `mock` Profile bedeutet \"no-db\", nicht \"use mocks\"\n  - Fix: Rename zu `no-db` oder `standalone`\n\n- [ ] **#14 Complex Inline Lambda** - Source Merging Logic\n  - File: `QueryService.java:131-151`\n  - Problem: Business Logic in Lambda, schwer testbar\n  - Fix: Extract Method + Unit Tests\n\n- [ ] **#15 Axios Type Safety** - Unsafe Type Assertions\n  - File: `frontend/src/services/api.ts:13`\n  - Problem: `as ErrorResponse` ohne Validation\n  - Fix: Type Guard implementieren\n\n- [ ] **#16 SQL Injection Risk Monitoring** - Für zukünftige Migrations\n  - Current: Safe (Hardcoded Enums)\n  - Watch: Bei dynamischen Constraints → Prepared Statements\n\n- [ ] **#17 Vector Store Index Type Hardcoded**\n  - File: `application.yml:41`\n  - Fix: `${OPAA_PGVECTOR_INDEX_TYPE:hnsw}` konfigurierbar machen\n\n- [ ] **#18 Silent Error Fallback** - Invalid UUID nur Debug-geloggt\n  - File: `QueryService.java:117`\n  - Fix: log.warn statt log.debug für bessere Diagnose\n\n## 📊 Testing Gaps\n\n### Test Coverage Tasks\n\n- [ ] **#19 Missing Integration Tests** - Query Flow End-to-End\n  - Critical Path nicht getestet\n  - Citation Parsing Logic nicht getestet\n  - Source Merging Logic nicht getestet\n\n- [ ] **#20 Security Headers Missing** - Nginx Config\n  - Vermutlich fehlen: CSP, X-Frame-Options, HSTS\n  - Fix: Nginx Security Headers Review\n\n## 🎯 Recommended Action Plan\n\n1. **Sprint 1**: Fix Critical Security Issues (#1-5) - Production Blocker\n2. **Sprint 2**: Fix High Priority Issues (#6-8) + Medium Stability (#9-11)\n3. **Sprint 3**: Code Quality Improvements (#12-20)\n\n## 📎 References\n\n- Full Review Document: [Siehe PR/Comment mit vollständiger Analyse]\n- ADR-0002: Technology Stack Decisions\n- VISION.md: Multi-Workspace & Security Requirements\n\n---\n\n**Severity Legend:**\n- 🚨 Critical = Production Blocker, Security Risk\n- ⚠️ High = Bugs, ADR Violations, CI/CD Issues  \n- 🟡 Medium = Stability, Memory Leaks, Error Handling\n- 🔵 Low = Code Quality, Maintainability, Future Risks",
+      "closes": []
+    },
+    {
+      "number": 54,
+      "title": "feat: Erweitertes Chat-Memory mit Persistenz und Session-Verwaltung",
+      "url": "https://github.com/criew/opaa/issues/54",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "frontend"
+      ],
+      "body": "## Summary\n\nAufbauend auf dem In-Memory Chat-Gedächtnis (#43, MVP) soll das Chat-Memory persistent und voll funktionsfähig werden.\n\n## Motivation\n\nIm MVP geht der Konversationsverlauf beim Server-Neustart verloren. Für die finale Version sollen Konversationen dauerhaft gespeichert und über eine UI verwaltet werden können.\n\n## Proposed Solution\n\n### Backend\n- Chat-History in der Datenbank persistieren (Liquibase-Migration für `conversations` + `messages` Tabellen)\n- `ChatMemory`-Implementierung von `InMemoryChatMemory` auf DB-backed umstellen\n- Token-Limit-Management: Ältere Nachrichten zusammenfassen oder kürzen wenn das Kontextfenster voll wird\n- Conversation-CRUD API (Liste, Details, Löschen, Umbenennen)\n\n### Frontend\n- Sidebar/Panel mit Liste vergangener Konversationen\n- Konversation fortsetzen durch Auswahl aus der Liste\n- Konversationen umbenennen und löschen\n- Auto-generierte Konversationstitel (z.B. aus erster Frage)\n\n### API\n- `GET /api/conversations` — Liste aller Konversationen\n- `GET /api/conversations/{id}` — Konversation mit Nachrichten laden\n- `DELETE /api/conversations/{id}` — Konversation löschen\n- `PATCH /api/conversations/{id}` — Konversation umbenennen\n\n## Voraussetzung\n\n- #43 (In-Memory Chat-Gedächtnis) muss zuerst umgesetzt sein\n\n## Additional Context\n\nSpring AI bietet verschiedene `ChatMemory`-Implementierungen. Für die Persistenz kann eine JDBC-basierte Implementierung verwendet werden oder ein eigener Adapter geschrieben werden.",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 416,
+      "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen — harte Untergrenze, Sechsfachbefund, Baseline-Diff",
+      "url": "https://github.com/criew/opaa/issues/416",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Problem\n\nDie zweite Review-Runde zu PR #301 ist nie in `main` gelandet. Sie existiert als Commit `e67acfd` auf dem Branch `feature/228_retrieval-regressionsjob` — datiert auf den 03.08.2026, 10:45 UTC, also rund zweieinhalb Stunden **nach** dem Merge von PR #301 (08:19 UTC). Der Commit wurde auf den bereits abgeschlossenen Branch gesetzt und nie in einem neuen PR nachgereicht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite nicht.\n\nAlle drei Kernbefunde treffen auf den heutigen Stand von `main` unverändert zu.\n\n## 1. Die harte Untergrenze ist wirkungslos\n\n`BaselineComparator.java` berechnet die harte Untergrenze als `HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue` mit dem Faktor 0,8. Das ist zugleich zu locker und zu weich:\n\n- **Sie kann nie auslösen.** Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei etwa 0,021 und schlägt damit immer zuerst zu.\n- **Sie wandert mit.** Weil sie sich rein auf den *aktuell committeten* Baselinewert bezieht, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern — das Gegenteil dessen, wofür eine harte Untergrenze da ist.\n\nDer Commit ersetzt das durch `max(0,8 × Baselinewert, feste Untergrenze)` mit den absoluten Werten 0,30 (HitRate@5) und je 0,25 (MRR, nDCG@10, Recall@10). Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term ist der Anker, der sich nicht bewegt, wenn die Baseline-Datei selbst geändert wird.\n\n## 2. Der Einzelfall in der Dokumentation ist in Wahrheit ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschreiben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Tatsächlich betrifft sie sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen (#306); korrigiert wird ihre Beschreibung, damit sie mit Zahlen statt mit einem Beispiel dasteht.\n\n## 3. Die Baseline-Absenkungsprüfung hängt am Label\n\n`diff_baseline.py` läuft ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugt damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Der Commit löst sie in einen eigenen Workflow `.github/workflows/baseline-diff.yml` heraus, der für jeden PR mit Änderungen unter `eval/baseline/**` läuft.\n\n## Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe. Fehlt das Feld oder ist es falsch, weitet sich die Toleranz dieser Gruppe sonst stillschweigend auf den größtmöglichen Wert.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landet sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar wird von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Abnahmekriterien\n\n- [ ] Harte Untergrenze kombiniert relativen und absoluten Term über `max(...)`, mit Tests für beide Zweige\n- [ ] `Baseline.load()` weist Gruppen ohne gültiges `distinctExpectedDocumentSets` zurück\n- [ ] `.github/workflows/baseline-diff.yml` läuft label-unabhängig für PRs, die `eval/baseline/**` ändern; die entsprechenden Schritte entfallen im Retrieval-Job\n- [ ] Sechsfachbefund in Javadoc, ADR-0013 und `eval/baseline/README.md` mit Zahlen belegt\n- [ ] Cache-Export prüft Vollständigkeit zusätzlich zur Größe\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013",
+      "closes": []
+    },
+    {
+      "number": 414,
+      "title": "ci(eval): evaluateRetrieval führt BaselineRegressionTest ohne Report aus und schlägt fehl",
+      "url": "https://github.com/criew/opaa/issues/414",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Problem\n\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — **nicht** wegen einer Retrieval-Regression, sondern wegen eines Fehlers in der Gradle-Task-Konfiguration.\n\nFehlgeschlagen ist `BaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline()` an `BaselineRegressionTest.java:38`. Das ist der `fail(…)`-Zweig *„No report found …\"* — also der Wächter dafür, dass der Test ohne vorher erzeugten Report läuft, nicht die eigentliche Baseline-Prüfung.\n\n## Ursache\n\n`tasks.register<Test>(\"evaluateRetrieval\")` in `backend/build.gradle.kts` hat keinen `filter`-Block und führt deshalb **alle** Klassen des `evalTest`-Sourcesets aus — einschließlich `BaselineRegressionTest`. JUnit startet den alphabetisch vor `RetrievalEvaluationHarnessTest`:\n\n- `03:01:21` — `BaselineRegressionTest` läuft, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\n\n`evalUnitTest` schließt beide Klassen korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest` — nur `evaluateRetrieval` selbst filtert nichts. Der Javadoc von `BaselineRegressionTest` beschreibt die beabsichtigte Aufteilung bereits korrekt; die Task-Konfiguration setzt sie nur nicht um.\n\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Vergleich tatsächlich durchführen soll — nie gestartet wurde.\n\n## Warum erst jetzt\n\nAlle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) überhaupt bis zur Auswertung durchlief. Der Fehler war seit Einführung von `BaselineRegressionTest` latent vorhanden.\n\n## Es liegt keine Retrieval-Regression vor\n\nDie Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json`:\n\n| Metrik | Lauf | Baseline |\n| --- | --- | --- |\n| HitRate@5 | 0.521 | 0.521 |\n| MRR | 0.461 | 0.461 |\n| nDCG@10 | 0.445 | 0.445 |\n| Recall@10 | 0.490 | 0.490 |\n\n1448 Dokumente indiziert, Ein-Chunk-Invariante hält (0 Verletzungen).\n\n## Abnahmekriterien\n\n- [ ] `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`\n- [ ] `./gradlew evaluateRetrieval --tests \"*BaselineRegressionTest\"` selektiert keinen Test mehr (Reproduktionsnachweis: vor dem Fix läuft der Test und schlägt mit *„No report found\"* fehl)\n- [ ] Kommentar in `build.gradle.kts` hält die Rollenverteilung der drei Tasks fest\n\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs), Epic #224",
+      "closes": []
+    },
+    {
+      "number": 410,
+      "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+      "url": "https://github.com/criew/opaa/issues/410",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:S"
+      ],
+      "body": "## Kontext\n\nDie Sichtung in `docs/discussions/discussion-backlog-neuausrichtung.md` ist abgearbeitet. Alle vier Kategorietabellen haben ihren Zweck erfüllt:\n\n- **Kategorie 1** verlangte keine Handlung — die Vorgänge tragen die neue Ausrichtung unverändert.\n- **Kategorie 2** ist umformuliert (#224, #234, #119, #123, #143, #144, #145).\n- **Kategorie 3** ist aufgelöst: #77 an die Entscheidung zu #348 angeschlossen, #106 samt seiner Kinder #126–#130 an #349 gehängt, #54 als abgelöst durch #205 geschlossen, #60 und #63 mit vollständiger Bilanz geschlossen.\n- **Kategorie 4** ist entschieden: #76 mit Begründung geschlossen.\n\nDie Tabellen beschreiben damit einen Zustand, den es nicht mehr gibt, und würden beim nächsten Lesen in die Irre führen. Der Abschnitt **Lücken** bleibt — er ist die einzige Aussage des Dokuments, die weiter gilt.\n\n## Der zweite Punkt\n\nBei der Umformulierung von #119 ist aufgefallen, dass `docs/STATUS.md` unter Bereich B **Upload über die Weboberfläche und die REST-API** als gebaut führt. Das stimmt nicht: Es gibt keinen `multipart`-Endpunkt in `backend/src/main/resources/openapi/opaa-api.yaml`, kein `MultipartFile` im Code, und `documents` führt keine einbringende Person. Die einzigen Aufnahmewege sind das konfigurierte Verzeichnis und die URL-Indizierung.\n\n`docs/features/knowledge-sources.md` sagt es bereits richtig (\"der Upload gehört zum Zielbild\", \"noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, war zu großzügig.\n\n## Umfang\n\n- Die vier Kategorietabellen aus `discussion-backlog-neuausrichtung.md` entfernen, den Abschnitt **Lücken** und die empfohlenen nächsten Schritte behalten, die Einleitung auf den abgeschlossenen Stand umstellen\n- `docs/STATUS.md`, Bereich B: den Upload aus **Gebaut** herausnehmen und als Zielbild führen; die Kurzübersicht mitziehen\n\n## Abnahmekriterien\n\n- [ ] Das Sichtungsdokument enthält keine Kategorietabelle mehr und sagt, was aus den Vorgängen geworden ist\n- [ ] `STATUS.md` behauptet keinen Upload mehr\n- [ ] Keine toten Verweise",
+      "closes": []
+    },
+    {
+      "number": 409,
+      "title": "security(frontend): Sicherheits-Header im Webserver ergänzen",
+      "url": "https://github.com/criew/opaa/issues/409",
+      "author": "criew",
+      "labels": [
+        "frontend",
+        "size:S",
+        "security"
+      ],
+      "body": "## Kontext\n\n`frontend/nginx.conf` setzt **keinen einzigen** Sicherheits-Header. Die gesamte Datei besteht aus dem Ausliefern der statischen Dateien und dem Weiterreichen von `/api/` an das Backend:\n\n```nginx\nserver {\n    listen 80;\n    server_name _;\n    root /usr/share/nginx/html;\n    index index.html;\n\n    location / { try_files $uri $uri/ /index.html; }\n\n    location /api/ {\n        proxy_pass http://backend:8080/api/;\n        ...\n    }\n}\n```\n\nAufgefallen bei der Nachprüfung der Sammelliste #60 (dort Befund 20) gegen den heutigen Stand. Es ist der einzige der zwanzig Befunde, der offen ist und keinen eigenen Vorgang hatte.\n\n## Warum das mehr ist als eine Feinheit\n\nOPAA wirbt mit Nachweisbarkeit gegenüber Prüfern. Fehlende Sicherheits-Header sind der erste Punkt, den ein automatisierter Scan meldet, und sie stehen in jeder Prüfliste — sie zu übersehen kostet in einem Gespräch mehr Glaubwürdigkeit, als der Aufwand rechtfertigt.\n\nInhaltlich hängt daran vor allem eines: Ohne Content-Security-Policy schützt nichts davor, dass eingeschleuster Inhalt Skripte von fremden Adressen nachlädt. Für ein System, das Dokumente **aus fremden Quellen** aufnimmt und ihren Inhalt in der Oberfläche darstellt, ist das kein theoretischer Fall. Die eigene Regel dazu steht bereits in [ADR-0004](../docs/decisions/0004-self-hosted-frontend-resources.md): keine externen Ressourcen. Die Content-Security-Policy ist die technische Durchsetzung genau dieser Entscheidung — heute ist sie eine Absichtserklärung.\n\n## Umfang\n\nZu ergänzen sind mindestens:\n\n| Header | Zweck |\n|---|---|\n| `Content-Security-Policy` | Durchsetzung von ADR-0004: nur eigene Herkunft, keine externen Skripte, Schriftarten oder Bilder |\n| `X-Content-Type-Options: nosniff` | verhindert, dass der Browser den Inhaltstyp errät |\n| `X-Frame-Options: DENY` bzw. `frame-ancestors` in der Richtlinie | Schutz vor Einbettung in fremde Seiten |\n| `Referrer-Policy` | verhindert, dass interne Adressen an fremde Seiten abfließen |\n| `Strict-Transport-Security` | nur sinnvoll, wenn ein vorgelagerter Zugangsweg TLS terminiert — siehe unten |\n| `server_tokens off` | keine Preisgabe der Serverversion |\n\n## Zu klären in der Umsetzung\n\n- **Wo die Header gesetzt werden.** Im Compose-Betrieb terminiert der Webserver kein TLS; das übernimmt in einer Behördeninstallation ein vorgelagerter Zugangsweg. `Strict-Transport-Security` an zwei Stellen zu setzen ist schädlich. Entscheide begründet, welche Header hierher gehören und welche in die Betriebsdokumentation als Anforderung an den vorgelagerten Weg.\n- **Die Content-Security-Policy muss zur gebauten Oberfläche passen.** Prüfe am fertigen Build, ob Vite eingebettete Stile oder Skripte erzeugt, die eine strikte Richtlinie brechen würden. Eine Richtlinie, die die eigene Anwendung lahmlegt, wird beim ersten Fehler wieder entfernt.\n- Die Auslieferung über GitHub Pages (#373, #376) hat einen eigenen Weg und ist von dieser Konfiguration nicht betroffen.\n\n## Abnahmekriterien\n\n- [ ] Die genannten Header werden ausgeliefert; belegt durch eine Abfrage gegen den laufenden Compose-Stapel\n- [ ] Die Content-Security-Policy erlaubt keine externe Herkunft und setzt damit ADR-0004 technisch durch\n- [ ] Die Oberfläche funktioniert unter der Richtlinie vollständig — Chat, Dokumentenansicht, Verwaltung, Anmeldung über den Verzeichnisdienst\n- [ ] Die Konsole des Browsers meldet keine Verstöße gegen die Richtlinie\n- [ ] Was dem vorgelagerten Zugangsweg überlassen bleibt, steht in `docs/deployment.md`\n- [ ] Frontend-Formatierung, Lint, Build und Tests bestehen\n\n## Verweise\n\n- Befund 20 aus #60\n- [ADR-0004](../docs/decisions/0004-self-hosted-frontend-resources.md) — selbst gehostete Frontend-Ressourcen\n- Härtungsanforderungen für erreichbare Compose-Installationen: #250",
+      "closes": []
+    },
+    {
+      "number": 408,
+      "title": "fix(indexing): Vor #202 indizierte Chunks tragen kein library_id und sind dauerhaft unauffindbar",
+      "url": "https://github.com/criew/opaa/issues/408",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:M"
+      ],
+      "body": "@-",
+      "closes": []
+    },
+    {
+      "number": 407,
+      "title": "Retrieval-Regression erkannt (automatischer Lauf)",
+      "url": "https://github.com/criew/opaa/issues/407",
+      "author": "github-actions[bot]",
+      "labels": [
+        "bug",
+        "evaluation"
+      ],
+      "body": "<!-- retrieval-regression-alert -->\n\n**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/31860676357\n\n_Kein Report erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe Workflow-Logs._",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 417,
+      "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen",
+      "url": "https://github.com/criew/opaa/pull/417",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "documentation",
+        "backend",
+        "size:M",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Zusammenfassung\n\nReicht die zweite Review-Runde zu PR #301 nach. Sie entstand als Commit `e67acfd` am 03.08.2026 um 10:45 UTC auf dem Branch `feature/228_retrieval-regressionsjob` — zweieinhalb Stunden **nach** dem Merge von PR #301 um 08:19 UTC — und wurde nie in einem eigenen PR eingebracht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite lag seither nur in einem lokalen Worktree.\n\nAlle drei Befunde treffen auf den heutigen Stand von `main` unverändert zu; ich habe jeden einzeln gegen `origin/main` geprüft, bevor ich den Commit übernommen habe.\n\n### 1. Die harte Untergrenze konnte nie auslösen\n\n`BaselineComparator` berechnete sie als `0,8 × Baselinewert`. Damit ist sie gleich zweifach wirkungslos:\n\n- Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei rund 0,021 und schlägt immer zuerst zu — die Untergrenze kommt nie zum Zug.\n- Weil sie am *aktuell committeten* Wert hängt, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern.\n\nJetzt `max(0,8 × Baselinewert, feste Untergrenze)` mit 0,30 für HitRate@5 und je 0,25 für MRR, nDCG@10 und Recall@10. Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term bewegt sich nicht mit, wenn die Baseline-Datei selbst geändert wird.\n\n### 2. Der dokumentierte Einzelfall ist ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschrieben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Betroffen sind sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen und ist als #306 verfolgt; korrigiert wird ihre Beschreibung.\n\n### 3. Die Baseline-Absenkungsprüfung hing am Label\n\n`diff_baseline.py` lief ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugte damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Sie läuft jetzt als eigener Workflow `.github/workflows/baseline-diff.yml` für jeden PR mit Änderungen unter `eval/baseline/**`; die entsprechenden Schritte entfallen im Retrieval-Job.\n\n### Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe — ein fehlendes oder falsches Feld hätte die Toleranz dieser Gruppe stillschweigend auf den weitesten möglichen Wert geweitet.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landete sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar ist von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Beim Nachziehen angepasst\n\nDer Commit ist zwölf Tage alt; zwei Stellen ließen sich nicht unverändert übernehmen.\n\n**Jackson 3.** `BaselineTest` erwartete für das fehlende Feld die `IllegalStateException` aus `validate()`. Das war unter Jackson 2 richtig, wo ein abwesendes `int`-Feld stillschweigend auf 0 defaultete. Seit der Migration in `e15f6ef` lehnt Jackson 3 die Zuordnung selbst ab (`FAIL_ON_NULL_FOR_PRIMITIVES` ist standardmäßig an), sodass der Schutz eine Ebene früher greift. Der Test prüft jetzt das Ergebnis — `load()` gibt keine Baseline mit stillschweigend leerem Toleranznenner zurück — statt des Ausnahmetyps. `validate()` deckt weiterhin die explizite 0 und negative Werte ab, die sauber deserialisieren.\n\n**Konflikte in `retrieval-regression.yml`.** Zugunsten des heutigen Standes aufgelöst: Der Cache-Speicherschritt aus #311 und das Awaitility-Budget aus #414 bleiben unverändert, übernommen wurden die Vollständigkeitsprüfung des Exports, die eingegrenzte Netzzugriffsaussage und der Wegfall der Baseline-Schritte samt `fetch-depth: 0`.\n\n## Zugehörige Issues\n\nCloses #416\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Reproduktionsnachweis\n\nFür den Kernbefund (harte Untergrenze) deckt der neue Test `hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded` genau den Erosionsfall ab: eine künstlich auf 0,30 abgesenkte Baseline, gegen die die reine Relativformel `0,8 × 0,30 = 0,24` ergäbe.\n\n**Rot — mit auf den `main`-Stand zurückgesetztem `BaselineComparator.java`:**\n\n```\nBaselineComparatorTest > hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded() FAILED\nExpecting actual:\n  0.24\nto be close to:\n  0.3\nby less than 1.0E-9 but difference was 0.06.\n13 tests completed, 1 failed\n```\n\nDie Untergrenze ist also tatsächlich mit der abgesenkten Baseline mitgewandert — genau der Defekt, den der Commit beschreibt.\n\n**Grün — mit dem Fix:** `./gradlew spotlessCheck build` — BUILD SUCCESSFUL, alle 35 Tests in `evalUnitTest` bestehen.\n\nFür die Workflow-Änderungen gibt es keinen lokalen Nachweis; beide Dateien sind als YAML validiert, der eigentliche Beleg ist der Lauf in diesem PR.\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build` — BUILD SUCCESSFUL)\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe oben)\n- [x] Dokumentation aktualisiert (ADR-0013, `eval/baseline/README.md`)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\nFrontend-Prüfungen entfallen: keine Frontend-Änderungen.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\nDer übernommene Commit stammt vom Maintainer gemeinsam mit Claude Sonnet 5; das Nachziehen, die Konfliktauflösung und die Jackson-3-Anpassung von Claude Opus 5 via Claude Code.",
+      "closes": [
+        416
+      ],
+      "additions": 490,
+      "deletions": 128,
+      "changed_files": 9
+    },
+    {
+      "number": 415,
+      "title": "fix(eval): evaluateRetrieval nicht mehr über den fehlenden Report stolpern lassen",
+      "url": "https://github.com/criew/opaa/pull/415",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S",
+        "ci",
+        "evaluation"
+      ],
+      "body": "## Zusammenfassung\r\n\r\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — nicht wegen einer Retrieval-Regression, sondern weil `evaluateRetrieval` keinen Testfilter hatte und damit alle Klassen des `evalTest`-Sourcesets ausführte, einschließlich `BaselineRegressionTest`.\r\n\r\nJUnit startete den alphabetisch vor `RetrievalEvaluationHarnessTest`:\r\n\r\n- `03:01:21` — `BaselineRegressionTest`, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag am `\"No report found\"`-Wächter (`BaselineRegressionTest.java:38`)\r\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\r\n\r\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Baseline-Vergleich tatsächlich durchführt — nie startete. `evalUnitTest` schloss beide Klassen bereits korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest`; nur `evaluateRetrieval` filterte nichts. Der Javadoc von `BaselineRegressionTest` beschrieb die beabsichtigte Aufteilung schon richtig — die Task-Konfiguration setzte sie nur nicht um.\r\n\r\n**Es lag keine Retrieval-Regression vor.** Die Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json` (HitRate@5=0.521, MRR=0.461, nDCG@10=0.445, Recall@10=0.490), 1448 Dokumente indiziert, Ein-Chunk-Invariante ohne Verletzung.\r\n\r\nLatent war der Fehler seit Einführung von `BaselineRegressionTest`: alle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) bis zur Auswertung durchkam.\r\n\r\nDie Änderung ist eine Zeile plus Kommentar: `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`.\r\n\r\n## Zugehörige Issues\r\n\r\nCloses #414\r\n\r\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs — schließt sich selbst, sobald der nächtliche Lauf wieder grün ist), Epic #224\r\n\r\n## Art der Änderung\r\n\r\n- [x] Bugfix\r\n- [ ] Neues Feature\r\n- [ ] Dokumentation\r\n- [ ] Refactoring\r\n- [x] CI/Build\r\n\r\n## Reproduktionsnachweis\r\n\r\nDer Fehlerpfad ist Docker-frei reproduzierbar, weil `BaselineRegressionTest` selbst nur zwei JSON-Dateien liest. Maßgeblich ist, ob `evaluateRetrieval` die Klasse überhaupt selektiert — geprüft mit `--tests \"*BaselineRegressionTest\"` in einem frischen Worktree ohne `build/eval-reports`.\r\n\r\n**Rot — auf dem fehlerhaften Stand (ohne den Filter):**\r\n\r\n```\r\n> Task :evaluateRetrieval FAILED\r\n\r\nBaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline() FAILED\r\n    java.lang.AssertionError at BaselineRegressionTest.java:38\r\n1 test completed, 1 failed\r\n```\r\n\r\nmit der Meldung aus dem Testreport:\r\n\r\n```\r\nNo report found at 'C:\\source\\opaa-414\\backend\\build\\eval-reports\\retrieval-metrics.json'.\r\nRun './gradlew evaluateRetrieval' first — this test only compares an existing report against\r\nthe baseline, it does not produce one.\r\n```\r\n\r\nDas ist dieselbe Assertion an derselben Zeile wie im CI-Lauf.\r\n\r\n**Grün — mit dem Fix:** derselbe Aufruf selektiert die Klasse nicht mehr:\r\n\r\n```\r\n> No tests found for given includes: [*BaselineRegressionTest](--tests filter)\r\n```\r\n\r\n(Der Exit-Code 1 stammt hier allein aus dem ins Leere greifenden `--tests`-Filter dieses Diagnoseaufrufs — im regulären `evaluateRetrieval`-Lauf ohne Filter ist das kein Fehlerfall.)\r\n\r\nEin automatisierter Regressionstest dafür müsste die Gradle-Task-Konfiguration selbst prüfen; das steht in keinem Verhältnis zu einer Filterzeile. Stattdessen hält der ergänzte Kommentar fest, warum der Ausschluss notwendig ist. Ob `checkRetrievalBaseline` den Vergleich weiterhin durchführt, zeigt endgültig erst der nächste nächtliche Lauf — dessen `filter`-Block bleibt unverändert.\r\n\r\n## Nachtrag: zweiter Commit — Awaitility-Timeout\r\n\r\nDer erste CI-Lauf dieses PRs hat den Fix bestätigt und dabei den nächsten, davon unabhängigen Blocker freigelegt.\r\n\r\n**Der Filter wirkt:** [Lauf 31887756725](https://github.com/criew/opaa/actions/runs/31887756725) führt 32 statt 33 Tests aus, `BaselineRegressionTest` taucht im Log nicht mehr auf, kein `\"No report found\"` mehr.\r\n\r\n**Neuer Fehlschlag:** `RetrievalEvaluationHarnessTest` lief in den Awaitility-Timeout in `awaitJobCompletion` (`.atMost(30, TimeUnit.MINUTES)`) — die Indizierung stand nach 30 Minuten bei **1121 von 1448** Dokumenten (~1,61 s/Dokument). Die anschließenden Hikari- und `EntityManagerFactory is closed`-Fehler sind Folgerauschen aus dem Herunterfahren.\r\n\r\nDas ist keine Regression aus #412 oder #413: #412 besteht ausschließlich aus einer Liquibase-Migration nebst Test und fasst den Indizierungspfad nicht an, #413 ändert `LibraryAccessService`/`KnowledgeLibraryService`, nicht die Indizierung.\r\n\r\nDer Widerspruch stand bereits im Repository: Der `timeout-minutes`-Kommentar in `.github/workflows/retrieval-regression.yml` dokumentiert seit Issue #311 eine Messung von ~1,58 s/Dokument auf einem echten Runner — hochgerechnet ~38 Minuten Indizierung, ~44 Minuten Vollauf — und hebt deshalb den **Job**-Timeout auf 60 Minuten an. Der **Awaitility**-Timeout im Test blieb bei dieser Anhebung auf 30 Minuten stehen. Er widersprach damit derselben Messung, auf der die 60 Minuten beruhen, und ging nur durch, wenn der Runner überdurchschnittlich schnell war: der nächtliche Lauf davor schaffte ~0,85 s/Dokument.\r\n\r\nDas Budget steht jetzt auf 45 Minuten und bleibt damit unter dem Job-Timeout — eine hängende Indizierung endet so als diagnostizierbarer Testfehlschlag statt als abgebrochener Job. Der Workflow-Kommentar hält die Kopplung beider Limits fest, damit das nächste Mal beide zusammen angefasst werden.\r\n\r\nFür diesen Teil gibt es keinen lokalen Reproduktionsnachweis: Der Fehlerpfad ist die reale Indizierungslaufzeit auf einem GitHub-Actions-Runner, ein 30-Minuten-Docker-Lauf lässt sich lokal weder sinnvoll noch aussagekräftig nachstellen. Der Beleg sind die Messwerte des roten Laufs oben — 1121/1448 nach exakt 30 Minuten — gegen die im Repository bereits dokumentierte Messung aus #311.\r\n\r\n## Checkliste\r\n\r\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build` bzw. `spotlessCheck evalUnitTest` — BUILD SUCCESSFUL)\r\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (Commit 1 lokal rot/grün belegt; Commit 2 über die CI-Messwerte belegt, siehe Nachtrag)\r\n- [ ] Dokumentation aktualisiert (nicht zutreffend — Kommentar in `build.gradle.kts` ergänzt)\r\n- [x] Keine Secrets oder Anmeldeinformationen committet\r\n- [x] Commit-Nachrichten folgen Conventional Commits\r\n- [x] CLA unterzeichnet (bereits unterzeichnet)\r\n\r\nFrontend-Prüfungen entfallen: die Änderung betrifft `backend/build.gradle.kts`, `backend/src/evalTest/…/RetrievalEvaluationHarnessTest.java` und `.github/workflows/retrieval-regression.yml`.\r\n\r\n## KI-Agenten-Offenlegung\r\n\r\n- [ ] Dieser PR wurde von einem Menschen verfasst\r\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Opus 5 via Claude Code)\r\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        414
+      ],
+      "additions": 33,
+      "deletions": 1,
+      "changed_files": 3
+    },
+    {
+      "number": 413,
+      "title": "fix(library): Rechteprüfung für die System-Bibliothek vereinheitlichen",
+      "url": "https://github.com/criew/opaa/pull/413",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "@-",
+      "closes": [],
+      "additions": 221,
+      "deletions": 24,
+      "changed_files": 8
+    },
+    {
+      "number": 412,
+      "title": "fix(indexing): Bibliothekszuordnung in den Chunk-Metadaten nachtragen",
+      "url": "https://github.com/criew/opaa/pull/412",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "@-",
+      "closes": [],
+      "additions": 507,
+      "deletions": 0,
+      "changed_files": 5
+    },
+    {
+      "number": 411,
+      "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+      "url": "https://github.com/criew/opaa/pull/411",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Zusammenfassung\n\nZwei Dinge, beide aus derselben Durchsicht.\n\n### Die Backlog-Sichtung ist abgearbeitet\n\n`docs/discussions/discussion-backlog-neuausrichtung.md` ordnete am 14.08. alle 79 offenen Vorgänge in vier Kategorien ein. Diese Einordnung ist erledigt:\n\n| Kategorie | Ergebnis |\n|---|---|\n| 1 — trägt die Ausrichtung (61) | keine Handlung nötig |\n| 2 — braucht neue Formulierung (7) | umformuliert: #224, #234, #119, #123, #143, #144, #145 |\n| 3 — ist zu prüfen (10) | #77 an #348, #106 samt #126–#130 an #349, #54 abgelöst durch #205, #60 und #63 mit Bilanz geschlossen |\n| 4 — unklar (1) | #76 geschlossen — der Vorgang benannte keinen Defekt |\n\nDie Tabellen sind entfernt. Sie beschrieben einen Zustand, den es nicht mehr gibt, und hätten beim nächsten Lesen in die Irre geführt. Die Einleitung sagt jetzt, was aus jeder Kategorie geworden ist; die empfohlenen nächsten Schritte führen nur noch das Offene.\n\n**Der Abschnitt „Lücken\" bleibt unverändert** — er ist die einzige Aussage des Dokuments, die weiter gilt: die Themen der neuen Ausrichtung, für die es keinen Vorgang gibt.\n\n### `STATUS.md` behauptete einen Upload, den es nicht gibt\n\nAufgefallen bei der Umformulierung von #119. Unter Bereich B stand „Upload über die Weboberfläche und die REST-API\" unter **Gebaut**. Nachgeprüft:\n\n- kein `multipart` in `backend/src/main/resources/openapi/opaa-api.yaml`\n- kein `MultipartFile` im Backend\n- `documents` führt keine einbringende Person\n\n**Beide Aufnahmewege gehen über die Systemverwaltung.** Eine Sachbearbeiterin kann heute kein einziges Dokument einbringen. Daran hängt auch das Speicherkontingent aus #119 — es hätte nichts, woran es greifen könnte.\n\n`docs/features/knowledge-sources.md` sagt es bereits korrekt („der Upload gehört zum Zielbild\", „noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, tat es nicht — deshalb steht die Korrektur in `STATUS.md` unter einer eigenen Überschrift **„Nicht gebaut — obwohl es hier lange anders stand\"** statt still verschoben zu werden.\n\n## Zugehörige Issues\n\nCloses #410\n\n## Art der Änderung\n\n- [x] Dokumentation\n\n## Checkliste\n\n- [x] Upload-Befund am Code nachgeprüft, nicht übernommen\n- [x] Kurzübersicht und Bereich B ziehen dieselbe Aussage\n- [x] Keine toten Verweise; der Abschnitt „Lücken\" ist unverändert\n- [x] Reine Dokumentationsänderung; Pre-Push-Checkliste entfällt\n\n## KI-Agenten-Offenlegung\n\nClaude Opus 5 in der Claude-Code-Hauptsitzung. Die Umformulierung der sieben Vorgänge aus Kategorie 2 hat ein `product-manager`-Subagent vorgenommen; der Upload-Befund stammt von dort und wurde in der Hauptsitzung gegen den Code nachgeprüft.",
+      "closes": [
+        410
+      ],
+      "additions": 171,
+      "deletions": 175,
+      "changed_files": 3
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 76,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/31904943218",
+    "title": "Merge pull request #417 from criew/feature/416_zweite-review-runde-301",
+    "finished_at": "2026-08-15T19:50:50Z"
+  },
+  "highlights": {
+    "338": [
+      {
+        "nummer": 340,
+        "text": "Feature-Spezifikationen entlang der elf Themenbereiche neu geschnitten"
+      }
+    ],
+    "sonstiges": [
+      {
+        "nummer": null,
+        "text": "Zweite Review-Runde zu PR #301 nachgereicht und gemergt"
+      },
+      {
+        "nummer": null,
+        "text": "Retrieval-Regressions-Workflow repariert, evaluateRetrieval läuft zuverlässig"
+      },
+      {
+        "nummer": null,
+        "text": "Backlog-Sichtung abgeschlossen, sieben Vorgänge neu formuliert"
+      },
+      {
+        "nummer": null,
+        "text": "Bibliothekszuordnung in Chunk-Metadaten und Rechteprüfung vereinheitlicht"
+      }
+    ]
+  },
+  "epics": [
+    {
+      "number": 338,
+      "title": "Epic: Produktvision auf die öffentliche Verwaltung ausrichten",
+      "tickets_total": 6,
+      "tickets_closed": 6,
+      "opened": [],
+      "closed": [
+        {
+          "number": 340,
+          "title": "docs: Feature-Spezifikationen entlang der elf Themenbereiche neu schneiden",
+          "url": "https://github.com/criew/opaa/issues/340",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "size:L"
+          ],
+          "body": "Teil von #338. Setzt das Vision-Issue voraus.\n\nZielbild: jeder Themenbereich hat genau eine zuständige Spezifikation. Bestehende Dokumente werden zugeordnet und überarbeitet, statt neben neuen weiterzuleben.\n\n| Bereich | Datei | Vorgehen |\n|---|---|---|\n| A Wissensschicht & Retrieval | `features/data-indexing-rag.md` | Überarbeiten: Zitierzwang, Confidence, grounded Citations, Hybrid-Suche (Vektor + BM25 + Reranking), Deep Document Understanding mit erklärbarem Chunking, Bild- und Handschrifterkennung modellabhängig, Deep Research, GraphRAG als Ausbaustufe |\n| A (Qualität) | `features/search-quality-evaluation.md` | Bleibt. Einordnung als Teil von A und Verweis auf den Agenten-Prüfstand ergänzen |\n| B Wissensquellen & Konnektoren | `features/knowledge-sources.md` (neu) | Aus `data-indexing-rag.md` herauslösen: Uploads gegen Konnektoren, selbst-aktualisierende Wissensblöcke, read-only gegen read/write, Rechte-Spiegelung, Lebenszyklus |\n| C Spaces, Assets, Verteilung | `features/spaces-and-assets.md` | Bleibt Leitdokument. Ergänzen: Verteilungsstufen bis organisationsweiter Katalog, Freigabe- und Review-Workflow, Versionierung, Auffindbarkeit, Portabilität, Vorlagenkatalog |\n| D Agenten, Prompts, Werkzeuge | `features/agents-and-tools.md` (neu) | Agenten als portable Assets, Agenten-Onboarding (Aufgabenbeschreibung statt Freitext-Prompt), Agenten-Prüfstand mit fünf Prüfkategorien, Prüfagenten als maschinelles Vier-Augen-Prinzip, Sandbox, Textwerkzeuge, read/write mit Human-in-the-loop, MCP |\n| E Modelle & zentrale Steuerung | `features/llm-integration.md` | Umschreiben: BYOM lokal-first, Modell-Datenbank, zentrale Modell-Policies als Obergrenze, Beschränkung hängt an den Daten statt am Raum, Multi-Modell-Strategie, PII-Filter |\n| F Identität, Rechte, Mandanten | `features/access-control.md` | Ergänzen: SCIM-Lebenszyklus, IP-Restriktionen, Rollenmodell schärfen. Das Rechtemodell bleibt in `spaces-and-assets.md` |\n| G Sicherheit, Audit, C5 | `features/security-and-compliance.md` (neu) | Aus `access-control.md` herauslösen und ausbauen: revisionssicheres Audit, DSGVO-Vollständigkeit, sichere Defaults, SBOM, C5-Fähigkeit statt C5-Zertifizierung, Mitbestimmungsfähigkeit |\n| H Monitoring, Kosten, Governance | `features/monitoring-and-governance.md` (neu) | Limits, Kostentransparenz, Analytics, Transparenz über den KI-Rollout — durchgehend aggregiert, ohne personenbezogenen Auswertungspfad |\n| I Kanäle & Frontends | `features/user-frontends.md` | Umschreiben: Web-UI und REST-API als Fundament, Matrix/Element und Mattermost/RocketChat als Ausbau. Slack, Telegram, WhatsApp und Signal nicht stillschweigend streichen, sondern in das Prüf-Epic geben |\n| J Betrieb & Deployment | `features/deployment-infrastructure.md` | Umschreiben: Compose → Kubernetes/HA → air-gapped, openDesk-Andockung, mandantenfähiger Betrieb durch Rechenzentren. Cloud-Deployment und Managed Service ebenfalls ins Prüf-Epic, nicht sofort entfernen |\n| K Verwaltungs-Spezifika | `features/public-sector.md` (neu) | Leichte Sprache und Amtssprache, BITV-Barrierefreiheit, Revisionssicherheit, eAkte- und DMS-Konnektoren als projektgetriebene Option, Bürgerassistent als Ausblick |\n\n`features/document-sharing.md` bleibt unverändert — es trägt bereits den korrekten Überholt-Hinweis.\n\n## Abnahmekriterien\n\n- [ ] Alle neuen Spezifikationen folgen `docs/features/TEMPLATE.md` und nennen ihre Phasenlage\n- [ ] Jeder Themenbereich aus `docs/VISION.md` verweist auf eine existierende Datei\n- [ ] `spaces-and-assets.md` bleibt das einzige Dokument, das das Rechtemodell normativ beschreibt\n- [ ] Keine Anbieternamen, keine Preise, keine Aufwandszahlen",
+          "closes": []
+        }
+      ],
+      "merged": []
+    }
+  ],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 416,
+        "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen — harte Untergrenze, Sechsfachbefund, Baseline-Diff",
+        "url": "https://github.com/criew/opaa/issues/416",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Problem\n\nDie zweite Review-Runde zu PR #301 ist nie in `main` gelandet. Sie existiert als Commit `e67acfd` auf dem Branch `feature/228_retrieval-regressionsjob` — datiert auf den 03.08.2026, 10:45 UTC, also rund zweieinhalb Stunden **nach** dem Merge von PR #301 (08:19 UTC). Der Commit wurde auf den bereits abgeschlossenen Branch gesetzt und nie in einem neuen PR nachgereicht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite nicht.\n\nAlle drei Kernbefunde treffen auf den heutigen Stand von `main` unverändert zu.\n\n## 1. Die harte Untergrenze ist wirkungslos\n\n`BaselineComparator.java` berechnet die harte Untergrenze als `HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue` mit dem Faktor 0,8. Das ist zugleich zu locker und zu weich:\n\n- **Sie kann nie auslösen.** Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei etwa 0,021 und schlägt damit immer zuerst zu.\n- **Sie wandert mit.** Weil sie sich rein auf den *aktuell committeten* Baselinewert bezieht, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern — das Gegenteil dessen, wofür eine harte Untergrenze da ist.\n\nDer Commit ersetzt das durch `max(0,8 × Baselinewert, feste Untergrenze)` mit den absoluten Werten 0,30 (HitRate@5) und je 0,25 (MRR, nDCG@10, Recall@10). Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term ist der Anker, der sich nicht bewegt, wenn die Baseline-Datei selbst geändert wird.\n\n## 2. Der Einzelfall in der Dokumentation ist in Wahrheit ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschreiben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Tatsächlich betrifft sie sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen (#306); korrigiert wird ihre Beschreibung, damit sie mit Zahlen statt mit einem Beispiel dasteht.\n\n## 3. Die Baseline-Absenkungsprüfung hängt am Label\n\n`diff_baseline.py` läuft ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugt damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Der Commit löst sie in einen eigenen Workflow `.github/workflows/baseline-diff.yml` heraus, der für jeden PR mit Änderungen unter `eval/baseline/**` läuft.\n\n## Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe. Fehlt das Feld oder ist es falsch, weitet sich die Toleranz dieser Gruppe sonst stillschweigend auf den größtmöglichen Wert.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landet sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar wird von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Abnahmekriterien\n\n- [ ] Harte Untergrenze kombiniert relativen und absoluten Term über `max(...)`, mit Tests für beide Zweige\n- [ ] `Baseline.load()` weist Gruppen ohne gültiges `distinctExpectedDocumentSets` zurück\n- [ ] `.github/workflows/baseline-diff.yml` läuft label-unabhängig für PRs, die `eval/baseline/**` ändern; die entsprechenden Schritte entfallen im Retrieval-Job\n- [ ] Sechsfachbefund in Javadoc, ADR-0013 und `eval/baseline/README.md` mit Zahlen belegt\n- [ ] Cache-Export prüft Vollständigkeit zusätzlich zur Größe\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013",
+        "closes": []
+      },
+      {
+        "number": 414,
+        "title": "ci(eval): evaluateRetrieval führt BaselineRegressionTest ohne Report aus und schlägt fehl",
+        "url": "https://github.com/criew/opaa/issues/414",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:S",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Problem\n\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — **nicht** wegen einer Retrieval-Regression, sondern wegen eines Fehlers in der Gradle-Task-Konfiguration.\n\nFehlgeschlagen ist `BaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline()` an `BaselineRegressionTest.java:38`. Das ist der `fail(…)`-Zweig *„No report found …\"* — also der Wächter dafür, dass der Test ohne vorher erzeugten Report läuft, nicht die eigentliche Baseline-Prüfung.\n\n## Ursache\n\n`tasks.register<Test>(\"evaluateRetrieval\")` in `backend/build.gradle.kts` hat keinen `filter`-Block und führt deshalb **alle** Klassen des `evalTest`-Sourcesets aus — einschließlich `BaselineRegressionTest`. JUnit startet den alphabetisch vor `RetrievalEvaluationHarnessTest`:\n\n- `03:01:21` — `BaselineRegressionTest` läuft, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\n\n`evalUnitTest` schließt beide Klassen korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest` — nur `evaluateRetrieval` selbst filtert nichts. Der Javadoc von `BaselineRegressionTest` beschreibt die beabsichtigte Aufteilung bereits korrekt; die Task-Konfiguration setzt sie nur nicht um.\n\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Vergleich tatsächlich durchführen soll — nie gestartet wurde.\n\n## Warum erst jetzt\n\nAlle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) überhaupt bis zur Auswertung durchlief. Der Fehler war seit Einführung von `BaselineRegressionTest` latent vorhanden.\n\n## Es liegt keine Retrieval-Regression vor\n\nDie Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json`:\n\n| Metrik | Lauf | Baseline |\n| --- | --- | --- |\n| HitRate@5 | 0.521 | 0.521 |\n| MRR | 0.461 | 0.461 |\n| nDCG@10 | 0.445 | 0.445 |\n| Recall@10 | 0.490 | 0.490 |\n\n1448 Dokumente indiziert, Ein-Chunk-Invariante hält (0 Verletzungen).\n\n## Abnahmekriterien\n\n- [ ] `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`\n- [ ] `./gradlew evaluateRetrieval --tests \"*BaselineRegressionTest\"` selektiert keinen Test mehr (Reproduktionsnachweis: vor dem Fix läuft der Test und schlägt mit *„No report found\"* fehl)\n- [ ] Kommentar in `build.gradle.kts` hält die Rollenverteilung der drei Tasks fest\n\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs), Epic #224",
+        "closes": []
+      },
+      {
+        "number": 410,
+        "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+        "url": "https://github.com/criew/opaa/issues/410",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:S"
+        ],
+        "body": "## Kontext\n\nDie Sichtung in `docs/discussions/discussion-backlog-neuausrichtung.md` ist abgearbeitet. Alle vier Kategorietabellen haben ihren Zweck erfüllt:\n\n- **Kategorie 1** verlangte keine Handlung — die Vorgänge tragen die neue Ausrichtung unverändert.\n- **Kategorie 2** ist umformuliert (#224, #234, #119, #123, #143, #144, #145).\n- **Kategorie 3** ist aufgelöst: #77 an die Entscheidung zu #348 angeschlossen, #106 samt seiner Kinder #126–#130 an #349 gehängt, #54 als abgelöst durch #205 geschlossen, #60 und #63 mit vollständiger Bilanz geschlossen.\n- **Kategorie 4** ist entschieden: #76 mit Begründung geschlossen.\n\nDie Tabellen beschreiben damit einen Zustand, den es nicht mehr gibt, und würden beim nächsten Lesen in die Irre führen. Der Abschnitt **Lücken** bleibt — er ist die einzige Aussage des Dokuments, die weiter gilt.\n\n## Der zweite Punkt\n\nBei der Umformulierung von #119 ist aufgefallen, dass `docs/STATUS.md` unter Bereich B **Upload über die Weboberfläche und die REST-API** als gebaut führt. Das stimmt nicht: Es gibt keinen `multipart`-Endpunkt in `backend/src/main/resources/openapi/opaa-api.yaml`, kein `MultipartFile` im Code, und `documents` führt keine einbringende Person. Die einzigen Aufnahmewege sind das konfigurierte Verzeichnis und die URL-Indizierung.\n\n`docs/features/knowledge-sources.md` sagt es bereits richtig (\"der Upload gehört zum Zielbild\", \"noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, war zu großzügig.\n\n## Umfang\n\n- Die vier Kategorietabellen aus `discussion-backlog-neuausrichtung.md` entfernen, den Abschnitt **Lücken** und die empfohlenen nächsten Schritte behalten, die Einleitung auf den abgeschlossenen Stand umstellen\n- `docs/STATUS.md`, Bereich B: den Upload aus **Gebaut** herausnehmen und als Zielbild führen; die Kurzübersicht mitziehen\n\n## Abnahmekriterien\n\n- [ ] Das Sichtungsdokument enthält keine Kategorietabelle mehr und sagt, was aus den Vorgängen geworden ist\n- [ ] `STATUS.md` behauptet keinen Upload mehr\n- [ ] Keine toten Verweise",
+        "closes": []
+      },
+      {
+        "number": 409,
+        "title": "security(frontend): Sicherheits-Header im Webserver ergänzen",
+        "url": "https://github.com/criew/opaa/issues/409",
+        "author": "criew",
+        "labels": [
+          "frontend",
+          "size:S",
+          "security"
+        ],
+        "body": "## Kontext\n\n`frontend/nginx.conf` setzt **keinen einzigen** Sicherheits-Header. Die gesamte Datei besteht aus dem Ausliefern der statischen Dateien und dem Weiterreichen von `/api/` an das Backend:\n\n```nginx\nserver {\n    listen 80;\n    server_name _;\n    root /usr/share/nginx/html;\n    index index.html;\n\n    location / { try_files $uri $uri/ /index.html; }\n\n    location /api/ {\n        proxy_pass http://backend:8080/api/;\n        ...\n    }\n}\n```\n\nAufgefallen bei der Nachprüfung der Sammelliste #60 (dort Befund 20) gegen den heutigen Stand. Es ist der einzige der zwanzig Befunde, der offen ist und keinen eigenen Vorgang hatte.\n\n## Warum das mehr ist als eine Feinheit\n\nOPAA wirbt mit Nachweisbarkeit gegenüber Prüfern. Fehlende Sicherheits-Header sind der erste Punkt, den ein automatisierter Scan meldet, und sie stehen in jeder Prüfliste — sie zu übersehen kostet in einem Gespräch mehr Glaubwürdigkeit, als der Aufwand rechtfertigt.\n\nInhaltlich hängt daran vor allem eines: Ohne Content-Security-Policy schützt nichts davor, dass eingeschleuster Inhalt Skripte von fremden Adressen nachlädt. Für ein System, das Dokumente **aus fremden Quellen** aufnimmt und ihren Inhalt in der Oberfläche darstellt, ist das kein theoretischer Fall. Die eigene Regel dazu steht bereits in [ADR-0004](../docs/decisions/0004-self-hosted-frontend-resources.md): keine externen Ressourcen. Die Content-Security-Policy ist die technische Durchsetzung genau dieser Entscheidung — heute ist sie eine Absichtserklärung.\n\n## Umfang\n\nZu ergänzen sind mindestens:\n\n| Header | Zweck |\n|---|---|\n| `Content-Security-Policy` | Durchsetzung von ADR-0004: nur eigene Herkunft, keine externen Skripte, Schriftarten oder Bilder |\n| `X-Content-Type-Options: nosniff` | verhindert, dass der Browser den Inhaltstyp errät |\n| `X-Frame-Options: DENY` bzw. `frame-ancestors` in der Richtlinie | Schutz vor Einbettung in fremde Seiten |\n| `Referrer-Policy` | verhindert, dass interne Adressen an fremde Seiten abfließen |\n| `Strict-Transport-Security` | nur sinnvoll, wenn ein vorgelagerter Zugangsweg TLS terminiert — siehe unten |\n| `server_tokens off` | keine Preisgabe der Serverversion |\n\n## Zu klären in der Umsetzung\n\n- **Wo die Header gesetzt werden.** Im Compose-Betrieb terminiert der Webserver kein TLS; das übernimmt in einer Behördeninstallation ein vorgelagerter Zugangsweg. `Strict-Transport-Security` an zwei Stellen zu setzen ist schädlich. Entscheide begründet, welche Header hierher gehören und welche in die Betriebsdokumentation als Anforderung an den vorgelagerten Weg.\n- **Die Content-Security-Policy muss zur gebauten Oberfläche passen.** Prüfe am fertigen Build, ob Vite eingebettete Stile oder Skripte erzeugt, die eine strikte Richtlinie brechen würden. Eine Richtlinie, die die eigene Anwendung lahmlegt, wird beim ersten Fehler wieder entfernt.\n- Die Auslieferung über GitHub Pages (#373, #376) hat einen eigenen Weg und ist von dieser Konfiguration nicht betroffen.\n\n## Abnahmekriterien\n\n- [ ] Die genannten Header werden ausgeliefert; belegt durch eine Abfrage gegen den laufenden Compose-Stapel\n- [ ] Die Content-Security-Policy erlaubt keine externe Herkunft und setzt damit ADR-0004 technisch durch\n- [ ] Die Oberfläche funktioniert unter der Richtlinie vollständig — Chat, Dokumentenansicht, Verwaltung, Anmeldung über den Verzeichnisdienst\n- [ ] Die Konsole des Browsers meldet keine Verstöße gegen die Richtlinie\n- [ ] Was dem vorgelagerten Zugangsweg überlassen bleibt, steht in `docs/deployment.md`\n- [ ] Frontend-Formatierung, Lint, Build und Tests bestehen\n\n## Verweise\n\n- Befund 20 aus #60\n- [ADR-0004](../docs/decisions/0004-self-hosted-frontend-resources.md) — selbst gehostete Frontend-Ressourcen\n- Härtungsanforderungen für erreichbare Compose-Installationen: #250",
+        "closes": []
+      },
+      {
+        "number": 408,
+        "title": "fix(indexing): Vor #202 indizierte Chunks tragen kein library_id und sind dauerhaft unauffindbar",
+        "url": "https://github.com/criew/opaa/issues/408",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M"
+        ],
+        "body": "@-",
+        "closes": []
+      },
+      {
+        "number": 407,
+        "title": "Retrieval-Regression erkannt (automatischer Lauf)",
+        "url": "https://github.com/criew/opaa/issues/407",
+        "author": "github-actions[bot]",
+        "labels": [
+          "bug",
+          "evaluation"
+        ],
+        "body": "<!-- retrieval-regression-alert -->\n\n**Automatischer nächtlicher Retrieval-Regressionslauf fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/31860676357\n\n_Kein Report erzeugt — vermutlich vor der Baseline-Prüfung abgebrochen (z. B. Manifest- oder Ein-Chunk-Invariante-Verletzung) oder durch das Zeitlimit abgebrochen. Siehe Workflow-Logs._",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 416,
+        "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen — harte Untergrenze, Sechsfachbefund, Baseline-Diff",
+        "url": "https://github.com/criew/opaa/issues/416",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Problem\n\nDie zweite Review-Runde zu PR #301 ist nie in `main` gelandet. Sie existiert als Commit `e67acfd` auf dem Branch `feature/228_retrieval-regressionsjob` — datiert auf den 03.08.2026, 10:45 UTC, also rund zweieinhalb Stunden **nach** dem Merge von PR #301 (08:19 UTC). Der Commit wurde auf den bereits abgeschlossenen Branch gesetzt und nie in einem neuen PR nachgereicht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite nicht.\n\nAlle drei Kernbefunde treffen auf den heutigen Stand von `main` unverändert zu.\n\n## 1. Die harte Untergrenze ist wirkungslos\n\n`BaselineComparator.java` berechnet die harte Untergrenze als `HARD_FLOOR_FRACTION_OF_BASELINE * baselineValue` mit dem Faktor 0,8. Das ist zugleich zu locker und zu weich:\n\n- **Sie kann nie auslösen.** Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei etwa 0,021 und schlägt damit immer zuerst zu.\n- **Sie wandert mit.** Weil sie sich rein auf den *aktuell committeten* Baselinewert bezieht, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern — das Gegenteil dessen, wofür eine harte Untergrenze da ist.\n\nDer Commit ersetzt das durch `max(0,8 × Baselinewert, feste Untergrenze)` mit den absoluten Werten 0,30 (HitRate@5) und je 0,25 (MRR, nDCG@10, Recall@10). Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term ist der Anker, der sich nicht bewegt, wenn die Baseline-Datei selbst geändert wird.\n\n## 2. Der Einzelfall in der Dokumentation ist in Wahrheit ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschreiben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Tatsächlich betrifft sie sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen (#306); korrigiert wird ihre Beschreibung, damit sie mit Zahlen statt mit einem Beispiel dasteht.\n\n## 3. Die Baseline-Absenkungsprüfung hängt am Label\n\n`diff_baseline.py` läuft ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugt damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Der Commit löst sie in einen eigenen Workflow `.github/workflows/baseline-diff.yml` heraus, der für jeden PR mit Änderungen unter `eval/baseline/**` läuft.\n\n## Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe. Fehlt das Feld oder ist es falsch, weitet sich die Toleranz dieser Gruppe sonst stillschweigend auf den größtmöglichen Wert.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landet sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar wird von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Abnahmekriterien\n\n- [ ] Harte Untergrenze kombiniert relativen und absoluten Term über `max(...)`, mit Tests für beide Zweige\n- [ ] `Baseline.load()` weist Gruppen ohne gültiges `distinctExpectedDocumentSets` zurück\n- [ ] `.github/workflows/baseline-diff.yml` läuft label-unabhängig für PRs, die `eval/baseline/**` ändern; die entsprechenden Schritte entfallen im Retrieval-Job\n- [ ] Sechsfachbefund in Javadoc, ADR-0013 und `eval/baseline/README.md` mit Zahlen belegt\n- [ ] Cache-Export prüft Vollständigkeit zusätzlich zur Größe\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013",
+        "closes": []
+      },
+      {
+        "number": 414,
+        "title": "ci(eval): evaluateRetrieval führt BaselineRegressionTest ohne Report aus und schlägt fehl",
+        "url": "https://github.com/criew/opaa/issues/414",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:S",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Problem\n\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — **nicht** wegen einer Retrieval-Regression, sondern wegen eines Fehlers in der Gradle-Task-Konfiguration.\n\nFehlgeschlagen ist `BaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline()` an `BaselineRegressionTest.java:38`. Das ist der `fail(…)`-Zweig *„No report found …\"* — also der Wächter dafür, dass der Test ohne vorher erzeugten Report läuft, nicht die eigentliche Baseline-Prüfung.\n\n## Ursache\n\n`tasks.register<Test>(\"evaluateRetrieval\")` in `backend/build.gradle.kts` hat keinen `filter`-Block und führt deshalb **alle** Klassen des `evalTest`-Sourcesets aus — einschließlich `BaselineRegressionTest`. JUnit startet den alphabetisch vor `RetrievalEvaluationHarnessTest`:\n\n- `03:01:21` — `BaselineRegressionTest` läuft, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\n\n`evalUnitTest` schließt beide Klassen korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest` — nur `evaluateRetrieval` selbst filtert nichts. Der Javadoc von `BaselineRegressionTest` beschreibt die beabsichtigte Aufteilung bereits korrekt; die Task-Konfiguration setzt sie nur nicht um.\n\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Vergleich tatsächlich durchführen soll — nie gestartet wurde.\n\n## Warum erst jetzt\n\nAlle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) überhaupt bis zur Auswertung durchlief. Der Fehler war seit Einführung von `BaselineRegressionTest` latent vorhanden.\n\n## Es liegt keine Retrieval-Regression vor\n\nDie Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json`:\n\n| Metrik | Lauf | Baseline |\n| --- | --- | --- |\n| HitRate@5 | 0.521 | 0.521 |\n| MRR | 0.461 | 0.461 |\n| nDCG@10 | 0.445 | 0.445 |\n| Recall@10 | 0.490 | 0.490 |\n\n1448 Dokumente indiziert, Ein-Chunk-Invariante hält (0 Verletzungen).\n\n## Abnahmekriterien\n\n- [ ] `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`\n- [ ] `./gradlew evaluateRetrieval --tests \"*BaselineRegressionTest\"` selektiert keinen Test mehr (Reproduktionsnachweis: vor dem Fix läuft der Test und schlägt mit *„No report found\"* fehl)\n- [ ] Kommentar in `build.gradle.kts` hält die Rollenverteilung der drei Tasks fest\n\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs), Epic #224",
+        "closes": []
+      },
+      {
+        "number": 410,
+        "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+        "url": "https://github.com/criew/opaa/issues/410",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:S"
+        ],
+        "body": "## Kontext\n\nDie Sichtung in `docs/discussions/discussion-backlog-neuausrichtung.md` ist abgearbeitet. Alle vier Kategorietabellen haben ihren Zweck erfüllt:\n\n- **Kategorie 1** verlangte keine Handlung — die Vorgänge tragen die neue Ausrichtung unverändert.\n- **Kategorie 2** ist umformuliert (#224, #234, #119, #123, #143, #144, #145).\n- **Kategorie 3** ist aufgelöst: #77 an die Entscheidung zu #348 angeschlossen, #106 samt seiner Kinder #126–#130 an #349 gehängt, #54 als abgelöst durch #205 geschlossen, #60 und #63 mit vollständiger Bilanz geschlossen.\n- **Kategorie 4** ist entschieden: #76 mit Begründung geschlossen.\n\nDie Tabellen beschreiben damit einen Zustand, den es nicht mehr gibt, und würden beim nächsten Lesen in die Irre führen. Der Abschnitt **Lücken** bleibt — er ist die einzige Aussage des Dokuments, die weiter gilt.\n\n## Der zweite Punkt\n\nBei der Umformulierung von #119 ist aufgefallen, dass `docs/STATUS.md` unter Bereich B **Upload über die Weboberfläche und die REST-API** als gebaut führt. Das stimmt nicht: Es gibt keinen `multipart`-Endpunkt in `backend/src/main/resources/openapi/opaa-api.yaml`, kein `MultipartFile` im Code, und `documents` führt keine einbringende Person. Die einzigen Aufnahmewege sind das konfigurierte Verzeichnis und die URL-Indizierung.\n\n`docs/features/knowledge-sources.md` sagt es bereits richtig (\"der Upload gehört zum Zielbild\", \"noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, war zu großzügig.\n\n## Umfang\n\n- Die vier Kategorietabellen aus `discussion-backlog-neuausrichtung.md` entfernen, den Abschnitt **Lücken** und die empfohlenen nächsten Schritte behalten, die Einleitung auf den abgeschlossenen Stand umstellen\n- `docs/STATUS.md`, Bereich B: den Upload aus **Gebaut** herausnehmen und als Zielbild führen; die Kurzübersicht mitziehen\n\n## Abnahmekriterien\n\n- [ ] Das Sichtungsdokument enthält keine Kategorietabelle mehr und sagt, was aus den Vorgängen geworden ist\n- [ ] `STATUS.md` behauptet keinen Upload mehr\n- [ ] Keine toten Verweise",
+        "closes": []
+      },
+      {
+        "number": 408,
+        "title": "fix(indexing): Vor #202 indizierte Chunks tragen kein library_id und sind dauerhaft unauffindbar",
+        "url": "https://github.com/criew/opaa/issues/408",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M"
+        ],
+        "body": "@-",
+        "closes": []
+      },
+      {
+        "number": 406,
+        "title": "fix(query): Über die Indexierung eingespielte Dokumente sind im Chat für niemanden auffindbar",
+        "url": "https://github.com/criew/opaa/issues/406",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:M"
+        ],
+        "body": "@-",
+        "closes": []
+      },
+      {
+        "number": 344,
+        "title": "Epic: Konzepte und Abstraktionen gegen die neue Produktausrichtung prüfen",
+        "url": "https://github.com/criew/opaa/issues/344",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "epic"
+        ],
+        "body": "Die neue Produktausrichtung (#338) stellt eine Reihe von Konzepten und Abstraktionen in Frage, die aus der Zeit des generischen Enterprise-Wissensmanagements stammen. Dieses Epic **prüft sie, es streicht sie nicht**: Jedes Sub-Issue formuliert eine Frage und endet mit einer Entscheidungsvorlage an den Maintainer. Erst danach wird etwas entfernt, umgebaut oder bewusst beibehalten.\n\n### Hintergrund\n\nEin Teil dieser Abstraktionen ist gebaut, ein Teil eingeplant, ein Teil nur versprochen. Sie stillschweigend aus der Dokumentation zu entfernen, würde eine Konsistenz vortäuschen, die im Code nicht existiert — und genau diese Lücke zwischen Zusage und Wirklichkeit ist der Grund, warum das Repository überhaupt umgebaut wird.\n\nUmgekehrt gilt: Eine Abstraktion, die keinen Zweck mehr hat, kostet dauerhaft Pflege. Beides lässt sich nur entscheiden, wenn man je Punkt nachsieht, was gebaut ist und wem es nützt.\n\nBezug: `docs/decisions/0002-mvp-technology-stack.md` (Festlegung auf pgvector), `docs/features/deployment-infrastructure.md`, `docs/features/user-frontends.md`, `docs/features/llm-integration.md`.\n\n### Phasen\n\n**Phase 1 — Was das Zielbild direkt widerspricht.** Vektorspeicher-Austauschbarkeit, Cloud-Deployment und Managed Service, Chat-Kanäle, Modellanbieter-Standard. Hier steht eine Zusage im Repository, die das neue Zielbild nicht mehr trägt.\n\n**Phase 2 — Was das Zielbild verlangt, aber fehlt.** Zitierzwang in der Query-Pipeline, revisionssicheres Audit-Logging, Absicherung der Organisationsgrenze. Hier fehlt Substanz, die Phase 1 des Produkts voraussetzt.\n\n**Phase 3 — Was offengehalten werden muss.** Verhältnis von Plugin-Architektur und MCP, Umfang der Storage-Abstraktion, Bürgerassistent als späterer Ausblick. Hier geht es darum, sich nichts zu verbauen.\n\n### Abhängigkeiten\n\nDie Sub-Issues sind weitgehend unabhängig. Zwei Kopplungen bestehen:\n\n```\nZitierzwang ──> (Phase-1-Schnitt der Retrieval-Arbeit)\nAudit-Logging ──> #239 (kein personenbezogener Auswertungspfad)\nOrganisationsgrenze ──> #289, #271\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Jeder Punkt hat eine Entscheidungsvorlage mit Empfehlung\n- [ ] Für jeden Punkt ist belegt, was heute tatsächlich im Code existiert\n- [ ] Nichts wurde entfernt oder umgebaut, ohne dass der Maintainer freigegeben hat\n- [ ] Punkte mit Architekturwirkung münden in einen ADR-Entwurf\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Die Umsetzung der Entscheidungen — daraus entstehen eigene Issues\n- Der Dokumentationsumbau selbst (#338)\n\n### Referenzen\n\n- #338 — Produktvision auf die öffentliche Verwaltung ausrichten\n- `docs/decisions/0002-mvp-technology-stack.md`",
+        "closes": []
+      },
+      {
+        "number": 338,
+        "title": "Epic: Produktvision auf die öffentliche Verwaltung ausrichten",
+        "url": "https://github.com/criew/opaa/issues/338",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "epic"
+        ],
+        "body": "Die Produktvision von OPAA ist geschärft worden: Aus einem generischen Enterprise-Wissensmanagement ist eine **souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung** geworden. Sie steht auf drei Säulen — Wissen, Agenten, KI für Teams und Organisation — und auf zwei Leitprinzipien: **Belegbarkeit** (jede Aussage an ihre Quelle gebunden, bis hin zum Zitierzwang) und **Verteilbarkeit** (KI-Können wird zum teilbaren Asset und kommt in der ganzen Organisation an). Dieses Epic bringt das Repository auf diesen Stand.\n\n### Hintergrund\n\nDas Repository bildet die neue Ausrichtung heute nur an einer Stelle ab. Die jüngsten Dokumente sprechen bereits die neue Sprache:\n\n- `docs/features/spaces-and-assets.md` — Assets, Wissensbibliotheken, Verteilungsstufen, Mitbestimmung\n- `docs/features/access-control.md` — Systemverwaltung, Identität, Audit\n- `docs/features/search-quality-evaluation.md` — Retrieval-Regression und Demo-Korpus\n\nAlles davor tut es nicht:\n\n- `docs/VISION.md` beschreibt ein Fortune-500-Unternehmen, ein SaaS-Team und eine Support-Abteilung\n- `README.md` verspricht austauschbare Vektordatenbanken sowie Slack, Telegram und WhatsApp\n- `docs/MVP-STATUS.md` meldet einen vollständigen MVP und verweist dabei auf `frontend/src/pages/Chat.tsx` und `io/opaa/llm/` — beides existiert nicht\n- `page/index.html` und die Pitch-Dokumente verkaufen „Dein Firmenwissen\" an Firmen, im Du und zweisprachig\n\nZiel ist ein Repository, das durchgehend dieselbe Geschichte erzählt: eine schlanke, lesbare Produktvision, Feature-Spezifikationen entlang der elf Themenbereiche, ein ehrlicher Umsetzungsstand, Marketing-Assets im Verwaltungston — und ein Backlog, dem man ansieht, worauf das Produkt hinausläuft.\n\n### Phasen\n\nDie Reihenfolge ergibt sich daraus, worauf sich der jeweils nächste Schritt beruft.\n\n**Phase 1 — Der Anker.** ADR zur Produktausrichtung, neue `docs/VISION.md`, `docs/USE-CASES.md`. Ohne diesen Schritt ist alles Weitere eine unbegründete Massenänderung; jeder folgende Schritt beruft sich auf den ADR und die Themenbereiche A–K.\n\n**Phase 2 — Die Tiefe.** Feature-Spezifikationen entlang der elf Themenbereiche neu geschnitten. Sie brauchen die Gliederung aus Phase 1, weil dort festgelegt wird, welcher Bereich welche Spezifikation bekommt.\n\n**Phase 3 — Die Einstiege.** README, Konzepte, Index, Einstiegsleitfaden und ein neues Statusdokument. Kommt nach Phase 2, weil diese Dokumente auf die Spezifikationen verlinken.\n\n**Phase 4 — Das Außen.** Messaging-Wahrheitsquelle, Landing-Page, Pitch, One-Pager. Braucht nur den Anker aus Phase 1 und kann parallel zu Phase 3 laufen.\n\n**Phase 5 — Der Backlog.** Sichtung aller offenen Issues und das Prüf-Epic für die Konzepte, die durch die neue Ausrichtung fragwürdig werden. Läuft parallel, wird aber vom Anker eingerahmt.\n\n### Verbindliche Grenzen für alle Inhalte\n\nNicht ins Repository übernommen wird — weder als Text noch als Andeutung:\n\n- **Wettbewerber.** Keine Anbieternamen, keine Vergleichsmatrix, keine Formulierungen des Musters „statt X\". Abgrenzungen werden mit dem **Sachgrund** begründet, nicht mit einem Mitbewerber.\n- **Beteiligte und Partner.** Keine Personen, Firmen, Beratungen oder Gesellschaftskonstrukte.\n- **Referenzkunden**, Pilotbehörden, konkrete Häuser.\n- **Geschäftsmodell, Preise, Erlösaufteilung, Aufwands- und Kostenschätzungen.**\n\nÜbernommen wird ausschließlich die Produkt- und Anwendungsebene: Nordstern, Leitprinzipien, Themenbereiche, Phasen, Abgrenzungen mit Sachbegründung, Anwendungsfälle.\n\n### Abhängigkeiten\n\n```\n#339 ──> #340 ──> #341\n  ├────> #342\n  └────> #343 ──> #344\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Jeder der elf Themenbereiche ist in `docs/VISION.md` benannt und verweist auf eine existierende Spezifikation\n- [ ] Kein Dokument im Repository beschreibt OPAA noch als generisches Enterprise-Wissensmanagement\n- [ ] `docs/STATUS.md` behauptet nichts, was im Code nicht existiert\n- [ ] Alle Marketing-Assets leiten sich aus `docs/market/MESSAGING.md` ab, siezen und sind deutschsprachig\n- [ ] Kein Anbietername, kein Preis, keine Aufwandszahl, kein Referenzkunde im gesamten geänderten Bestand\n- [ ] Kein Feature wurde entfernt und kein Issue geschlossen, ohne dass der Maintainer gefragt wurde\n\n### Außerhalb des Umfangs (separate Epics)\n\n- Codeänderungen jeder Art — die Abstraktionen, die durch die neue Ausrichtung fragwürdig werden, werden in #344 **geprüft**, nicht umgebaut\n- Die laufenden Umbauten am Space- und Asset-Modell (#198) und an der Suchqualität (#224)\n\n### Referenzen\n\n- `docs/features/spaces-and-assets.md`\n- `docs/features/search-quality-evaluation.md`\n- `docs/decisions/0002-mvp-technology-stack.md`",
+        "closes": []
+      },
+      {
+        "number": 76,
+        "title": "🔵 [LOW] SQL Injection Risk in Future Migrations",
+        "url": "https://github.com/criew/opaa/issues/76",
+        "author": "bigpuritz",
+        "labels": [
+          "backend",
+          "size:S",
+          "security"
+        ],
+        "body": "# SQL Injection Risk in Future Migrations\n\nPart of #60 (Security & Code Review Findings)\n\n## Priority: 🔵 LOW\n\n## Problem\n\nCurrent Liquibase migrations use hardcoded values (safe), but pattern could lead to SQL injection if extended.\n\n**File:** `backend/src/main/resources/db/changelog/changes/002-create-documents-table.yaml:45`\n\n```yaml\nsql: >\n  ALTER TABLE documents\n  ADD CONSTRAINT chk_documents_status\n  CHECK (status IN ('PENDING', 'INDEXED', 'FAILED'));  # ✅ Currently safe\n```\n\n## Risk\n\nFuture scenarios that could introduce vulnerabilities:\n1. Admin UI to add new status values dynamically\n2. Configuration-driven constraints\n3. User-provided enum values\n\n## Anti-patterns to Avoid\n\n```yaml\n# ❌ NEVER DO THIS:\nsql: >\n  ALTER TABLE documents\n  ADD CONSTRAINT chk_documents_status\n  CHECK (status IN (${STATUS_VALUES}));\n```\n\n## Solution\n\nFor dynamic constraints, use application-level validation:\n\n```java\n@Entity\npublic class Document {\n    @Column(nullable = false)\n    @Enumerated(EnumType.STRING)\n    private DocumentStatus status;  // Java enum = safe\n}\n\n// If dynamic values needed:\n@Component\npublic class DocumentValidator {\n    @Value(\"${opaa.document.allowed-statuses}\")\n    private Set<String> allowedStatuses;\n    \n    public void validate(String status) {\n        if (!allowedStatuses.contains(status)) {\n            throw new IllegalArgumentException(\"Invalid status\");\n        }\n    }\n}\n```\n\n## Guidelines\n\n1. **Static constraints** → Liquibase SQL is fine\n2. **Dynamic constraints** → Use Java validation\n3. **Never interpolate** user input into SQL\n4. **Code review** all SQL migrations\n\n## Definition of Done\n\n- [ ] Document SQL injection prevention guidelines\n- [ ] Add to code review checklist\n- [ ] Consider static analysis for SQL\n- [ ] Training materials for team\n- [ ] Migration template with security notes",
+        "closes": []
+      },
+      {
+        "number": 63,
+        "title": "🚨 [CRITICAL] No Authentication/Authorization Implementation",
+        "url": "https://github.com/criew/opaa/issues/63",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "backend",
+          "size:L",
+          "security",
+          "auth"
+        ],
+        "body": "# No Authentication/Authorization Implementation\n\nPart of #60 (Security & Code Review Findings)\n\n## Priority: 🚨 CRITICAL\n\n## Problem\n\nAll API endpoints are completely public with no authentication or authorization. According to VISION.md, OPAA should support:\n- Multi-workspace isolation\n- Role-based access control (RBAC)\n- Audit logging with user attribution\n\nCurrently anyone can:\n- Index documents into the system\n- Query the knowledge base (incurring LLM costs)\n- Access all indexed data\n\n## Risk\n\n- **Production deployment blocker** - Cannot deploy without auth\n- **Data exposure** - All indexed documents are publicly accessible\n- **Cost liability** - Anyone can trigger expensive LLM operations\n- **Compliance violation** - No audit trail, no user attribution\n\n## Solution\n\n### Phase 1: Basic Authentication\n```java\n@EnableWebSecurity\npublic class SecurityConfig {\n    // JWT or OAuth2 implementation\n}\n```\n\n### Phase 2: Workspace Isolation\n- Add `workspace_id` to all tables\n- Filter queries by user's workspace access\n- Row-level security in PostgreSQL\n\n### Phase 3: RBAC\n- User roles: ADMIN, EDITOR, VIEWER\n- Permission matrix for endpoints\n- Audit logging with user context\n\n## Definition of Done\n\n- [ ] Authentication mechanism implemented (JWT/OAuth2)\n- [ ] All endpoints protected (except health check)\n- [ ] User context available in services\n- [ ] Frontend auth flow implemented\n- [ ] Workspace isolation at data layer\n- [ ] Basic RBAC (at least admin/user roles)\n- [ ] Audit logging includes user identity",
+        "closes": []
+      },
+      {
+        "number": 60,
+        "title": "🔍 Security & Code Review Findings (20 Issues)",
+        "url": "https://github.com/criew/opaa/issues/60",
+        "author": "bigpuritz",
+        "labels": [
+          "epic",
+          "security"
+        ],
+        "body": "# 🔍 Security & Code Review Findings\n\nCode Review durchgeführt am 2026-02-27 mit Claude Opus 4.6. Vollständige Analyse aller Backend-, Frontend-, Config- und Docker-Files.\n\n## 📋 Summary\n\n- **20 Issues** identifiziert\n- **5 Critical** Security-Probleme (Production-Blocker)\n- **3 High Priority** Bugs/Issues\n- **5 Medium Priority** Code-Quality-Probleme\n- **7 Low Priority** Code Smells\n\n## 🚨 Critical Security Issues (Production Blocker)\n\n### Security Tasks\n\n- [ ] **#1 CORS Wildcard Headers** - `CorsConfig.java` erlaubt `allowedHeaders(\"*\")` → Whitelist nötig\n  - File: `backend/src/main/java/io/opaa/api/CorsConfig.java:17`\n  - Fix: `.allowedHeaders(\"Content-Type\", \"Authorization\", \"X-Requested-With\")`\n  - Risk: CORS-Bypass, Request Smuggling bei Auth-Implementation\n\n- [ ] **#2 Missing Rate Limiting** - Keine Rate Limits auf Query/Indexing Endpoints\n  - Risk: LLM API-Kosten-Explosion, DoS-Attacken\n  - Fix: Spring Bucket4j oder Nginx-Level Rate Limiting implementieren\n\n- [ ] **#3 No Authentication/Authorization** - Alle Endpoints sind public\n  - Risk: Jeder kann Dokumente indexieren, Queries stellen, Kosten verursachen\n  - Fix: Spring Security + JWT/OAuth2 implementieren\n\n- [ ] **#4 conversationId Input Validation fehlt** - Keine Format/Längen-Validierung\n  - File: `backend/src/main/java/io/opaa/query/QueryService.java:54`\n  - Risk: Memory Exhaustion, Injection bei Persistierung\n  - Fix: Regex-Validation `^[a-zA-Z0-9-]{1,50}$`\n\n- [ ] **#5 No Observability** - Keine Metrics, Tracing, erweiterte Health Checks\n  - Fix: Spring Boot Actuator + Micrometer hinzufügen\n\n## ⚠️ High Priority Issues\n\n### Code Quality Tasks\n\n- [ ] **#6 Missing Transaction Boundaries** - QueryService hat keine @Transactional\n  - File: `backend/src/main/java/io/opaa/query/QueryService.java:51`\n  - Risk: Race Conditions bei parallelem Indexing\n  - Fix: `@Transactional(readOnly = true)` auf query() Methode\n\n- [ ] **#7 Spotless Config Missing** - ADR-0002 Violation\n  - File: `backend/build.gradle.kts:50`\n  - Problem: Spotless declared aber nicht konfiguriert\n  - Fix: googleJavaFormat() Config hinzufügen\n\n- [ ] **#8 Docker Build skips Tests** - Tests werden übersprungen\n  - File: `backend/Dockerfile:10`\n  - Problem: `./gradlew bootJar -x test`\n  - Fix: `./gradlew build` verwenden (inkludiert Tests)\n\n## 🟡 Medium Priority Issues\n\n### Stability Tasks\n\n- [ ] **#9 ChatMemory Lifecycle unklar** - Potential Memory Leak\n  - Problem: Keine Eviction Policy, unbegrenztes Wachstum\n  - Fix: TTL oder Max Size implementieren\n\n- [ ] **#10 Error Boundary nicht verwendet** - Frontend Crash Handling\n  - Problem: ErrorBoundary existiert aber wird nicht verwendet\n  - Fix: In App.tsx oder main.tsx wrappen\n\n- [ ] **#11 Sensitive Error Disclosure** - AI Exception Messages in Logs\n  - File: `backend/src/main/java/io/opaa/api/GlobalExceptionHandler.java`\n  - Risk: API Keys könnten in Fehlermeldungen leaken\n  - Fix: Message Sanitization vor Logging\n\n## 🔵 Low Priority (Code Quality)\n\n### Refactoring Tasks\n\n- [ ] **#12 Magic Numbers ohne Dokumentation**\n  - Files: `QueryService.java`, `application.yml`\n  - Problem: DEFAULT_TOP_K=5, SIMILARITY_THRESHOLD=0.3 ohne Rationale\n  - Fix: Javadoc mit Begründung ergänzen\n\n- [ ] **#13 Inconsistent Mock Profile Naming**\n  - Problem: `mock` Profile bedeutet \"no-db\", nicht \"use mocks\"\n  - Fix: Rename zu `no-db` oder `standalone`\n\n- [ ] **#14 Complex Inline Lambda** - Source Merging Logic\n  - File: `QueryService.java:131-151`\n  - Problem: Business Logic in Lambda, schwer testbar\n  - Fix: Extract Method + Unit Tests\n\n- [ ] **#15 Axios Type Safety** - Unsafe Type Assertions\n  - File: `frontend/src/services/api.ts:13`\n  - Problem: `as ErrorResponse` ohne Validation\n  - Fix: Type Guard implementieren\n\n- [ ] **#16 SQL Injection Risk Monitoring** - Für zukünftige Migrations\n  - Current: Safe (Hardcoded Enums)\n  - Watch: Bei dynamischen Constraints → Prepared Statements\n\n- [ ] **#17 Vector Store Index Type Hardcoded**\n  - File: `application.yml:41`\n  - Fix: `${OPAA_PGVECTOR_INDEX_TYPE:hnsw}` konfigurierbar machen\n\n- [ ] **#18 Silent Error Fallback** - Invalid UUID nur Debug-geloggt\n  - File: `QueryService.java:117`\n  - Fix: log.warn statt log.debug für bessere Diagnose\n\n## 📊 Testing Gaps\n\n### Test Coverage Tasks\n\n- [ ] **#19 Missing Integration Tests** - Query Flow End-to-End\n  - Critical Path nicht getestet\n  - Citation Parsing Logic nicht getestet\n  - Source Merging Logic nicht getestet\n\n- [ ] **#20 Security Headers Missing** - Nginx Config\n  - Vermutlich fehlen: CSP, X-Frame-Options, HSTS\n  - Fix: Nginx Security Headers Review\n\n## 🎯 Recommended Action Plan\n\n1. **Sprint 1**: Fix Critical Security Issues (#1-5) - Production Blocker\n2. **Sprint 2**: Fix High Priority Issues (#6-8) + Medium Stability (#9-11)\n3. **Sprint 3**: Code Quality Improvements (#12-20)\n\n## 📎 References\n\n- Full Review Document: [Siehe PR/Comment mit vollständiger Analyse]\n- ADR-0002: Technology Stack Decisions\n- VISION.md: Multi-Workspace & Security Requirements\n\n---\n\n**Severity Legend:**\n- 🚨 Critical = Production Blocker, Security Risk\n- ⚠️ High = Bugs, ADR Violations, CI/CD Issues  \n- 🟡 Medium = Stability, Memory Leaks, Error Handling\n- 🔵 Low = Code Quality, Maintainability, Future Risks",
+        "closes": []
+      },
+      {
+        "number": 54,
+        "title": "feat: Erweitertes Chat-Memory mit Persistenz und Session-Verwaltung",
+        "url": "https://github.com/criew/opaa/issues/54",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend",
+          "frontend"
+        ],
+        "body": "## Summary\n\nAufbauend auf dem In-Memory Chat-Gedächtnis (#43, MVP) soll das Chat-Memory persistent und voll funktionsfähig werden.\n\n## Motivation\n\nIm MVP geht der Konversationsverlauf beim Server-Neustart verloren. Für die finale Version sollen Konversationen dauerhaft gespeichert und über eine UI verwaltet werden können.\n\n## Proposed Solution\n\n### Backend\n- Chat-History in der Datenbank persistieren (Liquibase-Migration für `conversations` + `messages` Tabellen)\n- `ChatMemory`-Implementierung von `InMemoryChatMemory` auf DB-backed umstellen\n- Token-Limit-Management: Ältere Nachrichten zusammenfassen oder kürzen wenn das Kontextfenster voll wird\n- Conversation-CRUD API (Liste, Details, Löschen, Umbenennen)\n\n### Frontend\n- Sidebar/Panel mit Liste vergangener Konversationen\n- Konversation fortsetzen durch Auswahl aus der Liste\n- Konversationen umbenennen und löschen\n- Auto-generierte Konversationstitel (z.B. aus erster Frage)\n\n### API\n- `GET /api/conversations` — Liste aller Konversationen\n- `GET /api/conversations/{id}` — Konversation mit Nachrichten laden\n- `DELETE /api/conversations/{id}` — Konversation löschen\n- `PATCH /api/conversations/{id}` — Konversation umbenennen\n\n## Voraussetzung\n\n- #43 (In-Memory Chat-Gedächtnis) muss zuerst umgesetzt sein\n\n## Additional Context\n\nSpring AI bietet verschiedene `ChatMemory`-Implementierungen. Für die Persistenz kann eine JDBC-basierte Implementierung verwendet werden oder ein eigener Adapter geschrieben werden.",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 417,
+        "title": "fix(eval): Zweite Review-Runde zu PR #301 nachreichen",
+        "url": "https://github.com/criew/opaa/pull/417",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "documentation",
+          "backend",
+          "size:M",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Zusammenfassung\n\nReicht die zweite Review-Runde zu PR #301 nach. Sie entstand als Commit `e67acfd` am 03.08.2026 um 10:45 UTC auf dem Branch `feature/228_retrieval-regressionsjob` — zweieinhalb Stunden **nach** dem Merge von PR #301 um 08:19 UTC — und wurde nie in einem eigenen PR eingebracht. Die erste Review-Runde (`b3205c8`) ist in `main`, diese zweite lag seither nur in einem lokalen Worktree.\n\nAlle drei Befunde treffen auf den heutigen Stand von `main` unverändert zu; ich habe jeden einzeln gegen `origin/main` geprüft, bevor ich den Commit übernommen habe.\n\n### 1. Die harte Untergrenze konnte nie auslösen\n\n`BaselineComparator` berechnete sie als `0,8 × Baselinewert`. Damit ist sie gleich zweifach wirkungslos:\n\n- Der Abstand zur Baseline beträgt `0,2 × Baselinewert`, also etwa 0,089–0,104 für die vier Gesamtmetriken. Die Primärtoleranz liegt bei rund 0,021 und schlägt immer zuerst zu — die Untergrenze kommt nie zum Zug.\n- Weil sie am *aktuell committeten* Wert hängt, folgt sie einer über mehrere PRs erodierenden Baseline nach unten, statt gegen genau diese Erosion zu verankern.\n\nJetzt `max(0,8 × Baselinewert, feste Untergrenze)` mit 0,30 für HitRate@5 und je 0,25 für MRR, nDCG@10 und Recall@10. Der relative Term greift, sobald eine künftige Baseline deutlich niedriger gemessen wird; der absolute Term bewegt sich nicht mit, wenn die Baseline-Datei selbst geändert wird.\n\n### 2. Der dokumentierte Einzelfall ist ein Sechsfachfall\n\nJavadoc, ADR-0013 und `eval/baseline/README.md` beschrieben die verbliebene Lücke „Toleranz enger als `1/n`\" als Einzelfall (`numeric_range`/`hitRateAt5`). Betroffen sind sechs Gruppen-/Metrik-Paare:\n\n| Gruppe / Metrik | Toleranz | 1/n | Verhältnis |\n| --- | --- | --- | --- |\n| `numeric_range` / `recallAt10` | 0,0150 | 0,0625 | 0,24 |\n| `numeric_range` / `ndcgAt10` | 0,0158 | 0,0625 | 0,25 |\n| `numeric_range` / `mrr` | 0,0253 | 0,0625 | 0,40 |\n| `multi_attribute_filter` / `ndcgAt10` | 0,0343 | 0,0476 | 0,72 |\n| `numeric_range` / `hitRateAt5` | 0,0470 | 0,0625 | 0,75 |\n| `multi_attribute_filter` / `recallAt10` | 0,0398 | 0,0476 | 0,83 |\n\nBei `numeric_range`/`ndcgAt10` genügt es, dass eine einzige der 16 Anfragen von Rang 1 auf Rang 3 rutscht — ohne jeden verlorenen Treffer —, um die Toleranz um mehr als das Doppelte zu reißen. Die Lücke selbst bleibt bewusst offen und ist als #306 verfolgt; korrigiert wird ihre Beschreibung.\n\n### 3. Die Baseline-Absenkungsprüfung hing am Label\n\n`diff_baseline.py` lief ausschließlich im label-ausgelösten Retrieval-Job. Ein PR, der `eval/baseline/**` ändert, aber nie das Label `evaluation` bekommt, erzeugte damit überhaupt keinen Hinweis auf eine stille Absenkung — obwohl die Prüfung reines Python ohne Docker ist und unter einer Minute braucht. Sie läuft jetzt als eigener Workflow `.github/workflows/baseline-diff.yml` für jeden PR mit Änderungen unter `eval/baseline/**`; die entsprechenden Schritte entfallen im Retrieval-Job.\n\n### Kleinere Punkte aus derselben Runde\n\n- `Baseline.load()` validiert `distinctExpectedDocumentSets > 0` je Gruppe — ein fehlendes oder falsches Feld hätte die Toleranz dieser Gruppe stillschweigend auf den weitesten möglichen Wert geweitet.\n- Der Cache-Export prüft zusätzlich auf Vollständigkeit (kein `*partial*`-Blob, Modell-Manifest vorhanden) statt nur auf Größe. Ein bei etwa 60 % abgebrochener Pull überschreitet die 150-MB-Schwelle bereits und landete sonst dauerhaft unter dem unveränderlichen Cache-Schlüssel.\n- Die Aussage im Workflow-Kommentar ist von „keinerlei Netzzugriff\" auf „kein erneuter Modell-Download\" eingegrenzt — die Basis-Images kommen weiterhin von Docker Hub.\n\n## Beim Nachziehen angepasst\n\nDer Commit ist zwölf Tage alt; zwei Stellen ließen sich nicht unverändert übernehmen.\n\n**Jackson 3.** `BaselineTest` erwartete für das fehlende Feld die `IllegalStateException` aus `validate()`. Das war unter Jackson 2 richtig, wo ein abwesendes `int`-Feld stillschweigend auf 0 defaultete. Seit der Migration in `e15f6ef` lehnt Jackson 3 die Zuordnung selbst ab (`FAIL_ON_NULL_FOR_PRIMITIVES` ist standardmäßig an), sodass der Schutz eine Ebene früher greift. Der Test prüft jetzt das Ergebnis — `load()` gibt keine Baseline mit stillschweigend leerem Toleranznenner zurück — statt des Ausnahmetyps. `validate()` deckt weiterhin die explizite 0 und negative Werte ab, die sauber deserialisieren.\n\n**Konflikte in `retrieval-regression.yml`.** Zugunsten des heutigen Standes aufgelöst: Der Cache-Speicherschritt aus #311 und das Awaitility-Budget aus #414 bleiben unverändert, übernommen wurden die Vollständigkeitsprüfung des Exports, die eingegrenzte Netzzugriffsaussage und der Wegfall der Baseline-Schritte samt `fetch-depth: 0`.\n\n## Zugehörige Issues\n\nCloses #416\n\nZusammenhang: #228, #301 (Ursprungs-PR), #306 (die offen bleibende Lücke), ADR-0013\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [x] CI/Build\n\n## Reproduktionsnachweis\n\nFür den Kernbefund (harte Untergrenze) deckt der neue Test `hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded` genau den Erosionsfall ab: eine künstlich auf 0,30 abgesenkte Baseline, gegen die die reine Relativformel `0,8 × 0,30 = 0,24` ergäbe.\n\n**Rot — mit auf den `main`-Stand zurückgesetztem `BaselineComparator.java`:**\n\n```\nBaselineComparatorTest > hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded() FAILED\nExpecting actual:\n  0.24\nto be close to:\n  0.3\nby less than 1.0E-9 but difference was 0.06.\n13 tests completed, 1 failed\n```\n\nDie Untergrenze ist also tatsächlich mit der abgesenkten Baseline mitgewandert — genau der Defekt, den der Commit beschreibt.\n\n**Grün — mit dem Fix:** `./gradlew spotlessCheck build` — BUILD SUCCESSFUL, alle 35 Tests in `evalUnitTest` bestehen.\n\nFür die Workflow-Änderungen gibt es keinen lokalen Nachweis; beide Dateien sind als YAML validiert, der eigentliche Beleg ist der Lauf in diesem PR.\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build` — BUILD SUCCESSFUL)\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe oben)\n- [x] Dokumentation aktualisiert (ADR-0013, `eval/baseline/README.md`)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (bereits unterzeichnet)\n\nFrontend-Prüfungen entfallen: keine Frontend-Änderungen.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [ ] Dieser PR wurde von einem KI-Agenten verfasst (angeben: _______)\n- [x] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\nDer übernommene Commit stammt vom Maintainer gemeinsam mit Claude Sonnet 5; das Nachziehen, die Konfliktauflösung und die Jackson-3-Anpassung von Claude Opus 5 via Claude Code.",
+        "closes": [
+          416
+        ],
+        "additions": 490,
+        "deletions": 128,
+        "changed_files": 9
+      },
+      {
+        "number": 415,
+        "title": "fix(eval): evaluateRetrieval nicht mehr über den fehlenden Report stolpern lassen",
+        "url": "https://github.com/criew/opaa/pull/415",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend",
+          "size:S",
+          "ci",
+          "evaluation"
+        ],
+        "body": "## Zusammenfassung\r\n\r\nDer nächtliche Lauf des Workflows `Retrieval-Regression` ([Lauf 31860676357](https://github.com/criew/opaa/actions/runs/31860676357)) ist fehlgeschlagen — nicht wegen einer Retrieval-Regression, sondern weil `evaluateRetrieval` keinen Testfilter hatte und damit alle Klassen des `evalTest`-Sourcesets ausführte, einschließlich `BaselineRegressionTest`.\r\n\r\nJUnit startete den alphabetisch vor `RetrievalEvaluationHarnessTest`:\r\n\r\n- `03:01:21` — `BaselineRegressionTest`, `build/eval-reports/retrieval-metrics.json` existiert noch nicht → Fehlschlag am `\"No report found\"`-Wächter (`BaselineRegressionTest.java:38`)\r\n- `03:23:43` — `RetrievalEvaluationHarnessTest` schreibt den Report (PASSED)\r\n\r\nDer Build brach dadurch bei `:evaluateRetrieval` ab, sodass `:checkRetrievalBaseline` — die Task, die den Baseline-Vergleich tatsächlich durchführt — nie startete. `evalUnitTest` schloss beide Klassen bereits korrekt aus, `checkRetrievalBaseline` filtert korrekt auf `*BaselineRegressionTest`; nur `evaluateRetrieval` filterte nichts. Der Javadoc von `BaselineRegressionTest` beschrieb die beabsichtigte Aufteilung schon richtig — die Task-Konfiguration setzte sie nur nicht um.\r\n\r\n**Es lag keine Retrieval-Regression vor.** Die Messwerte des Laufs sind auf drei Nachkommastellen identisch mit `eval/baseline/comic-characters.json` (HitRate@5=0.521, MRR=0.461, nDCG@10=0.445, Recall@10=0.490), 1448 Dokumente indiziert, Ein-Chunk-Invariante ohne Verletzung.\r\n\r\nLatent war der Fehler seit Einführung von `BaselineRegressionTest`: alle zehn vorhergehenden nächtlichen Läufe wurden nach 30 Minuten durch `timeout-minutes` als `cancelled` beendet (kalter Ollama-Modell-Cache). Der Lauf vom 15.08.2026 ist der erste, der mit warmem Cache (22m46s) bis zur Auswertung durchkam.\r\n\r\nDie Änderung ist eine Zeile plus Kommentar: `evaluateRetrieval` schließt `*BaselineRegressionTest` aus, analog zu `evalUnitTest`.\r\n\r\n## Zugehörige Issues\r\n\r\nCloses #414\r\n\r\nZusammenhang: #407 (automatisch erzeugtes Alarm-Issue dieses Laufs — schließt sich selbst, sobald der nächtliche Lauf wieder grün ist), Epic #224\r\n\r\n## Art der Änderung\r\n\r\n- [x] Bugfix\r\n- [ ] Neues Feature\r\n- [ ] Dokumentation\r\n- [ ] Refactoring\r\n- [x] CI/Build\r\n\r\n## Reproduktionsnachweis\r\n\r\nDer Fehlerpfad ist Docker-frei reproduzierbar, weil `BaselineRegressionTest` selbst nur zwei JSON-Dateien liest. Maßgeblich ist, ob `evaluateRetrieval` die Klasse überhaupt selektiert — geprüft mit `--tests \"*BaselineRegressionTest\"` in einem frischen Worktree ohne `build/eval-reports`.\r\n\r\n**Rot — auf dem fehlerhaften Stand (ohne den Filter):**\r\n\r\n```\r\n> Task :evaluateRetrieval FAILED\r\n\r\nBaselineRegressionTest > currentRunStaysWithinToleranceOfTheCommittedBaseline() FAILED\r\n    java.lang.AssertionError at BaselineRegressionTest.java:38\r\n1 test completed, 1 failed\r\n```\r\n\r\nmit der Meldung aus dem Testreport:\r\n\r\n```\r\nNo report found at 'C:\\source\\opaa-414\\backend\\build\\eval-reports\\retrieval-metrics.json'.\r\nRun './gradlew evaluateRetrieval' first — this test only compares an existing report against\r\nthe baseline, it does not produce one.\r\n```\r\n\r\nDas ist dieselbe Assertion an derselben Zeile wie im CI-Lauf.\r\n\r\n**Grün — mit dem Fix:** derselbe Aufruf selektiert die Klasse nicht mehr:\r\n\r\n```\r\n> No tests found for given includes: [*BaselineRegressionTest](--tests filter)\r\n```\r\n\r\n(Der Exit-Code 1 stammt hier allein aus dem ins Leere greifenden `--tests`-Filter dieses Diagnoseaufrufs — im regulären `evaluateRetrieval`-Lauf ohne Filter ist das kein Fehlerfall.)\r\n\r\nEin automatisierter Regressionstest dafür müsste die Gradle-Task-Konfiguration selbst prüfen; das steht in keinem Verhältnis zu einer Filterzeile. Stattdessen hält der ergänzte Kommentar fest, warum der Ausschluss notwendig ist. Ob `checkRetrievalBaseline` den Vergleich weiterhin durchführt, zeigt endgültig erst der nächste nächtliche Lauf — dessen `filter`-Block bleibt unverändert.\r\n\r\n## Nachtrag: zweiter Commit — Awaitility-Timeout\r\n\r\nDer erste CI-Lauf dieses PRs hat den Fix bestätigt und dabei den nächsten, davon unabhängigen Blocker freigelegt.\r\n\r\n**Der Filter wirkt:** [Lauf 31887756725](https://github.com/criew/opaa/actions/runs/31887756725) führt 32 statt 33 Tests aus, `BaselineRegressionTest` taucht im Log nicht mehr auf, kein `\"No report found\"` mehr.\r\n\r\n**Neuer Fehlschlag:** `RetrievalEvaluationHarnessTest` lief in den Awaitility-Timeout in `awaitJobCompletion` (`.atMost(30, TimeUnit.MINUTES)`) — die Indizierung stand nach 30 Minuten bei **1121 von 1448** Dokumenten (~1,61 s/Dokument). Die anschließenden Hikari- und `EntityManagerFactory is closed`-Fehler sind Folgerauschen aus dem Herunterfahren.\r\n\r\nDas ist keine Regression aus #412 oder #413: #412 besteht ausschließlich aus einer Liquibase-Migration nebst Test und fasst den Indizierungspfad nicht an, #413 ändert `LibraryAccessService`/`KnowledgeLibraryService`, nicht die Indizierung.\r\n\r\nDer Widerspruch stand bereits im Repository: Der `timeout-minutes`-Kommentar in `.github/workflows/retrieval-regression.yml` dokumentiert seit Issue #311 eine Messung von ~1,58 s/Dokument auf einem echten Runner — hochgerechnet ~38 Minuten Indizierung, ~44 Minuten Vollauf — und hebt deshalb den **Job**-Timeout auf 60 Minuten an. Der **Awaitility**-Timeout im Test blieb bei dieser Anhebung auf 30 Minuten stehen. Er widersprach damit derselben Messung, auf der die 60 Minuten beruhen, und ging nur durch, wenn der Runner überdurchschnittlich schnell war: der nächtliche Lauf davor schaffte ~0,85 s/Dokument.\r\n\r\nDas Budget steht jetzt auf 45 Minuten und bleibt damit unter dem Job-Timeout — eine hängende Indizierung endet so als diagnostizierbarer Testfehlschlag statt als abgebrochener Job. Der Workflow-Kommentar hält die Kopplung beider Limits fest, damit das nächste Mal beide zusammen angefasst werden.\r\n\r\nFür diesen Teil gibt es keinen lokalen Reproduktionsnachweis: Der Fehlerpfad ist die reale Indizierungslaufzeit auf einem GitHub-Actions-Runner, ein 30-Minuten-Docker-Lauf lässt sich lokal weder sinnvoll noch aussagekräftig nachstellen. Der Beleg sind die Messwerte des roten Laufs oben — 1121/1448 nach exakt 30 Minuten — gegen die im Repository bereits dokumentierte Messung aus #311.\r\n\r\n## Checkliste\r\n\r\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build` bzw. `spotlessCheck evalUnitTest` — BUILD SUCCESSFUL)\r\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (Commit 1 lokal rot/grün belegt; Commit 2 über die CI-Messwerte belegt, siehe Nachtrag)\r\n- [ ] Dokumentation aktualisiert (nicht zutreffend — Kommentar in `build.gradle.kts` ergänzt)\r\n- [x] Keine Secrets oder Anmeldeinformationen committet\r\n- [x] Commit-Nachrichten folgen Conventional Commits\r\n- [x] CLA unterzeichnet (bereits unterzeichnet)\r\n\r\nFrontend-Prüfungen entfallen: die Änderung betrifft `backend/build.gradle.kts`, `backend/src/evalTest/…/RetrievalEvaluationHarnessTest.java` und `.github/workflows/retrieval-regression.yml`.\r\n\r\n## KI-Agenten-Offenlegung\r\n\r\n- [ ] Dieser PR wurde von einem Menschen verfasst\r\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Opus 5 via Claude Code)\r\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+        "closes": [
+          414
+        ],
+        "additions": 33,
+        "deletions": 1,
+        "changed_files": 3
+      },
+      {
+        "number": 413,
+        "title": "fix(library): Rechteprüfung für die System-Bibliothek vereinheitlichen",
+        "url": "https://github.com/criew/opaa/pull/413",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend"
+        ],
+        "body": "@-",
+        "closes": [],
+        "additions": 221,
+        "deletions": 24,
+        "changed_files": 8
+      },
+      {
+        "number": 412,
+        "title": "fix(indexing): Bibliothekszuordnung in den Chunk-Metadaten nachtragen",
+        "url": "https://github.com/criew/opaa/pull/412",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "backend"
+        ],
+        "body": "@-",
+        "closes": [],
+        "additions": 507,
+        "deletions": 0,
+        "changed_files": 5
+      },
+      {
+        "number": 411,
+        "title": "docs: Backlog-Sichtung abschließen und Statusaussage zum Upload berichtigen",
+        "url": "https://github.com/criew/opaa/pull/411",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Zusammenfassung\n\nZwei Dinge, beide aus derselben Durchsicht.\n\n### Die Backlog-Sichtung ist abgearbeitet\n\n`docs/discussions/discussion-backlog-neuausrichtung.md` ordnete am 14.08. alle 79 offenen Vorgänge in vier Kategorien ein. Diese Einordnung ist erledigt:\n\n| Kategorie | Ergebnis |\n|---|---|\n| 1 — trägt die Ausrichtung (61) | keine Handlung nötig |\n| 2 — braucht neue Formulierung (7) | umformuliert: #224, #234, #119, #123, #143, #144, #145 |\n| 3 — ist zu prüfen (10) | #77 an #348, #106 samt #126–#130 an #349, #54 abgelöst durch #205, #60 und #63 mit Bilanz geschlossen |\n| 4 — unklar (1) | #76 geschlossen — der Vorgang benannte keinen Defekt |\n\nDie Tabellen sind entfernt. Sie beschrieben einen Zustand, den es nicht mehr gibt, und hätten beim nächsten Lesen in die Irre geführt. Die Einleitung sagt jetzt, was aus jeder Kategorie geworden ist; die empfohlenen nächsten Schritte führen nur noch das Offene.\n\n**Der Abschnitt „Lücken\" bleibt unverändert** — er ist die einzige Aussage des Dokuments, die weiter gilt: die Themen der neuen Ausrichtung, für die es keinen Vorgang gibt.\n\n### `STATUS.md` behauptete einen Upload, den es nicht gibt\n\nAufgefallen bei der Umformulierung von #119. Unter Bereich B stand „Upload über die Weboberfläche und die REST-API\" unter **Gebaut**. Nachgeprüft:\n\n- kein `multipart` in `backend/src/main/resources/openapi/opaa-api.yaml`\n- kein `MultipartFile` im Backend\n- `documents` führt keine einbringende Person\n\n**Beide Aufnahmewege gehen über die Systemverwaltung.** Eine Sachbearbeiterin kann heute kein einziges Dokument einbringen. Daran hängt auch das Speicherkontingent aus #119 — es hätte nichts, woran es greifen könnte.\n\n`docs/features/knowledge-sources.md` sagt es bereits korrekt („der Upload gehört zum Zielbild\", „noch nicht gebaut\"). Ausgerechnet das Dokument, das nichts beschönigen soll, tat es nicht — deshalb steht die Korrektur in `STATUS.md` unter einer eigenen Überschrift **„Nicht gebaut — obwohl es hier lange anders stand\"** statt still verschoben zu werden.\n\n## Zugehörige Issues\n\nCloses #410\n\n## Art der Änderung\n\n- [x] Dokumentation\n\n## Checkliste\n\n- [x] Upload-Befund am Code nachgeprüft, nicht übernommen\n- [x] Kurzübersicht und Bereich B ziehen dieselbe Aussage\n- [x] Keine toten Verweise; der Abschnitt „Lücken\" ist unverändert\n- [x] Reine Dokumentationsänderung; Pre-Push-Checkliste entfällt\n\n## KI-Agenten-Offenlegung\n\nClaude Opus 5 in der Claude-Code-Hauptsitzung. Die Umformulierung der sieben Vorgänge aus Kategorie 2 hat ein `product-manager`-Subagent vorgenommen; der Upload-Befund stammt von dort und wurde in der Hauptsitzung gegen den Code nachgeprüft.",
+        "closes": [
+          410
+        ],
+        "additions": 171,
+        "deletions": 175,
+        "changed_files": 3
+      }
+    ]
+  }
+}
