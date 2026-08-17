@@ -110,4 +110,38 @@ describe('MSW Handlers', () => {
       expect(data.status).toBe(400)
     })
   })
+
+  // Upload/format/size/dedup handling of the POST handler is exercised end-to-end through
+  // DocumentsPage.test.tsx and documentStore.test.ts instead of a raw multipart request here:
+  // driving request.formData() through a jsdom-environment fetch()/axios body never resolves in
+  // this handler (a known jsdom/undici stream interaction, not specific to this handler), so a
+  // multipart POST cannot be exercised directly against MSW from this test file.
+  describe('/api/v1/libraries/:libraryId/documents', () => {
+    const libraryId = 'library-dienstanweisungen'
+
+    it('lists the documents of a library', async () => {
+      const response = await fetch(`/api/v1/libraries/${libraryId}/documents`)
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual([])
+    })
+
+    it('returns 404 for an unknown library', async () => {
+      const response = await fetch('/api/v1/libraries/does-not-exist/documents')
+      expect(response.status).toBe(404)
+    })
+
+    it('returns 404 when deleting a document from an unknown library', async () => {
+      const response = await fetch('/api/v1/libraries/does-not-exist/documents/some-document', {
+        method: 'DELETE',
+      })
+      expect(response.status).toBe(404)
+    })
+
+    it('returns 404 when deleting an unknown document', async () => {
+      const response = await fetch(`/api/v1/libraries/${libraryId}/documents/does-not-exist`, {
+        method: 'DELETE',
+      })
+      expect(response.status).toBe(404)
+    })
+  })
 })

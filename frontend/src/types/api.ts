@@ -54,6 +54,10 @@ export type LibraryUpdateRequest = components['schemas']['LibraryUpdateRequest']
 export type LibraryListResponse = components['schemas']['LibraryListResponse']
 export type LibraryResponse = components['schemas']['LibraryResponse']
 
+export type DocumentStatus = components['schemas']['DocumentStatus']
+export type DocumentSourceType = components['schemas']['DocumentSourceType']
+export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

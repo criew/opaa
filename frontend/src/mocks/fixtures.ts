@@ -8,6 +8,7 @@ import type {
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
+  LibraryDocumentResponse,
   LibraryResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
@@ -503,6 +504,58 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
 export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
   mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
 )
+
+export const mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> = {
+  'library-personal': [
+    {
+      id: 'document-dienstanweisung',
+      fileName: 'dienstanweisung-2024.pdf',
+      contentType: 'application/pdf',
+      fileSize: 1258291,
+      status: 'INDEXED',
+      sourceType: 'UPLOAD',
+      chunkCount: 34,
+      indexedAt: '2026-03-02T09:00:00Z',
+      uploadedByUserId: 'mock-user-id',
+    },
+    {
+      id: 'document-rundschreiben',
+      fileName: 'rundschreiben-03.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      fileSize: 84213,
+      status: 'PENDING',
+      sourceType: 'UPLOAD',
+      chunkCount: 0,
+      indexedAt: null,
+      uploadedByUserId: 'mock-user-id',
+    },
+    {
+      id: 'document-vermerk',
+      fileName: 'vermerk.pptx',
+      contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      fileSize: 512000,
+      status: 'FAILED',
+      sourceType: 'UPLOAD',
+      chunkCount: 0,
+      indexedAt: null,
+      uploadedByUserId: 'mock-user-id',
+    },
+  ],
+  'library-referat-50': [
+    {
+      id: 'document-sgb-ii',
+      fileName: 'sgb-ii-kommentierung.pdf',
+      contentType: 'application/pdf',
+      fileSize: 4213456,
+      status: 'INDEXED',
+      sourceType: 'FILESYSTEM',
+      chunkCount: 212,
+      indexedAt: '2026-03-01T12:00:00Z',
+      uploadedByUserId: null,
+    },
+  ],
+  'library-dienstanweisungen': [],
+}
 
 export const mockUsers: UserInfo[] = [
   {
