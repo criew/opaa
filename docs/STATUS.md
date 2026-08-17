@@ -22,7 +22,7 @@ Drei Zustände werden unterschieden:
 | Themenbereich | Stand | Nächster Schritt |
 |---|---|---|
 | **A** Wissensschicht & Retrieval | Grundlage gebaut, Kern der Vision fehlt | Zitierzwang, hybride Suche, Reranking |
-| **B** Wissensquellen & Konnektoren | Verzeichnis- und URL-Aufnahme gebaut; **kein Upload**, kein Konnektor | Upload durch Beschäftigte, erster lesender Konnektor |
+| **B** Wissensquellen & Konnektoren | Verzeichnis-, URL- und Upload-Aufnahme gebaut; kein Konnektor | Erster lesender Konnektor |
 | **C** Spaces, Assets & Verteilung | **im Bau** | Epic #198 |
 | **D** Agenten, Prompts & Werkzeuge | nichts gebaut, keine Vorgänge | Phase 2 schneiden |
 | **E** Modelle & zentrale Steuerung | lokal-first gebaut, zentrale Vorgaben fehlen | Modellverwaltung |
@@ -90,19 +90,21 @@ Drei Zustände werden unterschieden:
   gehören nicht dazu — das stand hier bisher falsch
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
 - Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, `/api/v1/indexing`)
+- **Upload durch Beschäftigte** (#420): `POST /api/v1/libraries/{libraryId}/documents`
+  (`multipart/form-data`), mindestens `EDITOR` auf der Zielbibliothek erforderlich; dieselbe
+  Formatprüfung, Prüfsumme und Indizierungspipeline wie die anderen Aufnahmewege
+  (`FileProcessingService`). `documents` führt jetzt die einbringende Person
+  (`uploaded_by_user_id`). `DELETE .../documents/{documentId}` entfernt Dokumentzeile, Chunks im
+  Vektorspeicher und die abgelegte Datei wieder. Schadsoftwareprüfung ist bewusst ausgeklammert und
+  muss vor einem Produktivbetrieb nachgezogen werden.
 
-**Nicht gebaut — obwohl es hier lange anders stand**
-- **Es gibt keinen Upload.** Kein `multipart`-Endpunkt in der OpenAPI-Spezifikation, kein
-  `MultipartFile` im Code, und `documents` führt keine einbringende Person. Beide Aufnahmewege gehen
-  über die Systemverwaltung; eine Sachbearbeiterin kann heute kein einziges Dokument einbringen.
-  `features/knowledge-sources.md` sagt das korrekt, dieses Dokument tat es bis zum 15.08.2026 nicht.
-  Daran hängt auch das Speicherkontingent aus #119 — es hätte nichts, woran es greifen könnte.
+**Nicht gebaut**
+- Speicherkontingent je Konto und Hinweis auf ähnliche Bestände (#119)
+- Schadsoftwareprüfung des Uploads
 
 **Geplant (Phase 1)**
-- **Der Upload durch Beschäftigte**, mit einbringender Person am Dokument als Voraussetzung für
-  Kontingent, Dublettenmeldung und Zurechenbarkeit
 - **Der erste Konnektor.** Bisher gibt es keinen — weder zu einer Dateiablage noch zu einem Wiki, einem
-  Postfach oder einem Vorgangssystem. Was existiert, ist die Aufnahme über Verzeichnis und URL.
+  Postfach oder einem Vorgangssystem. Was existiert, ist die Aufnahme über Verzeichnis, URL und Upload.
 - Selbst aktualisierende Wissensblöcke; Zeitpläne und Prioritäten
 - Zuordnung einer Konnektorquelle zu genau einer Wissensbibliothek (#207)
 

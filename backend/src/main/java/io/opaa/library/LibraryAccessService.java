@@ -82,6 +82,17 @@ public class LibraryAccessService {
   }
 
   /**
+   * Whether the user may add or remove documents (upload, delete) - requires {@link
+   * AssetRole#EDITOR}, one level below {@link #canManage}. See
+   * docs/features/knowledge-sources.md#upload and #420's acceptance criteria: a VIEWER may read a
+   * library's contents but not change them, the same distinction {@link #canRead}/{@link
+   * #canManage} already draw one level up and down.
+   */
+  public boolean canEdit(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
+    return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.EDITOR);
+  }
+
+  /**
    * Whether the user may rename, change visibility/listed, or manage grants - requires {@link
    * AssetRole#MANAGER}. Deliberately <b>not</b> sufficient for deleting the library or (once it
    * exists) transferring ownership - see {@link #canDelete} and {@link AssetRole#OWNER}'s Javadoc

@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -177,6 +178,72 @@ public class FileProcessingService {
 
     metrics.recordProcessed();
     return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * Processes a file uploaded through the REST upload endpoint (#420, {@code
+   * io.opaa.library.LibraryDocumentService}). Unlike {@link #processFile} and {@link
+   * #processUrlFile}, the caller has already decided the target library and organization and
+   * already checked - via {@link ChecksumService#computeSha256} and {@code
+   * DocumentRepository#findByLibraryIdAndChecksum} - that no document with this content exists in
+   * that library yet, so this method does not repeat the existing-document lookup or dedup those
+   * two do (dedup here is scoped per library, not per file path, which is why it lives one layer up
+   * rather than here). {@code checksum} is passed in rather than recomputed for the same reason:
+   * the caller already hashed the file to make that decision, and hashing a large upload twice
+   * would be wasted work.
+   *
+   * <p>Returns the persisted {@link Document} itself, not a {@link FileProcessingResult} - unlike
+   * {@link #processFile}/{@link #processUrlFile}, whose callers (the async job executors) only need
+   * the processed/skipped/failed distinction for job counters, the upload endpoint's caller needs
+   * the row itself to build its {@code 201} response.
+   */
+  public Document processUploadedFile(
+      Path storedFile,
+      String fileName,
+      String checksum,
+      UUID libraryId,
+      UUID organizationId,
+      UUID uploadedByUserId)
+      throws IOException {
+    String filePath = storedFile.toAbsolutePath().toString();
+    String contentType = Files.probeContentType(storedFile);
+    long fileSize = Files.size(storedFile);
+
+    var doc = new Document(fileName, filePath, contentType, fileSize, DocumentSourceType.UPLOAD);
+    doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
+    doc.setUploadedByUserId(uploadedByUserId);
+    doc = documentRepository.save(doc);
+
+    try {
+      List<org.springframework.ai.document.Document> parsed =
+          documentService.parseDocument(storedFile);
+      if (parsed.isEmpty()) {
+        log.warn("No content extracted from uploaded document: {}", fileName);
+        doc.setStatus(DocumentStatus.FAILED);
+        return documentRepository.save(doc);
+      }
+
+      List<org.springframework.ai.document.Document> chunks =
+          chunkingService.chunkDocuments(fileName, parsed);
+      log.debug("Uploaded file {} produced {} chunks", fileName, chunks.size());
+
+      storeChunks(doc, chunks);
+
+      doc.setChunkCount(chunks.size());
+      doc.setIndexedAt(Instant.now());
+      doc.setChecksum(checksum);
+      doc.setStatus(DocumentStatus.INDEXED);
+      doc = documentRepository.save(doc);
+    } catch (Exception e) {
+      doc.setStatus(DocumentStatus.FAILED);
+      documentRepository.save(doc);
+      metrics.recordFailed();
+      throw e;
+    }
+
+    metrics.recordProcessed();
+    return doc;
   }
 
   private void storeChunks(

@@ -21,6 +21,14 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
+  servlet:
+    multipart:
+      # Deliberately generous: opaa.upload.max-file-size below is the limit whose violation the API
+      # answers with a German 413 message (LibraryDocumentService); this container-level cap only
+      # needs to sit above it, with headroom for multipart framing overhead, so it never fires first
+      # and produces Spring's own untranslated error instead.
+      max-file-size: 60MB
+      max-request-size: 60MB
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
@@ -81,6 +89,9 @@ opaa:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
+  upload:
+    storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
+    max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

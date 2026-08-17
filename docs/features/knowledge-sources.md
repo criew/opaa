@@ -79,25 +79,39 @@ Umgekehrt lohnt für die Anlagen eines einzelnen Einspruchs kein Konnektor.
 Ablauf beim Hochladen:
 
 1. Auswahl der Dateien über die Web-Oberfläche, als Anhang im Chat oder über die Schnittstelle.
+   **Gebaut (#420):** `POST /api/v1/libraries/{libraryId}/documents` als `multipart/form-data`-
+   Schnittstelle. Web-Oberfläche und Chat-Anhang sind eigene, noch offene Vorgänge.
 2. Prüfung: Format, Größe, Schadsoftware. Abgelehnte Dateien werden mit Grund gemeldet.
-3. Ablage im Dokumentenspeicher der Installation.
-4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)).
+   **Format und Größe sind gebaut** (#420) — dieselbe Formatliste (`SupportedDocumentFormats`) wie
+   Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Die Schadsoftwareprüfung
+   fehlt noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist
+   als eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
+3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
+4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
+   dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
 5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
-   Person am Ziel mindestens `EDITOR` ist.
+   Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
+   eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad.
 
-Zwei Sicherungen gehören dazu:
+Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
+auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
+abgelegte Datei. **Gebaut (#420).**
+
+Zwei Sicherungen gehören zusätzlich dazu, beide noch offen:
 
 - **Hinweis auf ähnliche Bestände.** Vor dem Abschluss zeigt OPAA an, ob ein inhaltlich sehr ähnliches
   Dokument bereits vorliegt — beschränkt auf Bestände, die die hochladende Person ohnehin sehen darf.
   Der Hinweis blockiert nicht, er verhindert das stille Nebeneinander zweier Fassungen. Näheres unter
-  [Duplikate erkennen](#duplikate-erkennen).
+  [Duplikate erkennen](#duplikate-erkennen). Prüfsummengleiche Dateien werden bereits abgewiesen (#420);
+  dieser inhaltliche Ähnlichkeitshinweis ist etwas anderes und bleibt offen.
 - **Kontingente je Person** mit hausweitem Standardwert. Ohne sie wird der persönliche Bereich zur
   Ausweichablage für ganze Netzlaufwerke, und zwar an der Kuratierung vorbei.
 
 Beide sind entschieden und als **Issue #119** erfasst (siehe [Geklärte Fragen](#geklärte-fragen)), aber
-noch nicht gebaut — ebenso wenig wie der Upload selbst. Die Originale liegen in dem einen Verzeichnis,
-das die Installation dafür konfiguriert; ob dahinter ein lokales Dateisystem oder ein eingehängtes
-Netzlaufwerk steht, entscheidet der Betrieb und nicht die Anwendung (siehe
+noch nicht gebaut. #420 hat dafür die Voraussetzung geschaffen: Jedes hochgeladene Dokument führt jetzt
+seine einbringende Person. Die Originale liegen in dem einen Verzeichnis, das die Installation dafür
+konfiguriert; ob dahinter ein lokales Dateisystem oder ein eingehängtes Netzlaufwerk steht, entscheidet
+der Betrieb und nicht die Anwendung (siehe
 [Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)).
 
 Ein Upload ist **statisch**. Ändert sich das Original außerhalb von OPAA, merkt das niemand. Deshalb

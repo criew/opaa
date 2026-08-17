@@ -794,6 +794,71 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+    post:
+      operationId: uploadLibraryDocument
+      tags: [library]
+      summary: >
+        Upload a document into a library (EDITOR role or above required). Processed through the
+        same indexing pipeline (chunking, checksum, metadata) used by the other ingestion paths.
+        Malware scanning is explicitly out of scope - see #420.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Document uploaded and indexed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryDocumentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: deleteLibraryDocument
+      tags: [library]
+      summary: >
+        Remove a document from a library (EDITOR role or above required): the document row, its
+        chunks in the vector store, and the stored file.
+      responses:
+        "204":
+          description: Document deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/grants:
     parameters:
       - name: libraryId
@@ -1568,7 +1633,7 @@ components:
 
     DocumentSourceType:
       type: string
-      enum: [FILESYSTEM, HTTP_DIRECTORY]
+      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD]
       example: FILESYSTEM
 
     LibraryDocumentResponse:
@@ -1598,6 +1663,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        uploadedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The user who uploaded this document, null for non-UPLOAD source types
 
     AssetRole:
       type: string
@@ -1851,6 +1921,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PayloadTooLarge:
+      description: Payload too large
       content:
         application/json:
           schema:

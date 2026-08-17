@@ -31,3 +31,5 @@ databaseChangeLog:
       file: db/changelog/changes/015-replace-space-kind-with-is-default.yaml
   - include:
       file: db/changelog/changes/016-backfill-vector-store-library-metadata.yaml
+  - include:
+      file: db/changelog/changes/020-add-upload-metadata-to-documents.yaml

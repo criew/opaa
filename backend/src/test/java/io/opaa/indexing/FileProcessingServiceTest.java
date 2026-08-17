@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -405,5 +406,60 @@ class FileProcessingServiceTest {
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
     verify(documentRepository).delete(existingDoc);
     verify(documentService).parseDocument(file);
+  }
+
+  @Test
+  void processUploadedFileIndexesDocumentWithLibraryAndUploaderMetadata() throws IOException {
+    Path file = tempDir.resolve("upload.pdf");
+    Files.writeString(file, "uploaded pdf content");
+
+    UUID libraryId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    UUID uploaderId = UUID.randomUUID();
+
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("upload.pdf"), eq(parsed))).thenReturn(chunks);
+
+    Document result =
+        service.processUploadedFile(
+            file, "upload.pdf", "checksum-abc", libraryId, organizationId, uploaderId);
+
+    assertThat(result.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(result.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(result.getLibraryId()).isEqualTo(libraryId);
+    assertThat(result.getOrganizationId()).isEqualTo(organizationId);
+    assertThat(result.getUploadedByUserId()).isEqualTo(uploaderId);
+    assertThat(result.getChecksum()).isEqualTo("checksum-abc");
+    assertThat(result.getChunkCount()).isEqualTo(1);
+    verify(vectorStore).add(any());
+    // The upload path never looks the document up by file path - dedup for uploads is scoped per
+    // library and already decided by the caller before this method runs (see the class Javadoc).
+    verify(documentRepository, never()).findByFilePath(anyString());
+  }
+
+  @Test
+  void processUploadedFileMarksDocumentFailedWhenNoContentExtracted() throws IOException {
+    Path file = tempDir.resolve("empty-upload.pdf");
+    Files.writeString(file, "");
+
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentService.parseDocument(file)).thenReturn(List.of());
+
+    Document result =
+        service.processUploadedFile(
+            file,
+            "empty-upload.pdf",
+            "checksum-empty",
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID());
+
+    assertThat(result.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    verify(vectorStore, never()).add(any());
   }
 }

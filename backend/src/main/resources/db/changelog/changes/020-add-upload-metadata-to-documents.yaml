@@ -1,0 +1,62 @@
+databaseChangeLog:
+  # Adds the two pieces of persistence #420 needs that migration 012 (library_id/organization_id)
+  # did not yet cover: who uploaded a document, and UPLOAD as a third source_type alongside
+  # FILESYSTEM/HTTP_DIRECTORY (migration 004's check constraint only knew those two).
+
+  - changeSet:
+      id: 020-add-uploaded-by-user-id-to-documents
+      author: opaa
+      comment: >
+        uploaded_by_user_id is nullable - only documents that arrived through the upload endpoint
+        (#420) carry it, every other source_type and every pre-existing row leaves it NULL. Its
+        foreign key uses ON DELETE SET NULL rather than RESTRICT/CASCADE (unlike
+        fk_knowledge_libraries_owner_user, which is RESTRICT): the uploading person is
+        attributional metadata on an otherwise independent document row, not a structural owner the
+        document depends on - deleting a user account must not be blocked by, or take down, every
+        document that person ever uploaded.
+      changes:
+        - addColumn:
+            tableName: documents
+            columns:
+              - column:
+                  name: uploaded_by_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: documents
+            baseColumnNames: uploaded_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_documents_uploaded_by_user
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: documents
+            constraintName: fk_documents_uploaded_by_user
+        - dropColumn:
+            tableName: documents
+            columnName: uploaded_by_user_id
+
+  - changeSet:
+      id: 020-allow-upload-source-type
+      author: opaa
+      comment: >
+        Widen chk_documents_source_type (migration 004) to also accept UPLOAD
+        (DocumentSourceType#UPLOAD), the value FileProcessingService#processUploadedFile now writes
+        for documents that arrived through the REST upload endpoint (#420).
+      changes:
+        - sql:
+            comment: "Drop and recreate chk_documents_source_type to include UPLOAD"
+            sql: >
+              ALTER TABLE documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE documents
+              ADD CONSTRAINT chk_documents_source_type
+              CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD'));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE documents
+              ADD CONSTRAINT chk_documents_source_type
+              CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY'));
