@@ -186,15 +186,19 @@ class LibraryAccessServiceTest {
 
   @Test
   void anEditorGrantAllowsEditingButNotManaging() {
-    // #420: uploading/deleting documents requires EDITOR, one level below MANAGER - a VIEWER may
-    // read a library's contents but not change them.
+    // #420: uploading/deleting documents (io.opaa.library.LibraryDocumentService#requireEditable)
+    // requires EDITOR, one level below MANAGER - a VIEWER may read a library's contents but not
+    // change them. requireEditable reads effectiveRole directly (not a dedicated canEdit method -
+    // it also needs to distinguish "no role at all" from "a role below EDITOR", which a boolean
+    // cannot express), so this pins the same threshold at the source.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
     AssetGrant grant =
         AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.EDITOR, null, userId);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
 
-    assertThat(accessService.canEdit(library, userId, false)).isTrue();
+    assertThat(accessService.effectiveRole(library, userId, false).atLeast(AssetRole.EDITOR))
+        .isTrue();
     assertThat(accessService.canManage(library, userId, false)).isFalse();
   }
 
@@ -206,7 +210,8 @@ class LibraryAccessServiceTest {
         AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.VIEWER, null, userId);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
 
-    assertThat(accessService.canEdit(library, userId, false)).isFalse();
+    assertThat(accessService.effectiveRole(library, userId, false).atLeast(AssetRole.EDITOR))
+        .isFalse();
   }
 
   @Test

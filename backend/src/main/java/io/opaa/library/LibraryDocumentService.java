@@ -34,9 +34,9 @@ import org.springframework.web.server.ResponseStatusException;
  * Uploads documents into, and removes them from, a {@link KnowledgeLibrary} via the REST API (#420,
  * docs/features/knowledge-sources.md#upload) - the human counterpart to the connector/crawl
  * ingestion paths {@code FileProcessingService} already serves. Both mutating methods here require
- * {@link AssetRole#EDITOR} on the target library (see {@link LibraryAccessService#canEdit}), one
- * level below the {@code MANAGER} the library-configuration endpoints require - a person may add or
- * remove content without being allowed to change who else can.
+ * {@link AssetRole#EDITOR} on the target library (see {@link #requireEditable}), one level below
+ * the {@code MANAGER} the library-configuration endpoints require - a person may add or remove
+ * content without being allowed to change who else can.
  *
  * <p>Reuses the existing indexing pipeline deliberately: {@link #uploadDocument} stores the
  * incoming bytes and computes their checksum itself (both are specific to how this endpoint decides
@@ -254,7 +254,9 @@ public class LibraryDocumentService {
    * KnowledgeLibraryService#getLibrary}'s {@code canRead} check draws, which answers {@code 403} to
    * any same-organization caller regardless of whether they hold any role at all (#420 code review,
    * nit 9). That existing behaviour is deliberately not changed here; this method only governs the
-   * two endpoints this issue adds.
+   * two endpoints this issue adds - unifying it across the rest of the library API (so existence
+   * cannot still be inferred one endpoint over, e.g. via {@code listDocuments}) is tracked
+   * separately as #436.
    */
   private void requireEditable(KnowledgeLibrary library, UUID currentUserId, boolean systemAdmin) {
     AssetRole role = accessService.effectiveRole(library, currentUserId, systemAdmin);

@@ -201,10 +201,26 @@ public class FileProcessingService {
    * #processFile}/{@link #processUrlFile}, which persist a row up front and mark it {@code FAILED}
    * on any problem - appropriate for their job-based reporting model, where a batch run's summary
    * has a place for "processed but failed" - this method parses the file <em>before</em> creating
-   * any row at all, and deletes the row again if chunking/embedding fails afterwards. An
-   * interactively uploaded document has no such use for a listed {@code FAILED} row pointing at a
-   * file the caller is about to delete: the caller gets a thrown exception instead, translates it
-   * into the appropriate {@code 4xx}, and there is nothing left over to clean up later.
+   * any row at all, and deletes the row (and any chunks already written for it) again if
+   * chunking/embedding fails afterwards. An interactively uploaded document has no such use for a
+   * listed {@code FAILED} row pointing at a file the caller is about to delete: the caller gets a
+   * thrown exception instead, translates it into the appropriate {@code 4xx}, and there is nothing
+   * left over to clean up later.
+   *
+   * <p><b>The checksum is set on the first {@code save}, before chunking/embedding, not on the
+   * second (#420 second code review round, finding 1).</b> {@code
+   * io.opaa.library.LibraryDocumentService}'s {@code uk_documents_library_checksum} partial unique
+   * index can only reject a concurrent duplicate upload once a row actually carries a non-null
+   * checksum - setting it here means two racing uploads of the same file into the same library
+   * settle the race at this first {@code save}, before either has done any embedding work, rather
+   * than after the loser has already written its chunks to the vector store. The second {@code
+   * save} below still exists (for {@code chunkCount}/{@code indexedAt}/{@code status}), but a
+   * unique-index violation can now only happen there in the much rarer case of a second document
+   * row racing to the identical checksum by some path other than a concurrent call to this same
+   * method - {@code storeChunks} below is the reason the {@code catch} block also removes any
+   * chunks the failed attempt wrote, not just the row: whichever save fails, chunks may already be
+   * in the vector store, exactly as {@link #processFile} (line 61) and {@link #processUrlFile}
+   * (line 136) already do for their own re-index paths.
    *
    * @throws EmptyDocumentContentException if Tika extracts no text at all - deliberately thrown
    *     rather than returning a {@code FAILED} row, since there is nothing indexed and nothing to
@@ -233,6 +249,10 @@ public class FileProcessingService {
     doc.setLibraryId(libraryId);
     doc.setOrganizationId(organizationId);
     doc.setUploadedByUserId(uploadedByUserId);
+    // Set before the first save (see the method Javadoc): this is where the concurrent-upload
+    // race against uk_documents_library_checksum is meant to be settled - before any embedding
+    // work, not after.
+    doc.setChecksum(checksum);
     doc = documentRepository.save(doc);
 
     try {
@@ -244,10 +264,15 @@ public class FileProcessingService {
 
       doc.setChunkCount(chunks.size());
       doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
       doc.setStatus(DocumentStatus.INDEXED);
       doc = documentRepository.save(doc);
     } catch (Exception e) {
+      // Mirrors processFile/processUrlFile's own re-index cleanup (lines 61/136): whatever failed
+      // here, storeChunks may already have written chunks for doc.getId() into the vector store -
+      // deleting only the row would leave them orphaned, unreachable through deleteDocument (which
+      // needs a row to key off of) but still returned by /api/v1/query (whose library_id filter
+      // does not check that the document row still exists).
+      vectorStore.delete("document_id == '" + doc.getId() + "'");
       documentRepository.delete(doc);
       metrics.recordFailed();
       throw e;

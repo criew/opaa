@@ -350,31 +350,49 @@ class LibraryDocumentServiceIntegrationTest {
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
-      Callable<Boolean> upload =
+      // Returns the winner's document id, or null for the loser - #420 second code review round,
+      // nit 1: a plain boolean cannot check the vector store afterwards, and that omission is
+      // exactly what let the loser's orphaned chunks slip through the first version of this test.
+      Callable<UUID> upload =
           () -> {
             barrier.await(10, TimeUnit.SECONDS);
             try {
-              documentService.uploadDocument(
-                  libraryId,
-                  textFile("racer-" + Thread.currentThread().getId() + ".txt", identicalContent),
-                  editor.getId(),
-                  false);
-              return true;
+              LibraryDocumentResponse response =
+                  documentService.uploadDocument(
+                      libraryId,
+                      textFile(
+                          "racer-" + Thread.currentThread().getId() + ".txt", identicalContent),
+                      editor.getId(),
+                      false);
+              return response.getId();
             } catch (ResponseStatusException e) {
               assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-              return false;
+              return null;
             }
           };
 
-      Future<Boolean> first = executor.submit(upload);
-      Future<Boolean> second = executor.submit(upload);
-      boolean firstSucceeded = first.get(20, TimeUnit.SECONDS);
-      boolean secondSucceeded = second.get(20, TimeUnit.SECONDS);
+      Future<UUID> first = executor.submit(upload);
+      Future<UUID> second = executor.submit(upload);
+      UUID firstResult = first.get(20, TimeUnit.SECONDS);
+      UUID secondResult = second.get(20, TimeUnit.SECONDS);
 
-      assertThat(firstSucceeded ^ secondSucceeded)
+      assertThat((firstResult == null) ^ (secondResult == null))
           .as("Exactly one of the two concurrent uploads must succeed")
           .isTrue();
+      UUID winnerId = firstResult != null ? firstResult : secondResult;
       assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
+
+      // The actual regression this test exists for (#420 second code review round, finding 1): the
+      // loser must not have written chunks to the vector store before losing the race - the
+      // checksum has to be set before chunking/embedding, not after, for that to hold.
+      Long chunksNotBelongingToTheWinner =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM vector_store WHERE metadata->>'document_id' <> ?",
+              Long.class,
+              winnerId.toString());
+      assertThat(chunksNotBelongingToTheWinner)
+          .as("The losing upload must leave no orphaned chunks in the vector store")
+          .isZero();
     } finally {
       executor.shutdownNow();
     }

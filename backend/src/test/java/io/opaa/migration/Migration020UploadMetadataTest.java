@@ -33,13 +33,19 @@ import org.testcontainers.utility.DockerImageName;
  * db.changelog-master.yaml}, which merging those three PRs will need to reconcile as a simple
  * `include` reordering, not a schema conflict.
  *
- * <p>Covers the two claims the changeSet's comments make that {@code
+ * <p>Covers the claims the changeSet's comments make that {@code
  * LibraryDocumentServiceIntegrationTest} cannot: that {@code chk_documents_source_type}'s widening
  * applies to a table that already has {@code FILESYSTEM}/{@code HTTP_DIRECTORY} rows (that test
  * starts from an empty, already-migrated schema and only ever inserts through the application,
- * which never violates the check either way), and that {@code fk_documents_uploaded_by_user}'s
- * {@code ON DELETE SET NULL} actually detaches an uploader from their documents instead of blocking
- * the user delete - the opposite of {@code fk_knowledge_libraries_owner_user}'s {@code RESTRICT}.
+ * which never violates the check either way), that {@code fk_documents_uploaded_by_user}'s {@code
+ * ON DELETE SET NULL} actually detaches an uploader from their documents instead of blocking the
+ * user delete - the opposite of {@code fk_knowledge_libraries_owner_user}'s {@code RESTRICT} - and
+ * that {@code uk_documents_library_checksum}'s two conditions are both load-bearing (#420 second
+ * code review round, nit 3): it must reject a second {@code UPLOAD} row with the same {@code
+ * (library_id, checksum)}, but two {@code FILESYSTEM} rows sharing a checksum in the same library
+ * (two differently-named crawled files with identical content, never deduplicated by checksum - see
+ * {@code FileProcessingService#processFile}) must keep coexisting, exactly as the index's own
+ * {@code source_type = 'UPLOAD'} condition intends.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class Migration020UploadMetadataTest {
@@ -85,14 +91,42 @@ class Migration020UploadMetadataTest {
   void widenedCheckConstraintAcceptsUploadOnATableThatAlreadyHasLegacyRows() throws Exception {
     // A pre-existing FILESYSTEM row, written under the pre-020 constraint - the exact situation
     // "widen a CHECK on a table with existing data" needs to be proven against, not assumed.
-    insertDocument("legacy.txt", "FILESYSTEM", null);
+    insertDocument("legacy.txt", "FILESYSTEM", null, null);
 
     applyChangelog020();
 
     // The migration itself must not have failed re-validating the existing row, and the widened
     // constraint must now accept the new value.
-    UUID uploadDoc = insertDocument("upload.pdf", "UPLOAD", null);
+    UUID uploadDoc = insertDocument("upload.pdf", "UPLOAD", null, null);
     assertThat(sourceType(uploadDoc)).isEqualTo("UPLOAD");
+    assertThat(documentCount()).isEqualTo(2);
+  }
+
+  @Test
+  void uniqueChecksumIndexRejectsASecondUploadWithTheSameChecksumInTheSameLibrary()
+      throws Exception {
+    applyChangelog020();
+    insertDocument("first.pdf", "UPLOAD", null, "same-checksum");
+
+    assertThatThrownBy(() -> insertDocument("second.pdf", "UPLOAD", null, "same-checksum"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("uk_documents_library_checksum");
+  }
+
+  @Test
+  void uniqueChecksumIndexLeavesFilesystemDuplicatesInTheSameLibraryCoexisting() throws Exception {
+    // The index's second condition (source_type = 'UPLOAD') exists precisely for this case: two
+    // differently-named crawled files with identical content are today two legitimate, independent
+    // FILESYSTEM rows in the same library (processFile dedups by file_path, not checksum) - a
+    // library-wide index without this condition would turn that pre-existing, harmless case into a
+    // failed indexing run the moment it occurred.
+    applyChangelog020();
+    insertDocument("report-copy-1.txt", "FILESYSTEM", null, "identical-content-checksum");
+
+    UUID second =
+        insertDocument("report-copy-2.txt", "FILESYSTEM", null, "identical-content-checksum");
+
+    assertThat(sourceType(second)).isEqualTo("FILESYSTEM");
     assertThat(documentCount()).isEqualTo(2);
   }
 
@@ -100,7 +134,7 @@ class Migration020UploadMetadataTest {
   void aValueOutsideTheWidenedSetIsStillRejected() throws Exception {
     applyChangelog020();
 
-    assertThatThrownBy(() -> insertDocument("bogus.txt", "BOGUS", null))
+    assertThatThrownBy(() -> insertDocument("bogus.txt", "BOGUS", null, null))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_documents_source_type");
   }
@@ -109,7 +143,7 @@ class Migration020UploadMetadataTest {
   void deletingTheUploadingUserDetachesTheDocumentInsteadOfBeingBlocked() throws Exception {
     applyChangelog020();
     UUID uploader = insertUser("uploader-subject");
-    UUID document = insertDocument("upload.pdf", "UPLOAD", uploader);
+    UUID document = insertDocument("upload.pdf", "UPLOAD", uploader, null);
     assertThat(uploadedByUserId(document)).isEqualTo(uploader.toString());
 
     // ON DELETE SET NULL, not RESTRICT (unlike fk_knowledge_libraries_owner_user): removing the
@@ -153,16 +187,20 @@ class Migration020UploadMetadataTest {
     }
   }
 
-  private UUID insertDocument(String fileName, String sourceType, UUID uploadedByUserId)
+  private UUID insertDocument(
+      String fileName, String sourceType, UUID uploadedByUserId, String checksum)
       throws SQLException {
     UUID id = UUID.randomUUID();
     String uploadedByColumn = uploadedByUserId == null ? "" : ", uploaded_by_user_id";
     String uploadedByValue = uploadedByUserId == null ? "" : ", '" + uploadedByUserId + "'";
+    String checksumColumn = checksum == null ? "" : ", checksum";
+    String checksumValue = checksum == null ? "" : ", '" + checksum + "'";
     try (Statement statement = connection.createStatement()) {
       statement.execute(
           "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
               + " organization_id"
               + uploadedByColumn
+              + checksumColumn
               + ") VALUES ('"
               + id
               + "', '"
@@ -175,6 +213,7 @@ class Migration020UploadMetadataTest {
               + SEEDED_ORGANIZATION_ID
               + "'"
               + uploadedByValue
+              + checksumValue
               + ")");
     }
     return id;

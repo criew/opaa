@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.opaa.api.dto.ErrorResponse;
+import io.opaa.library.UploadProperties;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -12,12 +13,14 @@ import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 
 class GlobalExceptionHandlerTest {
 
-  private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+  private final GlobalExceptionHandler handler =
+      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L));
 
   @Test
   void handleGenericExceptionReturnsInternalServerError() {
@@ -175,13 +178,17 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void handleMaxUploadSizeExceededExceptionWithoutAKnownLimitOmitsTheFigure() {
+  void handleMaxUploadSizeExceededExceptionReadsTheLimitFromUploadPropertiesNotTheException() {
+    // #420 second code review round, nit 2: StandardServletMultipartResolver usually reports -1
+    // as ex.getMaxUploadSize() - the handler must still name the actual configured limit, taken
+    // from UploadProperties rather than the exception, which is why this passes -1 here and still
+    // expects the figure in the message.
     var response =
         handler.handleMaxUploadSizeExceededException(new MaxUploadSizeExceededException(-1));
     assertEquals(413, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("Die Datei ist zu gross.", body.getError());
+    assertEquals("Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.", body.getError());
   }
 
   @Test
@@ -194,6 +201,18 @@ class GlobalExceptionHandlerTest {
     assertNotNull(body);
     assertEquals(400, body.getStatus());
     assertEquals("Der Anfrageteil 'file' fehlt", body.getError());
+  }
+
+  @Test
+  void handleMultipartExceptionReturnsBadRequest() {
+    // #420 second code review round, nit 2: a malformed or aborted multipart body throws the
+    // plain MultipartException, not the more specific MaxUploadSizeExceededException - without
+    // this handler it fell through to handleGenericException's 500.
+    var response = handler.handleMultipartException(new MultipartException("could not parse"));
+    assertEquals(400, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("Die hochgeladene Datei konnte nicht verarbeitet werden", body.getError());
   }
 
   private DataIntegrityViolationException dataIntegrityViolation(String sqlState, String message) {
