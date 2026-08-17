@@ -1,0 +1,166 @@
+databaseChangeLog:
+  # #393: the one personenbezogene exception to "kein Filter nach handelnder Person" - the
+  # anlassbezogene Klärung, held in its own table rather than inside audit_log itself. This table
+  # is a plain, mutable, ordinarily-owned table (unlike audit_log's opaa_audit_owner restriction
+  # from migration 017): a grant's own lifecycle - PENDING then APPROVED via the Vier-Augen-Prinzip
+  # - genuinely needs an UPDATE, unlike an append-only protocol entry, and it carries no
+  # personenbezogene event content of its own, only the plan for a query that is itself already
+  # bounded by object/time/event/correlation via audit_log's own constraints.
+
+  - changeSet:
+      id: 021-create-audit-incident-scope-grants
+      author: opaa
+      comment: >
+        subject_user_id/requested_by_user_id/approved_by_user_id all reference users directly
+        (not the pseudonym table) - a grant names the real person under investigation and the
+        real approving persons in advance, by design; audit_log's own actor_ref pseudonymisation
+        is applied only at query time (AuditQueryService#byIncidentScope), against this grant's
+        already-real subject_user_id. ON DELETE RESTRICT throughout: a grant referencing a
+        deleted user would silently lose its technical bound, which must never happen quietly.
+
+        chk_audit_incident_scope_grants_scope enforces scope_start <= scope_end at the database
+        level, mirroring AuditIncidentScopeGrant's constructor validation. chk_...requester
+        enforces the Vier-Augen-Prinzip's "zwei verschiedene Personen" at the database level too,
+        not only in AuditIncidentScopeGrant#approve - the leading NULL check matches the same
+        pattern chk_audit_log_subject (migration 017) already established for a paired-nullable
+        column: approved_by_user_id/approved_at are NULL together while PENDING.
+
+        usable_until (#393 code review, finding 7) is set once, at approval
+        (AuditIncidentScopeGrant#approve, AuditIncidentScopeGrant#USABLE_WINDOW), and is null while
+        PENDING alongside approved_by_user_id/approved_at - an approved grant must not remain
+        usable indefinitely; AuditIncidentScopeService#findApproved rejects a lookup once the
+        current time is past it.
+      changes:
+        - createTable:
+            tableName: audit_incident_scope_grants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_start
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_end
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: purpose
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_by_user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_by_user_id
+                  type: uuid
+              - column:
+                  name: approved_at
+                  type: timestamp with time zone
+              - column:
+                  name: usable_until
+                  type: timestamp with time zone
+              - column:
+                  name: status
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: organization_id
+            referencedTableName: organizations
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_organization
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_subject
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: requested_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_requester
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: approved_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_approver
+            onDelete: RESTRICT
+        - sql:
+            comment: "Closed list for purpose - see io.opaa.audit.AuditIncidentScopePurpose"
+            sql: >
+              ALTER TABLE audit_incident_scope_grants
+              ADD CONSTRAINT chk_audit_incident_scope_grants_purpose
+              CHECK (purpose IN (
+                'SECURITY_INCIDENT', 'UNAUTHORIZED_ACCESS_SUSPICION',
+                'DATA_BREACH_INVESTIGATION', 'EXTERNAL_AUDIT_OR_INSPECTION'
+              ));
+        - sql:
+            comment: "Closed list for status - see io.opaa.audit.AuditIncidentScopeStatus"
+            sql: >
+              ALTER TABLE audit_incident_scope_grants
+              ADD CONSTRAINT chk_audit_incident_scope_grants_status
+              CHECK (status IN ('PENDING', 'APPROVED'));
+        - sql:
+            comment: "scope_start must not be after scope_end - mirrors the entity constructor"
+            sql: >
+              ALTER TABLE audit_incident_scope_grants
+              ADD CONSTRAINT chk_audit_incident_scope_grants_scope
+              CHECK (scope_start <= scope_end);
+        - sql:
+            comment: >
+              Vier-Augen-Prinzip at the database level: approver and requester must differ once
+              set; approved_by_user_id/approved_at are paired (both set or both NULL), matching
+              chk_audit_log_subject's pattern from migration 017 for the same NULL-vs-IN pitfall.
+            sql: >
+              ALTER TABLE audit_incident_scope_grants
+              ADD CONSTRAINT chk_audit_incident_scope_grants_requester
+              CHECK (
+                (approved_by_user_id IS NULL AND approved_at IS NULL)
+                OR (approved_by_user_id IS NOT NULL AND approved_at IS NOT NULL
+                    AND approved_by_user_id <> requested_by_user_id)
+              );
+        - sql:
+            comment: "Supports the incident-scope query path's grant lookup by organization"
+            sql: >
+              CREATE INDEX idx_audit_incident_scope_grants_org
+              ON audit_incident_scope_grants (organization_id);
+      rollback:
+        - dropTable:
+            tableName: audit_incident_scope_grants

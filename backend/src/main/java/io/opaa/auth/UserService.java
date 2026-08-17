@@ -353,26 +353,69 @@ public class UserService {
     user.setSystemRole(role);
     User saved = userRepository.save(user);
     if (previousRole != role) {
-      AuditEventType eventType =
-          role == SystemRole.SYSTEM_ADMIN
-              ? AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED
-              : AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED;
+      // #393 code review, finding 1: with three roles (USER/SYSTEM_ADMIN/AUDITOR), a single
+      // "granted vs. revoked" branch on the *new* role alone is wrong - it mislabelled every
+      // AUDITOR grant as SYSTEM_ADMIN_ROLE_REVOKED (USER -> AUDITOR: role != SYSTEM_ADMIN, so the
+      // old two-valued branch always chose REVOKED, regardless of what actually happened). Instead,
+      // write one event per elevated role actually left (previousRole) and one per elevated role
+      // actually entered (role) - 0, 1 or 2 events depending on the transition:
+      //   USER -> SYSTEM_ADMIN            : 1 event  (SYSTEM_ADMIN_ROLE_GRANTED)
+      //   SYSTEM_ADMIN -> USER            : 1 event  (SYSTEM_ADMIN_ROLE_REVOKED)
+      //   USER -> AUDITOR                 : 1 event  (AUDITOR_ROLE_GRANTED)
+      //   AUDITOR -> USER                 : 1 event  (AUDITOR_ROLE_REVOKED)
+      //   SYSTEM_ADMIN -> AUDITOR         : 2 events (SYSTEM_ADMIN_ROLE_REVOKED,
+      // AUDITOR_ROLE_GRANTED)
+      //   AUDITOR -> SYSTEM_ADMIN         : 2 events (AUDITOR_ROLE_REVOKED,
+      // SYSTEM_ADMIN_ROLE_GRANTED)
       UUID pseudonym = auditEventRecorder.pseudonymFor(saved.getId(), saved.getOrganizationId());
-      auditEventRecorder.recordUserActionOnSubject(
-          saved.getOrganizationId(),
-          actorUserId,
-          eventType,
-          AuditObjectType.USER_ACCOUNT,
-          pseudonym,
-          null,
-          AuditSubjectKind.USER,
-          saved.getId(),
-          Map.of("role", previousRole.name()),
-          Map.of("role", role.name()),
-          AuditOutcome.SUCCESS,
-          null);
+      if (previousRole == SystemRole.SYSTEM_ADMIN) {
+        recordRoleChange(
+            saved,
+            actorUserId,
+            pseudonym,
+            AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED,
+            previousRole,
+            role);
+      } else if (previousRole == SystemRole.AUDITOR) {
+        recordRoleChange(
+            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_REVOKED, previousRole, role);
+      }
+      if (role == SystemRole.SYSTEM_ADMIN) {
+        recordRoleChange(
+            saved,
+            actorUserId,
+            pseudonym,
+            AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED,
+            previousRole,
+            role);
+      } else if (role == SystemRole.AUDITOR) {
+        recordRoleChange(
+            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);
+      }
     }
     return saved;
+  }
+
+  private void recordRoleChange(
+      User saved,
+      UUID actorUserId,
+      UUID pseudonym,
+      AuditEventType eventType,
+      SystemRole previousRole,
+      SystemRole role) {
+    auditEventRecorder.recordUserActionOnSubject(
+        saved.getOrganizationId(),
+        actorUserId,
+        eventType,
+        AuditObjectType.USER_ACCOUNT,
+        pseudonym,
+        null,
+        AuditSubjectKind.USER,
+        saved.getId(),
+        Map.of("role", previousRole.name()),
+        Map.of("role", role.name()),
+        AuditOutcome.SUCCESS,
+        null);
   }
 
   private boolean isInitialAdmin(String email) {

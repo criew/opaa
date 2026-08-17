@@ -3,12 +3,15 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -124,6 +127,129 @@ class UserServiceTest {
     assertThatThrownBy(
             () -> userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, UUID.randomUUID()))
         .isInstanceOf(UserNotFoundException.class);
+  }
+
+  /**
+   * #393 code review, finding 1: reproduces the exact scenario the review names - a plain USER
+   * granted AUDITOR. The pre-fix branch ({@code role == SYSTEM_ADMIN ? GRANTED : REVOKED}) wrote
+   * {@code SYSTEM_ADMIN_ROLE_REVOKED} here, a false statement about a person who never held that
+   * role. Reverting {@link UserService#updateRole}'s fix (restoring that two-valued branch) makes
+   * this test fail with exactly that wrong event type - the reproduction proof AGENTS.md requires.
+   */
+  @Test
+  void grantingAuditorToAPlainUserRecordsOnlyAuditorGrantedNeverSystemAdminRevoked() {
+    UUID userId = UUID.randomUUID();
+    UUID actorId = UUID.randomUUID();
+    User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setSystemRole(SystemRole.USER);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    userService.updateRole(userId, SystemRole.AUDITOR, actorId);
+
+    verify(auditEventRecorder, times(1))
+        .recordUserActionOnSubject(
+            any(),
+            any(),
+            eq(AuditEventType.AUDITOR_ROLE_GRANTED),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
+    verify(auditEventRecorder, never())
+        .recordUserActionOnSubject(
+            any(),
+            any(),
+            eq(AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
+  }
+
+  @Test
+  void revokingAuditorFromAPlainUserRecordsAuditorRevoked() {
+    UUID userId = UUID.randomUUID();
+    UUID actorId = UUID.randomUUID();
+    User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setSystemRole(SystemRole.AUDITOR);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    userService.updateRole(userId, SystemRole.USER, actorId);
+
+    verify(auditEventRecorder, times(1))
+        .recordUserActionOnSubject(
+            any(),
+            any(),
+            eq(AuditEventType.AUDITOR_ROLE_REVOKED),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
+  }
+
+  /**
+   * A direct SYSTEM_ADMIN -> AUDITOR transition legitimately leaves one role and enters another -
+   * both must be recorded, not just one.
+   */
+  @Test
+  void movingDirectlyFromSystemAdminToAuditorRecordsBothARevokeAndAGrant() {
+    UUID userId = UUID.randomUUID();
+    UUID actorId = UUID.randomUUID();
+    User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    userService.updateRole(userId, SystemRole.AUDITOR, actorId);
+
+    verify(auditEventRecorder, times(1))
+        .recordUserActionOnSubject(
+            any(),
+            any(),
+            eq(AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
+    verify(auditEventRecorder, times(1))
+        .recordUserActionOnSubject(
+            any(),
+            any(),
+            eq(AuditEventType.AUDITOR_ROLE_GRANTED),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
   }
 
   @Test

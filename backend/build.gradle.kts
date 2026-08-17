@@ -164,8 +164,14 @@ spotless {
 
 // Deutsche Texte in Quellen und Ressourcen sind UTF-8. Ohne diese Einstellung
 // nutzt javac das Plattform-Encoding, was auf Windows Umlaute verfälscht.
+//
+// -parameters (#393 code review, nit 4): keeps real parameter names available via reflection
+// (Parameter#getName()) instead of javac's default arg0/arg1/... - AuditQueryServiceIntegrationTest
+// and AuditControllerTest both reflect over parameter names to prove no access path accepts an
+// actor/person filter, and that proof is silently meaningless without this flag.
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
+    options.compilerArgs.add("-parameters")
 }
 
 tasks.withType<Test> {
@@ -218,6 +224,13 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "DocumentSourceType" to "DocumentSourceType",
         "AssetRole" to "AssetRole",
         "PermissionSubjectType" to "PermissionSubjectType",
+        "AuditActorKind" to "ActorKind",
+        "AuditSubjectKind" to "AuditSubjectKind",
+        "AuditOutcome" to "AuditOutcome",
+        "AuditObjectType" to "AuditObjectType",
+        "AuditEventType" to "AuditEventType",
+        "AuditIncidentScopePurpose" to "AuditIncidentScopePurpose",
+        "AuditIncidentScopeStatus" to "AuditIncidentScopeStatus",
     ))
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
@@ -233,6 +246,13 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "DocumentSourceType" to "io.opaa.indexing.DocumentSourceType",
         "AssetRole" to "io.opaa.library.AssetRole",
         "PermissionSubjectType" to "io.opaa.group.PermissionSubjectType",
+        "ActorKind" to "io.opaa.audit.ActorKind",
+        "AuditSubjectKind" to "io.opaa.audit.AuditSubjectKind",
+        "AuditOutcome" to "io.opaa.audit.AuditOutcome",
+        "AuditObjectType" to "io.opaa.audit.AuditObjectType",
+        "AuditEventType" to "io.opaa.audit.AuditEventType",
+        "AuditIncidentScopePurpose" to "io.opaa.audit.AuditIncidentScopePurpose",
+        "AuditIncidentScopeStatus" to "io.opaa.audit.AuditIncidentScopeStatus",
     ))
 }
 
@@ -241,7 +261,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
-        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java").forEach { fileName ->
+        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java").forEach { fileName ->
             file("$generatedDir/$fileName").delete()
         }
     }
