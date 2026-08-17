@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
@@ -46,10 +47,16 @@ class AuditIncidentScopeServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  private static final String REASON = "Verdacht auf unbefugten Zugriff auf Personalvorgaenge";
+
   private UUID organizationId;
   private UUID requester;
   private UUID approver;
   private UUID subject;
+  // The querying AUDITOR - distinct from requester/approver, which #393's grant workflow keeps
+  // as plain users of that workflow, not necessarily the same person who later reads via
+  // AuditQueryService#byIncidentScope.
+  private UUID auditor;
   private final List<UUID> createdUserIds = new ArrayList<>();
   // audit_log is partitioned by month (migration 017) with a fixed horizon around the moment the
   // migration ran - a hardcoded historical date can fall outside it and make the recorded_at
@@ -67,6 +74,14 @@ class AuditIncidentScopeServiceIntegrationTest {
     requester = createUser();
     approver = createUser();
     subject = createUser();
+    auditor = createUser();
+    userRepository
+        .findById(auditor)
+        .ifPresent(
+            user -> {
+              user.setSystemRole(SystemRole.AUDITOR);
+              userRepository.save(user);
+            });
   }
 
   @AfterEach
@@ -105,7 +120,7 @@ class AuditIncidentScopeServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 queryService.byIncidentScope(
-                    organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50))
+                    organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50))
         .isInstanceOf(ResponseStatusException.class);
   }
 
@@ -148,7 +163,8 @@ class AuditIncidentScopeServiceIntegrationTest {
     assertThat(approved.getApprovedByUserId()).isEqualTo(approver);
 
     Page<AuditLogEntry> result =
-        queryService.byIncidentScope(organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50);
+        queryService.byIncidentScope(
+            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
     assertThat(result).isNotNull();
   }
 
@@ -172,7 +188,8 @@ class AuditIncidentScopeServiceIntegrationTest {
     incidentScopeService.approve(organizationId, grant.getId(), approver);
 
     Page<AuditLogEntry> result =
-        queryService.byIncidentScope(organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50);
+        queryService.byIncidentScope(
+            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
 
     assertThat(result.getContent()).hasSize(1);
     assertThat(result.getContent().get(0).getEventId()).isEqualTo(subjectEntry.getEventId());
@@ -196,6 +213,8 @@ class AuditIncidentScopeServiceIntegrationTest {
             () ->
                 queryService.byIncidentScope(
                     organizationId,
+                    auditor,
+                    REASON,
                     grant.getId(),
                     scopeStart.minus(1, ChronoUnit.DAYS),
                     scopeEnd,
@@ -208,6 +227,8 @@ class AuditIncidentScopeServiceIntegrationTest {
             () ->
                 queryService.byIncidentScope(
                     organizationId,
+                    auditor,
+                    REASON,
                     grant.getId(),
                     scopeStart,
                     scopeEnd.plus(1, ChronoUnit.DAYS),
@@ -243,7 +264,7 @@ class AuditIncidentScopeServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 queryService.byIncidentScope(
-                    organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50))
+                    organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("abgelaufen");
   }
@@ -300,7 +321,8 @@ class AuditIncidentScopeServiceIntegrationTest {
     incidentScopeService.approve(organizationId, grant.getId(), approver);
 
     Page<AuditLogEntry> result =
-        queryService.byIncidentScope(organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50);
+        queryService.byIncidentScope(
+            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
 
     assertThat(result.getContent()).isEmpty();
     assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
