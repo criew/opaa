@@ -22,10 +22,12 @@ import org.springframework.stereotype.Service;
  * #MAX_TIME_RANGE_DAYS} (mandatory, bounded time range, per the specification - "eine Abfrage ohne
  * Zeitgrenze ist ein Vollabzug"; an unbounded-but-technically-timestamped range is the same thing
  * under a different name - #393 code review, finding 3); builds its own {@link Pageable} with a
- * fixed sort on {@code recordedAt}, a page size capped at {@link #MAX_PAGE_SIZE} and a page index
- * capped at {@link #MAX_PAGE_INDEX} regardless of what the caller asked for, so the total rows one
- * query (across every page it is willing to page through) can return is bounded, not merely
- * "bounded per page"; accepts no parameter that names or sorts by the acting person - {@code
+ * fixed sort on {@code recordedAt} and a page size capped at {@link #MAX_PAGE_SIZE} regardless of
+ * what the caller asked for, and rejects (rather than silently clamping) a page index beyond {@link
+ * #MAX_PAGE_INDEX} - the same "abgewiesen, nicht gekappt" principle {@link #byIncidentScope}
+ * already applies to a time range reaching outside its grant, so the total rows one query (across
+ * every page it is willing to page through) can return is bounded, not merely "bounded per page"
+ * (#393 re-review, nit 3); accepts no parameter that names or sorts by the acting person - {@code
  * actorRef} never appears as an input anywhere below except {@link #byIncidentScope}, and there it
  * is resolved from the approved grant's subject, not accepted from the caller. {@link #byObject}
  * additionally rejects {@link AuditObjectType#USER_ACCOUNT} - see its own Javadoc.
@@ -41,7 +43,10 @@ public class AuditQueryService {
    * single page but not the whole query (#393 code review, finding 3: without this, {@code
    * page=0..n} against a wide-open time range turned "bounded per page" into an unbounded
    * full-extract in slices). 50 - a working month's worth of anlassbezogene review at 200 rows
-   * each, not a data-warehouse export; page indices are 0-based, so pages 0..49 are usable.
+   * each, not a data-warehouse export; page indices are 0-based, so pages 0..49 are usable. A
+   * request beyond it is rejected with 400 (#393 re-review, nit 3), not silently clamped to the
+   * last usable page - clamping would make a caller re-reading page 50 believe they are still
+   * making progress through the result set when they are actually rereading page 49 forever.
    */
   static final int MAX_PAGE_INDEX = 49;
 
@@ -175,8 +180,18 @@ public class AuditQueryService {
   }
 
   private Pageable pageable(int page, int size) {
-    int safePage = Math.min(Math.max(page, 0), MAX_PAGE_INDEX);
+    if (page < 0) {
+      throw new IllegalArgumentException("page darf nicht negativ sein");
+    }
+    if (page > MAX_PAGE_INDEX) {
+      throw new IllegalArgumentException(
+          "page ist zu tief - maximal Seite "
+              + MAX_PAGE_INDEX
+              + " je Abfrage; ein groesserer Bedarf wird durch mehrere aufeinanderfolgende"
+              + " Abfragen mit engerem Zeitraum abgedeckt, nicht durch eine einzelne Seite ohne"
+              + " Tiefenbegrenzung");
+    }
     int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-    return PageRequest.of(safePage, safeSize, RECORDED_AT_ASC);
+    return PageRequest.of(page, safeSize, RECORDED_AT_ASC);
   }
 }

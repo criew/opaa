@@ -160,6 +160,31 @@ class Migration022AuditorRoleEventTypesTest {
         .hasMessageContaining("chk_audit_log_event_type");
   }
 
+  /**
+   * Re-review follow-up (PR #449): 022's own {@code GRANT opaa_audit_owner TO %I WITH SET TRUE} is
+   * explicitly temporary - bracketed by a matching {@code REVOKE} at the end of the same changeSet.
+   * This proves that revoke actually took effect: after 022 has run, {@code AUDIT_APP_ROLE} must be
+   * back to exactly the state {@code
+   * Migration017AuditLogTest#theApplicationAccountCannotSwitchItsSessionIdentityToTheOwnerRole()}
+   * documents for 017 alone - a bare {@code SET ROLE opaa_audit_owner} fails, because only the
+   * automatic, {@code SET}-less {@code CREATEROLE}-time membership remains, not the explicit {@code
+   * SET TRUE} grant 022 held only for the duration of its own {@code ALTER TABLE} statements.
+   * Without this proof, a changeSet that forgot its closing {@code REVOKE} would look identical
+   * from every other test in this class - they only exercise ordinary {@code INSERT}s, which do not
+   * need {@code SET ROLE} at all.
+   */
+  @Test
+  void theApplicationAccountCannotSwitchItsSessionIdentityToTheOwnerRoleAfter022Either()
+      throws Exception {
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("SET ROLE " + OWNER_ROLE);
+              }
+            })
+        .isInstanceOf(SQLException.class);
+  }
+
   private UUID insertEntry(String eventType) throws SQLException {
     UUID eventId = UUID.randomUUID();
     try (Statement statement = appConnection.createStatement()) {

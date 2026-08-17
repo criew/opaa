@@ -2461,10 +2461,10 @@ components:
       in: query
       required: false
       description: >
-        Capped server-side at page index 49 (50 pages total) regardless of the requested value
-        (#393 code review, finding 3) - AuditSize alone only bounds a single page; without this,
-        paging through page=0..n against a wide time range would turn "bounded per page" back
-        into an effectively unbounded full extract in slices.
+        A value beyond page index 49 (50 pages total) is rejected with 400, not clamped (#393
+        code review, finding 3; #393 re-review, nit 3) - AuditSize alone only bounds a single
+        page; without this, paging through page=0..n against a wide time range would turn
+        "bounded per page" back into an effectively unbounded full extract in slices.
       schema:
         type: integer
         minimum: 0

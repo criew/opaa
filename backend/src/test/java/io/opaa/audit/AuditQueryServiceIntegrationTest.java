@@ -251,22 +251,50 @@ class AuditQueryServiceIntegrationTest {
 
   /**
    * #393 code review, finding 3, second half: {@link AuditQueryService#MAX_PAGE_SIZE} alone only
-   * bounds a single page - without a cap on how many pages a query can page through, {@code
+   * bounds a single page - without a bound on how many pages a query can page through, {@code
    * page=0..n} against a wide time range turns "bounded per page" back into an effectively
-   * unbounded full extract in slices. This proves the page index itself is capped, independent of
-   * what the caller requests.
+   * unbounded full extract in slices. #393 re-review, nit 3: rejected with 400, not silently
+   * clamped to the last usable page - the same "abgewiesen, nicht gekappt" principle {@link
+   * AuditQueryService#byIncidentScope} already applies to a time range reaching outside its grant,
+   * applied here to page depth too.
    */
   @Test
-  void thePageIndexIsCappedRegardlessOfHowFarTheCallerAsks() {
+  void aPageIndexBeyondTheMaximumIsRejectedNotClamped() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    AuditQueryService.MAX_PAGE_INDEX + 1,
+                    50))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aPageIndexExactlyAtTheMaximumIsAccepted() {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             organizationId,
             base.minus(1, ChronoUnit.HOURS),
             base.plus(1, ChronoUnit.HOURS),
-            AuditQueryService.MAX_PAGE_INDEX + 1000,
+            AuditQueryService.MAX_PAGE_INDEX,
             50);
 
     assertThat(result.getNumber()).isEqualTo(AuditQueryService.MAX_PAGE_INDEX);
+  }
+
+  @Test
+  void aNegativePageIndexIsRejected() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    -1,
+                    50))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

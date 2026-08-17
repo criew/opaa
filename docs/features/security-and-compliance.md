@@ -272,9 +272,11 @@ Jede dieser Abfragen verlangt einen **Zeitraum** und ist in ihrer Ergebnismenge 
 ohne Zeitgrenze ist ein Vollabzug und damit ein Auswertungspfad mit anderem Namen. Konkret (#393,
 Code-Review-Befund 3): der Zeitraum ist auf **92 Tage** je Abfrage begrenzt — grob ein Quartal, breit
 genug für die Beispiele oben, nicht breit genug für einen verkappten Voll-Extrakt in wenigen Aufrufen —
-und die Seitenzahl je Abfrage ist auf **50 Seiten** gedeckelt, damit die Seitengröße allein keine
-Vollabzug-in-Scheiben-Lücke offenlässt; ein größerer Bedarf über mehrere Jahre wird durch mehrere
-aufeinanderfolgende, je für sich nachvollziehbare Abfragen abgedeckt, nicht durch eine einzelne.
+und die Seitenzahl je Abfrage ist auf **50 Seiten** begrenzt — eine Anfrage über die 50. Seite hinaus
+wird abgewiesen, nicht auf die letzte nutzbare Seite gekappt (#393, Nachbesserung 3), damit die
+Seitengröße allein keine Vollabzug-in-Scheiben-Lücke offenlässt; ein größerer Bedarf über mehrere
+Jahre wird durch mehrere aufeinanderfolgende, je für sich nachvollziehbare Abfragen abgedeckt, nicht
+durch eine einzelne.
 
 Der Weg **nach Objekt** weist `objectType = Konto` ausdrücklich ab (#393, Code-Review-Befund 2): Das
 `object_id` eines Kontoereignisses ist dieselbe Pseudonymkennung, die `actor_ref` für dieselbe Person in

@@ -15,6 +15,13 @@ databaseChangeLog:
   # REVOKE the explicit grant again - not a new escalation this migration introduces, but the same
   # one 017 already left open (see its changeSet comment and ADR-0015), used here for a legitimate,
   # narrowly-scoped widening instead of a data change.
+  #
+  # #426 (re-review of PR #449): this same GRANT ... WITH SET TRUE / SET ROLE / REVOKE dance is not
+  # specific to 022 - every future audit_log DDL migration needs it too, and on a fresh install of
+  # the hardened model #426 targets (migration account without CREATEROLE), it fails the same way
+  # 017 itself does per that issue's third addendum ("permission denied to grant role" on the GRANT
+  # statement). #426's acceptance criteria have been broadened accordingly, from "migration 017"
+  # to "every audit_log DDL migration".
   - changeSet:
       id: 022-widen-audit-event-type-auditor-role
       author: opaa
