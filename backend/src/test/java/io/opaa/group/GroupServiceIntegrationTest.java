@@ -15,6 +15,7 @@ import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -309,6 +310,74 @@ class GroupServiceIntegrationTest {
     List<GroupListResponse> groups = groupService.listGroups(adminA);
 
     assertThat(groups).extracting(GroupListResponse::getName).containsExactly("Team A");
+  }
+
+  @Test
+  void listMyGroupsReturnsOnlyGroupsTheCallerIsAMemberOf() {
+    UUID member = createUser(organizationA);
+    createUser(organizationA);
+    Group memberGroup =
+        groupRepository.save(
+            new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
+    Group otherGroup =
+        groupRepository.save(
+            new Group(organizationA, GroupKind.AD_HOC, "Team B", null, null, null));
+    memberGroup.addMembership(new GroupMembership(member, organizationA));
+    groupRepository.save(memberGroup);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(member);
+
+    assertThat(groups).extracting(GroupListResponse::getName).containsExactly("Team A");
+    assertThat(otherGroup.getId()).isNotNull();
+  }
+
+  @Test
+  void listMyGroupsReturnsAnEmptyListWithoutAnyMembership() {
+    // Whether the endpoint is admin-restricted is a controller-level concern
+    // (@PreAuthorize sits on the controller, not here) - see MeControllerTest, which exercises
+    // GET /api/v1/me/groups directly with a non-admin role.
+    UUID user = createUser(organizationA);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(user);
+
+    assertThat(groups).isEmpty();
+  }
+
+  @Test
+  void listMyGroupsExcludesADissolvedGroupEvenThoughItsMembershipStaysFrozen() {
+    // #437 re-review, finding B: a dissolved group keeps its membership frozen rather than
+    // cleared (see Group#isDissolved()'s Javadoc), so it would otherwise still surface here and
+    // become pickable as a library owner for a group that no longer organisationally exists.
+    UUID member = createUser(organizationA);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    group.addMembership(new GroupMembership(member, organizationA));
+    Group saved = groupRepository.save(group);
+    saved.dissolve(Instant.now());
+    groupRepository.save(saved);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(member);
+
+    assertThat(groups).isEmpty();
+  }
+
+  @Test
+  void listMyGroupsNeverCrossesAnOrganizationBoundaryEvenIfAMembershipRowSomehowDid() {
+    // Second, independent defense line requested in review: today, no path through the regular
+    // API can create a cross-organization membership (addMember enforces
+    // requireUserInOrganization), so this constructs one directly against the repository to prove
+    // the filter in listMyGroups, not merely the absence of a reachable exploit.
+    UUID member = createUser(organizationA);
+    Group foreignGroup =
+        new Group(organizationB, GroupKind.AD_HOC, "Foreign Team", null, null, null);
+    // A real membership row for the wrong organization - unreachable through addMember, which
+    // enforces requireUserInOrganization, but constructed directly here to prove listMyGroups'
+    // own filter rather than the absence of a way to trigger it.
+    foreignGroup.addMembership(new GroupMembership(member, organizationB));
+    groupRepository.save(foreignGroup);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(member);
+
+    assertThat(groups).isEmpty();
   }
 
   @Test

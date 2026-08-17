@@ -12,6 +12,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -92,6 +93,39 @@ public class GroupService {
   public List<GroupListResponse> listGroups(UUID currentUserId) {
     User currentUser = requireUser(currentUserId);
     return groupRepository.findByOrganizationId(currentUser.getOrganizationId()).stream()
+        .map(this::toGroupListResponse)
+        .toList();
+  }
+
+  /**
+   * Lists the groups the given user is a direct member of - not admin-restricted, unlike {@link
+   * #listGroups}. Backs {@code GET /api/v1/me/groups}, which the frontend's library-creation dialog
+   * uses to offer only groups the caller can actually own a library through (see {@code
+   * KnowledgeLibraryService#createLibrary}, which rejects a GROUP owner the caller is not a member
+   * of).
+   *
+   * <p>Excludes dissolved groups: a dissolved group's membership is frozen rather than cleared (see
+   * {@link Group#isDissolved()}), so it would otherwise still surface here. {@code
+   * KnowledgeLibraryService#createLibrary} does not currently check {@code isDissolved()} itself
+   * before writing the owner grant (see #201/#202) - so today, offering a dissolved group here is
+   * the only thing standing between the picker and a library owned by a group that no longer
+   * organisationally exists.
+   *
+   * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: {@link #addMember}
+   * already enforces this at write time via {@code requireUserInOrganization}, so no membership
+   * should ever cross the boundary today, but the class Javadoc treats the boundary as a defense
+   * applied independently at every read rather than one relying on that invariant holding
+   * elsewhere.
+   */
+  public List<GroupListResponse> listMyGroups(UUID currentUserId) {
+    User currentUser = requireUser(currentUserId);
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(currentUserId);
+    if (groupIds.isEmpty()) {
+      return List.of();
+    }
+    return groupRepository.findAllById(groupIds).stream()
+        .filter(group -> !group.isDissolved())
+        .filter(group -> group.getOrganizationId().equals(currentUser.getOrganizationId()))
         .map(this::toGroupListResponse)
         .toList();
   }

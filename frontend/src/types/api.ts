@@ -46,6 +46,14 @@ export type GroupListResponse = components['schemas']['GroupListResponse']
 export type GroupResponse = components['schemas']['GroupResponse']
 export type GroupAddMemberRequest = components['schemas']['GroupAddMemberRequest']
 
+export type AssetRole = components['schemas']['AssetRole']
+export type LibraryOwnerType = components['schemas']['LibraryOwnerType']
+export type LibraryVisibility = components['schemas']['LibraryVisibility']
+export type LibraryRequest = components['schemas']['LibraryRequest']
+export type LibraryUpdateRequest = components['schemas']['LibraryUpdateRequest']
+export type LibraryListResponse = components['schemas']['LibraryListResponse']
+export type LibraryResponse = components['schemas']['LibraryResponse']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

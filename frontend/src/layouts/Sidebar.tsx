@@ -17,6 +17,7 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupsIcon from '@mui/icons-material/Groups'
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -207,6 +208,17 @@ export default function Sidebar() {
             <DescriptionIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Dokumente" />
+        </ListItemButton>
+        <ListItemButton
+          component={NavLink}
+          to="/libraries"
+          selected={location.pathname === '/libraries'}
+          sx={{ borderRadius: 2 }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <LibraryBooksIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Wissensbibliotheken" />
         </ListItemButton>
         {user?.systemRole === 'SYSTEM_ADMIN' && (
           <ListItemButton

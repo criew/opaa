@@ -7,6 +7,8 @@ import type {
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
+  LibraryListResponse,
+  LibraryResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
 
@@ -402,6 +404,102 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
     updatedAt: '2026-03-01T10:00:00Z',
   },
 }
+
+export const mockLibraries: LibraryListResponse[] = [
+  {
+    id: 'library-personal',
+    name: 'Meine Dokumente',
+    description: 'Private Dokumente',
+    ownerType: 'USER',
+    visibility: 'PRIVATE',
+    listed: false,
+    personal: true,
+    myRole: 'OWNER',
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'library-referat-50',
+    name: 'Rechtsquellen Soziales',
+    description: 'SGB II, SGB XII, VwVfG, Dienstanweisungen',
+    ownerType: 'GROUP',
+    visibility: 'SHARED',
+    listed: true,
+    personal: false,
+    myRole: 'MANAGER',
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'library-dienstanweisungen',
+    name: 'Dienstanweisungen',
+    description: 'Organisationsweite Vorgaben',
+    ownerType: 'SYSTEM',
+    visibility: 'ORGANIZATION',
+    listed: true,
+    personal: false,
+    myRole: 'VIEWER',
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+]
+
+export const mockLibraryDetails: Record<string, LibraryResponse> = {
+  'library-personal': {
+    id: 'library-personal',
+    name: 'Meine Dokumente',
+    description: 'Private Dokumente',
+    ownerType: 'USER',
+    ownerId: 'mock-user-id',
+    visibility: 'PRIVATE',
+    listed: false,
+    personal: true,
+    myRole: 'OWNER',
+    documentCount: 12,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'library-referat-50': {
+    id: 'library-referat-50',
+    name: 'Rechtsquellen Soziales',
+    description: 'SGB II, SGB XII, VwVfG, Dienstanweisungen',
+    ownerType: 'GROUP',
+    ownerId: 'group-referat-50',
+    visibility: 'SHARED',
+    listed: true,
+    personal: false,
+    myRole: 'MANAGER',
+    documentCount: 431,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'library-dienstanweisungen': {
+    id: 'library-dienstanweisungen',
+    name: 'Dienstanweisungen',
+    description: 'Organisationsweite Vorgaben',
+    ownerType: 'SYSTEM',
+    ownerId: null,
+    visibility: 'ORGANIZATION',
+    listed: true,
+    personal: false,
+    myRole: 'VIEWER',
+    documentCount: 87,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+}
+
+/**
+ * Groups the mock user ('mock-user-id') is a direct member of - what GET /api/v1/me/groups
+ * returns in the mock, matching the membership recorded in mockGroupDetails. Deliberately not
+ * derived by filtering mockGroups by kind or by every group's membership: the real
+ * GroupService#listMyGroups keys off actual membership records, not admin-only listGroups, so the
+ * mock reproduces that distinction ('group-referat-50' is in mockGroups but the mock user is not
+ * one of its members).
+ */
+export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
+  mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
+)
 
 export const mockUsers: UserInfo[] = [
   {

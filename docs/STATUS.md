@@ -266,7 +266,7 @@ nicht vertreten.
 
 **Gebaut**
 - Weboberfläche: Chat mit Quellenangaben und Eingrenzung auf Spaces, Space- und Gruppenverwaltung,
-  Einstellungen (`frontend/src/pages/`)
+  Verwaltung von Wissensbibliotheken, Einstellungen (`frontend/src/pages/`)
 - REST-API unter `/api/v1` — Abfrage, Indizierung, Spaces, Bibliotheken samt Rechtevergabe, Gruppen,
   Verzeichnisabgleich, Systemverwaltung
 - Ratenbegrenzung je Netzadresse und global je Endpunkt (`io.opaa.api.RateLimitFilter`)
