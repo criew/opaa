@@ -2,13 +2,20 @@ package io.opaa.library;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -75,6 +82,7 @@ public class AssetGrantService {
   private final GroupRepository groupRepository;
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
+  private final AuditEventRecorder auditEventRecorder;
 
   public AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -82,13 +90,15 @@ public class AssetGrantService {
       UserRepository userRepository,
       GroupRepository groupRepository,
       LibraryAccessService accessService,
-      PermissionHistoryService permissionHistoryService) {
+      PermissionHistoryService permissionHistoryService,
+      AuditEventRecorder auditEventRecorder) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
+    this.auditEventRecorder = auditEventRecorder;
   }
 
   public List<AssetGrantResponse> listGrants(
@@ -99,7 +109,17 @@ public class AssetGrantService {
         .toList();
   }
 
-  @Transactional
+  // #392: noRollbackFor(ResponseStatusException) - without it, the DENIED audit entry the
+  // escalation-guard catch block below writes would be undone by Spring's default rollback-on-any-
+  // RuntimeException the moment the same exception is rethrown to the caller, defeating the entire
+  // point of recording a rejected attempt (AuditLogService's Javadoc: "a rejected action ... is
+  // recorded ... as part of its own successful flow, not implied by a leftover row from a
+  // rolled-back attempt" - the DENIED write must itself be that successful flow, not a doomed one).
+  // Safe here because every ResponseStatusException this method can throw - including the
+  // escalation guard's - fires strictly before grantRepository.save(grant) below: nothing is ever
+  // persisted on a path this annotation keeps from rolling back, so "not rolling back" changes
+  // nothing about the (never attempted) grant write, only preserves the audit trail of the attempt.
+  @Transactional(noRollbackFor = ResponseStatusException.class)
   public AssetGrantResponse upsertGrant(
       UUID libraryId, AssetGrantRequest request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
@@ -124,13 +144,39 @@ public class AssetGrantService {
     // themselves hold - see the class Javadoc. requireManageable already established callerRole is
     // at least MANAGER.
     AssetRole callerRole = accessService.effectiveRole(library, currentUserId, systemAdmin);
-    requireCallerRoleAtLeast(
-        callerRole,
-        request.getRole(),
-        "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
+    try {
+      requireCallerRoleAtLeast(
+          callerRole,
+          request.getRole(),
+          "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
+    } catch (ResponseStatusException denied) {
+      // #392: the rejected attempt to grant a role higher than the caller's own is itself
+      // protocol-worthy - "der zurueckgewiesene Versuch, sich eine hoehere Rolle zu geben, ist fuer
+      // eine Pruefung oft der interessantere Vorgang" (docs/features/security-and-compliance.md).
+      auditEventRecorder.recordUserActionOnSubject(
+          library.getOrganizationId(),
+          currentUserId,
+          AuditEventType.ASSET_GRANT_GRANTED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          library.getName(),
+          request.getSubjectType() == PermissionSubjectType.USER
+              ? AuditSubjectKind.USER
+              : AuditSubjectKind.GROUP,
+          request.getSubjectId(),
+          null,
+          Map.of("role", request.getRole().name()),
+          AuditOutcome.DENIED,
+          denied.getReason());
+      throw denied;
+    }
 
     AssetGrant grant;
     boolean isNewGrant;
+    // #392: captured before grant.updateRole() mutates the entity in place, further down - the
+    // "before" half of an ASSET_GRANT_CHANGED entry.
+    AssetRole previousRole = null;
+    Instant previousExpiresAt = null;
     if (request.getSubjectType() == PermissionSubjectType.USER) {
       requireUserInOrganization(request.getSubjectId(), library.getOrganizationId());
       grant =
@@ -152,6 +198,8 @@ public class AssetGrantService {
         requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
         requireNotDowngradingTheLastActiveOwnerGrant(
             library.getId(), grant, request.getRole(), request.getExpiresAt());
+        previousRole = grant.getRole();
+        previousExpiresAt = grant.getExpiresAt();
         grant.updateRole(request.getRole(), request.getExpiresAt());
       }
     } else {
@@ -175,6 +223,8 @@ public class AssetGrantService {
         requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
         requireNotDowngradingTheLastActiveOwnerGrant(
             library.getId(), grant, request.getRole(), request.getExpiresAt());
+        previousRole = grant.getRole();
+        previousExpiresAt = grant.getExpiresAt();
         grant.updateRole(request.getRole(), request.getExpiresAt());
       }
     }
@@ -182,13 +232,59 @@ public class AssetGrantService {
     AssetGrant saved = grantRepository.save(grant);
     // #238: every grant change is historised as its own interval, with the operation that caused
     // it - GRANTED for a new grant, ROLE_CHANGED for an update to an existing one.
+    AuditSubjectKind auditSubjectKind =
+        saved.getSubjectType() == PermissionSubjectType.USER
+            ? AuditSubjectKind.USER
+            : AuditSubjectKind.GROUP;
+    UUID auditSubjectId =
+        saved.getSubjectType() == PermissionSubjectType.USER
+            ? saved.getSubjectUserId()
+            : saved.getSubjectGroupId();
     if (isNewGrant) {
       permissionHistoryService.recordGrantCreated(saved, currentUser.getId());
+      // #392: the counterpart event to PermissionHistoryService#recordGrantCreated above - the
+      // rights-state interval and the event log entry are written side by side, never merged (see
+      // the class Javadoc's "verwandt, nicht ueberschneidend" note).
+      auditEventRecorder.recordUserActionOnSubject(
+          library.getOrganizationId(),
+          currentUser.getId(),
+          AuditEventType.ASSET_GRANT_GRANTED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          library.getName(),
+          auditSubjectKind,
+          auditSubjectId,
+          null,
+          grantAuditPayload(saved.getRole(), saved.getExpiresAt()),
+          AuditOutcome.SUCCESS,
+          null);
     } else {
       permissionHistoryService.recordGrantRoleChanged(saved, currentUser.getId());
+      auditEventRecorder.recordUserActionOnSubject(
+          library.getOrganizationId(),
+          currentUser.getId(),
+          AuditEventType.ASSET_GRANT_CHANGED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          library.getName(),
+          auditSubjectKind,
+          auditSubjectId,
+          grantAuditPayload(previousRole, previousExpiresAt),
+          grantAuditPayload(saved.getRole(), saved.getExpiresAt()),
+          AuditOutcome.SUCCESS,
+          null);
     }
     invalidateAfterCommit(library.getId());
     return toResponse(saved);
+  }
+
+  private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("role", role.name());
+    if (expiresAt != null) {
+      payload.put("expiresAt", expiresAt.toString());
+    }
+    return payload;
   }
 
   @Transactional
@@ -226,6 +322,24 @@ public class AssetGrantService {
     // #238: record the revocation before the row is gone - recordGrantRevoked reads the grant's
     // last-active role/expiresAt off this same entity.
     permissionHistoryService.recordGrantRevoked(grant, currentUserId);
+    // #392: same "before the row is gone" reasoning as the history call above.
+    auditEventRecorder.recordUserActionOnSubject(
+        library.getOrganizationId(),
+        currentUserId,
+        AuditEventType.ASSET_GRANT_REVOKED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        library.getName(),
+        grant.getSubjectType() == PermissionSubjectType.USER
+            ? AuditSubjectKind.USER
+            : AuditSubjectKind.GROUP,
+        grant.getSubjectType() == PermissionSubjectType.USER
+            ? grant.getSubjectUserId()
+            : grant.getSubjectGroupId(),
+        grantAuditPayload(grant.getRole(), grant.getExpiresAt()),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     grantRepository.delete(grant);
     invalidateAfterCommit(library.getId());
   }

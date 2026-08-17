@@ -138,6 +138,9 @@ class LibraryDocumentServiceIntegrationTest {
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
+    // #392: setUp's library/grant creation now also writes audit_log rows
+    // (fk_audit_log_organization is ON DELETE RESTRICT, migration 017).
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
 

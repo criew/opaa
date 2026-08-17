@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -52,6 +53,7 @@ class SpaceServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -97,6 +99,11 @@ class SpaceServiceIntegrationTest {
     grantHistoryRepository.deleteAll();
     membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
+    // #392: SpaceService now also writes audit_log rows (fk_audit_log_organization is ON DELETE
+    // RESTRICT, migration 017) - purged via JdbcTemplate, same reasoning as
+    // AuditLogServiceIntegrationTest#tearDown.
+    jdbcTemplate.update(
+        "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
     organizationRepository.deleteAllById(List.of(organizationA, organizationB));
   }
 

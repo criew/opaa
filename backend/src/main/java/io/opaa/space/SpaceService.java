@@ -6,12 +6,18 @@ import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -32,14 +38,17 @@ public class SpaceService {
 
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
+  private final AuditEventRecorder auditEventRecorder;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public SpaceService(
       SpaceRepository spaceRepository,
       UserRepository userRepository,
+      AuditEventRecorder auditEventRecorder,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.userRepository = userRepository;
+    this.auditEventRecorder = auditEventRecorder;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -78,7 +87,26 @@ public class SpaceService {
     appendInitialMemberships(space, ownerId, request.getInitialMembers());
 
     Space saved = spaceRepository.save(space);
+    auditEventRecorder.recordUserAction(
+        saved.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_CREATED,
+        AuditObjectType.SPACE,
+        saved.getId(),
+        saved.getName(),
+        null,
+        spaceAuditPayload(saved),
+        AuditOutcome.SUCCESS,
+        null);
     return toSpaceResponse(saved, currentUserId);
+  }
+
+  private Map<String, Object> spaceAuditPayload(Space space) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("name", space.getName());
+    payload.put("visibility", space.getVisibility().name());
+    payload.put("ownerId", space.getOwnerId().toString());
+    return payload;
   }
 
   public List<SpaceListResponse> listSpaces(UUID currentUserId) {
@@ -137,6 +165,19 @@ public class SpaceService {
         new SpaceMembership(memberUserId, roleToAssign, space.getOrganizationId());
     space.addMembership(membership);
     spaceRepository.save(space);
+    auditEventRecorder.recordUserActionOnSubject(
+        space.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_MEMBER_ADDED,
+        AuditObjectType.SPACE,
+        space.getId(),
+        space.getName(),
+        AuditSubjectKind.USER,
+        memberUserId,
+        null,
+        Map.of("role", roleToAssign.name()),
+        AuditOutcome.SUCCESS,
+        null);
 
     return new SpaceMemberResponse(
             membership.getUserId(), membership.getRole(), membership.getCreatedAt())
@@ -163,8 +204,22 @@ public class SpaceService {
               + " Verantwortung");
     }
 
+    SpaceRole previousRole = target.getRole();
     target.setRole(newRole);
     spaceRepository.save(space);
+    auditEventRecorder.recordUserActionOnSubject(
+        space.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_MEMBER_ROLE_CHANGED,
+        AuditObjectType.SPACE,
+        space.getId(),
+        space.getName(),
+        AuditSubjectKind.USER,
+        memberUserId,
+        Map.of("role", previousRole.name()),
+        Map.of("role", newRole.name()),
+        AuditOutcome.SUCCESS,
+        null);
     return new SpaceMemberResponse(target.getUserId(), target.getRole(), target.getCreatedAt())
         .displayName(resolveDisplayName(target.getUserId()));
   }
@@ -186,6 +241,19 @@ public class SpaceService {
 
     space.removeMembership(target);
     spaceRepository.save(space);
+    auditEventRecorder.recordUserActionOnSubject(
+        space.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_MEMBER_REMOVED,
+        AuditObjectType.SPACE,
+        space.getId(),
+        space.getName(),
+        AuditSubjectKind.USER,
+        memberUserId,
+        Map.of("role", target.getRole().name()),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
   }
 
   @Transactional
@@ -204,8 +272,23 @@ public class SpaceService {
           HttpStatus.NOT_FOUND, "Der ausgewählte Benutzer ist kein Mitglied dieses Space");
     }
 
+    UUID previousOwnerId = space.getOwnerId();
     space.transferOwnershipTo(newOwnerUserId);
     spaceRepository.save(space);
+    // #392: no dedicated enum value for a space ownership transfer exists in the closed list -
+    // SPACE_CHANGED is the general "a space changed" event, and ownership is one of the space's own
+    // attributes, so it is used here the same way a rename would be.
+    auditEventRecorder.recordUserAction(
+        space.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_CHANGED,
+        AuditObjectType.SPACE,
+        space.getId(),
+        space.getName(),
+        Map.of("ownerId", previousOwnerId.toString()),
+        Map.of("ownerId", newOwnerUserId.toString()),
+        AuditOutcome.SUCCESS,
+        null);
   }
 
   @Transactional
@@ -225,8 +308,34 @@ public class SpaceService {
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
+    String previousName = space.getName();
+    String previousDescription = space.getDescription();
+    SpaceVisibility previousVisibility = space.getVisibility();
     space.updateDetails(normalizedName, request.getDescription(), request.getVisibility());
     Space updated = spaceRepository.save(space);
+    if (!Objects.equals(previousName, updated.getName())
+        || !Objects.equals(previousDescription, updated.getDescription())
+        || previousVisibility != updated.getVisibility()) {
+      Map<String, Object> before = new LinkedHashMap<>();
+      before.put("name", previousName);
+      before.put("description", String.valueOf(previousDescription));
+      before.put("visibility", previousVisibility.name());
+      Map<String, Object> after = new LinkedHashMap<>();
+      after.put("name", updated.getName());
+      after.put("description", String.valueOf(updated.getDescription()));
+      after.put("visibility", updated.getVisibility().name());
+      auditEventRecorder.recordUserAction(
+          updated.getOrganizationId(),
+          currentUserId,
+          AuditEventType.SPACE_CHANGED,
+          AuditObjectType.SPACE,
+          updated.getId(),
+          updated.getName(),
+          before,
+          after,
+          AuditOutcome.SUCCESS,
+          null);
+    }
     return toSpaceResponse(updated, currentUserId);
   }
 
@@ -246,6 +355,17 @@ public class SpaceService {
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
     }
 
+    auditEventRecorder.recordUserAction(
+        space.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_DELETED,
+        AuditObjectType.SPACE,
+        space.getId(),
+        space.getName(),
+        spaceAuditPayload(space),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     spaceRepository.delete(space);
   }
 

@@ -38,6 +38,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -99,6 +100,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();
@@ -143,6 +145,10 @@ class PermissionHistoryServiceIntegrationTest {
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
+    // #392: every library/grant/group operation this class exercises now also writes an audit_log
+    // row (fk_audit_log_organization is ON DELETE RESTRICT, migration 017) - purged via
+    // JdbcTemplate, same reasoning as AuditLogServiceIntegrationTest#tearDown.
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
 

@@ -7,6 +7,7 @@ import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrant;
@@ -30,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +79,12 @@ class GroupServiceIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private PlatformTransactionManager transactionManager;
+  // #392: GroupService now also depends on AuditEventRecorder. Mocked here rather than wired for
+  // real (as AuditEventRecordingIntegrationTest does): this class's ddl-auto=create-drop schema
+  // (see the class Javadoc) does not carry Liquibase's audit_actor_pseudonyms unique constraint
+  // that AuditActorPseudonymService's ON CONFLICT insert depends on, and this class's own tests are
+  // about group membership/cache behaviour, not auditing.
+  @MockitoBean private AuditEventRecorder auditEventRecorder;
 
   private UUID organizationA;
   private UUID organizationB;

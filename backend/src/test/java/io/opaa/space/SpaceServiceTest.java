@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,9 @@ class SpaceServiceTest {
     UserRepository userRepository = mock(UserRepository.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
-    spaceService = new SpaceService(spaceRepository, userRepository, transactionManager);
+    AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
+    spaceService =
+        new SpaceService(spaceRepository, userRepository, auditEventRecorder, transactionManager);
   }
 
   @Test

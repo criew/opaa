@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
@@ -50,6 +51,7 @@ class KnowledgeLibraryServiceTest {
     grantRepository = mock(AssetGrantRepository.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     permissionHistoryService = mock(PermissionHistoryService.class);
+    AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     libraryService =
@@ -62,6 +64,7 @@ class KnowledgeLibraryServiceTest {
             grantRepository,
             accessService,
             permissionHistoryService,
+            auditEventRecorder,
             transactionManager);
   }
 

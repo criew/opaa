@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.AssetGrantRequest;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -34,6 +35,7 @@ class AssetGrantServiceTest {
   private GroupRepository groupRepository;
   private LibraryAccessService accessService;
   private PermissionHistoryService permissionHistoryService;
+  private AuditEventRecorder auditEventRecorder;
   private AssetGrantService grantService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -49,6 +51,7 @@ class AssetGrantServiceTest {
     groupRepository = mock(GroupRepository.class);
     accessService = mock(LibraryAccessService.class);
     permissionHistoryService = mock(PermissionHistoryService.class);
+    auditEventRecorder = mock(AuditEventRecorder.class);
     grantService =
         new AssetGrantService(
             grantRepository,
@@ -56,7 +59,8 @@ class AssetGrantServiceTest {
             userRepository,
             groupRepository,
             accessService,
-            permissionHistoryService);
+            permissionHistoryService,
+            auditEventRecorder);
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than
