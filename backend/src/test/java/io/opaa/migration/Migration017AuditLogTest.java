@@ -595,8 +595,18 @@ class Migration017AuditLogTest {
 
   @Test
   void theEventTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
-    assertThat(checkConstraintValues("chk_audit_log_event_type"))
-        .isEqualTo(enumNames(AuditEventType.values()));
+    // #393 code review, finding 1: migration 022 widens this same constraint to also accept
+    // AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED - this test applies 017 alone (on top of
+    // test-master-through-016), so it must compare against 017's own, narrower value set, not the
+    // full live enum, which now includes those two later-added values. See
+    // Migration022AuditorRoleEventTypesTest for the equivalent proof once 022 has run.
+    Set<String> valuesAddedAfterMigration017 =
+        Set.of(
+            AuditEventType.AUDITOR_ROLE_GRANTED.name(), AuditEventType.AUDITOR_ROLE_REVOKED.name());
+    Set<String> expected = new HashSet<>(enumNames(AuditEventType.values()));
+    expected.removeAll(valuesAddedAfterMigration017);
+
+    assertThat(checkConstraintValues("chk_audit_log_event_type")).isEqualTo(expected);
   }
 
   @Test

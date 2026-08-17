@@ -976,6 +976,224 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # #393: exactly four revision access paths, each with a mandatory time range and a bounded
+  # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
+  # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
+  # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only).
+  /api/v1/audit/events/by-object:
+    get:
+      operationId: listAuditEventsByObject
+      tags: [audit]
+      summary: >
+        Revision access path "nach Objekt" (AUDITOR role required): every event recorded against
+        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400
+        (#393 code review, finding 2): a USER_ACCOUNT object's object_id is that person's
+        pseudonym - the same pseudonym actorRef carries on that same person's own actions
+        elsewhere in the log - so accepting it here would reconstruct exactly the excluded view
+        "alle Ereignisse, bei denen Person X betroffen war" (read a pseudonym off actorRef via
+        by-time-range, then feed it back in as objectId). The legitimate need behind a
+        USER_ACCOUNT-scoped question is served by by-time-range/by-event-type (no person focus)
+        or, for a genuinely person-scoped question, by the freigegebene anlassbezogene Klärung
+        or the Rechtehistorie (#238) - never by this path.
+      parameters:
+        - name: objectType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/AuditObjectType"
+        - name: objectId
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+      responses:
+        "200":
+          description: Bounded page of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/events/by-time-range:
+    get:
+      operationId: listAuditEventsByTimeRange
+      tags: [audit]
+      summary: >
+        Revision access path "nach Zeitraum" (AUDITOR role required): every event recorded within
+        a mandatory time range, regardless of object.
+      parameters:
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+      responses:
+        "200":
+          description: Bounded page of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/events/by-event-type:
+    get:
+      operationId: listAuditEventsByEventType
+      tags: [audit]
+      summary: >
+        Revision access path "nach Ereignisart" (AUDITOR role required): every event of one type,
+        within a mandatory time range.
+      parameters:
+        - name: eventType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/AuditEventType"
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+      responses:
+        "200":
+          description: Bounded page of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/events/by-correlation:
+    get:
+      operationId: listAuditEventsByCorrelation
+      tags: [audit]
+      summary: >
+        Revision access path "nach Vorgang" (AUDITOR role required): every event sharing one
+        correlation_ref (e.g. one directory sync run), within a mandatory time range.
+      parameters:
+        - name: correlationRef
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+      responses:
+        "200":
+          description: Bounded page of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/incident-scopes:
+    post:
+      operationId: requestAuditIncidentScope
+      tags: [audit]
+      summary: >
+        Requests the one exception to "kein Personenfilter" - the anlassbezogene Klärung
+        (AUDITOR role required): names person, time range and purpose in advance. Created PENDING;
+        unusable for querying until a second, different AUDITOR approves it via the approve
+        endpoint (Vier-Augen-Prinzip).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditIncidentScopeRequest"
+      responses:
+        "201":
+          description: Incident scope requested, awaiting approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditIncidentScopeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/incident-scopes/{scopeId}/approve:
+    parameters:
+      - name: scopeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: approveAuditIncidentScope
+      tags: [audit]
+      summary: >
+        Approves a requested incident scope (AUDITOR role required). Rejected if the approver is
+        the same person as the requester (Selbstfreigabe) or the scope was already approved.
+      responses:
+        "200":
+          description: Incident scope approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditIncidentScopeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/audit/incident-scopes/{scopeId}/events:
+    parameters:
+      - name: scopeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listAuditEventsByIncidentScope
+      tags: [audit]
+      summary: >
+        The one personenbezogene query path (AUDITOR role required): every event whose actor is
+        the scope's named person, technically bounded to the approved scope's person and time
+        range. Not callable before approval; a requested from/to outside the approved scope's time
+        range is rejected rather than silently clamped.
+      parameters:
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+      responses:
+        "200":
+          description: Bounded page of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
     HealthResponse:
@@ -1026,7 +1244,10 @@ components:
 
     SystemRole:
       type: string
-      enum: [USER, SYSTEM_ADMIN]
+      description: >
+        AUDITOR (#393) grants read access to the revision access paths in io.opaa.audit and
+        nothing else - it carries none of SYSTEM_ADMIN's administrative privileges.
+      enum: [USER, SYSTEM_ADMIN, AUDITOR]
       example: USER
 
     IndexingStatusResponse:
@@ -1962,6 +2183,319 @@ components:
           type: number
           format: double
           nullable: true
+
+    # #393 - audit revision access path. See
+    # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
+    AuditActorKind:
+      type: string
+      description: Mirrors io.opaa.audit.ActorKind. Output-only field, never a filter/sort key.
+      enum: [USER, SERVICE_ACCOUNT, SYSTEM_PROCESS]
+      example: USER
+
+    AuditSubjectKind:
+      type: string
+      description: Mirrors io.opaa.audit.AuditSubjectKind.
+      enum: [USER, GROUP]
+      example: GROUP
+
+    AuditOutcome:
+      type: string
+      description: Mirrors io.opaa.audit.AuditOutcome.
+      enum: [SUCCESS, DENIED, FAILURE]
+      example: SUCCESS
+
+    AuditObjectType:
+      type: string
+      description: Mirrors io.opaa.audit.AuditObjectType. The only entry point besides time range,
+        event type and correlation ref - never a person.
+      enum:
+        [
+          KNOWLEDGE_LIBRARY,
+          SPACE,
+          GROUP,
+          ASSET_GRANT,
+          USER_ACCOUNT,
+          API_TOKEN,
+          SYSTEM_SETTING,
+          AUDIT_LOG,
+          DIRECTORY_SYNC_RUN,
+        ]
+      example: KNOWLEDGE_LIBRARY
+
+    AuditEventType:
+      type: string
+      description: Mirrors io.opaa.audit.AuditEventType - the closed first-stage event list.
+      enum:
+        [
+          ASSET_GRANT_GRANTED,
+          ASSET_GRANT_CHANGED,
+          ASSET_GRANT_REVOKED,
+          ASSET_GRANT_EXPIRED,
+          ASSET_VISIBILITY_CHANGED,
+          ASSET_GRANT_SUSPENDED,
+          SPACE_CREATED,
+          SPACE_CHANGED,
+          SPACE_DELETED,
+          LIBRARY_CREATED,
+          LIBRARY_CHANGED,
+          LIBRARY_DELETED,
+          GROUP_CREATED,
+          GROUP_CHANGED,
+          GROUP_DELETED,
+          SPACE_MEMBER_ADDED,
+          SPACE_MEMBER_ROLE_CHANGED,
+          SPACE_MEMBER_REMOVED,
+          GROUP_MEMBER_ADDED,
+          GROUP_MEMBER_REMOVED,
+          LIBRARY_SHARED_TO_SPACE,
+          ASSET_OWNER_CHANGED,
+          ASSET_OWNERSHIP_CLAIMED,
+          ASSET_SUCCESSION_OPENED,
+          SYSTEM_ADMIN_ROLE_GRANTED,
+          SYSTEM_ADMIN_ROLE_REVOKED,
+          AUDITOR_ROLE_GRANTED,
+          AUDITOR_ROLE_REVOKED,
+          ACCOUNT_DEACTIVATED,
+          ACCOUNT_REAUTHENTICATION_FORCED,
+          API_TOKEN_ISSUED,
+          API_TOKEN_REVOKED,
+          DIRECTORY_SYNC_CHANGE_APPLIED,
+          DIRECTORY_SYNC_RUN_COMPLETED,
+          GOVERNANCE_SETTINGS_CHANGED,
+          AUDIT_LOG_CONFIGURATION_CHANGED,
+          MODEL_POLICY_CHANGED,
+          CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+          AUDIT_LOG_ACCESSED,
+        ]
+      example: ASSET_GRANT_REVOKED
+
+    AuditEventResponse:
+      type: object
+      description: >
+        One entry as read back through a revision access path. actorRef/subjectRef are
+        pseudonymised, output-only fields - never accepted as a request parameter anywhere in
+        this API.
+      required:
+        [
+          eventId,
+          recordedAt,
+          organizationId,
+          actorKind,
+          actorRef,
+          eventType,
+          objectType,
+          objectId,
+          outcome,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        organizationId:
+          type: string
+          format: uuid
+        actorKind:
+          $ref: "#/components/schemas/AuditActorKind"
+        actorRef:
+          type: string
+        eventType:
+          $ref: "#/components/schemas/AuditEventType"
+        objectType:
+          $ref: "#/components/schemas/AuditObjectType"
+        objectId:
+          type: string
+        objectLabel:
+          type: string
+          nullable: true
+        subjectKind:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AuditSubjectKind"
+        subjectRef:
+          type: string
+          nullable: true
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+        outcome:
+          $ref: "#/components/schemas/AuditOutcome"
+        reason:
+          type: string
+          nullable: true
+        correlationRef:
+          type: string
+          nullable: true
+
+    AuditEventPage:
+      type: object
+      description: >
+        A bounded page, never a full extract - "begrenzte Ergebnismenge" is enforced server-side
+        regardless of the requested size.
+      required: [events, page, size, hasMore]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEventResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
+          description: True if further, older-page results exist beyond this bounded page.
+
+    AuditIncidentScopePurpose:
+      type: string
+      description: >
+        Mirrors io.opaa.audit.AuditIncidentScopePurpose - a closed list that deliberately excludes
+        arbeitsrechtliche, disziplinarische und leistungsbezogene purposes by omission (Zweckausschluss).
+      enum:
+        [
+          SECURITY_INCIDENT,
+          UNAUTHORIZED_ACCESS_SUSPICION,
+          DATA_BREACH_INVESTIGATION,
+          EXTERNAL_AUDIT_OR_INSPECTION,
+        ]
+      example: SECURITY_INCIDENT
+
+    AuditIncidentScopeStatus:
+      type: string
+      description: Mirrors io.opaa.audit.AuditIncidentScopeStatus.
+      enum: [PENDING, APPROVED]
+      example: PENDING
+
+    AuditIncidentScopeRequest:
+      type: object
+      required: [subjectUserId, scopeStart, scopeEnd, purpose, reason]
+      properties:
+        subjectUserId:
+          type: string
+          format: uuid
+          description: The one person this exception's technical scope names in advance.
+        scopeStart:
+          type: string
+          format: date-time
+        scopeEnd:
+          type: string
+          format: date-time
+        purpose:
+          $ref: "#/components/schemas/AuditIncidentScopePurpose"
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: The documented Anlass required alongside the closed purpose category.
+
+    AuditIncidentScopeResponse:
+      type: object
+      required:
+        [
+          id,
+          organizationId,
+          subjectUserId,
+          scopeStart,
+          scopeEnd,
+          purpose,
+          reason,
+          requestedByUserId,
+          requestedAt,
+          status,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        subjectUserId:
+          type: string
+          format: uuid
+        scopeStart:
+          type: string
+          format: date-time
+        scopeEnd:
+          type: string
+          format: date-time
+        purpose:
+          $ref: "#/components/schemas/AuditIncidentScopePurpose"
+        reason:
+          type: string
+        requestedByUserId:
+          type: string
+          format: uuid
+        requestedAt:
+          type: string
+          format: date-time
+        approvedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        usableUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Set once, at approval - an approved grant is only usable for querying until this
+            point, not indefinitely.
+        status:
+          $ref: "#/components/schemas/AuditIncidentScopeStatus"
+
+  parameters:
+    AuditFrom:
+      name: from
+      in: query
+      required: true
+      description: >
+        Start of the mandatory, bounded time range (inclusive). The range (to - from) must not
+        exceed 92 days (#393 code review, finding 3) - wide enough for the specification's own
+        "alle Rechteänderungen zwischen dem 1. und dem 31. März"-style queries, not wide enough to
+        serve as a disguised full-history extract. A wider request is rejected with 400, not
+        clamped; a multi-year review chains several bounded calls, each auditable on its own.
+      schema:
+        type: string
+        format: date-time
+    AuditTo:
+      name: to
+      in: query
+      required: true
+      description: End of the mandatory, bounded time range (inclusive) - see AuditFrom.
+      schema:
+        type: string
+        format: date-time
+    AuditPage:
+      name: page
+      in: query
+      required: false
+      description: >
+        A value beyond page index 49 (50 pages total) is rejected with 400, not clamped (#393
+        code review, finding 3; #393 re-review, nit 3) - AuditSize alone only bounds a single
+        page; without this, paging through page=0..n against a wide time range would turn
+        "bounded per page" back into an effectively unbounded full extract in slices.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    AuditSize:
+      name: size
+      in: query
+      required: false
+      description: Capped server-side at 200 regardless of the requested value - see AuditPage.
+      schema:
+        type: integer
+        minimum: 1
+        default: 50
 
   responses:
     ValidationError:

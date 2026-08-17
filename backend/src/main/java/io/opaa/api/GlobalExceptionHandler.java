@@ -15,8 +15,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -70,6 +72,43 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
     return ResponseEntity.badRequest()
         .body(new ErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST.value(), Instant.now()));
+  }
+
+  /**
+   * #393: the four revision access paths declare their required query parameters
+   * (objectType/objectId, eventType, correlationRef, the mandatory from/to time range on every one
+   * of them) via plain {@code @RequestParam(required = true)} rather than a validated request DTO -
+   * the first callers in this codebase to rely on that for enforcement rather than a defaulted or
+   * optional parameter. Without this handler, a missing one fell through to {@link
+   * #handleGenericException}'s {@code 500} instead of the 400 "eine Abfrage ohne [Bezug] wird
+   * abgewiesen" acceptance criterion requires.
+   */
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+      MissingServletRequestParameterException ex) {
+    return ResponseEntity.badRequest()
+        .body(
+            new ErrorResponse(
+                "Pflichtparameter fehlt: " + ex.getParameterName(),
+                HttpStatus.BAD_REQUEST.value(),
+                Instant.now()));
+  }
+
+  /**
+   * #393 code review, nit 6: the sibling of {@link #handleMissingServletRequestParameterException}
+   * - a *malformed* required parameter (e.g. {@code ?from=gestern} or {@code ?objectType=FOO}
+   * against the #393 revision access paths) is still a caller error, not a server error, and fell
+   * through to {@link #handleGenericException}'s {@code 500} without this handler.
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+      MethodArgumentTypeMismatchException ex) {
+    return ResponseEntity.badRequest()
+        .body(
+            new ErrorResponse(
+                "Ungültiger Wert für Parameter: " + ex.getName(),
+                HttpStatus.BAD_REQUEST.value(),
+                Instant.now()));
   }
 
   @ExceptionHandler(TransientAiException.class)

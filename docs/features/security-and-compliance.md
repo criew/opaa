@@ -269,7 +269,24 @@ Absicht.
 | **nach Vorgang** | „alle Einträge des Verzeichnislaufs vom 16. Februar" | über `correlation_ref`; hält einen technischen Vorgang zusammen |
 
 Jede dieser Abfragen verlangt einen **Zeitraum** und ist in ihrer Ergebnismenge begrenzt. Eine Abfrage
-ohne Zeitgrenze ist ein Vollabzug und damit ein Auswertungspfad mit anderem Namen.
+ohne Zeitgrenze ist ein Vollabzug und damit ein Auswertungspfad mit anderem Namen. Konkret (#393,
+Code-Review-Befund 3): der Zeitraum ist auf **92 Tage** je Abfrage begrenzt — grob ein Quartal, breit
+genug für die Beispiele oben, nicht breit genug für einen verkappten Voll-Extrakt in wenigen Aufrufen —
+und die Seitenzahl je Abfrage ist auf **50 Seiten** begrenzt — eine Anfrage über die 50. Seite hinaus
+wird abgewiesen, nicht auf die letzte nutzbare Seite gekappt (#393, Nachbesserung 3), damit die
+Seitengröße allein keine Vollabzug-in-Scheiben-Lücke offenlässt; ein größerer Bedarf über mehrere
+Jahre wird durch mehrere aufeinanderfolgende, je für sich nachvollziehbare Abfragen abgedeckt, nicht
+durch eine einzelne.
+
+Der Weg **nach Objekt** weist `objectType = Konto` ausdrücklich ab (#393, Code-Review-Befund 2): Das
+`object_id` eines Kontoereignisses ist dieselbe Pseudonymkennung, die `actor_ref` für dieselbe Person in
+all ihren eigenen Ereignissen trägt. Ohne diese Abweisung ließe sich über `nach Zeitraum` eine
+Pseudonymkennung aus `actor_ref` ablesen und anschließend über `nach Objekt` als `object_id`
+zurückspielen — und damit genau die weiter unten ausgeschlossene Sicht „alle Ereignisse, bei denen
+Person X betroffen war" rekonstruieren, ohne die anlassbezogene Klärung zu durchlaufen. Der berechtigte
+Bedarf hinter einer kontobezogenen Frage läuft über `nach Zeitraum`/`nach Ereignisart` (ohne
+Personenbezug), die freigegebene anlassbezogene Klärung oder die Rechtehistorie (#238) — nie über
+diesen Weg.
 
 **Es gibt diese Abfragen nicht — und zwar nicht abschaltbar, sondern nicht gebaut:**
 
@@ -293,6 +310,17 @@ festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** be
 freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Der
 Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
 geht in den Jahresbericht an die Personalvertretung.
+
+**Stand #393, technisch bereits umgesetzt:** zwei verschiedene Personen (Vier-Augen-Prinzip, auch als
+Datenbank-Constraint, nicht nur anwendungsseitig), vorab festgelegte Person/Zeitraum/Zweck, technische
+Begrenzung der Abfrage auf genau diese Grenzen, und eine Befristung der Freigabe (30 Tage ab Freigabe;
+danach ist eine erneute Freigabe mit erneutem Vier-Augen-Prinzip nötig, nicht eine Verlängerung
+derselben). **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugrenzen:** dass die zwei
+freigebenden Personen tatsächlich unterschiedliche Rollen im Sinne der Mitbestimmung besetzen (heute
+genügen zwei beliebige AUDITOR-Konten — die **Beteiligung der Personalvertretung** an der Freigabe
+selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **Unterrichtung der
+betroffenen Person** nach Abschluss und die Aufnahme in den Jahresbericht. Diese drei bleiben
+Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet.
 
 Wer Protokolldaten liest, exportiert oder auswertet, erzeugt damit einen eigenen Protokolleintrag — mit
 Person, Zeitpunkt, Anlass und Umfang der Abfrage. Der Eintrag ist für die auswertende Stelle nicht

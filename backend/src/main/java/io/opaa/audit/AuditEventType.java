@@ -57,6 +57,15 @@ public enum AuditEventType {
   // Konten, Rollen und Verzeichnisabgleich
   SYSTEM_ADMIN_ROLE_GRANTED,
   SYSTEM_ADMIN_ROLE_REVOKED,
+  /**
+   * #393 code review, finding 1: distinct from {@link #SYSTEM_ADMIN_ROLE_GRANTED}/{@link
+   * #SYSTEM_ADMIN_ROLE_REVOKED} - granting the AUDITOR role is not an administrative privilege
+   * change and must never be recorded as one (a prior version of {@code UserService#updateRole} did
+   * exactly that, mislabelling every AUDITOR grant as a SYSTEM_ADMIN_ROLE_REVOKED). Migration 022
+   * widens {@code chk_audit_log_event_type} to include these two values.
+   */
+  AUDITOR_ROLE_GRANTED,
+  AUDITOR_ROLE_REVOKED,
   ACCOUNT_DEACTIVATED,
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,

@@ -1,3 +1,11 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 020 - i.e. the schema exactly as it existed immediately before migration 021.
+#
+# Used by:
+# - Migration021AuditIncidentScopeGrantsTest, to build a realistic pre-migration database (via the
+#   real, versioned changelog files, not a hand-rolled schema) and then apply 021 in isolation.
+#
+# See test-master-through-016.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -39,7 +47,3 @@ databaseChangeLog:
       file: db/changelog/changes/019-indexing-job-library.yaml
   - include:
       file: db/changelog/changes/020-add-upload-metadata-to-documents.yaml
-  - include:
-      file: db/changelog/changes/021-audit-incident-scope-grants.yaml
-  - include:
-      file: db/changelog/changes/022-widen-audit-event-type-auditor-role.yaml
