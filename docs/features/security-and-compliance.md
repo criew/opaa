@@ -441,8 +441,19 @@ bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweis
   `DIRECTORY_SYNC_REMOVED` lässt sich nicht auf den konkreten Synchronisationslauf zurückführen, der
   ihn verursacht hat — `DirectorySyncStatus` hält nur den jeweils letzten Lauf je Organisation.
 
-Beides ist als Follow-up vorgesehen, nicht als Lücke im Rekonstruktionsergebnis selbst: Die
-Rechtemenge zu einem Stichtag und die Negativfrage sind bereits jetzt korrekt beantwortbar.
+Beides ist als Follow-up vorgesehen, nicht als Lücke im Rekonstruktionsergebnis selbst.
+
+**Beginn der belegbaren Historie:** Der Backfill sieht ausschließlich die zum Migrationszeitpunkt noch
+lebenden Fach­zeilen. Ein Recht, das vor der Migration erteilt **und vor der Migration bereits wieder
+entzogen** wurde, hinterlässt keine Spur — die Fachzeile existiert dann nicht mehr, es gibt nichts, was
+der Backfill lesen könnte. Für einen Stichtag **vor** dem Migrationszeitpunkt kann die Rekonstruktion
+deshalb weiterhin fälschlich „kein Zugriff" antworten, wenn zwischen Erteilung und Entzug kein
+Datenbestand mehr existierte, der das Gegenteil belegt. Das ist eine Dateneigenschaft, keine Lücke im
+Code: Die Migration kann nur historisieren, was zu ihrem Zeitpunkt noch da ist. Ab dem
+Migrationszeitpunkt — und für jedes seither unverändert bestehende Recht rückwirkend bis zu seiner
+Entstehung, weil der Backfill dessen `created_at` übernimmt — sind die Rechtemenge zu einem Stichtag und
+die Negativfrage korrekt beantwortbar. Für einen Prüfzeitraum, der vor die Migration zurückreicht und
+Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne Aussage.
 
 ---
 

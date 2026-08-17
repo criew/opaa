@@ -73,6 +73,29 @@ public class LibraryVisibilityHistory {
     this.validFrom = validFrom;
   }
 
+  /**
+   * A zero-length marker interval ({@code validFrom == validTo == at}) recording that {@code
+   * library}'s visibility interval ended with {@code cause} - see {@code
+   * io.opaa.library.AssetGrantHistory#terminal} for why a closing-only change needs its own marker
+   * row rather than relying on the closed interval alone: the closed interval's own cause must stay
+   * whatever it originally was ({@code CREATED} or {@code VISIBILITY_CHANGED}), and the closing
+   * event is a separate, actor-bearing fact #238's acceptance criteria require to be recorded.
+   */
+  static LibraryVisibilityHistory terminal(
+      KnowledgeLibrary library, LibraryVisibilityHistoryCause cause, UUID actorUserId, Instant at) {
+    LibraryVisibilityHistory marker =
+        new LibraryVisibilityHistory(
+            library.getId(),
+            library.getOrganizationId(),
+            library.getVisibility(),
+            library.isListed(),
+            cause,
+            actorUserId,
+            at);
+    marker.close(at);
+    return marker;
+  }
+
   @PrePersist
   void onCreate() {
     this.createdAt = Instant.now();

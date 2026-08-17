@@ -27,5 +27,15 @@ public enum AssetGrantHistoryCause {
    * the entire existing body of grants, not only ones created after this migration ran (code review
    * of #238, finding 1).
    */
-  BACKFILL
+  BACKFILL,
+
+  /**
+   * Closes an open interval because the library it grants access to was deleted ({@code
+   * KnowledgeLibraryService#deleteLibrary}) - closes only, like {@link #REVOKED}. Without this, a
+   * deleted library's still-open grant intervals kept reporting "currently readable" for a library
+   * that no longer exists (code review of #427, nit 3): library_id/subject_group_id carry no
+   * foreign key (see {@code 018-permission-history.yaml}'s "Deletion survival" comment), so
+   * deleting the library never closed them on its own.
+   */
+  LIBRARY_DELETED
 }

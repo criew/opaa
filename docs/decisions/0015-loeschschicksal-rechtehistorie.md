@@ -71,6 +71,12 @@ dass die historisierte Tatsache ihre Aussagekraft verliert.
   beantwortbar, auch nach dessen Löschung.
 - `deleteLibrary`/`deleteGroup` bleiben unveränderte, sofort wirksame Operationen — keine neue
   Blockade, kein neuer Ausnahmefall in den bestehenden Lösch-Guards.
+- `deleteLibrary`/`deleteGroup` schließen zusätzlich die zu diesem Zeitpunkt noch offenen
+  Historienintervalle des gelöschten Objekts, mit eigener Ursache (`LIBRARY_DELETED`/
+  `GROUP_DELETED`) statt sie unbegrenzt offen zu lassen — ohne diesen Schritt würde eine
+  Stichtag-Rekonstruktion für „jetzt" fälschlich weiterhin Zugriff auf ein bereits gelöschtes
+  Objekt melden (Überberichtung, die harmlose Richtung, aber unnötig; Nachtrag aus dem
+  Code-Review zu PR #427).
 - Der Migrationstest kann Lösch-Überleben statt Lösch-Kaskadierung als Vertrag prüfen
   (`Migration018PermissionHistoryTest`).
 

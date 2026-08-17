@@ -20,5 +20,14 @@ public enum LibraryVisibilityHistoryCause {
    * {@code actor_user_id} set to {@code owner_user_id} for a USER-owned library, else {@code null}
    * (code review of #238, finding 1).
    */
-  BACKFILL
+  BACKFILL,
+
+  /**
+   * Closes the open interval because the library itself was deleted ({@code
+   * KnowledgeLibraryService#deleteLibrary}) - closes only. Without this, a deleted library's
+   * still-open visibility interval kept reporting a visibility for a library that no longer exists
+   * (code review of #427, nit 3): {@code library_id} carries no foreign key, so deleting the
+   * library never closed it on its own.
+   */
+  LIBRARY_DELETED
 }

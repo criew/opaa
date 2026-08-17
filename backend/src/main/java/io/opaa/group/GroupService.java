@@ -178,6 +178,21 @@ public class GroupService {
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();
+    // #238 code review (#427 nit 3): group_id carries no foreign key on group_membership_history
+    // (deliberately - see PermissionHistoryService's class Javadoc), so the CASCADE delete below
+    // (fk_group_memberships_group_organization) never closes these intervals on its own. Without
+    // this, a deleted group's still-open membership intervals kept reporting "currently a member"
+    // of a group that no longer exists. Read the live memberships before the delete cascades them
+    // away - deleteGroup is only reachable once the guards above confirm no live grant remains, so
+    // there is nothing to close on the asset_grant_history side.
+    for (GroupMembership membership : group.getMemberships()) {
+      permissionHistoryService.recordMembershipRemoved(
+          group.getId(),
+          group.getOrganizationId(),
+          membership.getUserId(),
+          GroupMembershipHistoryCause.GROUP_DELETED,
+          currentUserId);
+    }
     groupRepository.delete(group);
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }

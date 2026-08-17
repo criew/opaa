@@ -324,6 +324,17 @@ public class KnowledgeLibraryService {
           "Die Bibliothek enthaelt noch Dokumente und kann nicht geloescht werden");
     }
 
+    // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables
+    // (deliberately - see PermissionHistoryService's class Javadoc), so the CASCADE delete below
+    // (fk_asset_grants_library_organization) never closes these intervals on its own. Without this,
+    // a deleted library's still-open grant/visibility intervals kept reporting "currently
+    // readable"/"currently visible" for a library that no longer exists. Read the live grants
+    // before the delete cascades them away.
+    for (AssetGrant grant : grantRepository.findByLibraryId(libraryId)) {
+      permissionHistoryService.recordGrantClosedByLibraryDeletion(grant, currentUserId);
+    }
+    permissionHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
+
     libraryRepository.delete(library);
   }
 

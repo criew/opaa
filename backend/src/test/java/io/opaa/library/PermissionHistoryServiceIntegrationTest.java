@@ -91,6 +91,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
   @Autowired private LibraryAccessService accessService;
   @Autowired private UserRepository userRepository;
@@ -133,7 +134,11 @@ class PermissionHistoryServiceIntegrationTest {
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     for (UUID groupId : createdGroupIds) {
-      groupRepository.deleteById(groupId);
+      // Some tests delete their own group as part of the scenario under test - guard against a
+      // second, now-empty deleteById throwing EmptyResultDataAccessException.
+      if (groupRepository.existsById(groupId)) {
+        groupRepository.deleteById(groupId);
+      }
     }
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
@@ -338,6 +343,78 @@ class PermissionHistoryServiceIntegrationTest {
                     .findById(id)
                     .map(l -> l.isPersonal() && user.equals(l.getOwnerUserId()))
                     .orElse(false));
+  }
+
+  @Test
+  void deletingALibraryClosesItsOpenGrantAndVisibilityIntervalsInsteadOfLeavingThemOpenForever() {
+    // Code review of #427, nit 3: library_id carries no foreign key on the history tables, so
+    // deleting the library must close these open intervals itself, or a Stichtag reconstruction
+    // for "now" would keep reporting access to a library that no longer exists.
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID reader = createUser();
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantRequest(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        owner,
+        false);
+
+    libraryService.deleteLibrary(libraryId, owner, false);
+
+    boolean grantClosedWithCorrectCause =
+        grantHistoryRepository.findAll().stream()
+            .anyMatch(
+                h ->
+                    h.getLibraryId().equals(libraryId)
+                        && reader.equals(h.getSubjectUserId())
+                        && h.getCause() == AssetGrantHistoryCause.LIBRARY_DELETED
+                        && owner.equals(h.getActorUserId()));
+    assertThat(grantClosedWithCorrectCause).isTrue();
+    assertThat(
+            grantHistoryRepository.findByLibraryIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                libraryId, PermissionSubjectType.USER, reader))
+        .isEmpty();
+
+    boolean visibilityClosedWithCorrectCause =
+        visibilityHistoryRepository.findAll().stream()
+            .anyMatch(
+                h ->
+                    h.getLibraryId().equals(libraryId)
+                        && h.getCause() == LibraryVisibilityHistoryCause.LIBRARY_DELETED
+                        && owner.equals(h.getActorUserId()));
+    assertThat(visibilityClosedWithCorrectCause).isTrue();
+    assertThat(visibilityHistoryRepository.findByLibraryIdAndValidToIsNull(libraryId)).isEmpty();
+
+    assertThat(
+            permissionHistoryService.readableLibraryIdsAsOf(reader, organizationId, Instant.now()))
+        .doesNotContain(libraryId);
+  }
+
+  @Test
+  void deletingAGroupClosesItsOpenMembershipIntervalsInsteadOfLeavingThemOpenForever() {
+    // Code review of #427, nit 3 - the group-side counterpart of the library test above.
+    UUID owner = createUser();
+    UUID member = createUser();
+    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
+    Group savedGroup = groupRepository.save(group);
+    createdGroupIds.add(savedGroup.getId());
+    groupService.addMember(savedGroup.getId(), member, owner);
+
+    groupService.deleteGroup(savedGroup.getId(), owner);
+
+    boolean membershipClosedWithCorrectCause =
+        membershipHistoryRepository.findAll().stream()
+            .anyMatch(
+                h ->
+                    h.getGroupId().equals(savedGroup.getId())
+                        && h.getUserId().equals(member)
+                        && h.getCause() == GroupMembershipHistoryCause.GROUP_DELETED
+                        && owner.equals(h.getActorUserId()));
+    assertThat(membershipClosedWithCorrectCause).isTrue();
+    assertThat(
+            membershipHistoryRepository.findByGroupIdAndUserIdAndValidToIsNull(
+                savedGroup.getId(), member))
+        .isEmpty();
   }
 
   private UUID findLiveGrantId(UUID libraryId, UUID subjectUserId) {

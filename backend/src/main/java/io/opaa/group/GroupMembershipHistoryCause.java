@@ -29,5 +29,15 @@ public enum GroupMembershipHistoryCause {
    * actor (that column does not record who added an existing membership; code review of #238,
    * finding 1).
    */
-  BACKFILL
+  BACKFILL,
+
+  /**
+   * Closes an open interval because the group itself was deleted ({@code GroupService#deleteGroup})
+   * - closes only, like {@link #REMOVED}. Without this, a deleted group's still-open membership
+   * intervals kept reporting "currently a member" of a group that no longer exists (code review of
+   * #427, nit 3): {@code group_id} carries no foreign key (see {@code
+   * io.opaa.library.PermissionHistoryService}'s "Deletion survival" comment on {@code
+   * 018-permission-history.yaml}), so deleting the group never closed them on its own.
+   */
+  GROUP_DELETED
 }

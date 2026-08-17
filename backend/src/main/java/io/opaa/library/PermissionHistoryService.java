@@ -29,10 +29,18 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Writers</b> (all deferred to after the change they historise, on the same already-loaded
  * entity, never a second lookup): {@code AssetGrantService#upsertGrant}/{@code revokeGrant}, {@code
- * GroupService#addMember}/{@code removeMember}, {@code DirectorySyncPlanExecutor#applyPlan} (with
- * {@link GroupMembershipHistoryCause#DIRECTORY_SYNC_ADDED}/ {@link
+ * GroupService#addMember}/{@code removeMember}/{@code deleteGroup}, {@code
+ * DirectorySyncPlanExecutor#applyPlan} (with {@link
+ * GroupMembershipHistoryCause#DIRECTORY_SYNC_ADDED}/ {@link
  * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED} and no actor - a sync run has no acting
- * user), and {@code KnowledgeLibraryService#createLibrary}/{@code updateLibrary}.
+ * user), and {@code KnowledgeLibraryService#createLibrary}/{@code updateLibrary}/{@code
+ * deleteLibrary}. The two delete paths close every open interval the deleted library/group left
+ * behind ({@link AssetGrantHistoryCause#LIBRARY_DELETED}, {@link
+ * LibraryVisibilityHistoryCause#LIBRARY_DELETED}, {@link
+ * GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code library_id}/{@code
+ * group_id}/{@code subject_group_id} carry no foreign key (see {@code
+ * 018-permission-history.yaml}'s "Deletion survival" comment and ADR-0015), so the deletion itself
+ * never closes them.
  *
  * <p><b>Reader:</b> {@link #readableLibraryIdsAsOf} mirrors {@link
  * LibraryAccessService#readableLibraryIds}'s formula exactly, evaluated against the three history
@@ -91,6 +99,21 @@ public class PermissionHistoryService {
     closeOpenGrantInterval(grant, now);
     grantHistoryRepository.save(
         AssetGrantHistory.terminal(grant, AssetGrantHistoryCause.REVOKED, actorUserId, now));
+  }
+
+  /**
+   * The library-deletion counterpart of {@link #recordGrantRevoked} - same closing/marker
+   * mechanics, cause {@link AssetGrantHistoryCause#LIBRARY_DELETED} instead of {@code REVOKED}.
+   * Call once per live grant on the library, before the library itself is deleted (code review of
+   * #427, nit 3: {@code library_id} carries no foreign key, so a library deletion never closed
+   * these intervals on its own, leaving a deleted library's grants looking "currently readable").
+   */
+  public void recordGrantClosedByLibraryDeletion(AssetGrant grant, UUID actorUserId) {
+    Instant now = Instant.now();
+    closeOpenGrantInterval(grant, now);
+    grantHistoryRepository.save(
+        AssetGrantHistory.terminal(
+            grant, AssetGrantHistoryCause.LIBRARY_DELETED, actorUserId, now));
   }
 
   /**
@@ -196,6 +219,28 @@ public class PermissionHistoryService {
             LibraryVisibilityHistoryCause.VISIBILITY_CHANGED,
             actorUserId,
             now));
+  }
+
+  /**
+   * Closes the currently open interval for {@code library} (keeping its own recorded cause
+   * unchanged) and additionally writes a zero-length {@link LibraryVisibilityHistory#terminal}
+   * marker with {@link LibraryVisibilityHistoryCause#LIBRARY_DELETED} - see that factory's Javadoc
+   * for why the closing needs its own row. Call before the library itself is deleted (code review
+   * of #427, nit 3): {@code library_id} carries no foreign key, so a library deletion never closed
+   * this interval on its own, leaving a deleted library's visibility looking still in effect.
+   */
+  public void recordVisibilityClosedByLibraryDeletion(KnowledgeLibrary library, UUID actorUserId) {
+    Instant now = Instant.now();
+    visibilityHistoryRepository
+        .findByLibraryIdAndValidToIsNull(library.getId())
+        .ifPresent(
+            interval -> {
+              interval.close(now);
+              visibilityHistoryRepository.saveAndFlush(interval);
+            });
+    visibilityHistoryRepository.save(
+        LibraryVisibilityHistory.terminal(
+            library, LibraryVisibilityHistoryCause.LIBRARY_DELETED, actorUserId, now));
   }
 
   // -------------------------------------------------------------------------------------------
