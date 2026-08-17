@@ -540,7 +540,14 @@ public class AssetGrantService {
     }
     Map<UUID, String> userNames = new HashMap<>();
     for (User user : userRepository.findAllById(userIds)) {
-      userNames.put(user.getId(), user.getDisplayName());
+      // #446 code review round 2: displayName is nullable (a token without a name/
+      // preferred_username claim leaves it unset - see UserService#findOrCreateUser, which only
+      // overwrites it when the incoming claim is non-null and otherwise leaves whatever was there,
+      // including nothing on first login) - falling back to the raw id would reintroduce the same
+      // "MANAGER sees a UUID" gap this method exists to close. email is required and always
+      // present on a persisted User, so it is the last resort before the id itself.
+      String name = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
+      userNames.put(user.getId(), name);
     }
     Map<UUID, String> groupNames = new HashMap<>();
     for (Group group : groupRepository.findAllById(groupIds)) {

@@ -59,10 +59,7 @@ function canManageMockLibraryGrants(libraryId: string): boolean {
 }
 
 /** Mirrors AssetGrant#isExpired: null expiresAt means "never expires". */
-function isMockGrantActiveOwner(grant: {
-  role: AssetRole
-  expiresAt?: string | null
-}): boolean {
+function isMockGrantActiveOwner(grant: { role: AssetRole; expiresAt?: string | null }): boolean {
   return (
     grant.role === 'OWNER' && (!grant.expiresAt || new Date(grant.expiresAt).getTime() > Date.now())
   )

@@ -572,6 +572,28 @@ class AssetGrantServiceTest {
   }
 
   @Test
+  void listGrantsFallsBackToEmailWhenTheSubjectsDisplayNameIsUnset() {
+    // #446 code review round 2: a User whose token never carried a name/preferred_username claim
+    // has displayName == null (UserService#findOrCreateUser only overwrites it when the incoming
+    // claim is non-null). Falling back to the raw subject id there would reopen the same
+    // "MANAGER sees a UUID" gap this whole resolution mechanism exists to close - email is
+    // required and always present, so it is the fallback instead.
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    User subjectUser = new User("subject", "issuer", "subject@example.com", null);
+    subjectUser.setOrganizationId(organizationId);
+    AssetGrant grant =
+        AssetGrant.forUser(
+            libraryId, organizationId, subjectUser.getId(), AssetRole.VIEWER, null, null);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser));
+
+    var responses = grantService.listGrants(libraryId, managerId, false);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("subject@example.com");
+  }
+
+  @Test
   void listGrantsLeavesDisplayNameNullWhenTheSubjectNoLongerExists() {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
     AssetGrant grant =
