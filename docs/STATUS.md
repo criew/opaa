@@ -291,15 +291,14 @@ nicht vertreten.
 
 **Gebaut**
 - Weboberfläche: Chat mit Quellenangaben und Eingrenzung auf Spaces, Space- und Gruppenverwaltung,
-  Verwaltung von Wissensbibliotheken, Einstellungen (`frontend/src/pages/`)
+  Verwaltung von Wissensbibliotheken, Dokumentenseite je Wissensbibliothek mit Upload (Auswahl und
+  Drag-and-drop), Löschen und Statusanzeige, Einstellungen (`frontend/src/pages/`)
 - REST-API unter `/api/v1` — Abfrage, Indizierung, Spaces, Bibliotheken samt Rechtevergabe, Gruppen,
   Verzeichnisabgleich, Systemverwaltung
 - Ratenbegrenzung je Netzadresse und global je Endpunkt (`io.opaa.api.RateLimitFilter`)
 - E2E-Prüfung als Rauchtest (`e2e/`, ADR-0009)
 
 **Nicht gebaut — sieht aber gebaut aus**
-- **Die Dokumentenseite ist ein Platzhalter.** `DocumentsPage.tsx` zeigt „Demnächst verfügbar"; der
-  Endpunkt `/api/v1/libraries/{id}/documents` existiert, die Oberfläche dazu nicht.
 - **Die Bewertung von Antworten ist nur Oberfläche.** `FeedbackButtons.tsx` hält den Zustand lokal, zeigt
   „Feedback folgt in Kürze" und trägt einen entsprechenden Vermerk im Code. Es gibt weder Endpunkt noch
   Speicherung — die Rückkopplungsschleife aus Themenbereich A hat damit keine Datenquelle.
@@ -313,9 +312,8 @@ nicht vertreten.
   (#352). Gebaut ist davon nichts.
 
 **Geplant**
-- Dokumentenseite, Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205),
-  Token-Verwaltung (Phase 1) · Anbindung an self-hosted Team-Chats (Phase 3) · Erweiterungen für Office
-  und Browser (Phase 4)
+- Bewertung von Antworten mit Speicherung, dauerhafte Gespräche (#205), Token-Verwaltung (Phase 1) ·
+  Anbindung an self-hosted Team-Chats (Phase 3) · Erweiterungen für Office und Browser (Phase 4)
 
 > Offen: unsichtbares Menüsymbol im mobilen Kopfbereich (#193); vollständige Mehrsprachigkeit der
 > Anwendung (#145).

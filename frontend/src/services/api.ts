@@ -6,6 +6,7 @@ import type {
   HealthResponse,
   IndexingStatusResponse,
   IndexingTriggerRequest,
+  LibraryDocumentResponse,
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
@@ -331,6 +332,43 @@ export async function updateLibrary(
 export async function deleteLibrary(libraryId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getLibraryDocuments(libraryId: string): Promise<LibraryDocumentResponse[]> {
+  try {
+    const { data } = await client.get<LibraryDocumentResponse[]>(
+      `/v1/libraries/${libraryId}/documents`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function uploadDocument(
+  libraryId: string,
+  file: File,
+): Promise<LibraryDocumentResponse> {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await client.post<LibraryDocumentResponse>(
+      `/v1/libraries/${libraryId}/documents`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)
   } catch (err) {
     normalizeError(err)
   }

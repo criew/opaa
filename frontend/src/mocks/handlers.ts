@@ -14,15 +14,40 @@ import {
   mockGroupDetails,
   mockLibraries,
   mockLibraryDetails,
+  mockLibraryDocuments,
   mockMyGroups,
+  resetMockLibraryDocuments,
 } from './fixtures'
 import type {
+  DocumentSourceType,
+  DocumentStatus,
   IndexingStatusResponse,
   IndexingTriggerRequest,
   LibraryOwnerType,
   LibraryVisibility,
   QueryRequest,
 } from '../types/api'
+
+// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
+// literal list here rather than importing across the frontend/backend boundary.
+const SUPPORTED_DOCUMENT_EXTENSIONS = ['.doc', '.docx', '.md', '.pdf', '.pptx', '.txt']
+const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
+const documentPollCounts = new Map<string, number>()
+
+export function resetDocumentMockState() {
+  documentPollCounts.clear()
+  resetMockLibraryDocuments()
+}
+
+/**
+ * Mirrors LibraryDocumentService#requireEditable: uploading and deleting require at least EDITOR
+ * on the library. The mock has no separate system-admin bypass - each fixture's own myRole is the
+ * single source of truth here, same as it already is for the frontend's canManageDocuments checks.
+ */
+function canManageMockLibrary(libraryId: string): boolean {
+  const role = mockLibraryDetails[libraryId]?.myRole
+  return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
+}
 
 let indexingPollCount = 0
 let indexingActive = false
@@ -491,6 +516,118 @@ export const handlers = [
     const idx = mockLibraries.findIndex((item) => item.id === libraryId)
     if (idx >= 0) {
       mockLibraries.splice(idx, 1)
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId/documents', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    // Simulates the indexing pipeline resolving a freshly uploaded document after a couple of
+    // polls, mirroring the INDEXING_POLL_STEPS pattern above - lets tests exercise the "PENDING
+    // until the list refresh settles" acceptance criterion without staying PENDING forever.
+    documents.forEach((doc) => {
+      if (doc.status !== 'PENDING') return
+      const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
+      documentPollCounts.set(doc.id, pollCount)
+      if (pollCount >= 2) {
+        doc.status = 'INDEXED'
+        doc.chunkCount = 12
+        doc.indexedAt = new Date().toISOString()
+      }
+    })
+    return HttpResponse.json(documents)
+  }),
+
+  http.post('/api/v1/libraries/:libraryId/documents', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    const formData = await request.formData()
+    const file = formData.get('file')
+    if (!(file instanceof File) || file.size === 0) {
+      return HttpResponse.json({ error: 'Datei ist erforderlich' }, { status: 400 })
+    }
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return HttpResponse.json(
+        {
+          error: `Die Datei ist zu gross. Erlaubt sind hoechstens ${MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB`,
+        },
+        { status: 413 },
+      )
+    }
+    const lowerCasedName = file.name.toLowerCase()
+    if (!SUPPORTED_DOCUMENT_EXTENSIONS.some((ext) => lowerCasedName.endsWith(ext))) {
+      return HttpResponse.json(
+        {
+          error: `Das Dateiformat wird nicht unterstuetzt. Erlaubt sind: ${SUPPORTED_DOCUMENT_EXTENSIONS.join(', ')}`,
+        },
+        { status: 400 },
+      )
+    }
+    // Mirrors LibraryDocumentService#uploadDocument catching EmptyDocumentContentException: a file
+    // whose text content is blank (e.g. a scanned image with no extractable text) is rejected after
+    // the format check passes, distinct from the "no file at all" 400 above.
+    const textContent = await file.text()
+    if (textContent.trim() === '') {
+      return HttpResponse.json(
+        { error: 'Aus der Datei konnte kein Text extrahiert werden' },
+        { status: 422 },
+      )
+    }
+    const existing = mockLibraryDocuments[libraryId] ?? []
+    // Mirrors LibraryDocumentService#uploadDocument: dedup is scoped per library and keyed on
+    // content, approximated here by file name since MSW fixtures do not carry a real checksum.
+    if (existing.some((doc) => doc.fileName === file.name)) {
+      return HttpResponse.json(
+        { error: 'Diese Datei ist bereits in dieser Bibliothek vorhanden' },
+        { status: 409 },
+      )
+    }
+    const document: (typeof existing)[number] = {
+      id: `document-${crypto.randomUUID().slice(0, 8)}`,
+      fileName: file.name,
+      contentType: file.type || null,
+      fileSize: file.size,
+      status: 'PENDING' as DocumentStatus,
+      sourceType: 'UPLOAD' as DocumentSourceType,
+      chunkCount: 0,
+      indexedAt: null,
+      uploadedByUserId: 'mock-user-id',
+    }
+    mockLibraryDocuments[libraryId] = [document, ...existing]
+    const detail = mockLibraryDetails[libraryId]
+    if (detail) {
+      detail.documentCount = (detail.documentCount ?? 0) + 1
+    }
+    return HttpResponse.json(document, { status: 201 })
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/documents/:documentId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const documentId = String(params.documentId)
+    const existing = mockLibraryDocuments[libraryId]
+    if (!mockLibraryDetails[libraryId] || !existing) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    const idx = existing.findIndex((doc) => doc.id === documentId)
+    if (idx < 0) {
+      return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+    }
+    existing.splice(idx, 1)
+    const detail = mockLibraryDetails[libraryId]
+    if (detail && (detail.documentCount ?? 0) > 0) {
+      detail.documentCount = (detail.documentCount ?? 0) - 1
     }
     return new HttpResponse(null, { status: 204 })
   }),

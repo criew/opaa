@@ -1,4 +1,11 @@
-import type { AssetRole, GroupKind, LibraryVisibility, SpaceRole } from '../types/api'
+import type {
+  AssetRole,
+  DocumentSourceType,
+  DocumentStatus,
+  GroupKind,
+  LibraryVisibility,
+  SpaceRole,
+} from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
@@ -53,4 +60,42 @@ const assetRoleLabels: Record<AssetRole, string> = {
 export function assetRoleLabel(role: AssetRole | string | undefined): string {
   if (!role) return ''
   return assetRoleLabels[role as AssetRole] ?? role
+}
+
+const documentStatusLabels: Record<DocumentStatus, string> = {
+  PENDING: 'wird verarbeitet',
+  INDEXED: 'indiziert',
+  FAILED: 'fehlgeschlagen',
+}
+
+export function documentStatusLabel(status: DocumentStatus | string | undefined): string {
+  if (!status) return ''
+  return documentStatusLabels[status as DocumentStatus] ?? status
+}
+
+const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
+  UPLOAD: 'Hochgeladen',
+  FILESYSTEM: 'Dateisystem',
+  HTTP_DIRECTORY: 'Verzeichnisliste',
+}
+
+export function documentSourceTypeLabel(
+  sourceType: DocumentSourceType | string | undefined,
+): string {
+  if (!sourceType) return ''
+  return documentSourceTypeLabels[sourceType as DocumentSourceType] ?? sourceType
+}
+
+/** Formats a byte count as a German-locale size string (e.g. "1,2 MB"), or an em dash if unknown. */
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (bytes == null) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = bytes / 1024
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  return `${value.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[unitIndex]}`
 }
