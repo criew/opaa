@@ -3,8 +3,43 @@
 # up`.
 services:
   backend:
+    depends_on:
+      ai-stub:
+        condition: service_started
     environment:
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.
       OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
+      # A third dev user, "dev-outsider", used by test(e2e) #424 as the person with no grant on
+      # anything (the negative case: a share must not leak to someone it was never extended to).
+      # It is added here, not in application.yml's opaa.auth.dev.users default, because it is
+      # meaningful only for this suite - a plain `SPRING_PROFILES_ACTIVE=local,dev` backend has no
+      # reason to carry an extra account nobody asked for. Spring Boot does not guarantee that a
+      # List<T> bound from @ConfigurationProperties merges across property sources by index (unlike
+      # Map<K,V>, where per-key merging is well defined) - only that the highest-priority source
+      # that defines any index for it wins outright. So index 0 and 1 are redefined here alongside
+      # the new index 2, matching application.yml's current values exactly, instead of gambling on
+      # a merge with it - this stays correct even if that default ever changes shape.
+      OPAA_AUTH_DEV_USERS_0_SUBJECT: dev-admin
+      OPAA_AUTH_DEV_USERS_0_EMAIL: admin@opaa.local
+      OPAA_AUTH_DEV_USERS_0_DISPLAY_NAME: Dev Admin
+      OPAA_AUTH_DEV_USERS_1_SUBJECT: dev-user
+      OPAA_AUTH_DEV_USERS_1_EMAIL: dev-user@opaa.local
+      OPAA_AUTH_DEV_USERS_1_DISPLAY_NAME: Dev User
+      OPAA_AUTH_DEV_USERS_2_SUBJECT: dev-outsider
+      OPAA_AUTH_DEV_USERS_2_EMAIL: outsider@opaa.local
+      OPAA_AUTH_DEV_USERS_2_DISPLAY_NAME: Dev Outsider
+
+  # Stands in for a real chat/embedding provider (see e2e.env's OPAA_OPENAI_BASE_URL and
+  # e2e/ai-stub/server.mjs) - not part of docker-compose.yml because no non-E2E use of the stack
+  # should ever be able to point at it by accident. No Dockerfile: the script is mounted straight
+  # into the stock node image, so there is nothing extra to build or cache.
+  ai-stub:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ai-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8089"

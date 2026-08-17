@@ -103,9 +103,9 @@ Der `dev`-Modus kennt weder Anmeldedaten noch einen Signaturschlüssel. `e2e/e2e
 vollständig frei von Secrets und bewusst in git eingecheckt; `scripts/run-e2e.mjs` erzeugt und
 reicht nichts Vertrauliches mehr durch.
 
-### Zwei Testnutzer
+### Drei Testnutzer
 
-Der `dev`-Modus bringt zwei Nutzer mit (`backend/src/main/resources/application.yml`,
+Der `dev`-Modus bringt standardmäßig zwei Nutzer mit (`backend/src/main/resources/application.yml`,
 `opaa.auth.dev.users`):
 
 | Subject | E-Mail | Rolle |
@@ -115,6 +115,29 @@ Der `dev`-Modus bringt zwei Nutzer mit (`backend/src/main/resources/application.
 
 Szenarien, die Berechtigungsgrenzen prüfen, verwenden dafür die Fixture `regularUserPage`. Die
 frühere Einschränkung auf einen einzigen Testnutzer (#260) besteht nicht mehr.
+
+Ein dritter Nutzer, `dev-outsider` (`outsider@opaa.local`, regulär, Fixture `outsiderPage`),
+existiert **nur für diese Suite** — er wird über indizierte `OPAA_AUTH_DEV_USERS_*`-Umgebungsvariablen
+in `docker-compose.e2e.yml` ergänzt, nicht in `application.yml`s Standardliste. Ein einfacher
+`SPRING_PROFILES_ACTIVE=local,dev`-Backend kennt ihn nicht. Szenarien, die eine Person ganz ohne
+jede Beziehung zu den Testdaten brauchen (der Negativfall in #424: eine Freigabe darf niemals bei
+jemandem landen, dem sie nie erteilt wurde), verwenden ihn statt `dev-user` — dessen eigene
+Freigaben aus anderen Szenarien sonst das Ergebnis verfälschen könnten.
+
+### KI-Stub statt echtem Modell
+
+`docker-compose.e2e.yml` startet zusätzlich `ai-stub` (`e2e/ai-stub/server.mjs`), einen minimalen,
+deterministischen Ersatz für einen OpenAI-kompatiblen Chat-/Embedding-Anbieter (kein Dockerfile,
+kein Build — das Skript wird nur in das offizielle `node`-Image gemountet). Er beantwortet
+`POST /v1/embeddings` immer mit demselben festen Vektor (analog zu
+`backend/src/test/java/io/opaa/FakeEmbeddingModel.java`, das denselben Zweck für Backend-
+Integrationstests erfüllt) und `POST /v1/chat/completions` mit einer Antwort, die jede im Prompt
+enthaltene Zitationsmarkierung (`【source: …】`, siehe `io.opaa.query.CitationParser`) unverändert
+zurückgibt. Damit hängt das Suchergebnis in dieser Suite ausschließlich vom Rechtefilter ab (welche
+Chunks überhaupt in die Anfrage an den Vektorspeicher gelangen), nie von einer echten
+Relevanzbewertung — genau das, was die Szenarien unten prüfen sollen. Antwortqualität im
+eigentlichen Sinn ist Sache von Epic #224, nicht dieser Suite. Die lokale Modellbereitstellung
+für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 
 ## Serialisierungs-Konvention
 
@@ -140,6 +163,26 @@ Textänderung (inkl. Sonderzeichen wie `…`) und sind kein stabiler Vertrag zwi
 Suite. Das Frontend hat aktuell kein einziges `data-testid`; wer für #232/#233 eine Assertion
 braucht, die sich nicht über Rolle/Label ausdrücken lässt, ergänzt das nötige `data-testid` im
 selben PR.
+
+## Szenarien
+
+- `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
+- `tests/knowledge-libraries.spec.ts` (#424) — Wissensbibliotheken über den vollen Stack: Nutzer A
+  legt eine Bibliothek an und lädt ein Dokument hoch, sieht es nach der Verarbeitung als indiziert,
+  und die Suche findet den eigenen Inhalt mit Quellenangabe. A gibt die Bibliothek an Nutzer B frei
+  (`VIEWER`); B findet sie in der eigenen Liste und über die Suche. Nutzer C ohne Freigabe findet
+  weder die Bibliothek noch den Inhalt (Negativfall — siehe unten). Der Entzug von B's Freigabe
+  wirkt sofort. Eine Freigabe an eine Gruppe wirkt für ihr Mitglied C. Ein Nutzer mit `VIEWER`
+  bekommt in der Dokumente-Oberfläche keinen Upload angeboten.
+
+  Die Negativfälle (kein Treffer ohne Freigabe, kein Treffer nach Entzug) sind die einzigen
+  Szenarien der Suite, die tatsächlich `io.opaa.query.QueryService`s Rechtefilter auf der
+  Vektorsuche ausüben — nicht nur die Bibliotheksliste. Das wurde manuell nach dem
+  Reproduktionsnachweis-Muster aus `AGENTS.md` verifiziert: mit versuchsweise entferntem
+  `.filterExpression(...)` in `QueryService#query` schlagen beide Szenarien fehl (der eigentlich
+  ausgeschlossene Nutzer findet den Inhalt plötzlich), mit dem Filter wieder an Ort und Stelle sind
+  sie wieder grün. Details und die konkrete Fehlermeldung des roten Laufs stehen im PR, der dieses
+  Szenario eingeführt hat.
 
 ## CI
 

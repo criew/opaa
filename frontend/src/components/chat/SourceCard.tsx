@@ -32,6 +32,11 @@ export default function SourceCard({ source }: SourceCardProps) {
   return (
     <Paper
       variant="outlined"
+      // No stable role/label fits a source card as a whole (see e2e/README.md "Selektor-
+      // Konvention"): it renders a file name the E2E suite (test(e2e) #424) must assert on
+      // dynamically, not fixed, human-authored copy.
+      data-testid="source-card"
+      data-cited={source.cited}
       sx={{
         p: 1.5,
         bgcolor: 'background.default',
@@ -42,7 +47,12 @@ export default function SourceCard({ source }: SourceCardProps) {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Tooltip title={source.fileName}>
-          <Typography variant="body2" noWrap sx={{ fontWeight: 600, flexGrow: 1 }}>
+          <Typography
+            variant="body2"
+            noWrap
+            data-testid="source-card-file-name"
+            sx={{ fontWeight: 600, flexGrow: 1 }}
+          >
             {source.fileName}
           </Typography>
         </Tooltip>

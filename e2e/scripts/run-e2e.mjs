@@ -116,10 +116,10 @@ async function main() {
   run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
   console.log(
-    `> Starting E2E stack (postgres, backend, frontend) as Compose project "${composeProjectName}"` +
+    `> Starting E2E stack (ai-stub, postgres, backend, frontend) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}`,
   )
-  const upArgs = [...composeArgs, 'up', '-d', 'postgres', 'backend', 'frontend']
+  const upArgs = [...composeArgs, 'up', '-d', 'ai-stub', 'postgres', 'backend', 'frontend']
   if (!skipBuild) {
     upArgs.splice(upArgs.indexOf('up') + 1, 0, '--build')
   }
