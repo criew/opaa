@@ -1,4 +1,4 @@
-import type { GroupKind, SpaceRole } from '../types/api'
+import type { AssetRole, GroupKind, LibraryVisibility, SpaceRole } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
@@ -30,4 +30,27 @@ const accessLevelLabels: Record<AccessLevel, string> = {
 
 export function accessLevelLabel(level: AccessLevel): string {
   return accessLevelLabels[level]
+}
+
+const libraryVisibilityLabels: Record<LibraryVisibility, string> = {
+  PRIVATE: 'privat',
+  SHARED: 'geteilt',
+  ORGANIZATION: 'organisationsweit',
+}
+
+export function libraryVisibilityLabel(visibility: LibraryVisibility | string | undefined): string {
+  if (!visibility) return ''
+  return libraryVisibilityLabels[visibility as LibraryVisibility] ?? visibility
+}
+
+const assetRoleLabels: Record<AssetRole, string> = {
+  VIEWER: 'Betrachter',
+  EDITOR: 'Bearbeiter',
+  MANAGER: 'Verwalter',
+  OWNER: 'Eigentümer',
+}
+
+export function assetRoleLabel(role: AssetRole | string | undefined): string {
+  if (!role) return ''
+  return assetRoleLabels[role as AssetRole] ?? role
 }

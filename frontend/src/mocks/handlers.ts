@@ -12,8 +12,15 @@ import {
   mockSpaceDetails,
   mockGroups,
   mockGroupDetails,
+  mockLibraries,
+  mockLibraryDetails,
 } from './fixtures'
-import type { IndexingStatusResponse, QueryRequest } from '../types/api'
+import type {
+  IndexingStatusResponse,
+  LibraryOwnerType,
+  LibraryVisibility,
+  QueryRequest,
+} from '../types/api'
 
 let indexingPollCount = 0
 let indexingActive = false
@@ -356,6 +363,93 @@ export const handlers = [
     group.members = group.members.filter((member) => member.userId !== userId)
     group.memberCount = group.members.length
     listEntry.memberCount = group.members.length
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/libraries', () => {
+    return HttpResponse.json(mockLibraries)
+  }),
+
+  http.post('/api/v1/libraries', async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      ownerType?: LibraryOwnerType
+      ownerId?: string
+      visibility?: LibraryVisibility
+      listed?: boolean
+    }
+    if (!body.name || body.name.trim() === '') {
+      return HttpResponse.json(
+        { error: 'Der Name der Bibliothek ist erforderlich' },
+        { status: 400 },
+      )
+    }
+    const id = `library-${crypto.randomUUID().slice(0, 8)}`
+    const now = new Date().toISOString()
+    const ownerType = body.ownerType ?? 'USER'
+    const listEntry: (typeof mockLibraries)[number] = {
+      id,
+      name: body.name.trim(),
+      description: body.description?.trim() ?? null,
+      ownerType,
+      visibility: body.visibility ?? 'PRIVATE',
+      listed: body.listed ?? false,
+      personal: false,
+      myRole: 'OWNER',
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockLibraries.push(listEntry)
+    const detail: (typeof mockLibraryDetails)[string] = {
+      ...listEntry,
+      ownerId: ownerType === 'GROUP' ? (body.ownerId ?? null) : 'mock-user-id',
+      documentCount: 0,
+    }
+    mockLibraryDetails[id] = detail
+    return HttpResponse.json(detail, { status: 201 })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(library)
+  }),
+
+  http.put('/api/v1/libraries/:libraryId', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    const listEntry = mockLibraries.find((item) => item.id === libraryId)
+    if (!library || !listEntry) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      visibility?: LibraryVisibility
+      listed?: boolean
+    }
+    library.name = body.name
+    library.description = body.description ?? null
+    library.visibility = body.visibility ?? library.visibility
+    library.listed = body.listed ?? library.listed
+    listEntry.name = library.name
+    listEntry.description = library.description
+    listEntry.visibility = library.visibility
+    listEntry.listed = library.listed
+    return HttpResponse.json(library)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    delete mockLibraryDetails[libraryId]
+    const idx = mockLibraries.findIndex((item) => item.id === libraryId)
+    if (idx >= 0) {
+      mockLibraries.splice(idx, 1)
+    }
     return new HttpResponse(null, { status: 204 })
   }),
 

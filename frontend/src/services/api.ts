@@ -6,6 +6,10 @@ import type {
   HealthResponse,
   IndexingStatusResponse,
   IndexingTriggerRequest,
+  LibraryListResponse,
+  LibraryRequest,
+  LibraryResponse,
+  LibraryUpdateRequest,
   QueryRequest,
   QueryResponse,
   SpaceListResponse,
@@ -271,6 +275,53 @@ export async function addGroupMember(
 export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
   try {
     await client.delete(`/v1/admin/groups/${groupId}/members/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getLibraries(): Promise<LibraryListResponse[]> {
+  try {
+    const { data } = await client.get<LibraryListResponse[]>('/v1/libraries')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getLibrary(libraryId: string): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.get<LibraryResponse>(`/v1/libraries/${libraryId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createLibrary(request: LibraryRequest): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.post<LibraryResponse>('/v1/libraries', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibrary(
+  libraryId: string,
+  request: LibraryUpdateRequest,
+): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.put<LibraryResponse>(`/v1/libraries/${libraryId}`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLibrary(libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}`)
   } catch (err) {
     normalizeError(err)
   }
