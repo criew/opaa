@@ -39,3 +39,5 @@ databaseChangeLog:
       file: db/changelog/changes/019-indexing-job-library.yaml
   - include:
       file: db/changelog/changes/020-add-upload-metadata-to-documents.yaml
+  - include:
+      file: db/changelog/changes/021-audit-incident-scope-grants.yaml

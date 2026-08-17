@@ -1,6 +1,9 @@
 package io.opaa.audit;
 
+import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -25,4 +28,35 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * exercise this directly against a real, non-superuser database role, including a direct attempt
  * against a named partition rather than only the partitioned parent.
  */
-public interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {}
+public interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
+
+  /**
+   * The four #393 revision access paths, plus the one personenbezogene exception. Every method here
+   * takes a {@link Pageable} built exclusively by {@link AuditQueryService} - never one bound
+   * directly from an API request - so the sort key ({@code recordedAt}, always) and the maximum
+   * page size are enforced in exactly one place, not per query method. The only method filtering on
+   * {@code actorRef} at all is {@code findByOrganizationIdAndActorRefAndRecordedAtBetween} below,
+   * and that is the technically bounded incident-scope exception, not a general filter a caller can
+   * reach any other way.
+   */
+  Page<AuditLogEntry> findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
+      UUID organizationId,
+      AuditObjectType objectType,
+      String objectId,
+      Instant from,
+      Instant to,
+      Pageable pageable);
+
+  Page<AuditLogEntry> findByOrganizationIdAndRecordedAtBetween(
+      UUID organizationId, Instant from, Instant to, Pageable pageable);
+
+  Page<AuditLogEntry> findByOrganizationIdAndEventTypeAndRecordedAtBetween(
+      UUID organizationId, AuditEventType eventType, Instant from, Instant to, Pageable pageable);
+
+  Page<AuditLogEntry> findByOrganizationIdAndCorrelationRefAndRecordedAtBetween(
+      UUID organizationId, String correlationRef, Instant from, Instant to, Pageable pageable);
+
+  /** The technically bounded incident-scope path - see the interface Javadoc above. */
+  Page<AuditLogEntry> findByOrganizationIdAndActorRefAndRecordedAtBetween(
+      UUID organizationId, String actorRef, Instant from, Instant to, Pageable pageable);
+}
