@@ -19,6 +19,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    * {@code ON CONFLICT (owner_user_id) WHERE personal = true} targets the partial unique index
    * {@code uk_knowledge_libraries_personal_owner} (migration 012); any other constraint violation
    * (e.g. a dangling {@code ownerUserId}) still throws normally.
+   *
+   * <p>Returns the number of rows actually inserted (0 or 1, via {@code executeUpdate}'s own
+   * result) - {@link KnowledgeLibraryService#ensurePersonalLibrary} historises the new library only
+   * when this is 1, never on the {@code ON CONFLICT ... DO NOTHING} no-op path, so a concurrent
+   * caller that loses the race does not also write a second, conflicting open history interval
+   * (code review of #238, finding 2).
    */
   @Modifying
   @Query(
@@ -29,7 +35,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
               + "  (:id, :organizationId, :name, :description, 'USER', :ownerUserId, 'PRIVATE', false, true, now(), now())"
               + " ON CONFLICT (owner_user_id) WHERE personal = true DO NOTHING",
       nativeQuery = true)
-  void insertPersonalLibraryIfAbsent(
+  int insertPersonalLibraryIfAbsent(
       @Param("id") UUID id,
       @Param("organizationId") UUID organizationId,
       @Param("name") String name,

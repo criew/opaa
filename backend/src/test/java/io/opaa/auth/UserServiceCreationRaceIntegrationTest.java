@@ -3,6 +3,8 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryOwnerType;
@@ -98,6 +100,8 @@ class UserServiceCreationRaceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   @BeforeEach
   void cleanUp() {
@@ -106,6 +110,10 @@ class UserServiceCreationRaceIntegrationTest {
     // even be at risk of that, and this class only ever creates USER-owned personal libraries.
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    // #238 code review, finding 2+4 - see UserServicePersonalSpaceIntegrationTest#cleanUp's
+    // identical comment.
+    grantHistoryRepository.deleteAll();
+    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
   }
 

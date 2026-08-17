@@ -1,0 +1,538 @@
+databaseChangeLog:
+  # Three tables, one per historised source (#238, see
+  # docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten and
+  # docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten): a user's
+  # readable set is the union of direct grants, group grants and organisation-wide visibility, and
+  # all three change independently of each other, so all three need their own interval history to
+  # answer "what could this person read on day X" without gaps:
+  #   1. 018-create-asset-grant-history        - direct and group AssetGrants (io.opaa.library)
+  #   2. 018-create-group-membership-history   - group memberships (io.opaa.group), including the
+  #                                               ones a directory sync run changes (io.opaa.group.sync)
+  #   3. 018-create-library-visibility-history - the visibility/listed fields on KnowledgeLibrary
+  #   4. 018-backfill-permission-history       - one open interval per existing row in asset_grants,
+  #                                               group_memberships and knowledge_libraries, cause
+  #                                               BACKFILL - see below (code review of #238, finding 1)
+  #
+  # Each row is a half-open interval [valid_from, valid_to) - valid_to IS NULL means "still in
+  # effect". A change closes the currently open row (sets valid_to) and, unless the change is a
+  # removal, opens a new one - the append-only, never-updated-in-place shape a revision-safe history
+  # needs. asset_grant_history additionally carries expires_at, a copy of the live grant's
+  # expires_at at the moment the interval was opened, so a reconstruction at a past instant can
+  # honour a grant's own expiry without needing a scheduled job to close intervals early.
+  #
+  # This is the state history the feature spec asks for, not the event log #391/#392 are building in
+  # parallel - it lives next to its own fact tables (asset_grants, group_memberships,
+  # knowledge_libraries), not in a shared audit-log table, and records only the resulting interval,
+  # never a stream of every read.
+  #
+  # --- Deletion survival (code review of #238, findings 3 and 4; see the accompanying ADR
+  #     docs/decisions/0016-loeschschicksal-rechtehistorie.md) ---
+  #
+  # Historising a permission change is worthless if the record can vanish along with the fact row it
+  # historises - the exact scenario the negative question in #238 exists to rule out is "the group
+  # that once held the grant was deleted, so the search now answers 'never had access', which is a
+  # false negative, not a documented gap". Two consequences follow, deliberately asymmetric across
+  # the tables' columns:
+  #
+  #   - library_id, subject_group_id (asset_grant_history) and group_id (group_membership_history)
+  #     carry NO foreign key at all - plain UUID value columns, not references. Deleting a library
+  #     (KnowledgeLibraryService#deleteLibrary) or a group (GroupService#deleteGroup) must never be
+  #     blocked by, and must never cascade into, the history of rights it once carried. A history row
+  #     is read by library_id/group_id as a plain identifier from here on; if the fact row is gone,
+  #     the id and its role/visibility snapshot are still on the history row itself, so nothing is
+  #     lost - only the ability to join back to a live library/group name.
+  #   - subject_user_id (asset_grant_history) and user_id (group_membership_history) stay real
+  #     foreign keys to users, ON DELETE RESTRICT - deliberately blocking an account deletion until a
+  #     pseudonymisation mechanism exists (#391/#395 own that; this feature does not invent one).
+  #     RESTRICT, not CASCADE: docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten
+  #     requires "die Historie selbst bleibt unveraendert bestehen" when an account is deleted - a
+  #     CASCADE on the subject column would delete exactly the membership rows a Stichtag
+  #     reconstruction for that (necessarily former) person depends on, the group most likely to be
+  #     the subject of a later audit. Both subject columns are now RESTRICT alike (previously
+  #     asset_grant_history.subject_user_id was RESTRICT but group_membership_history.user_id was
+  #     CASCADE - an inconsistency code review caught).
+  #   - actor_user_id (every table) stays ON DELETE SET NULL, unchanged from the first version of
+  #     this migration: cause (NOT NULL) already records the triggering operation, so the account
+  #     that undertook it can be forgotten without losing the operation itself - see
+  #     docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten ("wer
+  #     welche Rechte hatte, seit wann und aufgrund welchen Vorgangs" - "welchen Vorgangs" is cause,
+  #     not actor_user_id).
+  #
+  # Rollback order (reverse of apply order):
+  # 018-backfill-permission-history
+  # 018-create-library-visibility-history
+  # 018-create-group-membership-history
+  # 018-create-asset-grant-history
+
+  - changeSet:
+      id: 018-create-asset-grant-history
+      author: opaa
+      comment: >
+        Interval history of asset_grants (#238). Mirrors asset_grants' two-nullable-columns subject
+        pattern and its chk_asset_grants_subject/chk_asset_grants_role constraints. library_id and
+        subject_group_id carry no foreign key at all, and subject_user_id is RESTRICT, not CASCADE -
+        see this file's top-level comment ("Deletion survival") for why.
+      changes:
+        - createTable:
+            tableName: asset_grant_history
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: subject_group_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cause
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: valid_from
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: valid_to
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grant_history_subject_user
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            baseColumnNames: actor_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grant_history_actor_user
+            onDelete: SET NULL
+        - sql:
+            sql: >
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT chk_asset_grant_history_subject_type
+              CHECK (subject_type IN ('USER', 'GROUP'));
+        - sql:
+            sql: >
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT chk_asset_grant_history_role
+              CHECK (role IN ('USER', 'VIEWER', 'EDITOR', 'MANAGER', 'OWNER'));
+        - sql:
+            sql: >
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT chk_asset_grant_history_cause
+              CHECK (cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'LIBRARY_DELETED'));
+        - sql:
+            comment: "Mirrors chk_asset_grants_subject (migration 013)."
+            sql: >
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT chk_asset_grant_history_subject
+              CHECK (
+                (subject_type = 'USER' AND subject_user_id IS NOT NULL AND subject_group_id IS NULL)
+                OR (subject_type = 'GROUP' AND subject_group_id IS NOT NULL AND subject_user_id IS NULL)
+              );
+        - sql:
+            comment: >
+              At most one open (valid_to IS NULL) interval per (library, user subject) - the row
+              PermissionHistoryService closes when the live grant changes or is revoked.
+            sql: >
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_user
+              ON asset_grant_history (library_id, subject_user_id)
+              WHERE subject_type = 'USER' AND valid_to IS NULL;
+        - sql:
+            sql: >
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_group
+              ON asset_grant_history (library_id, subject_group_id)
+              WHERE subject_type = 'GROUP' AND valid_to IS NULL;
+        - sql:
+            comment: >
+              Supports PermissionHistoryService's as-of reconstruction, which always filters by
+              subject plus organization_id and then by the interval covering the requested instant.
+            sql: >
+              CREATE INDEX idx_asset_grant_history_subject_user_organization
+              ON asset_grant_history (subject_user_id, organization_id, valid_from)
+              WHERE subject_type = 'USER';
+        - sql:
+            sql: >
+              CREATE INDEX idx_asset_grant_history_subject_group_organization
+              ON asset_grant_history (subject_group_id, organization_id, valid_from)
+              WHERE subject_type = 'GROUP';
+        - sql:
+            comment: >
+              Supports the backfill changeSet's own lookups and any future by-library query - there
+              is no FK on library_id to index implicitly.
+            sql: >
+              CREATE INDEX idx_asset_grant_history_library
+              ON asset_grant_history (library_id);
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_asset_grant_history_library;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_asset_grant_history_subject_group_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_asset_grant_history_subject_user_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_asset_grant_history_open_group;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_asset_grant_history_open_user;"
+        - sql:
+            sql: "ALTER TABLE asset_grant_history DROP CONSTRAINT IF EXISTS chk_asset_grant_history_subject;"
+        - sql:
+            sql: "ALTER TABLE asset_grant_history DROP CONSTRAINT IF EXISTS chk_asset_grant_history_cause;"
+        - sql:
+            sql: "ALTER TABLE asset_grant_history DROP CONSTRAINT IF EXISTS chk_asset_grant_history_role;"
+        - sql:
+            sql: "ALTER TABLE asset_grant_history DROP CONSTRAINT IF EXISTS chk_asset_grant_history_subject_type;"
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            constraintName: fk_asset_grant_history_actor_user
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            constraintName: fk_asset_grant_history_subject_user
+        - dropTable:
+            tableName: asset_grant_history
+
+  - changeSet:
+      id: 018-create-group-membership-history
+      author: opaa
+      comment: >
+        Interval history of group_memberships (#238), including changes a directory sync run
+        applies (io.opaa.group.sync.DirectorySyncPlanExecutor) - the formula in
+        docs/features/spaces-and-assets.md#verzeichnissynchronisation-als-rechteereignis calls the
+        directory a "Rechteereignis" with no human decision point, which is exactly why cause
+        distinguishes DIRECTORY_SYNC_ADDED/DIRECTORY_SYNC_REMOVED from a manually made ADDED/REMOVED
+        change and actor_user_id is nullable - a sync run has no acting user. group_id carries no
+        foreign key at all, and user_id is RESTRICT, not CASCADE - see this file's top-level comment
+        ("Deletion survival") for why; this replaces an earlier version of this migration where
+        user_id was CASCADE, an inconsistency with asset_grant_history.subject_user_id that code
+        review of #238 caught.
+      changes:
+        - createTable:
+            tableName: group_membership_history
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cause
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: valid_from
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: valid_to
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: group_membership_history
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_group_membership_history_user
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: group_membership_history
+            baseColumnNames: actor_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_group_membership_history_actor_user
+            onDelete: SET NULL
+        - sql:
+            sql: >
+              ALTER TABLE group_membership_history
+              ADD CONSTRAINT chk_group_membership_history_cause
+              CHECK (cause IN ('ADDED', 'REMOVED', 'DIRECTORY_SYNC_ADDED', 'DIRECTORY_SYNC_REMOVED', 'BACKFILL', 'GROUP_DELETED'));
+        - sql:
+            comment: >
+              At most one open interval per (group, user) - the row PermissionHistoryService closes
+              when the membership is removed, manually or by a directory sync run.
+            sql: >
+              CREATE UNIQUE INDEX uk_group_membership_history_open
+              ON group_membership_history (group_id, user_id)
+              WHERE valid_to IS NULL;
+        - sql:
+            comment: >
+              Supports PermissionHistoryService's as-of reconstruction of "which groups did this
+              user belong to at instant X", filtered by organization and then by the interval
+              covering the requested instant.
+            sql: >
+              CREATE INDEX idx_group_membership_history_user_organization
+              ON group_membership_history (user_id, organization_id, valid_from);
+        - sql:
+            comment: >
+              Supports the backfill changeSet's own lookups and any future by-group query - there is
+              no FK on group_id to index implicitly.
+            sql: >
+              CREATE INDEX idx_group_membership_history_group
+              ON group_membership_history (group_id);
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_group_membership_history_group;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_group_membership_history_user_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_group_membership_history_open;"
+        - sql:
+            sql: "ALTER TABLE group_membership_history DROP CONSTRAINT IF EXISTS chk_group_membership_history_cause;"
+        - dropForeignKeyConstraint:
+            baseTableName: group_membership_history
+            constraintName: fk_group_membership_history_actor_user
+        - dropForeignKeyConstraint:
+            baseTableName: group_membership_history
+            constraintName: fk_group_membership_history_user
+        - dropTable:
+            tableName: group_membership_history
+
+  - changeSet:
+      id: 018-create-library-visibility-history
+      author: opaa
+      comment: >
+        Interval history of knowledge_libraries.visibility/listed (#238) - the third source the
+        readable-library formula in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten
+        depends on. Without this table, a library that was ORGANIZATION-visible for ten days and
+        PRIVATE before and after would leave no trace of that window in a Stichtag reconstruction,
+        exactly the gap the feature spec calls out under "Nachweisbarkeit: Historisierung von
+        Rechten". library_id carries no foreign key at all - see this file's top-level comment
+        ("Deletion survival") for why.
+      changes:
+        - createTable:
+            tableName: library_visibility_history
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visibility
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: listed
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cause
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor_user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: valid_from
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: valid_to
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: library_visibility_history
+            baseColumnNames: actor_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_library_visibility_history_actor_user
+            onDelete: SET NULL
+        - sql:
+            sql: >
+              ALTER TABLE library_visibility_history
+              ADD CONSTRAINT chk_library_visibility_history_visibility
+              CHECK (visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION'));
+        - sql:
+            sql: >
+              ALTER TABLE library_visibility_history
+              ADD CONSTRAINT chk_library_visibility_history_cause
+              CHECK (cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'LIBRARY_DELETED'));
+        - sql:
+            comment: >
+              At most one open interval per library - the row PermissionHistoryService closes when
+              visibility or listed changes.
+            sql: >
+              CREATE UNIQUE INDEX uk_library_visibility_history_open
+              ON library_visibility_history (library_id)
+              WHERE valid_to IS NULL;
+        - sql:
+            comment: >
+              Supports PermissionHistoryService's as-of reconstruction of "which libraries were
+              ORGANIZATION-visible at instant X", scoped to the organization first.
+            sql: >
+              CREATE INDEX idx_library_visibility_history_organization
+              ON library_visibility_history (organization_id, valid_from);
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS idx_library_visibility_history_organization;"
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_library_visibility_history_open;"
+        - sql:
+            sql: "ALTER TABLE library_visibility_history DROP CONSTRAINT IF EXISTS chk_library_visibility_history_cause;"
+        - sql:
+            sql: "ALTER TABLE library_visibility_history DROP CONSTRAINT IF EXISTS chk_library_visibility_history_visibility;"
+        - dropForeignKeyConstraint:
+            baseTableName: library_visibility_history
+            constraintName: fk_library_visibility_history_actor_user
+        - dropTable:
+            tableName: library_visibility_history
+
+  - changeSet:
+      id: 018-backfill-permission-history
+      author: opaa
+      comment: >
+        Backfills one open interval per existing row in asset_grants, group_memberships and
+        knowledge_libraries, cause BACKFILL (code review of #238, finding 1). Without this, the
+        three history tables start empty and PermissionHistoryService#readableLibraryIdsAsOf answers
+        "no access" for any Stichtag before this migration ran - and, for any grant/membership/
+        visibility unchanged since, for "now" as well - indistinguishable from a person who
+        genuinely never had access. That is precisely the false negative #238's negative question
+        exists to rule out.
+
+        valid_from is each row's own created_at (present on all three fact tables); valid_to stays
+        NULL (open, matching the row's current, still-live state). actor_user_id is backfilled from
+        asset_grants.granted_by_user_id where present, and from knowledge_libraries.owner_user_id for
+        a USER-owned library (the closest available approximation of "who caused this state" - group
+        ownership and group_memberships carry no such column, so actor_user_id stays NULL there,
+        exactly like a directory-sync-caused row).
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO asset_grant_history
+                (id, library_id, organization_id, subject_type, subject_user_id, subject_group_id,
+                 role, expires_at, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(), library_id, organization_id, subject_type, subject_user_id,
+                     subject_group_id, role, expires_at, 'BACKFILL', granted_by_user_id, created_at, now()
+              FROM asset_grants;
+        - sql:
+            sql: >
+              INSERT INTO group_membership_history
+                (id, group_id, organization_id, user_id, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(), group_id, organization_id, user_id, 'BACKFILL', NULL, created_at, now()
+              FROM group_memberships;
+        - sql:
+            sql: >
+              INSERT INTO library_visibility_history
+                (id, library_id, organization_id, visibility, listed, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(), id, organization_id, visibility, listed, 'BACKFILL',
+                     CASE WHEN owner_type = 'USER' THEN owner_user_id ELSE NULL END, created_at, now()
+              FROM knowledge_libraries;
+      rollback:
+        - sql:
+            comment: >
+              Targeted, not a no-op: every row this changeSet writes carries cause = 'BACKFILL',
+              a value no application write path ever uses (see AssetGrantHistoryCause/
+              GroupMembershipHistoryCause/LibraryVisibilityHistoryCause - none of their non-test
+              writers pass BACKFILL), so it is an exact, safe marker to delete by - unlike
+              012-backfill-document-library-id's rollback, which has no such marker and stays a
+              deliberate no-op. This lets apply -> rollback -> apply succeed instead of failing
+              loudly on the partial unique index the second apply would otherwise hit.
+            sql: "DELETE FROM library_visibility_history WHERE cause = 'BACKFILL';"
+        - sql:
+            sql: "DELETE FROM group_membership_history WHERE cause = 'BACKFILL';"
+        - sql:
+            sql: "DELETE FROM asset_grant_history WHERE cause = 'BACKFILL';"

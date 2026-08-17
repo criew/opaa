@@ -33,6 +33,7 @@ class AssetGrantServiceTest {
   private UserRepository userRepository;
   private GroupRepository groupRepository;
   private LibraryAccessService accessService;
+  private PermissionHistoryService permissionHistoryService;
   private AssetGrantService grantService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -47,9 +48,15 @@ class AssetGrantServiceTest {
     userRepository = mock(UserRepository.class);
     groupRepository = mock(GroupRepository.class);
     accessService = mock(LibraryAccessService.class);
+    permissionHistoryService = mock(PermissionHistoryService.class);
     grantService =
         new AssetGrantService(
-            grantRepository, libraryRepository, userRepository, groupRepository, accessService);
+            grantRepository,
+            libraryRepository,
+            userRepository,
+            groupRepository,
+            accessService,
+            permissionHistoryService);
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than

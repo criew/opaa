@@ -11,6 +11,8 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -48,6 +50,8 @@ class SpaceServiceIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -68,6 +72,11 @@ class SpaceServiceIntegrationTest {
     // touches the one seeded SYSTEM library.
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
+    // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
+    // (see 018-permission-history.yaml's "Deletion survival" comment).
+    grantHistoryRepository.deleteAll();
+    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     organizationA =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
@@ -85,6 +94,8 @@ class SpaceServiceIntegrationTest {
     spaceRepository.deleteAll();
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    grantHistoryRepository.deleteAll();
+    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     organizationRepository.deleteAllById(List.of(organizationA, organizationB));
   }

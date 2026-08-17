@@ -9,8 +9,10 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupMembershipHistoryCause;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
+import io.opaa.library.PermissionHistoryService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -107,16 +109,19 @@ class DirectorySyncPlanExecutor {
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
   private final DirectorySyncProperties properties;
+  private final PermissionHistoryService permissionHistoryService;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
-      DirectorySyncProperties properties) {
+      DirectorySyncProperties properties,
+      PermissionHistoryService permissionHistoryService) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.properties = properties;
+    this.permissionHistoryService = permissionHistoryService;
   }
 
   @Transactional(readOnly = true)
@@ -413,6 +418,12 @@ class DirectorySyncPlanExecutor {
       }
       groupRepository.save(group);
       createdGroups.add(group);
+      // #238: recorded after the save above, so the group row is already present for the history
+      // row's FK - all of a newly created group's memberships are new, so every one is recorded.
+      for (GroupMembership membership : group.getMemberships()) {
+        permissionHistoryService.recordMembershipAdded(
+            membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
+      }
       log.info(
           "Directory sync: created group {} ({}, external id {}) with {} member(s)",
           group.getId(),
@@ -442,8 +453,13 @@ class DirectorySyncPlanExecutor {
 
     for (PlannedMembershipChange change : plan.membershipChanges()) {
       for (UserRef member : change.toAdd()) {
-        change.group().addMembership(new GroupMembership(member.id(), organizationId));
+        GroupMembership membership = new GroupMembership(member.id(), organizationId);
+        change.group().addMembership(membership);
         affectedUserIds.add(member.id());
+        // #238: change.group() already exists in the database (unlike PlannedCreate's brand new
+        // group above), so its FK is satisfied immediately.
+        permissionHistoryService.recordMembershipAdded(
+            membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
         log.info(
             "Directory sync: added user {} to group {} ({})",
             member.id(),
@@ -456,6 +472,12 @@ class DirectorySyncPlanExecutor {
             .findFirst()
             .ifPresent(change.group()::removeMembership);
         affectedUserIds.add(member.id());
+        permissionHistoryService.recordMembershipRemoved(
+            change.group().getId(),
+            organizationId,
+            member.id(),
+            GroupMembershipHistoryCause.DIRECTORY_SYNC_REMOVED,
+            null);
         log.info(
             "Directory sync: removed user {} from group {} ({})",
             member.id(),

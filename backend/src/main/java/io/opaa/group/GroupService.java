@@ -9,6 +9,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.PermissionHistoryService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,18 +59,21 @@ public class GroupService {
   private final GroupMembershipResolver membershipResolver;
   private final KnowledgeLibraryRepository libraryRepository;
   private final AssetGrantRepository grantRepository;
+  private final PermissionHistoryService permissionHistoryService;
 
   public GroupService(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
       KnowledgeLibraryRepository libraryRepository,
-      AssetGrantRepository grantRepository) {
+      AssetGrantRepository grantRepository,
+      PermissionHistoryService permissionHistoryService) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.libraryRepository = libraryRepository;
     this.grantRepository = grantRepository;
+    this.permissionHistoryService = permissionHistoryService;
   }
 
   @Transactional
@@ -174,6 +178,21 @@ public class GroupService {
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();
+    // #238 code review (#427 nit 3): group_id carries no foreign key on group_membership_history
+    // (deliberately - see PermissionHistoryService's class Javadoc), so the CASCADE delete below
+    // (fk_group_memberships_group_organization) never closes these intervals on its own. Without
+    // this, a deleted group's still-open membership intervals kept reporting "currently a member"
+    // of a group that no longer exists. Read the live memberships before the delete cascades them
+    // away - deleteGroup is only reachable once the guards above confirm no live grant remains, so
+    // there is nothing to close on the asset_grant_history side.
+    for (GroupMembership membership : group.getMemberships()) {
+      permissionHistoryService.recordMembershipRemoved(
+          group.getId(),
+          group.getOrganizationId(),
+          membership.getUserId(),
+          GroupMembershipHistoryCause.GROUP_DELETED,
+          currentUserId);
+    }
     groupRepository.delete(group);
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
@@ -207,6 +226,8 @@ public class GroupService {
     GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
     group.addMembership(membership);
     groupRepository.save(group);
+    permissionHistoryService.recordMembershipAdded(
+        membership, GroupMembershipHistoryCause.ADDED, currentUserId);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
     return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
@@ -225,6 +246,12 @@ public class GroupService {
 
     group.removeMembership(target);
     groupRepository.save(group);
+    permissionHistoryService.recordMembershipRemoved(
+        group.getId(),
+        group.getOrganizationId(),
+        memberUserId,
+        GroupMembershipHistoryCause.REMOVED,
+        currentUserId);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
   }
 

@@ -208,10 +208,19 @@ nicht vertreten.
 - **Abgleich mit dem Verzeichnisdienst** einschließlich Gruppen und Status (`io.opaa.group.sync`,
   `/api/v1/admin/directory-sync`, Migration `011-directory-sync.yaml`) — mit Probelauf vor dem Vollzug
 - Rechtefilter über lesbare Wissensbibliotheken (`LibraryAccessService`)
+- **Historisierung von Rechten und Gruppenmitgliedschaften** (#238): Grants, Gruppenmitgliedschaften
+  und die Reichweitenfelder einer Bibliothek (`visibility`, `listed`) sind als Intervalle mit
+  auslösendem Vorgang historisiert (`PermissionHistoryService`, Migration `018-permission-history.yaml`,
+  inklusive Backfill des Altbestands) — auch Änderungen aus einem Verzeichnislauf und aus der
+  automatischen persönlichen Bibliothek. Die vollständige Rechtemenge einer Person ist zu einem
+  beliebigen Stichtag rekonstruierbar, die Negativfrage damit belegbar beantwortbar; die Historie
+  überlebt die Löschung von Bibliothek oder Gruppe (ADR-0016). Noch offen: Aufbewahrungshöchstdauer
+  und Pseudonymisierung der Historie selbst, sowie die Zuordnung eines historisierten
+  Verzeichnislauf-Eintrags zum konkreten Lauf (siehe `docs/features/security-and-compliance.md`).
 
 **Geplant (Phase 1)**
 - Kontenlebenszyklus über SCIM statt eigenem Abgleich · Einschränkung auf Netzbereiche ·
-  Sitzungsverwaltung mit erzwungener Neuanmeldung · Historisierung von Rechten und Mitgliedschaften (#238)
+  Sitzungsverwaltung mit erzwungener Neuanmeldung
 
 > Offen: gleichzeitige Erstanmeldungen erschöpfen den Verbindungspool (#307) — das ist der Regelfall am
 > ersten Rollout-Tag. Ein Fehler bei der Anlage des persönlichen Space lässt die Anmeldung scheitern

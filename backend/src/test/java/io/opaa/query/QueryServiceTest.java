@@ -15,6 +15,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
@@ -51,6 +52,7 @@ class QueryServiceTest {
   @Mock private DocumentRepository documentRepository;
   @Mock private UserRepository userRepository;
   @Mock private LibraryAccessService libraryAccessService;
+  @Mock private PermissionHistoryService permissionHistoryService;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -68,6 +70,7 @@ class QueryServiceTest {
             documentRepository,
             userRepository,
             libraryAccessService,
+            permissionHistoryService,
             new QueryMetrics(new SimpleMeterRegistry()),
             new QueryProperties(5, 0.3));
 
@@ -79,6 +82,11 @@ class QueryServiceTest {
     lenient().when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
     lenient()
         .when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
+        .thenReturn(Set.of(readableLibraryId));
+    // #238's regression check - matches the applied scope by default so it never flags a
+    // mismatch in tests that do not care about it.
+    lenient()
+        .when(permissionHistoryService.readableLibraryIdsAsOf(eq(currentUserId), any(), any()))
         .thenReturn(Set.of(readableLibraryId));
   }
 

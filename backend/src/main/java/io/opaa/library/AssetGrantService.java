@@ -74,18 +74,21 @@ public class AssetGrantService {
   private final UserRepository userRepository;
   private final GroupRepository groupRepository;
   private final LibraryAccessService accessService;
+  private final PermissionHistoryService permissionHistoryService;
 
   public AssetGrantService(
       AssetGrantRepository grantRepository,
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupRepository groupRepository,
-      LibraryAccessService accessService) {
+      LibraryAccessService accessService,
+      PermissionHistoryService permissionHistoryService) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.accessService = accessService;
+    this.permissionHistoryService = permissionHistoryService;
   }
 
   public List<AssetGrantResponse> listGrants(
@@ -127,6 +130,7 @@ public class AssetGrantService {
         "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
 
     AssetGrant grant;
+    boolean isNewGrant;
     if (request.getSubjectType() == PermissionSubjectType.USER) {
       requireUserInOrganization(request.getSubjectId(), library.getOrganizationId());
       grant =
@@ -134,6 +138,7 @@ public class AssetGrantService {
               .findByLibraryIdAndSubjectTypeAndSubjectUserId(
                   library.getId(), PermissionSubjectType.USER, request.getSubjectId())
               .orElse(null);
+      isNewGrant = grant == null;
       if (grant == null) {
         grant =
             AssetGrant.forUser(
@@ -156,6 +161,7 @@ public class AssetGrantService {
               .findByLibraryIdAndSubjectTypeAndSubjectGroupId(
                   library.getId(), PermissionSubjectType.GROUP, request.getSubjectId())
               .orElse(null);
+      isNewGrant = grant == null;
       if (grant == null) {
         grant =
             AssetGrant.forGroup(
@@ -174,6 +180,13 @@ public class AssetGrantService {
     }
 
     AssetGrant saved = grantRepository.save(grant);
+    // #238: every grant change is historised as its own interval, with the operation that caused
+    // it - GRANTED for a new grant, ROLE_CHANGED for an update to an existing one.
+    if (isNewGrant) {
+      permissionHistoryService.recordGrantCreated(saved, currentUser.getId());
+    } else {
+      permissionHistoryService.recordGrantRoleChanged(saved, currentUser.getId());
+    }
     invalidateAfterCommit(library.getId());
     return toResponse(saved);
   }
@@ -210,6 +223,9 @@ public class AssetGrantService {
           "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
     }
 
+    // #238: record the revocation before the row is gone - recordGrantRevoked reads the grant's
+    // last-active role/expiresAt off this same entity.
+    permissionHistoryService.recordGrantRevoked(grant, currentUserId);
     grantRepository.delete(grant);
     invalidateAfterCommit(library.getId());
   }
