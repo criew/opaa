@@ -13,7 +13,14 @@
  * allows (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)
  * plus the one personenbezogene exception ({@link io.opaa.audit.AuditIncidentScopeService}, the
  * anlassbezogene Klärung under the Vier-Augen-Prinzip). {@code io.opaa.api.AuditController} exposes
- * it, restricted to {@code SystemRole.AUDITOR}. The retention deletion remains a separate, later
- * issue.
+ * it, restricted to {@code SystemRole.AUDITOR}.
+ *
+ * <p>#395 adds retention and automatic deletion on top of that: {@link
+ * io.opaa.audit.AuditRetentionSettingsService} reads and changes the single, system-wide retention
+ * period (1-10 years, default 3), and {@link io.opaa.audit.AuditRetentionScheduler} runs {@link
+ * io.opaa.audit.AuditRetentionDeletionService} monthly, which is the only caller of {@code
+ * opaa_audit_delete_expired_partitions()} (migration 023) - the one and only path anything in this
+ * codebase can remove a row from {@code audit_log} through, and one that only ever drops a
+ * complete, fully expired monthly partition, never an individual row.
  */
 package io.opaa.audit;

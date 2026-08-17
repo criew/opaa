@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/changes/021-audit-incident-scope-grants.yaml
   - include:
       file: db/changelog/changes/022-widen-audit-event-type-auditor-role.yaml
+  - include:
+      file: db/changelog/changes/023-audit-retention.yaml
