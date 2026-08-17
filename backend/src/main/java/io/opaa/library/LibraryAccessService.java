@@ -6,10 +6,13 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -66,9 +69,13 @@ public class LibraryAccessService {
 
   /**
    * Whether the user may see a library's configuration (name, description, owner, document list) -
-   * requires at least {@link AssetRole#VIEWER}. Not the same as being able to use the library in a
-   * query, which only requires {@link AssetRole#USER} and is what {@link #readableLibraryIds}
-   * grants; see docs/features/spaces-and-assets.md#asset-rollen for the distinction.
+   * requires at least {@link AssetRole#VIEWER}. Historically distinct from being able to use the
+   * library in a query, which required only a now-removed {@code USER} rank below {@code VIEWER} -
+   * #330 dropped that rank (see {@link AssetRole}'s Javadoc: unenforceable for an agent, and
+   * largely moot for a library since cited answers expose document titles anyway), so both
+   * questions now resolve to the same threshold. {@link #readableLibraryIds} still exists as the
+   * search-facing counterpart of this method - see its own Javadoc for why the two are not unified
+   * into one call.
    */
   public boolean canRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.VIEWER);
@@ -190,6 +197,74 @@ public class LibraryAccessService {
         .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
         .forEach(library -> readable.add(library.getId()));
     return readable;
+  }
+
+  /**
+   * The effective {@link AssetRole} for every one of {@code libraries}, for {@code userId} - the
+   * {@code listLibraries} counterpart of {@link #effectiveRole}, deliberately not built by calling
+   * that method once per library (#425 code review, finding 1 and nit 4):
+   *
+   * <ul>
+   *   <li><b>Correctness (finding 1):</b> {@code listLibraries} membership comes from {@link
+   *       #readableLibraryIds}, which is deliberately uncached so a just-granted or just-revoked
+   *       right is reflected immediately. {@link #effectiveRole} reads the separately cached {@link
+   *       #grantsByLibrary}, invalidated only after commit. Combining the two - membership from the
+   *       fresh path, role from the stale one - let a library appear in the list with no grant the
+   *       cache yet knew about, so {@link #effectiveRole} returned {@code null} for a response
+   *       field the OpenAPI specification declares required. This method reads every grant for
+   *       {@code libraries} in the one query below, the same freshness guarantee {@link
+   *       #readableLibraryIds} already gives its own membership decision, and floors the result at
+   *       {@link AssetRole#VIEWER}: every library in {@code libraries} is assumed to already be in
+   *       the caller's {@link #readableLibraryIds}, which the formula guarantees is reachable only
+   *       at {@code VIEWER} or above, so a role that still resolves to {@code null} here reflects a
+   *       caller-supplied library outside that guarantee, not a legitimately absent grant.
+   *   <li><b>Performance (nit 4):</b> one query for N libraries instead of up to N queries on a
+   *       cold cache (e.g. after a restart, or once {@code grantsByLibrary}'s ten-minute expiry has
+   *       passed) - the list has no pagination (#418 scope), so it grows with every
+   *       organization-wide library.
+   * </ul>
+   *
+   * <p><b>Never bypasses to {@link AssetRole#OWNER} for a system admin</b> - unlike {@link
+   * #effectiveRole}. {@code listLibraries} membership itself never bypasses (see {@link
+   * #readableLibraryIds}'s Javadoc), so a bypassed role here would mislabel an
+   * administratively-reached library as one the admin actually owns or manages - the exact
+   * confusion #418's scope warns the frontend must be able to avoid. See {@code myRole}'s
+   * description in the OpenAPI specification for the caller-facing consequence: a system admin
+   * distinguishes "I own/manage this" from "I can see this because I administer everything" via
+   * their own known admin status, not via this field.
+   */
+  public Map<UUID, AssetRole> effectiveRolesForReadableLibraries(
+      List<KnowledgeLibrary> libraries, UUID userId) {
+    Instant now = Instant.now();
+    Set<UUID> libraryIds =
+        libraries.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet());
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    Map<UUID, List<AssetGrant>> grantsByLibraryId =
+        grantRepository.findByLibraryIdIn(libraryIds).stream()
+            .collect(Collectors.groupingBy(AssetGrant::getLibraryId));
+
+    Map<UUID, AssetRole> roles = new HashMap<>();
+    for (KnowledgeLibrary library : libraries) {
+      AssetRole best = null;
+      if (library.getVisibility() == LibraryVisibility.ORGANIZATION) {
+        best = AssetRole.VIEWER;
+      }
+      for (AssetGrant grant : grantsByLibraryId.getOrDefault(library.getId(), List.of())) {
+        if (grant.isExpired(now)) {
+          continue;
+        }
+        boolean reaches =
+            (grant.getSubjectType() == PermissionSubjectType.USER
+                    && grant.getSubjectUserId().equals(userId))
+                || (grant.getSubjectType() == PermissionSubjectType.GROUP
+                    && groupIds.contains(grant.getSubjectGroupId()));
+        if (reaches && (best == null || grant.getRole().atLeast(best))) {
+          best = grant.getRole();
+        }
+      }
+      roles.put(library.getId(), best != null ? best : AssetRole.VIEWER);
+    }
+    return roles;
   }
 
   /**

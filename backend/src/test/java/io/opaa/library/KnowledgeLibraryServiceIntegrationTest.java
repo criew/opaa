@@ -1002,6 +1002,117 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void listLibrariesNeverIncludesAnOrganizationWideLibraryFromAnotherOrganization() {
+    // #425 review, nit 6: findAllById does not itself filter by organization - the boundary holds
+    // only because readableLibraryIds draws it in every one of its three branches. Explicit
+    // regression guard: an organization-wide library in organizationB must not leak into a
+    // organizationA user's list.
+    UUID ownerInB = createUser(organizationB);
+    UUID userInA = createUser(organizationA);
+    LibraryResponse orgWideInB =
+        libraryService.createLibrary(
+            new LibraryRequest("Organisationsweit in B").visibility(LibraryVisibility.ORGANIZATION),
+            ownerInB);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(userInA, false);
+
+    assertThat(listed).extracting(LibraryListResponse::getId).doesNotContain(orgWideInB.getId());
+  }
+
+  @Test
+  void listLibrariesReturnsAStableOrderSortedByNameThenId() {
+    // #425 review, nit 5: readableLibraryIds returns a HashSet with no guaranteed iteration order.
+    // Two consecutive calls must return the same order, and that order must be by name.
+    UUID owner = createUser(organizationA);
+    LibraryResponse zebra = libraryService.createLibrary(new LibraryRequest("Zebra"), owner);
+    LibraryResponse apple = libraryService.createLibrary(new LibraryRequest("Apple"), owner);
+    LibraryResponse mango = libraryService.createLibrary(new LibraryRequest("Mango"), owner);
+
+    List<UUID> firstCall =
+        libraryService.listLibraries(owner, false).stream()
+            .map(LibraryListResponse::getId)
+            .toList();
+    List<UUID> secondCall =
+        libraryService.listLibraries(owner, false).stream()
+            .map(LibraryListResponse::getId)
+            .toList();
+
+    assertThat(firstCall).isEqualTo(secondCall);
+    List<UUID> testLibraryIds = List.of(zebra.getId(), apple.getId(), mango.getId());
+    assertThat(firstCall.stream().filter(testLibraryIds::contains).toList())
+        .containsExactly(apple.getId(), mango.getId(), zebra.getId());
+  }
+
+  @Test
+  void listLibrariesNeverBypassesToOwnerForASystemAdminUnlikeGetLibrary() {
+    // #425 review, nit 2 and 3 (orchestrator decision): unlike getLibrary/updateLibrary/
+    // deleteLibrary, myRole in listLibraries never bypasses to OWNER for a system admin, and
+    // membership never bypasses either - a library reachable only through administering
+    // everything must not look like one the admin actually owns or manages.
+    UUID owner = createUser(organizationA);
+    UUID admin = createUser(organizationA);
+    LibraryResponse privateLibraryNoGrantForAdmin =
+        libraryService.createLibrary(new LibraryRequest("Nur fuer Eigentuemer"), owner);
+    LibraryResponse orgWideLibrary =
+        libraryService.createLibrary(
+            new LibraryRequest("Organisationsweit").visibility(LibraryVisibility.ORGANIZATION),
+            owner);
+
+    // getLibrary does bypass for a system admin, on a library the admin has no grant on at all.
+    assertThat(
+            libraryService
+                .getLibrary(privateLibraryNoGrantForAdmin.getId(), admin, true)
+                .getMyRole())
+        .isEqualTo(AssetRole.OWNER);
+
+    // listLibraries(admin, true) does not: membership still follows the formula alone...
+    List<LibraryListResponse> listed = libraryService.listLibraries(admin, true);
+    assertThat(listed)
+        .extracting(LibraryListResponse::getId)
+        .doesNotContain(privateLibraryNoGrantForAdmin.getId());
+
+    // ...and myRole on a library the formula does reach (here: via organization-wide visibility)
+    // reports the real VIEWER role, not an admin-bypassed OWNER.
+    assertThat(listed)
+        .filteredOn(l -> l.getId().equals(orgWideLibrary.getId()))
+        .extracting(LibraryListResponse::getMyRole)
+        .containsExactly(AssetRole.VIEWER);
+  }
+
+  @Test
+  void createLibrarySetsMyRoleToOwnerForTheCreator() {
+    // #425 review, nit 2: myRole was untested on LibraryResponse (create/get/update); #418's own
+    // acceptance criterion requires it on both LibraryListResponse and LibraryResponse.
+    UUID owner = createUser(organizationA);
+
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+
+    assertThat(library.getMyRole()).isEqualTo(AssetRole.OWNER);
+  }
+
+  @Test
+  void getLibraryAndUpdateLibrarySetMyRoleToTheCallersEffectiveRole() {
+    UUID owner = createUser(organizationA);
+    UUID viewer = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        owner,
+        false);
+
+    assertThat(libraryService.getLibrary(library.getId(), viewer, false).getMyRole())
+        .isEqualTo(AssetRole.VIEWER);
+    assertThat(
+            libraryService
+                .updateLibrary(library.getId(), new LibraryUpdateRequest("Umbenannt"), owner, false)
+                .getMyRole())
+        .isEqualTo(AssetRole.OWNER);
+  }
+
+  @Test
   void savingALibraryWithANonExistentOwnerUserFailsInsteadOfSilentlyPersisting() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

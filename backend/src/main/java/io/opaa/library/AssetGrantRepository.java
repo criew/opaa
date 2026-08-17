@@ -40,6 +40,17 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   List<AssetGrant> findByLibraryId(UUID libraryId);
 
   /**
+   * All grants across every one of {@code libraryIds} in a single query - used by {@link
+   * LibraryAccessService#effectiveRolesForReadableLibraries} to compute {@code myRole} for a whole
+   * {@code listLibraries} response without either an N+1 query per library or the per-library
+   * {@link #findByLibraryId} cache, whose staleness window (#425 code review, finding 1) could
+   * otherwise disagree with the fresher, uncached {@link #findReadableLibraryIdsByDirectGrant}/
+   * {@link #findReadableLibraryIdsByGroupGrant} that decide list membership and leave a listed
+   * library with no resolvable role.
+   */
+  List<AssetGrant> findByLibraryIdIn(Set<UUID> libraryIds);
+
+  /**
    * A namespace for {@link #lockLibraryGrantsForMutation}'s Postgres advisory locks, arbitrary but
    * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase (see the
    * one sketched in {@code DirectorySyncService}'s Javadoc) can pick a different one instead of

@@ -12,7 +12,9 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -199,19 +201,39 @@ public class KnowledgeLibraryService {
    * LibraryAccessService#readableLibraryIds} uses for the permission-aware vector search filter, so
    * the two paths can never disagree on which libraries a user may see (#418, closing the
    * divergence #406 already closed for {@code effectiveRole} vs. {@code readableLibraryIds}).
-   * {@code myRole} on each entry is {@link LibraryAccessService#effectiveRole}, including the
-   * system-admin bypass to {@link AssetRole#OWNER} - see that method's Javadoc.
+   *
+   * <p>{@code myRole} on each entry comes from {@link
+   * LibraryAccessService#effectiveRolesForReadableLibraries}, not {@link
+   * LibraryAccessService#effectiveRole} - see that method's Javadoc for why: combining this
+   * method's uncached membership with that one's cached, per-library role could leave a listed
+   * library with an unresolvable ({@code null}) role against a required response field (#425 code
+   * review, finding 1), and calling it once per library would cost one extra query per library on a
+   * cold cache (#425 code review, nit 4).
+   *
+   * <p><b>{@code systemAdmin} is accepted for signature parity with the sibling endpoints ({@link
+   * #getLibrary}, {@link #updateLibrary}, {@link #deleteLibrary}) but not used here</b>: unlike
+   * those methods, this one never grants or denies access, and - per an explicit decision on #418's
+   * scope sentence about "die so erreichten Bibliotheken als solche aus[weisen]" - {@code myRole}
+   * deliberately never bypasses to {@link AssetRole#OWNER} for a system admin, even for a library
+   * they see only by virtue of administering everything. Sorted by name, then id, for a
+   * reproducible order across calls - {@link LibraryAccessService#readableLibraryIds} returns a
+   * {@code HashSet}, whose iteration order is not guaranteed to be stable.
    */
   public List<LibraryListResponse> listLibraries(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
     Set<UUID> readableIds =
         accessService.readableLibraryIds(currentUserId, currentUser.getOrganizationId());
+    List<KnowledgeLibrary> libraries =
+        libraryRepository.findAllById(readableIds).stream()
+            .sorted(
+                Comparator.comparing(KnowledgeLibrary::getName)
+                    .thenComparing(KnowledgeLibrary::getId))
+            .toList();
+    Map<UUID, AssetRole> roles =
+        accessService.effectiveRolesForReadableLibraries(libraries, currentUserId);
 
-    return libraryRepository.findAllById(readableIds).stream()
-        .map(
-            library ->
-                toLibraryListResponse(
-                    library, accessService.effectiveRole(library, currentUserId, systemAdmin)))
+    return libraries.stream()
+        .map(library -> toLibraryListResponse(library, roles.get(library.getId())))
         .toList();
   }
 

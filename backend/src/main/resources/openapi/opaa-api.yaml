@@ -1490,7 +1490,17 @@ components:
         personal:
           type: boolean
         myRole:
-          $ref: "#/components/schemas/AssetRole"
+          description: >
+            The effective role you hold on this library, per the formula in
+            docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten. Always at least
+            VIEWER, since anything less would exclude the library from this list altogether.
+            Never bypassed to OWNER for a system admin, unlike myRole on the single-library
+            response (GET/PUT /api/v1/libraries/{libraryId}): a library reachable only by
+            administering everything must not be mistaken for one you actually own or manage -
+            the frontend already knows the caller's admin status and can render that distinction
+            itself.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
         createdAt:
           type: string
           format: date-time
@@ -1534,7 +1544,13 @@ components:
         personal:
           type: boolean
         myRole:
-          $ref: "#/components/schemas/AssetRole"
+          description: >
+            The effective role you hold on this library. For a system admin, this is always
+            OWNER - the same administrative bypass canRead/canManage/canDelete use - regardless
+            of any actual grant. Unlike myRole on the list response (GET /api/v1/libraries),
+            which never bypasses for a system admin.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
         documentCount:
           type: integer
           format: int64

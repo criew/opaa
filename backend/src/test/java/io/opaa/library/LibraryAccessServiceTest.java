@@ -308,4 +308,64 @@ class LibraryAccessServiceTest {
     assertThat(accessService.canRead(library, userId, false)).isTrue();
     verify(grantRepository, org.mockito.Mockito.times(2)).findByLibraryId(libraryId);
   }
+
+  @Test
+  void effectiveRolesForReadableLibrariesResolvesEachRoleFromASingleBatchQuery() {
+    // #425 review, finding 1 and nit 4: this method exists so listLibraries never combines the
+    // uncached readableLibraryIds membership with the separately-cached, potentially stale
+    // effectiveRole - both must read grants from the exact same, single query.
+    UUID directGrantLibraryId = UUID.randomUUID();
+    UUID groupGrantLibraryId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    KnowledgeLibrary directGrantLibrary = privateUserOwnedLibrary(directGrantLibraryId);
+    KnowledgeLibrary groupGrantLibrary = privateUserOwnedLibrary(groupGrantLibraryId);
+    when(membershipResolver.groupIdsForUser(userId)).thenReturn(Set.of(groupId));
+    when(grantRepository.findByLibraryIdIn(Set.of(directGrantLibraryId, groupGrantLibraryId)))
+        .thenReturn(
+            List.of(
+                userGrant(directGrantLibraryId, userId, AssetRole.EDITOR),
+                AssetGrant.forGroup(
+                    groupGrantLibraryId,
+                    organizationId,
+                    groupId,
+                    AssetRole.MANAGER,
+                    null,
+                    userId)));
+
+    var roles =
+        accessService.effectiveRolesForReadableLibraries(
+            List.of(directGrantLibrary, groupGrantLibrary), userId);
+
+    assertThat(roles)
+        .containsEntry(directGrantLibraryId, AssetRole.EDITOR)
+        .containsEntry(groupGrantLibraryId, AssetRole.MANAGER);
+    verify(grantRepository, never()).findByLibraryId(any());
+  }
+
+  @Test
+  void effectiveRolesForReadableLibrariesFloorsAtViewerWhenNoGrantResolves() {
+    // The exact scenario finding 1 describes: a library that is a member of readableLibraryIds
+    // (by construction, at least VIEWER) but whose grant this batch query does not resolve to a
+    // role - it must never surface as null against a required response field.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    when(grantRepository.findByLibraryIdIn(Set.of(libraryId))).thenReturn(List.of());
+
+    var roles = accessService.effectiveRolesForReadableLibraries(List.of(library), userId);
+
+    assertThat(roles).containsEntry(libraryId, AssetRole.VIEWER);
+  }
+
+  @Test
+  void effectiveRolesForReadableLibrariesNeverBypassesToOwnerForASystemAdmin() {
+    // Unlike effectiveRole, this method takes no systemAdmin parameter at all - listLibraries
+    // deliberately never bypasses (#425 review, orchestrator decision on nit 3).
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    when(grantRepository.findByLibraryIdIn(Set.of(libraryId))).thenReturn(List.of());
+
+    var roles = accessService.effectiveRolesForReadableLibraries(List.of(library), userId);
+
+    assertThat(roles.get(libraryId)).isNotEqualTo(AssetRole.OWNER);
+  }
 }
