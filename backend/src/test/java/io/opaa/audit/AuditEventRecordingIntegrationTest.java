@@ -695,10 +695,15 @@ class AuditEventRecordingIntegrationTest {
     // supported before this PR.
     UUID actingAdmin = createUser();
     UUID targetUser = createUser();
+    String targetEmail = userRepository.findById(targetUser).orElseThrow().getEmail();
 
     userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, actingAdmin);
+    // #392/#444 re-review: object_id is now the account's pseudonym, not its real id - the entry
+    // can no longer be found by filtering on the real userId as objectId (that would defeat the
+    // fix), so this queries by event type across the organization's entries instead.
     List<AuditLogEntry> granted =
-        entriesFor(AuditObjectType.USER_ACCOUNT, targetUser).stream()
+        auditLogRepository.findAll().stream()
+            .filter(e -> e.getOrganizationId().equals(organizationId))
             .filter(e -> e.getEventType() == AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED)
             .toList();
     assertThat(granted).hasSize(1);
@@ -706,10 +711,25 @@ class AuditEventRecordingIntegrationTest {
 
     userService.updateRole(targetUser, SystemRole.USER, actingAdmin);
     List<AuditLogEntry> revoked =
-        entriesFor(AuditObjectType.USER_ACCOUNT, targetUser).stream()
+        auditLogRepository.findAll().stream()
+            .filter(e -> e.getOrganizationId().equals(organizationId))
             .filter(e -> e.getEventType() == AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED)
             .toList();
     assertThat(revoked).hasSize(1);
+
+    // #392/#444 re-review, the finding itself: neither entry may carry the account's real id or
+    // email anywhere - object_id, object_label, subject_ref must all be the pseudonym, never a
+    // clear reference that would let a reader reverse this person's pseudonymisation or that would
+    // survive the account's own deletion (object_label, unlike the pseudonym row, is not removed
+    // by it).
+    for (AuditLogEntry entry : List.of(granted.get(0), revoked.get(0))) {
+      assertThat(entry.getObjectId()).isNotEqualTo(targetUser.toString());
+      assertThat(entry.getSubjectRef()).isNotEqualTo(targetUser.toString());
+      assertThat(entry.getObjectId()).isEqualTo(entry.getSubjectRef());
+      assertThat(entry.getObjectLabel()).isNull();
+      assertThat(entry.getBefore()).doesNotContain(targetEmail);
+      assertThat(entry.getAfter()).doesNotContain(targetEmail);
+    }
 
     // Re-setting the same role is not a change and writes nothing more.
     long before = auditLogRepository.count();

@@ -167,6 +167,20 @@ public class AuditEventRecorder {
             correlationRef));
   }
 
+  /**
+   * The pseudonym id for {@code userId} - exposed so a caller whose {@code object} <em>is</em> the
+   * same person as the {@code subject} (e.g. {@code UserService#updateRole}'s {@code
+   * SYSTEM_ADMIN_ROLE_GRANTED}/{@code _REVOKED}) can pass that one pseudonym as both {@code
+   * objectId} and {@code subjectId}, instead of the real {@code userId} as {@code objectId}. Using
+   * the real id there would place both the plain id and its pseudonym in the same row - trivially
+   * reversing every other entry's pseudonymisation for that person, and (via {@code object_label})
+   * surviving the account deletion that is supposed to make the log unattributable again (code
+   * review of #392/#444).
+   */
+  public UUID pseudonymFor(UUID userId, UUID organizationId) {
+    return pseudonymService.pseudonymFor(userId, organizationId);
+  }
+
   private String toJson(Map<String, Object> value) {
     if (value == null || value.isEmpty()) {
       return null;
