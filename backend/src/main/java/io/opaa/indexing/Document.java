@@ -74,6 +74,15 @@ public class Document {
   @Column(name = "organization_id")
   private UUID organizationId;
 
+  /**
+   * The user who uploaded this document via the REST upload endpoint (#420), or {@code null} for
+   * every other {@link #sourceType} (directory crawl, URL indexing) and for documents that predate
+   * this column. Kept separate from {@link #libraryId}'s owner: a library's owner and the person
+   * who happened to upload a given file into it are frequently different once a library is shared.
+   */
+  @Column(name = "uploaded_by_user_id")
+  private UUID uploadedByUserId;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -177,5 +186,13 @@ public class Document {
 
   public void setOrganizationId(UUID organizationId) {
     this.organizationId = organizationId;
+  }
+
+  public UUID getUploadedByUserId() {
+    return uploadedByUserId;
+  }
+
+  public void setUploadedByUserId(UUID uploadedByUserId) {
+    this.uploadedByUserId = uploadedByUserId;
   }
 }

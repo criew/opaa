@@ -1,3 +1,14 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 016 - i.e. the schema exactly as it existed immediately before migration 020, which
+# builds on this same pre-migration state (017/018/019 are reserved by parallel work not yet on
+# main - see Migration020UploadMetadataTest's Javadoc).
+#
+# Used by:
+# - Migration020UploadMetadataTest, to build a realistic pre-migration database (via the real,
+#   versioned changelog files, not a hand-rolled schema) and then apply 020 in isolation.
+#
+# See test-master-through-015.yaml and Migration016VectorStoreLibraryMetadataTest for the pattern
+# this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -31,5 +42,3 @@ databaseChangeLog:
       file: db/changelog/changes/015-replace-space-kind-with-is-default.yaml
   - include:
       file: db/changelog/changes/016-backfill-vector-store-library-metadata.yaml
-  - include:
-      file: db/changelog/changes/020-add-upload-metadata-to-documents.yaml

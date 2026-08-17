@@ -64,6 +64,9 @@ Thumbs.db
 # Documents (user PDFs)
 documents/
 
+# Uploaded documents (#420)
+uploads/
+
 # Claude
 /.claude/settings.local.json
 /.claude/worktrees/

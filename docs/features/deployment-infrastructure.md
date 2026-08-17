@@ -133,6 +133,17 @@ Verzeichnis hängt, entscheidet der Betrieb durch Einhängen — nicht die Anwen
 Konfigurationsvariante. Eine Abstraktion über mehrere Speicherarten ist **nicht gebaut** und für die
 beiden dateibasierten Fälle auch nicht vorgesehen.
 
+Der Upload durch Beschäftigte (#420) schreibt in ein eigenes, zweites konfiguriertes Verzeichnis
+(`OPAA_UPLOAD_STORAGE_PATH`, Standard `./uploads`), bewusst getrennt vom betriebsverwalteten
+Indizierungsverzeichnis — Originale aus dem Upload gehören der Anwendung, Originale im
+Indizierungsverzeichnis bleiben Eigentum der Quelle, aus der sie stammen (siehe
+[`deleteDocument`](../features/knowledge-sources.md#upload), das genau diese Grenze durchsetzt).
+`docker-compose.yml` hängt beide Verzeichnisse als eigene Volumes ein
+(`OPAA_UPLOAD_STORAGE_PATH_HOST`, Standard `./uploads`, analog zu
+`OPAA_INDEXING_DOCUMENT_PATH_HOST`) — ohne dieses Volume verschwindet der Upload-Bestand beim
+Neuaufsetzen des Containers, während Datenbankzeilen und Chunks im Vektorspeicher bestehen bleiben
+und auf eine nicht mehr vorhandene Datei zeigen.
+
 Das löst den größeren Teil der Frage ohne eine Zeile Arbeit: **Ein Netzlaufwerk braucht keine
 Abstraktion.** SMB und NFS werden vom Betriebssystem eingehängt und sehen für die Anwendung aus wie
 ein gewöhnliches Verzeichnis.

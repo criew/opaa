@@ -21,6 +21,20 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
+  servlet:
+    multipart:
+      # Bound to the exact same value as opaa.upload.max-file-size below (#420 code review, finding
+      # 2), not a separately chosen, larger container-level cap: a gap between the two would leave
+      # every file above this limit and up to that gap answered by Spring's own untranslated 500 /
+      # multipart error page instead of GlobalExceptionHandler's German 413. Both this and
+      # opaa.upload.max-file-size read the same OPAA_UPLOAD_MAX_FILE_SIZE env var (bytes, "B" suffix
+      # for DataSize parsing here) so they can never drift apart. GlobalExceptionHandler still
+      # answers 413 for the (rare, container-level) MaxUploadSizeExceededException this produces -
+      # not because the size differs from opaa.upload.max-file-size's own check, but because
+      # multipart request framing overhead can push a request that size alone but under the limit
+      # over max-request-size first.
+      max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
+      max-request-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}
@@ -81,6 +95,9 @@ opaa:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
+  upload:
+    storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
+    max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

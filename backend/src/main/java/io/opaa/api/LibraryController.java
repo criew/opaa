@@ -12,10 +12,12 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
+import io.opaa.library.LibraryDocumentService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,7 +28,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
@@ -37,14 +41,17 @@ public class LibraryController {
 
   private final KnowledgeLibraryService libraryService;
   private final AssetGrantService grantService;
+  private final LibraryDocumentService documentService;
   private final UserService userService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
       AssetGrantService grantService,
+      LibraryDocumentService documentService,
       UserService userService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
+    this.documentService = documentService;
     this.userService = userService;
   }
 
@@ -99,6 +106,35 @@ public class LibraryController {
     User currentUser = currentUser(jwt);
     return libraryService.listDocuments(
         libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
+  @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<LibraryDocumentResponse> uploadDocument(
+      @PathVariable UUID libraryId,
+      @RequestParam("file") MultipartFile file,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    LibraryDocumentResponse response =
+        documentService.uploadDocument(
+            libraryId,
+            file,
+            currentUser.getId(),
+            currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @DeleteMapping("/{libraryId}/documents/{documentId}")
+  public ResponseEntity<Void> deleteDocument(
+      @PathVariable UUID libraryId,
+      @PathVariable UUID documentId,
+      @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    documentService.deleteDocument(
+        libraryId,
+        documentId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{libraryId}/grants")

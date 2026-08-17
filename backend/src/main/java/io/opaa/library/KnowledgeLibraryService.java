@@ -471,14 +471,6 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {
-    return new LibraryDocumentResponse(
-            document.getId(),
-            document.getFileName(),
-            document.getStatus(),
-            document.getSourceType(),
-            document.getChunkCount())
-        .contentType(document.getContentType())
-        .fileSize(document.getFileSize())
-        .indexedAt(document.getIndexedAt());
+    return LibraryDocumentResponses.from(document);
   }
 }
