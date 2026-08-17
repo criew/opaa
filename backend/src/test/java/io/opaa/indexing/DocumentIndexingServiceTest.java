@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -152,19 +153,63 @@ class DocumentIndexingServiceTest {
   }
 
   @Test
-  void triggerIndexingBypassesTheRoleCheckForASystemAdmin() {
-    // Mirrors LibraryAccessService#effectiveRole's system-admin bypass, which every other
-    // library operation already relies on - the SYSTEM_ADMIN @PreAuthorize on the controller
-    // stays in place alongside this check, not instead of it.
+  void aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected() {
+    // PR #431 review, Befund 2: POST /api/v1/indexing/trigger already requires SYSTEM_ADMIN, so
+    // every caller reaching this method has systemAdmin=true - bypassing the EDITOR check for
+    // that flag too would make the 403 branch unreachable in practice, letting any system admin
+    // write into a library (e.g. another person's private "Meine Dokumente") they were never
+    // granted. canEdit must be consulted with systemAdmin=false, not the caller's real value.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), true)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(false);
 
-    IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), true);
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), true))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+    verify(indexingJobService, never()).startJob(any());
+    verify(libraryAccessService, never()).canEdit(library, currentUser.getId(), true);
+  }
+
+  @Test
+  void aSystemAdminMayTargetTheSystemLibraryWithoutAnExplicitGrant() {
+    // The system library is seeded with no owner and no grants (migration 012) - under the
+    // ordinary EDITOR formula nobody, not even a system admin, could ever target it, which would
+    // silently strand the one path that still writes there today. This is the one deliberate
+    // carve-out from the rule above.
+    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
+    UUID systemLibraryId = UUID.randomUUID();
+    when(systemLibrary.getId()).thenReturn(systemLibraryId);
+    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
+    when(systemLibrary.isSystemLibrary()).thenReturn(true);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(systemLibraryId)).thenReturn(job);
+
+    IndexingJob result = service.triggerIndexing(systemLibraryId, currentUser.getId(), true);
 
     assertThat(result).isEqualTo(job);
+    verify(libraryAccessService, never())
+        .canEdit(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+  }
+
+  @Test
+  void aNonSystemAdminMayNotTargetTheSystemLibraryWithoutAGrant() {
+    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
+    UUID systemLibraryId = UUID.randomUUID();
+    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
+    // systemAdmin=false short-circuits "systemAdmin && library.isSystemLibrary()" before
+    // isSystemLibrary() is ever called, so it is deliberately left unstubbed (Mockito's
+    // UnnecessaryStubbingException would otherwise fail this test).
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
+    when(libraryAccessService.canEdit(systemLibrary, currentUser.getId(), false)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.triggerIndexing(systemLibraryId, currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
   }
 
   @Test

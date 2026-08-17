@@ -129,6 +129,21 @@ class IndexingControllerTest {
   }
 
   @Test
+  void getStatusExposesTheJobsTargetLibrary() throws Exception {
+    // PR #431 review: "der Indizierungsauftrag weist seine Zielbibliothek aus" must be readable
+    // through the API, not only via SQL.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(libraryId);
+    when(indexingJobService.getLatestJob()).thenReturn(Optional.of(job));
+
+    mockMvc
+        .perform(get("/api/v1/indexing/status"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.libraryId").value(libraryId.toString()));
+  }
+
+  @Test
   void getStatusReturnsCompletedJobWithSkippedCount() throws Exception {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setStatus(JobStatus.COMPLETED);

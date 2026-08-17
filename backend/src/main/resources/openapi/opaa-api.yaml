@@ -1048,6 +1048,15 @@ components:
           type: string
           nullable: true
           example: Indexing completed successfully
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The knowledge library this run targets (#419). Null for a run started before
+            migration 019 added the column, or once the run's target library has since been
+            deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
+            same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
         timestamp:
           type: string
           format: date-time

@@ -2,13 +2,17 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.api.dto.QueryResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
+import io.opaa.query.QueryService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -20,6 +24,14 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -32,6 +44,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -77,6 +90,8 @@ class DocumentIndexingIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private QueryService queryService;
+  @MockitoBean private ChatModel chatModel;
 
   private UUID userId;
   private UUID targetLibraryId;
@@ -100,11 +115,14 @@ class DocumentIndexingIntegrationTest {
       }
     }
 
-    // #419: every trigger needs a caller-chosen library and a caller who holds at least EDITOR
-    // on it. A system admin bypasses the role check (LibraryAccessService#canEdit), matching
-    // every other library operation, so a plain SYSTEM_ADMIN user without an explicit grant is
-    // enough here. The previous run's library is deleted first - fk_knowledge_libraries_owner_user
-    // is RESTRICT, so the user row cannot go while it still owns one.
+    // #419: every trigger needs a caller-chosen library and a caller who actually holds at least
+    // EDITOR on it - a system admin is NOT bypassed for an ordinary library any more (PR #431
+    // review, Befund 2: the /trigger endpoint already requires SYSTEM_ADMIN, so bypassing the
+    // EDITOR check for that flag too would make it unreachable in practice). userId is granted
+    // OWNER on its own library explicitly below, exactly like a real KnowledgeLibraryService
+    // library creation would. The previous run's library is deleted first -
+    // fk_knowledge_libraries_owner_user is RESTRICT, so the user row cannot go while it still owns
+    // one.
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
             + " email = 'indexing-it@example.com')");
@@ -130,6 +148,18 @@ class DocumentIndexingIntegrationTest {
                 false,
                 false));
     targetLibraryId = library.getId();
+    grantOwner(targetLibraryId, userId);
+  }
+
+  private void grantOwner(UUID libraryId, UUID granteeId) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+            + " 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        libraryId,
+        Organization.DEFAULT_ID,
+        granteeId);
   }
 
   private IndexingJob triggerIndexing() {
@@ -284,6 +314,129 @@ class DocumentIndexingIntegrationTest {
             .map(org.springframework.ai.document.Document::getText)
             .reduce("", String::concat);
     assertThat(allChunkText).contains("Updated");
+  }
+
+  @Test
+  void reindexingIntoADifferentLibraryLeavesNoChunksWithTheOldLibraryIdBehind() throws IOException {
+    // PR #431 review, Befund 3: FileProcessingServiceTest proves this only against a mocked
+    // VectorStore.delete() call - the string handed to a mock, not that the filter actually
+    // matches every chunk of the old document in real pgvector. This indexes the same file twice,
+    // once per library, against a real Postgres/pgvector schema and asserts by direct SQL that no
+    // row in vector_store still carries the old library_id afterwards.
+    KnowledgeLibrary otherLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Andere Bibliothek",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                false));
+    UUID otherLibraryId = otherLibrary.getId();
+    grantOwner(otherLibraryId, userId);
+
+    Files.writeString(sharedTempDir.resolve("moved.txt"), "Content that will move libraries.");
+
+    IndexingJob firstJob = triggerIndexing();
+    awaitJobCompletion(firstJob);
+    assertThat(indexingJobRepository.findById(firstJob.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.COMPLETED);
+
+    Long chunksInOriginalLibrary =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+            Long.class,
+            targetLibraryId.toString());
+    assertThat(chunksInOriginalLibrary).isPositive();
+
+    IndexingJob secondJob = documentIndexingService.triggerIndexing(otherLibraryId, userId, true);
+    awaitJobCompletion(secondJob);
+    assertThat(indexingJobRepository.findById(secondJob.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.COMPLETED);
+
+    Long chunksStillInOriginalLibrary =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+            Long.class,
+            targetLibraryId.toString());
+    assertThat(chunksStillInOriginalLibrary)
+        .as("no chunk may still carry the old library_id after a move")
+        .isZero();
+
+    Long chunksInNewLibrary =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+            Long.class,
+            otherLibraryId.toString());
+    assertThat(chunksInNewLibrary).isPositive();
+
+    Document movedDoc = documentRepository.findAll().getFirst();
+    assertThat(movedDoc.getLibraryId()).isEqualTo(otherLibraryId);
+  }
+
+  @Test
+  void aUserWithAGrantOnTheTargetLibraryFindsTheDocumentAndAUserWithoutOneDoesNot()
+      throws IOException {
+    // PR #431 review, Befund 3: closes the gap between "indexed through the real pipeline" and
+    // "findable through /api/v1/query" - QueryIntegrationTest inserts its chunks by hand and never
+    // exercises FileProcessingService at all, so this is the only test proving the two are
+    // actually connected for a document that carries a caller-chosen library (#419).
+    when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    var usage =
+        new Usage() {
+          @Override
+          public Integer getPromptTokens() {
+            return 10;
+          }
+
+          @Override
+          public Integer getCompletionTokens() {
+            return 10;
+          }
+
+          @Override
+          public Object getNativeUsage() {
+            return null;
+          }
+        };
+    var chatResponseMetadata =
+        ChatResponseMetadata.builder().model("test-model").usage(usage).build();
+    var assistantMessage = new AssistantMessage("Answer referencing the indexed document.");
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(List.of(new Generation(assistantMessage)), chatResponseMetadata));
+
+    Files.writeString(
+        sharedTempDir.resolve("findable.txt"), "A uniquely identifiable sentence about OPAA.");
+    IndexingJob job = triggerIndexing();
+    awaitJobCompletion(job);
+    assertThat(indexingJobRepository.findById(job.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.COMPLETED);
+
+    // userId holds OWNER on targetLibraryId (granted in setUp) - the reader path.
+    QueryResponse withGrant = queryService.query("uniquely identifiable sentence", null, userId);
+    assertThat(withGrant.getSources())
+        .as("a user with a grant on the target library must find the indexed document")
+        .anyMatch(source -> "findable.txt".equals(source.getFileName()));
+
+    // A second user in the same organization with no grant at all on targetLibraryId.
+    UUID strangerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'test-issuer', 'indexing-it-stranger@example.com',"
+            + " 'Stranger', now(), 'USER', ?)",
+        strangerId,
+        "indexing-it-stranger-" + strangerId,
+        Organization.DEFAULT_ID);
+
+    QueryResponse withoutGrant =
+        queryService.query("uniquely identifiable sentence", null, strangerId);
+    assertThat(withoutGrant.getSources())
+        .as("a user without any grant on the target library must not find the indexed document")
+        .noneMatch(source -> "findable.txt".equals(source.getFileName()));
+
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
   }
 
   @Test

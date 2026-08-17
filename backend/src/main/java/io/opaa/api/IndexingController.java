@@ -111,7 +111,8 @@ public class IndexingController {
             job.getDocumentsTotal(),
             job.getDocumentsSkipped(),
             job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
-        .message(message);
+        .message(message)
+        .libraryId(job.getLibraryId());
   }
 
   private IndexingStatus mapStatus(JobStatus jobStatus) {

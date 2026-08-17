@@ -107,13 +107,34 @@ describe('indexingStore', () => {
     expect(state.libraries.every((l) => l.myRole !== 'VIEWER')).toBe(true)
   })
 
-  it('clears libraries when the request fails', async () => {
+  it('clears libraries and the selection when the request fails', async () => {
+    // PR #431 review, nit 5: a selection that survives a failed load leaves the trigger enabled
+    // against a library the user can no longer see.
     server.use(http.get('/api/v1/libraries', () => HttpResponse.error()))
 
-    useIndexingStore.setState({ libraries: mockLibraries })
+    useIndexingStore.setState({ libraries: mockLibraries, selectedLibraryId: 'library-1' })
     await useIndexingStore.getState().fetchLibraries()
 
-    expect(useIndexingStore.getState().libraries).toEqual([])
+    const state = useIndexingStore.getState()
+    expect(state.libraries).toEqual([])
+    expect(state.selectedLibraryId).toBeNull()
+  })
+
+  it('resets the selection when the previously selected library no longer appears in the list', async () => {
+    // PR #431 review, nit 5: e.g. a revoked grant, or the caller no longer holds EDITOR.
+    useIndexingStore.getState().setSelectedLibraryId('library-3')
+
+    await useIndexingStore.getState().fetchLibraries()
+
+    expect(useIndexingStore.getState().selectedLibraryId).toBeNull()
+  })
+
+  it('keeps the selection when the previously selected library is still in the list', async () => {
+    useIndexingStore.getState().setSelectedLibraryId('library-1')
+
+    await useIndexingStore.getState().fetchLibraries()
+
+    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-1')
   })
 
   it('sets the selected library id', () => {

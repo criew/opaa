@@ -99,8 +99,20 @@ Drei Zustände werden unterschieden:
   muss vor einem Produktivbetrieb nachgezogen werden.
 - **Ziel-Wissensbibliothek je Lauf.** `libraryId` ist beim Anstoß Pflicht; die Aufnahme schreibt
   nicht mehr fest in die System-Bibliothek (#419). Die auslösende Person braucht mindestens
-  `EDITOR` auf der Zielbibliothek. Bestandsdokumente, die vor #419 in der System-Bibliothek
-  landeten, bleiben dort — das nachträgliche Umhängen ist nicht Teil davon
+  `EDITOR` auf der Zielbibliothek — echt geprüft, ohne pauschalen Bypass für System-Admins: Der
+  Endpunkt selbst verlangt `SYSTEM_ADMIN`, aber ein System-Admin ohne eigenen Grant auf einer
+  fremden Bibliothek bekommt trotzdem `403`. Einzige Ausnahme ist die System-Bibliothek selbst
+  (seit jeher ohne Eigentümer und ohne Grants) — dort dürfen System-Admins weiterhin schreiben,
+  sonst wäre sie für niemanden mehr erreichbar. Bestandsdokumente, die vor #419 in der
+  System-Bibliothek landeten, bleiben dort — das nachträgliche Umhängen ist nicht Teil davon.
+  Der Indizierungsauftrag führt seine Zielbibliothek (`IndexingStatusResponse.libraryId`) — das
+  ist ein Verlaufsprotokoll vergangener Läufe, keine Rechtehistorie: Wird die Bibliothek später
+  gelöscht, wird das Feld `NULL` (`ON DELETE SET NULL`) statt die Löschung zu blockieren, anders
+  als `documents.library_id`, das mit `RESTRICT` an eine noch existierende Bibliothek gebunden
+  bleibt, solange das Dokument selbst existiert. Wird die Zielbibliothek eines laufenden Auftrags
+  mitten im Lauf gelöscht, zählen die betroffenen Dokumente heute als fehlgeschlagen statt als
+  übersprungen — anders als bei Konnektorquellen spezifiziert (`docs/features/knowledge-sources.md`
+  „Wenn die Zielbibliothek fehlt"); nachgezogen in #433
 
 **Nicht gebaut**
 - Speicherkontingent je Konto und Hinweis auf ähnliche Bestände (#119)

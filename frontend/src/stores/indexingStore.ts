@@ -161,9 +161,19 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     try {
       const libraries = await getLibraries()
       const editable = libraries.filter((l) => MIN_ROLE_TO_INDEX.includes(l.myRole))
-      set({ libraries: editable, librariesLoading: false })
+      set((s) => ({
+        libraries: editable,
+        librariesLoading: false,
+        // A selection that no longer appears in the freshly loaded list (revoked grant, or the
+        // list came back empty) must not survive - otherwise the trigger stays enabled against a
+        // library the user can no longer see, running straight into a 403/404 (PR #431 review,
+        // nit 5).
+        selectedLibraryId: editable.some((l) => l.id === s.selectedLibraryId)
+          ? s.selectedLibraryId
+          : null,
+      }))
     } catch {
-      set({ libraries: [], librariesLoading: false })
+      set({ libraries: [], librariesLoading: false, selectedLibraryId: null })
     }
   },
 

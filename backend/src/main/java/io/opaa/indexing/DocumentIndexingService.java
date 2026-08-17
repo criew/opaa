@@ -70,10 +70,24 @@ public class DocumentIndexingService {
    * (400, German message - #419 deliberately has no default), must resolve to a library in the
    * caller's own organization (otherwise 404, indistinguishable from a library that does not exist
    * at all - the organization boundary must not leak even that much), and the caller must hold at
-   * least {@link io.opaa.library.AssetRole#EDITOR} on it (otherwise 403). System admins still
-   * bypass the role check, exactly as {@link LibraryAccessService#effectiveRole} already does for
-   * every other library operation - the {@code SYSTEM_ADMIN} requirement on {@code POST
-   * /api/v1/indexing/trigger} stays in place alongside this check, not instead of it.
+   * least {@link io.opaa.library.AssetRole#EDITOR} on it (otherwise 403).
+   *
+   * <p><b>Deliberately no blanket system-admin bypass here</b> - unlike most other library
+   * operations. {@code POST /api/v1/indexing/trigger} already requires {@code SYSTEM_ADMIN} via
+   * {@code @PreAuthorize}, so every caller who reaches this method already has that role: bypassing
+   * {@link LibraryAccessService#canEdit} for it as well (i.e. calling it with {@code systemAdmin =
+   * true}, which resolves to {@code AssetRole#OWNER} unconditionally) would make the check
+   * unreachable in practice, not merely lenient - the 403 branch could never fire, and a system
+   * admin without any grant could write a whole directory's worth of documents into a library they
+   * do not own, including another person's private "Meine Dokumente" (PR #431 review, Befund 2).
+   * {@code canEdit} is therefore always called with {@code systemAdmin = false} here, so the real
+   * grant/visibility formula decides - the one exception is {@link
+   * KnowledgeLibrary#isSystemLibrary() the system library} itself: it is seeded with no owner and
+   * no grants (migration 012), so under the ordinary formula literally nobody - not even a system
+   * admin - could ever target it, which would silently strand the one path that still writes there
+   * today (see {@code FileProcessingService}'s Javadoc). A system admin may therefore target the
+   * system library without an explicit grant; every other library needs a real {@code EDITOR} grant
+   * or organization-wide visibility, admin status notwithstanding.
    */
   private KnowledgeLibrary requireEditableLibrary(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
@@ -94,7 +108,9 @@ public class DocumentIndexingService {
             .orElseThrow(
                 () ->
                     new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
-    if (!libraryAccessService.canEdit(library, currentUserId, systemAdmin)) {
+    boolean systemAdminOnSystemLibrary = systemAdmin && library.isSystemLibrary();
+    if (!systemAdminOnSystemLibrary
+        && !libraryAccessService.canEdit(library, currentUserId, false)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return library;
