@@ -1,5 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import type {
+  AssetGrantRequest,
+  AssetGrantResponse,
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
@@ -369,6 +371,38 @@ export async function uploadDocument(
 export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getLibraryGrants(libraryId: string): Promise<AssetGrantResponse[]> {
+  try {
+    const { data } = await client.get<AssetGrantResponse[]>(`/v1/libraries/${libraryId}/grants`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function upsertLibraryGrant(
+  libraryId: string,
+  request: AssetGrantRequest,
+): Promise<AssetGrantResponse> {
+  try {
+    const { data } = await client.post<AssetGrantResponse>(
+      `/v1/libraries/${libraryId}/grants`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function revokeLibraryGrant(libraryId: string, grantId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/grants/${grantId}`)
   } catch (err) {
     normalizeError(err)
   }

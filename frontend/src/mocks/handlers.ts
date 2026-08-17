@@ -15,10 +15,14 @@ import {
   mockLibraries,
   mockLibraryDetails,
   mockLibraryDocuments,
+  mockLibraryGrants,
   mockMyGroups,
   resetMockLibraryDocuments,
+  resetMockLibraryGrants,
 } from './fixtures'
 import type {
+  AssetGrantRequest,
+  AssetRole,
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
@@ -37,6 +41,21 @@ const documentPollCounts = new Map<string, number>()
 export function resetDocumentMockState() {
   documentPollCounts.clear()
   resetMockLibraryDocuments()
+}
+
+export function resetGrantMockState() {
+  resetMockLibraryGrants()
+}
+
+const ASSET_ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
+
+/**
+ * Mirrors AssetGrantService#requireManageable: every grants endpoint requires at least MANAGER on
+ * the library, distinct from canManageMockLibrary's EDITOR threshold for documents.
+ */
+function canManageMockLibraryGrants(libraryId: string): boolean {
+  const role = mockLibraryDetails[libraryId]?.myRole
+  return role === 'MANAGER' || role === 'OWNER'
 }
 
 /**
@@ -629,6 +648,99 @@ export const handlers = [
     if (detail && (detail.documentCount ?? 0) > 0) {
       detail.documentCount = (detail.documentCount ?? 0) - 1
     }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId/grants', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibraryGrants(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    return HttpResponse.json(mockLibraryGrants[libraryId] ?? [])
+  }),
+
+  http.post('/api/v1/libraries/:libraryId/grants', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibraryGrants(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    // Mirrors KnowledgeLibraryService/AssetGrantService#upsertGrant: no grants on the personal
+    // library, which is meant to reach only its owner.
+    if (library.personal) {
+      return HttpResponse.json(
+        { error: 'Auf die persoenliche Bibliothek koennen keine Berechtigungen vergeben werden' },
+        { status: 400 },
+      )
+    }
+    const body = (await request.json()) as AssetGrantRequest
+    if (!body.subjectType || !body.subjectId || !body.role) {
+      return HttpResponse.json(
+        { error: 'subjectType, subjectId und role sind erforderlich' },
+        { status: 400 },
+      )
+    }
+    // Mirrors AssetGrantService's escalation guard: the caller may never grant a role higher than
+    // their own.
+    const callerRoleIndex = ASSET_ROLE_ORDER.indexOf(library.myRole)
+    const requestedRoleIndex = ASSET_ROLE_ORDER.indexOf(body.role)
+    if (requestedRoleIndex > callerRoleIndex) {
+      return HttpResponse.json(
+        { error: `Die eigene Rolle reicht nicht aus, um die Rolle ${body.role} zu vergeben` },
+        { status: 403 },
+      )
+    }
+    const now = new Date().toISOString()
+    const existing = mockLibraryGrants[libraryId] ?? []
+    const existingIndex = existing.findIndex(
+      (grant) => grant.subjectType === body.subjectType && grant.subjectId === body.subjectId,
+    )
+    if (existingIndex >= 0) {
+      const updated = {
+        ...existing[existingIndex],
+        role: body.role,
+        expiresAt: body.expiresAt ?? null,
+        updatedAt: now,
+      }
+      existing[existingIndex] = updated
+      mockLibraryGrants[libraryId] = existing
+      return HttpResponse.json(updated)
+    }
+    const created = {
+      id: `grant-${crypto.randomUUID().slice(0, 8)}`,
+      subjectType: body.subjectType,
+      subjectId: body.subjectId,
+      role: body.role,
+      expiresAt: body.expiresAt ?? null,
+      grantedByUserId: mockUser.id,
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockLibraryGrants[libraryId] = [...existing, created]
+    return HttpResponse.json(created)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/grants/:grantId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const grantId = String(params.grantId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibraryGrants(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    const existing = mockLibraryGrants[libraryId] ?? []
+    const idx = existing.findIndex((grant) => grant.id === grantId)
+    if (idx < 0) {
+      return HttpResponse.json({ error: 'Berechtigung nicht gefunden' }, { status: 404 })
+    }
+    existing.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })
   }),
 

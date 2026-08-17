@@ -1,4 +1,5 @@
 import type {
+  AssetGrantResponse,
   HealthResponse,
   IndexingStatusResponse,
   LibraryListResponse,
@@ -565,6 +566,52 @@ export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
 
 export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+}
+
+const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
+  'library-referat-50': [
+    {
+      id: 'grant-referat-50-group',
+      subjectType: 'GROUP',
+      subjectId: 'group-phoenix',
+      role: 'VIEWER',
+      expiresAt: null,
+      grantedByUserId: 'mock-user-id',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'grant-referat-50-user-future',
+      subjectType: 'USER',
+      subjectId: 'owner-1',
+      role: 'EDITOR',
+      expiresAt: '2099-12-31T23:59:59.999Z',
+      grantedByUserId: 'mock-user-id',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'grant-referat-50-user-expired',
+      subjectType: 'USER',
+      subjectId: 'curator-1',
+      role: 'VIEWER',
+      expiresAt: '2020-01-01T00:00:00.000Z',
+      grantedByUserId: 'mock-user-id',
+      createdAt: '2025-01-01T10:00:00Z',
+      updatedAt: '2025-01-01T10:00:00Z',
+    },
+  ],
+  'library-personal': [],
+  'library-dienstanweisungen': [],
+}
+
+// Mutable copy, mirroring the mockLibraryDocuments pattern above - handlers.ts reads and writes
+// this on GET/POST/DELETE, reset between tests via resetMockLibraryGrants().
+export let mockLibraryGrants: Record<string, AssetGrantResponse[]> =
+  structuredClone(INITIAL_LIBRARY_GRANTS)
+
+export function resetMockLibraryGrants() {
+  mockLibraryGrants = structuredClone(INITIAL_LIBRARY_GRANTS)
 }
 
 export const mockUsers: UserInfo[] = [

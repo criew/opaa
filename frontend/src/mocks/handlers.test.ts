@@ -175,4 +175,109 @@ describe('MSW Handlers', () => {
       expect(data.error).toMatch(/kein zugriff/i)
     })
   })
+
+  describe('/api/v1/libraries/:libraryId/grants', () => {
+    // MANAGER on this fixture (fixtures.ts) - the minimum role the grants endpoints require.
+    const managerLibraryId = 'library-referat-50'
+    // VIEWER on this fixture - below the MANAGER threshold the grants endpoints require.
+    const viewerLibraryId = 'library-dienstanweisungen'
+    // OWNER but personal=true - AssetGrantService#upsertGrant rejects new/updated grants on the
+    // personal library unconditionally.
+    const personalLibraryId = 'library-personal'
+
+    it('lists the grants of a library the caller manages', async () => {
+      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      expect(response.status).toBe(200)
+      const data = await response.json()
+      expect(Array.isArray(data)).toBe(true)
+      expect(data.length).toBeGreaterThan(0)
+    })
+
+    it('returns 403 when listing grants with only VIEWER on the library', async () => {
+      const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/grants`)
+      expect(response.status).toBe(403)
+      const data = await response.json()
+      expect(data.error).toMatch(/kein zugriff/i)
+    })
+
+    it('returns 404 for an unknown library', async () => {
+      const response = await fetch('/api/v1/libraries/does-not-exist/grants')
+      expect(response.status).toBe(404)
+    })
+
+    it('creates a grant and is idempotent per subject, replacing role and expiry', async () => {
+      const requestBody = {
+        subjectType: 'USER',
+        subjectId: 'owner-2',
+        role: 'VIEWER',
+        expiresAt: null,
+      }
+      const createResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+      expect(createResponse.status).toBe(200)
+      const created = await createResponse.json()
+      expect(created.role).toBe('VIEWER')
+
+      const updateResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...requestBody, role: 'EDITOR' }),
+      })
+      expect(updateResponse.status).toBe(200)
+      const updated = await updateResponse.json()
+      expect(updated.id).toBe(created.id)
+      expect(updated.role).toBe('EDITOR')
+
+      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const list = (await listResponse.json()) as { id: string; subjectId: string }[]
+      expect(list.filter((grant) => grant.subjectId === 'owner-2')).toHaveLength(1)
+    })
+
+    it('rejects a grant on the personal library', async () => {
+      const response = await fetch(`/api/v1/libraries/${personalLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectType: 'USER', subjectId: 'owner-1', role: 'VIEWER' }),
+      })
+      expect(response.status).toBe(400)
+      const data = await response.json()
+      expect(data.error).toMatch(/persoenliche bibliothek/i)
+    })
+
+    it('rejects granting a role higher than the caller holds', async () => {
+      // The caller only has MANAGER on this fixture - requesting OWNER must be capped, mirroring
+      // AssetGrantService's escalation guard.
+      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectType: 'USER', subjectId: 'owner-1', role: 'OWNER' }),
+      })
+      expect(response.status).toBe(403)
+    })
+
+    it('revokes a grant', async () => {
+      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const [firstGrant] = (await listResponse.json()) as { id: string }[]
+
+      const deleteResponse = await fetch(
+        `/api/v1/libraries/${managerLibraryId}/grants/${firstGrant.id}`,
+        { method: 'DELETE' },
+      )
+      expect(deleteResponse.status).toBe(204)
+
+      const afterResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const after = (await afterResponse.json()) as { id: string }[]
+      expect(after.some((grant) => grant.id === firstGrant.id)).toBe(false)
+    })
+
+    it('returns 404 when revoking an unknown grant', async () => {
+      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants/does-not-exist`, {
+        method: 'DELETE',
+      })
+      expect(response.status).toBe(404)
+    })
+  })
 })

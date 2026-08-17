@@ -22,6 +22,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { assetRoleLabel, libraryVisibilityLabel } from '../utils/labels'
 import CreateLibraryDialog from '../components/CreateLibraryDialog'
+import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 const personalLibraryVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED']
@@ -49,6 +50,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
   const [expanded, setExpanded] = useState(false)
+  const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
   const [draft, setDraft] = useState<{
     libraryId: string | null
     name: string
@@ -241,6 +243,9 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
               >
                 Speichern
               </Button>
+              <Button variant="outlined" size="small" onClick={() => setGrantsDialogOpen(true)}>
+                Rechte verwalten
+              </Button>
               {canDelete && (
                 <Button
                   color="error"
@@ -269,6 +274,13 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
           )}
         </Stack>
       </AccordionDetails>
+      {canEdit && (
+        <LibraryGrantsDialog
+          open={grantsDialogOpen}
+          library={{ id: library.id, name: library.name }}
+          onClose={() => setGrantsDialogOpen(false)}
+        />
+      )}
     </Accordion>
   )
 }

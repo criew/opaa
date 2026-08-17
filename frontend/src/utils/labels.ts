@@ -4,6 +4,7 @@ import type {
   DocumentStatus,
   GroupKind,
   LibraryVisibility,
+  PermissionSubjectType,
   SpaceRole,
 } from '../types/api'
 import type { AccessLevel } from '../types/chat'
@@ -60,6 +61,34 @@ const assetRoleLabels: Record<AssetRole, string> = {
 export function assetRoleLabel(role: AssetRole | string | undefined): string {
   if (!role) return ''
   return assetRoleLabels[role as AssetRole] ?? role
+}
+
+// One sentence per role, mirroring the graded ranking documented on the AssetRole schema in
+// opaa-api.yaml (VIEWER < EDITOR < MANAGER < OWNER, deliberately separate from SpaceRole) - each
+// additionally implies everything the role below it already permits, so every sentence below
+// starts with "zusätzlich" except VIEWER's, which is the baseline a grant can carry.
+const assetRoleDescriptions: Record<AssetRole, string> = {
+  VIEWER: 'Darf die Bibliothek benutzen und ihren Inhalt einsehen.',
+  EDITOR: 'Darf zusätzlich Dokumente ändern, hochladen und entfernen.',
+  MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Bibliothek ändern.',
+  OWNER: 'Darf zusätzlich die Bibliothek löschen und das Eigentum übertragen.',
+}
+
+export function assetRoleDescription(role: AssetRole | string | undefined): string {
+  if (!role) return ''
+  return assetRoleDescriptions[role as AssetRole] ?? ''
+}
+
+const permissionSubjectTypeLabels: Record<PermissionSubjectType, string> = {
+  USER: 'Person',
+  GROUP: 'Gruppe',
+}
+
+export function permissionSubjectTypeLabel(
+  subjectType: PermissionSubjectType | string | undefined,
+): string {
+  if (!subjectType) return ''
+  return permissionSubjectTypeLabels[subjectType as PermissionSubjectType] ?? subjectType
 }
 
 const documentStatusLabels: Record<DocumentStatus, string> = {

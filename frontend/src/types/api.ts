@@ -58,6 +58,10 @@ export type DocumentStatus = components['schemas']['DocumentStatus']
 export type DocumentSourceType = components['schemas']['DocumentSourceType']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
 
+export type PermissionSubjectType = components['schemas']['PermissionSubjectType']
+export type AssetGrantRequest = components['schemas']['AssetGrantRequest']
+export type AssetGrantResponse = components['schemas']['AssetGrantResponse']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&
