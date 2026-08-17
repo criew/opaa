@@ -1,5 +1,8 @@
 package io.opaa.audit;
 
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +43,41 @@ public class AuditRetentionDeletionService {
     if (!droppedPartitions.isEmpty()) {
       log.info("Audit-Aufbewahrung: Partitionen entfernt: {}", droppedPartitions);
     }
+    logForwardOnlyCapGapIfAny();
     return droppedPartitions;
+  }
+
+  /**
+   * Code review of #454, nit 2: the forward-only cap (migration 023's own comment on {@code
+   * opaa_audit_delete_expired_partitions()}) means a drastic shortening only reaches its configured
+   * target gradually, one calendar month per run - with nothing logging that gap, the configured
+   * value looks effective immediately while it is not. Compares the configured retention's target
+   * cutoff against the actually reached {@code last_cutoff} after this run and logs at INFO when
+   * they still differ, so operations can see "configured for 36 months, only effective from X for
+   * now" instead of assuming the just-changed value already applies in full.
+   */
+  private void logForwardOnlyCapGapIfAny() {
+    repository
+        .findSingleton()
+        .ifPresent(
+            settings -> {
+              Instant lastCutoff = settings.getLastCutoff();
+              if (lastCutoff == null) {
+                return;
+              }
+              YearMonth targetMonth =
+                  YearMonth.now(ZoneOffset.UTC).minusMonths(settings.getRetentionMonths());
+              YearMonth reachedMonth = YearMonth.from(lastCutoff.atZone(ZoneOffset.UTC));
+              if (reachedMonth.isBefore(targetMonth)) {
+                log.info(
+                    "Audit-Aufbewahrung: konfigurierte Frist ({} Monate, Ziel-Stichtag {}) ist"
+                        + " noch nicht vollstaendig wirksam - der Loeschfortschritt (\"wirkt nur"
+                        + " nach vorn\") steht aktuell bei {} und rueckt hoechstens einen"
+                        + " Kalendermonat je Lauf weiter vor",
+                    settings.getRetentionMonths(),
+                    targetMonth,
+                    reachedMonth);
+              }
+            });
   }
 }

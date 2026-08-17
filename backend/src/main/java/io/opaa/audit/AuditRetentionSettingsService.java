@@ -85,11 +85,19 @@ public class AuditRetentionSettingsService {
               + newRetentionMonths);
     }
 
-    AuditRetentionSettings settings = settingsRow();
-    int previousRetentionMonths = settings.getRetentionMonths();
-    settings.setRetentionMonths(newRetentionMonths);
-    settings.setUpdatedAt(java.time.Instant.now());
-    repository.save(settings);
+    int previousRetentionMonths = settingsRow().getRetentionMonths();
+    // Deliberately not repository.save() on the read-only AuditRetentionSettings entity - see
+    // AuditRetentionSettingsRepository#updateRetentionMonths's own Javadoc for why a
+    // dirty-checked JPA save would fail against the real, restricted database grant.
+    int updatedRows = repository.updateRetentionMonths(newRetentionMonths);
+    if (updatedRows != 1) {
+      throw new IllegalStateException(
+          "audit_retention_settings update affected "
+              + updatedRows
+              + " rows, expected exactly 1 - the singleton row (id="
+              + AuditRetentionSettings.SINGLETON_ID
+              + ") is missing");
+    }
 
     boolean inconsistent = isInconsistentWithContentRetention(newRetentionMonths);
     if (inconsistent) {

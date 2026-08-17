@@ -8,6 +8,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import liquibase.Contexts;
 import liquibase.Liquibase;
 import liquibase.database.Database;
@@ -136,7 +138,11 @@ class Migration023AuditRetentionTest {
   // zehn Jahren wird abgewiesen") ---
 
   @Test
-  void theDefaultRetentionIsThreeYears() throws Exception {
+  void theDefaultRetentionIsThreeYearsAndTheForwardOnlyBaselineIsAlreadySeeded() throws Exception {
+    // Code review of #454, finding 3: last_cutoff/last_run_month must not be NULL after the
+    // migration - a NULL baseline let the very first call after this migration adopt an uncapped
+    // candidate cutoff, defeating "wirkt nur nach vorn" until the second call. Seeding the same
+    // 36-month baseline this changeSet's own default configures closes that gap from the start.
     try (Statement statement = bootstrapConnection.createStatement();
         ResultSet result =
             statement.executeQuery(
@@ -144,8 +150,14 @@ class Migration023AuditRetentionTest {
                     + " FROM audit_retention_settings WHERE id = 1")) {
       assertThat(result.next()).isTrue();
       assertThat(result.getInt("retention_months")).isEqualTo(36);
-      assertThat(result.getObject("last_cutoff")).isNull();
-      assertThat(result.getObject("last_run_month")).isNull();
+      Timestamp lastCutoff = result.getTimestamp("last_cutoff");
+      LocalDate lastRunMonth = result.getDate("last_run_month").toLocalDate();
+      assertThat(lastCutoff).as("last_cutoff must be seeded, not NULL").isNotNull();
+      assertThat(lastRunMonth).as("last_run_month must be seeded, not NULL").isNotNull();
+      assertThat(lastRunMonth.getDayOfMonth()).isEqualTo(1);
+      assertThat(lastRunMonth).isEqualTo(java.time.YearMonth.now().atDay(1));
+      assertThat(lastCutoff.toLocalDateTime().toLocalDate())
+          .isEqualTo(java.time.YearMonth.now().minusMonths(36).atDay(1));
     }
   }
 
@@ -207,6 +219,30 @@ class Migration023AuditRetentionTest {
     }
   }
 
+  /**
+   * Code review of #454, finding 2: {@code JpaRepository#save} on a dirty-checked entity writes
+   * every mapped column, not just the one that logically changed - this is exactly the statement a
+   * naive {@code save(settings)} would have issued, and it must fail against the real, restricted
+   * grant (it did, in production, before {@code
+   * AuditRetentionSettingsRepository#updateRetentionMonths} replaced the {@code save} call). The
+   * red half of the reproduction AGENTS.md requires; {@link
+   * #theApplicationAccountCanUpdateTheRetentionMonths()} above is the green half - the narrower
+   * statement the fix actually issues.
+   */
+  @Test
+  void theNaiveMultiColumnUpdateAHibernateDirtyCheckedSaveWouldIssueIsRejected() throws Exception {
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute(
+                    "UPDATE audit_retention_settings SET retention_months = 24, last_cutoff ="
+                        + " NULL, last_run_month = NULL, updated_at = now() WHERE id = 1");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+  }
+
   @Test
   void theApplicationAccountCannotWriteLastCutoffDirectly() throws Exception {
     assertThatThrownBy(
@@ -257,7 +293,12 @@ class Migration023AuditRetentionTest {
   @Test
   void theApplicationAccountCanCallTheDeletionFunctionAndItDropsAFullyExpiredPartition()
       throws Exception {
-    String oldPartition = attachSyntheticPartitionMonthsAgo(20);
+    // Older than the migration's own seeded 36-month baseline (finding 3's fix): on the very
+    // first call (elapsed_months = 0 since seeding), a shortened retention_months is still capped
+    // to that baseline, so only a partition already older than 36 months is guaranteed to drop
+    // here regardless of the configured value - see the dedicated forward-only-cap tests below
+    // for the shortening behaviour itself.
+    String oldPartition = attachSyntheticPartitionMonthsAgo(40);
     setRetentionMonths(12);
 
     try (Statement statement = appConnection.createStatement()) {
@@ -303,8 +344,10 @@ class Migration023AuditRetentionTest {
   @Test
   void repeatedCallsWithinTheSameMonthCannotAdvanceTheCutoffFurtherThanASingleCall()
       throws Exception {
-    // 121 months ago is already past even the maximum 120-month (10-year) retention, so the very
-    // first call adopts candidate_cutoff uncapped (last_cutoff was NULL) and drops it.
+    // 121 months ago is already past even the maximum 120-month (10-year) retention. Setting
+    // retention to 120 here is a *lengthening* relative to the migration's own seeded 36-month
+    // baseline - lengthening is never capped (it only ever protects more, never deletes faster),
+    // so the very first call drops it regardless of the seeded baseline.
     String veryOldPartition = attachSyntheticPartitionMonthsAgo(121);
     // 13 months ago is within the still-configured 120-month retention right now, so it survives
     // the first call, and must still survive several more calls made in immediate succession
@@ -332,6 +375,75 @@ class Migration023AuditRetentionTest {
                 + " 12-month floor - the cutoff may only advance as far as real elapsed time"
                 + " allows, not once per call")
         .isTrue();
+  }
+
+  /**
+   * Code review of #454, finding 3 - the regression test: before this fix, the migration seeded
+   * {@code last_cutoff}/{@code last_run_month} as {@code NULL}, so a retention shortened *before*
+   * the very first call to the function was applied fully retroactively (the {@code IS NULL} branch
+   * adopts {@code candidate_cutoff} uncapped). Seeding the same baseline the migration's own
+   * default configures means the cap already applies on this first call: a partition 13 months old
+   * must survive a shortening to the 12-month floor made immediately after the migration, with no
+   * prior call to the function at all.
+   */
+  @Test
+  void aRetentionShortenedBeforeTheVeryFirstCallIsStillCappedByTheSeededBaseline()
+      throws Exception {
+    String thirteenMonthsAgo = attachSyntheticPartitionMonthsAgo(13);
+
+    setRetentionMonths(12);
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute("SELECT * FROM opaa_audit_delete_expired_partitions()");
+    }
+
+    assertThat(partitionExists(thirteenMonthsAgo))
+        .as(
+            "a 13-month-old partition must survive a retention shortened to 12 months immediately"
+                + " after the migration, before any prior call to the deletion function ever ran")
+        .isTrue();
+  }
+
+  /**
+   * Code review of #454, finding 1 - the regression test for the {@code pg_temp} shadowing attack:
+   * the application account creates a temporary table with the same name as the real settings
+   * table, seeds it with an out-of-bounds retention (no {@code CHECK} constraint applies to a
+   * session-local temp table) and a {@code NULL} baseline, then calls the deletion function. Before
+   * the {@code search_path}/schema-qualification fix, the function resolved the unqualified table
+   * name against this shadow row and deleted far more than the real, database-enforced 36-month
+   * default would ever allow. After the fix, the function must ignore the shadow table entirely and
+   * use the real row - a partition well within the real 36-month default must survive, and the real
+   * row's own {@code retention_months} must remain untouched.
+   */
+  @Test
+  void theApplicationAccountCannotShadowTheSettingsTableWithATemporaryTableOfTheSameName()
+      throws Exception {
+    String recentPartition = attachSyntheticPartitionMonthsAgo(2);
+
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute(
+          "CREATE TEMP TABLE audit_retention_settings (id integer PRIMARY KEY,"
+              + " retention_months integer, last_cutoff timestamptz, last_run_month date,"
+              + " updated_at timestamptz)");
+      statement.execute("INSERT INTO audit_retention_settings VALUES (1, 1, NULL, NULL, now())");
+      statement.execute("GRANT ALL ON pg_temp.audit_retention_settings TO opaa_audit_owner");
+      statement.execute("SELECT * FROM opaa_audit_delete_expired_partitions()");
+    }
+
+    assertThat(partitionExists(recentPartition))
+        .as(
+            "a partition well within the real 36-month default must survive - the function must"
+                + " never resolve audit_retention_settings against a same-named temp table the"
+                + " application account created")
+        .isTrue();
+    try (Statement statement = appConnection.createStatement();
+        ResultSet result =
+            statement.executeQuery(
+                "SELECT retention_months FROM public.audit_retention_settings WHERE id = 1")) {
+      result.next();
+      assertThat(result.getInt(1))
+          .as("the real, database-owned settings row must be untouched by the shadow attack")
+          .isEqualTo(36);
+    }
   }
 
   private String attachSyntheticPartitionMonthsAgo(int monthsAgo) throws SQLException {

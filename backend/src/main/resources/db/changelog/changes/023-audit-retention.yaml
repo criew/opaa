@@ -93,11 +93,26 @@ databaseChangeLog:
                   CHECK (retention_months BETWEEN 12 AND 120)
               );
         - sql:
-            comment: "The specification's default: 3 years (docs/features/security-and-compliance.md#aufbewahrung)."
+            comment: >
+              The specification's default: 3 years
+              (docs/features/security-and-compliance.md#aufbewahrung). last_cutoff/last_run_month
+              are seeded here too, not left NULL (code review of #454, finding 3): the deletion
+              function's forward-only cap (see that function's own comment) only holds once a
+              baseline exists to advance from - a NULL baseline made the very first call after this
+              migration adopt an uncapped candidate cutoff, so a retention shortened before that
+              first call still deleted retroactively. Seeding the same 36-month baseline this
+              changeSet's own default configures means the cap applies from the first call onward,
+              never only from the second. The safe direction for an existing installation is to
+              retain slightly longer at first, never to delete early.
             sql: >
               INSERT INTO audit_retention_settings
                 (id, retention_months, last_cutoff, last_run_month, updated_at)
-              VALUES (1, 36, NULL, NULL, now());
+              VALUES (
+                1, 36,
+                date_trunc('month', now()) - interval '36 months',
+                date_trunc('month', now())::date,
+                now()
+              );
         - sql:
             sql: "REVOKE ALL ON TABLE audit_retention_settings FROM PUBLIC;"
         - sql:
@@ -197,6 +212,20 @@ databaseChangeLog:
         lies at or before the computed cutoff; a partition whose name does not match the pattern is
         silently left alone rather than guessed at.
 
+        **search_path hardening (code review of #454, finding 1, confirmed empirically):** `SET
+        search_path = public` alone leaves `pg_temp` searched *before* `public` (Postgres's own
+        "Writing SECURITY DEFINER Functions Safely" guidance: the temporary schema is implicitly
+        searched second, and is writable by anyone) - the application account could `CREATE TEMP
+        TABLE audit_retention_settings (...)` with an out-of-bounds retention_months and a NULL
+        last_cutoff, and this function would resolve the unqualified table name against that shadow
+        row instead of the real one, defeating both the 12..120 floor/ceiling and the forward-only
+        cap in a single call while leaving the real configuration untouched. Fixed by listing
+        `pg_temp` explicitly and *last* (`SET search_path = pg_catalog, public, pg_temp`) and
+        schema-qualifying every object this function touches (`public.audit_retention_settings`,
+        `'public.audit_log'::regclass`) rather than relying on search_path resolution for them at
+        all - belt and braces, verified against the same shadow-table attack in
+        Migration023AuditRetentionTest.
+
         The function is created while still owned by current_user (the application/migration
         account, which already holds CREATE on schema public), and ownership moves to
         opaa_audit_owner **before** its EXECUTE grant and REVOKE-from-PUBLIC run - not after, and
@@ -219,7 +248,7 @@ databaseChangeLog:
               RETURNS SETOF text
               LANGUAGE plpgsql
               SECURITY DEFINER
-              SET search_path = public
+              SET search_path = pg_catalog, public, pg_temp
               AS $fn$
               DECLARE
                 cfg RECORD;
@@ -231,7 +260,11 @@ databaseChangeLog:
                 partition_month date;
               BEGIN
                 SELECT retention_months, last_cutoff, last_run_month INTO cfg
-                FROM audit_retention_settings WHERE id = 1 FOR UPDATE;
+                FROM public.audit_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'audit_retention_settings has no row with id=1 - migration 023 should have seeded it; refusing to silently skip retention deletion';
+                END IF;
 
                 candidate_cutoff := current_month
                   - (cfg.retention_months::text || ' months')::interval;
@@ -251,8 +284,8 @@ databaseChangeLog:
                 FOR rec IN
                   SELECT inhrelid::regclass AS partition_rel,
                          inhrelid::regclass::text AS partition_name
-                  FROM pg_inherits
-                  WHERE inhparent = 'audit_log'::regclass
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'public.audit_log'::regclass
                 LOOP
                   partition_month := to_date(
                     substring(rec.partition_name from 'audit_log_(\d{4}_\d{2})$'), 'YYYY_MM');
@@ -263,7 +296,7 @@ databaseChangeLog:
                   END IF;
                 END LOOP;
 
-                UPDATE audit_retention_settings
+                UPDATE public.audit_retention_settings
                 SET last_cutoff = new_cutoff, last_run_month = current_month
                 WHERE id = 1;
 
