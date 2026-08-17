@@ -16,6 +16,11 @@ import java.util.UUID;
  * fk_audit_actor_pseudonyms_user} (migration 017) is {@code ON DELETE CASCADE}, so that removal
  * happens automatically at the database level rather than depending on application code remembering
  * to do it.
+ *
+ * <p>Rows are only ever created via {@link AuditActorPseudonymRepository#insertIfAbsent}'s native
+ * {@code INSERT ... ON CONFLICT} query, never through this entity's constructor - so there is
+ * deliberately no public constructor beyond the protected no-arg one JPA needs to hydrate rows it
+ * reads back.
  */
 @Entity
 @Table(name = "audit_actor_pseudonyms")
@@ -35,13 +40,6 @@ public class AuditActorPseudonym {
   private Instant createdAt;
 
   protected AuditActorPseudonym() {}
-
-  public AuditActorPseudonym(UUID userId, UUID organizationId) {
-    this.pseudonymId = UUID.randomUUID();
-    this.userId = userId;
-    this.organizationId = organizationId;
-    this.createdAt = Instant.now();
-  }
 
   public UUID getPseudonymId() {
     return pseudonymId;

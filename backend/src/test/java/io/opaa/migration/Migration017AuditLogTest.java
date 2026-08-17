@@ -3,13 +3,18 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.audit.ActorKind;
 import io.opaa.audit.AuditEventType;
 import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -34,23 +39,24 @@ import org.testcontainers.utility.DockerImageName;
  * pre-migration fixture.
  *
  * <p><b>Why the changelog is applied as a dedicated, non-superuser role ({@code AUDIT_APP_ROLE}),
- * not as the container's bootstrap account:</b> 017's last changeSet revokes privileges from {@code
- * current_user} - the role whose JDBC connection is executing the changelog at that point (see that
- * changeSet's comment for why: this project runs Liquibase and the application under the same
- * database role, so the two are one and the same account by design). Testcontainers' {@code
- * PostgreSQLContainer} bootstrap account is a Postgres superuser, and a superuser bypasses every
- * ACL check unconditionally - {@code REVOKE} against a superuser is a structural no-op, not a bug
- * in the changeSet. Running the changelog as {@code AUDIT_APP_ROLE} instead - an ordinary role
- * created here with just the privileges migrations actually need (schema {@code CREATE}, {@code
- * REFERENCES} on the two tables it adds foreign keys to) - exercises the changeSet exactly the way
- * a correctly hardened production deployment would (a non-superuser application account), which is
- * the only way this changeSet's effect can be observed at all.
+ * not as the container's bootstrap account:</b> 017's last changeSet transfers ownership away from
+ * {@code current_user} - the role whose JDBC connection is executing the changelog at that point
+ * (see that changeSet's comment and ADR-0015 for why: this project runs Liquibase and the
+ * application under the same database role, so the two are one and the same account by design).
+ * Testcontainers' {@code PostgreSQLContainer} bootstrap account is a Postgres superuser, and a
+ * superuser bypasses every ownership and ACL check unconditionally - none of this changeSet's
+ * effect would be observable against it. Running the changelog as {@code AUDIT_APP_ROLE} instead -
+ * an ordinary role created here with just the privileges migrations actually need (schema {@code
+ * CREATE}, {@code REFERENCES} on the two tables it adds foreign keys to, and {@code CREATEROLE} to
+ * create {@code opaa_audit_owner} - see ADR-0015) - exercises the changeSet exactly the way a
+ * correctly hardened production deployment would.
  *
  * <p>The gap this leaves - that the project's own shipped {@code docker-compose.yml} still
- * bootstraps its single Postgres account as a superuser, under which this protection would
- * currently be inert - is filed as #426; it is not something a single migration file can fix
- * without risking the rest of the schema's setup (extension creation, ownership of every other
- * table), which is why it is intentionally out of scope here.
+ * bootstraps its single Postgres account as a superuser, and that a hardened deployment should not
+ * leave {@code CREATEROLE} on the runtime account indefinitely - is filed as #426 (updated per
+ * ADR-0015's review); it is not something a single migration file can fix without risking the rest
+ * of the schema's setup (extension creation, ownership of every other table), which is why it is
+ * intentionally out of scope here.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class Migration017AuditLogTest {
@@ -62,6 +68,7 @@ class Migration017AuditLogTest {
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
   private static final String AUDIT_APP_ROLE = "audit_app_role";
   private static final String AUDIT_APP_ROLE_PASSWORD = "audit_app_role_password";
+  private static final String OWNER_ROLE = "opaa_audit_owner";
 
   /**
    * The full column set of the standard record, per #391 - deliberately excludes any network,
@@ -137,24 +144,39 @@ class Migration017AuditLogTest {
       // unqualified table name in its own CREATE TABLE statement.
       statement.execute("GRANT USAGE ON SCHEMA public TO PUBLIC");
       statement.execute("DROP ROLE IF EXISTS " + AUDIT_APP_ROLE);
+      // opaa_audit_owner owns nothing once the schema above is gone (every table it owned lived in
+      // public), so it can be dropped cleanly here rather than accumulating across test methods
+      // sharing this container.
+      statement.execute("DROP ROLE IF EXISTS " + OWNER_ROLE);
     }
     bootstrapConnection.close();
   }
 
   /**
    * A role with just enough privilege to run migrations that create tables and foreign keys in the
-   * public schema, and nothing more - PostgreSQL 15+ no longer grants CREATE on the public schema
-   * to every role by default, so it must be granted explicitly here. Also needs read/write on
-   * Liquibase's own tracking tables ({@code databasechangelog}/{@code databasechangeloglock}):
-   * those were created and are owned by the bootstrap connection when the fixture changelog ({@code
-   * test-master-through-016.yaml}) ran, and Liquibase reads and appends to the very same tables -
-   * not per-role copies - when applying 017 on the second connection.
+   * public schema, plus {@code CREATEROLE} - needed to create {@code opaa_audit_owner} and grant
+   * itself temporary membership in it (see ADR-0015 and 017-restrict-audit-log-privileges) - and
+   * nothing more. PostgreSQL 15+ no longer grants {@code CREATE} on the public schema to every role
+   * by default, so it must be granted explicitly here, and {@code WITH GRANT OPTION}: {@code ALTER
+   * TABLE ... OWNER TO opaa_audit_owner} requires the new owner itself to hold {@code CREATE} on
+   * the schema (membership in a role that holds it is not enough), so the migration re-grants
+   * {@code CREATE} to the role it just created - which needs the grantor to hold the option, not
+   * just the privilege. Also needs read/write on Liquibase's own tracking tables ({@code
+   * databasechangelog}/{@code databasechangeloglock}): those were created and are owned by the
+   * bootstrap connection when the fixture changelog ({@code test-master-through-016.yaml}) ran, and
+   * Liquibase reads and appends to the very same tables - not per-role copies - when applying 017
+   * on the second connection.
    */
   private void createNonSuperuserApplicationRole() throws SQLException {
     try (Statement statement = bootstrapConnection.createStatement()) {
       statement.execute(
-          "CREATE ROLE " + AUDIT_APP_ROLE + " LOGIN PASSWORD '" + AUDIT_APP_ROLE_PASSWORD + "'");
-      statement.execute("GRANT CREATE ON SCHEMA public TO " + AUDIT_APP_ROLE);
+          "CREATE ROLE "
+              + AUDIT_APP_ROLE
+              + " LOGIN CREATEROLE PASSWORD '"
+              + AUDIT_APP_ROLE_PASSWORD
+              + "'");
+      statement.execute(
+          "GRANT CREATE ON SCHEMA public TO " + AUDIT_APP_ROLE + " WITH GRANT OPTION");
       statement.execute("GRANT REFERENCES ON organizations TO " + AUDIT_APP_ROLE);
       statement.execute("GRANT REFERENCES ON users TO " + AUDIT_APP_ROLE);
       statement.execute(
@@ -169,11 +191,11 @@ class Migration017AuditLogTest {
     UUID subjectUserPseudonym = UUID.randomUUID();
     try (Statement statement = appConnection.createStatement()) {
       statement.execute(
-          "INSERT INTO audit_log (event_id, organization_id, actor_kind, actor_ref, event_type,"
-              + " object_type, object_id, object_label, subject_kind, subject_ref, before, after,"
-              + " outcome, reason, correlation_ref) VALUES ('"
+          "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
+              + " event_type, object_type, object_id, object_label, subject_kind, subject_ref,"
+              + " before, after, outcome, reason, correlation_ref) VALUES ('"
               + eventId
-              + "', '"
+              + "', now(), '"
               + SEEDED_ORGANIZATION_ID
               + "', 'USER', 'pseud-actor-1', 'ASSET_GRANT_REVOKED', 'KNOWLEDGE_LIBRARY',"
               + " 'lib-personalvorgaenge', 'Personalvorgaenge', 'GROUP', '"
@@ -205,7 +227,7 @@ class Migration017AuditLogTest {
   }
 
   @Test
-  void theApplicationAccountCannotUpdateAWrittenEntry() throws Exception {
+  void theApplicationAccountCannotUpdateAWrittenEntryOnTheParentTable() throws Exception {
     UUID eventId = insertMinimalEntry();
 
     assertThatThrownBy(
@@ -220,7 +242,7 @@ class Migration017AuditLogTest {
   }
 
   @Test
-  void theApplicationAccountCannotDeleteAWrittenEntry() throws Exception {
+  void theApplicationAccountCannotDeleteAWrittenEntryOnTheParentTable() throws Exception {
     UUID eventId = insertMinimalEntry();
 
     assertThatThrownBy(
@@ -234,7 +256,7 @@ class Migration017AuditLogTest {
   }
 
   @Test
-  void theApplicationAccountCannotTruncateTheTable() throws Exception {
+  void theApplicationAccountCannotTruncateTheParentTable() throws Exception {
     insertMinimalEntry();
 
     assertThatThrownBy(
@@ -245,6 +267,188 @@ class Migration017AuditLogTest {
             })
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("permission denied");
+  }
+
+  // --- direct-partition attacks (review finding 1: a parent-table-only REVOKE/GRANT does not
+  // protect a partition addressed by its own name, since every partition carries its own ACL) ---
+
+  @Test
+  void theApplicationAccountCannotUpdateAWrittenEntryDirectlyOnItsPartition() throws Exception {
+    UUID eventId = insertMinimalEntry();
+    String partition = partitionNameOf(eventId);
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute(
+                    "UPDATE "
+                        + partition
+                        + " SET outcome = 'FAILURE' WHERE event_id = '"
+                        + eventId
+                        + "'");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+  }
+
+  @Test
+  void theApplicationAccountCannotDeleteAWrittenEntryDirectlyOnItsPartition() throws Exception {
+    UUID eventId = insertMinimalEntry();
+    String partition = partitionNameOf(eventId);
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute(
+                    "DELETE FROM " + partition + " WHERE event_id = '" + eventId + "'");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+  }
+
+  @Test
+  void theApplicationAccountCannotTruncateAPartitionDirectly() throws Exception {
+    UUID eventId = insertMinimalEntry();
+    String partition = partitionNameOf(eventId);
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("TRUNCATE TABLE " + partition);
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+  }
+
+  // --- ownership attacks (review finding 2: an owner can always undo a plain REVOKE) ---
+
+  /**
+   * "GRANT ALL ... TO <no grant option>" is a Postgres quirk worth calling out: unlike a
+   * single-privilege GRANT, it does not raise a hard error when the grantor holds no grantable
+   * privilege at all - it silently grants nothing and emits a non-fatal {@code WARNING} the JDBC
+   * driver does not surface as an exception. Asserting on the GRANT statement itself would
+   * therefore be asserting on an implementation detail, not on the guarantee that matters: whether
+   * the self-grant attempt actually changed anything. So this test executes the GRANT (ignoring
+   * whatever it does or does not throw) and then re-proves the write restriction directly
+   * afterwards - if the self-grant had worked, this UPDATE would now succeed.
+   */
+  @Test
+  void theApplicationAccountCannotGrantItselfPrivilegesBack() throws Exception {
+    UUID eventId = insertMinimalEntry();
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute("GRANT ALL ON TABLE audit_log TO " + AUDIT_APP_ROLE);
+    } catch (SQLException expectedOrIgnored) {
+      // Either outcome (a hard error or the silent "no privileges granted" warning path) is
+      // acceptable here - what this test actually verifies follows below.
+    }
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute(
+                    "UPDATE audit_log SET outcome = 'FAILURE' WHERE event_id = '" + eventId + "'");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
+  }
+
+  @Test
+  void theApplicationAccountCannotDropACheckConstraint() throws Exception {
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_event_type");
+              }
+            })
+        .isInstanceOf(SQLException.class);
+  }
+
+  @Test
+  void theApplicationAccountCannotDetachAPartition() throws Exception {
+    UUID eventId = insertMinimalEntry();
+    String partition = partitionNameOf(eventId);
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("ALTER TABLE audit_log DETACH PARTITION " + partition);
+              }
+            })
+        .isInstanceOf(SQLException.class);
+  }
+
+  @Test
+  void theApplicationAccountCannotDropTheTable() throws Exception {
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("DROP TABLE audit_log");
+              }
+            })
+        .isInstanceOf(SQLException.class);
+  }
+
+  // --- ownership itself ---
+
+  @Test
+  void theApplicationAccountOwnsNeitherTheParentNorAnyPartitionNorThePseudonymTable()
+      throws Exception {
+    assertThat(ownerOf("audit_log")).isEqualTo(OWNER_ROLE);
+    assertThat(ownerOf("audit_actor_pseudonyms")).isEqualTo(OWNER_ROLE);
+    UUID eventId = insertMinimalEntry();
+    assertThat(ownerOf(partitionNameOf(eventId))).isEqualTo(OWNER_ROLE);
+  }
+
+  /**
+   * PostgreSQL 16 automatically grants a {@code CREATEROLE} role {@code ADMIN OPTION} on a role it
+   * creates the moment {@code CREATE ROLE} runs - a real {@code pg_auth_members} row, attributed to
+   * the database's bootstrap identity as grantor rather than to {@code audit_app_role} itself, and
+   * (empirically, against real Postgres 18) not removable by a plain {@code REVOKE opaa_audit_owner
+   * FROM audit_app_role} issued by {@code audit_app_role}: that statement only revokes grants it
+   * made itself, and this one was not one of them. 017-restrict-audit-log-privileges's explicit
+   * {@code REVOKE} step still matters - it removes the *additional* membership that changeSet
+   * itself granted - but this one automatic side effect of {@code CREATE ROLE} survives it.
+   *
+   * <p>This is documented in ADR-0015 as a known, accepted residual rather than silently ignored,
+   * because it is not the security hole it might look like: the row carries {@code admin_option =
+   * true} but {@code inherit_option = false} and {@code set_option = false}. {@code admin_option}
+   * only lets {@code audit_app_role} manage <em>membership</em> of {@code opaa_audit_owner} (grant
+   * or revoke who else is a member) - it grants no access to objects {@code opaa_audit_owner} owns.
+   * {@code inherit_option = false} means {@code audit_app_role} does not automatically use {@code
+   * opaa_audit_owner}'s privileges, and {@code set_option = false} means it cannot {@code SET ROLE
+   * opaa_audit_owner} to assume its identity either - both verified directly below, alongside every
+   * concrete attack {@code Migration017AuditLogTest}'s other tests attempt.
+   */
+  @Test
+  void theApplicationAccountHasNoWorkingAccessPathToTheOwnerRoleAfterMigration() throws Exception {
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("SET ROLE " + OWNER_ROLE);
+              }
+            })
+        .isInstanceOf(SQLException.class);
+
+    try (Statement statement = bootstrapConnection.createStatement();
+        ResultSet result =
+            statement.executeQuery(
+                "SELECT m.inherit_option, m.set_option FROM pg_auth_members m"
+                    + " JOIN pg_roles owner ON m.roleid = owner.oid"
+                    + " JOIN pg_roles member ON m.member = member.oid"
+                    + " WHERE owner.rolname = '"
+                    + OWNER_ROLE
+                    + "' AND member.rolname = '"
+                    + AUDIT_APP_ROLE
+                    + "'")) {
+      while (result.next()) {
+        assertThat(result.getBoolean("inherit_option")).isFalse();
+        assertThat(result.getBoolean("set_option")).isFalse();
+      }
+    }
   }
 
   @Test
@@ -263,33 +467,71 @@ class Migration017AuditLogTest {
     assertThat(actualColumns).isEqualTo(EXPECTED_COLUMNS);
   }
 
+  // --- partitioning horizon (review finding 3: no DEFAULT partition; a long, fixed horizon
+  // instead) ---
+
   @Test
-  void theTableIsPartitionedByMonthWithAWorkingDefaultPartition() throws Exception {
+  void theTableIsPartitionedByMonthWithALongFixedHorizonAndNoDefaultPartition() throws Exception {
     assertThat(relKind("audit_log")).isEqualTo("p");
-    assertThat(partitionCount()).isGreaterThan(1);
-    assertThat(partitionExists("audit_log_default")).isTrue();
+    assertThat(partitionCount()).isGreaterThanOrEqualTo(190);
+    assertThat(partitionExists("audit_log_default")).isFalse();
+  }
+
+  @Test
+  void aWriteFifteenYearsInTheFutureIsAcceptedWithinTheHorizon() throws Exception {
+    Instant fifteenYearsOut = Instant.now().plus(15 * 365, ChronoUnit.DAYS);
+
+    UUID eventId = insertMinimalEntryAt(fifteenYearsOut);
+
+    try (Statement statement = appConnection.createStatement();
+        ResultSet result =
+            statement.executeQuery(
+                "SELECT count(*) FROM audit_log WHERE event_id = '" + eventId + "'")) {
+      result.next();
+      assertThat(result.getInt(1)).isEqualTo(1);
+    }
+  }
+
+  @Test
+  void aWriteTwentyYearsInTheFutureFailsHardInsteadOfLandingInAnUnreclaimablePartition()
+      throws Exception {
+    Instant twentyYearsOut = Instant.now().plus(20 * 365, ChronoUnit.DAYS);
+
+    assertThatThrownBy(() -> insertMinimalEntryAt(twentyYearsOut))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("no partition of relation");
+  }
+
+  // --- closed-list check constraints match the Java enums exactly (all five, not only two) ---
+
+  @Test
+  void theActorKindCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
+    assertThat(checkConstraintValues("chk_audit_log_actor_kind"))
+        .isEqualTo(enumNames(ActorKind.values()));
+  }
+
+  @Test
+  void theOutcomeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
+    assertThat(checkConstraintValues("chk_audit_log_outcome"))
+        .isEqualTo(enumNames(AuditOutcome.values()));
+  }
+
+  @Test
+  void theSubjectKindCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
+    assertThat(checkConstraintValues("chk_audit_log_subject"))
+        .isEqualTo(enumNames(AuditSubjectKind.values()));
   }
 
   @Test
   void theEventTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
-    Set<String> constraintValues = checkConstraintValues("chk_audit_log_event_type");
-    Set<String> enumValues = new HashSet<>();
-    for (AuditEventType eventType : AuditEventType.values()) {
-      enumValues.add(eventType.name());
-    }
-
-    assertThat(constraintValues).isEqualTo(enumValues);
+    assertThat(checkConstraintValues("chk_audit_log_event_type"))
+        .isEqualTo(enumNames(AuditEventType.values()));
   }
 
   @Test
   void theObjectTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
-    Set<String> constraintValues = checkConstraintValues("chk_audit_log_object_type");
-    Set<String> enumValues = new HashSet<>();
-    for (AuditObjectType objectType : AuditObjectType.values()) {
-      enumValues.add(objectType.name());
-    }
-
-    assertThat(constraintValues).isEqualTo(enumValues);
+    assertThat(checkConstraintValues("chk_audit_log_object_type"))
+        .isEqualTo(enumNames(AuditObjectType.values()));
   }
 
   @Test
@@ -306,10 +548,11 @@ class Migration017AuditLogTest {
             () -> {
               try (Statement statement = bootstrapConnection.createStatement()) {
                 statement.execute(
-                    "INSERT INTO audit_log (event_id, organization_id, actor_kind, actor_ref,"
-                        + " event_type, object_type, object_id, subject_ref, outcome) VALUES ('"
+                    "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind,"
+                        + " actor_ref, event_type, object_type, object_id, subject_ref, outcome)"
+                        + " VALUES ('"
                         + eventId
-                        + "', '"
+                        + "', now(), '"
                         + SEEDED_ORGANIZATION_ID
                         + "', 'USER', 'pseud-actor-1', 'SPACE_CREATED', 'SPACE', 'space-1',"
                         + " 'pseud-subject-1', 'SUCCESS')");
@@ -352,6 +595,14 @@ class Migration017AuditLogTest {
     }
   }
 
+  private Set<String> enumNames(Enum<?>[] values) {
+    Set<String> names = new HashSet<>();
+    for (Enum<?> value : values) {
+      names.add(value.name());
+    }
+    return names;
+  }
+
   private UUID insertMinimalEntry() throws SQLException {
     return insertMinimalEntry("SPACE_CREATED");
   }
@@ -366,12 +617,22 @@ class Migration017AuditLogTest {
 
   private UUID insertMinimalEntryWithActorRef(String actorRef, String eventType)
       throws SQLException {
-    UUID eventId = UUID.randomUUID();
+    return insertEntry(UUID.randomUUID(), Instant.now(), actorRef, eventType);
+  }
+
+  private UUID insertMinimalEntryAt(Instant recordedAt) throws SQLException {
+    return insertEntry(UUID.randomUUID(), recordedAt, "pseud-actor-1", "SPACE_CREATED");
+  }
+
+  private UUID insertEntry(UUID eventId, Instant recordedAt, String actorRef, String eventType)
+      throws SQLException {
     try (Statement statement = appConnection.createStatement()) {
       statement.execute(
-          "INSERT INTO audit_log (event_id, organization_id, actor_kind, actor_ref, event_type,"
-              + " object_type, object_id, outcome) VALUES ('"
+          "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
+              + " event_type, object_type, object_id, outcome) VALUES ('"
               + eventId
+              + "', '"
+              + recordedAt
               + "', '"
               + SEEDED_ORGANIZATION_ID
               + "', 'USER', '"
@@ -415,6 +676,31 @@ class Migration017AuditLogTest {
         ResultSet result =
             statement.executeQuery(
                 "SELECT relkind FROM pg_class WHERE relname = '" + tableName + "'")) {
+      result.next();
+      return result.getString(1);
+    }
+  }
+
+  private String ownerOf(String tableName) throws SQLException {
+    try (Statement statement = bootstrapConnection.createStatement();
+        ResultSet result =
+            statement.executeQuery(
+                "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE relname = '"
+                    + tableName
+                    + "'")) {
+      result.next();
+      return result.getString(1);
+    }
+  }
+
+  /** The physical partition table an already-written entry actually landed in, via tableoid. */
+  private String partitionNameOf(UUID eventId) throws SQLException {
+    try (Statement statement = bootstrapConnection.createStatement();
+        ResultSet result =
+            statement.executeQuery(
+                "SELECT tableoid::regclass::text FROM audit_log WHERE event_id = '"
+                    + eventId
+                    + "'")) {
       result.next();
       return result.getString(1);
     }

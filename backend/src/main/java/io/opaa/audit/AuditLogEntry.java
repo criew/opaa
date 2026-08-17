@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 /**
  * One entry of the append-only audit trail (#391, decision #355, see
@@ -19,10 +20,19 @@ import java.util.UUID;
  * binding half is the database privilege restriction migration 017 applies to the underlying table,
  * verified independently by {@code Migration017AuditLogTest}.
  *
- * <p>{@code recordedAt} is set here rather than left to the database's {@code DEFAULT now()}: the
- * column is also the partitioning key of {@code audit_log}, and callers such as {@link
- * AuditLogService} need the resulting timestamp on the object they hold, not only in the row a
- * later read would have to fetch again.
+ * <p>{@code recordedAt} is set here; {@code audit_log.recorded_at} has no database-level {@code
+ * DEFAULT} (migration 017) precisely so this is the single source of the timestamp. This class
+ * implements {@link Persistable} with {@link #isNew()} always {@code true}: without it, Spring Data
+ * JPA treats an entity whose {@code @Id} is already assigned (as it always is here - {@code
+ * eventId} is generated in the constructor, not by the database) as not-new and routes {@code save}
+ * through {@code EntityManager#merge} instead of {@code #persist}. {@code merge} first issues a
+ * {@code SELECT} to check whether a row with that id already exists - always a miss here, so purely
+ * wasted work across every one of {@code audit_log}'s partition indexes - and, more importantly,
+ * operates on a *copy* of the entity, leaving the instance the caller passed to {@link
+ * AuditLogService#record} detached with {@code recordedAt} still {@code null}. {@code isNew() ==
+ * true} forces {@code persist} instead, which mutates this exact instance in place - so the
+ * {@code @PrePersist} callback below actually sets {@code recordedAt} on the object the caller
+ * still holds, as intended.
  *
  * <p>{@code before}/{@code after} deliberately hold pre-serialized JSON text rather than a
  * structured type: the specification requires them "eng begrenzt auf das rechtlich Erhebliche", not
@@ -36,7 +46,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "audit_log")
-public class AuditLogEntry {
+public class AuditLogEntry implements Persistable<UUID> {
 
   @Id
   @Column(name = "event_id")
@@ -201,6 +211,23 @@ public class AuditLogEntry {
     if (recordedAt == null) {
       recordedAt = Instant.now();
     }
+  }
+
+  /** {@link Persistable#getId()} - same value as {@link #getEventId()}. */
+  @Override
+  public UUID getId() {
+    return eventId;
+  }
+
+  /**
+   * Always {@code true} - see the class Javadoc for why this entity must never be treated as an
+   * update candidate. There is deliberately no code path anywhere that loads an {@code
+   * AuditLogEntry} and passes it back to {@code save} - the {@code @Id} being non-null on a brand
+   * new instance is otherwise indistinguishable from a reloaded, existing one.
+   */
+  @Override
+  public boolean isNew() {
+    return true;
   }
 
   public UUID getEventId() {

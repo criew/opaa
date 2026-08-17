@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -37,6 +38,7 @@ class AuditActorPseudonymServiceIntegrationTest {
   @Autowired private AuditLogRepository auditLogRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
 
@@ -50,12 +52,11 @@ class AuditActorPseudonymServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // See AuditLogServiceIntegrationTest#tearDown for why this cleanup succeeds here (the test
-    // datasource's superuser account) but would not for the real, restricted application account.
-    auditLogRepository.deleteAll(
-        auditLogRepository.findAll().stream()
-            .filter(entry -> entry.getOrganizationId().equals(organizationId))
-            .toList());
+    // See AuditLogServiceIntegrationTest#tearDown for why this goes through JdbcTemplate (not
+    // auditLogRepository, whose delete/deleteAll is a no-op by design) and for why this cleanup
+    // succeeds here (the test datasource's superuser account) but would not for the real,
+    // restricted application account.
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteAll(
         userRepository.findAll().stream()
             .filter(user -> organizationId.equals(user.getOrganizationId()))

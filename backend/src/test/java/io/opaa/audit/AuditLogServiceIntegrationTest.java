@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -41,6 +42,7 @@ class AuditLogServiceIntegrationTest {
   @Autowired private AuditLogRepository auditLogRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
   private TransactionTemplate transactionTemplate;
@@ -55,16 +57,17 @@ class AuditLogServiceIntegrationTest {
   @AfterEach
   void tearDown() {
     // fk_audit_log_organization is ON DELETE RESTRICT, so every entry written against
-    // organizationId in a test must be removed first. This test's own Spring-managed connection
-    // (Testcontainers' bootstrap account, a Postgres superuser - see TestcontainersConfiguration)
-    // is not subject to the DML restriction migration 017 applies to the real application
-    // account, so this cleanup call succeeds here even though it would not in production; the
-    // restriction itself is verified separately, against a real non-superuser role, by
-    // io.opaa.migration.Migration017AuditLogTest.
-    auditLogRepository.deleteAll(
-        auditLogRepository.findAll().stream()
-            .filter(entry -> entry.getOrganizationId().equals(organizationId))
-            .toList());
+    // organizationId in a test must be removed first. This goes through JdbcTemplate, not
+    // auditLogRepository: AuditLogEntry.isNew() is unconditionally true (see its Javadoc), which
+    // makes Spring Data JPA's own delete/deleteAll a silent no-op for it by design - the same
+    // property that keeps this repository "insert-only" at the Java layer, not only at the
+    // database layer, would otherwise defeat this cleanup. This test's own Spring-managed
+    // connection (Testcontainers' bootstrap account, a Postgres superuser - see
+    // TestcontainersConfiguration) is not subject to the DML restriction migration 017 applies to
+    // the real application account, so this cleanup call succeeds here even though it would not
+    // in production; the restriction itself is verified separately, against a real non-superuser
+    // role, by io.opaa.migration.Migration017AuditLogTest.
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
 

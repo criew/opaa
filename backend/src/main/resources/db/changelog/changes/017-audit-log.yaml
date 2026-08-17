@@ -3,12 +3,13 @@ databaseChangeLog:
   # docs/features/security-and-compliance.md#revisionssicheres-protokoll, decision #355). Four
   # changeSets, in dependency order:
   #   1. 017-create-audit-log                - the record itself, partitioned by month
-  #   2. 017-create-audit-log-partitions      - the initial set of monthly partitions plus a
-  #                                              DEFAULT catch-all
+  #   2. 017-create-audit-log-partitions      - a long, fixed horizon of monthly partitions
   #   3. 017-create-audit-actor-pseudonyms    - the separately held actor_ref -> person mapping
-  #   4. 017-restrict-audit-log-privileges    - strips UPDATE/DELETE/TRUNCATE from whichever role
-  #                                              is running this migration, i.e. the application
-  #                                              account itself (see below)
+  #   4. 017-restrict-audit-log-privileges    - transfers ownership of audit_log (parent and every
+  #                                              partition) and audit_actor_pseudonyms to a
+  #                                              dedicated, non-login role and grants the
+  #                                              application account exactly INSERT+SELECT - see
+  #                                              ADR-0015 and that changeSet's own comment
   #
   # Rollback order (reverse of apply order):
   # 017-restrict-audit-log-privileges
@@ -16,14 +17,13 @@ databaseChangeLog:
   # 017-create-audit-log-partitions
   # 017-create-audit-log
   #
-  # Two things are deliberately left out of this migration's scope, matching #391's own stated
-  # boundary ("Nicht in diesem Vorgang: ... die Löschung"): recurring provisioning of new monthly
-  # partitions once the ones created here run out, and the retention deletion that removes whole
-  # expired partitions. Both belong with the future retention-deletion work, not with the store
-  # this migration builds. A separate, unrelated gap found while building this migration - that
-  # this project's shipped docker-compose.yml runs its database account as a superuser, under
-  # which 017-restrict-audit-log-privileges's protection is currently inert - is filed as #426
-  # (see that changeSet's comment and the #391 PR description for detail).
+  # One thing is deliberately left out of this migration's scope, matching #391's own stated
+  # boundary ("Nicht in diesem Vorgang: ... die Löschung"): the retention deletion that removes
+  # whole expired partitions once they age out of the fixed horizon 017-create-audit-log-partitions
+  # creates. A separate, unrelated gap found while building this migration - that this project's
+  # shipped docker-compose.yml runs its database account as a superuser, and that the migration
+  # account needs the CREATEROLE attribute this changelog now relies on - is tracked in #426 (see
+  # ADR-0015 and the #391/#428 PR description for detail).
 
   - changeSet:
       id: 017-create-audit-log
@@ -45,6 +45,11 @@ databaseChangeLog:
         AuditLogEntry), so cross-partition uniqueness relies on UUID collision being practically
         impossible, the same trade-off every UUID primary key in this schema already makes.
 
+        recorded_at has deliberately no column DEFAULT: the application (AuditLogEntry's
+        @PrePersist) is the single source of the timestamp every later query and the retention
+        deletion key off, so any writer - JPA or a future raw-SQL maintenance tool - must supply it
+        explicitly rather than silently picking up a second, potentially different time source.
+
         actor_kind, event_type, object_type, subject_kind and outcome are closed vocabularies
         (CHECK constraints), not free text - event_type explicitly per the #391 acceptance
         criteria ("geschlossene Liste, nicht als freier Text"); the others are closed for the same
@@ -59,7 +64,7 @@ databaseChangeLog:
             sql: >
               CREATE TABLE audit_log (
                 event_id uuid NOT NULL,
-                recorded_at timestamp with time zone NOT NULL DEFAULT now(),
+                recorded_at timestamp with time zone NOT NULL,
                 organization_id uuid NOT NULL,
                 actor_kind varchar(30) NOT NULL,
                 actor_ref varchar(255) NOT NULL,
@@ -173,13 +178,30 @@ databaseChangeLog:
       id: 017-create-audit-log-partitions
       author: opaa
       comment: >
-        Creates the initial monthly partitions - three months back through 36 months forward from
-        the moment this migration runs - plus a DEFAULT partition that catches anything outside
-        that window so a write can never fail with "no partition of relation found for row" even
-        if the recurring provisioning of new partitions falls behind. Ongoing provisioning of
-        further monthly partitions before this window runs out is explicitly not part of #391 (see
-        the changelog header) - it belongs with the future retention-deletion work this
-        partitioning exists to serve, which #391 also excludes by name.
+        Creates a long, fixed horizon of monthly partitions - three months back (clock skew,
+        backfill, timezone edges) through 16 years forward from the moment this migration runs,
+        comfortably above the specification's 10-year retention ceiling
+        (docs/features/security-and-compliance.md#aufbewahrung) - and deliberately no DEFAULT
+        partition.
+
+        A DEFAULT partition was considered and rejected in code review (#428): it looks like a
+        safety net ("a write can never fail even if partition provisioning falls behind"), but a
+        Postgres DEFAULT partition cannot be un-DEFAULTed once a row lands in it - the moment any
+        row is caught by DEFAULT, the specific monthly partition that row belongs to can no longer
+        be created ("updated partition constraint for default partition ... would be violated"),
+        and that row is then permanently exempt from the retention deletion this partitioning
+        exists to serve. A long, fixed horizon of real partitions removes the reason a DEFAULT
+        partition would ever be needed in ordinary operation: any INSERT within the next 16 years
+        lands in a real, droppable monthly partition. A write with a timestamp outside that
+        horizon fails loudly with "no partition of relation found for row" instead of silently
+        landing in a partition nothing can ever reclaim - a loud failure here is the correct
+        outcome, not a bug to work around.
+
+        Provisioning further partitions once this horizon runs out is explicitly not part of #391
+        (see the changelog header); it belongs with the future retention-deletion work. Whoever
+        builds that work should treat this horizon, not "whenever partitions run low", as the
+        trigger to extend it, and must use the same ownership (ALTER DEFAULT PRIVILEGES in
+        017-restrict-audit-log-privileges only applies to tables opaa_audit_owner itself creates).
       changes:
         - sql:
             # Without this, Liquibase's own statement splitter (not just the JDBC driver) can cut
@@ -196,7 +218,7 @@ databaseChangeLog:
                 partition_end date;
                 partition_name text;
               BEGIN
-                FOR i IN 0..38 LOOP
+                FOR i IN 0..194 LOOP
                   partition_start := (start_month + (i || ' months')::interval)::date;
                   partition_end := (start_month + ((i + 1) || ' months')::interval)::date;
                   partition_name := 'audit_log_' || to_char(partition_start, 'YYYY_MM');
@@ -206,8 +228,6 @@ databaseChangeLog:
                   );
                 END LOOP;
               END $$;
-        - sql:
-            sql: "CREATE TABLE IF NOT EXISTS audit_log_default PARTITION OF audit_log DEFAULT;"
       rollback:
         - sql:
             comment: >
@@ -292,43 +312,178 @@ databaseChangeLog:
       author: opaa
       comment: >
         "Einfaches Anfügen" (#391,
-        docs/features/security-and-compliance.md#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen):
-        the application account gets INSERT and SELECT on audit_log and nothing else - no UPDATE,
-        no DELETE, no TRUNCATE. This project runs migrations and the application under the same
-        database role (see spring.datasource.username in application.yml), which is also the role
-        that CREATE TABLE made the owner of audit_log - so simply not granting UPDATE/DELETE would
-        not restrict anything, Postgres owners hold every privilege on their own objects
-        implicitly. current_user (the role actually executing this migration, i.e. the
-        application's own account, whatever OPAA_DB_USERNAME happens to be per environment) is
-        therefore named explicitly: REVOKE ALL first clears the implicit owner grant so the ACL
-        becomes explicit, then INSERT and SELECT are granted back one at a time. The later
-        retention deletion (explicitly out of #391's scope) runs as a separate, more privileged
-        maintenance account per the specification, not through this one.
+        docs/features/security-and-compliance.md#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen,
+        ADR-0015): the application account gets INSERT and SELECT on audit_log and
+        audit_actor_pseudonyms and nothing else - no UPDATE, no DELETE, no TRUNCATE, and per the
+        #391 acceptance criteria, "keine Rechte am Schema der Tabelle".
 
-        This is not a defense against direct database access, and the specification says so
-        plainly: whoever can grant themselves privileges back (a role with GRANT privilege on this
-        table, or a superuser bypassing ACLs entirely) is not stopped by this changeSet. The
-        boundary this changeSet enforces is narrower and still real: the *application*, including
-        anything that runs SQL through it (a bug, an injected statement), cannot alter or remove an
-        already-written entry.
+        A plain REVOKE/GRANT against the application account is not enough for that last part: this
+        project runs migrations and the application under the same database role (see
+        spring.datasource.username in application.yml), which is also the role CREATE TABLE made
+        the owner of every object above - and ownership cannot be revoked from itself. An owner
+        keeps full DDL on its own object regardless of what has been REVOKEd from it (it can always
+        GRANT itself privileges back, drop a CHECK constraint, detach and rewrite a partition, or
+        drop the table outright - all four verified against real Postgres in the #428 review).
+        Ownership must therefore move to a role the application account is not.
+
+        This changeSet creates opaa_audit_owner - a dedicated, NOLOGIN role nothing ever
+        authenticates as - and transfers ownership of audit_log, every one of its partitions
+        (looked up via pg_inherits, not just the ones 017-create-audit-log-partitions happened to
+        create) and audit_actor_pseudonyms to it. The application account (current_user) then gets
+        exactly INSERT and SELECT, granted on the two parent tables only - never on an individual
+        partition directly, which matters because every Postgres partition carries its own ACL:
+        an application account with no grant on a partition cannot touch it by naming it directly,
+        even though ordinary inserts routed through the partitioned parent work exactly as before.
+        ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner ensures a partition opaa_audit_owner
+        creates later (the future retention/provisioning work, explicitly out of #391's scope)
+        inherits the same restricted grant automatically, without this migration running again.
+
+        ALTER TABLE ... OWNER TO and ALTER DEFAULT PRIVILEGES FOR ROLE both require the executing
+        role to be a member of the target role. Postgres 16 already grants that membership
+        automatically the moment CREATE ROLE runs (a CREATEROLE role gets ADMIN OPTION on any role
+        it creates) - the explicit GRANT below is a harmless no-op restating what already holds,
+        kept for clarity about what this changeSet relies on. The REVOKE at the very end removes
+        the *additional* membership this changeSet explicitly granted; the automatic
+        CREATE-ROLE-time grant survives it (verified against real Postgres - a plain REVOKE issued
+        by current_user only revokes grants current_user itself made, and that automatic one is
+        attributed to a different grantor). This residual is intentionally not a security gap:
+        it carries ADMIN OPTION only, with INHERIT and SET both false, so it lets current_user
+        manage who else is a member of opaa_audit_owner, but grants no access to anything
+        opaa_audit_owner owns and no way to become opaa_audit_owner via SET ROLE. See ADR-0015 for
+        the full reasoning, and Migration017AuditLogTest for the tests that verify this directly -
+        including that SET ROLE opaa_audit_owner itself fails for the application account.
+
+        This is still not a defense against direct database access with sufficient privilege, and
+        the specification says so plainly: a superuser bypasses ACLs and ownership checks entirely,
+        and whoever can grant CREATEROLE or membership in opaa_audit_owner to the application
+        account undoes this changeSet's effect. The boundary this changeSet enforces is the one
+        #391 actually asks for: the *application account itself*, including anything that runs SQL
+        through it (a bug, an injected statement) and including a direct reference to a specific
+        partition, cannot alter, remove, detach or drop an already-written entry, nor grant itself
+        the privilege to.
       changes:
         - sql:
-            sql: "REVOKE ALL ON TABLE audit_log FROM PUBLIC;"
-        - sql:
-            # See 017-create-audit-log-partitions's splitStatements comment - the same DO $$ ... $$
-            # splitting hazard applies here.
             splitStatements: false
             sql: >
               DO $$
               BEGIN
-                EXECUTE format('REVOKE ALL ON TABLE audit_log FROM %I', current_user);
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opaa_audit_owner') THEN
+                  EXECUTE 'CREATE ROLE opaa_audit_owner NOLOGIN';
+                END IF;
+                EXECUTE format('GRANT opaa_audit_owner TO %I', current_user);
+              END $$;
+        - sql:
+            comment: >
+              ALTER TABLE ... OWNER TO requires the new owner to hold CREATE on the object's
+              schema, not merely to be a member of a role that holds it - opaa_audit_owner needs
+              its own grant. Executing this requires current_user to hold CREATE on schema public
+              WITH GRANT OPTION (documented as a migration-account requirement in ADR-0015 and the
+              #426 follow-up), not merely CREATE itself.
+            sql: "GRANT CREATE ON SCHEMA public TO opaa_audit_owner;"
+        - sql:
+            sql: "ALTER TABLE audit_log OWNER TO opaa_audit_owner;"
+        - sql:
+            sql: "ALTER TABLE audit_actor_pseudonyms OWNER TO opaa_audit_owner;"
+        - sql:
+            comment: "Every partition of audit_log, whichever changeSet or later tool created it - not just the ones 017-create-audit-log-partitions happened to create."
+            splitStatements: false
+            sql: >
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO opaa_audit_owner', partition);
+                END LOOP;
+              END $$;
+        - sql:
+            sql: "REVOKE ALL ON TABLE audit_log, audit_actor_pseudonyms FROM PUBLIC;"
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
                 EXECUTE format('GRANT INSERT, SELECT ON TABLE audit_log TO %I', current_user);
+                EXECUTE format(
+                  'GRANT INSERT, SELECT ON TABLE audit_actor_pseudonyms TO %I', current_user);
+              END $$;
+        - sql:
+            comment: >
+              Future partitions opaa_audit_owner creates (the later provisioning work) inherit
+              exactly this grant automatically, without this migration running again.
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format(
+                  'ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner IN SCHEMA public'
+                  ' GRANT SELECT, INSERT ON TABLES TO %I',
+                  current_user);
+              END $$;
+        - sql:
+            comment: >
+              Removes the explicit membership grant made above (see the changeSet comment's third
+              paragraph). A separate, automatic membership from CREATE ROLE's own CREATEROLE
+              side effect survives this - documented there as an accepted, harmless residual
+              (ADMIN OPTION only, no INHERIT, no SET), not something this statement failed to do.
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
               END $$;
       rollback:
         - sql:
+            comment: >
+              Best-effort reversal, run by current_user: re-acquire membership (requires
+              current_user's CREATEROLE attribute to still be present - see ADR-0015), move
+              ownership of the parent tables and every partition back, drop the default-privilege
+              entry, then release membership again. If current_user's CREATEROLE attribute has
+              since been removed (the hardening #426 anticipates), this rollback fails and
+              ownership must be reassigned manually - an acceptable limitation for a rollback path,
+              matching this project's existing precedent of documented, non-silent rollback limits
+              (e.g. 013-backfill-owner-grants).
             splitStatements: false
             sql: >
               DO $$
               BEGIN
-                EXECUTE format('GRANT ALL ON TABLE audit_log TO %I', current_user);
+                EXECUTE format('GRANT opaa_audit_owner TO %I', current_user);
+              END $$;
+        - sql:
+            sql: "ALTER TABLE audit_log OWNER TO CURRENT_USER;"
+        - sql:
+            sql: "ALTER TABLE audit_actor_pseudonyms OWNER TO CURRENT_USER;"
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO CURRENT_USER', partition);
+                END LOOP;
+              END $$;
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format(
+                  'ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner IN SCHEMA public'
+                  ' REVOKE SELECT, INSERT ON TABLES FROM %I',
+                  current_user);
+              END $$;
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
               END $$;
