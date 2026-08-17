@@ -376,6 +376,47 @@ nicht in die Auslegung des Einzelfalls.
 - Eine **Verkürzung** der Frist wirkt nur nach vorn und ist selbst protokollpflichtig; sie darf nicht das
   Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet.
 
+**Stand #395, technisch umgesetzt:** Die Frist ist eine **einzige, systemweite** Einstellung, keine je
+Organisation — die Partitionierung der Ablage (`audit_log`, #391) läuft ausschließlich über die Zeit
+(`PARTITION BY RANGE (recorded_at)`), nicht über die Organisation, und eine Frist je Organisation ließe
+sich nicht als „vollständige Zeitscheibe löschen" umsetzen, sobald zwei Organisationen in derselben
+Ablage unterschiedliche Fristen hätten. Das passt zum Betriebsmodell: eine OPAA-Installation je Behörde.
+
+Die Löschung selbst läuft über `opaa_audit_delete_expired_partitions()` — eine parameterlose,
+`SECURITY DEFINER`-Funktion im Besitz von `opaa_audit_owner` (derselben Rolle, die bereits `audit_log`
+gehört, siehe [Sicherheitsgrad](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen) und
+[ADR-0015](decisions/0015-eigentuemertrennung-protokollablage.md)). Das Anwendungskonto erhält
+ausschließlich das Recht, diese eine Funktion aufzurufen (`EXECUTE`) — kein `DROP`, kein `DELETE`, keine
+Parameter, mit denen sich eine bestimmte Partition, Organisation oder ein Zeitraum benennen ließe. Die
+Funktion selbst prüft nur die eine gespeicherte Konfigurationszeile und entfernt ausschließlich
+vollständige, abgelaufene Monatspartitionen; ein einzelner Protokollsatz lässt sich über sie nicht
+entfernen. Ein Scheduler im Anwendungskonto ruft sie monatlich auf — „läuft nicht über das
+Anwendungskonto" heißt hier konkret: Die eigentliche `DROP TABLE`-Anweisung führt technisch immer
+`opaa_audit_owner` aus, unabhängig davon, wer den Aufruf ausgelöst hat.
+
+„Wirkt nur nach vorn" ist technisch erzwungen, nicht nur Konvention: Die Funktion merkt sich, bis zu
+welchem Zeitpunkt sie zuletzt gelöscht hat, und lässt diesen Zeitpunkt pro tatsächlich vergangenem
+Kalendermonat um höchstens einen Monat weiterrücken — unabhängig davon, wie oft die Funktion
+aufgerufen wird oder wie stark die Frist verkürzt wurde. Eine drastische Verkürzung löscht damit nicht
+rückwirkend einen großen, bereits „überfälligen" Bestand in einem einzigen Aufruf; das Anwendungskonto
+kann diesen Fortschritt auch nicht direkt manipulieren, da es auf die dafür genutzten Spalten keinen
+Schreibzugriff hat. Jede Friständerung erzeugt über `AuditEventRecorder` einen eigenen Eintrag vom Typ
+`AUDIT_LOG_CONFIGURATION_CHANGED` (kein neuer Ereignistyp nötig — dieser deckt „die
+Protokollkonfiguration selbst" bereits seit #391 ab).
+
+Die Warnung bei einer Protokollfrist unterhalb der Inhaltsaufbewahrung ist als Erweiterungspunkt
+vorbereitet (`ContentRetentionProvider`), aber noch **ohne Implementierung**: Eine konfigurierbare
+Inhaltsaufbewahrung existiert noch nicht (#216 ist eigener, späterer Umfang). Solange kein Anbieter
+registriert ist, kann keine Warnung ausgelöst werden — das ist kein Fehlverhalten, sondern die ehrliche
+Aussage, dass es noch nichts gibt, wogegen zu prüfen wäre; #216 muss nur eine Implementierung
+registrieren, ohne dass sich an dieser Stelle etwas ändert.
+
+Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
+(`fk_audit_actor_pseudonyms_user`, `ON DELETE CASCADE`) und lässt das Protokoll selbst unverändert — das
+war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungsebene (siehe
+`AuditActorPseudonymServiceIntegrationTest`, zusätzlich zum bereits bestehenden Nachweis auf
+Datenbankebene in `Migration017AuditLogTest`).
+
 ### Der Auszug für die Personalvertretung
 
 Der Auszug ist kein Protokollbericht, sondern die **Beschreibung des Protokolls**. Er ist ohne Anlass,
