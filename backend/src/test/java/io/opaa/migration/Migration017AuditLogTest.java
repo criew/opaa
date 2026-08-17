@@ -70,6 +70,11 @@ class Migration017AuditLogTest {
   private static final String AUDIT_APP_ROLE_PASSWORD = "audit_app_role_password";
   private static final String OWNER_ROLE = "opaa_audit_owner";
 
+  /** Used only by {@link #theEscalationFailsWhenTheOwnerRoleIsProvisionedByASeparateIdentity()}. */
+  private static final String DEMO_OWNER_ROLE = "opaa_audit_owner_demo";
+
+  private static final String DEMO_TABLE = "audit_log_ownership_demo";
+
   /**
    * The full column set of the standard record, per #391 - deliberately excludes any network,
    * device/browser or location field (docs/features/security-and-compliance.md#der-protokollsatz).
@@ -144,10 +149,12 @@ class Migration017AuditLogTest {
       // unqualified table name in its own CREATE TABLE statement.
       statement.execute("GRANT USAGE ON SCHEMA public TO PUBLIC");
       statement.execute("DROP ROLE IF EXISTS " + AUDIT_APP_ROLE);
-      // opaa_audit_owner owns nothing once the schema above is gone (every table it owned lived in
-      // public), so it can be dropped cleanly here rather than accumulating across test methods
-      // sharing this container.
+      // opaa_audit_owner (and opaa_audit_owner_demo, used only by
+      // theEscalationFailsWhenTheOwnerRoleIsProvisionedByASeparateIdentity) own nothing once the
+      // schema above is gone (every table either owned lived in public), so both can be dropped
+      // cleanly here rather than accumulating across test methods sharing this container.
       statement.execute("DROP ROLE IF EXISTS " + OWNER_ROLE);
+      statement.execute("DROP ROLE IF EXISTS " + DEMO_OWNER_ROLE);
     }
     bootstrapConnection.close();
   }
@@ -404,27 +411,13 @@ class Migration017AuditLogTest {
   }
 
   /**
-   * PostgreSQL 16 automatically grants a {@code CREATEROLE} role {@code ADMIN OPTION} on a role it
-   * creates the moment {@code CREATE ROLE} runs - a real {@code pg_auth_members} row, attributed to
-   * the database's bootstrap identity as grantor rather than to {@code audit_app_role} itself, and
-   * (empirically, against real Postgres 18) not removable by a plain {@code REVOKE opaa_audit_owner
-   * FROM audit_app_role} issued by {@code audit_app_role}: that statement only revokes grants it
-   * made itself, and this one was not one of them. 017-restrict-audit-log-privileges's explicit
-   * {@code REVOKE} step still matters - it removes the *additional* membership that changeSet
-   * itself granted - but this one automatic side effect of {@code CREATE ROLE} survives it.
-   *
-   * <p>This is documented in ADR-0015 as a known, accepted residual rather than silently ignored,
-   * because it is not the security hole it might look like: the row carries {@code admin_option =
-   * true} but {@code inherit_option = false} and {@code set_option = false}. {@code admin_option}
-   * only lets {@code audit_app_role} manage <em>membership</em> of {@code opaa_audit_owner} (grant
-   * or revoke who else is a member) - it grants no access to objects {@code opaa_audit_owner} owns.
-   * {@code inherit_option = false} means {@code audit_app_role} does not automatically use {@code
-   * opaa_audit_owner}'s privileges, and {@code set_option = false} means it cannot {@code SET ROLE
-   * opaa_audit_owner} to assume its identity either - both verified directly below, alongside every
-   * concrete attack {@code Migration017AuditLogTest}'s other tests attempt.
+   * {@code SET ROLE opaa_audit_owner} itself is blocked for the application account - true, but not
+   * the whole story (see the two tests below). Kept as its own assertion because it is still a real
+   * property: nothing here grants {@code audit_app_role} the ability to switch its session identity
+   * to {@code opaa_audit_owner} outright.
    */
   @Test
-  void theApplicationAccountHasNoWorkingAccessPathToTheOwnerRoleAfterMigration() throws Exception {
+  void theApplicationAccountCannotSwitchItsSessionIdentityToTheOwnerRole() throws Exception {
     assertThatThrownBy(
             () -> {
               try (Statement statement = appConnection.createStatement()) {
@@ -432,23 +425,101 @@ class Migration017AuditLogTest {
               }
             })
         .isInstanceOf(SQLException.class);
+  }
+
+  /**
+   * PostgreSQL 16 automatically grants a {@code CREATEROLE} role {@code ADMIN OPTION} on a role it
+   * creates the moment {@code CREATE ROLE} runs - a real {@code pg_auth_members} row, attributed to
+   * the database's bootstrap identity as grantor rather than to {@code audit_app_role} itself, and
+   * (empirically, against real Postgres 18) not removable by a plain {@code REVOKE opaa_audit_owner
+   * FROM audit_app_role} issued by {@code audit_app_role}: that statement only revokes grants it
+   * made itself, and this one was not one of them.
+   *
+   * <p><b>This residual is an open escalation path, not a harmless one - a first pass at this test
+   * wrongly concluded otherwise</b> (PR #428, first re-review round), by checking only that {@code
+   * SET ROLE} itself is blocked and that the residual grant's own {@code inherit}/{@code set}
+   * columns are both {@code false} (see {@link
+   * #theApplicationAccountCannotSwitchItsSessionIdentityToTheOwnerRole()} above). What that missed:
+   * {@code ADMIN OPTION} lets {@code audit_app_role} grant the membership <em>to itself again</em>,
+   * this time explicitly {@code WITH SET TRUE} - two statements, no prior {@code SET ROLE} needed,
+   * because the freshly issued grant is inherited immediately. This test reproduces that escalation
+   * and asserts it currently <em>succeeds</em> - the red half of the reproduction AGENTS.md
+   * requires: it documents a real, currently open gap in today's bootstrap model (single account
+   * for migration and runtime), not a passing security guarantee. See ADR-0015 and
+   * 017-restrict-audit-log-privileges's changeSet comment for why the migration itself cannot close
+   * this (the automatic grant's grantor is the database's bootstrap identity, not {@code
+   * audit_app_role}, so {@code audit_app_role} has no standing to revoke it), and {@link
+   * #theEscalationFailsWhenTheOwnerRoleIsProvisionedByASeparateIdentity()} below for the green
+   * half: the same attack fails once {@code opaa_audit_owner} is created by an identity other than
+   * the application account - the fix #426 tracks as an acceptance criterion, not solved in this
+   * PR.
+   */
+  @Test
+  void theApplicationAccountCanEscalateToOwnerInTodaysBootstrapModel() throws Exception {
+    UUID eventId = insertMinimalEntry();
+
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute("GRANT " + OWNER_ROLE + " TO " + AUDIT_APP_ROLE + " WITH SET TRUE");
+      statement.execute("DELETE FROM audit_log WHERE event_id = '" + eventId + "'");
+    }
 
     try (Statement statement = bootstrapConnection.createStatement();
         ResultSet result =
             statement.executeQuery(
-                "SELECT m.inherit_option, m.set_option FROM pg_auth_members m"
-                    + " JOIN pg_roles owner ON m.roleid = owner.oid"
-                    + " JOIN pg_roles member ON m.member = member.oid"
-                    + " WHERE owner.rolname = '"
-                    + OWNER_ROLE
-                    + "' AND member.rolname = '"
-                    + AUDIT_APP_ROLE
-                    + "'")) {
-      while (result.next()) {
-        assertThat(result.getBoolean("inherit_option")).isFalse();
-        assertThat(result.getBoolean("set_option")).isFalse();
-      }
+                "SELECT count(*) FROM audit_log WHERE event_id = '" + eventId + "'")) {
+      result.next();
+      assertThat(result.getInt(1))
+          .as(
+              "known, tracked escalation (#426): GRANT ... WITH SET TRUE followed by DELETE"
+                  + " currently succeeds for the application account in the single-account"
+                  + " bootstrap model")
+          .isZero();
     }
+  }
+
+  /**
+   * The fix #426 tracks: {@code opaa_audit_owner}'s real-world counterpart, {@code
+   * opaa_audit_owner_demo}, is created and owns a table here entirely through {@code
+   * bootstrapConnection} - a separate identity {@code audit_app_role} never becomes {@code
+   * CREATEROLE}-equivalent to. {@code audit_app_role} only ever receives the same restricted
+   * INSERT/SELECT grant 017-restrict-audit-log-privileges grants on the real {@code audit_log}, set
+   * up externally rather than by {@code audit_app_role} itself running the ownership-transfer
+   * choreography. Under that model, {@code audit_app_role} has no {@code pg_auth_members} row for
+   * {@code opaa_audit_owner_demo} at all - not even the automatic {@code ADMIN OPTION} residual -
+   * so the same two-statement escalation {@link
+   * #theApplicationAccountCanEscalateToOwnerInTodaysBootstrapModel()} demonstrates against the real
+   * table fails here at the first statement.
+   */
+  @Test
+  void theEscalationFailsWhenTheOwnerRoleIsProvisionedByASeparateIdentity() throws Exception {
+    try (Statement statement = bootstrapConnection.createStatement()) {
+      statement.execute("CREATE ROLE " + DEMO_OWNER_ROLE + " NOLOGIN");
+      statement.execute("CREATE TABLE " + DEMO_TABLE + " (id uuid PRIMARY KEY)");
+      statement.execute("ALTER TABLE " + DEMO_TABLE + " OWNER TO " + DEMO_OWNER_ROLE);
+      statement.execute("GRANT INSERT, SELECT ON " + DEMO_TABLE + " TO " + AUDIT_APP_ROLE);
+    }
+
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute(
+                    "GRANT " + DEMO_OWNER_ROLE + " TO " + AUDIT_APP_ROLE + " WITH SET TRUE");
+              }
+            })
+        .isInstanceOf(SQLException.class);
+
+    UUID demoId = UUID.randomUUID();
+    try (Statement statement = appConnection.createStatement()) {
+      statement.execute("INSERT INTO " + DEMO_TABLE + " (id) VALUES ('" + demoId + "')");
+    }
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = appConnection.createStatement()) {
+                statement.execute("DELETE FROM " + DEMO_TABLE + " WHERE id = '" + demoId + "'");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("permission denied");
   }
 
   @Test

@@ -341,26 +341,33 @@ databaseChangeLog:
         ALTER TABLE ... OWNER TO and ALTER DEFAULT PRIVILEGES FOR ROLE both require the executing
         role to be a member of the target role. Postgres 16 already grants that membership
         automatically the moment CREATE ROLE runs (a CREATEROLE role gets ADMIN OPTION on any role
-        it creates) - the explicit GRANT below is a harmless no-op restating what already holds,
-        kept for clarity about what this changeSet relies on. The REVOKE at the very end removes
-        the *additional* membership this changeSet explicitly granted; the automatic
-        CREATE-ROLE-time grant survives it (verified against real Postgres - a plain REVOKE issued
-        by current_user only revokes grants current_user itself made, and that automatic one is
-        attributed to a different grantor). This residual is intentionally not a security gap:
-        it carries ADMIN OPTION only, with INHERIT and SET both false, so it lets current_user
-        manage who else is a member of opaa_audit_owner, but grants no access to anything
-        opaa_audit_owner owns and no way to become opaa_audit_owner via SET ROLE. See ADR-0015 for
-        the full reasoning, and Migration017AuditLogTest for the tests that verify this directly -
-        including that SET ROLE opaa_audit_owner itself fails for the application account.
+        it creates) - the explicit GRANT below is a no-op restating what already holds, kept for
+        clarity about what this changeSet relies on. The REVOKE at the very end removes the
+        *additional* membership this changeSet explicitly granted; the automatic CREATE-ROLE-time
+        grant survives it (verified against real Postgres - a plain REVOKE issued by current_user
+        only revokes grants current_user itself made, and that automatic one is attributed to a
+        different grantor).
+
+        **That automatic residual is an open escalation path, not a harmless one, in today's
+        bootstrap model** (found and demonstrated in the #428 re-review): it carries ADMIN OPTION,
+        which lets current_user grant the membership *to itself again*, this time WITH SET TRUE -
+        two statements (`GRANT opaa_audit_owner TO <app> WITH SET TRUE; DELETE FROM audit_log;`)
+        are enough, no SET ROLE needed first, since the new grant is inherited immediately. The
+        migration itself cannot close this: the automatic grant's grantor is the database's
+        bootstrap identity, not current_user, and current_user has no standing to revoke a grant it
+        did not make. Closing it for real requires opaa_audit_owner to be created by an identity
+        the application account never becomes CREATEROLE-equivalent to - i.e. provisioned outside
+        the migration/application account entirely, tracked as an acceptance criterion on #426, not
+        solved here. See ADR-0015 for the full reasoning and the honest statement of where the
+        append-only guarantee currently stands, and Migration017AuditLogTest for both the red
+        reproduction of this escalation in today's model and the green demonstration that it closes
+        once the owner role is provisioned by a separate identity.
 
         This is still not a defense against direct database access with sufficient privilege, and
-        the specification says so plainly: a superuser bypasses ACLs and ownership checks entirely,
-        and whoever can grant CREATEROLE or membership in opaa_audit_owner to the application
-        account undoes this changeSet's effect. The boundary this changeSet enforces is the one
-        #391 actually asks for: the *application account itself*, including anything that runs SQL
-        through it (a bug, an injected statement) and including a direct reference to a specific
-        partition, cannot alter, remove, detach or drop an already-written entry, nor grant itself
-        the privilege to.
+        the specification says so plainly: a superuser bypasses ACLs and ownership checks entirely.
+        The boundary this changeSet enforces today is narrower than "the application account itself
+        cannot alter or remove an already-written entry" - see the residual above - and ADR-0015
+        states that gap explicitly rather than papering over it.
       changes:
         - sql:
             splitStatements: false
@@ -425,10 +432,10 @@ databaseChangeLog:
               END $$;
         - sql:
             comment: >
-              Removes the explicit membership grant made above (see the changeSet comment's third
-              paragraph). A separate, automatic membership from CREATE ROLE's own CREATEROLE
-              side effect survives this - documented there as an accepted, harmless residual
-              (ADMIN OPTION only, no INHERIT, no SET), not something this statement failed to do.
+              Removes the explicit membership grant made above. A separate, automatic membership
+              from CREATE ROLE's own CREATEROLE side effect survives this - not something this
+              statement failed to do, but a real, currently open escalation path documented in the
+              changeSet comment above and in ADR-0015, tracked as an acceptance criterion on #426.
             splitStatements: false
             sql: >
               DO $$
