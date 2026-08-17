@@ -13,9 +13,12 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -71,6 +74,10 @@ import org.springframework.web.server.ResponseStatusException;
  * docs/features/spaces-and-assets.md#reorganisation-umbenennung-zusammenlegung}: "bestehende Grants
  * bleiben bestehen ... koennen aber nicht erweitert werden" - existing grants to a group that was
  * dissolved keep working, but no new or updated grant may target it).
+ *
+ * <p>Every response also carries {@code subjectDisplayName} and {@code grantedByDisplayName},
+ * resolved here rather than left to the frontend (#423 code review) - see {@link
+ * #toResponses(List)}.
  */
 @Service
 @Transactional(readOnly = true)
@@ -104,9 +111,7 @@ public class AssetGrantService {
   public List<AssetGrantResponse> listGrants(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = requireManageable(libraryId, currentUserId, systemAdmin);
-    return grantRepository.findByLibraryId(library.getId()).stream()
-        .map(AssetGrantService::toResponse)
-        .toList();
+    return toResponses(grantRepository.findByLibraryId(library.getId()));
   }
 
   // #392: noRollbackFor(ResponseStatusException) - without it, the DENIED audit entry the
@@ -293,7 +298,7 @@ public class AssetGrantService {
           null);
     }
     invalidateAfterCommit(library.getId());
-    return toResponse(saved);
+    return toResponses(List.of(saved)).get(0);
   }
 
   private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {
@@ -507,15 +512,64 @@ public class AssetGrantService {
         });
   }
 
-  private static AssetGrantResponse toResponse(AssetGrant grant) {
-    return new AssetGrantResponse(
-            grant.getId(),
-            grant.getSubjectType(),
-            grant.getSubjectId(),
-            grant.getRole(),
-            grant.getCreatedAt(),
-            grant.getUpdatedAt())
-        .expiresAt(grant.getExpiresAt())
-        .grantedByUserId(grant.getGrantedByUserId());
+  /**
+   * Resolves {@code subjectDisplayName} and {@code grantedByDisplayName} server-side (#423 code
+   * review, "Namensauflösung scheitert genau bei der Rolle, für die das Issue gebaut wird"): {@code
+   * GET /v1/admin/users} and {@code GET /v1/admin/groups}, which the frontend used to resolve these
+   * names client-side, both require {@code SYSTEM_ADMIN} - exactly the callers this endpoint's own
+   * {@code MANAGER} threshold is meant to admit without one. The backend already holds both
+   * repositories for grant validation, so resolving names here needs no new dependency and works
+   * for every caller {@link #requireManageable} lets through.
+   *
+   * <p>Batches the lookup across the whole list in two queries (one per subject kind, plus granters
+   * folded into the user query) rather than one lookup per grant, since {@link #listGrants} is the
+   * expected caller and a per-grant round trip would turn an O(1)-query list into O(n).
+   */
+  private List<AssetGrantResponse> toResponses(List<AssetGrant> grants) {
+    Set<UUID> userIds = new HashSet<>();
+    Set<UUID> groupIds = new HashSet<>();
+    for (AssetGrant grant : grants) {
+      if (grant.getSubjectType() == PermissionSubjectType.USER) {
+        userIds.add(grant.getSubjectId());
+      } else {
+        groupIds.add(grant.getSubjectId());
+      }
+      if (grant.getGrantedByUserId() != null) {
+        userIds.add(grant.getGrantedByUserId());
+      }
+    }
+    Map<UUID, String> userNames = new HashMap<>();
+    for (User user : userRepository.findAllById(userIds)) {
+      userNames.put(user.getId(), user.getDisplayName());
+    }
+    Map<UUID, String> groupNames = new HashMap<>();
+    for (Group group : groupRepository.findAllById(groupIds)) {
+      groupNames.put(group.getId(), group.getName());
+    }
+
+    return grants.stream()
+        .map(
+            grant -> {
+              String subjectName =
+                  grant.getSubjectType() == PermissionSubjectType.USER
+                      ? userNames.get(grant.getSubjectId())
+                      : groupNames.get(grant.getSubjectId());
+              String grantedByName =
+                  grant.getGrantedByUserId() == null
+                      ? null
+                      : userNames.get(grant.getGrantedByUserId());
+              return new AssetGrantResponse(
+                      grant.getId(),
+                      grant.getSubjectType(),
+                      grant.getSubjectId(),
+                      grant.getRole(),
+                      grant.getCreatedAt(),
+                      grant.getUpdatedAt())
+                  .subjectDisplayName(subjectName)
+                  .expiresAt(grant.getExpiresAt())
+                  .grantedByUserId(grant.getGrantedByUserId())
+                  .grantedByDisplayName(grantedByName);
+            })
+        .toList();
   }
 }

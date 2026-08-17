@@ -1775,6 +1775,14 @@ components:
         subjectId:
           type: string
           format: uuid
+        subjectDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The subject's display name (user) or name (group), resolved server-side so a caller
+            without SYSTEM_ADMIN - which GET /v1/admin/users and /v1/admin/groups both require -
+            can still see who a grant targets instead of a raw UUID. Null only if the subject no
+            longer exists (a deleted user, or a group id from before dissolution tracking).
         role:
           $ref: "#/components/schemas/AssetRole"
         expiresAt:
@@ -1785,6 +1793,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        grantedByDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The granter's display name, resolved server-side for the same reason as
+            subjectDisplayName. Null whenever grantedByUserId is null, or if that user no longer
+            exists.
         createdAt:
           type: string
           format: date-time

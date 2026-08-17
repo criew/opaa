@@ -279,5 +279,75 @@ describe('MSW Handlers', () => {
       })
       expect(response.status).toBe(404)
     })
+
+    // #423 code review, nit 4: MSW previously only mirrored the *requested*-role cap above, not
+    // the escalation guard's other half - the caller may also never touch a grant that already
+    // carries a role higher than their own, independent of whether they could have granted it.
+    it('rejects changing the role of an existing grant that already carries a role higher than the caller holds', async () => {
+      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const grants = (await listResponse.json()) as {
+        id: string
+        subjectId: string
+        role: string
+      }[]
+      const ownerGrant = grants.find((grant) => grant.role === 'OWNER')
+      expect(ownerGrant).toBeDefined()
+
+      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjectType: 'USER',
+          subjectId: ownerGrant!.subjectId,
+          role: 'EDITOR',
+        }),
+      })
+      expect(response.status).toBe(403)
+    })
+
+    it('rejects revoking an existing grant that already carries a role higher than the caller holds', async () => {
+      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const grants = (await listResponse.json()) as { id: string; role: string }[]
+      const ownerGrant = grants.find((grant) => grant.role === 'OWNER')
+      expect(ownerGrant).toBeDefined()
+
+      const response = await fetch(
+        `/api/v1/libraries/${managerLibraryId}/grants/${ownerGrant!.id}`,
+        { method: 'DELETE' },
+      )
+      expect(response.status).toBe(403)
+    })
+
+    // OWNER but not personal (fixtures.ts) - carries the library's only active OWNER grant, the
+    // scenario library-personal cannot exercise since grants there are rejected outright before
+    // this guard would even run.
+    const soloOwnerLibraryId = 'library-solo-owner'
+
+    it("rejects downgrading the library's last active OWNER grant", async () => {
+      const listResponse = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`)
+      const [onlyGrant] = (await listResponse.json()) as { subjectId: string }[]
+
+      const response = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjectType: 'USER',
+          subjectId: onlyGrant.subjectId,
+          role: 'VIEWER',
+        }),
+      })
+      expect(response.status).toBe(409)
+    })
+
+    it("rejects revoking the library's last active OWNER grant", async () => {
+      const listResponse = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`)
+      const [onlyGrant] = (await listResponse.json()) as { id: string }[]
+
+      const response = await fetch(
+        `/api/v1/libraries/${soloOwnerLibraryId}/grants/${onlyGrant.id}`,
+        { method: 'DELETE' },
+      )
+      expect(response.status).toBe(409)
+    })
   })
 })

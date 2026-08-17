@@ -291,8 +291,9 @@ nicht vertreten.
 
 **Gebaut**
 - Weboberfläche: Chat mit Quellenangaben und Eingrenzung auf Spaces, Space- und Gruppenverwaltung,
-  Verwaltung von Wissensbibliotheken, Dokumentenseite je Wissensbibliothek mit Upload (Auswahl und
-  Drag-and-drop), Löschen und Statusanzeige, Einstellungen (`frontend/src/pages/`)
+  Verwaltung von Wissensbibliotheken samt Rechteansicht (Freigaben an Personen und Gruppen erteilen,
+  Rolle ändern, entziehen — ab `myRole` MANAGER), Dokumentenseite je Wissensbibliothek mit Upload
+  (Auswahl und Drag-and-drop), Löschen und Statusanzeige, Einstellungen (`frontend/src/pages/`)
 - REST-API unter `/api/v1` — Abfrage, Indizierung, Spaces, Bibliotheken samt Rechtevergabe, Gruppen,
   Verzeichnisabgleich, Systemverwaltung
 - Ratenbegrenzung je Netzadresse und global je Endpunkt (`io.opaa.api.RateLimitFilter`)

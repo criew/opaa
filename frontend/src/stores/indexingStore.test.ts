@@ -103,7 +103,11 @@ describe('indexingStore', () => {
 
     const state = useIndexingStore.getState()
     expect(state.librariesLoading).toBe(false)
-    expect(state.libraries.map((l) => l.id)).toEqual(['library-personal', 'library-referat-50'])
+    expect(state.libraries.map((l) => l.id)).toEqual([
+      'library-personal',
+      'library-referat-50',
+      'library-solo-owner',
+    ])
     expect(state.libraries.every((l) => l.myRole !== 'VIEWER')).toBe(true)
   })
 

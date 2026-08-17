@@ -58,6 +58,27 @@ function canManageMockLibraryGrants(libraryId: string): boolean {
   return role === 'MANAGER' || role === 'OWNER'
 }
 
+/** Mirrors AssetGrant#isExpired: null expiresAt means "never expires". */
+function isMockGrantActiveOwner(grant: {
+  role: AssetRole
+  expiresAt?: string | null
+}): boolean {
+  return (
+    grant.role === 'OWNER' && (!grant.expiresAt || new Date(grant.expiresAt).getTime() > Date.now())
+  )
+}
+
+/**
+ * Mirrors AssetGrantRepository#countOtherActiveOwnerGrants - how many *other* active OWNER grants
+ * a library has besides the one being changed or removed, used by both the #423 code review's
+ * nit-4 guards below (409 "last active OWNER" on downgrade and on revoke).
+ */
+function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: string): number {
+  return (mockLibraryGrants[libraryId] ?? []).filter(
+    (grant) => grant.id !== excludingGrantId && isMockGrantActiveOwner(grant),
+  ).length
+}
+
 /**
  * Mirrors LibraryDocumentService#requireEditable: uploading and deleting require at least EDITOR
  * on the library. The mock has no separate system-admin bypass - each fixture's own myRole is the
@@ -702,10 +723,42 @@ export const handlers = [
       (grant) => grant.subjectType === body.subjectType && grant.subjectId === body.subjectId,
     )
     if (existingIndex >= 0) {
+      const existingGrant = existing[existingIndex]
+      // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant (escalation guard, half 2):
+      // the caller may never touch a grant that already carries a role higher than their own,
+      // independent of whether they could have granted that role in the first place (#423 code
+      // review, nit 4 - previously only the *requested* role above was capped).
+      const existingRoleIndex = ASSET_ROLE_ORDER.indexOf(existingGrant.role)
+      if (existingRoleIndex > callerRoleIndex) {
+        return HttpResponse.json(
+          {
+            error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${existingGrant.role}-Berechtigung zu aendern`,
+          },
+          { status: 403 },
+        )
+      }
+      // Mirrors AssetGrantService#requireNotDowngradingTheLastActiveOwnerGrant: downgrading the
+      // library's last active OWNER grant is exactly as dangerous as revoking it outright - both
+      // leave nobody able to manage the library at all, not even to grant a new OWNER.
+      const newExpiresAt = body.expiresAt ?? null
+      const staysActiveOwner =
+        body.role === 'OWNER' && (!newExpiresAt || new Date(newExpiresAt).getTime() > Date.now())
+      if (
+        isMockGrantActiveOwner(existingGrant) &&
+        !staysActiveOwner &&
+        countOtherActiveMockOwnerGrants(libraryId, existingGrant.id) === 0
+      ) {
+        return HttpResponse.json(
+          {
+            error: 'Die letzte OWNER-Berechtigung einer Bibliothek kann nicht herabgestuft werden',
+          },
+          { status: 409 },
+        )
+      }
       const updated = {
-        ...existing[existingIndex],
+        ...existingGrant,
         role: body.role,
-        expiresAt: body.expiresAt ?? null,
+        expiresAt: newExpiresAt,
         updatedAt: now,
       }
       existing[existingIndex] = updated
@@ -729,7 +782,8 @@ export const handlers = [
   http.delete('/api/v1/libraries/:libraryId/grants/:grantId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const grantId = String(params.grantId)
-    if (!mockLibraryDetails[libraryId]) {
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
     if (!canManageMockLibraryGrants(libraryId)) {
@@ -739,6 +793,30 @@ export const handlers = [
     const idx = existing.findIndex((grant) => grant.id === grantId)
     if (idx < 0) {
       return HttpResponse.json({ error: 'Berechtigung nicht gefunden' }, { status: 404 })
+    }
+    const grant = existing[idx]
+    // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant, the same escalation guard
+    // half 2 as the POST update path above (#423 code review, nit 4).
+    const callerRoleIndex = ASSET_ROLE_ORDER.indexOf(library.myRole)
+    const grantRoleIndex = ASSET_ROLE_ORDER.indexOf(grant.role)
+    if (grantRoleIndex > callerRoleIndex) {
+      return HttpResponse.json(
+        {
+          error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${grant.role}-Berechtigung zu entfernen`,
+        },
+        { status: 403 },
+      )
+    }
+    // Mirrors AssetGrantService#revokeGrant's last-active-OWNER guard: removing the library's
+    // last active OWNER grant would leave nobody able to manage it at all.
+    if (
+      isMockGrantActiveOwner(grant) &&
+      countOtherActiveMockOwnerGrants(libraryId, grant.id) === 0
+    ) {
+      return HttpResponse.json(
+        { error: 'Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden' },
+        { status: 409 },
+      )
     }
     existing.splice(idx, 1)
     return new HttpResponse(null, { status: 204 })

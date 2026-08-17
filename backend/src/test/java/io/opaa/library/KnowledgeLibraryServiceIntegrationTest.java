@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.AssetGrantRequest;
+import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
@@ -171,8 +172,12 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   private UUID createUser(UUID organizationId) {
+    return createUser(organizationId, "Test User");
+  }
+
+  private UUID createUser(UUID organizationId, String displayName) {
     User user =
-        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", displayName);
     user.setOrganizationId(organizationId);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
@@ -654,6 +659,46 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void listGrantsResolvesDisplayNamesForACallerWithoutSystemAdmin() {
+    // #423 code review, finding 1: GET /v1/admin/users and /v1/admin/groups both require
+    // SYSTEM_ADMIN, so the frontend cannot resolve subject/granter names itself for a MANAGER
+    // without that role - the exact caller this endpoint's own MANAGER threshold is meant to
+    // admit. This proves the backend resolves both names through the real repositories/schema
+    // with systemAdmin = false, not just in the AssetGrantServiceTest unit test's mocks.
+    UUID owner = createUser(organizationA, "Eigentümerin");
+    UUID subjectUser = createUser(organizationA, "Empfänger Person");
+    Group subjectGroup = createGroup(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, subjectUser, AssetRole.VIEWER),
+        owner,
+        false);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.GROUP, subjectGroup.getId(), AssetRole.VIEWER),
+        owner,
+        false);
+
+    // owner only ever holds a MANAGER-or-above library grant here, never SYSTEM_ADMIN - the
+    // `false` below is the same systemAdmin flag AuthenticatedUserResolver would pass for a
+    // caller whose SystemRole is USER.
+    List<AssetGrantResponse> grants = grantService.listGrants(library.getId(), owner, false);
+
+    // Three grants in total: the two upserted above, plus the OWNER grant createLibrary always
+    // creates for its caller (see createLibrarySetsMyRoleToOwnerForTheCreator) - "Eigentümerin"
+    // is that third one's subject, not a granter-only name.
+    assertThat(grants)
+        .extracting(AssetGrantResponse::getSubjectDisplayName)
+        .containsExactlyInAnyOrder("Eigentümerin", "Empfänger Person", "Referat");
+    assertThat(grants)
+        .extracting(AssetGrantResponse::getGrantedByDisplayName)
+        .containsOnly("Eigentümerin");
   }
 
   @Test

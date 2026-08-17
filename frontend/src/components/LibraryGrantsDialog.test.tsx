@@ -126,9 +126,11 @@ describe('LibraryGrantsDialog', () => {
         id: 'grant-1',
         subjectType: 'USER',
         subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
         role: 'VIEWER',
         expiresAt: null,
         grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -146,9 +148,11 @@ describe('LibraryGrantsDialog', () => {
         id: 'grant-expired',
         subjectType: 'USER',
         subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
         role: 'VIEWER',
         expiresAt: '2020-01-01T00:00:00.000Z',
         grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
         createdAt: '2019-01-01T10:00:00Z',
         updatedAt: '2019-01-01T10:00:00Z',
       },
@@ -166,9 +170,11 @@ describe('LibraryGrantsDialog', () => {
         id: 'grant-future',
         subjectType: 'USER',
         subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
         role: 'VIEWER',
         expiresAt: '2099-12-31T12:00:00.000Z',
         grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -186,9 +192,13 @@ describe('LibraryGrantsDialog', () => {
           id: 'grant-new',
           subjectType: request.subjectType,
           subjectId: request.subjectId,
+          // The real backend resolves this server-side (AssetGrantService#toResponses) and
+          // returns it on the very same upsert response - the mock mirrors that here.
+          subjectDisplayName: 'Alice',
           role: request.role,
           expiresAt: request.expiresAt ?? null,
           grantedByUserId: 'admin-1',
+          grantedByDisplayName: 'Admin',
           createdAt: '2026-03-05T10:00:00Z',
           updatedAt: '2026-03-05T10:00:00Z',
         }
@@ -276,9 +286,11 @@ describe('LibraryGrantsDialog', () => {
         id: 'grant-1',
         subjectType: 'USER',
         subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
         role: 'VIEWER',
         expiresAt: null,
         grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -296,7 +308,11 @@ describe('LibraryGrantsDialog', () => {
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
-    await userEventInstance.click(await screen.findByRole('combobox', { name: /^rolle$/i }))
+    // #423 code review, nit 5: the row-level role select's accessible name now names its subject
+    // ("Rolle für Alice"), not the shared "Rolle" every row used to carry.
+    await userEventInstance.click(
+      await screen.findByRole('combobox', { name: /^rolle für alice$/i }),
+    )
     await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
 
     await waitFor(() => {
@@ -317,9 +333,11 @@ describe('LibraryGrantsDialog', () => {
         id: 'grant-1',
         subjectType: 'USER',
         subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
         role: 'VIEWER',
         expiresAt: null,
         grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
@@ -353,13 +371,171 @@ describe('LibraryGrantsDialog', () => {
 
   it('falls back to a free-text user id field when the user list is not available', async () => {
     setManager()
-    mockGetUsers.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Ressource'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
     expect(await screen.findByLabelText(/nutzer-id/i)).toBeInTheDocument()
+    // #423 code review, finding 1: GET /v1/admin/users is never even attempted for a non-admin -
+    // the fallback is not "the request failed", it is "this caller could never succeed".
+    expect(mockGetUsers).not.toHaveBeenCalled()
+  })
+
+  it('submits a manually entered, valid user id for a MANAGER without a system role', async () => {
+    setManager()
+    mockUpsertLibraryGrant.mockResolvedValueOnce({
+      id: 'grant-manual',
+      subjectType: 'USER',
+      subjectId: '11111111-2222-4333-8444-555555555555',
+      subjectDisplayName: null,
+      role: 'VIEWER',
+      expiresAt: null,
+      grantedByUserId: 'manager-1',
+      grantedByDisplayName: 'Manager',
+      createdAt: '2026-03-05T10:00:00Z',
+      updatedAt: '2026-03-05T10:00:00Z',
+    } satisfies AssetGrantResponse)
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.type(
+      await screen.findByLabelText(/nutzer-id/i),
+      '11111111-2222-4333-8444-555555555555',
+    )
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    await waitFor(() => {
+      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+        subjectType: 'USER',
+        subjectId: '11111111-2222-4333-8444-555555555555',
+        role: 'VIEWER',
+        expiresAt: null,
+      })
+    })
+  })
+
+  it('rejects a manually entered user id that is not a valid UUID before calling the API', async () => {
+    setManager()
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.type(await screen.findByLabelText(/nutzer-id/i), 'anna.beispiel')
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    expect(await screen.findByText(/nutzer-id muss eine gültige uuid sein/i)).toBeInTheDocument()
+    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+  })
+
+  it('shows resolved subject and granter names for a MANAGER without a system role', async () => {
+    // #423 code review, finding 1 (confirmed): the fix is that these names come from the grant
+    // response itself (subjectDisplayName/grantedByDisplayName), not from GET /v1/admin/users -
+    // this test proves the display path works with no admin lookup ever attempted.
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-1',
+        subjectType: 'USER',
+        subjectId: 'user-alice',
+        subjectDisplayName: 'Alice',
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        id: 'grant-2',
+        subjectType: 'GROUP',
+        subjectId: group.id,
+        subjectDisplayName: 'Referat 50',
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Referat 50')).toBeInTheDocument()
+    expect(screen.getAllByText(/erteilt von manager am/i)).toHaveLength(2)
+    expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
+    expect(mockGetUsers).not.toHaveBeenCalled()
+  })
+
+  it('offers a manual group id as an alternative to the member-only group list', async () => {
+    // #423 code review, finding 3: GET /v1/me/groups only returns the caller's own memberships,
+    // but AssetGrantService#requireGrantableGroup accepts any group in the organization.
+    setManager()
+    mockUpsertLibraryGrant.mockResolvedValueOnce({
+      id: 'grant-other-group',
+      subjectType: 'GROUP',
+      subjectId: '22222222-3333-4444-8555-666666666666',
+      subjectDisplayName: null,
+      role: 'VIEWER',
+      expiresAt: null,
+      grantedByUserId: 'manager-1',
+      grantedByDisplayName: 'Manager',
+      createdAt: '2026-03-05T10:00:00Z',
+      updatedAt: '2026-03-05T10:00:00Z',
+    } satisfies AssetGrantResponse)
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /andere gruppen-id eingeben/i }),
+    )
+    await userEventInstance.type(
+      await screen.findByLabelText(/gruppen-id/i),
+      '22222222-3333-4444-8555-666666666666',
+    )
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    await waitFor(() => {
+      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+        subjectType: 'GROUP',
+        subjectId: '22222222-3333-4444-8555-666666666666',
+        role: 'VIEWER',
+        expiresAt: null,
+      })
+    })
+  })
+
+  it("warns specifically about self-lockout when revoking one's own grant", async () => {
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-self',
+        subjectType: 'USER',
+        subjectId: 'manager-1',
+        subjectDisplayName: 'Manager',
+        role: 'MANAGER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/eigene freigabe/i))
+    expect(mockRevokeLibraryGrant).not.toHaveBeenCalled()
   })
 
   it('explains every grantable role', async () => {

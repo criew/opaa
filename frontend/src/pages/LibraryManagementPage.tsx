@@ -74,6 +74,11 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
   // system admin or not.
   const canDelete =
     (roleGrantsDelete || isSystemAdmin) && !library.personal && library.ownerType !== 'SYSTEM'
+  // #423 code review, finding 2: AssetGrantService#upsertGrant rejects every grant on the personal
+  // library unconditionally (it is meant to reach only its owner) - the same exception canDelete
+  // above already carries for the identical backend reason. Without it, "Rechte verwalten" opened
+  // a dialog that could only ever fail with a 400 on the personal library.
+  const canManageGrants = canEdit && !library.personal
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
 
   const editableVisibilities = library.personal ? personalLibraryVisibilities : allVisibilities
@@ -243,9 +248,11 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
               >
                 Speichern
               </Button>
-              <Button variant="outlined" size="small" onClick={() => setGrantsDialogOpen(true)}>
-                Rechte verwalten
-              </Button>
+              {canManageGrants && (
+                <Button variant="outlined" size="small" onClick={() => setGrantsDialogOpen(true)}>
+                  Rechte verwalten
+                </Button>
+              )}
               {canDelete && (
                 <Button
                   color="error"
@@ -274,7 +281,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
           )}
         </Stack>
       </AccordionDetails>
-      {canEdit && (
+      {canManageGrants && (
         <LibraryGrantsDialog
           open={grantsDialogOpen}
           library={{ id: library.id, name: library.name }}
