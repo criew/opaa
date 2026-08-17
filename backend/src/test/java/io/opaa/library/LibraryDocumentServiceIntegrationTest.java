@@ -8,6 +8,7 @@ import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
@@ -93,6 +94,8 @@ class LibraryDocumentServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   private UUID organizationId;
   private User editor;
@@ -127,6 +130,12 @@ class LibraryDocumentServiceIntegrationTest {
   void tearDown() {
     documentRepository.deleteAll();
     libraryRepository.deleteById(libraryId);
+    // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
+    // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
+    // operation setUp performs now historises a row referencing editor/viewer, which must be
+    // purged before this teardown's own user deletion below (not a real account deletion).
+    grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
+    membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
     organizationRepository.deleteById(organizationId);
