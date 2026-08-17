@@ -23,12 +23,18 @@ spring:
     open-in-view: false
   servlet:
     multipart:
-      # Deliberately generous: opaa.upload.max-file-size below is the limit whose violation the API
-      # answers with a German 413 message (LibraryDocumentService); this container-level cap only
-      # needs to sit above it, with headroom for multipart framing overhead, so it never fires first
-      # and produces Spring's own untranslated error instead.
-      max-file-size: 60MB
-      max-request-size: 60MB
+      # Bound to the exact same value as opaa.upload.max-file-size below (#420 code review, finding
+      # 2), not a separately chosen, larger container-level cap: a gap between the two would leave
+      # every file above this limit and up to that gap answered by Spring's own untranslated 500 /
+      # multipart error page instead of GlobalExceptionHandler's German 413. Both this and
+      # opaa.upload.max-file-size read the same OPAA_UPLOAD_MAX_FILE_SIZE env var (bytes, "B" suffix
+      # for DataSize parsing here) so they can never drift apart. GlobalExceptionHandler still
+      # answers 413 for the (rare, container-level) MaxUploadSizeExceededException this produces -
+      # not because the size differs from opaa.upload.max-file-size's own check, but because
+      # multipart request framing overhead can push a request that size alone but under the limit
+      # over max-request-size first.
+      max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
+      max-request-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://localhost:5432/opaa?prepareThreshold=0}
     username: ${OPAA_DB_USERNAME:opaa}

@@ -120,6 +120,18 @@ class LibraryControllerDocumentTest {
   }
 
   @Test
+  void uploadingWithoutTheFilePartReturns400WithAGermanMessage() throws Exception {
+    // #420 code review, finding 2: without GlobalExceptionHandler#handleMissingServletRequestPart
+    // Exception, this reached handleGenericException and answered 500.
+    UUID libraryId = UUID.randomUUID();
+
+    mockMvc
+        .perform(multipart("/api/v1/libraries/" + libraryId + "/documents").with(asTestUser()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Der Anfrageteil 'file' fehlt"));
+  }
+
+  @Test
   void deletingADocumentReturns204() throws Exception {
     UUID libraryId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();

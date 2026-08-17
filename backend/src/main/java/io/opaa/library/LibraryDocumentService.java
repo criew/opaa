@@ -6,6 +6,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.DocumentSourceType;
+import io.opaa.indexing.EmptyDocumentContentException;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import java.io.IOException;
@@ -19,8 +21,12 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -49,6 +55,16 @@ import org.springframework.web.server.ResponseStatusException;
  * original name is kept only as {@link Document#getFileName()} display metadata, sanitized to its
  * last path segment as a second, defence-in-depth measure even though it is never interpreted as a
  * path.
+ *
+ * <p><b>{@link #deleteDocument} only ever deletes a file this class itself wrote (#420 code review,
+ * finding 1).</b> A document's {@code file_path} is not always inside {@code
+ * opaa.upload.storage-path}: {@code FILESYSTEM}-sourced documents point at the operator-managed
+ * indexing directory, and {@code HTTP_DIRECTORY} ones do not name a local file OPAA owns at all.
+ * Deleting on the strength of that column alone - without checking {@link Document#getSourceType()}
+ * and that the path actually resolves under this library's own upload subdirectory - would let
+ * anyone with {@code EDITOR} on a library that also happens to hold crawled documents (nothing
+ * today reserves the system library's grants, and #419 will route regular crawl runs into ordinary
+ * libraries) delete a file outside OPAA's own data directory entirely, with no undo.
  */
 @Service
 public class LibraryDocumentService {
@@ -136,6 +152,19 @@ public class LibraryDocumentService {
               library.getOrganizationId(),
               currentUserId);
       return LibraryDocumentResponses.from(document);
+    } catch (EmptyDocumentContentException e) {
+      deleteQuietly(storedFile);
+      throw new ResponseStatusException(
+          HttpStatus.UNPROCESSABLE_ENTITY, "Aus der Datei konnte kein Text extrahiert werden");
+    } catch (DataIntegrityViolationException e) {
+      // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
+      // that check and the eventual INSERT are two separate steps with no database guarantee
+      // between them, so two concurrent uploads of the same file into the same library could both
+      // pass it. uk_documents_library_checksum (migration 020) is the actual guarantee; this maps
+      // its violation to the same 409 the sequential check already produces.
+      deleteQuietly(storedFile);
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
       deleteQuietly(storedFile);
       throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
@@ -145,6 +174,7 @@ public class LibraryDocumentService {
     }
   }
 
+  @Transactional
   public void deleteDocument(
       UUID libraryId, UUID documentId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
@@ -161,15 +191,77 @@ public class LibraryDocumentService {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Dokument nicht gefunden");
     }
 
+    Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
+
     vectorStore.delete("document_id == '" + document.getId() + "'");
     documentRepository.delete(document);
-    if (document.getFilePath() != null) {
-      deleteQuietly(Path.of(document.getFilePath()));
+
+    // Deferred to after commit (#420 code review, nit 7): if the row/chunk deletion above rolls
+    // back for any reason, the file must still be there afterwards - deleting it eagerly here
+    // would leave a document that is still listed and still searchable pointing at nothing.
+    if (fileManagedByThisService != null) {
+      deleteAfterCommit(fileManagedByThisService);
     }
   }
 
+  /**
+   * The file to delete alongside {@code document}'s row, or {@code null} if this service does not
+   * own that file and must leave it alone - see the class Javadoc ("{@code deleteDocument} only
+   * ever deletes a file this class itself wrote"). Both conditions are required: the {@code
+   * sourceType} alone is not proof against a corrupted or foreign {@code file_path}, and a path
+   * check alone would not stop a {@code FILESYSTEM} document whose operator-managed file
+   * coincidentally lives under the same parent directory.
+   */
+  private Path uploadedFileIfManagedByThisService(Document document, UUID libraryId) {
+    if (document.getSourceType() != DocumentSourceType.UPLOAD || document.getFilePath() == null) {
+      return null;
+    }
+    Path candidate = Path.of(document.getFilePath()).toAbsolutePath().normalize();
+    Path libraryUploadDir =
+        Paths.get(uploadProperties.storagePath())
+            .resolve(libraryId.toString())
+            .toAbsolutePath()
+            .normalize();
+    return candidate.startsWith(libraryUploadDir) ? candidate : null;
+  }
+
+  /**
+   * Registers the actual file deletion to run only once the enclosing transaction has committed -
+   * mirrors {@code AssetGrantService#invalidateAfterCommit}'s reasoning, except this uses {@code
+   * afterCommit} rather than {@code afterCompletion}: a cache eviction is harmless to run after a
+   * rollback too, but deleting a file whose row deletion just rolled back would destroy data the
+   * database still considers live. Falls back to running immediately when no transaction is active.
+   */
+  private void deleteAfterCommit(Path path) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      deleteQuietly(path);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            deleteQuietly(path);
+          }
+        });
+  }
+
+  /**
+   * Whether the caller may add or remove documents in {@code library} - requires {@link
+   * AssetRole#EDITOR}. Deliberately distinguishes "no access at all" ({@code 404}, per this issue's
+   * acceptance criterion "Ein Nutzer ohne jeden Zugriff erfährt nichts über die Existenz der
+   * Bibliothek") from "some access, but not enough" ({@code 403}) - a finer distinction than {@code
+   * KnowledgeLibraryService#getLibrary}'s {@code canRead} check draws, which answers {@code 403} to
+   * any same-organization caller regardless of whether they hold any role at all (#420 code review,
+   * nit 9). That existing behaviour is deliberately not changed here; this method only governs the
+   * two endpoints this issue adds.
+   */
   private void requireEditable(KnowledgeLibrary library, UUID currentUserId, boolean systemAdmin) {
-    if (!accessService.canEdit(library, currentUserId, systemAdmin)) {
+    AssetRole role = accessService.effectiveRole(library, currentUserId, systemAdmin);
+    if (role == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+    }
+    if (!role.atLeast(AssetRole.EDITOR)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
   }

@@ -60,3 +60,33 @@ databaseChangeLog:
               ALTER TABLE documents
               ADD CONSTRAINT chk_documents_source_type
               CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY'));
+
+  - changeSet:
+      id: 020-add-checksum-dedup-index
+      author: opaa
+      comment: >
+        Closes the race in the upload endpoint's per-library dedup check (#420 code review, nit 5):
+        LibraryDocumentService#uploadDocument checks for an existing (library_id, checksum) pair
+        before inserting, but that check and the insert are two separate statements with no
+        database guarantee between them - two concurrent uploads of the same file into the same
+        library could both pass the check and both insert. Partial on two conditions, both
+        necessary:
+
+        - checksum IS NOT NULL, because a row is inserted once up front with checksum still NULL
+          (FileProcessingService#processUploadedFile) before the eventual value is known.
+        - source_type = 'UPLOAD', because FILESYSTEM/HTTP_DIRECTORY documents are not deduplicated
+          by (library, checksum) at all - processFile/processUrlFile key their own dedup on
+          file_path, and two different crawled files that happen to share identical byte content
+          (different paths, same checksum) are today two legitimate, independent rows in the same
+          library. A library-wide index without this second condition would turn that pre-existing,
+          harmless case into a failed indexing run the moment it occurred.
+      changes:
+        - sql:
+            comment: "Partial unique index closing the upload dedup race per library"
+            sql: >
+              CREATE UNIQUE INDEX uk_documents_library_checksum
+              ON documents (library_id, checksum)
+              WHERE checksum IS NOT NULL AND source_type = 'UPLOAD';
+      rollback:
+        - sql:
+            sql: "DROP INDEX IF EXISTS uk_documents_library_checksum;"

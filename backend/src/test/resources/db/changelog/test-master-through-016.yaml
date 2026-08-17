@@ -1,0 +1,44 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 016 - i.e. the schema exactly as it existed immediately before migration 020, which
+# builds on this same pre-migration state (017/018/019 are reserved by parallel work not yet on
+# main - see Migration020UploadMetadataTest's Javadoc).
+#
+# Used by:
+# - Migration020UploadMetadataTest, to build a realistic pre-migration database (via the real,
+#   versioned changelog files, not a hand-rolled schema) and then apply 020 in isolation.
+#
+# See test-master-through-015.yaml and Migration016VectorStoreLibraryMetadataTest for the pattern
+# this fixture follows.
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-enable-pgvector-extension.yaml
+  - include:
+      file: db/changelog/changes/002-create-documents-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-indexing-jobs-table.yaml
+  - include:
+      file: db/changelog/changes/004-add-source-type-to-documents.yaml
+  - include:
+      file: db/changelog/changes/005-create-users-table.yaml
+  - include:
+      file: db/changelog/changes/006-add-system-role-to-users.yaml
+  - include:
+      file: db/changelog/changes/007-create-workspaces-and-memberships.yaml
+  - include:
+      file: db/changelog/changes/008-rename-workspace-to-space.yaml
+  - include:
+      file: db/changelog/changes/009-create-groups.yaml
+  - include:
+      file: db/changelog/changes/010-space-uniqueness-and-membership-index.yaml
+  - include:
+      file: db/changelog/changes/011-directory-sync.yaml
+  - include:
+      file: db/changelog/changes/012-knowledge-libraries.yaml
+  - include:
+      file: db/changelog/changes/013-asset-grants.yaml
+  - include:
+      file: db/changelog/changes/014-drop-asset-role-user.yaml
+  - include:
+      file: db/changelog/changes/015-replace-space-kind-with-is-default.yaml
+  - include:
+      file: db/changelog/changes/016-backfill-vector-store-library-metadata.yaml

@@ -16,6 +16,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -97,6 +99,44 @@ public class GlobalExceptionHandler {
     String message = ex.getReason() != null ? ex.getReason() : defaultMessageFor(status);
     return ResponseEntity.status(status)
         .body(new ErrorResponse(message, status.value(), Instant.now()));
+  }
+
+  /**
+   * The container-level counterpart to {@code LibraryDocumentService}'s own {@code
+   * opaa.upload.max-file-size} check (#420 code review, finding 2): {@code
+   * spring.servlet.multipart.max-file-size}/{@code max-request-size} are bound to the exact same
+   * configured value (application.yml), so this fires only for the same limit that check already
+   * enforces, or - because multipart request framing carries a little overhead beyond the raw file
+   * bytes - for a request just over {@code max-request-size} at a file size just under it. Without
+   * this handler, {@code ExceptionHandlerExceptionResolver} never reaches {@code
+   * DefaultHandlerExceptionResolver}'s own multipart handling (it runs first and {@code
+   * handleGenericException} below - the last-resort {@code Exception} handler - would otherwise
+   * catch this first), and the response was a bare {@code 500} instead of the required {@code 413}
+   * with a German message.
+   */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
+      MaxUploadSizeExceededException ex) {
+    String message = "Die Datei ist zu gross.";
+    if (ex.getMaxUploadSize() > 0) {
+      message += " Erlaubt sind hoechstens " + (ex.getMaxUploadSize() / (1024 * 1024)) + " MB.";
+    }
+    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+        .body(new ErrorResponse(message, HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
+  }
+
+  /**
+   * Thrown when a multipart request is missing the expected part (e.g. {@code file} on the upload
+   * endpoint) or names it under the wrong field - see {@link #handleMaxUploadSizeExceededException}
+   * for why this needs its own handler rather than falling through to {@code
+   * handleGenericException}'s {@code 500}.
+   */
+  @ExceptionHandler(MissingServletRequestPartException.class)
+  public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
+      MissingServletRequestPartException ex) {
+    String message = "Der Anfrageteil '" + ex.getRequestPartName() + "' fehlt";
+    return ResponseEntity.badRequest()
+        .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), Instant.now()));
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)

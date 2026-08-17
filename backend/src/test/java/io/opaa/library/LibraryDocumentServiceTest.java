@@ -18,6 +18,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
+import io.opaa.indexing.EmptyDocumentContentException;
 import io.opaa.indexing.FileProcessingService;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,8 +38,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Unit tests for {@link LibraryDocumentService} (#420): the format/size/dedup validation, the path
- * traversal guarantee, and the EDITOR permission gate on both {@link
- * LibraryDocumentService#uploadDocument} and {@link LibraryDocumentService#deleteDocument}. The
+ * traversal guarantee, the EDITOR permission gate (and the 404-vs-403 distinction it draws between
+ * no access at all and insufficient access) on both {@link LibraryDocumentService#uploadDocument}
+ * and {@link LibraryDocumentService#deleteDocument}, and that {@link
+ * LibraryDocumentService#deleteDocument} only ever deletes a file this service itself wrote. The
  * indexing pipeline itself ({@code FileProcessingService#processUploadedFile}) is mocked here and
  * covered by its own tests in {@code FileProcessingServiceTest} - this class is about what happens
  * before and around that call.
@@ -91,13 +95,27 @@ class LibraryDocumentServiceTest {
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
   }
 
+  private void grantEditor() {
+    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false)))
+        .thenReturn(AssetRole.EDITOR);
+  }
+
+  private void grantViewerOnly() {
+    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false)))
+        .thenReturn(AssetRole.VIEWER);
+  }
+
+  private void grantNoAccess() {
+    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false))).thenReturn(null);
+  }
+
   private MultipartFile pdfFile(String originalFileName, String content) {
     return new MockMultipartFile("file", originalFileName, "application/pdf", content.getBytes());
   }
 
   @Test
   void editorMayUploadADocument() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-123");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-123"))
         .thenReturn(Optional.empty());
@@ -134,7 +152,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aViewerCannotUpload() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(false);
+    grantViewerOnly();
 
     assertThatThrownBy(
             () ->
@@ -145,6 +163,21 @@ class LibraryDocumentServiceTest {
 
     verify(fileProcessingService, never())
         .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
+  }
+
+  @Test
+  void aUserWithNoAccessAtAllGets404NotForbidden() throws IOException {
+    // #420 code review, nit 9: "no access at all" must look like the library does not exist, not
+    // like a library that exists but refuses this caller - the same distinction 404-vs-403 already
+    // draws across the organization boundary.
+    grantNoAccess();
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
   }
 
   @Test
@@ -164,7 +197,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void anUnsupportedFormatIsRejectedAndNoFileIsStored() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
 
     assertThatThrownBy(
             () ->
@@ -184,7 +217,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aFileOverTheSizeLimitIsRejectedWithoutBeingStored() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     String tooBig = "x".repeat(11 * 1024);
 
     assertThatThrownBy(
@@ -199,7 +232,7 @@ class LibraryDocumentServiceTest {
   @Test
   void aChecksumAlreadyPresentInTheSameLibraryIsRejectedAndTheFileIsRemovedAgain()
       throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("duplicate-checksum");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "duplicate-checksum"))
         .thenReturn(Optional.of(new Document("existing.pdf", "path", "application/pdf", 5L)));
@@ -217,8 +250,53 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void aRaceThatSlipsPastTheChecksumCheckIsStillCaughtByTheUniqueIndex() throws IOException {
+    // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check cannot close a
+    // race between two concurrent uploads; uk_documents_library_checksum (migration 020) does, and
+    // this is the resulting DataIntegrityViolationException translated into the same 409.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-race");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-race"))
+        .thenReturn(Optional.empty());
+    when(fileProcessingService.processUploadedFile(
+            any(), anyString(), eq("checksum-race"), any(), any(), any()))
+        .thenThrow(new DataIntegrityViolationException("uk_documents_library_checksum"));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("racer.pdf", "same content"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+
+    assertNoFilesWereStored();
+  }
+
+  @Test
+  void aFileWithNoExtractableContentIsRejectedAsUnprocessable() throws IOException {
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-empty");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-empty"))
+        .thenReturn(Optional.empty());
+    when(fileProcessingService.processUploadedFile(
+            any(), anyString(), eq("checksum-empty"), any(), any(), any()))
+        .thenThrow(new EmptyDocumentContentException("blank.pdf"));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("blank.pdf", "no extractable text"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.UNPROCESSABLE_ENTITY);
+
+    // The stored file is cleaned up just like any other post-storage failure - no orphaned file
+    // survives a rejected upload.
+    assertNoFilesWereStored();
+  }
+
+  @Test
   void aPathTraversingFileNameNeverEscapesTheLibraryStorageDirectory() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-xyz");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-xyz"))
         .thenReturn(Optional.empty());
@@ -248,7 +326,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aViewerCannotDelete() {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(false);
+    grantViewerOnly();
 
     assertThatThrownBy(
             () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
@@ -258,8 +336,19 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void aUserWithNoAccessAtAllCannotEvenTellTheLibraryExists() {
+    grantNoAccess();
+
+    assertThatThrownBy(
+            () -> service.deleteDocument(libraryId, UUID.randomUUID(), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+    verify(documentRepository, never()).delete(any());
+  }
+
+  @Test
   void deletingAMissingDocumentIs404() {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
 
@@ -270,7 +359,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void deletingADocumentThatBelongsToAnotherLibraryIs404() {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+    grantEditor();
     UUID documentId = UUID.randomUUID();
     Document foreignDoc = new Document("other.pdf", "path", "application/pdf", 5L);
     foreignDoc.setLibraryId(UUID.randomUUID());
@@ -283,14 +372,16 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
-  void deletingADocumentRemovesChunksTheRowAndTheStoredFile() throws IOException {
-    when(accessService.canEdit(any(), eq(currentUserId), eq(false))).thenReturn(true);
+  void deletingAnUploadedDocumentRemovesChunksTheRowAndTheStoredFile() throws IOException {
+    grantEditor();
     UUID documentId = UUID.randomUUID();
-    Path storedFile = storageDir.resolve("stored.pdf");
+    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve("stored.pdf");
     Files.writeString(storedFile, "content");
 
     Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
     doc.setLibraryId(libraryId);
+    doc.setSourceType(DocumentSourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
 
     service.deleteDocument(libraryId, documentId, currentUserId, false);
@@ -298,6 +389,62 @@ class LibraryDocumentServiceTest {
     verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(storedFile)).isFalse();
+  }
+
+  @Test
+  void deletingAFilesystemSourcedDocumentNeverTouchesItsFile() throws IOException {
+    // #420 code review, finding 1 (blocking): a FILESYSTEM document's file_path points at the
+    // operator-managed indexing directory, not at anything this service is allowed to remove -
+    // even if that path happens to live outside the upload storage tree, and even though the row
+    // and its chunks are still removed like any other document.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path externalDir = Files.createDirectory(storageDir.resolve("operator-managed-crawl-source"));
+    Path externalFile = externalDir.resolve("dienstanweisung.txt");
+    Files.writeString(externalFile, "crawled content, not ours to delete");
+
+    Document doc =
+        new Document(
+            "dienstanweisung.txt",
+            externalFile.toString(),
+            "text/plain",
+            30L,
+            DocumentSourceType.FILESYSTEM);
+    doc.setLibraryId(libraryId);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+
+    service.deleteDocument(libraryId, documentId, currentUserId, false);
+
+    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    verify(documentRepository).delete(doc);
+    assertThat(Files.exists(externalFile))
+        .as("A FILESYSTEM document's source file must survive deleteDocument")
+        .isTrue();
+  }
+
+  @Test
+  void deletingAnUploadDocumentWhoseFilePathWasTamperedWithOutsideItsLibraryDirIsNotDeleted()
+      throws IOException {
+    // Defence in depth: sourceType == UPLOAD alone is not proof that file_path is trustworthy: it
+    // must also actually resolve under this library's own upload subdirectory.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path outsideFile = storageDir.resolve("not-in-any-library-dir.pdf");
+    Files.writeString(outsideFile, "content");
+
+    Document doc =
+        new Document(
+            "tampered.pdf",
+            outsideFile.toString(),
+            "application/pdf",
+            5L,
+            DocumentSourceType.UPLOAD);
+    doc.setLibraryId(libraryId);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+
+    service.deleteDocument(libraryId, documentId, currentUserId, false);
+
+    assertThat(Files.exists(outsideFile)).isTrue();
   }
 
   private void assertNoFilesWereStored() throws IOException {

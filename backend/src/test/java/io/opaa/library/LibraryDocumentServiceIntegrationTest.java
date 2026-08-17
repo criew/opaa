@@ -19,6 +19,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -280,6 +286,98 @@ class LibraryDocumentServiceIntegrationTest {
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
     assertThat(documentRepository.findById(uploaded.getId())).isPresent();
+  }
+
+  @Test
+  void aUserWithNoGrantAtAllGets404NotForbidden() {
+    User stranger = new User("stranger-subject", "issuer", "stranger@example.com", "Stranger");
+    stranger.setOrganizationId(organizationId);
+    stranger = userRepository.save(stranger);
+
+    try {
+      var strangerId = stranger.getId();
+      assertThatThrownBy(
+              () ->
+                  documentService.uploadDocument(
+                      libraryId, textFile("x.txt", "content"), strangerId, false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+    } finally {
+      userRepository.deleteById(stranger.getId());
+    }
+  }
+
+  @Test
+  void deletingAFilesystemSourcedDocumentRemovesTheRowButNeverItsSourceFile(@TempDir Path crawlDir)
+      throws IOException {
+    // #420 code review, finding 1 (blocking): an EDITOR on this library must be able to remove a
+    // FILESYSTEM-sourced document's row and chunks like any other, but the file itself lives in
+    // the operator-managed indexing directory - deleteDocument must never touch it, even though
+    // nothing today reserves the library's grants to upload-only content.
+    Path crawledFile = crawlDir.resolve("dienstanweisung.txt");
+    Files.writeString(crawledFile, "Original vom Betrieb verwaltete Datei.");
+
+    Document crawlDoc =
+        new Document(
+            "dienstanweisung.txt",
+            crawledFile.toString(),
+            "text/plain",
+            Files.size(crawledFile),
+            DocumentSourceType.FILESYSTEM);
+    crawlDoc.setLibraryId(libraryId);
+    crawlDoc.setOrganizationId(organizationId);
+    crawlDoc = documentRepository.save(crawlDoc);
+
+    documentService.deleteDocument(libraryId, crawlDoc.getId(), editor.getId(), false);
+
+    assertThat(documentRepository.findById(crawlDoc.getId())).isEmpty();
+    assertThat(Files.exists(crawledFile))
+        .as("A FILESYSTEM document's source file must survive deleteDocument")
+        .isTrue();
+  }
+
+  @Test
+  void concurrentUploadsOfTheSameFileIntoTheSameLibraryProduceExactlyOneDocument()
+      throws Exception {
+    // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check alone cannot close
+    // this race - only uk_documents_library_checksum (migration 020) can, and only a genuine
+    // concurrent attempt (real threads, real Postgres) actually exercises it rather than the
+    // sequential fast-path check.
+    String identicalContent = "identical concurrent content";
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Callable<Boolean> upload =
+          () -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            try {
+              documentService.uploadDocument(
+                  libraryId,
+                  textFile("racer-" + Thread.currentThread().getId() + ".txt", identicalContent),
+                  editor.getId(),
+                  false);
+              return true;
+            } catch (ResponseStatusException e) {
+              assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              return false;
+            }
+          };
+
+      Future<Boolean> first = executor.submit(upload);
+      Future<Boolean> second = executor.submit(upload);
+      boolean firstSucceeded = first.get(20, TimeUnit.SECONDS);
+      boolean secondSucceeded = second.get(20, TimeUnit.SECONDS);
+
+      assertThat(firstSucceeded ^ secondSucceeded)
+          .as("Exactly one of the two concurrent uploads must succeed")
+          .isTrue();
+      assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test

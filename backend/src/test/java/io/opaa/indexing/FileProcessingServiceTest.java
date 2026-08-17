@@ -443,23 +443,58 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void processUploadedFileMarksDocumentFailedWhenNoContentExtracted() throws IOException {
+  void processUploadedFileThrowsWithoutPersistingARowWhenNoContentExtracted() throws IOException {
+    // #420 code review, nit 6: unlike processFile/processUrlFile, a failed upload leaves no row
+    // behind at all - nothing is gained by listing a FAILED document whose file the caller is
+    // about to delete.
     Path file = tempDir.resolve("empty-upload.pdf");
     Files.writeString(file, "");
 
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentService.parseDocument(file)).thenReturn(List.of());
 
-    Document result =
-        service.processUploadedFile(
-            file,
-            "empty-upload.pdf",
-            "checksum-empty",
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            UUID.randomUUID());
+    org.junit.jupiter.api.Assertions.assertThrows(
+        EmptyDocumentContentException.class,
+        () ->
+            service.processUploadedFile(
+                file,
+                "empty-upload.pdf",
+                "checksum-empty",
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()));
 
-    assertThat(result.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(vectorStore, never()).add(any());
+  }
+
+  @Test
+  void processUploadedFileDeletesTheRowAgainWhenChunkingFailsAfterAnInitialSave()
+      throws IOException {
+    Path file = tempDir.resolve("upload-that-fails-later.pdf");
+    Files.writeString(file, "content that parses but fails to chunk");
+
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    RuntimeException chunkingFailure = new RuntimeException("chunking blew up");
+    when(chunkingService.chunkDocuments(eq("upload-that-fails-later.pdf"), eq(parsed)))
+        .thenThrow(chunkingFailure);
+
+    org.junit.jupiter.api.Assertions.assertThrows(
+        RuntimeException.class,
+        () ->
+            service.processUploadedFile(
+                file,
+                "upload-that-fails-later.pdf",
+                "checksum-xyz",
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()));
+
+    // Persisted once (the initial PENDING row, since parsing did succeed), then removed again -
+    // no orphaned FAILED row with a dead file_path is left behind.
+    verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
+    verify(documentRepository).delete(any(Document.class));
     verify(vectorStore, never()).add(any());
   }
 }

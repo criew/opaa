@@ -196,6 +196,19 @@ public class FileProcessingService {
    * {@link #processFile}/{@link #processUrlFile}, whose callers (the async job executors) only need
    * the processed/skipped/failed distinction for job counters, the upload endpoint's caller needs
    * the row itself to build its {@code 201} response.
+   *
+   * <p><b>No document row survives a failed upload (#420 code review, nit 6).</b> Unlike {@link
+   * #processFile}/{@link #processUrlFile}, which persist a row up front and mark it {@code FAILED}
+   * on any problem - appropriate for their job-based reporting model, where a batch run's summary
+   * has a place for "processed but failed" - this method parses the file <em>before</em> creating
+   * any row at all, and deletes the row again if chunking/embedding fails afterwards. An
+   * interactively uploaded document has no such use for a listed {@code FAILED} row pointing at a
+   * file the caller is about to delete: the caller gets a thrown exception instead, translates it
+   * into the appropriate {@code 4xx}, and there is nothing left over to clean up later.
+   *
+   * @throws EmptyDocumentContentException if Tika extracts no text at all - deliberately thrown
+   *     rather than returning a {@code FAILED} row, since there is nothing indexed and nothing to
+   *     list.
    */
   public Document processUploadedFile(
       Path storedFile,
@@ -205,6 +218,13 @@ public class FileProcessingService {
       UUID organizationId,
       UUID uploadedByUserId)
       throws IOException {
+    List<org.springframework.ai.document.Document> parsed =
+        documentService.parseDocument(storedFile);
+    if (parsed.isEmpty()) {
+      log.warn("No content extracted from uploaded document: {}", fileName);
+      throw new EmptyDocumentContentException(fileName);
+    }
+
     String filePath = storedFile.toAbsolutePath().toString();
     String contentType = Files.probeContentType(storedFile);
     long fileSize = Files.size(storedFile);
@@ -216,14 +236,6 @@ public class FileProcessingService {
     doc = documentRepository.save(doc);
 
     try {
-      List<org.springframework.ai.document.Document> parsed =
-          documentService.parseDocument(storedFile);
-      if (parsed.isEmpty()) {
-        log.warn("No content extracted from uploaded document: {}", fileName);
-        doc.setStatus(DocumentStatus.FAILED);
-        return documentRepository.save(doc);
-      }
-
       List<org.springframework.ai.document.Document> chunks =
           chunkingService.chunkDocuments(fileName, parsed);
       log.debug("Uploaded file {} produced {} chunks", fileName, chunks.size());
@@ -236,8 +248,7 @@ public class FileProcessingService {
       doc.setStatus(DocumentStatus.INDEXED);
       doc = documentRepository.save(doc);
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      documentRepository.delete(doc);
       metrics.recordFailed();
       throw e;
     }

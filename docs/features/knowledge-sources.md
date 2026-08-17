@@ -109,10 +109,14 @@ Zwei Sicherungen gehören zusätzlich dazu, beide noch offen:
 
 Beide sind entschieden und als **Issue #119** erfasst (siehe [Geklärte Fragen](#geklärte-fragen)), aber
 noch nicht gebaut. #420 hat dafür die Voraussetzung geschaffen: Jedes hochgeladene Dokument führt jetzt
-seine einbringende Person. Die Originale liegen in dem einen Verzeichnis, das die Installation dafür
-konfiguriert; ob dahinter ein lokales Dateisystem oder ein eingehängtes Netzlaufwerk steht, entscheidet
-der Betrieb und nicht die Anwendung (siehe
-[Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)).
+seine einbringende Person. Die Originale liegen in einem eigenen, vom Indizierungsverzeichnis
+getrennten Verzeichnis, das die Installation über `OPAA_UPLOAD_STORAGE_PATH` konfiguriert (Standard
+`./uploads`, im Docker-Compose-Aufbau als eigenes Volume eingehängt); ob dahinter ein lokales
+Dateisystem oder ein eingehängtes Netzlaufwerk steht, entscheidet der Betrieb und nicht die Anwendung
+(siehe [Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)). Getrennt vom
+Indizierungsverzeichnis deshalb, weil `DELETE .../documents/{documentId}` nur Dateien löscht, die es
+selbst dorthin geschrieben hat — ein hochgeladenes Dokument darf verschwinden, ein vom Betrieb
+gepflegter Bestand nicht.
 
 Ein Upload ist **statisch**. Ändert sich das Original außerhalb von OPAA, merkt das niemand. Deshalb
 führt jedes hochgeladene Dokument seinen Übergabezeitpunkt sichtbar mit, und die Antwort weist bei
