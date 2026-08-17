@@ -9,6 +9,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.PermissionHistoryService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,18 +59,21 @@ public class GroupService {
   private final GroupMembershipResolver membershipResolver;
   private final KnowledgeLibraryRepository libraryRepository;
   private final AssetGrantRepository grantRepository;
+  private final PermissionHistoryService permissionHistoryService;
 
   public GroupService(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
       KnowledgeLibraryRepository libraryRepository,
-      AssetGrantRepository grantRepository) {
+      AssetGrantRepository grantRepository,
+      PermissionHistoryService permissionHistoryService) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.libraryRepository = libraryRepository;
     this.grantRepository = grantRepository;
+    this.permissionHistoryService = permissionHistoryService;
   }
 
   @Transactional
@@ -207,6 +211,8 @@ public class GroupService {
     GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
     group.addMembership(membership);
     groupRepository.save(group);
+    permissionHistoryService.recordMembershipAdded(
+        membership, GroupMembershipHistoryCause.ADDED, currentUserId);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
     return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
@@ -225,6 +231,12 @@ public class GroupService {
 
     group.removeMembership(target);
     groupRepository.save(group);
+    permissionHistoryService.recordMembershipRemoved(
+        group.getId(),
+        group.getOrganizationId(),
+        memberUserId,
+        GroupMembershipHistoryCause.REMOVED,
+        currentUserId);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
   }
 

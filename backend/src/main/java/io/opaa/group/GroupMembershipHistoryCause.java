@@ -1,0 +1,25 @@
+package io.opaa.group;
+
+/**
+ * The operation that opened or closed a {@link GroupMembershipHistory} interval (#238). Mirrored by
+ * the database check constraint {@code chk_group_membership_history_cause} (migration 018).
+ *
+ * <p>The directory-sync causes exist separately from the manual ones because a synchronisation run
+ * has no acting user and is, per
+ * docs/features/spaces-and-assets.md#verzeichnissynchronisation-als-rechteereignis, "ein
+ * Massen-Rechteentzug ohne menschlichen Entscheidungspunkt" - a distinction worth keeping in the
+ * history even though both pairs otherwise mean the same thing (a membership starting or ending).
+ */
+public enum GroupMembershipHistoryCause {
+  /** A user was added to a group through {@code GroupService#addMember}. */
+  ADDED,
+
+  /** A user was removed from a group through {@code GroupService#removeMember}. */
+  REMOVED,
+
+  /** A directory sync run added a membership ({@code DirectorySyncPlanExecutor#applyPlan}). */
+  DIRECTORY_SYNC_ADDED,
+
+  /** A directory sync run removed a membership ({@code DirectorySyncPlanExecutor#applyPlan}). */
+  DIRECTORY_SYNC_REMOVED
+}

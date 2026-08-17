@@ -9,6 +9,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -47,6 +48,7 @@ public class QueryService {
   private final DocumentRepository documentRepository;
   private final UserRepository userRepository;
   private final LibraryAccessService libraryAccessService;
+  private final PermissionHistoryService permissionHistoryService;
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
 
@@ -58,6 +60,7 @@ public class QueryService {
       DocumentRepository documentRepository,
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
+      PermissionHistoryService permissionHistoryService,
       QueryMetrics metrics,
       QueryProperties queryProperties) {
     this.vectorStore = vectorStore;
@@ -67,6 +70,7 @@ public class QueryService {
     this.documentRepository = documentRepository;
     this.userRepository = userRepository;
     this.libraryAccessService = libraryAccessService;
+    this.permissionHistoryService = permissionHistoryService;
     this.metrics = metrics;
     this.queryProperties = queryProperties;
   }
@@ -85,6 +89,16 @@ public class QueryService {
    * straight to answer generation with zero chunks - the same code path a query with genuinely no
    * matching content takes, so the resulting message cannot be used to distinguish "no permission
    * on anything" from "nothing matched" (#202 acceptance criteria).
+   *
+   * <p><b>#238's regression check:</b> the applied search scope ({@code readableLibraryIds} below)
+   * is compared against {@link PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction
+   * for the same instant, logging a warning if the live computation reaches a library the history
+   * would not - a beweisbarer Durchsetzungsfehler per
+   * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten.
+   * Deliberately not a per-query log line of the full permission set itself: the feature spec
+   * rejects that as an unnecessary expansion of personal data (see the same section), so only a
+   * detected mismatch - not every query - is written to the application log, and even then only the
+   * offending library id, not the caller's whole readable set.
    */
   @Transactional(readOnly = true)
   public QueryResponse query(String question, String conversationId, UUID currentUserId) {
@@ -110,6 +124,8 @@ public class QueryService {
                 Set<UUID> readableLibraryIds =
                     libraryAccessService.readableLibraryIds(
                         currentUserId, currentUser.getOrganizationId());
+                checkAgainstPermissionHistory(
+                    readableLibraryIds, currentUserId, currentUser.getOrganizationId());
 
                 List<Document> relevantChunks =
                     readableLibraryIds.isEmpty()
@@ -156,6 +172,31 @@ public class QueryService {
                 throw e;
               }
             });
+  }
+
+  /**
+   * #238's regression check - see {@link #query}'s Javadoc. {@code appliedScope} is exactly the
+   * filter about to be handed to the vector store; any id in it the permission history does not
+   * also grant at "now" is logged as a mismatch, never silently ignored.
+   */
+  private void checkAgainstPermissionHistory(
+      Set<UUID> appliedScope, UUID currentUserId, UUID organizationId) {
+    if (appliedScope.isEmpty()) {
+      return;
+    }
+    Set<UUID> historized =
+        permissionHistoryService.readableLibraryIdsAsOf(
+            currentUserId, organizationId, Instant.now());
+    for (UUID libraryId : appliedScope) {
+      if (!historized.contains(libraryId)) {
+        log.warn(
+            "Permission history regression check: query for user {} applied library {} to the"
+                + " search scope, but the permission history does not (currently) grant it -"
+                + " possible enforcement drift between the live and historized rights computation",
+            currentUserId,
+            libraryId);
+      }
+    }
   }
 
   /**

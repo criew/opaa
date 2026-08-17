@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -82,6 +83,7 @@ public class QueryConfiguration {
       DocumentRepository documentRepository,
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
+      PermissionHistoryService permissionHistoryService,
       QueryMetrics queryMetrics,
       QueryProperties queryProperties) {
     return new QueryService(
@@ -92,6 +94,7 @@ public class QueryConfiguration {
         documentRepository,
         userRepository,
         libraryAccessService,
+        permissionHistoryService,
         queryMetrics,
         queryProperties);
   }

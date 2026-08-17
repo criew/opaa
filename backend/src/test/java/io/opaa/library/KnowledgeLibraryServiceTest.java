@@ -47,6 +47,7 @@ class KnowledgeLibraryServiceTest {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     grantRepository = mock(AssetGrantRepository.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
+    PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     libraryService =
@@ -58,6 +59,7 @@ class KnowledgeLibraryServiceTest {
             documentRepository,
             grantRepository,
             accessService,
+            permissionHistoryService,
             transactionManager);
   }
 

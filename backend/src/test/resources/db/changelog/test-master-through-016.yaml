@@ -1,12 +1,13 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 016 - i.e. the schema exactly as it existed immediately before migrations 017 and 020,
-# both of which build on this same pre-migration state (018/019 are reserved by parallel work not
-# yet on main - see Migration020UploadMetadataTest's Javadoc).
+# changeSet 016 - i.e. the schema exactly as it existed immediately before migrations 017, 018 and
+# 020, each of which builds on this same pre-migration state independently (019 is reserved by
+# other parallel work not yet on main; none of 017/018/020 depends on it).
 #
 # Used by:
 # - Migration017AuditLogTest, to build a realistic pre-migration database (via the real, versioned
 #   changelog files, not a hand-rolled schema) and then apply 017 in isolation.
-# - Migration020UploadMetadataTest, the same way, applying 020 in isolation.
+# - Migration018PermissionHistoryTest, the same pattern, applying 018 in isolation instead.
+# - Migration020UploadMetadataTest, the same pattern, applying 020 in isolation instead.
 #
 # See test-master-through-015.yaml and Migration016VectorStoreLibraryMetadataTest for the pattern
 # this fixture follows.

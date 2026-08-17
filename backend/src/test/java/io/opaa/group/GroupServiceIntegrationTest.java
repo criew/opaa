@@ -15,6 +15,7 @@ import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
+import io.opaa.library.PermissionHistoryService;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +51,7 @@ import org.testcontainers.utility.DockerImageName;
  * {@link #cleanUp()} instead.
  */
 @DataJpaTest
-@Import({GroupService.class, GroupMembershipResolver.class})
+@Import({GroupService.class, GroupMembershipResolver.class, PermissionHistoryService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @TestPropertySource(
     properties = {"spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})

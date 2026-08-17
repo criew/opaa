@@ -73,6 +73,7 @@ public class KnowledgeLibraryService {
   private final DocumentRepository documentRepository;
   private final AssetGrantRepository grantRepository;
   private final LibraryAccessService accessService;
+  private final PermissionHistoryService permissionHistoryService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public KnowledgeLibraryService(
@@ -83,6 +84,7 @@ public class KnowledgeLibraryService {
       DocumentRepository documentRepository,
       AssetGrantRepository grantRepository,
       LibraryAccessService accessService,
+      PermissionHistoryService permissionHistoryService,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -91,6 +93,7 @@ public class KnowledgeLibraryService {
     this.documentRepository = documentRepository;
     this.grantRepository = grantRepository;
     this.accessService = accessService;
+    this.permissionHistoryService = permissionHistoryService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -172,23 +175,30 @@ public class KnowledgeLibraryService {
     // group inherits rights beyond what the group's MANAGER grant itself carries (see the class
     // Javadoc on why mere membership must never imply management on its own).
     if (ownerGroup != null) {
-      grantRepository.save(
-          AssetGrant.forGroup(
-              saved.getId(),
-              saved.getOrganizationId(),
-              ownerGroup.getId(),
-              AssetRole.MANAGER,
-              null,
-              currentUserId));
+      AssetGrant groupGrant =
+          grantRepository.save(
+              AssetGrant.forGroup(
+                  saved.getId(),
+                  saved.getOrganizationId(),
+                  ownerGroup.getId(),
+                  AssetRole.MANAGER,
+                  null,
+                  currentUserId));
+      permissionHistoryService.recordGrantCreated(groupGrant, currentUserId);
     }
-    grantRepository.save(
-        AssetGrant.forUser(
-            saved.getId(),
-            saved.getOrganizationId(),
-            currentUserId,
-            AssetRole.OWNER,
-            null,
-            currentUserId));
+    AssetGrant ownerGrant =
+        grantRepository.save(
+            AssetGrant.forUser(
+                saved.getId(),
+                saved.getOrganizationId(),
+                currentUserId,
+                AssetRole.OWNER,
+                null,
+                currentUserId));
+    permissionHistoryService.recordGrantCreated(ownerGrant, currentUserId);
+    // #238: the library's initial visibility/listed state is also historised, the third source
+    // the readable-library formula depends on besides direct and group grants.
+    permissionHistoryService.recordLibraryCreated(saved, currentUserId);
     return toLibraryResponse(saved, AssetRole.OWNER);
   }
 
@@ -268,9 +278,16 @@ public class KnowledgeLibraryService {
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
     boolean listed = Boolean.TRUE.equals(request.getListed());
+    LibraryVisibility previousVisibility = library.getVisibility();
+    boolean previousListed = library.isListed();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
     KnowledgeLibrary updated = libraryRepository.save(library);
+    // #238: only visibility and listed feed the readable-library formula, so only a change to
+    // either of them opens a new interval - a rename alone is not a permission change.
+    if (updated.getVisibility() != previousVisibility || updated.isListed() != previousListed) {
+      permissionHistoryService.recordVisibilityChanged(updated, currentUserId);
+    }
     return toLibraryResponse(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
   }
