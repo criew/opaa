@@ -12,7 +12,6 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -188,40 +187,32 @@ public class KnowledgeLibraryService {
             AssetRole.OWNER,
             null,
             currentUserId));
-    return toLibraryResponse(saved);
+    return toLibraryResponse(saved, AssetRole.OWNER);
   }
 
-  public List<LibraryListResponse> listLibraries(UUID currentUserId) {
+  /**
+   * Lists every library {@code currentUserId} holds a right on, per {@link
+   * LibraryAccessService#readableLibraryIds} - direct grant, grant to one of the caller's groups,
+   * or organization-wide visibility. Ownership is included because {@link #createLibrary} always
+   * grants the creator {@link AssetRole#OWNER} explicitly (see that method), not because ownership
+   * is a fourth access path of its own - deliberately the same formula {@link
+   * LibraryAccessService#readableLibraryIds} uses for the permission-aware vector search filter, so
+   * the two paths can never disagree on which libraries a user may see (#418, closing the
+   * divergence #406 already closed for {@code effectiveRole} vs. {@code readableLibraryIds}).
+   * {@code myRole} on each entry is {@link LibraryAccessService#effectiveRole}, including the
+   * system-admin bypass to {@link AssetRole#OWNER} - see that method's Javadoc.
+   */
+  public List<LibraryListResponse> listLibraries(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(currentUserId);
+    Set<UUID> readableIds =
+        accessService.readableLibraryIds(currentUserId, currentUser.getOrganizationId());
 
-    List<KnowledgeLibrary> owned =
-        libraryRepository.findByOrganizationIdAndOwnerUserId(
-            currentUser.getOrganizationId(), currentUserId);
-    List<KnowledgeLibrary> groupOwned =
-        groupIds.isEmpty()
-            ? List.of()
-            : libraryRepository.findByOrganizationIdAndOwnerGroupIdIn(
-                currentUser.getOrganizationId(), List.copyOf(groupIds));
-    List<KnowledgeLibrary> organizationWide =
-        libraryRepository.findByOrganizationIdAndVisibility(
-            currentUser.getOrganizationId(), LibraryVisibility.ORGANIZATION);
-
-    // LinkedHashSet by id, not by equals() on the entity - KnowledgeLibrary has no equals()
-    // override, and the three lists above can legitimately overlap (an organization-wide library
-    // owned by the caller's own group, for instance).
-    var byId = new LinkedHashMap<UUID, KnowledgeLibrary>();
-    for (KnowledgeLibrary library : owned) {
-      byId.put(library.getId(), library);
-    }
-    for (KnowledgeLibrary library : groupOwned) {
-      byId.put(library.getId(), library);
-    }
-    for (KnowledgeLibrary library : organizationWide) {
-      byId.put(library.getId(), library);
-    }
-
-    return byId.values().stream().map(this::toLibraryListResponse).toList();
+    return libraryRepository.findAllById(readableIds).stream()
+        .map(
+            library ->
+                toLibraryListResponse(
+                    library, accessService.effectiveRole(library, currentUserId, systemAdmin)))
+        .toList();
   }
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
@@ -229,7 +220,8 @@ public class KnowledgeLibraryService {
     if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
-    return toLibraryResponse(library);
+    return toLibraryResponse(
+        library, accessService.effectiveRole(library, currentUserId, systemAdmin));
   }
 
   @Transactional
@@ -257,7 +249,8 @@ public class KnowledgeLibraryService {
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
     KnowledgeLibrary updated = libraryRepository.save(library);
-    return toLibraryResponse(updated);
+    return toLibraryResponse(
+        updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
   }
 
   @Transactional
@@ -425,7 +418,7 @@ public class KnowledgeLibraryService {
     return library;
   }
 
-  private LibraryListResponse toLibraryListResponse(KnowledgeLibrary library) {
+  private LibraryListResponse toLibraryListResponse(KnowledgeLibrary library, AssetRole myRole) {
     return new LibraryListResponse(
             library.getId(),
             library.getName(),
@@ -433,12 +426,13 @@ public class KnowledgeLibraryService {
             library.getVisibility(),
             library.isListed(),
             library.isPersonal(),
+            myRole,
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription());
   }
 
-  private LibraryResponse toLibraryResponse(KnowledgeLibrary library) {
+  private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {
     return new LibraryResponse(
             library.getId(),
             library.getName(),
@@ -446,6 +440,7 @@ public class KnowledgeLibraryService {
             library.getVisibility(),
             library.isListed(),
             library.isPersonal(),
+            myRole,
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription())

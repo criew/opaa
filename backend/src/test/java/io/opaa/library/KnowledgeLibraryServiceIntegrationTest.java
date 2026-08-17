@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.AssetGrantRequest;
+import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
@@ -27,12 +28,14 @@ import io.opaa.space.SpaceService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -865,6 +868,137 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void listLibrariesFindsALibraryReachedOnlyThroughADirectViewerGrant() {
+    // #418 acceptance criterion: a user without ownership who holds a direct VIEWER grant must find
+    // the library in listLibraries - the divergence between listLibraries (formerly ownership-only)
+    // and LibraryAccessService#readableLibraryIds (the formula) that this issue closes.
+    UUID owner = createUser(organizationA);
+    UUID viewer = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        owner,
+        false);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(viewer, false);
+
+    assertThat(listed).extracting(LibraryListResponse::getId).contains(library.getId());
+    assertThat(listed)
+        .filteredOn(l -> l.getId().equals(library.getId()))
+        .extracting(LibraryListResponse::getMyRole)
+        .containsExactly(AssetRole.VIEWER);
+  }
+
+  @Test
+  void listLibrariesFindsALibraryReachedOnlyThroughAGroupGrant() {
+    // Same criterion, via a grant on a group the caller belongs to rather than a direct grant.
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.GROUP, group.getId(), AssetRole.EDITOR),
+        owner,
+        false);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(member, false);
+
+    assertThat(listed).extracting(LibraryListResponse::getId).contains(library.getId());
+    assertThat(listed)
+        .filteredOn(l -> l.getId().equals(library.getId()))
+        .extracting(LibraryListResponse::getMyRole)
+        .containsExactly(AssetRole.EDITOR);
+  }
+
+  @Test
+  void listLibrariesExcludesALibraryReachedOnlyThroughAnExpiredGrant() {
+    // Negative test: an expired grant must not surface the library, matching
+    // LibraryAccessService#readableLibraryIds's own expiry check.
+    UUID owner = createUser(organizationA);
+    UUID formerViewer = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, formerViewer, AssetRole.VIEWER)
+            .expiresAt(Instant.now().minusSeconds(60)),
+        owner,
+        false);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(formerViewer, false);
+
+    assertThat(listed).extracting(LibraryListResponse::getId).doesNotContain(library.getId());
+  }
+
+  @Test
+  void listLibrariesShowsNothingToAUserWithNoAccessPathNotEvenTheSystemLibrary() {
+    // Negative test: without ownership, a grant or organization-wide visibility, a library must not
+    // appear - and this must hold for the system library too (#406: the formula knows no exception
+    // for it).
+    UUID owner = createUser(organizationA);
+    UUID outsider = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Rechtsquellen Soziales"), owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(outsider, false);
+
+    assertThat(listed).extracting(LibraryListResponse::getId).doesNotContain(library.getId());
+    assertThat(listed)
+        .extracting(LibraryListResponse::getId)
+        .doesNotContain(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+  }
+
+  @Test
+  void listLibrariesIdsMatchLibraryAccessServiceReadableLibraryIdsForTheSameUser() {
+    // #418 explicit criterion: listLibraries and LibraryAccessService#readableLibraryIds must never
+    // disagree on which libraries a user may see - the same divergence #406 already closed between
+    // effectiveRole and readableLibraryIds, now closed between listLibraries and
+    // readableLibraryIds.
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+    LibraryResponse ownedByMember =
+        libraryService.createLibrary(new LibraryRequest("Eigene Bibliothek"), member);
+    LibraryResponse directGrantLibrary =
+        libraryService.createLibrary(new LibraryRequest("Direkter Grant"), owner);
+    grantService.upsertGrant(
+        directGrantLibrary.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, member, AssetRole.VIEWER),
+        owner,
+        false);
+    LibraryResponse groupGrantLibrary =
+        libraryService.createLibrary(new LibraryRequest("Gruppen-Grant"), owner);
+    grantService.upsertGrant(
+        groupGrantLibrary.getId(),
+        new AssetGrantRequest(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        owner,
+        false);
+    LibraryResponse orgWideLibrary =
+        libraryService.createLibrary(
+            new LibraryRequest("Organisationsweit").visibility(LibraryVisibility.ORGANIZATION),
+            owner);
+    libraryService.createLibrary(new LibraryRequest("Unerreichbar fuer member"), owner);
+
+    Set<UUID> listedIds =
+        libraryService.listLibraries(member, false).stream()
+            .map(LibraryListResponse::getId)
+            .collect(Collectors.toSet());
+    Set<UUID> readableIds = accessService.readableLibraryIds(member, organizationA);
+
+    assertThat(listedIds).isEqualTo(readableIds);
+    assertThat(listedIds)
+        .containsExactlyInAnyOrder(
+            ownedByMember.getId(),
+            directGrantLibrary.getId(),
+            groupGrantLibrary.getId(),
+            orgWideLibrary.getId());
   }
 
   @Test
