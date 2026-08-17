@@ -489,6 +489,18 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
   },
 }
 
+/**
+ * Groups the mock user ('mock-user-id') is a direct member of - what GET /api/v1/me/groups
+ * returns in the mock, matching the membership recorded in mockGroupDetails. Deliberately not
+ * derived by filtering mockGroups by kind or by every group's membership: the real
+ * GroupService#listMyGroups keys off actual membership records, not admin-only listGroups, so the
+ * mock reproduces that distinction ('group-referat-50' is in mockGroups but the mock user is not
+ * one of its members).
+ */
+export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
+  mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
+)
+
 export const mockUsers: UserInfo[] = [
   {
     id: 'mock-user-id',

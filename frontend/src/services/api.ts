@@ -207,6 +207,15 @@ export async function getUsers(): Promise<UserInfo[]> {
   }
 }
 
+export async function getMyGroups(): Promise<GroupListResponse[]> {
+  try {
+    const { data } = await client.get<GroupListResponse[]>('/v1/me/groups')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function getGroups(): Promise<GroupListResponse[]> {
   try {
     const { data } = await client.get<GroupListResponse[]>('/v1/admin/groups')

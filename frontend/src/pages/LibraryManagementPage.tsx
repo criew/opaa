@@ -8,7 +8,9 @@ import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
+import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
@@ -16,11 +18,13 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, LibraryListResponse, LibraryVisibility } from '../types/api'
+import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { assetRoleLabel, libraryVisibilityLabel } from '../utils/labels'
 import CreateLibraryDialog from '../components/CreateLibraryDialog'
 
-const editableVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+const personalLibraryVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED']
 
 function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -33,7 +37,7 @@ function canDeleteLibrary(role: AssetRole | undefined): boolean {
 function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.personal) return 'persönlich'
   if (library.ownerType === 'GROUP') return 'Gruppen-Bibliothek'
-  if (library.ownerType === 'SYSTEM') return 'organisationsweit'
+  if (library.ownerType === 'SYSTEM') return 'systemweit bereitgestellt'
   return 'eigene'
 }
 
@@ -42,6 +46,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
   const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState<{
@@ -53,8 +58,19 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
   }>({ libraryId: null, name: '', description: '', visibility: 'PRIVATE', listed: false })
   const [localError, setLocalError] = useState<string | null>(null)
 
-  const canEdit = canEditLibrary(library.myRole)
-  const canDelete = canDeleteLibrary(library.myRole) && !library.personal
+  // #437 review: myRole on the list response never bypasses to OWNER for a system admin (see the
+  // opaa-api.yaml Javadoc on LibraryListResponse.myRole), but the write paths (updateLibrary,
+  // deleteLibrary) do bypass canManage/canDelete for one. Without this OR, a system admin without
+  // a personal grant would see every organization-wide and the SYSTEM library as read-only, even
+  // though the backend lets them administer it - leaving those libraries administrable by no one
+  // through this page.
+  const roleGrantsEdit = canEditLibrary(library.myRole)
+  const roleGrantsDelete = canDeleteLibrary(library.myRole)
+  const canEdit = roleGrantsEdit || isSystemAdmin
+  const canDelete = (roleGrantsDelete || isSystemAdmin) && !library.personal
+  const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
+
+  const editableVisibilities = library.personal ? personalLibraryVisibilities : allVisibilities
 
   useEffect(() => {
     if (expanded && !details) {
@@ -67,6 +83,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
     draft.libraryId === library.id ? draft.description : (library.description ?? '')
   const visibility = draft.libraryId === library.id ? draft.visibility : library.visibility
   const listed = draft.libraryId === library.id ? draft.listed : library.listed
+  const visibilityLabelId = `library-visibility-label-${library.id}`
 
   return (
     <Accordion
@@ -82,12 +99,12 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
             {ownerTypeSummary(library)} · {libraryVisibilityLabel(library.visibility)}
             {library.listed ? ' · gelistet' : ''}
           </Typography>
-          <Chip
-            label={assetRoleLabel(library.myRole)}
-            size="small"
-            variant="outlined"
-            sx={{ ml: 'auto' }}
-          />
+          <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+            <Chip label={assetRoleLabel(library.myRole)} size="small" variant="outlined" />
+            {isAdministrativeOverride && (
+              <Chip label="administrativ" size="small" color="info" variant="outlined" />
+            )}
+          </Stack>
         </Stack>
       </AccordionSummary>
       <AccordionDetails>
@@ -99,6 +116,12 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
         {!canEdit && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Sie können diese Bibliothek einsehen, aber nicht bearbeiten.
+          </Alert>
+        )}
+        {isAdministrativeOverride && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Sie bearbeiten diese Bibliothek als System-Administrator, nicht über eine eigene
+            Berechtigung.
           </Alert>
         )}
         {typeof details?.documentCount === 'number' && (
@@ -140,26 +163,34 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
             disabled={!canEdit}
             size="small"
           />
-          <Select
-            size="small"
-            value={visibility}
-            disabled={!canEdit}
-            onChange={(e) =>
-              setDraft({
-                libraryId: library.id,
-                name,
-                description,
-                visibility: e.target.value as LibraryVisibility,
-                listed,
-              })
-            }
-          >
-            {editableVisibilities.map((option) => (
-              <MenuItem key={option} value={option}>
-                {libraryVisibilityLabel(option)}
-              </MenuItem>
-            ))}
-          </Select>
+          <FormControl size="small" disabled={!canEdit}>
+            <InputLabel id={visibilityLabelId}>Sichtbarkeit</InputLabel>
+            <Select
+              labelId={visibilityLabelId}
+              label="Sichtbarkeit"
+              value={visibility}
+              onChange={(e) =>
+                setDraft({
+                  libraryId: library.id,
+                  name,
+                  description,
+                  visibility: e.target.value as LibraryVisibility,
+                  listed,
+                })
+              }
+            >
+              {editableVisibilities.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {libraryVisibilityLabel(option)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {library.personal && (
+            <Typography variant="caption" color="text.secondary">
+              Die persönliche Bibliothek kann nicht organisationsweit sichtbar sein.
+            </Typography>
+          )}
           <FormControlLabel
             control={
               <Checkbox

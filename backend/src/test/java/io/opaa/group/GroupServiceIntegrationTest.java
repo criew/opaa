@@ -312,6 +312,34 @@ class GroupServiceIntegrationTest {
   }
 
   @Test
+  void listMyGroupsReturnsOnlyGroupsTheCallerIsAMemberOf() {
+    UUID member = createUser(organizationA);
+    createUser(organizationA);
+    Group memberGroup =
+        groupRepository.save(
+            new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
+    Group otherGroup =
+        groupRepository.save(
+            new Group(organizationA, GroupKind.AD_HOC, "Team B", null, null, null));
+    memberGroup.addMembership(new GroupMembership(member, organizationA));
+    groupRepository.save(memberGroup);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(member);
+
+    assertThat(groups).extracting(GroupListResponse::getName).containsExactly("Team A");
+    assertThat(otherGroup.getId()).isNotNull();
+  }
+
+  @Test
+  void listMyGroupsIsNotAdminRestrictedAndReturnsAnEmptyListWithoutAnyMembership() {
+    UUID user = createUser(organizationA);
+
+    List<GroupListResponse> groups = groupService.listMyGroups(user);
+
+    assertThat(groups).isEmpty();
+  }
+
+  @Test
   void resolvingTheGroupsOfAUserIsCachedAndInvalidatedOnMembershipChange() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);

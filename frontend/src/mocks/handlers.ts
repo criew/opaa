@@ -14,6 +14,7 @@ import {
   mockGroupDetails,
   mockLibraries,
   mockLibraryDetails,
+  mockMyGroups,
 } from './fixtures'
 import type {
   IndexingStatusResponse,
@@ -385,6 +386,14 @@ export const handlers = [
         { status: 400 },
       )
     }
+    // Mirrors KnowledgeLibraryService#createLibrary: only members of a group can own a library
+    // in its name.
+    if (body.ownerType === 'GROUP' && !mockMyGroups.some((group) => group.id === body.ownerId)) {
+      return HttpResponse.json(
+        { error: 'Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen' },
+        { status: 403 },
+      )
+    }
     const id = `library-${crypto.randomUUID().slice(0, 8)}`
     const now = new Date().toISOString()
     const ownerType = body.ownerType ?? 'USER'
@@ -432,6 +441,17 @@ export const handlers = [
       visibility?: LibraryVisibility
       listed?: boolean
     }
+    // Mirrors KnowledgeLibraryService#updateLibrary: the personal library's visibility can never
+    // be ORGANIZATION, since that would expose its owner's private documents to everyone.
+    if (library.personal && body.visibility === 'ORGANIZATION') {
+      return HttpResponse.json(
+        {
+          error:
+            'Die Sichtbarkeit der persoenlichen Bibliothek kann nicht auf ORGANIZATION gesetzt werden',
+        },
+        { status: 400 },
+      )
+    }
     library.name = body.name
     library.description = body.description ?? null
     library.visibility = body.visibility ?? library.visibility
@@ -445,12 +465,27 @@ export const handlers = [
 
   http.delete('/api/v1/libraries/:libraryId', ({ params }) => {
     const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    // Mirrors KnowledgeLibraryService#deleteLibrary: the personal library can never be deleted.
+    if (library.personal) {
+      return HttpResponse.json(
+        { error: 'Die persoenliche Bibliothek kann nicht geloescht werden' },
+        { status: 400 },
+      )
+    }
     delete mockLibraryDetails[libraryId]
     const idx = mockLibraries.findIndex((item) => item.id === libraryId)
     if (idx >= 0) {
       mockLibraries.splice(idx, 1)
     }
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/me/groups', () => {
+    return HttpResponse.json(mockMyGroups)
   }),
 
   http.get('/api/v1/auth/config', () => {

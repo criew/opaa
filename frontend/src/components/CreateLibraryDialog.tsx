@@ -13,7 +13,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
 import type { GroupListResponse, LibraryOwnerType } from '../types/api'
-import { getGroups } from '../services/api'
+import { getMyGroups } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
 
 interface CreateLibraryDialogProps {
@@ -32,15 +32,30 @@ export default function CreateLibraryDialog({
   const [ownerType, setOwnerType] = useState<LibraryOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const [groups, setGroups] = useState<GroupListResponse[]>([])
+  const [groupsError, setGroupsError] = useState<string | null>(null)
+  const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
 
   useEffect(() => {
-    if (open) {
-      void getGroups()
-        .then(setGroups)
-        .catch(() => setGroups([]))
+    if (!open) return
+    let cancelled = false
+    void getMyGroups()
+      .then((result) => {
+        if (cancelled) return
+        setGroups(result)
+        setGroupsLoaded(true)
+        setGroupsError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setGroups([])
+        setGroupsLoaded(true)
+        setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
+      })
+    return () => {
+      cancelled = true
     }
   }, [open])
 
@@ -50,6 +65,9 @@ export default function CreateLibraryDialog({
     setDescription('')
     setOwnerType('USER')
     setSelectedGroup(null)
+    setGroups([])
+    setGroupsLoaded(false)
+    setGroupsError(null)
     setError(null)
     onClose()
   }
@@ -126,17 +144,31 @@ export default function CreateLibraryDialog({
           </RadioGroup>
         </FormControl>
         {ownerType === 'GROUP' && (
-          <Autocomplete
-            options={groups}
-            getOptionLabel={(option) => option.name}
-            value={selectedGroup}
-            onChange={(_event, value) => setSelectedGroup(value)}
-            renderInput={(params) => (
-              <TextField {...params} label="Gruppe" placeholder="Gruppe auswählen …" />
+          <>
+            {groupsError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {groupsError}
+              </Alert>
             )}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            sx={{ mt: 2 }}
-          />
+            {groupsLoaded && !groupsError && groups.length === 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Sie sind aktuell in keiner Gruppe Mitglied. Eine Bibliothek mit Gruppen-Eigentum
+                lässt sich erst anlegen, sobald Sie einer Gruppe angehören.
+              </Alert>
+            )}
+            <Autocomplete
+              options={groups}
+              getOptionLabel={(option) => option.name}
+              value={selectedGroup}
+              onChange={(_event, value) => setSelectedGroup(value)}
+              disabled={groups.length === 0}
+              renderInput={(params) => (
+                <TextField {...params} label="Gruppe" placeholder="Gruppe auswählen …" />
+              )}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              sx={{ mt: 2 }}
+            />
+          </>
         )}
       </DialogContent>
       <DialogActions>

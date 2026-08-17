@@ -1,17 +1,40 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryManagementPage from './LibraryManagementPage'
+import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
-import type { GroupListResponse, LibraryListResponse, LibraryResponse } from '../types/api'
+import type {
+  GroupListResponse,
+  LibraryListResponse,
+  LibraryRequest,
+  LibraryResponse,
+} from '../types/api'
 
-const { mockCreateLibrary, mockUpdateLibrary, mockDeleteLibrary, mockGetGroups } = vi.hoisted(
+const { mockCreateLibrary, mockUpdateLibrary, mockDeleteLibrary, mockGetMyGroups } = vi.hoisted(
   () => ({
-    mockCreateLibrary: vi.fn(async () => ({}) as LibraryResponse),
+    mockCreateLibrary: vi.fn(async (request: LibraryRequest) => {
+      const created: LibraryListResponse = {
+        id: `library-${request.name}`,
+        name: request.name,
+        description: request.description ?? null,
+        ownerType: request.ownerType ?? 'USER',
+        visibility: request.visibility ?? 'PRIVATE',
+        listed: request.listed ?? false,
+        personal: false,
+        myRole: 'OWNER',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      }
+      // Simulates the real backend response influencing the next getLibraries() call, so the AC
+      // "erscheint ohne Neuladen in der Liste" is actually exercised instead of assumed.
+      useLibraryStore.setState((state) => ({ libraries: [...state.libraries, created] }))
+      return { ...created, ownerId: null, documentCount: 0 } as LibraryResponse
+    }),
     mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
     mockDeleteLibrary: vi.fn(async () => undefined),
-    mockGetGroups: vi.fn(async () => [] as GroupListResponse[]),
+    mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
   }),
 )
 
@@ -19,7 +42,7 @@ vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
   return {
     ...actual,
-    getGroups: mockGetGroups,
+    getMyGroups: mockGetMyGroups,
     getLibraries: vi.fn(async () => useLibraryStore.getState().libraries),
     getLibrary: vi.fn(
       async (libraryId: string) => useLibraryStore.getState().libraryDetails[libraryId],
@@ -69,6 +92,19 @@ const viewerLibrary: LibraryListResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
+const editorLibrary: LibraryListResponse = {
+  id: 'library-editor',
+  name: 'Vorlagen',
+  description: 'Dokumentvorlagen',
+  ownerType: 'GROUP',
+  visibility: 'SHARED',
+  listed: false,
+  personal: false,
+  myRole: 'EDITOR',
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
 function detailsOf(library: LibraryListResponse, documentCount: number): LibraryResponse {
   return { ...library, ownerId: null, documentCount }
 }
@@ -85,9 +121,30 @@ function setLibraryState(
   })
 }
 
+function setSystemAdmin() {
+  useAuthStore.setState({
+    mode: 'dev',
+    isAuthenticated: true,
+    isLoading: false,
+    user: {
+      id: 'admin-1',
+      email: 'admin@opaa.local',
+      displayName: 'Admin',
+      systemRole: 'SYSTEM_ADMIN',
+    },
+    token: null,
+    error: null,
+    userManager: null,
+  })
+}
+
 describe('LibraryManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    useAuthStore.setState({ user: null })
   })
 
   it('lists libraries with the personal library first and marked as such', async () => {
@@ -120,6 +177,20 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
 
+  it('treats an EDITOR grant as read-only, same as VIEWER', async () => {
+    setLibraryState([editorLibrary], {
+      'library-editor': detailsOf(editorLibrary, 5),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Vorlagen'))
+
+    expect(await screen.findByText(/5 dokumente/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /speichern/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+  })
+
   it('offers editing but not deleting for a MANAGER', async () => {
     setLibraryState([managerLibrary], {
       'library-team': detailsOf(managerLibrary, 431),
@@ -146,7 +217,25 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
 
-  it('saves changed name, description, visibility and listed flag', async () => {
+  it('does not offer ORGANIZATION visibility for the personal library', async () => {
+    setLibraryState([personalLibrary], {
+      'library-personal': detailsOf(personalLibrary, 12),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Meine Dokumente'))
+    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
+
+    expect(screen.getByRole('option', { name: 'privat' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'geteilt' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'organisationsweit' })).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/persönliche bibliothek kann nicht organisationsweit sichtbar sein/i),
+    ).toBeInTheDocument()
+  })
+
+  it('offers all three visibility levels for a non-personal library', async () => {
     setLibraryState([managerLibrary], {
       'library-team': detailsOf(managerLibrary, 431),
     })
@@ -154,14 +243,65 @@ describe('LibraryManagementPage', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Rechtsquellen Soziales'))
+    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
+
+    expect(screen.getByRole('option', { name: 'organisationsweit' })).toBeInTheDocument()
+  })
+
+  it('lets a system admin edit and delete a library without an own grant', async () => {
+    setSystemAdmin()
+    const orgWideLibrary: LibraryListResponse = { ...viewerLibrary, myRole: 'VIEWER' }
+    setLibraryState([orgWideLibrary], {
+      'library-readonly': detailsOf(orgWideLibrary, 87),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Dienstanweisungen'))
+
+    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
+    expect(screen.getByText('administrativ')).toBeInTheDocument()
+  })
+
+  it('still hides delete for a system admin on the personal library', async () => {
+    setSystemAdmin()
+    setLibraryState([personalLibrary], {
+      'library-personal': detailsOf(personalLibrary, 12),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Meine Dokumente'))
+
+    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+  })
+
+  it('saves changed name, description and visibility together', async () => {
+    setLibraryState([managerLibrary], {
+      'library-team': detailsOf(managerLibrary, 431),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Rechtsquellen Soziales'))
+    const nameField = screen.getByLabelText(/name der bibliothek/i)
+    await user.clear(nameField)
+    await user.type(nameField, 'Rechtsquellen Soziales (neu)')
+    const descriptionField = screen.getByLabelText(/beschreibung/i)
+    await user.clear(descriptionField)
+    await user.type(descriptionField, 'Aktualisierte Beschreibung')
+    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(await screen.findByRole('option', { name: 'privat' }))
     await user.click(await screen.findByRole('checkbox', { name: /im katalog auffindbar/i }))
     await user.click(screen.getByRole('button', { name: /speichern/i }))
 
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
-        name: 'Rechtsquellen Soziales',
-        description: 'SGB II, SGB XII',
-        visibility: 'SHARED',
+        name: 'Rechtsquellen Soziales (neu)',
+        description: 'Aktualisierte Beschreibung',
+        visibility: 'PRIVATE',
         listed: false,
       })
     })
@@ -184,27 +324,28 @@ describe('LibraryManagementPage', () => {
     })
   })
 
-  it('creates a new library owned by the caller through the dialog', async () => {
+  it('creates a new library owned by the caller and shows it without a reload', async () => {
     setLibraryState([])
     renderWithProviders(<LibraryManagementPage />)
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
-    await user.type(screen.getByLabelText(/^name/i), 'Neue Bibliothek')
+    await user.type(screen.getByLabelText(/^name/i), 'Frisch angelegte Bibliothek')
     await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
 
     await waitFor(() => {
       expect(mockCreateLibrary).toHaveBeenCalledWith({
-        name: 'Neue Bibliothek',
+        name: 'Frisch angelegte Bibliothek',
         description: undefined,
         ownerType: 'USER',
         ownerId: undefined,
       })
     })
+    expect(await screen.findByText('Frisch angelegte Bibliothek')).toBeInTheDocument()
   })
 
   it('creates a group-owned library, offering only the groups returned for the user', async () => {
-    mockGetGroups.mockResolvedValueOnce([
+    mockGetMyGroups.mockResolvedValueOnce([
       {
         id: 'group-referat-50',
         name: 'Referat 50',
@@ -236,6 +377,33 @@ describe('LibraryManagementPage', () => {
         ownerId: 'group-referat-50',
       })
     })
+  })
+
+  it('shows a visible hint instead of a silent empty list when the caller has no groups', async () => {
+    mockGetMyGroups.mockResolvedValueOnce([])
+    setLibraryState([])
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
+    await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
+
+    expect(await screen.findByText(/keiner gruppe mitglied/i)).toBeInTheDocument()
+  })
+
+  it('shows a visible error instead of silently swallowing a failed group lookup', async () => {
+    mockGetMyGroups.mockRejectedValueOnce(new Error('Gruppen konnten nicht geladen werden'))
+    setLibraryState([])
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
+    await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      await within(dialog).findByText('Gruppen konnten nicht geladen werden'),
+    ).toBeInTheDocument()
   })
 
   it('shows an API error as a German message while keeping the page usable', async () => {
