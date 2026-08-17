@@ -73,7 +73,7 @@ describe('indexingStore', () => {
 
   it('triggers indexing with the selected library and starts polling', async () => {
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-1')
+    useIndexingStore.getState().setSelectedLibraryId('library-personal')
 
     await useIndexingStore.getState().triggerIndexing()
 
@@ -87,7 +87,7 @@ describe('indexingStore', () => {
 
   it('stops polling', async () => {
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-1')
+    useIndexingStore.getState().setSelectedLibraryId('library-personal')
 
     await useIndexingStore.getState().triggerIndexing()
     expect(useIndexingStore.getState().isPolling).toBe(true)
@@ -103,7 +103,7 @@ describe('indexingStore', () => {
 
     const state = useIndexingStore.getState()
     expect(state.librariesLoading).toBe(false)
-    expect(state.libraries.map((l) => l.id)).toEqual(['library-1', 'library-2'])
+    expect(state.libraries.map((l) => l.id)).toEqual(['library-personal', 'library-referat-50'])
     expect(state.libraries.every((l) => l.myRole !== 'VIEWER')).toBe(true)
   })
 
@@ -112,7 +112,7 @@ describe('indexingStore', () => {
     // against a library the user can no longer see.
     server.use(http.get('/api/v1/libraries', () => HttpResponse.error()))
 
-    useIndexingStore.setState({ libraries: mockLibraries, selectedLibraryId: 'library-1' })
+    useIndexingStore.setState({ libraries: mockLibraries, selectedLibraryId: 'library-personal' })
     await useIndexingStore.getState().fetchLibraries()
 
     const state = useIndexingStore.getState()
@@ -122,7 +122,7 @@ describe('indexingStore', () => {
 
   it('resets the selection when the previously selected library no longer appears in the list', async () => {
     // PR #431 review, nit 5: e.g. a revoked grant, or the caller no longer holds EDITOR.
-    useIndexingStore.getState().setSelectedLibraryId('library-3')
+    useIndexingStore.getState().setSelectedLibraryId('library-dienstanweisungen')
 
     await useIndexingStore.getState().fetchLibraries()
 
@@ -130,16 +130,16 @@ describe('indexingStore', () => {
   })
 
   it('keeps the selection when the previously selected library is still in the list', async () => {
-    useIndexingStore.getState().setSelectedLibraryId('library-1')
+    useIndexingStore.getState().setSelectedLibraryId('library-personal')
 
     await useIndexingStore.getState().fetchLibraries()
 
-    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-1')
+    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-personal')
   })
 
   it('sets the selected library id', () => {
-    useIndexingStore.getState().setSelectedLibraryId('library-2')
-    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-2')
+    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
+    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-referat-50')
 
     useIndexingStore.getState().setSelectedLibraryId(null)
     expect(useIndexingStore.getState().selectedLibraryId).toBeNull()

@@ -57,7 +57,7 @@ describe('AdminDrawer', () => {
 
     expect(screen.getByRole('option', { name: 'Rechtsquellen Soziales' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Meine Dokumente' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Nur Lesezugriff' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Dienstanweisungen' })).not.toBeInTheDocument()
   })
 
   it('shows close button', () => {

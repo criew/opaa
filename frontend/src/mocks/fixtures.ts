@@ -8,7 +8,6 @@ import type {
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
-  LibraryListResponse,
   LibraryResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
@@ -37,48 +36,6 @@ export const mockIndexingCompleted: IndexingStatusResponse = {
 
 /** @deprecated Use mockIndexingCompleted instead */
 export const mockIndexingStatus = mockIndexingCompleted
-
-// #419: libraries offered as an indexing target, mirroring GET /api/v1/libraries. Only myRole
-// EDITOR/MANAGER/OWNER libraries are shown to the user in AdminDrawer - "Nur Lesezugriff" is
-// included here to exercise that filter in tests.
-export const mockLibraries: LibraryListResponse[] = [
-  {
-    id: 'library-1',
-    name: 'Rechtsquellen Soziales',
-    description: 'Zentrale Rechtsquellen',
-    ownerType: 'USER',
-    visibility: 'PRIVATE',
-    listed: true,
-    personal: false,
-    myRole: 'OWNER',
-    createdAt: '2025-01-01T09:00:00Z',
-    updatedAt: '2025-01-01T09:00:00Z',
-  },
-  {
-    id: 'library-2',
-    name: 'Meine Dokumente',
-    description: null,
-    ownerType: 'USER',
-    visibility: 'PRIVATE',
-    listed: false,
-    personal: true,
-    myRole: 'OWNER',
-    createdAt: '2025-01-01T09:00:00Z',
-    updatedAt: '2025-01-01T09:00:00Z',
-  },
-  {
-    id: 'library-3',
-    name: 'Nur Lesezugriff',
-    description: null,
-    ownerType: 'USER',
-    visibility: 'ORGANIZATION',
-    listed: true,
-    personal: false,
-    myRole: 'VIEWER',
-    createdAt: '2025-01-01T09:00:00Z',
-    updatedAt: '2025-01-01T09:00:00Z',
-  },
-]
 
 export const mockQueryResponses: QueryResponse[] = [
   {
@@ -448,6 +405,9 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
   },
 }
 
+// Also doubles as the fixture for GET /api/v1/libraries in the AdminDrawer indexing-target
+// picker (#419): 'library-dienstanweisungen' carries myRole VIEWER on purpose, to exercise the
+// "only EDITOR/MANAGER/OWNER libraries are offered as an indexing target" filter in tests.
 export const mockLibraries: LibraryListResponse[] = [
   {
     id: 'library-personal',
