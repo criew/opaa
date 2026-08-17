@@ -220,6 +220,43 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
 
+  // #423 acceptance criterion: the grants view is only reachable from myRole MANAGER upward - the
+  // same threshold canEditLibrary already computes for the Speichern button above.
+  it('offers "Rechte verwalten" for a MANAGER', async () => {
+    setLibraryState([managerLibrary], {
+      'library-team': detailsOf(managerLibrary, 431),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Rechtsquellen Soziales'))
+    expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
+  })
+
+  it('hides "Rechte verwalten" for a VIEWER', async () => {
+    setLibraryState([viewerLibrary], {
+      'library-readonly': detailsOf(viewerLibrary, 87),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Dienstanweisungen'))
+    expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+  })
+
+  it('hides "Rechte verwalten" for an EDITOR', async () => {
+    setLibraryState([editorLibrary], {
+      'library-editor': detailsOf(editorLibrary, 5),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Vorlagen'))
+    expect(await screen.findByText(/5 dokumente/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+  })
+
   it('never offers deleting the personal library, even for its OWNER', async () => {
     setLibraryState([personalLibrary], {
       'library-personal': detailsOf(personalLibrary, 12),
@@ -231,6 +268,22 @@ describe('LibraryManagementPage', () => {
 
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+  })
+
+  // #423 code review, finding 2: AssetGrantService#upsertGrant rejects every grant on the personal
+  // library with a 400, so offering the entry point there is a guaranteed dead end - the same
+  // exception "never offers deleting the personal library" above already carries.
+  it('never offers "Rechte verwalten" for the personal library, even for its OWNER', async () => {
+    setLibraryState([personalLibrary], {
+      'library-personal': detailsOf(personalLibrary, 12),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Meine Dokumente'))
+
+    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
   })
 
   it('does not offer ORGANIZATION visibility for the personal library', async () => {

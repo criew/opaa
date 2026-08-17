@@ -1,4 +1,5 @@
 import type {
+  AssetGrantResponse,
   HealthResponse,
   IndexingStatusResponse,
   LibraryListResponse,
@@ -446,6 +447,22 @@ export const mockLibraries: LibraryListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
+  // #423 code review, nit 4: a non-personal library where the caller holds OWNER (not just
+  // MANAGER), used to exercise AssetGrantService's last-active-OWNER guard (409) - library-personal
+  // cannot stand in for this, since AssetGrantService#upsertGrant rejects every grant on the
+  // personal library outright before that guard is even reached.
+  {
+    id: 'library-solo-owner',
+    name: 'Projektakte Phoenix',
+    description: 'Einzelne Eigentuemerin, kein Ko-Eigentuemer',
+    ownerType: 'USER',
+    visibility: 'PRIVATE',
+    listed: false,
+    personal: false,
+    myRole: 'OWNER',
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
 ]
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
@@ -488,6 +505,20 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     personal: false,
     myRole: 'VIEWER',
     documentCount: 87,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'library-solo-owner': {
+    id: 'library-solo-owner',
+    name: 'Projektakte Phoenix',
+    description: 'Einzelne Eigentuemerin, kein Ko-Eigentuemer',
+    ownerType: 'USER',
+    ownerId: 'mock-user-id',
+    visibility: 'PRIVATE',
+    listed: false,
+    personal: false,
+    myRole: 'OWNER',
+    documentCount: 0,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -565,6 +596,91 @@ export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
 
 export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+}
+
+const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
+  'library-referat-50': [
+    {
+      id: 'grant-referat-50-group',
+      subjectType: 'GROUP',
+      subjectId: 'group-phoenix',
+      subjectDisplayName: 'Projektbeteiligte Phoenix',
+      role: 'VIEWER',
+      expiresAt: null,
+      grantedByUserId: 'mock-user-id',
+      grantedByDisplayName: 'Admin',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'grant-referat-50-user-future',
+      subjectType: 'USER',
+      subjectId: 'owner-1',
+      subjectDisplayName: 'Alice',
+      role: 'EDITOR',
+      expiresAt: '2099-12-31T23:59:59.999Z',
+      grantedByUserId: 'mock-user-id',
+      grantedByDisplayName: 'Admin',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'grant-referat-50-user-expired',
+      subjectType: 'USER',
+      subjectId: 'curator-1',
+      subjectDisplayName: 'Bob',
+      role: 'VIEWER',
+      expiresAt: '2020-01-01T00:00:00.000Z',
+      grantedByUserId: 'mock-user-id',
+      grantedByDisplayName: 'Admin',
+      createdAt: '2025-01-01T10:00:00Z',
+      updatedAt: '2025-01-01T10:00:00Z',
+    },
+    // #423 code review, nit 4: an OWNER grant on a library the fixture caller only holds MANAGER
+    // on - exercises the 403 "cannot touch a grant that already carries a role higher than the
+    // caller's own" guard (POST update path and DELETE), distinct from the "requested role" cap
+    // the pre-existing grants above already cover.
+    {
+      id: 'grant-referat-50-owner',
+      subjectType: 'USER',
+      subjectId: 'demo-user',
+      subjectDisplayName: 'Demo-Benutzer',
+      role: 'OWNER',
+      expiresAt: null,
+      grantedByUserId: 'mock-user-id',
+      grantedByDisplayName: 'Admin',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+  ],
+  'library-personal': [],
+  'library-dienstanweisungen': [],
+  // #423 code review, nit 4: the library's only active OWNER grant, matching its myRole: 'OWNER'
+  // fixture - exercises the 409 "last active OWNER" guard on both downgrade (POST) and revoke
+  // (DELETE), which library-personal cannot stand in for (grants there are rejected outright).
+  'library-solo-owner': [
+    {
+      id: 'grant-solo-owner',
+      subjectType: 'USER',
+      subjectId: 'mock-user-id',
+      subjectDisplayName: 'Admin',
+      role: 'OWNER',
+      expiresAt: null,
+      grantedByUserId: 'mock-user-id',
+      grantedByDisplayName: 'Admin',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+  ],
+}
+
+// Mutable copy, mirroring the mockLibraryDocuments pattern above - handlers.ts reads and writes
+// this on GET/POST/DELETE, reset between tests via resetMockLibraryGrants().
+export let mockLibraryGrants: Record<string, AssetGrantResponse[]> =
+  structuredClone(INITIAL_LIBRARY_GRANTS)
+
+export function resetMockLibraryGrants() {
+  mockLibraryGrants = structuredClone(INITIAL_LIBRARY_GRANTS)
 }
 
 export const mockUsers: UserInfo[] = [

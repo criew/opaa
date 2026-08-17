@@ -1996,6 +1996,17 @@ components:
         subjectId:
           type: string
           format: uuid
+        subjectDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The subject's display name (user, falling back to email if the user's display name
+            itself is unset) or name (group), resolved server-side so a caller without
+            SYSTEM_ADMIN - which GET /v1/admin/users and /v1/admin/groups both require - can still
+            see who a grant targets instead of a raw UUID. Null only if the subject row itself no
+            longer exists (a deleted user, or a group id from before dissolution tracking) - a
+            user's display name being unset does not produce null here, since email is always
+            present.
         role:
           $ref: "#/components/schemas/AssetRole"
         expiresAt:
@@ -2006,6 +2017,13 @@ components:
           type: string
           format: uuid
           nullable: true
+        grantedByDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The granter's display name (falling back to email, same as subjectDisplayName),
+            resolved server-side for the same reason as subjectDisplayName. Null whenever
+            grantedByUserId is null, or if that user row no longer exists.
         createdAt:
           type: string
           format: date-time

@@ -20,6 +20,7 @@ import io.opaa.group.GroupKind;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.PermissionSubjectType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -520,5 +521,92 @@ class AssetGrantServiceTest {
 
     assertThat(response.getRole()).isEqualTo(AssetRole.OWNER);
     verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
+  }
+
+  // #423 code review, finding 1: subjectDisplayName/grantedByDisplayName must be resolved by the
+  // backend so a caller without SYSTEM_ADMIN - the threshold GET /v1/admin/users and
+  // /v1/admin/groups both require - still sees names instead of raw UUIDs. Every test in this class
+  // already calls listGrants/upsertGrant/revokeGrant with systemAdmin = false, so these tests below
+  // deliberately do the same: resolution must not depend on that flag.
+  @Test
+  void listGrantsResolvesUserSubjectAndGranterDisplayNames() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subjekt Person");
+    subjectUser.setOrganizationId(organizationId);
+    User granter = new User("granter", "issuer", "granter@example.com", "Erteilende Person");
+    granter.setOrganizationId(organizationId);
+    // subjectUser.getId()/granter.getId() (not an independently generated UUID) - findAllById's
+    // stub below matches entities by their own id, same as the real JpaRepository would.
+    AssetGrant grant =
+        AssetGrant.forUser(
+            libraryId,
+            organizationId,
+            subjectUser.getId(),
+            AssetRole.VIEWER,
+            null,
+            granter.getId());
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser, granter));
+
+    var responses = grantService.listGrants(libraryId, managerId, false);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("Subjekt Person");
+    assertThat(responses.get(0).getGrantedByDisplayName()).isEqualTo("Erteilende Person");
+  }
+
+  @Test
+  void listGrantsResolvesGroupSubjectDisplayName() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat 50", null, null, null);
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            libraryId, organizationId, group.getId(), AssetRole.VIEWER, null, managerId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    when(groupRepository.findAllById(any())).thenReturn(List.of(group));
+
+    var responses = grantService.listGrants(libraryId, managerId, false);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("Referat 50");
+  }
+
+  @Test
+  void listGrantsFallsBackToEmailWhenTheSubjectsDisplayNameIsUnset() {
+    // #446 code review round 2: a User whose token never carried a name/preferred_username claim
+    // has displayName == null (UserService#findOrCreateUser only overwrites it when the incoming
+    // claim is non-null). Falling back to the raw subject id there would reopen the same
+    // "MANAGER sees a UUID" gap this whole resolution mechanism exists to close - email is
+    // required and always present, so it is the fallback instead.
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    User subjectUser = new User("subject", "issuer", "subject@example.com", null);
+    subjectUser.setOrganizationId(organizationId);
+    AssetGrant grant =
+        AssetGrant.forUser(
+            libraryId, organizationId, subjectUser.getId(), AssetRole.VIEWER, null, null);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser));
+
+    var responses = grantService.listGrants(libraryId, managerId, false);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).getSubjectDisplayName()).isEqualTo("subject@example.com");
+  }
+
+  @Test
+  void listGrantsLeavesDisplayNameNullWhenTheSubjectNoLongerExists() {
+    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    AssetGrant grant =
+        AssetGrant.forUser(
+            libraryId, organizationId, UUID.randomUUID(), AssetRole.VIEWER, null, null);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    // Deliberately not stubbing userRepository.findAllById - a Mockito mock's default answer for
+    // an unstubbed List-returning method is an empty list, exercising the "subject deleted" branch.
+
+    var responses = grantService.listGrants(libraryId, managerId, false);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).getSubjectDisplayName()).isNull();
+    assertThat(responses.get(0).getGrantedByDisplayName()).isNull();
   }
 }
