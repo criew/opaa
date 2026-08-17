@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -8,6 +9,8 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetRole;
@@ -18,6 +21,7 @@ import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,11 +80,18 @@ class IndexingControllerAuthorizationIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private IndexingJobRepository indexingJobRepository;
 
   private User devAdmin;
 
   @BeforeEach
   void setUp() throws Exception {
+    // Defensive: a job left RUNNING by the previous test method (same shared context/Postgres
+    // across methods in this class) would make DocumentIndexingService#triggerIndexing throw
+    // IndexingAlreadyRunningException before even validating libraryId - awaited here too, not
+    // only at the end of the tests that start a run, so this holds regardless of method order.
+    awaitNoJobRunning();
+
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name = 'Fremde Bibliothek'");
     jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-419@example.com'");
 
@@ -106,6 +117,24 @@ class IndexingControllerAuthorizationIntegrationTest {
       request.setContentType(MediaType.APPLICATION_JSON_VALUE);
       return request;
     };
+  }
+
+  /**
+   * Coordinator follow-up on the review: a test that actually starts a run (202) must wait for it
+   * to finish before returning, or the next test in this class - sharing the same {@code
+   * indexing_jobs} table via the class-level Testcontainer - can hit {@code
+   * IndexingAlreadyRunningException} (409) instead of the 202/403 it expects. {@code
+   * emptyDocumentDir} has no files, so the async run completes almost immediately; the timeout is
+   * generous only to absorb scheduling jitter, not because real work is expected to take that long.
+   */
+  private void awaitNoJobRunning() {
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                org.assertj.core.api.Assertions.assertThat(
+                        indexingJobRepository.existsByStatus(JobStatus.RUNNING))
+                    .isFalse());
   }
 
   @Test
@@ -144,6 +173,8 @@ class IndexingControllerAuthorizationIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"libraryId\":\"" + foreignLibraryId + "\"}"))
         .andExpect(status().isAccepted());
+
+    awaitNoJobRunning();
   }
 
   @Test
@@ -155,6 +186,8 @@ class IndexingControllerAuthorizationIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"libraryId\":\"" + KnowledgeLibrary.SYSTEM_LIBRARY_ID + "\"}"))
         .andExpect(status().isAccepted());
+
+    awaitNoJobRunning();
   }
 
   private UUID createForeignLibraryWithNoGrantForDevAdmin() throws IOException {

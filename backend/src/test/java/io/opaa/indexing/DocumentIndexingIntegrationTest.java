@@ -420,7 +420,13 @@ class DocumentIndexingIntegrationTest {
         .as("a user with a grant on the target library must find the indexed document")
         .anyMatch(source -> "findable.txt".equals(source.getFileName()));
 
-    // A second user in the same organization with no grant at all on targetLibraryId.
+    // A second user in the same organization with no grant on targetLibraryId - but not with an
+    // empty readableLibraryIds altogether. Coordinator follow-up on the review: a stranger with
+    // zero grants anywhere would let QueryService short-circuit on an empty readable-library set
+    // before ever issuing the vector search, which would pass this assertion for the wrong reason
+    // (no readable library at all, not "library_id filtered it out"). Granting the stranger a
+    // completely unrelated library makes readableLibraryIds non-empty, so the negative result
+    // actually exercises the library_id filter in the real similarity search.
     UUID strangerId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -429,6 +435,17 @@ class DocumentIndexingIntegrationTest {
         strangerId,
         "indexing-it-stranger-" + strangerId,
         Organization.DEFAULT_ID);
+    KnowledgeLibrary strangerLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Bibliothek des Fremden",
+                null,
+                strangerId,
+                LibraryVisibility.PRIVATE,
+                false,
+                false));
+    grantOwner(strangerLibrary.getId(), strangerId);
 
     QueryResponse withoutGrant =
         queryService.query("uniquely identifiable sentence", null, strangerId);
@@ -436,6 +453,8 @@ class DocumentIndexingIntegrationTest {
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
 
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", strangerLibrary.getId());
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
   }
 
