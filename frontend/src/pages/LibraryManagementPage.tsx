@@ -67,7 +67,11 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
   const roleGrantsEdit = canEditLibrary(library.myRole)
   const roleGrantsDelete = canDeleteLibrary(library.myRole)
   const canEdit = roleGrantsEdit || isSystemAdmin
-  const canDelete = (roleGrantsDelete || isSystemAdmin) && !library.personal
+  // KnowledgeLibraryService#deleteLibrary rejects both the personal library and the SYSTEM
+  // library (isSystemLibrary()) with a 400, regardless of caller - neither is ever deletable,
+  // system admin or not.
+  const canDelete =
+    (roleGrantsDelete || isSystemAdmin) && !library.personal && library.ownerType !== 'SYSTEM'
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
 
   const editableVisibilities = library.personal ? personalLibraryVisibilities : allVisibilities

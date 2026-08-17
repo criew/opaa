@@ -128,7 +128,12 @@ paths:
         unlike GET /api/v1/admin/groups. Any authenticated user needs their own group membership
         to choose a group owner when creating a knowledge library (see the library ownership
         picker in the frontend); listGroups requires SYSTEM_ADMIN and returns every group in the
-        organization regardless of membership, so it cannot serve that purpose.
+        organization regardless of membership, so it cannot serve that purpose. Reuses
+        GroupListResponse rather than a slimmer schema: every field on it (including externalId,
+        the directory objectGUID, and memberCount) describes a group the caller already belongs
+        to and can already see the name and kind of, so nothing here exposes information the
+        caller could not already infer; a second schema would only duplicate the first for no
+        access-control benefit.
       responses:
         "200":
           description: Groups the caller is a member of

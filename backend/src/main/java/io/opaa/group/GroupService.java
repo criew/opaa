@@ -103,14 +103,31 @@ public class GroupService {
    * uses to offer only groups the caller can actually own a library through (see {@code
    * KnowledgeLibraryService#createLibrary}, which rejects a GROUP owner the caller is not a member
    * of).
+   *
+   * <p>Excludes dissolved groups: a dissolved group's membership is frozen rather than cleared (see
+   * {@link Group#isDissolved()}), so it would otherwise still surface here. {@code
+   * KnowledgeLibraryService#createLibrary} does not currently check {@code isDissolved()} itself
+   * before writing the owner grant (see #201/#202) - so today, offering a dissolved group here is
+   * the only thing standing between the picker and a library owned by a group that no longer
+   * organisationally exists.
+   *
+   * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: {@link #addMember}
+   * already enforces this at write time via {@code requireUserInOrganization}, so no membership
+   * should ever cross the boundary today, but the class Javadoc treats the boundary as a defense
+   * applied independently at every read rather than one relying on that invariant holding
+   * elsewhere.
    */
   public List<GroupListResponse> listMyGroups(UUID currentUserId) {
-    requireUser(currentUserId);
+    User currentUser = requireUser(currentUserId);
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(currentUserId);
     if (groupIds.isEmpty()) {
       return List.of();
     }
-    return groupRepository.findAllById(groupIds).stream().map(this::toGroupListResponse).toList();
+    return groupRepository.findAllById(groupIds).stream()
+        .filter(group -> !group.isDissolved())
+        .filter(group -> group.getOrganizationId().equals(currentUser.getOrganizationId()))
+        .map(this::toGroupListResponse)
+        .toList();
   }
 
   public GroupResponse getGroup(UUID groupId, UUID currentUserId) {

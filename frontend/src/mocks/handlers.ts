@@ -469,10 +469,17 @@ export const handlers = [
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    // Mirrors KnowledgeLibraryService#deleteLibrary: the personal library can never be deleted.
+    // Mirrors KnowledgeLibraryService#deleteLibrary: neither the personal nor the SYSTEM library
+    // can ever be deleted, regardless of caller.
     if (library.personal) {
       return HttpResponse.json(
         { error: 'Die persoenliche Bibliothek kann nicht geloescht werden' },
+        { status: 400 },
+      )
+    }
+    if (library.ownerType === 'SYSTEM') {
+      return HttpResponse.json(
+        { error: 'Die System-Bibliothek kann nicht geloescht werden' },
         { status: 400 },
       )
     }

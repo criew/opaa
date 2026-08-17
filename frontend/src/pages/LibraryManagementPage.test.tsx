@@ -105,6 +105,22 @@ const editorLibrary: LibraryListResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
+// Deliberately GROUP-owned, not SYSTEM-owned: KnowledgeLibraryService#deleteLibrary rejects the
+// SYSTEM library unconditionally, even for a system admin. This fixture is used for the "admin
+// bypass grants delete" test; viewerLibrary (SYSTEM-owned) is used for the opposite assertion.
+const orgWideGroupLibrary: LibraryListResponse = {
+  id: 'library-org-wide',
+  name: 'Dienstanweisungen (Referat)',
+  description: 'Organisationsweit freigegeben durch ein Referat',
+  ownerType: 'GROUP',
+  visibility: 'ORGANIZATION',
+  listed: true,
+  personal: false,
+  myRole: 'VIEWER',
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
 function detailsOf(library: LibraryListResponse, documentCount: number): LibraryResponse {
   return { ...library, ownerId: null, documentCount }
 }
@@ -248,16 +264,15 @@ describe('LibraryManagementPage', () => {
     expect(screen.getByRole('option', { name: 'organisationsweit' })).toBeInTheDocument()
   })
 
-  it('lets a system admin edit and delete a library without an own grant', async () => {
+  it('lets a system admin edit and delete a group-owned library without an own grant', async () => {
     setSystemAdmin()
-    const orgWideLibrary: LibraryListResponse = { ...viewerLibrary, myRole: 'VIEWER' }
-    setLibraryState([orgWideLibrary], {
-      'library-readonly': detailsOf(orgWideLibrary, 87),
+    setLibraryState([orgWideGroupLibrary], {
+      'library-org-wide': detailsOf(orgWideGroupLibrary, 87),
     })
     renderWithProviders(<LibraryManagementPage />)
     const user = userEvent.setup()
 
-    await user.click(await screen.findByText('Dienstanweisungen'))
+    await user.click(await screen.findByText('Dienstanweisungen (Referat)'))
 
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
@@ -273,6 +288,23 @@ describe('LibraryManagementPage', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Meine Dokumente'))
+
+    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+  })
+
+  it('never offers deleting the SYSTEM library, even for a system admin', async () => {
+    // #437 re-review, finding A: KnowledgeLibraryService#deleteLibrary rejects the SYSTEM
+    // library unconditionally (isSystemLibrary()), independent of the caller's admin status -
+    // unlike edit, which the admin bypass does grant.
+    setSystemAdmin()
+    setLibraryState([viewerLibrary], {
+      'library-readonly': detailsOf(viewerLibrary, 87),
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Dienstanweisungen'))
 
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
