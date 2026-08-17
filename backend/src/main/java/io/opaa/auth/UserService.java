@@ -1,10 +1,16 @@
 package io.opaa.auth;
 
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -40,16 +46,19 @@ public class UserService {
   private final SpaceService spaceService;
   private final KnowledgeLibraryService libraryService;
   private final AuthProperties authProperties;
+  private final AuditEventRecorder auditEventRecorder;
 
   public UserService(
       UserRepository userRepository,
       SpaceService spaceService,
       KnowledgeLibraryService libraryService,
-      AuthProperties authProperties) {
+      AuthProperties authProperties,
+      AuditEventRecorder auditEventRecorder) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
     this.libraryService = libraryService;
     this.authProperties = authProperties;
+    this.auditEventRecorder = auditEventRecorder;
     for (int i = 0; i < provisioningLocks.length; i++) {
       provisioningLocks[i] = new ReentrantLock();
     }
@@ -311,14 +320,44 @@ public class UserService {
     return userRepository.findAll();
   }
 
+  /**
+   * #392 code review, finding 3: the specification names "Erteilung und Entzug der
+   * System-Admin-Rolle" explicitly in the first-stage event list, and this is the one method that
+   * already performs it - {@code actorUserId} is the person making the change (the {@code
+   * SYSTEM_ADMIN} caller {@code AdminController#changeRole} enforces via {@code @PreAuthorize}),
+   * {@code userId}/{@code role} describe the change itself. {@code @Transactional} added here (this
+   * method previously relied on {@code save}'s own implicit per-call transaction, which is not
+   * enough now that the audit write must commit or roll back together with it.
+   */
   @Transactional
-  public User updateRole(UUID userId, SystemRole role) {
+  public User updateRole(UUID userId, SystemRole role, UUID actorUserId) {
     User user =
         userRepository
             .findById(userId)
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
+    SystemRole previousRole = user.getSystemRole();
     user.setSystemRole(role);
-    return userRepository.save(user);
+    User saved = userRepository.save(user);
+    if (previousRole != role) {
+      AuditEventType eventType =
+          role == SystemRole.SYSTEM_ADMIN
+              ? AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED
+              : AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED;
+      auditEventRecorder.recordUserActionOnSubject(
+          saved.getOrganizationId(),
+          actorUserId,
+          eventType,
+          AuditObjectType.USER_ACCOUNT,
+          saved.getId(),
+          saved.getEmail(),
+          AuditSubjectKind.USER,
+          saved.getId(),
+          Map.of("role", previousRole.name()),
+          Map.of("role", role.name()),
+          AuditOutcome.SUCCESS,
+          null);
+    }
+    return saved;
   }
 
   private boolean isInitialAdmin(String email) {

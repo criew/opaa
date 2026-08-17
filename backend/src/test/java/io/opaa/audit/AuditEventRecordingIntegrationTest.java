@@ -6,13 +6,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.GroupRequest;
+import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
+import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserService;
+import io.opaa.group.Group;
+import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
@@ -93,13 +98,22 @@ class AuditEventRecordingIntegrationTest {
 
   static class FakeDirectoryClient implements DirectoryClient {
     private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
+    private DirectoryUnavailableException failure;
 
     void respondWith(DirectoryGroup... groups) {
+      this.failure = null;
       this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
+    }
+
+    void failWith(String message) {
+      this.failure = new DirectoryUnavailableException(message);
     }
 
     @Override
     public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
+      if (failure != null) {
+        throw failure;
+      }
       return snapshot;
     }
   }
@@ -120,6 +134,7 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private UserRepository userRepository;
+  @Autowired private UserService userService;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private AuditLogRepository auditLogRepository;
   @Autowired private PlatformTransactionManager transactionManager;
@@ -306,6 +321,73 @@ class AuditEventRecordingIntegrationTest {
         .isEmpty();
   }
 
+  @Test
+  void grantingToAnUnknownSubjectFailsCleanlyWithoutAnFkViolationOrAnAuditEntry() {
+    // #392 code review, finding 2: an unresolvable subjectId must never reach the pseudonym
+    // insert - it would violate fk_audit_actor_pseudonyms_user (migration 017) and surface as an
+    // unhandled 500, losing the whole transaction (including the DENIED entry the escalation guard
+    // would otherwise have written) instead of the clean 404 every other unresolvable reference in
+    // this class already produces.
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID unknownSubject = UUID.randomUUID();
+    long before = auditLogRepository.count();
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    libraryId,
+                    new AssetGrantRequest(
+                        PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
+                    owner,
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+
+    assertThat(auditLogRepository.count()).isEqualTo(before);
+  }
+
+  @Test
+  void grantingToASubjectFromAnotherOrganizationFailsCleanlyWithoutACrossTenantPseudonym() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID foreignOrganizationId =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Other Org")).getId();
+    User foreignUser =
+        new User(UUID.randomUUID().toString(), "test-issuer", "foreign@example.com", "Foreign");
+    foreignUser.setOrganizationId(foreignOrganizationId);
+    UUID foreignUserId = userRepository.save(foreignUser).getId();
+    long before = auditLogRepository.count();
+
+    try {
+      assertThatThrownBy(
+              () ->
+                  grantService.upsertGrant(
+                      libraryId,
+                      new AssetGrantRequest(
+                          PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
+                      owner,
+                      false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.NOT_FOUND));
+
+      // No pseudonym row was minted for a user this organization never had standing to reference,
+      // and no new audit_log row of any kind was written for this attempt - createLibrary above
+      // already wrote its own entries, so the table-wide count (not "isEmpty") is the correct
+      // check.
+      assertThat(auditLogRepository.count()).isEqualTo(before);
+    } finally {
+      userRepository.deleteById(foreignUserId);
+      organizationRepository.deleteById(foreignOrganizationId);
+    }
+  }
+
   // ---------------------------------------------------------------------------------------
   // KnowledgeLibraryService
   // ---------------------------------------------------------------------------------------
@@ -360,6 +442,17 @@ class AuditEventRecordingIntegrationTest {
                 .filter(e -> e.getEventType() == AuditEventType.GROUP_CREATED)
                 .toList())
         .hasSize(1);
+
+    // #392 code review, nit 5: updateGroup's own audit write had no coverage against the real
+    // Liquibase schema - GroupServiceIntegrationTest mocks AuditEventRecorder entirely (see its
+    // Javadoc), so this was the only group event this class did not actually exercise.
+    groupService.updateGroup(groupId, new GroupUpdateRequest("Referat 5 neu"), admin);
+    List<AuditLogEntry> changed =
+        entriesFor(AuditObjectType.GROUP, groupId).stream()
+            .filter(e -> e.getEventType() == AuditEventType.GROUP_CHANGED)
+            .toList();
+    assertThat(changed).hasSize(1);
+    assertThat(changed.get(0).getAfter()).contains("name").doesNotContain("Referat 5 neu");
 
     UUID member = createUser();
     groupService.addMember(groupId, member, admin);
@@ -420,6 +513,25 @@ class AuditEventRecordingIntegrationTest {
     assertThat(roleChanged.get(0).getBefore()).contains("MEMBER");
     assertThat(roleChanged.get(0).getAfter()).contains("CURATOR");
 
+    // #392 code review, finding 5: ownership transfer is ASSET_OWNER_CHANGED, not the generic
+    // SPACE_CHANGED - it is in the closed list without a library-only restriction, and a prover
+    // filtering event_type = ASSET_OWNER_CHANGED must find it. Transferred to member and
+    // immediately back to owner so the rest of this test's flow (owner-only removeMember/
+    // deleteSpace calls below) is unaffected.
+    spaceService.transferOwnership(spaceId, member, owner, false);
+    spaceService.transferOwnership(spaceId, owner, member, false);
+    List<AuditLogEntry> ownerChanged =
+        entriesFor(AuditObjectType.SPACE, spaceId).stream()
+            .filter(e -> e.getEventType() == AuditEventType.ASSET_OWNER_CHANGED)
+            .toList();
+    assertThat(ownerChanged).hasSize(2);
+    assertThat(ownerChanged.get(0).getAfter()).contains(member.toString());
+    assertThat(
+            entriesFor(AuditObjectType.SPACE, spaceId).stream()
+                .filter(e -> e.getEventType() == AuditEventType.SPACE_CHANGED)
+                .toList())
+        .isEmpty();
+
     spaceService.removeMember(spaceId, member, owner);
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
@@ -465,13 +577,90 @@ class AuditEventRecordingIntegrationTest {
         allForOrg.stream()
             .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
             .toList();
-    // Two newly created groups, no members - one change entry each (group creation itself, not a
-    // membership add since there are no members to add).
-    assertThat(changes).isNotEmpty();
+    // #392 code review, nit 3: fixed to the exact count - two newly created groups, no members,
+    // means exactly one change entry per group (its creation), never one entry shared across both.
+    // isNotEmpty() alone would also have passed with a single entry covering both groups, which is
+    // exactly the "je bewirkter Aenderung ein Eintrag" acceptance criterion this test exists for.
+    assertThat(changes).hasSize(2);
     assertThat(changes.stream().map(AuditLogEntry::getCorrelationRef).distinct().toList())
         .containsExactly(correlationRef);
     assertThat(changes.stream().map(AuditLogEntry::getActorKind).distinct().toList())
         .containsExactly(ActorKind.SYSTEM_PROCESS);
+    assertThat(headers.get(0).getOutcome()).isEqualTo(AuditOutcome.SUCCESS);
+  }
+
+  @Test
+  void aDryRunAlsoWritesTheHeaderEntryWithoutAnyChangeEntries() {
+    // #392 code review, finding 1: planOnly (dryRun's transactional backend) was readOnly, so this
+    // header insert either silently vanished or made the endpoint 500 - covered here by actually
+    // calling dryRun, not run().
+    directoryClient.respondWith(new DirectoryGroup("ext-1", "Team A", null, Set.of()));
+
+    directorySyncService.dryRun(organizationId);
+
+    List<AuditLogEntry> allForOrg =
+        auditLogRepository.findAll().stream()
+            .filter(e -> e.getOrganizationId().equals(organizationId))
+            .toList();
+    assertThat(
+            allForOrg.stream()
+                .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
+                .toList())
+        .hasSize(1);
+    assertThat(
+            allForOrg.stream()
+                .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+                .toList())
+        .isEmpty();
+    // Nothing was actually created - a dry run never writes group/membership data.
+    assertThat(groupRepository.findByOrganizationIdAndKindOrgUnit(organizationId)).isEmpty();
+  }
+
+  @Test
+  void anAbortedRunWritesAHeaderEntryWithAFailureOutcome() {
+    // #392 code review, nit 1: the header's own outcome column must distinguish an aborted run
+    // from one that actually applied or dry-ran successfully. An empty directory result while an
+    // ORG_UNIT group already exists is DirectorySyncPlanExecutor#handle's ABORTED_EMPTY_RESULT
+    // branch - the classic "misconfigured connection" symptom, nothing is written.
+    Group group =
+        new Group(organizationId, GroupKind.ORG_UNIT, "Pre-existing", null, "ext-x", null);
+    groupRepository.save(group);
+    directoryClient.respondWith();
+
+    directorySyncService.run(organizationId);
+
+    List<AuditLogEntry> headers =
+        auditLogRepository.findAll().stream()
+            .filter(e -> e.getOrganizationId().equals(organizationId))
+            .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
+            .toList();
+    assertThat(headers).hasSize(1);
+    assertThat(headers.get(0).getOutcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(
+            auditLogRepository.findAll().stream()
+                .filter(e -> e.getOrganizationId().equals(organizationId))
+                .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
+                .toList())
+        .isEmpty();
+  }
+
+  @Test
+  void anUnreachableDirectoryStillWritesAHeaderEntry() {
+    // #392 code review, nit 2: DirectorySyncService#execute returns before
+    // DirectorySyncPlanExecutor is ever called for this outcome, so its header entry needs its own
+    // write, on this class.
+    directoryClient.failWith("simulated directory outage");
+
+    directorySyncService.run(organizationId);
+
+    List<AuditLogEntry> headers =
+        auditLogRepository.findAll().stream()
+            .filter(e -> e.getOrganizationId().equals(organizationId))
+            .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
+            .toList();
+    assertThat(headers).hasSize(1);
+    assertThat(headers.get(0).getOutcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(headers.get(0).getActorKind()).isEqualTo(ActorKind.SYSTEM_PROCESS);
   }
 
   @Test
@@ -493,6 +682,39 @@ class AuditEventRecordingIntegrationTest {
                 .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
                 .toList())
         .hasSize(1);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // UserService (system-admin role)
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void grantingAndRevokingTheSystemAdminRoleEachProduceAnAuditEntry() {
+    // #392 code review, finding 3: "Erteilung und Entzug der System-Admin-Rolle" - the one
+    // "Systemrollen und Konten" event the underlying functionality (UserService#updateRole) already
+    // supported before this PR.
+    UUID actingAdmin = createUser();
+    UUID targetUser = createUser();
+
+    userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, actingAdmin);
+    List<AuditLogEntry> granted =
+        entriesFor(AuditObjectType.USER_ACCOUNT, targetUser).stream()
+            .filter(e -> e.getEventType() == AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED)
+            .toList();
+    assertThat(granted).hasSize(1);
+    assertThat(granted.get(0).getSubjectKind()).isEqualTo(AuditSubjectKind.USER);
+
+    userService.updateRole(targetUser, SystemRole.USER, actingAdmin);
+    List<AuditLogEntry> revoked =
+        entriesFor(AuditObjectType.USER_ACCOUNT, targetUser).stream()
+            .filter(e -> e.getEventType() == AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED)
+            .toList();
+    assertThat(revoked).hasSize(1);
+
+    // Re-setting the same role is not a change and writes nothing more.
+    long before = auditLogRepository.count();
+    userService.updateRole(targetUser, SystemRole.USER, actingAdmin);
+    assertThat(auditLogRepository.count()).isEqualTo(before);
   }
 
   // ---------------------------------------------------------------------------------------

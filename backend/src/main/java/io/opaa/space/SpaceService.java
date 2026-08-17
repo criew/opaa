@@ -13,6 +13,7 @@ import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -275,13 +276,15 @@ public class SpaceService {
     UUID previousOwnerId = space.getOwnerId();
     space.transferOwnershipTo(newOwnerUserId);
     spaceRepository.save(space);
-    // #392: no dedicated enum value for a space ownership transfer exists in the closed list -
-    // SPACE_CHANGED is the general "a space changed" event, and ownership is one of the space's own
-    // attributes, so it is used here the same way a rename would be.
+    // #392 code review: ASSET_OWNER_CHANGED is in the closed list without a library-only
+    // restriction, and the spec's "Eigentuemerwechsel" line sits in the "Spaces, Bibliotheken und
+    // Gruppen" block, not a library-specific one - a space ownership transfer belongs under this
+    // event type, not the generic SPACE_CHANGED (which would hide it from a filter on
+    // event_type = ASSET_OWNER_CHANGED).
     auditEventRecorder.recordUserAction(
         space.getOrganizationId(),
         currentUserId,
-        AuditEventType.SPACE_CHANGED,
+        AuditEventType.ASSET_OWNER_CHANGED,
         AuditObjectType.SPACE,
         space.getId(),
         space.getName(),
@@ -313,17 +316,31 @@ public class SpaceService {
     SpaceVisibility previousVisibility = space.getVisibility();
     space.updateDetails(normalizedName, request.getDescription(), request.getVisibility());
     Space updated = spaceRepository.save(space);
-    if (!Objects.equals(previousName, updated.getName())
-        || !Objects.equals(previousDescription, updated.getDescription())
-        || previousVisibility != updated.getVisibility()) {
+    boolean nameChanged = !Objects.equals(previousName, updated.getName());
+    boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
+    boolean visibilityChanged = previousVisibility != updated.getVisibility();
+    if (nameChanged || descriptionChanged || visibilityChanged) {
+      // #392 code review, finding 4: before/after are limited to what the specification calls
+      // "rechtlich Erheblich" - visibility is (it feeds who can see the space), free-text
+      // name/description content is not, and is never written here even though it changed;
+      // changedFields names which of the three changed without carrying either value. Only
+      // visibility, the one field that is itself rights-relevant, carries its actual before/after.
+      List<String> changedFields = new ArrayList<>();
+      if (nameChanged) {
+        changedFields.add("name");
+      }
+      if (descriptionChanged) {
+        changedFields.add("description");
+      }
       Map<String, Object> before = new LinkedHashMap<>();
-      before.put("name", previousName);
-      before.put("description", String.valueOf(previousDescription));
-      before.put("visibility", previousVisibility.name());
       Map<String, Object> after = new LinkedHashMap<>();
-      after.put("name", updated.getName());
-      after.put("description", String.valueOf(updated.getDescription()));
-      after.put("visibility", updated.getVisibility().name());
+      before.put("changedFields", changedFields);
+      after.put("changedFields", changedFields);
+      if (visibilityChanged) {
+        changedFields.add("visibility");
+        before.put("visibility", previousVisibility.name());
+        after.put("visibility", updated.getVisibility().name());
+      }
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
           currentUserId,

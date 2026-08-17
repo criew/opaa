@@ -140,7 +140,14 @@ class DirectorySyncPlanExecutor {
     this.auditEventRecorder = auditEventRecorder;
   }
 
-  @Transactional(readOnly = true)
+  // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
+  // the run's DIRECTORY_SYNC_RUN_COMPLETED header entry unconditionally, including on the dry-run
+  // path this method serves. A readOnly transaction sets Hibernate's flush mode to MANUAL and the
+  // JDBC connection itself to read-only, so that insert would either be silently dropped at commit
+  // or rejected by Postgres with "cannot execute INSERT in a read-only transaction" (500) -
+  // dry-run's only other write in this method, none, made readOnly look safe until this entry
+  // needed writing too.
+  @Transactional
   DirectorySyncReportResponse planOnly(
       UUID organizationId, Instant now, DirectorySnapshot snapshot) {
     return handle(organizationId, now, snapshot, false);
@@ -264,10 +271,31 @@ class DirectorySyncPlanExecutor {
         null,
         null,
         after,
-        AuditOutcome.SUCCESS,
+        toAuditOutcome(outcome),
         message,
         correlationRef.toString());
     return report;
+  }
+
+  /**
+   * #392 code review, nit 1: the header entry's own {@code outcome} column now reflects whether the
+   * run actually did what it set out to do, not always {@code SUCCESS} - a filter on {@code outcome
+   * != SUCCESS} would otherwise never surface an aborted run, even though the human-readable result
+   * was always available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code
+   * DRY_RUN} both did exactly what they were asked (write the diff, or only compute it); {@code
+   * ABORTED_THRESHOLD} and {@code ABORTED_EMPTY_RESULT} are the plausibility guard refusing to
+   * write anything it judged unsafe - a failure to complete, not a permission decision, hence
+   * {@code FAILURE} rather than {@code DENIED}. {@code UNREACHABLE} is handled by {@link
+   * DirectorySyncService} itself, which never reaches this class - see its own header entry.
+   */
+  private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
+    return switch (outcome) {
+      case APPLIED, DRY_RUN -> AuditOutcome.SUCCESS;
+      case ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT -> AuditOutcome.FAILURE;
+      case UNREACHABLE ->
+          throw new IllegalStateException(
+              "UNREACHABLE is handled by DirectorySyncService before this class ever runs");
+    };
   }
 
   private String formatPercent(double fraction) {

@@ -140,6 +140,26 @@ public class AssetGrantService {
           HttpStatus.BAD_REQUEST,
           "Auf die persoenliche Bibliothek koennen keine Berechtigungen vergeben werden");
     }
+    // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
+    // The guard's catch block pseudonymises request.getSubjectId() as the DENIED entry's
+    // subject_ref - audit_actor_pseudonyms.user_id carries fk_audit_actor_pseudonyms_user against
+    // users.id (migration 017), so pseudonymising an id that names no real user (a bogus id, or a
+    // valid id probed from outside this organization) violated that FK, turned a should-be-403 into
+    // an unhandled 500, and - because a DataIntegrityViolationException is not a
+    // ResponseStatusException, so upsertGrant's noRollbackFor did not apply - rolled back the very
+    // transaction that would have recorded the attempt, losing the audit trail for exactly the
+    // probing behaviour it exists to catch. Validating first turns an unknown or foreign subject
+    // into the same 404 ("Benutzer/Gruppe nicht gefunden") every other unresolvable reference in
+    // this class already produces, before either the escalation guard or its DENIED write ever run
+    // - a request that cannot even name a real subject is not a recordable "rejected grant to
+    // subject X", it is a plain 404, and the guard now only ever pseudonymises a subject that is
+    // already known to exist in this organization.
+    if (request.getSubjectType() == PermissionSubjectType.USER) {
+      requireUserInOrganization(request.getSubjectId(), library.getOrganizationId());
+    } else {
+      requireGrantableGroup(request.getSubjectId(), library.getOrganizationId());
+    }
+
     // Escalation guard, half 1: a caller may never grant a role higher than the one they
     // themselves hold - see the class Javadoc. requireManageable already established callerRole is
     // at least MANAGER.
@@ -178,7 +198,6 @@ public class AssetGrantService {
     AssetRole previousRole = null;
     Instant previousExpiresAt = null;
     if (request.getSubjectType() == PermissionSubjectType.USER) {
-      requireUserInOrganization(request.getSubjectId(), library.getOrganizationId());
       grant =
           grantRepository
               .findByLibraryIdAndSubjectTypeAndSubjectUserId(
@@ -203,7 +222,6 @@ public class AssetGrantService {
         grant.updateRole(request.getRole(), request.getExpiresAt());
       }
     } else {
-      requireGrantableGroup(request.getSubjectId(), library.getOrganizationId());
       grant =
           grantRepository
               .findByLibraryIdAndSubjectTypeAndSubjectGroupId(

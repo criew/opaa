@@ -17,6 +17,7 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -351,10 +352,10 @@ public class KnowledgeLibraryService {
     if (visibilityOrListedChanged) {
       permissionHistoryService.recordVisibilityChanged(updated, currentUserId);
     }
-    // #392: ASSET_VISIBILITY_CHANGED is the more specific, rights-relevant event when visibility or
-    // listedness actually changed; LIBRARY_CHANGED covers a plain rename/description edit. A single
-    // call can only ever produce one of the two - visibility/listed always wins when both changed,
-    // mirroring the "which entry" priority PermissionHistoryService already applies for visibility.
+    // #392 code review, nit 4: ASSET_VISIBILITY_CHANGED and LIBRARY_CHANGED are independent events
+    // - a call that renames the library and widens its visibility in the same request writes both,
+    // instead of the earlier version's else-if silently dropping the rename whenever visibility
+    // also changed.
     if (visibilityOrListedChanged) {
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
@@ -367,8 +368,21 @@ public class KnowledgeLibraryService {
           Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed()),
           AuditOutcome.SUCCESS,
           null);
-    } else if (!Objects.equals(previousName, updated.getName())
-        || !Objects.equals(previousDescription, updated.getDescription())) {
+    }
+    boolean nameChanged = !Objects.equals(previousName, updated.getName());
+    boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
+    if (nameChanged || descriptionChanged) {
+      // #392 code review, finding 4: before/after stay limited to which fields changed, not the
+      // free-text description content itself - the specification limits before/after to what is
+      // "rechtlich Erheblich" (role, deadline, visibility), and description is user-entered
+      // free text that can carry third-party personal data into an append-only log.
+      List<String> changedFields = new ArrayList<>();
+      if (nameChanged) {
+        changedFields.add("name");
+      }
+      if (descriptionChanged) {
+        changedFields.add("description");
+      }
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
           currentUserId,
@@ -376,9 +390,8 @@ public class KnowledgeLibraryService {
           AuditObjectType.KNOWLEDGE_LIBRARY,
           updated.getId(),
           updated.getName(),
-          Map.of("name", previousName, "description", String.valueOf(previousDescription)),
-          Map.of(
-              "name", updated.getName(), "description", String.valueOf(updated.getDescription())),
+          Map.of("changedFields", changedFields),
+          Map.of("changedFields", changedFields),
           AuditOutcome.SUCCESS,
           null);
     }

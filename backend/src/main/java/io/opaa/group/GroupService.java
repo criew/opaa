@@ -15,8 +15,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.PermissionHistoryService;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,17 +109,10 @@ public class GroupService {
         saved.getId(),
         saved.getName(),
         null,
-        groupAuditPayload(saved),
+        null,
         AuditOutcome.SUCCESS,
         null);
     return toGroupResponse(saved);
-  }
-
-  private Map<String, Object> groupAuditPayload(Group group) {
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", group.getName());
-    payload.put("description", String.valueOf(group.getDescription()));
-    return payload;
   }
 
   public List<GroupListResponse> listGroups(UUID currentUserId) {
@@ -178,8 +171,19 @@ public class GroupService {
     String previousDescription = group.getDescription();
     group.updateDetails(normalizedName, request.getDescription());
     Group updated = groupRepository.save(group);
-    if (!Objects.equals(previousName, updated.getName())
-        || !Objects.equals(previousDescription, updated.getDescription())) {
+    boolean nameChanged = !Objects.equals(previousName, updated.getName());
+    boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
+    if (nameChanged || descriptionChanged) {
+      // #392 code review, finding 4: changedFields names which fields changed without carrying the
+      // free-text description content itself into the append-only log - see
+      // KnowledgeLibraryService#updateLibrary's identical treatment.
+      List<String> changedFields = new ArrayList<>();
+      if (nameChanged) {
+        changedFields.add("name");
+      }
+      if (descriptionChanged) {
+        changedFields.add("description");
+      }
       auditEventRecorder.recordUserAction(
           updated.getOrganizationId(),
           currentUserId,
@@ -187,8 +191,8 @@ public class GroupService {
           AuditObjectType.GROUP,
           updated.getId(),
           updated.getName(),
-          Map.of("name", previousName, "description", String.valueOf(previousDescription)),
-          groupAuditPayload(updated),
+          Map.of("changedFields", changedFields),
+          Map.of("changedFields", changedFields),
           AuditOutcome.SUCCESS,
           null);
     }
