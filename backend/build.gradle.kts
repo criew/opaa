@@ -164,8 +164,14 @@ spotless {
 
 // Deutsche Texte in Quellen und Ressourcen sind UTF-8. Ohne diese Einstellung
 // nutzt javac das Plattform-Encoding, was auf Windows Umlaute verfälscht.
+//
+// -parameters (#393 code review, nit 4): keeps real parameter names available via reflection
+// (Parameter#getName()) instead of javac's default arg0/arg1/... - AuditQueryServiceIntegrationTest
+// and AuditControllerTest both reflect over parameter names to prove no access path accepts an
+// actor/person filter, and that proof is silently meaningless without this flag.
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
+    options.compilerArgs.add("-parameters")
 }
 
 tasks.withType<Test> {

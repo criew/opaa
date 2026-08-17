@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -61,9 +62,26 @@ public class AuditIncidentScopeGrant {
   @Column(name = "approved_at")
   private Instant approvedAt;
 
+  /**
+   * #393 code review, finding 7: an approved grant must not stay usable indefinitely - set at
+   * approval time to {@link #approvedAt} plus {@link #USABLE_WINDOW}, checked by {@link #isUsable}.
+   * Null while {@code PENDING}.
+   */
+  @Column(name = "usable_until")
+  private Instant usableUntil;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 10)
   private AuditIncidentScopeStatus status;
+
+  /**
+   * How long an approved grant remains usable after approval (#393 code review, finding 7): 30 days
+   * - long enough to carry out an anlassbezogene Klärung once approved, short enough that an
+   * approved-but-forgotten grant does not become a standing personenbezogene view. Re-requesting
+   * (with a fresh Vier-Augen-Prinzip approval) is the intended path past this window, not an
+   * extension of the same grant.
+   */
+  static final Duration USABLE_WINDOW = Duration.ofDays(30);
 
   protected AuditIncidentScopeGrant() {}
 
@@ -111,11 +129,22 @@ public class AuditIncidentScopeGrant {
     }
     this.approvedByUserId = approvedByUserId;
     this.approvedAt = Instant.now();
+    this.usableUntil = approvedAt.plus(USABLE_WINDOW);
     this.status = AuditIncidentScopeStatus.APPROVED;
   }
 
   public boolean isApproved() {
     return status == AuditIncidentScopeStatus.APPROVED;
+  }
+
+  /**
+   * True once approved and still within {@link #usableUntil} at {@code now} (#393 code review,
+   * finding 7). A {@code PENDING} grant (where {@code usableUntil} is still null) is never usable.
+   */
+  public boolean isUsable(Instant now) {
+    return status == AuditIncidentScopeStatus.APPROVED
+        && usableUntil != null
+        && !now.isAfter(usableUntil);
   }
 
   /** True if {@code [from, to]} lies entirely within this grant's approved scope. */
@@ -165,6 +194,10 @@ public class AuditIncidentScopeGrant {
 
   public Instant getApprovedAt() {
     return approvedAt;
+  }
+
+  public Instant getUsableUntil() {
+    return usableUntil;
   }
 
   public AuditIncidentScopeStatus getStatus() {

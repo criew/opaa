@@ -986,7 +986,15 @@ paths:
       tags: [audit]
       summary: >
         Revision access path "nach Objekt" (AUDITOR role required): every event recorded against
-        one object, within a mandatory time range.
+        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400
+        (#393 code review, finding 2): a USER_ACCOUNT object's object_id is that person's
+        pseudonym - the same pseudonym actorRef carries on that same person's own actions
+        elsewhere in the log - so accepting it here would reconstruct exactly the excluded view
+        "alle Ereignisse, bei denen Person X betroffen war" (read a pseudonym off actorRef via
+        by-time-range, then feed it back in as objectId). The legitimate need behind a
+        USER_ACCOUNT-scoped question is served by by-time-range/by-event-type (no person focus)
+        or, for a genuinely person-scoped question, by the freigegebene anlassbezogene Klärung
+        or the Rechtehistorie (#238) - never by this path.
       parameters:
         - name: objectType
           in: query
@@ -2227,6 +2235,8 @@ components:
           ASSET_SUCCESSION_OPENED,
           SYSTEM_ADMIN_ROLE_GRANTED,
           SYSTEM_ADMIN_ROLE_REVOKED,
+          AUDITOR_ROLE_GRANTED,
+          AUDITOR_ROLE_REVOKED,
           ACCOUNT_DEACTIVATED,
           ACCOUNT_REAUTHENTICATION_FORCED,
           API_TOKEN_ISSUED,
@@ -2414,6 +2424,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        usableUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Set once, at approval - an approved grant is only usable for querying until this
+            point, not indefinitely.
         status:
           $ref: "#/components/schemas/AuditIncidentScopeStatus"
 
@@ -2422,7 +2439,12 @@ components:
       name: from
       in: query
       required: true
-      description: Start of the mandatory time range (inclusive).
+      description: >
+        Start of the mandatory, bounded time range (inclusive). The range (to - from) must not
+        exceed 92 days (#393 code review, finding 3) - wide enough for the specification's own
+        "alle Rechteänderungen zwischen dem 1. und dem 31. März"-style queries, not wide enough to
+        serve as a disguised full-history extract. A wider request is rejected with 400, not
+        clamped; a multi-year review chains several bounded calls, each auditable on its own.
       schema:
         type: string
         format: date-time
@@ -2430,7 +2452,7 @@ components:
       name: to
       in: query
       required: true
-      description: End of the mandatory time range (inclusive).
+      description: End of the mandatory, bounded time range (inclusive) - see AuditFrom.
       schema:
         type: string
         format: date-time
@@ -2438,6 +2460,11 @@ components:
       name: page
       in: query
       required: false
+      description: >
+        Capped server-side at page index 49 (50 pages total) regardless of the requested value
+        (#393 code review, finding 3) - AuditSize alone only bounds a single page; without this,
+        paging through page=0..n against a wide time range would turn "bounded per page" back
+        into an effectively unbounded full extract in slices.
       schema:
         type: integer
         minimum: 0
@@ -2446,7 +2473,7 @@ components:
       name: size
       in: query
       required: false
-      description: Capped server-side regardless of the requested value - see AuditQueryService.
+      description: Capped server-side at 200 regardless of the requested value - see AuditPage.
       schema:
         type: integer
         minimum: 1

@@ -12,6 +12,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findByEmail(String email);
 
   /**
+   * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
+   * anlassbezogene Klärung named against a person outside the requester's own organization before a
+   * grant row - and later, at query time, a pseudonym - is ever created for them.
+   */
+  Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+  /**
    * Resolves directory group members to their {@link User} rows for #237's directory
    * synchronisation, scoped to the organization so a subject from another tenant can never be
    * matched in - the same boundary {@code GroupMembershipRepository} enforces for group reads.

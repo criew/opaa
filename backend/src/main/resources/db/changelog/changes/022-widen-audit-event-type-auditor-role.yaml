@@ -1,0 +1,101 @@
+databaseChangeLog:
+  # #393 code review, finding 1: AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED (io.opaa.audit.AuditEventType)
+  # widen chk_audit_log_event_type (migration 017) so UserService#updateRole's fix - recording the
+  # AUDITOR role's own grant/revoke events instead of mislabelling them as SYSTEM_ADMIN_ROLE_REVOKED -
+  # can actually write them. Widen-only, the same shape as 020-allow-upload-source-type: drop and
+  # recreate the constraint with the two new values added, nothing removed.
+  #
+  # audit_log is owned by opaa_audit_owner, not the migration/application account (migration 017,
+  # ADR-0015) - the account this migration runs as holds only INSERT/SELECT on it, not ALTER, and
+  # (verified empirically against real Postgres while building this changeSet) the automatic
+  # CREATE-ROLE-time membership 017 leaves behind does not by itself carry the SET privilege a bare
+  # SET ROLE needs - only ADMIN OPTION. Reaching the ALTER TABLE therefore needs the same two-step
+  # dance 017's own last changeSet already performs around its ownership-transfer statements:
+  # explicitly (re-)grant the membership WITH SET TRUE, SET ROLE, run the DDL, RESET ROLE, then
+  # REVOKE the explicit grant again - not a new escalation this migration introduces, but the same
+  # one 017 already left open (see its changeSet comment and ADR-0015), used here for a legitimate,
+  # narrowly-scoped widening instead of a data change.
+  - changeSet:
+      id: 022-widen-audit-event-type-auditor-role
+      author: opaa
+      comment: >
+        Widens chk_audit_log_event_type to also accept AUDITOR_ROLE_GRANTED and
+        AUDITOR_ROLE_REVOKED (io.opaa.audit.AuditEventType#AUDITOR_ROLE_GRANTED/_REVOKED) - the
+        events UserService#updateRole now writes for the AUDITOR role, distinct from
+        SYSTEM_ADMIN_ROLE_GRANTED/_REVOKED. Runs as opaa_audit_owner via a temporary SET TRUE
+        membership grant plus SET ROLE (see the changelog header comment above) since audit_log's
+        DDL is otherwise unreachable from the migration account after 017's ownership transfer.
+      changes:
+        - sql:
+            comment: >
+              Drop and recreate chk_audit_log_event_type to include the two new AUDITOR role
+              values, bracketed by the temporary membership grant/revoke this requires.
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_event_type;
+              ALTER TABLE audit_log
+              ADD CONSTRAINT chk_audit_log_event_type
+              CHECK (event_type IN (
+                'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
+                'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
+                'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED',
+                'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
+                'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
+                'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',
+                'LIBRARY_SHARED_TO_SPACE',
+                'ASSET_OWNER_CHANGED', 'ASSET_OWNERSHIP_CLAIMED', 'ASSET_SUCCESSION_OPENED',
+                'SYSTEM_ADMIN_ROLE_GRANTED', 'SYSTEM_ADMIN_ROLE_REVOKED',
+                'AUDITOR_ROLE_GRANTED', 'AUDITOR_ROLE_REVOKED',
+                'ACCOUNT_DEACTIVATED', 'ACCOUNT_REAUTHENTICATION_FORCED',
+                'API_TOKEN_ISSUED', 'API_TOKEN_REVOKED',
+                'DIRECTORY_SYNC_CHANGE_APPLIED', 'DIRECTORY_SYNC_RUN_COMPLETED',
+                'GOVERNANCE_SETTINGS_CHANGED', 'AUDIT_LOG_CONFIGURATION_CHANGED',
+                'MODEL_POLICY_CHANGED', 'CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',
+                'AUDIT_LOG_ACCESSED'
+              ));
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: >
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+              SET ROLE opaa_audit_owner;
+              ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_event_type;
+              ALTER TABLE audit_log
+              ADD CONSTRAINT chk_audit_log_event_type
+              CHECK (event_type IN (
+                'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
+                'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
+                'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED',
+                'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
+                'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
+                'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',
+                'LIBRARY_SHARED_TO_SPACE',
+                'ASSET_OWNER_CHANGED', 'ASSET_OWNERSHIP_CLAIMED', 'ASSET_SUCCESSION_OPENED',
+                'SYSTEM_ADMIN_ROLE_GRANTED', 'SYSTEM_ADMIN_ROLE_REVOKED',
+                'ACCOUNT_DEACTIVATED', 'ACCOUNT_REAUTHENTICATION_FORCED',
+                'API_TOKEN_ISSUED', 'API_TOKEN_REVOKED',
+                'DIRECTORY_SYNC_CHANGE_APPLIED', 'DIRECTORY_SYNC_RUN_COMPLETED',
+                'GOVERNANCE_SETTINGS_CHANGED', 'AUDIT_LOG_CONFIGURATION_CHANGED',
+                'MODEL_POLICY_CHANGED', 'CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',
+                'AUDIT_LOG_ACCESSED'
+              ));
+              RESET ROLE;
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;

@@ -24,6 +24,12 @@ databaseChangeLog:
         not only in AuditIncidentScopeGrant#approve - the leading NULL check matches the same
         pattern chk_audit_log_subject (migration 017) already established for a paired-nullable
         column: approved_by_user_id/approved_at are NULL together while PENDING.
+
+        usable_until (#393 code review, finding 7) is set once, at approval
+        (AuditIncidentScopeGrant#approve, AuditIncidentScopeGrant#USABLE_WINDOW), and is null while
+        PENDING alongside approved_by_user_id/approved_at - an approved grant must not remain
+        usable indefinitely; AuditIncidentScopeService#findApproved rejects a lookup once the
+        current time is past it.
       changes:
         - createTable:
             tableName: audit_incident_scope_grants
@@ -79,6 +85,9 @@ databaseChangeLog:
                   type: uuid
               - column:
                   name: approved_at
+                  type: timestamp with time zone
+              - column:
+                  name: usable_until
                   type: timestamp with time zone
               - column:
                   name: status

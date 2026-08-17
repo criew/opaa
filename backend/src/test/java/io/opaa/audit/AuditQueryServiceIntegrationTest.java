@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -29,9 +35,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * mirroring {@code AuditLogServiceIntegrationTest}.
  *
  * <p>{@link #noAccessPathAcceptsOrSortsByActor()} is the acceptance criterion's dedicated,
- * cross-cutting test: it exercises every public query method {@link AuditQueryService} has and
- * proves none of them exposes an actor/person entry point, matches {@code
- * io.opaa.api.AuditControllerStructureTest} for the same claim at the HTTP layer.
+ * cross-cutting test: it exercises every public method {@link AuditQueryService} declares (not a
+ * hardcoded name list - #393 code review, nit 4: a hardcoded list would silently stop covering a
+ * newly added method) and proves none of them exposes an actor/person entry point, either by
+ * parameter type ({@code Sort}/{@code Pageable}) or by parameter name (real names, not {@code
+ * arg0}/{@code arg1} - see the {@code -parameters} compiler flag {@code build.gradle.kts} now sets
+ * for exactly this). Matches {@code io.opaa.api.AuditControllerTest}'s {@code
+ * noEndpointAcceptsAnActorOrSortRequestParameter}/{@code
+ * noParameterIsUnannotatedOrClientControlledSort} for the same claim at the HTTP layer.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -166,6 +177,98 @@ class AuditQueryServiceIntegrationTest {
         .allSatisfy(e -> assertThat(e.getCorrelationRef()).isEqualTo("sync-2026-02-16"));
   }
 
+  /**
+   * #393 code review, finding 2: {@code by-object} must reject {@code objectType=USER_ACCOUNT}
+   * outright - a {@code USER_ACCOUNT} object's {@code object_id} is the same pseudonym {@code
+   * actorRef} carries on that same person's own actions, so accepting it here would reconstruct
+   * exactly the excluded "alle Ereignisse, bei denen Person X betroffen war" view via {@code
+   * by-time-range} (read a pseudonym off {@code actorRef}) followed by this path (feed it back in
+   * as {@code objectId}).
+   */
+  @Test
+  void byObjectRejectsUserAccountObjectType() {
+    assertThatThrownBy(
+            () ->
+                queryService.byObject(
+                    organizationId,
+                    AuditObjectType.USER_ACCOUNT,
+                    "pseud-some-person",
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    0,
+                    50))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("USER_ACCOUNT");
+  }
+
+  @Test
+  void everyOtherObjectTypeIsStillAcceptedByObject() {
+    writeEntry("lib-1", AuditEventType.LIBRARY_CREATED, null, base);
+
+    Page<AuditLogEntry> result =
+        queryService.byObject(
+            organizationId,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            "lib-1",
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.HOURS),
+            0,
+            50);
+
+    assertThat(result.getContent()).hasSize(1);
+  }
+
+  /**
+   * #393 code review, finding 3: a time range wider than {@link
+   * AuditQueryService#MAX_TIME_RANGE_DAYS} is a disguised full extract, not a bounded revision
+   * query, and must be rejected rather than silently served.
+   */
+  @Test
+  void aTimeRangeWiderThanTheMaximumIsRejected() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    base,
+                    base.plus(AuditQueryService.MAX_TIME_RANGE_DAYS + 1, ChronoUnit.DAYS),
+                    0,
+                    50))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aTimeRangeExactlyAtTheMaximumIsAccepted() {
+    Page<AuditLogEntry> result =
+        queryService.byTimeRange(
+            organizationId,
+            base,
+            base.plus(AuditQueryService.MAX_TIME_RANGE_DAYS, ChronoUnit.DAYS),
+            0,
+            50);
+
+    assertThat(result).isNotNull();
+  }
+
+  /**
+   * #393 code review, finding 3, second half: {@link AuditQueryService#MAX_PAGE_SIZE} alone only
+   * bounds a single page - without a cap on how many pages a query can page through, {@code
+   * page=0..n} against a wide time range turns "bounded per page" back into an effectively
+   * unbounded full extract in slices. This proves the page index itself is capped, independent of
+   * what the caller requests.
+   */
+  @Test
+  void thePageIndexIsCappedRegardlessOfHowFarTheCallerAsks() {
+    Page<AuditLogEntry> result =
+        queryService.byTimeRange(
+            organizationId,
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.HOURS),
+            AuditQueryService.MAX_PAGE_INDEX + 1000,
+            50);
+
+    assertThat(result.getNumber()).isEqualTo(AuditQueryService.MAX_PAGE_INDEX);
+  }
+
   @Test
   void aQueryWithoutAMandatoryTimeRangeIsRejected() {
     assertThatThrownBy(() -> queryService.byTimeRange(organizationId, null, base, 0, 50))
@@ -221,20 +324,40 @@ class AuditQueryServiceIntegrationTest {
    */
   @Test
   void noAccessPathAcceptsOrSortsByActor() {
-    List<String> queryMethodNames =
-        List.of("byObject", "byTimeRange", "byEventType", "byCorrelation", "byIncidentScope");
-    for (String methodName : queryMethodNames) {
-      boolean hasActorOrSortParameter =
-          Arrays.stream(AuditQueryService.class.getDeclaredMethods())
-              .filter(m -> m.getName().equals(methodName))
-              .flatMap(m -> Arrays.stream(m.getParameterTypes()))
-              .anyMatch(
-                  type ->
-                      type == org.springframework.data.domain.Sort.class
-                          || type == org.springframework.data.domain.Pageable.class);
-      assertThat(hasActorOrSortParameter)
-          .as("%s must not accept a caller-supplied Sort/Pageable", methodName)
-          .isFalse();
+    // "objectId" and "scopeId" are legitimate technical identifiers, not person filters -
+    // excluded here the same way AuditControllerTest excludes "scopeId"; everything else on this
+    // forbidden list would let a caller name, filter or sort by the acting person.
+    List<String> forbiddenSubstrings = List.of("actor", "sort", "person", "subject");
+    List<Method> publicMethods =
+        Arrays.stream(AuditQueryService.class.getDeclaredMethods())
+            .filter(m -> Modifier.isPublic(m.getModifiers()))
+            .filter(m -> !m.isSynthetic())
+            .toList();
+
+    // A regression that removed every public method would make the loop below vacuously pass -
+    // guard against that the same way AuditControllerTest guards its own method count.
+    assertThat(publicMethods)
+        .as("AuditQueryService must still declare its five #393 access paths")
+        .hasSize(5);
+
+    for (Method method : publicMethods) {
+      for (Parameter parameter : method.getParameters()) {
+        Class<?> type = parameter.getType();
+        assertThat(type)
+            .as(
+                "%s must not accept a caller-supplied Sort/Pageable (parameter %s)",
+                method.getName(), parameter.getName())
+            .isNotIn(Sort.class, Pageable.class);
+
+        String lowerName = parameter.getName().toLowerCase(Locale.ROOT);
+        boolean forbidden = forbiddenSubstrings.stream().anyMatch(lowerName::contains);
+        assertThat(forbidden)
+            .as(
+                "%s has a parameter named \"%s\" - actor/person must never be an input to a"
+                    + " revision access path (#393)",
+                method.getName(), parameter.getName())
+            .isFalse();
+      }
     }
   }
 }

@@ -216,6 +216,96 @@ class AuditIncidentScopeServiceIntegrationTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  /**
+   * #393 code review, finding 7: an approved grant must not remain usable indefinitely - once
+   * {@code usable_until} has passed, {@code findApproved} must reject the lookup even though the
+   * grant's own status column still says {@code APPROVED}.
+   */
+  @Test
+  void anApprovedGrantPastItsUsableUntilIsRejected() {
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+    // Simulates the passage of time past AuditIncidentScopeGrant.USABLE_WINDOW without waiting
+    // 30 real days - directly moves usable_until into the past on the already-approved row.
+    jdbcTemplate.update(
+        "UPDATE audit_incident_scope_grants SET usable_until = now() - interval '1 day'"
+            + " WHERE id = ?",
+        grant.getId());
+
+    assertThatThrownBy(
+            () ->
+                queryService.byIncidentScope(
+                    organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("abgelaufen");
+  }
+
+  /**
+   * #393 code review, finding 8: a grant must never be created against a person outside the
+   * requester's own organization - not even PENDING, since a pseudonym for that person would
+   * otherwise be minted the first time anyone ever queries the (never-approvable) grant.
+   */
+  @Test
+  void requestingAScopeAgainstAPersonFromAnotherOrganizationIsRejected() {
+    UUID foreignOrganizationId =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Other Org")).getId();
+    User foreignUser =
+        new User(UUID.randomUUID().toString(), "test-issuer", "foreign@example.com", "Foreign");
+    foreignUser.setOrganizationId(foreignOrganizationId);
+    UUID foreignUserId = userRepository.save(foreignUser).getId();
+
+    try {
+      assertThatThrownBy(
+              () ->
+                  incidentScopeService.request(
+                      organizationId,
+                      requester,
+                      foreignUserId,
+                      scopeStart,
+                      scopeEnd,
+                      AuditIncidentScopePurpose.SECURITY_INCIDENT,
+                      "Verdacht auf unbefugten Zugriff auf Personalvorgaenge"))
+          .isInstanceOf(ResponseStatusException.class);
+    } finally {
+      userRepository.deleteById(foreignUserId);
+      organizationRepository.deleteById(foreignOrganizationId);
+    }
+  }
+
+  /**
+   * #393 code review, finding 8: a read must never have the side effect of minting a pseudonym - a
+   * person who has never triggered an audit event of their own has no pseudonym yet, and this GET
+   * must not be what gives them one. An empty page (not an error) is the correct answer: the person
+   * genuinely has no entries in the log.
+   */
+  @Test
+  void byIncidentScopeNeverMintsAPseudonymForAPersonWhoNeverTriggeredAnEvent() {
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+
+    Page<AuditLogEntry> result =
+        queryService.byIncidentScope(organizationId, grant.getId(), scopeStart, scopeEnd, 0, 50);
+
+    assertThat(result.getContent()).isEmpty();
+    assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
+  }
+
   @Test
   void requestingScopeStartAfterScopeEndIsRejected() {
     assertThatThrownBy(

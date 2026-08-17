@@ -204,7 +204,8 @@ public class AuditController {
             grant.getRequestedAt(),
             grant.getStatus())
         .approvedByUserId(grant.getApprovedByUserId())
-        .approvedAt(grant.getApprovedAt());
+        .approvedAt(grant.getApprovedAt())
+        .usableUntil(grant.getUsableUntil());
   }
 
   private User currentUser(Jwt jwt) {

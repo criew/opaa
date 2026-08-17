@@ -21,7 +21,9 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -32,11 +34,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
@@ -150,6 +157,37 @@ class AuditControllerTest {
         .andExpect(status().is4xxClientError());
   }
 
+  /**
+   * #393 code review, nit 6: an unparsable value (as opposed to a missing one) for a required
+   * parameter must also be a 400, not the 500 {@code MethodArgumentTypeMismatchException} fell
+   * through to before {@code GlobalExceptionHandler} gained a dedicated handler for it.
+   */
+  @Test
+  void listByObjectWithAnUnparsableObjectTypeReturns400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/audit/events/by-object")
+                .with(asAuditor())
+                .param("objectType", "NOT_A_REAL_OBJECT_TYPE")
+                .param("objectId", "lib-1")
+                .param("from", "2026-02-01T00:00:00Z")
+                .param("to", "2026-02-28T00:00:00Z"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void listByObjectWithAnUnparsableFromReturns400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/audit/events/by-object")
+                .with(asAuditor())
+                .param("objectType", "KNOWLEDGE_LIBRARY")
+                .param("objectId", "lib-1")
+                .param("from", "gestern")
+                .param("to", "2026-02-28T00:00:00Z"))
+        .andExpect(status().isBadRequest());
+  }
+
   @Test
   void approveIncidentScopeAsRegularUserReturns403() throws Exception {
     mockMvc
@@ -161,9 +199,17 @@ class AuditControllerTest {
 
   /**
    * The dedicated cross-cutting proof this issue's acceptance criteria require: every
-   * {@code @RequestParam} on every method {@link AuditController} declares, across every one of its
-   * revision access paths, is inspected by name - none may be usable to name, filter, group or sort
-   * by the acting person.
+   * {@code @RequestParam} on every public HTTP-handler method {@link AuditController} declares,
+   * across every one of its revision access paths, is inspected by name - none may be usable to
+   * name, filter, group or sort by the acting person.
+   *
+   * <p>#393 code review, nit 4: this alone would miss a future unannotated {@code Pageable
+   * pageable} parameter, which Spring's {@code PageableHandlerMethodArgumentResolver} binds
+   * straight from {@code ?sort=actorRef,desc} without ever going through {@code @RequestParam} -
+   * see {@link #noParameterIsUnannotatedOrClientControlledSort()} for the structural check that
+   * closes exactly that gap, and {@link #forbiddenSubstringsCoverAllDeclaredParameterNames()} for
+   * why iterating {@code getDeclaredMethods()} rather than a hardcoded method-name list matters
+   * here too.
    */
   @Test
   void noEndpointAcceptsAnActorOrSortRequestParameter() {
@@ -172,7 +218,7 @@ class AuditControllerTest {
     // structurally outside what this check even scans - no exception list needed here.
     List<String> forbiddenSubstrings = List.of("actor", "sort", "person", "user", "subject");
 
-    for (Method method : AuditController.class.getDeclaredMethods()) {
+    for (Method method : httpHandlerMethods()) {
       for (Parameter parameter : method.getParameters()) {
         RequestParam requestParam = parameter.getAnnotation(RequestParam.class);
         if (requestParam == null) {
@@ -190,6 +236,85 @@ class AuditControllerTest {
                   + "\" - actor/person must never be a request parameter (#393)");
         }
       }
+    }
+  }
+
+  /**
+   * #393 code review, nit 4: closes the blind spot the substring check above cannot see on its own
+   * - an unannotated {@code Pageable}/{@code Sort}/{@code @ModelAttribute} parameter binds from
+   * arbitrary query parameters (including {@code sort=actorRef,desc}) without ever carrying an
+   * {@code @RequestParam} this class could inspect by name. Every parameter on every HTTP handler
+   * method must therefore either be one of the explicit, named binding annotations this controller
+   * already uses, or {@code @AuthenticationPrincipal} - never left unannotated, and never typed
+   * {@link Pageable}/{@link Sort} even if it were annotated.
+   */
+  @Test
+  void noParameterIsUnannotatedOrClientControlledSort() {
+    for (Method method : httpHandlerMethods()) {
+      for (Parameter parameter : method.getParameters()) {
+        Class<?> type = parameter.getType();
+        failIf(
+            type == Pageable.class || type == Sort.class,
+            "Method "
+                + method.getName()
+                + " has a "
+                + type.getSimpleName()
+                + " parameter - it would accept a client-controlled ?sort=actorRef,desc without"
+                + " ever going through @RequestParam (#393)");
+
+        boolean explicitlyBound =
+            parameter.isAnnotationPresent(RequestParam.class)
+                || parameter.isAnnotationPresent(PathVariable.class)
+                || parameter.isAnnotationPresent(RequestBody.class)
+                || parameter.isAnnotationPresent(AuthenticationPrincipal.class);
+        failIf(
+            !explicitlyBound,
+            "Method "
+                + method.getName()
+                + " has an unannotated parameter of type "
+                + type.getSimpleName()
+                + " - Spring can bind such a parameter (e.g. Pageable) from arbitrary request"
+                + " parameters without it ever appearing as a named @RequestParam (#393)");
+      }
+    }
+  }
+
+  /**
+   * #393 code review, nit 4: the other half of the same finding - a hardcoded method-name list (as
+   * the two tests above no longer use) would silently stop covering a newly added access path. This
+   * asserts the controller's public HTTP-handler surface still consists of exactly the seven #393
+   * endpoints; growing that list is a deliberate reminder to add the new method to the checks above
+   * as well, not an assertion this test is expected to keep failing forever.
+   */
+  @Test
+  void forbiddenSubstringsCoverAllDeclaredParameterNames() {
+    List<String> methodNames = httpHandlerMethods().stream().map(Method::getName).sorted().toList();
+
+    failIf(
+        methodNames.size() != 7,
+        "AuditController's public HTTP-handler method count changed to "
+            + methodNames.size()
+            + " ("
+            + methodNames
+            + ") - review whether the new method needs covering here too before adjusting this"
+            + " count");
+  }
+
+  /**
+   * Every {@code public}, non-synthetic method declared directly on {@link AuditController} - its
+   * full HTTP-handler surface, private helpers like {@code toPage}/{@code currentUser} excluded by
+   * construction since those are not {@code public}.
+   */
+  private List<Method> httpHandlerMethods() {
+    return Arrays.stream(AuditController.class.getDeclaredMethods())
+        .filter(m -> Modifier.isPublic(m.getModifiers()))
+        .filter(m -> !m.isSynthetic())
+        .toList();
+  }
+
+  private void failIf(boolean condition, String message) {
+    if (condition) {
+      throw new AssertionError(message);
     }
   }
 }
