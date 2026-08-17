@@ -2,8 +2,13 @@ package io.opaa.group.sync;
 
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,23 +42,29 @@ public class DirectorySyncService {
 
   private static final Logger log = LoggerFactory.getLogger(DirectorySyncService.class);
 
+  /** Mirrors {@link DirectorySyncPlanExecutor}'s identical constant - see its Javadoc. */
+  private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
+
   private final DirectoryClient directoryClient;
   private final DirectorySyncPlanExecutor planExecutor;
   private final DirectorySyncStatusRecorder statusRecorder;
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncProperties properties;
+  private final AuditEventRecorder auditEventRecorder;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
       DirectorySyncPlanExecutor planExecutor,
       DirectorySyncStatusRecorder statusRecorder,
       DirectorySyncStatusRepository statusRepository,
-      DirectorySyncProperties properties) {
+      DirectorySyncProperties properties,
+      AuditEventRecorder auditEventRecorder) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
     this.statusRepository = statusRepository;
     this.properties = properties;
+    this.auditEventRecorder = auditEventRecorder;
   }
 
   /**
@@ -99,6 +110,27 @@ public class DirectorySyncService {
           organizationId,
           e.getMessage());
       recordStatusSafely(organizationId, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+      // #392 code review, nit 2: this branch returns before DirectorySyncPlanExecutor is ever
+      // called, so its own header entry (finish()) never runs for an unreachable directory -
+      // "Kopfeintrag des Laufs mit Ergebnis" is otherwise not written for this outcome at all. No
+      // ambient transaction is open here (this class deliberately holds none - see the class
+      // Javadoc), so this call commits immediately on its own, the same as any plain repository
+      // call outside a transaction.
+      UUID correlationRef = UUID.randomUUID();
+      auditEventRecorder.recordSystemProcessAction(
+          organizationId,
+          DIRECTORY_SYNC_ACTOR,
+          AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED,
+          AuditObjectType.DIRECTORY_SYNC_RUN,
+          correlationRef,
+          "Verzeichnisabgleich " + correlationRef,
+          null,
+          null,
+          null,
+          Map.of("outcome", DirectorySyncOutcome.UNREACHABLE.name()),
+          AuditOutcome.FAILURE,
+          message,
+          correlationRef.toString());
       return new DirectorySyncReportResponse(
               DirectorySyncOutcome.UNREACHABLE,
               now,

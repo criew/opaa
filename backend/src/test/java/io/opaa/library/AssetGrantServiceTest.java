@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.AssetGrantRequest;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -34,6 +35,7 @@ class AssetGrantServiceTest {
   private GroupRepository groupRepository;
   private LibraryAccessService accessService;
   private PermissionHistoryService permissionHistoryService;
+  private AuditEventRecorder auditEventRecorder;
   private AssetGrantService grantService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -49,6 +51,7 @@ class AssetGrantServiceTest {
     groupRepository = mock(GroupRepository.class);
     accessService = mock(LibraryAccessService.class);
     permissionHistoryService = mock(PermissionHistoryService.class);
+    auditEventRecorder = mock(AuditEventRecorder.class);
     grantService =
         new AssetGrantService(
             grantRepository,
@@ -56,7 +59,8 @@ class AssetGrantServiceTest {
             userRepository,
             groupRepository,
             accessService,
-            permissionHistoryService);
+            permissionHistoryService,
+            auditEventRecorder);
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than
@@ -230,8 +234,17 @@ class AssetGrantServiceTest {
     when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
+    // #392 code review, finding 2: the subject must resolve (existence + organization boundary)
+    // before the escalation guard even runs - see AssetGrantService#upsertGrant. A subject id with
+    // no stubbed userRepository.findById would now fail with 404 before the guard is ever reached,
+    // testing the wrong thing; a real, resolvable subject in the same organization keeps this test
+    // exercising the escalation guard specifically.
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.OWNER);
+        new AssetGrantRequest(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)

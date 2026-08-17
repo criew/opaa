@@ -5,14 +5,21 @@ import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.PermissionHistoryService;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -60,6 +67,7 @@ public class GroupService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final AssetGrantRepository grantRepository;
   private final PermissionHistoryService permissionHistoryService;
+  private final AuditEventRecorder auditEventRecorder;
 
   public GroupService(
       GroupRepository groupRepository,
@@ -67,13 +75,15 @@ public class GroupService {
       GroupMembershipResolver membershipResolver,
       KnowledgeLibraryRepository libraryRepository,
       AssetGrantRepository grantRepository,
-      PermissionHistoryService permissionHistoryService) {
+      PermissionHistoryService permissionHistoryService,
+      AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.libraryRepository = libraryRepository;
     this.grantRepository = grantRepository;
     this.permissionHistoryService = permissionHistoryService;
+    this.auditEventRecorder = auditEventRecorder;
   }
 
   @Transactional
@@ -91,6 +101,17 @@ public class GroupService {
             null,
             null);
     Group saved = groupRepository.save(group);
+    auditEventRecorder.recordUserAction(
+        saved.getOrganizationId(),
+        currentUserId,
+        AuditEventType.GROUP_CREATED,
+        AuditObjectType.GROUP,
+        saved.getId(),
+        saved.getName(),
+        null,
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     return toGroupResponse(saved);
   }
 
@@ -146,8 +167,35 @@ public class GroupService {
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
+    String previousName = group.getName();
+    String previousDescription = group.getDescription();
     group.updateDetails(normalizedName, request.getDescription());
     Group updated = groupRepository.save(group);
+    boolean nameChanged = !Objects.equals(previousName, updated.getName());
+    boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
+    if (nameChanged || descriptionChanged) {
+      // #392 code review, finding 4: changedFields names which fields changed without carrying the
+      // free-text description content itself into the append-only log - see
+      // KnowledgeLibraryService#updateLibrary's identical treatment.
+      List<String> changedFields = new ArrayList<>();
+      if (nameChanged) {
+        changedFields.add("name");
+      }
+      if (descriptionChanged) {
+        changedFields.add("description");
+      }
+      auditEventRecorder.recordUserAction(
+          updated.getOrganizationId(),
+          currentUserId,
+          AuditEventType.GROUP_CHANGED,
+          AuditObjectType.GROUP,
+          updated.getId(),
+          updated.getName(),
+          Map.of("changedFields", changedFields),
+          Map.of("changedFields", changedFields),
+          AuditOutcome.SUCCESS,
+          null);
+    }
     return toGroupResponse(updated);
   }
 
@@ -193,6 +241,20 @@ public class GroupService {
           GroupMembershipHistoryCause.GROUP_DELETED,
           currentUserId);
     }
+    // #392: GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one
+    // entry for the group itself, not one per member removed above (those are already covered by
+    // the group's own deletion, not a separate membership-removal action).
+    auditEventRecorder.recordUserAction(
+        group.getOrganizationId(),
+        currentUserId,
+        AuditEventType.GROUP_DELETED,
+        AuditObjectType.GROUP,
+        group.getId(),
+        group.getName(),
+        Map.of("name", group.getName(), "memberCount", affectedUserIds.size()),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     groupRepository.delete(group);
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
@@ -228,6 +290,19 @@ public class GroupService {
     groupRepository.save(group);
     permissionHistoryService.recordMembershipAdded(
         membership, GroupMembershipHistoryCause.ADDED, currentUserId);
+    auditEventRecorder.recordUserActionOnSubject(
+        group.getOrganizationId(),
+        currentUserId,
+        AuditEventType.GROUP_MEMBER_ADDED,
+        AuditObjectType.GROUP,
+        group.getId(),
+        group.getName(),
+        AuditSubjectKind.USER,
+        memberUserId,
+        null,
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
 
     return new GroupMemberResponse(membership.getUserId(), membership.getCreatedAt())
@@ -252,6 +327,19 @@ public class GroupService {
         memberUserId,
         GroupMembershipHistoryCause.REMOVED,
         currentUserId);
+    auditEventRecorder.recordUserActionOnSubject(
+        group.getOrganizationId(),
+        currentUserId,
+        AuditEventType.GROUP_MEMBER_REMOVED,
+        AuditObjectType.GROUP,
+        group.getId(),
+        group.getName(),
+        AuditSubjectKind.USER,
+        memberUserId,
+        null,
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     invalidateAfterCommit(() -> membershipResolver.invalidateUser(memberUserId));
   }
 

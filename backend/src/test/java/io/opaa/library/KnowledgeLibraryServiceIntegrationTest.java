@@ -45,6 +45,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -92,6 +93,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -157,6 +159,13 @@ class KnowledgeLibraryServiceIntegrationTest {
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
+    // #392: every library/grant operation this class exercises now also writes an audit_log row
+    // (fk_audit_log_organization is ON DELETE RESTRICT, migration 017) - purged the same way
+    // AuditLogServiceIntegrationTest does, via JdbcTemplate against the Testcontainers superuser
+    // account, since AuditLogEntry#isNew() being unconditionally true makes the repository's own
+    // deleteAll a silent no-op for it.
+    jdbcTemplate.update(
+        "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
     organizationRepository.deleteById(organizationA);
     organizationRepository.deleteById(organizationB);
   }

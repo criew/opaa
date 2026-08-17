@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -35,6 +36,7 @@ class UserServiceTest {
   private SpaceService spaceService;
   private KnowledgeLibraryService libraryService;
   private AuthProperties authProperties;
+  private AuditEventRecorder auditEventRecorder;
   private UserService userService;
 
   @BeforeEach
@@ -43,7 +45,10 @@ class UserServiceTest {
     spaceService = mock(SpaceService.class);
     libraryService = mock(KnowledgeLibraryService.class);
     authProperties = mock(AuthProperties.class);
-    userService = new UserService(userRepository, spaceService, libraryService, authProperties);
+    auditEventRecorder = mock(AuditEventRecorder.class);
+    userService =
+        new UserService(
+            userRepository, spaceService, libraryService, authProperties, auditEventRecorder);
   }
 
   @Test
@@ -106,7 +111,7 @@ class UserServiceTest {
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    User updated = userService.updateRole(userId, SystemRole.SYSTEM_ADMIN);
+    User updated = userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, UUID.randomUUID());
 
     assertThat(updated.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
   }
@@ -116,7 +121,8 @@ class UserServiceTest {
     UUID userId = UUID.randomUUID();
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> userService.updateRole(userId, SystemRole.SYSTEM_ADMIN))
+    assertThatThrownBy(
+            () -> userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, UUID.randomUUID()))
         .isInstanceOf(UserNotFoundException.class);
   }
 

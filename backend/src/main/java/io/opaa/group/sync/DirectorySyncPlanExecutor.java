@@ -4,6 +4,11 @@ import io.opaa.api.dto.DirectorySyncGroupChange;
 import io.opaa.api.dto.DirectorySyncMembershipChange;
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.api.dto.DirectorySyncUserRef;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -17,6 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -105,26 +111,43 @@ class DirectorySyncPlanExecutor {
 
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
 
+  /**
+   * The fixed, non-pseudonymised actor label #392's audit entries for this class use - "a sync run
+   * has no acting user" (see {@link PermissionHistoryService}'s class Javadoc), so there is no
+   * person's identity to protect behind a pseudonym here.
+   */
+  private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
+
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
   private final DirectorySyncProperties properties;
   private final PermissionHistoryService permissionHistoryService;
+  private final AuditEventRecorder auditEventRecorder;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
       DirectorySyncProperties properties,
-      PermissionHistoryService permissionHistoryService) {
+      PermissionHistoryService permissionHistoryService,
+      AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
     this.properties = properties;
     this.permissionHistoryService = permissionHistoryService;
+    this.auditEventRecorder = auditEventRecorder;
   }
 
-  @Transactional(readOnly = true)
+  // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
+  // the run's DIRECTORY_SYNC_RUN_COMPLETED header entry unconditionally, including on the dry-run
+  // path this method serves. A readOnly transaction sets Hibernate's flush mode to MANUAL and the
+  // JDBC connection itself to read-only, so that insert would either be silently dropped at commit
+  // or rejected by Postgres with "cannot execute INSERT in a read-only transaction" (500) -
+  // dry-run's only other write in this method, none, made readOnly look safe until this entry
+  // needed writing too.
+  @Transactional
   DirectorySyncReportResponse planOnly(
       UUID organizationId, Instant now, DirectorySnapshot snapshot) {
     return handle(organizationId, now, snapshot, false);
@@ -138,6 +161,10 @@ class DirectorySyncPlanExecutor {
 
   private DirectorySyncReportResponse handle(
       UUID organizationId, Instant now, DirectorySnapshot snapshot, boolean applyIfPlausible) {
+    // #392: one correlation id per run, shared by the header entry below and, if the run actually
+    // applies anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden
+    // ueber correlation_ref" (docs/features/security-and-compliance.md).
+    UUID correlationRef = UUID.randomUUID();
     List<Group> existingOrgUnits =
         groupRepository.findByOrganizationIdAndKindOrgUnit(organizationId);
 
@@ -152,7 +179,13 @@ class DirectorySyncPlanExecutor {
               + " ORG_UNIT groups exist - aborting without changes",
           organizationId,
           existingOrgUnits.size());
-      return buildReport(now, DirectorySyncOutcome.ABORTED_EMPTY_RESULT, message, emptyPlan());
+      return finish(
+          organizationId,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
+          message,
+          emptyPlan());
     }
 
     SyncPlan plan = buildPlan(organizationId, snapshot, existingOrgUnits);
@@ -178,15 +211,91 @@ class DirectorySyncPlanExecutor {
           plan.activeGroupCount(),
           changedPercent,
           thresholdPercent);
-      return buildReport(now, DirectorySyncOutcome.ABORTED_THRESHOLD, message, plan);
+      return finish(
+          organizationId,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.ABORTED_THRESHOLD,
+          message,
+          plan);
     }
 
     if (!applyIfPlausible) {
-      return buildReport(now, DirectorySyncOutcome.DRY_RUN, "Trockenlauf - keine Aenderung.", plan);
+      return finish(
+          organizationId,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.DRY_RUN,
+          "Trockenlauf - keine Aenderung.",
+          plan);
     }
 
-    applyPlan(organizationId, now, plan);
-    return buildReport(now, DirectorySyncOutcome.APPLIED, "Synchronisation angewendet.", plan);
+    applyPlan(organizationId, now, plan, correlationRef);
+    return finish(
+        organizationId,
+        correlationRef,
+        now,
+        DirectorySyncOutcome.APPLIED,
+        "Synchronisation angewendet.",
+        plan);
+  }
+
+  /**
+   * Builds the report the same way {@link #buildReport} always did, and additionally writes #392's
+   * header entry ({@link AuditEventType#DIRECTORY_SYNC_RUN_COMPLETED}) for this run - regardless of
+   * outcome, including an aborted or dry run, since "Ergebnis" in the specification's sense is the
+   * outcome of the run itself, not only a successful application. Per-change entries (written
+   * inside {@link #applyPlan}, only reachable on the {@code APPLIED} path) share the same {@code
+   * correlationRef}.
+   */
+  private DirectorySyncReportResponse finish(
+      UUID organizationId,
+      UUID correlationRef,
+      Instant now,
+      DirectorySyncOutcome outcome,
+      String message,
+      SyncPlan plan) {
+    DirectorySyncReportResponse report = buildReport(now, outcome, message, plan);
+    Map<String, Object> after = new LinkedHashMap<>();
+    after.put("outcome", outcome.name());
+    after.put("membershipsAdded", report.getMembershipsAdded());
+    after.put("membershipsRemoved", report.getMembershipsRemoved());
+    auditEventRecorder.recordSystemProcessAction(
+        organizationId,
+        DIRECTORY_SYNC_ACTOR,
+        AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED,
+        AuditObjectType.DIRECTORY_SYNC_RUN,
+        correlationRef,
+        "Verzeichnisabgleich " + correlationRef,
+        null,
+        null,
+        null,
+        after,
+        toAuditOutcome(outcome),
+        message,
+        correlationRef.toString());
+    return report;
+  }
+
+  /**
+   * #392 code review, nit 1: the header entry's own {@code outcome} column now reflects whether the
+   * run actually did what it set out to do, not always {@code SUCCESS} - a filter on {@code outcome
+   * != SUCCESS} would otherwise never surface an aborted run, even though the human-readable result
+   * was always available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code
+   * DRY_RUN} both did exactly what they were asked (write the diff, or only compute it); {@code
+   * ABORTED_THRESHOLD} and {@code ABORTED_EMPTY_RESULT} are the plausibility guard refusing to
+   * write anything it judged unsafe - a failure to complete, not a permission decision, hence
+   * {@code FAILURE} rather than {@code DENIED}. {@code UNREACHABLE} is handled by {@link
+   * DirectorySyncService} itself, which never reaches this class - see its own header entry.
+   */
+  private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
+    return switch (outcome) {
+      case APPLIED, DRY_RUN -> AuditOutcome.SUCCESS;
+      case ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT -> AuditOutcome.FAILURE;
+      case UNREACHABLE ->
+          throw new IllegalStateException(
+              "UNREACHABLE is handled by DirectorySyncService before this class ever runs");
+    };
   }
 
   private String formatPercent(double fraction) {
@@ -393,7 +502,7 @@ class DirectorySyncPlanExecutor {
   // Applying the plan
   // ---------------------------------------------------------------------------------------
 
-  private void applyPlan(UUID organizationId, Instant now, SyncPlan plan) {
+  private void applyPlan(UUID organizationId, Instant now, SyncPlan plan, UUID correlationRef) {
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
 
@@ -424,6 +533,18 @@ class DirectorySyncPlanExecutor {
         permissionHistoryService.recordMembershipAdded(
             membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
       }
+      // #392: one DIRECTORY_SYNC_CHANGE_APPLIED entry for the group's creation itself, not one per
+      // initial member - unlike an add/remove on an *existing* group (below), the group's own
+      // existence is the effected change here, so a newly created group with zero initial members
+      // still produces exactly one entry, never zero.
+      recordSyncChange(
+          organizationId,
+          correlationRef,
+          group,
+          null,
+          null,
+          null,
+          Map.of("created", true, "memberCount", group.getMemberships().size()));
       log.info(
           "Directory sync: created group {} ({}, external id {}) with {} member(s)",
           group.getId(),
@@ -439,6 +560,14 @@ class DirectorySyncPlanExecutor {
               + " having been dissolved",
           reactivation.group().getId(),
           reactivation.group().getExternalId());
+      recordSyncChange(
+          organizationId,
+          correlationRef,
+          reactivation.group(),
+          null,
+          null,
+          Map.of("dissolved", true),
+          Map.of("dissolved", false));
     }
 
     for (PlannedRename rename : plan.renames()) {
@@ -448,7 +577,16 @@ class DirectorySyncPlanExecutor {
           rename.group().getExternalId(),
           rename.group().getName(),
           rename.newName());
+      String previousName = rename.group().getName();
       rename.group().renameFromDirectory(rename.newName());
+      recordSyncChange(
+          organizationId,
+          correlationRef,
+          rename.group(),
+          null,
+          null,
+          Map.of("name", previousName),
+          Map.of("name", rename.newName()));
     }
 
     for (PlannedMembershipChange change : plan.membershipChanges()) {
@@ -460,6 +598,14 @@ class DirectorySyncPlanExecutor {
         // group above), so its FK is satisfied immediately.
         permissionHistoryService.recordMembershipAdded(
             membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
+        recordSyncChange(
+            organizationId,
+            correlationRef,
+            change.group(),
+            AuditSubjectKind.USER,
+            member.id(),
+            null,
+            Map.of("member", true));
         log.info(
             "Directory sync: added user {} to group {} ({})",
             member.id(),
@@ -478,6 +624,14 @@ class DirectorySyncPlanExecutor {
             member.id(),
             GroupMembershipHistoryCause.DIRECTORY_SYNC_REMOVED,
             null);
+        recordSyncChange(
+            organizationId,
+            correlationRef,
+            change.group(),
+            AuditSubjectKind.USER,
+            member.id(),
+            Map.of("member", true),
+            null);
         log.info(
             "Directory sync: removed user {} from group {} ({})",
             member.id(),
@@ -494,6 +648,14 @@ class DirectorySyncPlanExecutor {
           dissolution.group().getId(),
           dissolution.group().getExternalId(),
           dissolution.group().getMemberships().size());
+      recordSyncChange(
+          organizationId,
+          correlationRef,
+          dissolution.group(),
+          null,
+          null,
+          Map.of("dissolved", false),
+          Map.of("dissolved", true));
     }
 
     List<Group> touched = new ArrayList<>();
@@ -510,6 +672,54 @@ class DirectorySyncPlanExecutor {
     if (!affectedUserIds.isEmpty()) {
       invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
     }
+  }
+
+  /**
+   * Writes one {@link AuditEventType#DIRECTORY_SYNC_CHANGE_APPLIED} entry for a single effected
+   * change applyPlan just made to {@code group} - a membership add/remove, a rename, a
+   * reactivation, or a dissolution. {@code subjectKind}/{@code subjectId} are only set for a
+   * membership change; the other three kinds of change have no rights subject of their own, only
+   * the group as object.
+   */
+  private void recordSyncChange(
+      UUID organizationId,
+      UUID correlationRef,
+      Group group,
+      AuditSubjectKind subjectKind,
+      UUID subjectId,
+      Map<String, Object> before,
+      Map<String, Object> after) {
+    if (subjectKind == null) {
+      auditEventRecorder.recordSystemProcessAction(
+          organizationId,
+          DIRECTORY_SYNC_ACTOR,
+          AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED,
+          AuditObjectType.GROUP,
+          group.getId(),
+          group.getName(),
+          null,
+          null,
+          before,
+          after,
+          AuditOutcome.SUCCESS,
+          null,
+          correlationRef.toString());
+      return;
+    }
+    auditEventRecorder.recordSystemProcessAction(
+        organizationId,
+        DIRECTORY_SYNC_ACTOR,
+        AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED,
+        AuditObjectType.GROUP,
+        group.getId(),
+        group.getName(),
+        subjectKind,
+        subjectId,
+        before,
+        after,
+        AuditOutcome.SUCCESS,
+        null,
+        correlationRef.toString());
   }
 
   /**

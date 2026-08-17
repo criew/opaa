@@ -5,6 +5,11 @@ import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditEventType;
+import io.opaa.audit.AuditObjectType;
+import io.opaa.audit.AuditOutcome;
+import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -12,9 +17,12 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -74,6 +82,7 @@ public class KnowledgeLibraryService {
   private final AssetGrantRepository grantRepository;
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
+  private final AuditEventRecorder auditEventRecorder;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public KnowledgeLibraryService(
@@ -85,6 +94,7 @@ public class KnowledgeLibraryService {
       AssetGrantRepository grantRepository,
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
+      AuditEventRecorder auditEventRecorder,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -94,6 +104,7 @@ public class KnowledgeLibraryService {
     this.grantRepository = grantRepository;
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
+    this.auditEventRecorder = auditEventRecorder;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -185,6 +196,21 @@ public class KnowledgeLibraryService {
                   null,
                   currentUserId));
       permissionHistoryService.recordGrantCreated(groupGrant, currentUserId);
+      // #392: mirrors AssetGrantService#upsertGrant's own ASSET_GRANT_GRANTED entry - this grant
+      // is written directly here, not through that service, but is exactly the same kind of event.
+      auditEventRecorder.recordUserActionOnSubject(
+          saved.getOrganizationId(),
+          currentUserId,
+          AuditEventType.ASSET_GRANT_GRANTED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          saved.getId(),
+          saved.getName(),
+          AuditSubjectKind.GROUP,
+          ownerGroup.getId(),
+          null,
+          Map.of("role", AssetRole.MANAGER.name()),
+          AuditOutcome.SUCCESS,
+          null);
     }
     AssetGrant ownerGrant =
         grantRepository.save(
@@ -196,10 +222,44 @@ public class KnowledgeLibraryService {
                 null,
                 currentUserId));
     permissionHistoryService.recordGrantCreated(ownerGrant, currentUserId);
+    auditEventRecorder.recordUserActionOnSubject(
+        saved.getOrganizationId(),
+        currentUserId,
+        AuditEventType.ASSET_GRANT_GRANTED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        saved.getId(),
+        saved.getName(),
+        AuditSubjectKind.USER,
+        currentUserId,
+        null,
+        Map.of("role", AssetRole.OWNER.name()),
+        AuditOutcome.SUCCESS,
+        null);
     // #238: the library's initial visibility/listed state is also historised, the third source
     // the readable-library formula depends on besides direct and group grants.
     permissionHistoryService.recordLibraryCreated(saved, currentUserId);
+    // #392: the library-creation event itself, distinct from the grant events above - "Anlegen ...
+    // von Wissensbibliotheken" (docs/features/security-and-compliance.md).
+    auditEventRecorder.recordUserAction(
+        saved.getOrganizationId(),
+        currentUserId,
+        AuditEventType.LIBRARY_CREATED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        saved.getId(),
+        saved.getName(),
+        null,
+        libraryAuditPayload(saved),
+        AuditOutcome.SUCCESS,
+        null);
     return toLibraryResponse(saved, AssetRole.OWNER);
+  }
+
+  private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("name", library.getName());
+    payload.put("visibility", library.getVisibility().name());
+    payload.put("listed", library.isListed());
+    return payload;
   }
 
   /**
@@ -278,15 +338,62 @@ public class KnowledgeLibraryService {
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
     boolean listed = Boolean.TRUE.equals(request.getListed());
+    String previousName = library.getName();
+    String previousDescription = library.getDescription();
     LibraryVisibility previousVisibility = library.getVisibility();
     boolean previousListed = library.isListed();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
     KnowledgeLibrary updated = libraryRepository.save(library);
+    boolean visibilityOrListedChanged =
+        updated.getVisibility() != previousVisibility || updated.isListed() != previousListed;
     // #238: only visibility and listed feed the readable-library formula, so only a change to
     // either of them opens a new interval - a rename alone is not a permission change.
-    if (updated.getVisibility() != previousVisibility || updated.isListed() != previousListed) {
+    if (visibilityOrListedChanged) {
       permissionHistoryService.recordVisibilityChanged(updated, currentUserId);
+    }
+    // #392 code review, nit 4: ASSET_VISIBILITY_CHANGED and LIBRARY_CHANGED are independent events
+    // - a call that renames the library and widens its visibility in the same request writes both,
+    // instead of the earlier version's else-if silently dropping the rename whenever visibility
+    // also changed.
+    if (visibilityOrListedChanged) {
+      auditEventRecorder.recordUserAction(
+          updated.getOrganizationId(),
+          currentUserId,
+          AuditEventType.ASSET_VISIBILITY_CHANGED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          updated.getId(),
+          updated.getName(),
+          Map.of("visibility", previousVisibility.name(), "listed", previousListed),
+          Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed()),
+          AuditOutcome.SUCCESS,
+          null);
+    }
+    boolean nameChanged = !Objects.equals(previousName, updated.getName());
+    boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
+    if (nameChanged || descriptionChanged) {
+      // #392 code review, finding 4: before/after stay limited to which fields changed, not the
+      // free-text description content itself - the specification limits before/after to what is
+      // "rechtlich Erheblich" (role, deadline, visibility), and description is user-entered
+      // free text that can carry third-party personal data into an append-only log.
+      List<String> changedFields = new ArrayList<>();
+      if (nameChanged) {
+        changedFields.add("name");
+      }
+      if (descriptionChanged) {
+        changedFields.add("description");
+      }
+      auditEventRecorder.recordUserAction(
+          updated.getOrganizationId(),
+          currentUserId,
+          AuditEventType.LIBRARY_CHANGED,
+          AuditObjectType.KNOWLEDGE_LIBRARY,
+          updated.getId(),
+          updated.getName(),
+          Map.of("changedFields", changedFields),
+          Map.of("changedFields", changedFields),
+          AuditOutcome.SUCCESS,
+          null);
     }
     return toLibraryResponse(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
@@ -335,6 +442,18 @@ public class KnowledgeLibraryService {
     }
     permissionHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
 
+    // #392: recorded before the row is gone, same reasoning as the history calls above.
+    auditEventRecorder.recordUserAction(
+        library.getOrganizationId(),
+        currentUserId,
+        AuditEventType.LIBRARY_DELETED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        library.getName(),
+        libraryAuditPayload(library),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
     libraryRepository.delete(library);
   }
 
