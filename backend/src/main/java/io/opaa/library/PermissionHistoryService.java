@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  * LibraryVisibilityHistoryCause#LIBRARY_DELETED}, {@link
  * GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code library_id}/{@code
  * group_id}/{@code subject_group_id} carry no foreign key (see {@code
- * 018-permission-history.yaml}'s "Deletion survival" comment and ADR-0015), so the deletion itself
+ * 018-permission-history.yaml}'s "Deletion survival" comment and ADR-0016), so the deletion itself
  * never closes them.
  *
  * <p><b>Reader:</b> {@link #readableLibraryIdsAsOf} mirrors {@link

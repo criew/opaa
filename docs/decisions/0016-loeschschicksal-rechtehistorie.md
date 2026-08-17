@@ -1,4 +1,4 @@
-# ADR-0015: Löschschicksal der Rechtehistorie — Historie überlebt Fachobjekt- und Kontolöschung
+# ADR-0016: Löschschicksal der Rechtehistorie — Historie überlebt Fachobjekt- und Kontolöschung
 
 ## Status
 

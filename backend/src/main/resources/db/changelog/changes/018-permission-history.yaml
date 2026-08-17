@@ -26,7 +26,7 @@ databaseChangeLog:
   # never a stream of every read.
   #
   # --- Deletion survival (code review of #238, findings 3 and 4; see the accompanying ADR
-  #     docs/decisions/0015-loeschschicksal-rechtehistorie.md) ---
+  #     docs/decisions/0016-loeschschicksal-rechtehistorie.md) ---
   #
   # Historising a permission change is worthless if the record can vanish along with the fact row it
   # historises - the exact scenario the negative question in #238 exists to rule out is "the group

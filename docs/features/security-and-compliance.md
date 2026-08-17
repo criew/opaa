@@ -427,7 +427,7 @@ sind als Intervalle mit auslösendem Vorgang historisiert, einschließlich eines
 Altbestand (Ursache `BACKFILL`, `valid_from` aus dem jeweiligen Erstellungszeitpunkt der Fachzeile) —
 ohne ihn wäre die Rekonstruktion für jeden Stichtag vor der Migration und für jedes seither unveränderte
 Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung einer Bibliothek oder Gruppe
-(siehe [ADR-0015](../decisions/0015-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
+(siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
 **Noch offen, bewusst nicht Teil dieser Ausbaustufe:**
@@ -436,7 +436,7 @@ bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweis
   Pseudonymisierung ab Schreibzeitpunkt ist noch nicht umgesetzt; die Subjektspalten der
   Rechtehistorie sind stattdessen `ON DELETE RESTRICT` gegen die Nutzertabelle — eine Kontolöschung
   ist damit blockiert, solange Rechtehistorie zu diesem Konto existiert, bis #391/#395 die
-  Pseudonymisierung liefern (siehe ADR-0015).
+  Pseudonymisierung liefern (siehe ADR-0016).
 - **Verzeichnislauf ohne Laufbezug.** Ein historisierter Eintrag mit Ursache `DIRECTORY_SYNC_ADDED`/
   `DIRECTORY_SYNC_REMOVED` lässt sich nicht auf den konkreten Synchronisationslauf zurückführen, der
   ihn verursacht hat — `DirectorySyncStatus` hält nur den jeweils letzten Lauf je Organisation.
