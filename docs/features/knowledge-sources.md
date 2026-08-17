@@ -79,8 +79,9 @@ Umgekehrt lohnt für die Anlagen eines einzelnen Einspruchs kein Konnektor.
 Ablauf beim Hochladen:
 
 1. Auswahl der Dateien über die Web-Oberfläche, als Anhang im Chat oder über die Schnittstelle.
-   **Gebaut (#420):** `POST /api/v1/libraries/{libraryId}/documents` als `multipart/form-data`-
-   Schnittstelle. Web-Oberfläche und Chat-Anhang sind eigene, noch offene Vorgänge.
+   **Gebaut (#420, #422):** `POST /api/v1/libraries/{libraryId}/documents` als `multipart/form-data`-
+   Schnittstelle sowie die Web-Oberfläche dazu (`DocumentsPage.tsx`) — Auswahl per Dateidialog und
+   Drag-and-drop. Ein Anhang im Chat ist ein eigener, noch offener Vorgang.
 2. Prüfung: Format, Größe, Schadsoftware. Abgelehnte Dateien werden mit Grund gemeldet.
    **Format und Größe sind gebaut** (#420) — dieselbe Formatliste (`SupportedDocumentFormats`) wie
    Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Die Schadsoftwareprüfung
@@ -91,7 +92,10 @@ Ablauf beim Hochladen:
    dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
 5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
    Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
-   eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad.
+   eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad. Es gibt
+   dazu genau eine Bibliotheksauswahl auf der Dokumentenseite, die zugleich Anzeige- und Upload-Ziel
+   ist: Der Ablagebereich erscheint nur, solange die dort gewählte Bibliothek mindestens `EDITOR`
+   gewährt, sodass sich beide Zwecke nie widersprechen können.
 
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die

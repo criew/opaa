@@ -12,14 +12,20 @@ interface DocumentState {
   documentsByLibrary: Record<string, LibraryDocumentResponse[]>
   isLoading: boolean
   error: string | null
-  uploadError: string | null
+  // A list rather than a single message: uploadNewDocument is called once per file from a
+  // multi-file drop/selection, and a failure on one file must not erase - or be erased by - the
+  // outcome of another file in the same batch. Cleared once, up front, by the caller starting a
+  // new batch (see DocumentsPage#handleFiles), not by uploadNewDocument itself.
+  uploadErrors: string[]
+  deleteError: string | null
   isUploading: boolean
 
   reset: () => void
   loadDocuments: (libraryId: string) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
-  clearUploadError: () => void
+  clearUploadErrors: () => void
+  clearDeleteError: () => void
   stopPolling: (libraryId: string) => void
 }
 
@@ -33,7 +39,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   documentsByLibrary: {},
   isLoading: false,
   error: null,
-  uploadError: null,
+  uploadErrors: [],
+  deleteError: null,
   isUploading: false,
 
   reset: () => {
@@ -42,7 +49,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       documentsByLibrary: {},
       isLoading: false,
       error: null,
-      uploadError: null,
+      uploadErrors: [],
+      deleteError: null,
       isUploading: false,
     })
   },
@@ -67,7 +75,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   uploadNewDocument: async (libraryId: string, file: File) => {
-    set({ isUploading: true, uploadError: null })
+    set({ isUploading: true })
     try {
       const document = await uploadDocumentRequest(libraryId, file)
       const existing = get().documentsByLibrary[libraryId] ?? []
@@ -87,23 +95,31 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       // Names the concerned file alongside the backend's German reason (format, size, dedup) - the
       // backend message alone does not repeat which of possibly several dropped files it refers to.
       const message = `${rawMessage} (Datei: ${file.name})`
-      set({ uploadError: message, isUploading: false })
+      set({ uploadErrors: [...get().uploadErrors, message], isUploading: false })
       throw err
     }
   },
 
   removeDocument: async (libraryId: string, documentId: string) => {
-    await deleteLibraryDocument(libraryId, documentId)
+    try {
+      await deleteLibraryDocument(libraryId, documentId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Dokument konnte nicht gelöscht werden'
+      set({ deleteError: message })
+      throw err
+    }
     const existing = get().documentsByLibrary[libraryId] ?? []
     set({
       documentsByLibrary: {
         ...get().documentsByLibrary,
         [libraryId]: existing.filter((doc) => doc.id !== documentId),
       },
+      deleteError: null,
     })
   },
 
-  clearUploadError: () => set({ uploadError: null }),
+  clearUploadErrors: () => set({ uploadErrors: [] }),
+  clearDeleteError: () => set({ deleteError: null }),
 
   stopPolling: (libraryId: string) => {
     const intervalId = pollIntervalIds[libraryId]

@@ -117,10 +117,14 @@ describe('MSW Handlers', () => {
   // this handler (a known jsdom/undici stream interaction, not specific to this handler), so a
   // multipart POST cannot be exercised directly against MSW from this test file.
   describe('/api/v1/libraries/:libraryId/documents', () => {
-    const libraryId = 'library-dienstanweisungen'
+    // VIEWER on this fixture (fixtures.ts) - used for the role-check tests below.
+    const viewerLibraryId = 'library-dienstanweisungen'
+    // MANAGER on this fixture, i.e. permitted to upload/delete - used where a 404 (unknown
+    // document, unknown library) rather than a 403 is under test.
+    const editableLibraryId = 'library-referat-50'
 
     it('lists the documents of a library', async () => {
-      const response = await fetch(`/api/v1/libraries/${libraryId}/documents`)
+      const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/documents`)
       expect(response.status).toBe(200)
       expect(await response.json()).toEqual([])
     })
@@ -137,11 +141,38 @@ describe('MSW Handlers', () => {
       expect(response.status).toBe(404)
     })
 
-    it('returns 404 when deleting an unknown document', async () => {
-      const response = await fetch(`/api/v1/libraries/${libraryId}/documents/does-not-exist`, {
-        method: 'DELETE',
-      })
+    it('returns 404 when deleting an unknown document from an editable library', async () => {
+      const response = await fetch(
+        `/api/v1/libraries/${editableLibraryId}/documents/does-not-exist`,
+        { method: 'DELETE' },
+      )
       expect(response.status).toBe(404)
+    })
+
+    it('returns 403 when deleting from a library where the caller only has VIEWER', async () => {
+      const response = await fetch(
+        `/api/v1/libraries/${viewerLibraryId}/documents/does-not-exist`,
+        { method: 'DELETE' },
+      )
+      expect(response.status).toBe(403)
+      const data = await response.json()
+      expect(data.error).toMatch(/kein zugriff/i)
+    })
+
+    // Does not call request.formData() before the role check runs, so - unlike a successful
+    // upload - this does not hit the jsdom/undici hang described in the block comment above and
+    // can be exercised directly against the handler.
+    it('returns 403 when uploading into a library where the caller only has VIEWER', async () => {
+      const formData = new FormData()
+      formData.append('file', new File(['Inhalt'], 'sollte-abgelehnt-werden.md'))
+
+      const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      expect(response.status).toBe(403)
+      const data = await response.json()
+      expect(data.error).toMatch(/kein zugriff/i)
     })
   })
 })

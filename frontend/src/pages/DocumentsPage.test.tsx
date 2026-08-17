@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
@@ -101,7 +101,8 @@ function setDocuments(documentsByLibrary: Record<string, LibraryDocumentResponse
     documentsByLibrary,
     isLoading: false,
     error: null,
-    uploadError: null,
+    uploadErrors: [],
+    deleteError: null,
     isUploading: false,
   })
 }
@@ -109,6 +110,12 @@ function setDocuments(documentsByLibrary: Record<string, LibraryDocumentResponse
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // mockUploadDocument/mockDeleteLibraryDocument carry per-test mockResolvedValueOnce/
+    // mockRejectedValueOnce queues; clearAllMocks() only resets call history, not those queued
+    // implementations, so a test that queues more than it consumes (or is skipped) would leak into
+    // the next one otherwise.
+    mockUploadDocument.mockReset()
+    mockDeleteLibraryDocument.mockReset().mockResolvedValue(undefined)
     useAuthStore.setState({ user: null })
   })
 
@@ -142,7 +149,7 @@ describe('DocumentsPage', () => {
     expect(screen.queryByText('dienstanweisung-2024.pdf')).not.toBeInTheDocument()
   })
 
-  it('uploads a file and shows it in the list afterwards', async () => {
+  it('uploads a file into the currently displayed library and shows it in the list afterwards', async () => {
     setLibraries([personalLibrary])
     setDocuments({ 'library-personal': [] })
     mockUploadDocument.mockResolvedValueOnce({
@@ -174,11 +181,15 @@ describe('DocumentsPage', () => {
       new Error('Das Dateiformat wird nicht unterstuetzt. Erlaubt sind: .md, .pdf'),
     )
     renderWithProviders(<DocumentsPage />)
-    const user = userEvent.setup()
 
+    // Via drag-and-drop, not userEvent.upload() on the file input: the input's accept attribute
+    // (nit from the #442 review) makes browsers - and jsdom/user-event, matching that - filter an
+    // .exe out of the file *picker* before a change event ever fires, but a drop is not filtered
+    // that way. The backend remains authoritative regardless of path, which is exactly what this
+    // test exercises.
     const file = new File(['Inhalt'], 'schadprogramm.exe', { type: 'application/octet-stream' })
-    const input = screen.getByLabelText(/dateien auswählen/i, { selector: 'input' })
-    await user.upload(input, file)
+    const dropzone = screen.getByRole('button', { name: /dateien hierher ziehen zum hochladen/i })
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } })
 
     expect(await screen.findByText(/dateiformat.*schadprogramm\.exe/is)).toBeInTheDocument()
     expect(screen.getByText('dienstanweisung-2024.pdf')).toBeInTheDocument()
@@ -217,29 +228,52 @@ describe('DocumentsPage', () => {
     expect(await screen.findByText(/bereits.*vorhanden/i)).toBeInTheDocument()
   })
 
-  it('excludes libraries where the user only has VIEWER from the upload target selection', async () => {
-    setLibraries([personalLibrary, editorLibrary, viewerLibrary])
-    setDocuments({ 'library-personal': [indexedDocument] })
+  it('keeps the error of an earlier failed file visible after a later file in the same batch succeeds', async () => {
+    setLibraries([personalLibrary])
+    setDocuments({ 'library-personal': [] })
+    mockUploadDocument
+      .mockRejectedValueOnce(new Error('Diese Datei ist bereits in dieser Bibliothek vorhanden'))
+      .mockResolvedValueOnce({
+        id: 'document-second',
+        fileName: 'zweite-datei.pdf',
+        contentType: 'application/pdf',
+        fileSize: 500,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 3,
+        indexedAt: '2026-03-02T09:00:00Z',
+        uploadedByUserId: 'mock-user-id',
+      })
     renderWithProviders(<DocumentsPage />)
     const user = userEvent.setup()
 
-    await user.click(
-      await screen.findByRole('combobox', { name: /zielbibliothek für den upload/i }),
-    )
+    const firstFile = new File(['Inhalt'], 'dublette.pdf', { type: 'application/pdf' })
+    const secondFile = new File(['Inhalt'], 'zweite-datei.pdf', { type: 'application/pdf' })
+    const input = screen.getByLabelText(/dateien auswählen/i, { selector: 'input' })
+    await user.upload(input, [firstFile, secondFile])
 
-    expect(screen.getByRole('option', { name: /meine dokumente/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /rechtsquellen soziales/i })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /dienstanweisungen/i })).not.toBeInTheDocument()
+    expect(await screen.findByText('zweite-datei.pdf')).toBeInTheDocument()
+    expect(screen.getByText(/bereits.*vorhanden.*dublette\.pdf/is)).toBeInTheDocument()
   })
 
-  it('offers neither upload nor delete for a VIEWER, but still shows the list', async () => {
-    setLibraries([viewerLibrary])
-    setDocuments({ 'library-readonly': [indexedDocument] })
+  it('hides the upload area for a library where the user only has VIEWER, even with an editable personal library also present', async () => {
+    setLibraries([personalLibrary, viewerLibrary])
+    setDocuments({
+      'library-personal': [indexedDocument],
+      'library-readonly': [failedDocument],
+    })
     renderWithProviders(<DocumentsPage />)
+    const user = userEvent.setup()
 
-    expect(await screen.findByText('dienstanweisung-2024.pdf')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /dateien hochladen/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /^bibliothek$/i }))
+    await user.click(await screen.findByRole('option', { name: /dienstanweisungen/i }))
+
+    expect(await screen.findByText('vermerk.pptx')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /dokument .* löschen/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/nur leserechte/i)).toBeInTheDocument()
   })
 
   it('deletes a document after confirmation and removes it from the list', async () => {
@@ -258,6 +292,23 @@ describe('DocumentsPage', () => {
       expect(mockDeleteLibraryDocument).toHaveBeenCalledWith('library-personal', 'document-1')
     })
     expect(screen.queryByText('dienstanweisung-2024.pdf')).not.toBeInTheDocument()
+  })
+
+  it('shows a German error and keeps the document listed when deletion fails', async () => {
+    setLibraries([personalLibrary])
+    setDocuments({ 'library-personal': [indexedDocument] })
+    mockDeleteLibraryDocument.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Bibliothek'))
+    renderWithProviders(<DocumentsPage />)
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await screen.findByText('dienstanweisung-2024.pdf')
+    await user.click(
+      screen.getByRole('button', { name: /dokument dienstanweisung-2024\.pdf löschen/i }),
+    )
+
+    expect(await screen.findByText('Kein Zugriff auf diese Bibliothek')).toBeInTheDocument()
+    expect(screen.getByText('dienstanweisung-2024.pdf')).toBeInTheDocument()
   })
 
   it('marks a FAILED document as failed', async () => {

@@ -505,7 +505,7 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
   mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
 )
 
-export const mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> = {
+const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
   'library-personal': [
     {
       id: 'document-dienstanweisung',
@@ -555,6 +555,16 @@ export const mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> = {
     },
   ],
   'library-dienstanweisungen': [],
+}
+
+// Mutable copy that handlers.ts reads and writes on GET/POST/DELETE - a plain module-level object
+// like the other mock*Details fixtures, but reset between tests via resetMockLibraryDocuments()
+// since handlers.ts mutates document status in place (see resetDocumentMockState).
+export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
+  structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+
+export function resetMockLibraryDocuments() {
+  mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
 }
 
 export const mockUsers: UserInfo[] = [

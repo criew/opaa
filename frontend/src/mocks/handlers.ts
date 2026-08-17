@@ -16,6 +16,7 @@ import {
   mockLibraryDetails,
   mockLibraryDocuments,
   mockMyGroups,
+  resetMockLibraryDocuments,
 } from './fixtures'
 import type {
   DocumentSourceType,
@@ -32,6 +33,21 @@ import type {
 const SUPPORTED_DOCUMENT_EXTENSIONS = ['.doc', '.docx', '.md', '.pdf', '.pptx', '.txt']
 const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
 const documentPollCounts = new Map<string, number>()
+
+export function resetDocumentMockState() {
+  documentPollCounts.clear()
+  resetMockLibraryDocuments()
+}
+
+/**
+ * Mirrors LibraryDocumentService#requireEditable: uploading and deleting require at least EDITOR
+ * on the library. The mock has no separate system-admin bypass - each fixture's own myRole is the
+ * single source of truth here, same as it already is for the frontend's canManageDocuments checks.
+ */
+function canManageMockLibrary(libraryId: string): boolean {
+  const role = mockLibraryDetails[libraryId]?.myRole
+  return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
+}
 
 let indexingPollCount = 0
 let indexingActive = false
@@ -531,6 +547,9 @@ export const handlers = [
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
     const formData = await request.formData()
     const file = formData.get('file')
     if (!(file instanceof File) || file.size === 0) {
@@ -551,6 +570,16 @@ export const handlers = [
           error: `Das Dateiformat wird nicht unterstuetzt. Erlaubt sind: ${SUPPORTED_DOCUMENT_EXTENSIONS.join(', ')}`,
         },
         { status: 400 },
+      )
+    }
+    // Mirrors LibraryDocumentService#uploadDocument catching EmptyDocumentContentException: a file
+    // whose text content is blank (e.g. a scanned image with no extractable text) is rejected after
+    // the format check passes, distinct from the "no file at all" 400 above.
+    const textContent = await file.text()
+    if (textContent.trim() === '') {
+      return HttpResponse.json(
+        { error: 'Aus der Datei konnte kein Text extrahiert werden' },
+        { status: 422 },
       )
     }
     const existing = mockLibraryDocuments[libraryId] ?? []
@@ -587,6 +616,9 @@ export const handlers = [
     const existing = mockLibraryDocuments[libraryId]
     if (!mockLibraryDetails[libraryId] || !existing) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
     const idx = existing.findIndex((doc) => doc.id === documentId)
     if (idx < 0) {

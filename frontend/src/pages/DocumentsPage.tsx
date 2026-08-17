@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -20,6 +20,10 @@ import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
 import { documentSourceTypeLabel, documentStatusLabel, formatFileSize } from '../utils/labels'
+
+// Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
+// client-side hint for the file picker; the backend remains the authority on what is accepted.
+const ACCEPTED_FILE_EXTENSIONS = '.doc,.docx,.md,.pdf,.pptx,.txt'
 
 function canManageDocuments(role: AssetRole | undefined): boolean {
   return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
@@ -54,20 +58,22 @@ export default function DocumentsPage() {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const isLoading = useDocumentStore((s) => s.isLoading)
   const error = useDocumentStore((s) => s.error)
-  const uploadError = useDocumentStore((s) => s.uploadError)
+  const uploadErrors = useDocumentStore((s) => s.uploadErrors)
+  const deleteError = useDocumentStore((s) => s.deleteError)
   const isUploading = useDocumentStore((s) => s.isUploading)
   const loadDocuments = useDocumentStore((s) => s.loadDocuments)
   const uploadNewDocument = useDocumentStore((s) => s.uploadNewDocument)
   const removeDocument = useDocumentStore((s) => s.removeDocument)
-  const clearUploadError = useDocumentStore((s) => s.clearUploadError)
+  const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
+  const clearDeleteError = useDocumentStore((s) => s.clearDeleteError)
   const stopPolling = useDocumentStore((s) => s.stopPolling)
+  const reset = useDocumentStore((s) => s.reset)
 
-  // The explicit choice a person made in either selector, if any - null until they pick one, or
-  // once their pick no longer refers to a library the account can currently see (e.g. access was
-  // revoked). Falls back to a computed default below rather than being written back into state
-  // from an effect, so switching libraries never needs a second render to settle.
+  // The library a person explicitly picked, if any - null until they pick one, or once their pick
+  // no longer refers to a library the account can currently see (e.g. access was revoked). Falls
+  // back to a computed default below rather than being written back into state from an effect, so
+  // switching libraries never needs a second render to settle.
   const [explicitLibraryId, setExplicitLibraryId] = useState<string | null>(null)
-  const [explicitUploadTargetId, setExplicitUploadTargetId] = useState<string | null>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -75,29 +81,10 @@ export default function DocumentsPage() {
     void loadLibraries()
   }, [loadLibraries])
 
-  const editableLibraries = useMemo(
-    () => libraries.filter((library) => canManageDocuments(library.myRole) || isSystemAdmin),
-    [libraries, isSystemAdmin],
-  )
-
-  const selectedLibraryId = useMemo(() => {
-    if (explicitLibraryId && libraries.some((l) => l.id === explicitLibraryId)) {
-      return explicitLibraryId
-    }
-    const personal = libraries.find((l) => l.personal)
-    return personal?.id ?? libraries[0]?.id ?? null
-  }, [libraries, explicitLibraryId])
-
-  const uploadTargetLibraryId = useMemo(() => {
-    if (explicitUploadTargetId && editableLibraries.some((l) => l.id === explicitUploadTargetId)) {
-      return explicitUploadTargetId
-    }
-    if (selectedLibraryId && editableLibraries.some((l) => l.id === selectedLibraryId)) {
-      return selectedLibraryId
-    }
-    const personal = editableLibraries.find((l) => l.personal)
-    return personal?.id ?? editableLibraries[0]?.id ?? null
-  }, [editableLibraries, explicitUploadTargetId, selectedLibraryId])
+  const selectedLibraryId =
+    explicitLibraryId && libraries.some((l) => l.id === explicitLibraryId)
+      ? explicitLibraryId
+      : (libraries.find((l) => l.personal)?.id ?? libraries[0]?.id ?? null)
 
   useEffect(() => {
     if (!selectedLibraryId) return
@@ -105,22 +92,26 @@ export default function DocumentsPage() {
     return () => stopPolling(selectedLibraryId)
   }, [selectedLibraryId, loadDocuments, stopPolling])
 
+  // Stops every still-running poll interval on unmount, not just the one for the currently
+  // displayed library - an upload can still be PENDING for a library that was briefly selected
+  // and then left again, and its interval must not keep firing after this page is gone.
+  useEffect(() => () => reset(), [reset])
+
   const selectedLibrary = libraries.find((l) => l.id === selectedLibraryId)
   const canManageSelected = canManageDocuments(selectedLibrary?.myRole) || isSystemAdmin
   const documents = (selectedLibraryId && documentsByLibrary[selectedLibraryId]) || []
 
   async function handleFiles(files: FileList | File[]) {
-    if (!uploadTargetLibraryId) return
+    if (!selectedLibraryId || !canManageSelected) return
+    clearUploadErrors()
     for (const file of Array.from(files)) {
       try {
-        await uploadNewDocument(uploadTargetLibraryId, file)
+        await uploadNewDocument(selectedLibraryId, file)
       } catch {
-        // Der Fehler wird bereits im documentStore als uploadError gehalten und unten angezeigt;
-        // die Schleife läuft weiter, damit ein Fehler bei einer Datei nicht die übrigen blockiert.
+        // Der Fehler landet bereits gesammelt in documentStore.uploadErrors und wird unten
+        // angezeigt; die Schleife läuft weiter, damit ein Fehler bei einer Datei nicht die
+        // übrigen blockiert.
       }
-    }
-    if (selectedLibraryId === uploadTargetLibraryId) {
-      await loadDocuments(uploadTargetLibraryId)
     }
   }
 
@@ -144,9 +135,7 @@ export default function DocumentsPage() {
     try {
       await removeDocument(selectedLibraryId, document.id)
     } catch {
-      // removeDocument-Fehler werden aktuell nicht separat gehalten; ein erneuter Ladevorgang
-      // zeigt den tatsächlichen Zustand der Bibliothek.
-      void loadDocuments(selectedLibraryId)
+      // Fehlermeldung wird bereits über documentStore.deleteError angezeigt.
     }
   }
 
@@ -180,37 +169,24 @@ export default function DocumentsPage() {
 
       <Divider sx={{ mb: 2 }} />
 
-      {editableLibraries.length === 0 ? (
+      {selectedLibrary && !canManageSelected && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Sie haben in keiner Bibliothek Bearbeitungsrechte. Der Upload ist derzeit nicht möglich.
+          Sie haben in dieser Bibliothek nur Leserechte.
         </Alert>
-      ) : (
-        <Stack spacing={1.5} sx={{ mb: 3 }}>
-          {editableLibraries.length > 1 && (
-            <FormControl size="small" sx={{ maxWidth: 320 }}>
-              <InputLabel id="upload-target-label">Zielbibliothek für den Upload</InputLabel>
-              <Select
-                labelId="upload-target-label"
-                label="Zielbibliothek für den Upload"
-                value={uploadTargetLibraryId ?? ''}
-                onChange={(e) => setExplicitUploadTargetId(e.target.value)}
-              >
-                {editableLibraries.map((library) => (
-                  <MenuItem key={library.id} value={library.id}>
-                    {libraryLabel(library)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+      )}
 
+      {canManageSelected && (
+        <Stack spacing={1.5} sx={{ mb: 3 }}>
           <Box
             role="button"
             tabIndex={0}
             aria-label="Dateien hierher ziehen zum Hochladen"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                fileInputRef.current?.click()
+              }
             }}
             onDragOver={(e) => {
               e.preventDefault()
@@ -237,6 +213,7 @@ export default function DocumentsPage() {
             type="file"
             multiple
             hidden
+            accept={ACCEPTED_FILE_EXTENSIONS}
             aria-label="Dateien auswählen"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
@@ -259,9 +236,20 @@ export default function DocumentsPage() {
         </Stack>
       )}
 
-      {uploadError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadError}>
-          {uploadError}
+      {uploadErrors.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
+          <Stack spacing={0.5}>
+            {uploadErrors.map((message) => (
+              <Typography key={message} variant="body2">
+                {message}
+              </Typography>
+            ))}
+          </Stack>
+        </Alert>
+      )}
+      {deleteError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
+          {deleteError}
         </Alert>
       )}
       {error && (
