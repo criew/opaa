@@ -667,7 +667,7 @@ paths:
     get:
       operationId: listLibraries
       tags: [library]
-      summary: List knowledge libraries the current user can see (owned directly, owned by one of their groups, or organization-wide)
+      summary: List knowledge libraries the current user holds rights on - direct grant, grant to one of their groups, or organization-wide visibility (ownership is included, since creating a library grants the creator OWNER)
       responses:
         "200":
           description: List of libraries
@@ -1470,7 +1470,7 @@ components:
 
     LibraryListResponse:
       type: object
-      required: [id, name, ownerType, visibility, listed, personal, createdAt, updatedAt]
+      required: [id, name, ownerType, visibility, listed, personal, myRole, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1489,6 +1489,18 @@ components:
           type: boolean
         personal:
           type: boolean
+        myRole:
+          description: >
+            The effective role you hold on this library, per the formula in
+            docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten. Always at least
+            VIEWER, since anything less would exclude the library from this list altogether.
+            Never bypassed to OWNER for a system admin, unlike myRole on the single-library
+            response (GET/PUT /api/v1/libraries/{libraryId}): a library reachable only by
+            administering everything must not be mistaken for one you actually own or manage -
+            the frontend already knows the caller's admin status and can render that distinction
+            itself.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
         createdAt:
           type: string
           format: date-time
@@ -1505,6 +1517,7 @@ components:
         - visibility
         - listed
         - personal
+        - myRole
         - createdAt
         - updatedAt
       properties:
@@ -1530,6 +1543,14 @@ components:
           type: boolean
         personal:
           type: boolean
+        myRole:
+          description: >
+            The effective role you hold on this library. For a system admin, this is always
+            OWNER - the same administrative bypass canRead/canManage/canDelete use - regardless
+            of any actual grant. Unlike myRole on the list response (GET /api/v1/libraries),
+            which never bypasses for a system admin.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
         documentCount:
           type: integer
           format: int64
@@ -1582,11 +1603,11 @@ components:
       type: string
       description: >
         The graded asset role a grant carries - a ranking deliberately separate from SpaceRole; no
-        role name occurs in both. USER uses the asset without seeing its configuration, VIEWER
-        additionally sees it, EDITOR additionally changes it, MANAGER additionally shares/grants
-        and sets visibility, OWNER additionally deletes and transfers ownership. See
+        role name occurs in both. VIEWER uses the asset and sees its configuration, EDITOR
+        additionally changes it, MANAGER additionally shares/grants and sets visibility, OWNER
+        additionally deletes and transfers ownership. See
         docs/features/spaces-and-assets.md#asset-rollen.
-      enum: [USER, VIEWER, EDITOR, MANAGER, OWNER]
+      enum: [VIEWER, EDITOR, MANAGER, OWNER]
       example: VIEWER
 
     PermissionSubjectType:

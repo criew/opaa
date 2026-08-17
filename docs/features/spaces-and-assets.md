@@ -93,8 +93,8 @@ Ein Nutzer erhält Rechte an einem Asset auf genau drei Wegen:
 
 ```
 lesbare_Bibliotheken(u) =
-    { L : direkter Grant(u, L) ≥ USER }
-  ∪ { L : Grant(g, L) ≥ USER für eine Gruppe g mit u ∈ g }
+    { L : direkter Grant(u, L) ≥ VIEWER }
+  ∪ { L : Grant(g, L) ≥ VIEWER für eine Gruppe g mit u ∈ g }
   ∪ { L : L.visibility = ORGANIZATION und gleiche Organisation }
 ```
 

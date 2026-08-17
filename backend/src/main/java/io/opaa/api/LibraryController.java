@@ -59,7 +59,8 @@ public class LibraryController {
   @GetMapping
   public List<LibraryListResponse> listLibraries(@AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return libraryService.listLibraries(currentUser.getId());
+    return libraryService.listLibraries(
+        currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @GetMapping("/{libraryId}")

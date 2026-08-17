@@ -45,10 +45,13 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    */
   boolean existsByOwnerGroupId(UUID ownerGroupId);
 
+  /**
+   * Used by tests and by {@code UserService}'s personal-library provisioning tests to locate a
+   * user's own libraries directly - {@link KnowledgeLibraryService#listLibraries} itself no longer
+   * calls this since #418 (it now lists via {@link LibraryAccessService#readableLibraryIds}, which
+   * covers ownership through the {@code OWNER} grant every library creation grants).
+   */
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
-
-  List<KnowledgeLibrary> findByOrganizationIdAndOwnerGroupIdIn(
-      UUID organizationId, List<UUID> ownerGroupIds);
 
   List<KnowledgeLibrary> findByOrganizationIdAndVisibility(
       UUID organizationId, LibraryVisibility visibility);
