@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -29,7 +30,7 @@ public class AsyncIndexingExecutor {
   }
 
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     int processed = 0;
     int failed = 0;
     int skipped = 0;
@@ -56,7 +57,7 @@ public class AsyncIndexingExecutor {
         String fileName = file.getFileName().toString();
         try {
           log.info("Processing: {}", fileName);
-          FileProcessingResult result = fileProcessingService.processFile(file);
+          FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
           if (result == FileProcessingResult.SKIPPED) {
             skipped++;
           } else {

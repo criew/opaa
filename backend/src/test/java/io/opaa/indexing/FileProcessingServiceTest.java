@@ -10,8 +10,8 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryVisibility;
 import io.opaa.observability.IndexingMetrics;
-import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,6 +41,12 @@ class FileProcessingServiceTest {
 
   private FileProcessingService service;
 
+  // #419: an indexing run always targets a caller-chosen library, never the fixed system
+  // library - these two distinct libraries let tests both assert the metadata carries the
+  // chosen library and exercise a move from one library to another on re-indexing.
+  private KnowledgeLibrary targetLibrary;
+  private KnowledgeLibrary otherLibrary;
+
   @BeforeEach
   void setUp() {
     service =
@@ -51,6 +57,19 @@ class FileProcessingServiceTest {
             vectorStore,
             checksumService,
             new IndexingMetrics(new SimpleMeterRegistry()));
+    targetLibrary = library();
+    otherLibrary = library();
+  }
+
+  private KnowledgeLibrary library() {
+    return KnowledgeLibrary.ownedByUser(
+        UUID.randomUUID(),
+        "Bibliothek",
+        null,
+        UUID.randomUUID(),
+        LibraryVisibility.PRIVATE,
+        false,
+        false);
   }
 
   @Test
@@ -69,7 +88,7 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("new-doc.txt"), eq(parsed))).thenReturn(chunks);
 
-    FileProcessingResult result = service.processFile(file);
+    FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
@@ -85,11 +104,9 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void newDocumentAndItsChunksCarryTheSystemLibraryAndOrganizationAsMetadata() throws IOException {
-    // #201 acceptance criteria: every document belongs to exactly one library, and every chunk
-    // carries library_id and organization_id. Indexing currently always targets the single
-    // system library (see FileProcessingService's Javadoc on why); this pins that both the
-    // document row and the chunk metadata actually carry it, not just one of the two.
+  void newDocumentAndItsChunksCarryTheChosenLibraryAndOrganizationAsMetadata() throws IOException {
+    // #419 acceptance criteria: a run with libraryId writes every document and chunk into
+    // exactly that library - checked at the document row and at the library_id chunk metadatum.
     Path file = tempDir.resolve("library-metadata.txt");
     Files.writeString(file, "some content");
 
@@ -104,13 +121,13 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("library-metadata.txt"), eq(parsed))).thenReturn(chunks);
 
-    service.processFile(file);
+    service.processFile(file, targetLibrary);
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
     Document savedDoc = docCaptor.getAllValues().getFirst();
-    assertThat(savedDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-    assertThat(savedDoc.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
+    assertThat(savedDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+    assertThat(savedDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
@@ -118,12 +135,13 @@ class FileProcessingServiceTest {
     verify(vectorStore).add(chunkCaptor.capture());
     org.springframework.ai.document.Document storedChunk = chunkCaptor.getValue().getFirst();
     Map<String, Object> metadata = storedChunk.getMetadata();
-    assertThat(metadata).containsEntry("library_id", KnowledgeLibrary.SYSTEM_LIBRARY_ID.toString());
-    assertThat(metadata).containsEntry("organization_id", Organization.DEFAULT_ID.toString());
+    assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
+    assertThat(metadata)
+        .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
   }
 
   @Test
-  void skipsUnchangedDocumentWithSameChecksumAndIndexedStatus() throws IOException {
+  void skipsUnchangedDocumentWithSameChecksumSameLibraryAndIndexedStatus() throws IOException {
     Path file = tempDir.resolve("unchanged.txt");
     Files.writeString(file, "same content");
 
@@ -133,10 +151,11 @@ class FileProcessingServiceTest {
         new Document("unchanged.txt", file.toAbsolutePath().toString(), null, 0L);
     existingDoc.setChecksum("matching-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
     when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
 
-    FileProcessingResult result = service.processFile(file);
+    FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
@@ -155,6 +174,7 @@ class FileProcessingServiceTest {
     Document existingDoc = new Document("changed.txt", file.toAbsolutePath().toString(), null, 10L);
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
     when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -165,7 +185,7 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("changed.txt"), eq(parsed))).thenReturn(chunks);
 
-    FileProcessingResult result = service.processFile(file);
+    FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
@@ -174,10 +194,11 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void reindexingKeepsTheLibraryAssignment() throws IOException {
-    // #201 acceptance criteria: re-indexing keeps the library assignment. The old document row is
-    // deleted and a new one created (see reindexesDocumentWithChangedChecksum above), so this pins
-    // that the replacement row still carries the system library, not a dangling/absent one.
+  void reindexingKeepsTheLibraryAssignmentWhenTheTargetLibraryIsUnchanged() throws IOException {
+    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. The old
+    // document row is deleted and a new one created (see reindexesDocumentWithChangedChecksum
+    // above), so this pins that the replacement row still carries the chosen library, not a
+    // dangling/absent one.
     Path file = tempDir.resolve("reindexed.txt");
     Files.writeString(file, "new content");
 
@@ -185,8 +206,8 @@ class FileProcessingServiceTest {
 
     Document existingDoc =
         new Document("reindexed.txt", file.toAbsolutePath().toString(), null, 10L);
-    existingDoc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-    existingDoc.setOrganizationId(Organization.DEFAULT_ID);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
@@ -199,14 +220,62 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("reindexed.txt"), eq(parsed))).thenReturn(chunks);
 
-    service.processFile(file);
+    service.processFile(file, targetLibrary);
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
     Document newDoc = docCaptor.getAllValues().getFirst();
     assertThat(newDoc.getId()).isNotEqualTo(existingDoc.getId());
-    assertThat(newDoc.getLibraryId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-    assertThat(newDoc.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
+    assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+    assertThat(newDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
+  }
+
+  @Test
+  void reindexingIntoADifferentLibraryMovesTheDocumentAndLeavesNoOldChunksBehind()
+      throws IOException {
+    // #419 acceptance criteria: re-indexing an existing path into a different library moves the
+    // document and its chunks completely - no chunk with the old library_id survives. The move
+    // fires even though the content (and therefore the checksum) is unchanged: it is the library
+    // choice, not the content, that changed.
+    Path file = tempDir.resolve("moved.txt");
+    Files.writeString(file, "unchanged content");
+
+    when(checksumService.computeSha256(file)).thenReturn("same-checksum");
+
+    Document existingDoc = new Document("moved.txt", file.toAbsolutePath().toString(), null, 10L);
+    existingDoc.setLibraryId(otherLibrary.getId());
+    existingDoc.setOrganizationId(otherLibrary.getOrganizationId());
+    existingDoc.setChecksum("same-checksum");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("moved.txt"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result = service.processFile(file, targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    // Deleting by document_id removes every chunk the old row had, regardless of library_id -
+    // no chunk with otherLibrary's id can remain.
+    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(documentRepository).delete(existingDoc);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document newDoc = docCaptor.getAllValues().getFirst();
+    assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStore).add(chunkCaptor.capture());
+    Map<String, Object> metadata = chunkCaptor.getValue().getFirst().getMetadata();
+    assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
   }
 
   @Test
@@ -229,7 +298,7 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("legacy.txt"), eq(parsed))).thenReturn(chunks);
 
-    FileProcessingResult result = service.processFile(file);
+    FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
@@ -246,6 +315,7 @@ class FileProcessingServiceTest {
     Document existingDoc = new Document("failed.txt", file.toAbsolutePath().toString(), null, 10L);
     existingDoc.setChecksum("same-checksum");
     existingDoc.setStatus(DocumentStatus.FAILED);
+    existingDoc.setLibraryId(targetLibrary.getId());
     when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -256,7 +326,7 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("failed.txt"), eq(parsed))).thenReturn(chunks);
 
-    FileProcessingResult result = service.processFile(file);
+    FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
@@ -284,7 +354,8 @@ class FileProcessingServiceTest {
             "remote-doc.pdf",
             "https://example.com/docs/remote-doc.pdf",
             "2025-06-15 10:30",
-            1024);
+            1024,
+            targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(documentService).parseDocument(file);
@@ -296,6 +367,7 @@ class FileProcessingServiceTest {
     assertThat(lastSaved.getChecksum()).isEqualTo("sha256-of-pdf");
     assertThat(lastSaved.getLastModifiedRemote()).isEqualTo("2025-06-15 10:30");
     assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(lastSaved.getLibraryId()).isEqualTo(targetLibrary.getId());
   }
 
   @Test
@@ -322,7 +394,8 @@ class FileProcessingServiceTest {
             originalFileName,
             "https://example.com/docs/my-report.pdf",
             "2025-06-15 10:30",
-            1024);
+            1024,
+            targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
 
@@ -351,6 +424,7 @@ class FileProcessingServiceTest {
             DocumentSourceType.HTTP_DIRECTORY);
     existingDoc.setChecksum("same-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
 
     when(documentRepository.findByFilePath("https://example.com/docs/unchanged-url.pdf"))
         .thenReturn(Optional.of(existingDoc));
@@ -361,7 +435,8 @@ class FileProcessingServiceTest {
             "unchanged-url.pdf",
             "https://example.com/docs/unchanged-url.pdf",
             "2025-06-15 10:30",
-            1024);
+            1024,
+            targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentService, never()).parseDocument(any());
@@ -383,6 +458,7 @@ class FileProcessingServiceTest {
             DocumentSourceType.HTTP_DIRECTORY);
     existingDoc.setChecksum("old-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
 
     when(documentRepository.findByFilePath("https://example.com/docs/changed-url.pdf"))
         .thenReturn(Optional.of(existingDoc));
@@ -400,7 +476,8 @@ class FileProcessingServiceTest {
             "changed-url.pdf",
             "https://example.com/docs/changed-url.pdf",
             "2025-06-15 10:30",
-            2048);
+            2048,
+            targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
@@ -579,5 +656,53 @@ class FileProcessingServiceTest {
     UUID documentId = docCaptor.getAllValues().getFirst().getId();
     verify(vectorStore).delete("document_id == '" + documentId + "'");
     verify(documentRepository).delete(any(Document.class));
+  }
+
+  @Test
+  void processUrlFileMovesToADifferentLibraryOnReindex() throws IOException {
+    // #419 acceptance criteria, URL path counterpart of the filesystem test above.
+    Path file = tempDir.resolve("moved-url.pdf");
+    Files.writeString(file, "unchanged pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("same-sha256");
+
+    Document existingDoc =
+        new Document(
+            "moved-url.pdf",
+            "https://example.com/docs/moved-url.pdf",
+            null,
+            1024L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    existingDoc.setChecksum("same-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(otherLibrary.getId());
+
+    when(documentRepository.findByFilePath("https://example.com/docs/moved-url.pdf"))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("moved-url.pdf"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "moved-url.pdf",
+            "https://example.com/docs/moved-url.pdf",
+            "2025-06-15 10:30",
+            1024,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(vectorStore).delete("document_id == '" + existingDoc.getId().toString() + "'");
+    verify(documentRepository).delete(existingDoc);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document newDoc = docCaptor.getAllValues().getFirst();
+    assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
   }
 }

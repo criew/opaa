@@ -1,16 +1,17 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 016 - i.e. the schema exactly as it existed immediately before migrations 017, 018 and
-# 020, each of which builds on this same pre-migration state independently (019 is reserved by
-# other parallel work not yet on main; none of 017/018/020 depends on it).
+# changeSet 016 - i.e. the schema exactly as it existed immediately before migrations 017, 018,
+# 019 and 020, all four of which build on this same pre-migration state independently of each
+# other.
 #
 # Used by:
 # - Migration017AuditLogTest, to build a realistic pre-migration database (via the real, versioned
 #   changelog files, not a hand-rolled schema) and then apply 017 in isolation.
-# - Migration018PermissionHistoryTest, the same pattern, applying 018 in isolation instead.
-# - Migration020UploadMetadataTest, the same pattern, applying 020 in isolation instead.
+# - Migration018PermissionHistoryTest, the same way, to apply 018 in isolation.
+# - Migration019IndexingJobLibraryTest, the same way, to apply 019 in isolation.
+# - Migration020UploadMetadataTest, the same way, to apply 020 in isolation.
 #
-# See test-master-through-015.yaml and Migration016VectorStoreLibraryMetadataTest for the pattern
-# this fixture follows.
+# See test-master-through-015.yaml and Migration016VectorStoreLibraryMetadataTest for the
+# pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml

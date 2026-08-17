@@ -2,7 +2,6 @@ package io.opaa.indexing;
 
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.observability.IndexingMetrics;
-import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,7 +40,8 @@ public class FileProcessingService {
     this.metrics = metrics;
   }
 
-  public FileProcessingResult processFile(Path file) throws IOException {
+  public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
+      throws IOException {
     String filePath = file.toAbsolutePath().toString();
     String fileName = file.getFileName().toString();
 
@@ -53,12 +53,17 @@ public class FileProcessingService {
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+          && existingDoc.getStatus() == DocumentStatus.INDEXED
+          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
         log.info("Skipping unchanged document: {}", fileName);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      // Document changed or was not successfully indexed — delete old data
+      logLibraryChange(existingDoc, targetLibrary);
+      // Document changed, its target library changed, or it was not successfully indexed —
+      // delete old data. Deleting by document_id removes every chunk regardless of which
+      // library it used to carry, so no chunk with the old library_id survives a move (#419
+      // acceptance criteria).
       vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
       documentRepository.delete(existingDoc);
     }
@@ -67,8 +72,8 @@ public class FileProcessingService {
     long fileSize = Files.size(file);
 
     var doc = new Document(fileName, filePath, contentType, fileSize);
-    doc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-    doc.setOrganizationId(Organization.DEFAULT_ID);
+    doc.setLibraryId(targetLibrary.getId());
+    doc.setOrganizationId(targetLibrary.getOrganizationId());
     doc = documentRepository.save(doc);
 
     try {
@@ -115,7 +120,8 @@ public class FileProcessingService {
       String originalFileName,
       String remoteUrl,
       String lastModified,
-      long remoteFileSize)
+      long remoteFileSize,
+      KnowledgeLibrary targetLibrary)
       throws IOException {
 
     String fileName = originalFileName;
@@ -128,12 +134,17 @@ public class FileProcessingService {
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
-          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+          && existingDoc.getStatus() == DocumentStatus.INDEXED
+          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
         log.info("Skipping unchanged URL document (same checksum): {}", fileName);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      // Document changed — delete old data
+      logLibraryChange(existingDoc, targetLibrary);
+      // Document changed, its target library changed, or it was not successfully indexed —
+      // delete old data. Deleting by document_id removes every chunk regardless of which
+      // library it used to carry, so no chunk with the old library_id survives a move (#419
+      // acceptance criteria).
       vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
       documentRepository.delete(existingDoc);
     }
@@ -143,8 +154,8 @@ public class FileProcessingService {
     var doc =
         new Document(
             fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.HTTP_DIRECTORY);
-    doc.setLibraryId(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-    doc.setOrganizationId(Organization.DEFAULT_ID);
+    doc.setLibraryId(targetLibrary.getId());
+    doc.setOrganizationId(targetLibrary.getOrganizationId());
     doc = documentRepository.save(doc);
 
     try {
@@ -282,14 +293,30 @@ public class FileProcessingService {
     return doc;
   }
 
+  /**
+   * Logs an existing document's move to a new target library, before the old row and its chunks are
+   * deleted below - the only remaining trace of the move once {@code existingDoc} is gone (#419
+   * acceptance criteria: a move must be observable after the fact).
+   */
+  private void logLibraryChange(Document existingDoc, KnowledgeLibrary targetLibrary) {
+    if (existingDoc.getLibraryId() != null
+        && !existingDoc.getLibraryId().equals(targetLibrary.getId())) {
+      log.info(
+          "Moving document {} from library {} to library {}",
+          existingDoc.getFilePath(),
+          existingDoc.getLibraryId(),
+          targetLibrary.getId());
+    }
+  }
+
   private void storeChunks(
       Document document, List<org.springframework.ai.document.Document> chunks) {
     // library_id and organization_id are the filter axis the permission-aware vector search
     // (#202) filters on - carried on every chunk, not just the document row, so that search can
     // apply the filter directly in the VectorStore query without a join back to the relational
-    // model (see docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Both are
-    // currently always the single system library / the single seeded organization - see the
-    // Javadoc on Document#libraryId.
+    // model (see docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Both are the
+    // library and organization chosen for this indexing run (#419) - see
+    // DocumentIndexingService#requireEditableLibrary for where that choice is validated.
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
             .map(

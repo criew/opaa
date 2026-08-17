@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
+import io.opaa.auth.SystemRole;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.OneChunkInvariantResult;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
@@ -17,6 +18,10 @@ import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.JobStatus;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryVisibility;
+import io.opaa.organization.Organization;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -33,8 +38,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +49,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -308,6 +316,56 @@ class RetrievalEvaluationHarnessTest {
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private VectorStore vectorStore;
   @Autowired private IndexingProperties indexingProperties;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
+  // set up once per run, not pinned to KnowledgeLibrary.SYSTEM_LIBRARY_ID, since that constant
+  // is no longer what production indexing targets by default. The measurements themselves are
+  // unaffected: this harness reads via vectorStore.similaritySearch (see the class Javadoc), not
+  // through the permission-aware query path, so which library the corpus lands in does not change
+  // what is measured.
+  private UUID evalUserId;
+  private UUID evalLibraryId;
+
+  @BeforeEach
+  void setUpIndexingTarget() {
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
+    evalUserId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'eval-issuer', 'eval-harness@example.com',"
+            + " 'Eval Harness User', now(), ?, ?)",
+        evalUserId,
+        "eval-harness-" + evalUserId,
+        SystemRole.SYSTEM_ADMIN.name(),
+        Organization.DEFAULT_ID);
+
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Eval-Zielbibliothek",
+                null,
+                evalUserId,
+                LibraryVisibility.PRIVATE,
+                false,
+                false));
+    evalLibraryId = library.getId();
+
+    // KnowledgeLibraryRepository#save alone does not grant an AssetGrant (only
+    // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService no longer
+    // bypasses the EDITOR check for a system admin on an ordinary library (PR #431 review, Befund
+    // 2), only on the system library. Grant OWNER explicitly, same as any real library creation.
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+            + " 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        evalLibraryId,
+        Organization.DEFAULT_ID,
+        evalUserId);
+  }
 
   @Test
   void evaluatesRetrievalQualityAgainstTheGoldenDataset() throws Exception {
@@ -347,7 +405,7 @@ class RetrievalEvaluationHarnessTest {
                 + "EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE deliberately.")
         .isEqualTo(EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE);
 
-    IndexingJob job = documentIndexingService.triggerIndexing();
+    IndexingJob job = documentIndexingService.triggerIndexing(evalLibraryId, evalUserId, true);
     awaitJobCompletion(job);
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);

@@ -29,10 +29,21 @@ class IndexingJobServiceTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
 
-    IndexingJob result = service.startJob();
+    IndexingJob result = service.startJob(UUID.randomUUID());
 
     assertThat(result.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(result.getStartedAt()).isNotNull();
+  }
+
+  @Test
+  void startJobRecordsTheTargetLibrary() {
+    // #419 acceptance criteria: the indexing job records its target library.
+    UUID libraryId = UUID.randomUUID();
+    when(indexingJobRepository.save(any(IndexingJob.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    IndexingJob result = service.startJob(libraryId);
+
+    assertThat(result.getLibraryId()).isEqualTo(libraryId);
   }
 
   @Test

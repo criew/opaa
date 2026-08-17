@@ -52,15 +52,13 @@ public class Document {
    * library, enforced as {@code NOT NULL} with {@code fk_documents_library} once migration 012's
    * backfill has run. Not part of the constructors (unlike {@code fileName}/{@code filePath}):
    * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
-   * are set, because the indexing pipeline currently always targets the single well-known system
-   * library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}) - see {@code
-   * FileProcessingService}. This is a deliberate, maintainer-confirmed interim state (#201 builds
-   * the container; #201 does not yet route uploads to it): between #201 landing and the target
-   * library becoming selectable, no document is reachable by ordinary users through this path, only
-   * by system administrators, which is the same fail-closed default the migration already applies
-   * to pre-existing documents. Documented in the epic (#198) for anyone piloting in this window.
-   * Selecting a target library per connector source is #207; selecting one for a manual upload is
-   * #202 or a dedicated follow-up issue - #207 alone does not cover the upload path.
+   * are set. Since #419, a directory or URL indexing run always targets a library the caller chose
+   * and holds at least {@code EDITOR} on ({@code FileProcessingService#processFile}/{@code
+   * #processUrlFile}) - the earlier interim state, where this always resolved to the single
+   * well-known system library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}), is gone
+   * for new and re-indexed documents. Pre-existing documents that were written into the system
+   * library before #419 stay there; #419 deliberately does not re-home them (see the epic, #198,
+   * "Zwischenzustand"). Selecting a target library per connector source is still open, #207.
    */
   @Column(name = "library_id")
   private UUID libraryId;

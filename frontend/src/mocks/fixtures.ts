@@ -1,13 +1,13 @@
 import type {
   HealthResponse,
   IndexingStatusResponse,
+  LibraryListResponse,
   QueryResponse,
   UserInfo,
   SpaceListResponse,
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
-  LibraryListResponse,
   LibraryResponse,
 } from '../types/api'
 import type { AuthConfig, AuthUser } from '../types/auth'
@@ -405,6 +405,9 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
   },
 }
 
+// Also doubles as the fixture for GET /api/v1/libraries in the AdminDrawer indexing-target
+// picker (#419): 'library-dienstanweisungen' carries myRole VIEWER on purpose, to exercise the
+// "only EDITOR/MANAGER/OWNER libraries are offered as an indexing target" filter in tests.
 export const mockLibraries: LibraryListResponse[] = [
   {
     id: 'library-personal',

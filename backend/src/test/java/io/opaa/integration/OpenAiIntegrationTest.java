@@ -88,11 +88,12 @@ class OpenAiIntegrationTest {
         userId,
         "openai-it-" + userId,
         SEEDED_ORGANIZATION_ID);
-    // Manual indexing (via FileProcessingService) still files documents into the system library
-    // until #207 wires connector sources to a chosen library - see the note in
-    // docs/features/spaces-and-assets.md. This test's user needs an explicit grant to find them,
-    // exactly like every other reader now does (#202: search never bypasses grants, not even for
-    // a system admin).
+    // #419: an indexing run now always targets a caller-chosen library. This test's user is a
+    // SYSTEM_ADMIN, which bypasses the EDITOR check (LibraryAccessService#canEdit) the same way
+    // every other library operation already bypasses for a system admin, so indexing into the
+    // (still seeded, still grant-less) system library needs no explicit grant to trigger the run.
+    // Reading it back via query still needs one, exactly like every other reader (#202: search
+    // never bypasses grants, not even for a system admin).
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
@@ -130,7 +131,7 @@ class OpenAiIntegrationTest {
         The frontend uses React and Material UI.
         """);
 
-    IndexingJob job = documentIndexingService.triggerIndexing();
+    IndexingJob job = documentIndexingService.triggerIndexing(SYSTEM_LIBRARY_ID, userId, true);
     assumeTrue(
         job.getDocumentsProcessed() > 0,
         "Skipping: OpenAI API returned an error (quota exceeded or rate limited)."

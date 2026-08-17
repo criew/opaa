@@ -147,6 +147,40 @@ class LibraryAccessServiceTest {
   }
 
   @Test
+  void aDirectEditorGrantAllowsEditingButNotManaging() {
+    // #419: canEdit backs the indexing-trigger authorization - EDITOR is enough to target a
+    // library with an indexing run, but not enough to manage it (rename, visibility, grants).
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.EDITOR, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThat(accessService.canEdit(library, userId, false)).isTrue();
+    assertThat(accessService.canManage(library, userId, false)).isFalse();
+  }
+
+  @Test
+  void aDirectViewerGrantDoesNotAllowEditing() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.VIEWER, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThat(accessService.canEdit(library, userId, false)).isFalse();
+  }
+
+  @Test
+  void systemAdminBypassesTheEditCheckToo() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
+
+    assertThat(accessService.canEdit(library, userId, true)).isTrue();
+  }
+
+  @Test
   void aDirectManagerGrantAllowsBothReadingAndManaging() {
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);

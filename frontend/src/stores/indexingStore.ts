@@ -1,8 +1,10 @@
 import { create } from 'zustand'
-import type { IndexingStatus, IndexingTriggerRequest } from '../types/api'
-import { triggerIndexing, getIndexingStatus } from '../services/api'
+import type { IndexingStatus, IndexingTriggerRequest, LibraryListResponse } from '../types/api'
+import { triggerIndexing, getIndexingStatus, getLibraries } from '../services/api'
 
 const POLL_INTERVAL_MS = 2000
+// #419: only a library the caller may edit is offered as an indexing target.
+const MIN_ROLE_TO_INDEX: LibraryListResponse['myRole'][] = ['EDITOR', 'MANAGER', 'OWNER']
 
 type SnackbarSeverity = 'success' | 'error'
 
@@ -22,7 +24,10 @@ interface IndexingState {
   isPolling: boolean
   drawerOpen: boolean
   snackbar: Snackbar
-  urlConfig: IndexingTriggerRequest | null
+  urlConfig: Pick<IndexingTriggerRequest, 'url' | 'proxy' | 'credentials' | 'insecureSsl'> | null
+  libraries: LibraryListResponse[]
+  librariesLoading: boolean
+  selectedLibraryId: string | null
 
   triggerIndexing: () => Promise<void>
   pollStatus: () => void
@@ -30,7 +35,11 @@ interface IndexingState {
   toggleDrawer: () => void
   setDrawerOpen: (open: boolean) => void
   closeSnackbar: () => void
-  setUrlConfig: (config: IndexingTriggerRequest | null) => void
+  setUrlConfig: (
+    config: Pick<IndexingTriggerRequest, 'url' | 'proxy' | 'credentials' | 'insecureSsl'> | null,
+  ) => void
+  fetchLibraries: () => Promise<void>
+  setSelectedLibraryId: (libraryId: string | null) => void
 }
 
 let pollIntervalId: ReturnType<typeof setInterval> | null = null
@@ -46,11 +55,26 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   drawerOpen: false,
   snackbar: { open: false, message: '', severity: 'success' },
   urlConfig: null,
+  libraries: [],
+  librariesLoading: false,
+  selectedLibraryId: null,
 
   triggerIndexing: async () => {
+    const libraryId = get().selectedLibraryId
+    if (!libraryId) {
+      set({
+        snackbar: {
+          open: true,
+          message: 'Bitte eine Zielbibliothek auswählen',
+          severity: 'error',
+        },
+      })
+      return
+    }
+
     try {
       const urlConfig = get().urlConfig
-      const request = urlConfig?.url ? urlConfig : undefined
+      const request: IndexingTriggerRequest = { libraryId, ...(urlConfig?.url ? urlConfig : {}) }
       const response = await triggerIndexing(request)
       set({
         status: response.status,
@@ -131,4 +155,27 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   setDrawerOpen: (open) => set({ drawerOpen: open }),
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
   setUrlConfig: (config) => set({ urlConfig: config }),
+
+  fetchLibraries: async () => {
+    set({ librariesLoading: true })
+    try {
+      const libraries = await getLibraries()
+      const editable = libraries.filter((l) => MIN_ROLE_TO_INDEX.includes(l.myRole))
+      set((s) => ({
+        libraries: editable,
+        librariesLoading: false,
+        // A selection that no longer appears in the freshly loaded list (revoked grant, or the
+        // list came back empty) must not survive - otherwise the trigger stays enabled against a
+        // library the user can no longer see, running straight into a 403/404 (PR #431 review,
+        // nit 5).
+        selectedLibraryId: editable.some((l) => l.id === s.selectedLibraryId)
+          ? s.selectedLibraryId
+          : null,
+      }))
+    } catch {
+      set({ libraries: [], librariesLoading: false, selectedLibraryId: null })
+    }
+  },
+
+  setSelectedLibraryId: (libraryId) => set({ selectedLibraryId: libraryId }),
 }))

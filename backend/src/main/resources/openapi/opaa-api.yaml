@@ -27,12 +27,13 @@ paths:
       tags: [indexing]
       summary: Trigger document indexing
       description: |
-        Triggers document indexing. Without a request body, indexes documents
-        from the configured local filesystem path. With a request body containing
-        a URL, crawls an Apache mod_autoindex HTTP directory listing and indexes
-        all discovered documents.
+        Triggers document indexing into a chosen target library. Without a url in the
+        request body, indexes documents from the configured local filesystem path. With a
+        url, crawls an Apache mod_autoindex HTTP directory listing and indexes all
+        discovered documents. libraryId is always required: a directory-wide indexing run
+        must never silently default to a library the caller did not choose.
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -44,6 +45,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IndexingStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           description: Indexing already running
           content:
@@ -1041,6 +1048,15 @@ components:
           type: string
           nullable: true
           example: Indexing completed successfully
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The knowledge library this run targets (#419). Null for a run started before
+            migration 019 added the column, or once the run's target library has since been
+            deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
+            same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
         timestamp:
           type: string
           format: date-time
@@ -1133,8 +1149,22 @@ components:
 
     IndexingTriggerRequest:
       type: object
-      description: Optional request body for URL-based indexing
+      description: >
+        Request body to trigger an indexing run. libraryId is required (#419): a
+        directory-wide or URL-wide indexing run must never silently default to a library
+        the caller did not choose, and the API answers 400 rather than picking one. url is
+        optional; without it, the run indexes the configured local filesystem path instead
+        of crawling a URL.
+      required: [libraryId]
       properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The knowledge library every document and chunk from this run is written into.
+            The caller must hold at least EDITOR on it (see AssetRole); the /trigger
+            endpoint's system-admin requirement applies alongside this check, not instead
+            of it.
         url:
           type: string
           format: uri
