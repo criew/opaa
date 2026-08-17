@@ -14,6 +14,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ class KnowledgeLibraryServiceTest {
   private KnowledgeLibraryService libraryService;
 
   private AssetGrantRepository grantRepository;
+  private PermissionHistoryService permissionHistoryService;
 
   @BeforeEach
   void setUp() {
@@ -47,7 +49,7 @@ class KnowledgeLibraryServiceTest {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     grantRepository = mock(AssetGrantRepository.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
-    PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
+    permissionHistoryService = mock(PermissionHistoryService.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     libraryService =
@@ -123,5 +125,61 @@ class KnowledgeLibraryServiceTest {
 
     assertThatCode(() -> libraryService.ensurePersonalLibrary(userId, organizationId))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  void ensurePersonalLibraryHistorisesTheLibraryAndItsOwnerGrantWhenItsOwnInsertActuallyRan() {
+    // #238 code review, finding 2: the native ON CONFLICT ... DO NOTHING inserts must still
+    // historise the library and its owner grant - previously they never did, a permanent gap for
+    // every user provisioned through this path (not merely a pre-#238 backfill gap).
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false);
+    when(libraryRepository.insertPersonalLibraryIfAbsent(
+            any(UUID.class), eq(organizationId), any(String.class), any(String.class), eq(userId)))
+        .thenReturn(1);
+    when(grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(any(UUID.class), eq(userId)))
+        .thenReturn(1);
+    KnowledgeLibrary insertedLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Meine Dokumente",
+            null,
+            userId,
+            LibraryVisibility.PRIVATE,
+            false,
+            true);
+    AssetGrant insertedGrant =
+        AssetGrant.forUser(
+            insertedLibrary.getId(), organizationId, userId, AssetRole.OWNER, null, userId);
+    when(libraryRepository.findById(any(UUID.class))).thenReturn(Optional.of(insertedLibrary));
+    when(grantRepository.findById(any(UUID.class))).thenReturn(Optional.of(insertedGrant));
+
+    libraryService.ensurePersonalLibrary(userId, organizationId);
+
+    verify(permissionHistoryService).recordLibraryCreated(insertedLibrary, userId);
+    verify(permissionHistoryService).recordGrantCreated(insertedGrant, userId);
+  }
+
+  @Test
+  void ensurePersonalLibraryDoesNotHistoriseWhenARaceLoserFindsTheInsertsAlreadyDone() {
+    // The ON CONFLICT ... DO NOTHING no-op path (a concurrent caller won the race) must not write
+    // a second, conflicting open history interval for the library another caller already
+    // historised.
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    when(libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)).thenReturn(false);
+    when(libraryRepository.insertPersonalLibraryIfAbsent(
+            any(UUID.class), eq(organizationId), any(String.class), any(String.class), eq(userId)))
+        .thenReturn(0);
+    when(grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(any(UUID.class), eq(userId)))
+        .thenReturn(0);
+
+    libraryService.ensurePersonalLibrary(userId, organizationId);
+
+    verify(permissionHistoryService, never()).recordLibraryCreated(any(), any());
+    verify(permissionHistoryService, never()).recordGrantCreated(any(), any());
+    verify(libraryRepository, never()).findById(any());
+    verify(grantRepository, never()).findById(any());
   }
 }

@@ -18,5 +18,14 @@ public enum AssetGrantHistoryCause {
   ROLE_CHANGED,
 
   /** An {@link AssetGrant} was deleted ({@code AssetGrantService#revokeGrant}) - closes only. */
-  REVOKED
+  REVOKED,
+
+  /**
+   * The interval was written by migration 018's backfill changeSet for a grant that already existed
+   * before this feature - not observed as a live change, reconstructed from {@code
+   * asset_grants.created_at}/{@code granted_by_user_id} so the negative question is answerable for
+   * the entire existing body of grants, not only ones created after this migration ran (code review
+   * of #238, finding 1).
+   */
+  BACKFILL
 }

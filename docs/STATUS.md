@@ -210,9 +210,13 @@ nicht vertreten.
 - Rechtefilter über lesbare Wissensbibliotheken (`LibraryAccessService`)
 - **Historisierung von Rechten und Gruppenmitgliedschaften** (#238): Grants, Gruppenmitgliedschaften
   und die Reichweitenfelder einer Bibliothek (`visibility`, `listed`) sind als Intervalle mit
-  auslösendem Vorgang historisiert (`PermissionHistoryService`, Migration `018-permission-history.yaml`)
-  — auch Änderungen aus einem Verzeichnislauf. Die vollständige Rechtemenge einer Person ist zu einem
-  beliebigen Stichtag rekonstruierbar, die Negativfrage damit belegbar beantwortbar.
+  auslösendem Vorgang historisiert (`PermissionHistoryService`, Migration `018-permission-history.yaml`,
+  inklusive Backfill des Altbestands) — auch Änderungen aus einem Verzeichnislauf und aus der
+  automatischen persönlichen Bibliothek. Die vollständige Rechtemenge einer Person ist zu einem
+  beliebigen Stichtag rekonstruierbar, die Negativfrage damit belegbar beantwortbar; die Historie
+  überlebt die Löschung von Bibliothek oder Gruppe (ADR-0015). Noch offen: Aufbewahrungshöchstdauer
+  und Pseudonymisierung der Historie selbst, sowie die Zuordnung eines historisierten
+  Verzeichnislauf-Eintrags zum konkreten Lauf (siehe `docs/features/security-and-compliance.md`).
 
 **Geplant (Phase 1)**
 - Kontenlebenszyklus über SCIM statt eigenem Abgleich · Einschränkung auf Netzbereiche ·

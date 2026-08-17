@@ -12,6 +12,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
 import io.opaa.observability.QueryMetrics;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,11 +122,15 @@ public class QueryService {
 
                 long startTime = System.currentTimeMillis();
 
+                Instant scopeComputedAt = Instant.now();
                 Set<UUID> readableLibraryIds =
                     libraryAccessService.readableLibraryIds(
                         currentUserId, currentUser.getOrganizationId());
                 checkAgainstPermissionHistory(
-                    readableLibraryIds, currentUserId, currentUser.getOrganizationId());
+                    readableLibraryIds,
+                    currentUserId,
+                    currentUser.getOrganizationId(),
+                    scopeComputedAt);
 
                 List<Document> relevantChunks =
                     readableLibraryIds.isEmpty()
@@ -177,25 +182,31 @@ public class QueryService {
   /**
    * #238's regression check - see {@link #query}'s Javadoc. {@code appliedScope} is exactly the
    * filter about to be handed to the vector store; any id in it the permission history does not
-   * also grant at "now" is logged as a mismatch, never silently ignored.
+   * also grant at {@code asOf} is a mismatch, logged as a single warning per query (not once per
+   * offending library - code review of #427, nit 2), never silently ignored. {@code asOf} is the
+   * instant {@code appliedScope} was itself computed at, not a fresh {@code Instant.now()} taken
+   * here - reusing it avoids a false-positive mismatch from a permission change landing in the gap
+   * between the two computations.
    */
   private void checkAgainstPermissionHistory(
-      Set<UUID> appliedScope, UUID currentUserId, UUID organizationId) {
+      Set<UUID> appliedScope, UUID currentUserId, UUID organizationId, Instant asOf) {
     if (appliedScope.isEmpty()) {
       return;
     }
     Set<UUID> historized =
-        permissionHistoryService.readableLibraryIdsAsOf(
-            currentUserId, organizationId, Instant.now());
-    for (UUID libraryId : appliedScope) {
-      if (!historized.contains(libraryId)) {
-        log.warn(
-            "Permission history regression check: query for user {} applied library {} to the"
-                + " search scope, but the permission history does not (currently) grant it -"
-                + " possible enforcement drift between the live and historized rights computation",
-            currentUserId,
-            libraryId);
-      }
+        permissionHistoryService.readableLibraryIdsAsOf(currentUserId, organizationId, asOf);
+    Set<UUID> mismatched = new HashSet<>(appliedScope);
+    mismatched.removeAll(historized);
+    if (!mismatched.isEmpty()) {
+      log.warn(
+          "Permission history regression check: query for user {} applied {} librar{} to the"
+              + " search scope the permission history does not grant as of {} - possible"
+              + " enforcement drift between the live and historized rights computation: {}",
+          currentUserId,
+          mismatched.size(),
+          mismatched.size() == 1 ? "y" : "ies",
+          asOf,
+          mismatched);
     }
   }
 

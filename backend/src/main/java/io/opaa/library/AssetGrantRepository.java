@@ -22,6 +22,11 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * silent no-op rather than a duplicate-grant error. Used only by {@code
    * KnowledgeLibraryService#ensurePersonalLibrary}, after the library itself has been
    * inserted-or-confirmed-existing in the same {@code REQUIRES_NEW} transaction.
+   *
+   * <p>Returns the number of rows actually inserted (0 or 1) - {@code
+   * KnowledgeLibraryService#ensurePersonalLibrary} historises the new grant only when this is 1,
+   * for the same reason {@link KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} does (code
+   * review of #238, finding 2).
    */
   @Modifying
   @Query(
@@ -33,7 +38,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
               + " WHERE kl.owner_user_id = :ownerUserId AND kl.personal = true"
               + " ON CONFLICT (library_id, subject_user_id) WHERE subject_type = 'USER' DO NOTHING",
       nativeQuery = true)
-  void insertOwnerGrantForPersonalLibraryIfAbsent(
+  int insertOwnerGrantForPersonalLibraryIfAbsent(
       @Param("grantId") UUID grantId, @Param("ownerUserId") UUID ownerUserId);
 
   /** All grants on a library, used to populate {@link LibraryAccessService}'s per-library cache. */

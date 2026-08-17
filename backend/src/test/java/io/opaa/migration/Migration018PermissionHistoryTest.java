@@ -8,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.UUID;
 import liquibase.Contexts;
 import liquibase.Liquibase;
@@ -31,6 +32,12 @@ import org.testcontainers.utility.DockerImageName;
  * not part of this fixture). {@code connection.setAutoCommit(true)} is called after every {@code
  * liquibase.update(...)} call, and the public schema is dropped and recreated between test methods,
  * per the package Javadoc's mandatory teardown pattern.
+ *
+ * <p>{@code setUp} deliberately does <b>not</b> apply changelog 018 itself (unlike an earlier
+ * version of this class) - the backfill tests need legacy rows in {@code asset_grants}/{@code
+ * group_memberships}/{@code knowledge_libraries} inserted <em>before</em> 018 runs, so every test
+ * calls {@link #applyChangelog018()} itself, at the point in its own body where the migration is
+ * meant to run.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class Migration018PermissionHistoryTest {
@@ -60,8 +67,6 @@ class Migration018PermissionHistoryTest {
             database);
     liquibase.update(new Contexts());
     connection.setAutoCommit(true);
-
-    applyChangelog018();
   }
 
   @AfterEach
@@ -81,6 +86,7 @@ class Migration018PermissionHistoryTest {
   @Test
   void chkAssetGrantHistorySubjectRejectsEveryMismatchBetweenSubjectTypeAndSubjectColumns()
       throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
     UUID group = insertGroup(UUID.randomUUID());
@@ -101,6 +107,7 @@ class Migration018PermissionHistoryTest {
 
   @Test
   void chkAssetGrantHistoryCauseRejectsAnUnknownCause() throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
 
@@ -110,7 +117,19 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
+  void chkAssetGrantHistoryCauseAcceptsBackfill() throws Exception {
+    applyChangelog018();
+    UUID library = insertLibrary(UUID.randomUUID());
+    UUID user = insertUser(UUID.randomUUID());
+
+    insertGrantHistory(library, "USER", user, null, "VIEWER", "BACKFILL");
+
+    assertThat(grantHistoryCountFor(library)).isEqualTo(1);
+  }
+
+  @Test
   void chkAssetGrantHistoryRoleRejectsARoleNameFromTheDisjointSpaceRoleSystem() throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
 
@@ -121,6 +140,7 @@ class Migration018PermissionHistoryTest {
 
   @Test
   void uniqueIndexRejectsASecondOpenIntervalForTheSameLibraryAndSubject() throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
 
@@ -151,6 +171,7 @@ class Migration018PermissionHistoryTest {
     // docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten:
     // deleting an account must clear the actor reference, not block the deletion or lose the
     // historised interval itself.
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID subject = insertUser(UUID.randomUUID());
     UUID actor = insertUser(UUID.randomUUID());
@@ -183,7 +204,29 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
-  void deletingALibraryCascadesToItsGrantHistory() throws Exception {
+  void deletingTheSubjectUserIsBlockedWhileTheirGrantHistoryExists() throws Exception {
+    // Code review of #238, finding 4: the subject side must not be weaker than RESTRICT - a
+    // CASCADE here would delete exactly the interval a Stichtag reconstruction for a departed
+    // person depends on.
+    applyChangelog018();
+    UUID library = insertLibrary(UUID.randomUUID());
+    UUID subject = insertUser(UUID.randomUUID());
+    insertGrantHistory(library, "USER", subject, null, "VIEWER", "GRANTED");
+
+    try (Statement statement = connection.createStatement()) {
+      assertThatThrownBy(() -> statement.execute("DELETE FROM users WHERE id = '" + subject + "'"))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("fk_asset_grant_history_subject_user");
+    }
+    assertThat(grantHistoryCountFor(library)).isEqualTo(1);
+  }
+
+  @Test
+  void deletingALibraryLeavesItsGrantHistoryIntact() throws Exception {
+    // Code review of #238, finding 3: library_id carries no foreign key at all - a library
+    // deletion (KnowledgeLibraryService#deleteLibrary, a routine OWNER action) must never take the
+    // record of who could once read it down with it.
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
     insertGrantHistory(library, "USER", user, null, "OWNER", "GRANTED");
@@ -193,7 +236,26 @@ class Migration018PermissionHistoryTest {
       statement.execute("DELETE FROM knowledge_libraries WHERE id = '" + library + "'");
     }
 
-    assertThat(grantHistoryCountFor(library)).isZero();
+    assertThat(grantHistoryCountFor(library)).isEqualTo(1);
+  }
+
+  @Test
+  void deletingAGroupLeavesItsGrantHistoryIntact() throws Exception {
+    // Code review of #238, finding 3 - the group-subject counterpart of the library test above.
+    // A group that once held a grant but had it revoked can be deleted
+    // (AssetGrantRepository#existsBySubjectGroupId only sees currently active grants); its history
+    // must survive that deletion.
+    applyChangelog018();
+    UUID library = insertLibrary(UUID.randomUUID());
+    UUID group = insertGroup(UUID.randomUUID());
+    insertGrantHistory(library, "GROUP", null, group, "VIEWER", "GRANTED");
+    assertThat(grantHistoryCountFor(library)).isEqualTo(1);
+
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM groups WHERE id = '" + group + "'");
+    }
+
+    assertThat(grantHistoryCountFor(library)).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -202,6 +264,7 @@ class Migration018PermissionHistoryTest {
 
   @Test
   void chkGroupMembershipHistoryCauseRejectsAnUnknownCause() throws Exception {
+    applyChangelog018();
     UUID group = insertGroup(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
 
@@ -211,7 +274,19 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
+  void chkGroupMembershipHistoryCauseAcceptsBackfill() throws Exception {
+    applyChangelog018();
+    UUID group = insertGroup(UUID.randomUUID());
+    UUID user = insertUser(UUID.randomUUID());
+
+    insertMembershipHistory(group, user, "BACKFILL");
+
+    assertThat(membershipHistoryCountFor(group)).isEqualTo(1);
+  }
+
+  @Test
   void uniqueIndexRejectsASecondOpenIntervalForTheSameGroupAndUser() throws Exception {
+    applyChangelog018();
     UUID group = insertGroup(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
 
@@ -222,17 +297,41 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
-  void deletingAUserCascadesToTheirMembershipHistory() throws Exception {
+  void deletingTheSubjectUserIsBlockedWhileTheirMembershipHistoryExists() throws Exception {
+    // Code review of #238, finding 4: an earlier version of this migration had user_id ON DELETE
+    // CASCADE, contradicting docs/features/security-and-compliance.md ("die Historie selbst
+    // bleibt unveraendert bestehen") and inconsistent with asset_grant_history.subject_user_id
+    // (RESTRICT). Both subject columns are RESTRICT alike now.
+    applyChangelog018();
     UUID group = insertGroup(UUID.randomUUID());
     UUID user = insertUser(UUID.randomUUID());
     insertMembershipHistory(group, user, "ADDED");
     assertThat(membershipHistoryCountFor(group)).isEqualTo(1);
 
     try (Statement statement = connection.createStatement()) {
-      statement.execute("DELETE FROM users WHERE id = '" + user + "'");
+      assertThatThrownBy(() -> statement.execute("DELETE FROM users WHERE id = '" + user + "'"))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("fk_group_membership_history_user");
+    }
+    assertThat(membershipHistoryCountFor(group)).isEqualTo(1);
+  }
+
+  @Test
+  void deletingAGroupLeavesItsMembershipHistoryIntact() throws Exception {
+    // Code review of #238, finding 3: group_id carries no foreign key at all - deleting a group
+    // (GroupService#deleteGroup, blocked only while it still owns an asset or holds a grant, not
+    // while it merely has historised memberships) must never take that history down with it.
+    applyChangelog018();
+    UUID group = insertGroup(UUID.randomUUID());
+    UUID user = insertUser(UUID.randomUUID());
+    insertMembershipHistory(group, user, "REMOVED");
+    assertThat(membershipHistoryCountFor(group)).isEqualTo(1);
+
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM groups WHERE id = '" + group + "'");
     }
 
-    assertThat(membershipHistoryCountFor(group)).isZero();
+    assertThat(membershipHistoryCountFor(group)).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -241,6 +340,7 @@ class Migration018PermissionHistoryTest {
 
   @Test
   void chkLibraryVisibilityHistoryValuesRejectUnknownVisibilityAndCause() throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
 
     assertThatThrownBy(() -> insertVisibilityHistory(library, "SECRET", false, "CREATED"))
@@ -252,7 +352,18 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
+  void chkLibraryVisibilityHistoryCauseAcceptsBackfill() throws Exception {
+    applyChangelog018();
+    UUID library = insertLibrary(UUID.randomUUID());
+
+    insertVisibilityHistory(library, "PRIVATE", false, "BACKFILL");
+
+    assertThat(visibilityHistoryCountFor(library)).isEqualTo(1);
+  }
+
+  @Test
   void uniqueIndexRejectsASecondOpenIntervalForTheSameLibrary() throws Exception {
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
 
     insertVisibilityHistory(library, "PRIVATE", false, "CREATED");
@@ -263,7 +374,9 @@ class Migration018PermissionHistoryTest {
   }
 
   @Test
-  void deletingALibraryCascadesToItsVisibilityHistory() throws Exception {
+  void deletingALibraryLeavesItsVisibilityHistoryIntact() throws Exception {
+    // Code review of #238, finding 3.
+    applyChangelog018();
     UUID library = insertLibrary(UUID.randomUUID());
     insertVisibilityHistory(library, "PRIVATE", false, "CREATED");
     assertThat(visibilityHistoryCountFor(library)).isEqualTo(1);
@@ -272,7 +385,129 @@ class Migration018PermissionHistoryTest {
       statement.execute("DELETE FROM knowledge_libraries WHERE id = '" + library + "'");
     }
 
-    assertThat(visibilityHistoryCountFor(library)).isZero();
+    assertThat(visibilityHistoryCountFor(library)).isEqualTo(1);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // 018-backfill-permission-history
+  // ---------------------------------------------------------------------------------------
+
+  @Test
+  void backfillWritesAnOpenIntervalForEveryExistingGrantWithItsCreatedAtAndGrantedByUser()
+      throws Exception {
+    UUID library = insertLibrary(UUID.randomUUID());
+    UUID subject = insertUser(UUID.randomUUID());
+    UUID grantedBy = insertUser(UUID.randomUUID());
+    UUID grantId = UUID.randomUUID();
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+              + " subject_user_id, role, granted_by_user_id, created_at, updated_at) VALUES ('"
+              + grantId
+              + "', '"
+              + library
+              + "', '"
+              + SEEDED_ORGANIZATION_ID
+              + "', 'USER', '"
+              + subject
+              + "', 'VIEWER', '"
+              + grantedBy
+              + "', '2026-01-15T09:00:00Z', now())");
+    }
+
+    applyChangelog018();
+
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT cause, actor_user_id, valid_from, valid_to FROM asset_grant_history"
+                    + " WHERE library_id = '"
+                    + library
+                    + "' AND subject_user_id = '"
+                    + subject
+                    + "'")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getString("cause")).isEqualTo("BACKFILL");
+      assertThat(rs.getObject("actor_user_id")).isEqualTo(grantedBy);
+      assertThat(rs.getTimestamp("valid_from").toInstant())
+          .isEqualTo(Instant.parse("2026-01-15T09:00:00Z"));
+      assertThat(rs.getTimestamp("valid_to")).isNull();
+      assertThat(rs.next()).isFalse();
+    }
+  }
+
+  @Test
+  void backfillWritesAnOpenIntervalForEveryExistingMembershipWithNoActor() throws Exception {
+    UUID group = insertGroup(UUID.randomUUID());
+    UUID user = insertUser(UUID.randomUUID());
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"
+              + " VALUES ('"
+              + UUID.randomUUID()
+              + "', '"
+              + user
+              + "', '"
+              + group
+              + "', '"
+              + SEEDED_ORGANIZATION_ID
+              + "', '2026-02-01T00:00:00Z')");
+    }
+
+    applyChangelog018();
+
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT cause, actor_user_id, valid_to FROM group_membership_history"
+                    + " WHERE group_id = '"
+                    + group
+                    + "' AND user_id = '"
+                    + user
+                    + "'")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getString("cause")).isEqualTo("BACKFILL");
+      assertThat(rs.getObject("actor_user_id")).isNull();
+      assertThat(rs.getTimestamp("valid_to")).isNull();
+    }
+  }
+
+  @Test
+  void backfillWritesAnOpenIntervalForEveryExistingLibraryWithOwnerAsActorOnlyForUserOwned()
+      throws Exception {
+    UUID userOwned = insertLibrary(UUID.randomUUID());
+    UUID owner = insertUser(UUID.randomUUID());
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "UPDATE knowledge_libraries SET owner_type = 'USER', owner_user_id = '"
+              + owner
+              + "' WHERE id = '"
+              + userOwned
+              + "'");
+    }
+    UUID systemOwned = insertLibrary(UUID.randomUUID());
+
+    applyChangelog018();
+
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT actor_user_id, cause FROM library_visibility_history WHERE library_id = '"
+                    + userOwned
+                    + "'")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getObject("actor_user_id")).isEqualTo(owner);
+      assertThat(rs.getString("cause")).isEqualTo("BACKFILL");
+    }
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT actor_user_id FROM library_visibility_history WHERE library_id = '"
+                    + systemOwned
+                    + "'")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getObject("actor_user_id")).isNull();
+    }
   }
 
   // ---------------------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
@@ -92,6 +93,7 @@ class DirectorySyncServiceIntegrationTest {
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipRepository membershipRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
@@ -105,6 +107,11 @@ class DirectorySyncServiceIntegrationTest {
   @BeforeEach
   void cleanUp() {
     statusRepository.deleteAll();
+    // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
+    // and group_membership_history.user_id is ON DELETE RESTRICT (see
+    // 018-permission-history.yaml's "Deletion survival" comment) - the blanket
+    // userRepository.deleteAll() below would otherwise fail from the second test method onward.
+    membershipHistoryRepository.deleteAll();
     membershipRepository.deleteAll();
     groupRepository.deleteAll();
     userRepository.deleteAll();

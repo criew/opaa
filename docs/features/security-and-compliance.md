@@ -422,6 +422,28 @@ der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren 
 Chunks werden nie geladen. Was es gibt, ist der Nachweis über die **Rechtehistorie** — und er ist der
 stärkere, weil er den Zustand belegt und nicht das Ausbleiben eines Ereignisses.
 
+**Umsetzungsstand (#238):** Grants, Gruppenmitgliedschaften und die Reichweitenfelder einer Bibliothek
+sind als Intervalle mit auslösendem Vorgang historisiert, einschließlich eines Backfills für den
+Altbestand (Ursache `BACKFILL`, `valid_from` aus dem jeweiligen Erstellungszeitpunkt der Fachzeile) —
+ohne ihn wäre die Rekonstruktion für jeden Stichtag vor der Migration und für jedes seither unveränderte
+Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung einer Bibliothek oder Gruppe
+(siehe [ADR-0015](../decisions/0015-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
+bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
+
+**Noch offen, bewusst nicht Teil dieser Ausbaustufe:**
+
+- **Aufbewahrungshöchstdauer und Pseudonymisierung der Historie selbst.** Die oben zugesagte
+  Pseudonymisierung ab Schreibzeitpunkt ist noch nicht umgesetzt; die Subjektspalten der
+  Rechtehistorie sind stattdessen `ON DELETE RESTRICT` gegen die Nutzertabelle — eine Kontolöschung
+  ist damit blockiert, solange Rechtehistorie zu diesem Konto existiert, bis #391/#395 die
+  Pseudonymisierung liefern (siehe ADR-0015).
+- **Verzeichnislauf ohne Laufbezug.** Ein historisierter Eintrag mit Ursache `DIRECTORY_SYNC_ADDED`/
+  `DIRECTORY_SYNC_REMOVED` lässt sich nicht auf den konkreten Synchronisationslauf zurückführen, der
+  ihn verursacht hat — `DirectorySyncStatus` hält nur den jeweils letzten Lauf je Organisation.
+
+Beides ist als Follow-up vorgesehen, nicht als Lücke im Rekonstruktionsergebnis selbst: Die
+Rechtemenge zu einem Stichtag und die Negativfrage sind bereits jetzt korrekt beantwortbar.
+
 ---
 
 ## Vollständigkeit nach DSGVO: Löschung und Export

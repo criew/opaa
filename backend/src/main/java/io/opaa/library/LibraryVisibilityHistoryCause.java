@@ -12,5 +12,13 @@ public enum LibraryVisibilityHistoryCause {
    * {@code visibility} or {@code listed} changed ({@code KnowledgeLibraryService#updateLibrary}) -
    * closes the previous interval and opens a new one with the new values.
    */
-  VISIBILITY_CHANGED
+  VISIBILITY_CHANGED,
+
+  /**
+   * The interval was written by migration 018's backfill changeSet for a library that already
+   * existed before this feature - reconstructed from {@code knowledge_libraries.created_at}, with
+   * {@code actor_user_id} set to {@code owner_user_id} for a USER-owned library, else {@code null}
+   * (code review of #238, finding 1).
+   */
+  BACKFILL
 }

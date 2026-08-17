@@ -21,5 +21,13 @@ public enum GroupMembershipHistoryCause {
   DIRECTORY_SYNC_ADDED,
 
   /** A directory sync run removed a membership ({@code DirectorySyncPlanExecutor#applyPlan}). */
-  DIRECTORY_SYNC_REMOVED
+  DIRECTORY_SYNC_REMOVED,
+
+  /**
+   * The interval was written by migration 018's backfill changeSet for a membership that already
+   * existed before this feature - reconstructed from {@code group_memberships.created_at}, with no
+   * actor (that column does not record who added an existing membership; code review of #238,
+   * finding 1).
+   */
+  BACKFILL
 }

@@ -15,6 +15,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupKind;
 import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
@@ -89,6 +90,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -139,6 +142,15 @@ class KnowledgeLibraryServiceIntegrationTest {
     for (UUID spaceId : createdSpaceIds) {
       spaceRepository.deleteById(spaceId);
     }
+    // #238 code review, finding 3+4: asset_grant_history.subject_user_id and
+    // group_membership_history.user_id are ON DELETE RESTRICT (the history must survive a library
+    // or group deletion, but an account deletion is deliberately blocked until a pseudonymisation
+    // mechanism exists - see 018-permission-history.yaml's "Deletion survival" comment). Every
+    // library/grant/membership operation this class exercises now writes such a row, so it must be
+    // purged before this teardown's own user deletion below, which is not a real account deletion
+    // but this test's own cleanup.
+    grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
+    membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }

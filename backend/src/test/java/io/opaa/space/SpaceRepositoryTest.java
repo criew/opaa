@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.group.GroupMembershipHistoryRepository;
+import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -52,6 +54,8 @@ class SpaceRepositoryTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
   private UUID org;
 
@@ -71,6 +75,12 @@ class SpaceRepositoryTest {
     // touches the one seeded SYSTEM library.
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
+    // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
+    // (see 018-permission-history.yaml's "Deletion survival" comment), and another test class
+    // sharing this context may have historised a grant/membership for a user it never cleaned up.
+    grantHistoryRepository.deleteAll();
+    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     org = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
@@ -84,6 +94,8 @@ class SpaceRepositoryTest {
     spaceRepository.deleteAll();
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    grantHistoryRepository.deleteAll();
+    membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     organizationRepository.deleteById(org);
   }

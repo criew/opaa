@@ -92,6 +92,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
+  @Autowired private LibraryAccessService accessService;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DirectorySyncService directorySyncService;
@@ -127,6 +128,10 @@ class PermissionHistoryServiceIntegrationTest {
                             || createdGroupIds.contains(l.getOwnerGroupId())))
             .toList();
     libraryRepository.deleteAll(ownLibraries);
+    // #238 code review, finding 3+4: subject_user_id/user_id are ON DELETE RESTRICT - see
+    // KnowledgeLibraryServiceIntegrationTest#tearDown's identical comment.
+    grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
+    membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }
@@ -278,6 +283,61 @@ class PermissionHistoryServiceIntegrationTest {
             permissionHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, afterNarrowing))
         .doesNotContain(libraryId);
+  }
+
+  @Test
+  void
+      liveReadableLibraryIdsAndTheAsOfReconstructionAgreeForNowIncludingAPersonalLibraryFromEnsurePersonalLibrary() {
+    // Code review of #427 (nit 1): the two formulas' central claim is that they agree - not just
+    // structurally, but on the same real fixture, at "now". This is also the test that would have
+    // caught finding 2 (ensurePersonalLibrary never historising): before that fix, the personal
+    // library appeared in readableLibraryIds (via its direct grant) but never in
+    // readableLibraryIdsAsOf, so this assertion would have failed.
+    UUID user = createUser();
+    libraryService.ensurePersonalLibrary(user, organizationId);
+
+    UUID sharedOwner = createUser();
+    UUID sharedLibraryId = createLibrary(sharedOwner);
+    grantService.upsertGrant(
+        sharedLibraryId,
+        new AssetGrantRequest(PermissionSubjectType.USER, user, AssetRole.VIEWER),
+        sharedOwner,
+        false);
+
+    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
+    Group savedGroup = groupRepository.save(group);
+    createdGroupIds.add(savedGroup.getId());
+    UUID groupOwner = createUser();
+    UUID groupLibraryId = createLibrary(groupOwner);
+    grantService.upsertGrant(
+        groupLibraryId,
+        new AssetGrantRequest(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
+        groupOwner,
+        false);
+    groupService.addMember(savedGroup.getId(), user, groupOwner);
+
+    UUID orgWideOwner = createUser();
+    UUID orgWideLibraryId = createLibrary(orgWideOwner);
+    libraryService.updateLibrary(
+        orgWideLibraryId,
+        new LibraryUpdateRequest("Bibliothek").visibility(LibraryVisibility.ORGANIZATION),
+        orgWideOwner,
+        false);
+
+    Instant now = Instant.now();
+    Set<UUID> live = accessService.readableLibraryIds(user, organizationId);
+    Set<UUID> historized =
+        permissionHistoryService.readableLibraryIdsAsOf(user, organizationId, now);
+
+    assertThat(historized).isEqualTo(live);
+    assertThat(historized)
+        .contains(sharedLibraryId, groupLibraryId, orgWideLibraryId)
+        .anyMatch(
+            id ->
+                libraryRepository
+                    .findById(id)
+                    .map(l -> l.isPersonal() && user.equals(l.getOwnerUserId()))
+                    .orElse(false));
   }
 
   private UUID findLiveGrantId(UUID libraryId, UUID subjectUserId) {

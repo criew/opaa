@@ -378,16 +378,36 @@ public class KnowledgeLibraryService {
 
     requiresNewTransactionTemplate.executeWithoutResult(
         status -> {
-          libraryRepository.insertPersonalLibraryIfAbsent(
-              UUID.randomUUID(),
-              organizationId,
-              PERSONAL_LIBRARY_NAME,
-              "Private persoenliche Wissensbibliothek",
-              userId);
+          UUID libraryId = UUID.randomUUID();
+          // #238 code review, finding 2: the return value is the number of rows this call itself
+          // inserted (0 on the ON CONFLICT ... DO NOTHING no-op path, 1 otherwise) - history is
+          // written only on the path that actually inserted, never for a personal library another
+          // concurrent call already created, so two racing callers never both write a conflicting
+          // open interval for the same library.
+          int libraryInserted =
+              libraryRepository.insertPersonalLibraryIfAbsent(
+                  libraryId,
+                  organizationId,
+                  PERSONAL_LIBRARY_NAME,
+                  "Private persoenliche Wissensbibliothek",
+                  userId);
+          if (libraryInserted > 0) {
+            // Same connection/transaction as the insert above, so this always sees the row it just
+            // wrote.
+            permissionHistoryService.recordLibraryCreated(
+                libraryRepository.findById(libraryId).orElseThrow(), userId);
+          }
+
+          UUID grantId = UUID.randomUUID();
           // Same connection/transaction as the insert above, so it always sees the row it just
           // wrote (or the pre-existing one another concurrent call won the race for) - see
           // AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent.
-          grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(UUID.randomUUID(), userId);
+          int grantInserted =
+              grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(grantId, userId);
+          if (grantInserted > 0) {
+            permissionHistoryService.recordGrantCreated(
+                grantRepository.findById(grantId).orElseThrow(), userId);
+          }
         });
   }
 

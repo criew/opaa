@@ -1,18 +1,29 @@
 package io.opaa.group;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface GroupMembershipHistoryRepository
     extends JpaRepository<GroupMembershipHistory, UUID> {
 
   Optional<GroupMembershipHistory> findByGroupIdAndUserIdAndValidToIsNull(
       UUID groupId, UUID userId);
+
+  /**
+   * Test-only cleanup helper - see {@link
+   * io.opaa.library.AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning and
+   * for why {@code @Transactional} is required here; {@code user_id} here is the same {@code ON
+   * DELETE RESTRICT} pattern (migration 018, code review of #238 finding 4).
+   */
+  @Transactional
+  void deleteByUserIdIn(Collection<UUID> userIds);
 
   /**
    * Every group {@code userId} belonged to at {@code asOf} - the interval's {@code validFrom <=
