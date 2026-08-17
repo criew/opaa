@@ -143,28 +143,15 @@ public class LibraryAccessService {
       return AssetRole.OWNER;
     }
 
-    AssetRole best = null;
-    if (library.getVisibility() == LibraryVisibility.ORGANIZATION) {
-      best = AssetRole.VIEWER;
-    }
-
-    Instant now = Instant.now();
+    AssetRole organizationWideFloor =
+        library.getVisibility() == LibraryVisibility.ORGANIZATION ? AssetRole.VIEWER : null;
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-    for (AssetGrant grant :
-        grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId)) {
-      if (grant.isExpired(now)) {
-        continue;
-      }
-      boolean reaches =
-          (grant.getSubjectType() == PermissionSubjectType.USER
-                  && grant.getSubjectUserId().equals(userId))
-              || (grant.getSubjectType() == PermissionSubjectType.GROUP
-                  && groupIds.contains(grant.getSubjectGroupId()));
-      if (reaches && (best == null || grant.getRole().atLeast(best))) {
-        best = grant.getRole();
-      }
-    }
-    return best;
+    return bestRole(
+        grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId),
+        userId,
+        groupIds,
+        Instant.now(),
+        organizationWideFloor);
   }
 
   /**
@@ -245,26 +232,49 @@ public class LibraryAccessService {
 
     Map<UUID, AssetRole> roles = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
-      AssetRole best = null;
-      if (library.getVisibility() == LibraryVisibility.ORGANIZATION) {
-        best = AssetRole.VIEWER;
-      }
-      for (AssetGrant grant : grantsByLibraryId.getOrDefault(library.getId(), List.of())) {
-        if (grant.isExpired(now)) {
-          continue;
-        }
-        boolean reaches =
-            (grant.getSubjectType() == PermissionSubjectType.USER
-                    && grant.getSubjectUserId().equals(userId))
-                || (grant.getSubjectType() == PermissionSubjectType.GROUP
-                    && groupIds.contains(grant.getSubjectGroupId()));
-        if (reaches && (best == null || grant.getRole().atLeast(best))) {
-          best = grant.getRole();
-        }
-      }
+      AssetRole organizationWideFloor =
+          library.getVisibility() == LibraryVisibility.ORGANIZATION ? AssetRole.VIEWER : null;
+      AssetRole best =
+          bestRole(
+              grantsByLibraryId.getOrDefault(library.getId(), List.of()),
+              userId,
+              groupIds,
+              now,
+              organizationWideFloor);
+      // Every library here is assumed to already be in the caller's readableLibraryIds, which the
+      // formula guarantees is reachable only at VIEWER or above - see this method's own Javadoc.
       roles.put(library.getId(), best != null ? best : AssetRole.VIEWER);
     }
     return roles;
+  }
+
+  /**
+   * The single rights-resolution formula both {@link #effectiveRole} and {@link
+   * #effectiveRolesForReadableLibraries} apply - the same computation over two different grant
+   * sources (a single cached library's grants vs. a batch-loaded map across many), extracted after
+   * #425 code review so the formula itself can never drift between the two call sites the way the
+   * divergence #418 itself closes once did between {@code listLibraries} and {@code
+   * readableLibraryIds}. Highest role among {@code seed} (the caller's starting floor, e.g.
+   * organization-wide visibility, or {@code null} for none) and every non-expired grant in {@code
+   * grants} that reaches {@code userId} - directly, or via one of {@code groupIds}.
+   */
+  private static AssetRole bestRole(
+      List<AssetGrant> grants, UUID userId, Set<UUID> groupIds, Instant now, AssetRole seed) {
+    AssetRole best = seed;
+    for (AssetGrant grant : grants) {
+      if (grant.isExpired(now)) {
+        continue;
+      }
+      boolean reaches =
+          (grant.getSubjectType() == PermissionSubjectType.USER
+                  && grant.getSubjectUserId().equals(userId))
+              || (grant.getSubjectType() == PermissionSubjectType.GROUP
+                  && groupIds.contains(grant.getSubjectGroupId()));
+      if (reaches && (best == null || grant.getRole().atLeast(best))) {
+        best = grant.getRole();
+      }
+    }
+    return best;
   }
 
   /**
