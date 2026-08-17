@@ -1,16 +1,28 @@
 # Overlay applied only by scripts/run-e2e.mjs (`-f docker-compose.yml -f
 # e2e/docker-compose.e2e.yml`), never by a developer's own `docker compose
 # up`.
+
+# Single source of truth for the fake embedding vector's length, shared by pgvector's column width
+# (OPAA_PGVECTOR_DIMENSIONS, backend) and the stub's own default (EMBEDDING_DIMENSIONS, ai-stub) -
+# see PR #453 review, gathered nit: two independently hardcoded "1536"s could drift apart silently
+# whenever one gets edited without the other; one anchor referenced from both cannot.
+x-embedding-dimensions: &embedding-dimensions "1536"
+
 services:
   backend:
     depends_on:
       ai-stub:
-        condition: service_started
+        # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's
+        # dimension via a real POST /v1/embeddings call while the backend is still starting up
+        # (see PR #453 review). Waiting for the stub's own /health first, not just its container
+        # existing, is what actually guarantees it can already answer that call.
+        condition: service_healthy
     environment:
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.
       OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
+      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
       # A third dev user, "dev-outsider", used by test(e2e) #424 as the person with no grant on
       # anything (the negative case: a share must not leak to someone it was never extended to).
       # It is added here, not in application.yml's opaa.auth.dev.users default, because it is
@@ -36,6 +48,12 @@ services:
   # should ever be able to point at it by accident. No Dockerfile: the script is mounted straight
   # into the stock node image, so there is nothing extra to build or cache.
   ai-stub:
+    # Deliberately the same floating `node:22-alpine` tag already used for frontend/Dockerfile
+    # (and the equally floating `eclipse-temurin:21-jdk`/`nginx:alpine`/`pgvector/pgvector:pg18`
+    # elsewhere in the repo) - PR #453 review flagged this as a nightly-schedule risk (a new base
+    # image landing between runs), which is real but not specific to this service: pinning only
+    # ai-stub, and to what would then be the only digest-pinned image in the whole stack, would
+    # be an inconsistency of its own without actually closing that gap anywhere else.
     image: node:22-alpine
     working_dir: /app
     volumes:
@@ -43,3 +61,9 @@ services:
     command: ["node", "server.mjs"]
     environment:
       PORT: "8089"
+      EMBEDDING_DIMENSIONS: *embedding-dimensions
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10

@@ -19,8 +19,24 @@ const TEST_DOCUMENT_PATH = join(
 )
 const TEST_DOCUMENT_NAME = 'wissensdokument.txt'
 
+// Negative scenarios (4, 5) upload this into their own personal library rather than asserting
+// "zero results" against the shared library alone (see the module doc comment below and PR #453
+// review, nit 1): the only library an excluded user can otherwise read is their empty personal
+// one, so "zero source cards" would just as happily mean "the search never ran" as "the filter
+// works" - a stalled or failed personal-library provisioning (see
+// io.opaa.user.UserService#ensureBothPersonalAssets, retried on next login) would leave both
+// scenarios silently green without checking anything. A real, non-empty, own-vs-foreign
+// distinction closes that gap.
+const OWN_DOCUMENT_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'fixtures',
+  'test-documents',
+  'eigenesdokument.txt',
+)
+const OWN_DOCUMENT_NAME = 'eigenesdokument.txt'
+
 const QUESTION = 'Was steht im Wissensdokument?'
-const NO_CONTEXT_ANSWER = 'Dazu liegen mir keine Informationen in den zugänglichen Dokumenten vor.'
 
 // Unique per run so re-runs against a stack that was not torn down (or a shared dev stack) never
 // collide with a leftover library/group of the same name.
@@ -39,9 +55,28 @@ async function expectCitedSource(page: Page, fileName: string) {
   await expect(card).toHaveAttribute('data-cited', 'true', { timeout: 15_000 })
 }
 
-async function expectNoSourceFor(page: Page, fileName: string) {
-  await expect(page.getByText(NO_CONTEXT_ANSWER)).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByTestId('source-card').filter({ hasText: fileName })).toHaveCount(0)
+// Not "no source card at all": see OWN_DOCUMENT_PATH's comment above for why the negative
+// scenarios assert a real own-vs-foreign split instead of a plain absence check.
+async function expectOwnFoundForeignNotFound(
+  page: Page,
+  ownFileName: string,
+  foreignFileName: string,
+) {
+  await expectCitedSource(page, ownFileName)
+  await expect(page.getByTestId('source-card').filter({ hasText: foreignFileName })).toHaveCount(
+    0,
+  )
+}
+
+// Uploads OWN_DOCUMENT_PATH into the caller's own personal library. Not an explicit library pick:
+// DocumentsPage#selectedLibraryId defaults to the personal library whenever nothing else was
+// picked, and negative scenarios never grant themselves access to anything else - so this always
+// lands there regardless of which other libraries (if any) the account can otherwise see.
+async function uploadOwnDocument(page: Page) {
+  await page.goto('/documents')
+  await page.getByLabel('Dateien auswählen').setInputFiles(OWN_DOCUMENT_PATH)
+  await expect(page.getByText(OWN_DOCUMENT_NAME)).toBeVisible()
+  await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
 }
 
 // Idempotent, unlike a plain click on the summary: a MUI Accordion re-collapses on a second click,
@@ -74,18 +109,23 @@ async function gotoLibraries(page: Page) {
  * Covers test(e2e) #424: the full upload -> share -> find chain from Epic #198's "intermediate
  * state" resolution, and its negative counterpart - a share must never leak to someone it was not
  * extended to. Scenarios run in dependency order (each builds on library/group state the previous
- * one created) against the one library/document created in scenario 1, which keeps the suite
- * inside its runtime budget (only a single indexing call - see opaa.rate-limit.indexing, at most
- * one request per window).
+ * one created). Scenarios 1-3 and 6 share the one library/document created in scenario 1, kept to
+ * a single upload there for runtime (not to stay under a rate limit: document upload goes through
+ * POST /api/v1/libraries/{libraryId}/documents, which io.opaa.ratelimit.RateLimitConfiguration
+ * never guards - only POST /api/v1/indexing/trigger is, which this suite never calls). Scenarios 4
+ * and 5 each add one more upload of their own, into the acting user's own personal library - see
+ * OWN_DOCUMENT_PATH's comment for why.
  *
  * Scenarios 4 and 5 (the negative cases) are the ones that actually exercise
  * io.opaa.query.QueryService#libraryFilter, the permission filter applied directly to the vector
  * store query (see its Javadoc). Verified manually per AGENTS.md's Reproduktionsnachweis pattern,
  * applied to a pre-existing feature rather than a fix: with `.filterExpression(...)` removed from
- * that call and `readableLibraryIds.isEmpty() ? List.of() : ...` short-circuit bypassed, scenario 4
- * fails with "expected 0 source-card elements, found 1" (Nutzer C suddenly finds Nutzer A's
- * document) and scenario 5 fails the same way for Nutzer B after revocation - both restored to
- * green with the filter back in place. See the PR description for the exact failure output.
+ * that call and `readableLibraryIds.isEmpty() ? List.of() : ...` short-circuit bypassed, both
+ * scenarios fail identically - the own document is still (rightfully) cited, so
+ * `expectOwnFoundForeignNotFound`'s first assertion passes, but its second one does not:
+ * `expect(locator).toHaveCount(expected) failed / Locator: getByTestId('source-card').filter({
+ * hasText: 'wissensdokument.txt' }) / Expected: 0 / Received: 1` - the excluded user now finds the
+ * other's document too. Both restored to green with the filter back in place.
  */
 test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Suche (#424)', () => {
   test('1. Eigene Bibliothek anlegen und befüllen', async ({ authenticatedPage: page }) => {
@@ -145,12 +185,14 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('4. Negativfall: keine Freigabe, kein Treffer', async ({ outsiderPage: cPage }) => {
+    await uploadOwnDocument(cPage)
+
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
     await cPage.goto('/chat')
     await askQuestion(cPage, QUESTION)
-    await expectNoSourceFor(cPage, TEST_DOCUMENT_NAME)
+    await expectOwnFoundForeignNotFound(cPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
 
   test('5. Entzug wirkt', async ({ authenticatedPage: adminPage, regularUserPage: bPage }) => {
@@ -165,12 +207,14 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await expect(adminPage.getByText('Dev User')).toHaveCount(0)
     await adminPage.getByRole('button', { name: 'Schließen' }).click()
 
+    await uploadOwnDocument(bPage)
+
     await gotoLibraries(bPage)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
     await bPage.goto('/chat')
     await askQuestion(bPage, QUESTION)
-    await expectNoSourceFor(bPage, TEST_DOCUMENT_NAME)
+    await expectOwnFoundForeignNotFound(bPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
 
   test('6. Freigabe an eine Gruppe', async ({ authenticatedPage: adminPage, outsiderPage: cPage }) => {

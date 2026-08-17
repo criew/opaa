@@ -1,0 +1,7 @@
+Eigenes Dokument fuer den Negativfall der E2E-Suite (Issue #424, Review-Nit 1)
+
+Dieses Dokument gehoert der persoenlichen Bibliothek des Nutzers, der es hochlaedt - nie der
+geteilten Bibliothek aus Szenario 1. Die Negativszenarien laden es hoch, damit ihre Suche eine
+echte, nicht-leere Teilmenge zurueckgibt: das eigene Dokument wird zitiert, das fremde nicht.
+Damit fallen sie nicht mehr lautlos in den Kurzschluss "keine lesbare Bibliothek", falls die
+Provisionierung der persoenlichen Bibliothek je ausfaellt oder sich verzoegert.

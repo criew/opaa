@@ -160,9 +160,11 @@ Für neue Assertions bevorzugt in dieser Reihenfolge:
 `getByPlaceholder`/`getByText` auf sichtbaren, für Menschen formulierten Text (wie im aktuellen
 Rauchtest) sind **zu vermeiden**, sobald sich das vermeiden lässt: Sie brechen bei jeder
 Textänderung (inkl. Sonderzeichen wie `…`) und sind kein stabiler Vertrag zwischen Frontend und
-Suite. Das Frontend hat aktuell kein einziges `data-testid`; wer für #232/#233 eine Assertion
-braucht, die sich nicht über Rolle/Label ausdrücken lässt, ergänzt das nötige `data-testid` im
-selben PR.
+Suite. Das Frontend trägt bislang genau ein `data-testid` (`source-card` auf `SourceCard.tsx`,
+ergänzt für #424 — eine Quellenkarte im Chat hat keine für Rolle/Label geeignete feste Beschriftung,
+weil sie einen zur Laufzeit ermittelten Dateinamen zeigt); wer für eine künftige Assertion eines
+braucht, das sich nicht über Rolle/Label ausdrücken lässt, ergänzt das nötige `data-testid` im
+selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen zu lassen.
 
 ## Szenarien
 
