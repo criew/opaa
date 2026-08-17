@@ -3,16 +3,21 @@ package io.opaa.audit;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The convenience entry point #392's services call to write a first-stage audit event - composes
  * {@link AuditActorPseudonymService} (actor/subject pseudonymisation) and {@link AuditLogService}
  * (the actual write) so no caller needs to repeat that wiring or hand-build {@code before}/{@code
- * after} JSON itself. Deliberately holds no {@code @Transactional} of its own: every method here
- * simply delegates to {@link AuditLogService#record}, which is what carries the "joins the caller's
- * ambient transaction, never its own" guarantee (see that class's Javadoc) - adding one here would
- * only obscure that this class contributes nothing to it.
+ * after} JSON itself. Every {@code recordXxx} method except {@link #recordAuditLogAccess} holds no
+ * {@code @Transactional} of its own: it simply delegates to {@link AuditLogService#record}, which
+ * is what carries the "joins the caller's ambient transaction, never its own" guarantee (see that
+ * class's Javadoc) - adding one here would only obscure that this class contributes nothing to it.
+ *
+ * <p><b>{@link #recordAuditLogAccess} is the one deliberate exception</b> (PR #450 review, finding
+ * 5) - see its own Javadoc for why.
  *
  * <p>{@code before}/{@code after} are small {@link Map}s the caller builds inline (e.g. {@code
  * Map.of("role", role.name())}), serialised here with a locally-owned {@link JsonMapper} instance -
@@ -193,7 +198,39 @@ public class AuditEventRecorder {
    * audit_log} itself is what was accessed, once per organization, regardless of which access path
    * or which rows the query touched - those live in {@code scope}/{@code after}, not in {@code
    * object_id}.
+   *
+   * <p><b>PR #450 review, finding 5 - the one deliberate exception to this class's (and {@link
+   * AuditLogService}'s) "no transaction of its own" rule.</b> {@link
+   * AuditQueryService#loggedAccess} is not itself {@code @Transactional}, and today nothing wraps
+   * it in one either - which is the only reason a {@code DENIED} entry currently survives the
+   * exception that triggered it (see that method's Javadoc). That is an invariant resting entirely
+   * on every future caller happening to behave the same way; nothing enforces it. {@code
+   * Propagation.NOT_SUPPORTED} closes that gap for this one write path: it suspends whatever
+   * transaction (if any) is active on the calling thread for the duration of this method, so {@link
+   * AuditLogService#record} always runs with no ambient transaction to join - exactly today's
+   * behaviour, now guaranteed rather than incidental. A future {@code @Transactional} service that
+   * embeds {@link AuditQueryService} can therefore still roll back everything else it did, but
+   * never this entry.
+   *
+   * <p>{@code NOT_SUPPORTED} rather than {@code REQUIRES_NEW} deliberately: {@code REQUIRES_NEW}
+   * would hold the suspended (ambient) connection checked out from the pool for its own entire
+   * duration while a second connection runs this insert - the same "two connections held
+   * simultaneously per call" shape that caused #299's pool exhaustion under load. {@code
+   * NOT_SUPPORTED} suspends the ambient resource (releasing its thread binding, not holding it open
+   * across this call) and lets {@link AuditLogService#record}'s own default propagation open and
+   * commit a single short-lived transaction against a single connection - the same shape this
+   * class's own Javadoc already documents as safe, just now structurally forced rather than merely
+   * true by omission. Neither #280's premature-visibility risk nor #297's premature-commit risk
+   * applies here either: this write has no data dependency on anything the ambient transaction
+   * holds uncommitted, and it is not itself reporting the ambient operation's success - it only
+   * ever records that an access to {@code audit_log} was attempted, which is true regardless of
+   * what the ambient transaction later does. Verified by {@code
+   * AuditQueryServiceIntegrationTest#theDeniedEntrySurvivesEvenWhenEmbeddedInARollingTransaction}
+   * against a real transaction manager and real Postgres, with the call deliberately wrapped in a
+   * rolled-back {@code TransactionTemplate} - not just the no-ambient-transaction case {@code
+   * theDeniedEntrySurvivesTheRejectionThatTriggeredIt} already covered.
    */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void recordAuditLogAccess(
       UUID organizationId,
       UUID actorUserId,

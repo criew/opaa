@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,24 +43,27 @@ import org.springframework.stereotype.Service;
  * AUDITOR, an invalid or too-wide time range, a page index beyond the bound, {@code objectType ==
  * USER_ACCOUNT} on {@link #byObject}, or an incident scope that is not approved, expired, or does
  * not cover the requested range on {@link #byIncidentScope}. The original exception is always
- * rethrown after logging - the caller still sees exactly the same failure it would without #394.
+ * rethrown after logging - the caller still sees exactly the same failure it would without #394,
+ * even if writing the {@code DENIED} entry itself fails (PR #450 review, finding 2): that failure
+ * is captured via {@code addSuppressed} and logged at {@code error}, never allowed to replace or
+ * hide the original rejection.
  *
- * <p><b>Chosen transaction behaviour: no method here, and no method it calls, opens or joins an
- * ambient transaction of its own.</b> A GET request in this codebase runs with no surrounding
- * {@code @Transactional} (see {@link io.opaa.api.AuditController}, which declares none), so calling
- * {@link AuditEventRecorder#recordAuditLogAccess} - which bottoms out in {@link
- * AuditLogService#record}, a plain {@code save()} - opens and commits its own transaction
+ * <p><b>Chosen transaction behaviour.</b> No method in this class opens or joins an ambient
+ * transaction of its own - a GET request in this codebase runs with no surrounding
+ * {@code @Transactional} (see {@link io.opaa.api.AuditController}, which declares none), so under
+ * today's only caller, {@link AuditEventRecorder#recordAuditLogAccess} - which bottoms out in
+ * {@link AuditLogService#record}, a plain {@code save()} - opens and commits its own transaction
  * immediately, on the call, regardless of what this method does afterwards (including rethrowing
- * the very exception that triggered a {@code DENIED} entry). The self-log entry for a rejected
- * attempt therefore survives the rejection by construction, without a {@code REQUIRES_NEW} or
- * {@code noRollbackFor} anywhere: there is no ambient transaction for the rejection to roll back in
- * the first place. This mirrors {@link AuditLogService}'s own documented choice (see its Javadoc)
- * rather than repeating one of the three separate-transaction incidents the developer role
- * contract's Transaktionen section warns against (#280, #297, #299) - the difference here is that
- * no method in this class is ever annotated {@code @Transactional}, so there is nothing for a
- * self-log write to be "separate" from. Verified by {@code AuditQueryServiceIntegrationTest}
- * against a real Postgres database with a real transaction manager, not a mocked one: a rejected
- * query still leaves its {@code DENIED} entry behind.
+ * the very exception that triggered a {@code DENIED} entry). {@link
+ * AuditEventRecorder#recordAuditLogAccess} additionally carries its own {@code
+ * Propagation.NOT_SUPPORTED} (PR #450 review, finding 5) precisely so that guarantee does not rest
+ * on "and no future caller ever wraps this in a transaction either" - see that method's Javadoc for
+ * the full reasoning, including why {@code NOT_SUPPORTED} rather than {@code REQUIRES_NEW} was
+ * chosen against the three separate-transaction incidents the developer role contract's
+ * Transaktionen section warns against (#280, #297, #299). Verified by {@code
+ * AuditQueryServiceIntegrationTest} against a real Postgres database with a real transaction
+ * manager, not a mocked one: a rejected query leaves its {@code DENIED} entry behind both with no
+ * ambient transaction at all, and when deliberately embedded in one that later rolls back.
  *
  * <p>Every method: requires a non-null, non-inverted {@code from}/{@code to} no wider than {@link
  * #MAX_TIME_RANGE_DAYS} (mandatory, bounded time range, per the specification - "eine Abfrage ohne
@@ -118,6 +123,8 @@ public class AuditQueryService {
       "Zugriff verweigert - der Zugriff auf Protokolldaten ist der AUDITOR-Rolle vorbehalten";
 
   private static final Sort RECORDED_AT_ASC = Sort.by(Sort.Direction.ASC, "recordedAt");
+
+  private static final Logger log = LoggerFactory.getLogger(AuditQueryService.class);
 
   private final AuditLogRepository auditLogRepository;
   private final AuditIncidentScopeService incidentScopeService;
@@ -339,8 +346,27 @@ public class AuditQueryService {
           organizationId, callerId, scope, AuditOutcome.SUCCESS, reason);
       return result;
     } catch (RuntimeException ex) {
-      eventRecorder.recordAuditLogAccess(
-          organizationId, callerId, scope, AuditOutcome.DENIED, reason);
+      // PR #450 review, finding 2: recordAuditLogAccess itself can throw (a lost connection, or
+      // the "no partition of relation audit_log found for row" case this package's own migration
+      // comments warn about once the fixed 017 partition horizon runs out) - that must never
+      // replace the original rejection (ex). A non-AUDITOR caller has to see AccessDeniedException
+      // and its 403, not an unrelated 500 from the logging attempt; the DENIED entry is best-effort
+      // on top of the rejection, never a precondition for reporting it correctly. The logging
+      // failure itself must not vanish silently either: it is attached to ex via addSuppressed
+      // (visible in any stack trace ex is ever logged with) and logged here at error level in its
+      // own right, since ex may propagate all the way to a generic 4xx/5xx handler that never logs
+      // suppressed exceptions.
+      try {
+        eventRecorder.recordAuditLogAccess(
+            organizationId, callerId, scope, AuditOutcome.DENIED, reason);
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the #394 DENIED self-log entry for a rejected audit_log access -"
+                + " the original rejection is still reported correctly, but this attempt is"
+                + " missing its own audit_log entry",
+            loggingFailure);
+        ex.addSuppressed(loggingFailure);
+      }
       throw ex;
     }
   }

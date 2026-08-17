@@ -27,8 +27,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * grant itself those privileges back. See {@code Migration017AuditLogTest} for the tests that
  * exercise this directly against a real, non-superuser database role, including a direct attempt
  * against a named partition rather than only the partitioned parent.
+ *
+ * <p><b>#394 PR #450 review, finding 1:</b> package-private, not {@code public} - the DB-level
+ * restriction above only ever blocked {@code UPDATE}/{@code DELETE}; the application account is
+ * explicitly granted {@code SELECT}, so nothing at the database stopped a future, unrelated bean
+ * from injecting this repository and calling the inherited {@code findAll()} - a full, unbounded,
+ * unlogged extract that bypasses {@link AuditQueryService}'s funnel entirely. Package-private makes
+ * that a compile error for any class outside {@code io.opaa.audit}: {@link AuditQueryService} and
+ * {@link AuditLogService} - both in this package - are the only two classes allowed to hold a
+ * reference to this interface at all, enforced structurally by {@code AuditFunnelStructureTest}
+ * (reflection over every Spring stereotype-annotated class on the classpath, not just the two
+ * expected callers - the same "closed set, not an allow-list of names" pattern {@code
+ * AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor} already uses for its own
+ * claim).
  */
-public interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
+interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
 
   /**
    * The four #393 revision access paths, plus the one personenbezogene exception. Every method here

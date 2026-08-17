@@ -32,6 +32,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -71,6 +73,7 @@ class AuditQueryServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationId;
   private UUID auditorId;
@@ -572,6 +575,43 @@ class AuditQueryServiceIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
 
     // A fresh read, not the same in-memory reference the failing call above might have held.
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+  }
+
+  /**
+   * PR #450 review, finding 5: {@link #theDeniedEntrySurvivesTheRejectionThatTriggeredIt} only
+   * proves survival when there is no ambient transaction at all - the case that holds today simply
+   * because nothing wraps {@link AuditQueryService} in one. This test deliberately embeds the same
+   * denied call in a real, rolled-back {@link TransactionTemplate} - the scenario a future
+   * {@code @Transactional} caller would create - and proves the {@code DENIED} entry still
+   * survives, thanks to {@code Propagation.NOT_SUPPORTED} on {@link
+   * AuditEventRecorder#recordAuditLogAccess} (see that method's Javadoc).
+   */
+  @Test
+  void theDeniedEntrySurvivesEvenWhenEmbeddedInARollingTransaction() {
+    TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.execute(
+                    status -> {
+                      queryService.byTimeRange(
+                          organizationId,
+                          regularUserId,
+                          REASON,
+                          base,
+                          base.plus(1, ChronoUnit.HOURS),
+                          0,
+                          50);
+                      return null;
+                    }))
+        .isInstanceOf(AccessDeniedException.class);
+
+    // The transaction the call above ran in rolled back (an uncaught exception inside
+    // TransactionTemplate#execute marks it for rollback) - if recordAuditLogAccess had joined
+    // that transaction instead of suspending it, this would find nothing.
     List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
     assertThat(selfLogEntries).hasSize(1);
     assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);

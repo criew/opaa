@@ -44,6 +44,24 @@ import org.springframework.web.server.ResponseStatusException;
  * documents it as required - the same deliberate gap, for the same purpose: a request missing it
  * must still reach {@link AuditQueryService} so the rejection itself is logged, rather than being
  * short-circuited by Spring MVC's own "missing parameter" 400.
+ *
+ * <p><b>Deliberate, narrower scope boundary (PR #450 review, finding 3):</b> {@code reason} is the
+ * only parameter given this treatment. {@code from}/{@code to}/{@code objectType}/{@code
+ * eventType}/{@code page}/{@code size} are still bound as their real types with Spring MVC's normal
+ * {@code required = true} default (or {@code int}, which cannot even represent "absent") - a
+ * missing or unparsable value there (e.g. {@code ?objectType=NOT_A_REAL_TYPE} or {@code
+ * ?from=gestern}) is rejected by Spring MVC's argument resolution before this controller's method
+ * body, and therefore before {@link AuditQueryService}, ever runs; {@code
+ * GlobalExceptionHandler#handleMissingServletRequestParameterException}/{@code
+ * #handleMethodArgumentTypeMismatchException} turn that into the same 400 an AUDITOR would see for
+ * a well-formed but business-invalid request, but - unlike every rejection {@link
+ * AuditQueryService#loggedAccess} handles - <b>no {@code audit_log} entry is written for it.</b>
+ * "Der Zugriff auf Protokolldaten erzeugt selbst einen Eintrag" is therefore accurate for every
+ * request that reaches the funnel, not for every HTTP request against these five paths; extending
+ * self-logging to cover binding failures too would mean binding every one of these parameters as
+ * {@code String} and parsing/validating them inside {@link AuditQueryService} instead of relying on
+ * Spring MVC's argument resolution - a larger, separately reviewable change, tracked as a follow-up
+ * rather than folded into this one.
  */
 @RestController
 @RequestMapping("/api/v1/audit")
