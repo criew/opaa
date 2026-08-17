@@ -16,22 +16,31 @@ import org.springframework.stereotype.Component;
 /**
  * PR #450 review, finding 1: {@code everyAccessPathSelfLogsOnSuccessAndOnDenial} (in {@link
  * AuditQueryServiceIntegrationTest}) only proves the five known #393 access paths self-log - it
- * cannot prove that {@link AuditLogRepository} is unreachable any other way, and the issue's own
- * acceptance criterion asks for exactly that: "ein Test belegt, dass kein Aufrufweg existiert, der
- * Protokolldaten liest, ohne einen Eintrag zu erzeugen". {@link AuditLogRepository} is now
- * package-private (closing the reachability gap for every class outside {@code io.opaa.audit} at
- * compile time - see that interface's own Javadoc), and this test closes the remaining gap
- * structurally for classes inside the package too: it scans every Spring stereotype-annotated class
- * on the classpath, not a hardcoded name list (the same "closed set, not an enumeration" pattern
+ * cannot prove that {@link AuditLogRepository} is unreachable any other way. {@link
+ * AuditLogRepository} is now package-private (closing the reachability gap for every class outside
+ * {@code io.opaa.audit} at compile time - see that interface's own Javadoc), and this test narrows
+ * the remaining gap for classes inside the package too: it scans every Spring stereotype-annotated
+ * class on the classpath for a <em>field or constructor parameter</em> of type {@link
+ * AuditLogRepository}, not a hardcoded name list (the same "closed set, not an enumeration" pattern
  * {@link AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor} already uses), and
  * fails the moment a new class other than {@link AuditQueryService} or {@link AuditLogService}
- * holds a reference to {@link AuditLogRepository} - whether as a field or a constructor parameter.
+ * declares one.
  *
- * <p>{@link #auditControllerHoldsOnlyTheQueryServiceAsItsAuditReadDependency()} makes the matching
- * claim one layer up, at the HTTP entry point: {@link AuditController} must depend on {@link
- * AuditQueryService} for reads and never directly on {@link AuditLogRepository} or {@link
- * AuditLogService} - a future endpoint that skipped the funnel by reaching one of those two
- * directly would otherwise compile and run without a single failing test.
+ * <p><b>What this does not, and cannot, catch</b> (PR #450 re-review nit 1 - stated here so a later
+ * PR does not read the guarantee above as broader than it is): a {@code @Bean} factory method that
+ * returns or closes over an {@link AuditLogRepository} without ever declaring it as a field;
+ * setter/method injection instead of a field or constructor parameter; or code that reaches {@code
+ * audit_log} without going through Spring Data at all - a raw {@code JdbcTemplate} query or a JPQL
+ * native query against {@link AuditLogEntry}, which the database permits (the application account
+ * holds {@code SELECT} on {@code audit_log} - see migration 017/ADR-0015; only {@code
+ * UPDATE}/{@code DELETE} are blocked at that layer). Closing those paths would need bytecode-level
+ * analysis (e.g. ArchUnit's method-body inspection) or a database-level read restriction, neither
+ * of which this test attempts.
+ *
+ * <p>{@link #auditControllerHoldsOnlyTheQueryServiceAsItsAuditReadDependency()} makes the matching,
+ * equally field/constructor-scoped claim one layer up, at the HTTP entry point: {@link
+ * AuditController} must depend on {@link AuditQueryService} for reads and never directly on {@link
+ * AuditLogRepository} or {@link AuditLogService} as a field.
  */
 class AuditFunnelStructureTest {
 

@@ -212,19 +212,31 @@ public class AuditEventRecorder {
    * embeds {@link AuditQueryService} can therefore still roll back everything else it did, but
    * never this entry.
    *
-   * <p>{@code NOT_SUPPORTED} rather than {@code REQUIRES_NEW} deliberately: {@code REQUIRES_NEW}
-   * would hold the suspended (ambient) connection checked out from the pool for its own entire
-   * duration while a second connection runs this insert - the same "two connections held
-   * simultaneously per call" shape that caused #299's pool exhaustion under load. {@code
-   * NOT_SUPPORTED} suspends the ambient resource (releasing its thread binding, not holding it open
-   * across this call) and lets {@link AuditLogService#record}'s own default propagation open and
-   * commit a single short-lived transaction against a single connection - the same shape this
-   * class's own Javadoc already documents as safe, just now structurally forced rather than merely
-   * true by omission. Neither #280's premature-visibility risk nor #297's premature-commit risk
-   * applies here either: this write has no data dependency on anything the ambient transaction
-   * holds uncommitted, and it is not itself reporting the ambient operation's success - it only
-   * ever records that an access to {@code audit_log} was attempted, which is true regardless of
-   * what the ambient transaction later does. Verified by {@code
+   * <p>{@code NOT_SUPPORTED} rather than {@code REQUIRES_NEW} deliberately - but not because of a
+   * connection-count difference between the two (PR #450 re-review, nit 2: an earlier draft of this
+   * Javadoc claimed {@code NOT_SUPPORTED} avoids holding a second connection; that is wrong and is
+   * corrected here so it is not cited as precedent later). Spring's suspension mechanism ({@code
+   * AbstractPlatformTransactionManager#doSuspend}) only unbinds the ambient transaction's resources
+   * from the current thread; it does not return the ambient connection to the pool - that
+   * connection stays checked out, held by the suspended resources holder, for as long as it is
+   * suspended, under {@code NOT_SUPPORTED} exactly as it would under {@code REQUIRES_NEW}. Both
+   * propagations therefore have two connections in play for the duration of this call: the
+   * suspended ambient one and the one {@link AuditLogService#record}'s own default propagation
+   * acquires to open and commit its short-lived transaction.
+   *
+   * <p>The actual reason for {@code NOT_SUPPORTED}: it adds no transactional semantics of its own -
+   * this method simply stops being part of any transaction, and the commit that already happens
+   * today ({@link AuditLogService#record}'s un-annotated default propagation, see that class's
+   * Javadoc) is untouched. {@code REQUIRES_NEW} would instead make this method itself directly
+   * responsible for beginning and committing a transaction - a second, explicit transaction
+   * boundary to reason about, the same shape #280/#297/#299 (developer role contract, Transaktionen
+   * section) all warn against, even though none of those three incidents is reproduced by this
+   * particular call (it has no data dependency on anything the ambient transaction holds
+   * uncommitted, and it is not itself reporting the ambient operation's success - it only ever
+   * records that an access to {@code audit_log} was attempted, true regardless of what the ambient
+   * transaction later does). {@code NOT_SUPPORTED} keeps this class exactly where it already was -
+   * never itself opening a transaction - while still closing the "a future caller might join one"
+   * gap. Verified by {@code
    * AuditQueryServiceIntegrationTest#theDeniedEntrySurvivesEvenWhenEmbeddedInARollingTransaction}
    * against a real transaction manager and real Postgres, with the call deliberately wrapped in a
    * rolled-back {@code TransactionTemplate} - not just the no-ambient-transaction case {@code
