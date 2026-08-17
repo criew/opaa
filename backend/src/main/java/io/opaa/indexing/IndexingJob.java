@@ -40,6 +40,16 @@ public class IndexingJob {
   @Column(name = "error_message", columnDefinition = "text")
   private String errorMessage;
 
+  /**
+   * The knowledge library this run writes into (#419) - set once at {@link
+   * io.opaa.indexing.IndexingJobService#startJob}, so a completed or failed run stays traceable to
+   * its target after the fact. Nullable because runs started before migration 019 added this column
+   * have no recorded target; a new run always sets it, {@code libraryId} being mandatory on every
+   * trigger since #419.
+   */
+  @Column(name = "library_id")
+  private UUID libraryId;
+
   protected IndexingJob() {}
 
   public IndexingJob(JobStatus status) {
@@ -110,5 +120,13 @@ public class IndexingJob {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public UUID getLibraryId() {
+    return libraryId;
+  }
+
+  public void setLibraryId(UUID libraryId) {
+    this.libraryId = libraryId;
   }
 }

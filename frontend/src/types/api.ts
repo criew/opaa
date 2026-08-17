@@ -33,6 +33,11 @@ export type IndexingTriggerRequest = Omit<GeneratedIndexingTriggerRequest, 'inse
   insecureSsl?: boolean
 }
 
+export type AssetRole = components['schemas']['AssetRole']
+export type LibraryOwnerType = components['schemas']['LibraryOwnerType']
+export type LibraryVisibility = components['schemas']['LibraryVisibility']
+export type LibraryListResponse = components['schemas']['LibraryListResponse']
+
 export type UserInfoResponse = components['schemas']['UserInfoResponse']
 export type UserInfo = UserInfoResponse
 export type RoleChangeRequest = components['schemas']['RoleChangeRequest']

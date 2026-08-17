@@ -97,6 +97,10 @@ Drei Zustände werden unterschieden:
   (`uploaded_by_user_id`). `DELETE .../documents/{documentId}` entfernt Dokumentzeile, Chunks im
   Vektorspeicher und die abgelegte Datei wieder. Schadsoftwareprüfung ist bewusst ausgeklammert und
   muss vor einem Produktivbetrieb nachgezogen werden.
+- **Ziel-Wissensbibliothek je Lauf.** `libraryId` ist beim Anstoß Pflicht; die Aufnahme schreibt
+  nicht mehr fest in die System-Bibliothek (#419). Die auslösende Person braucht mindestens
+  `EDITOR` auf der Zielbibliothek. Bestandsdokumente, die vor #419 in der System-Bibliothek
+  landeten, bleiben dort — das nachträgliche Umhängen ist nicht Teil davon
 
 **Nicht gebaut**
 - Speicherkontingent je Konto und Hinweis auf ähnliche Bestände (#119)

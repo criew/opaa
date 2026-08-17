@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
@@ -17,6 +17,9 @@ describe('AdminDrawer', () => {
       isPolling: false,
       drawerOpen: true,
       snackbar: { open: false, message: '', severity: 'success' },
+      libraries: [],
+      librariesLoading: false,
+      selectedLibraryId: null,
     })
   })
 
@@ -25,6 +28,36 @@ describe('AdminDrawer', () => {
 
     expect(screen.getByText('Admin')).toBeInTheDocument()
     expect(screen.getByText('Dokumente indizieren')).toBeInTheDocument()
+  })
+
+  it('disables the trigger button until a target library is selected', async () => {
+    // #419 acceptance criteria: the UI never allows a run without a chosen library.
+    renderWithProviders(<AdminDrawer />)
+
+    expect(screen.getByRole('button', { name: 'Dokumente indizieren' })).toBeDisabled()
+
+    await waitFor(() => {
+      expect(useIndexingStore.getState().libraries.length).toBeGreaterThan(0)
+    })
+    const user = userEvent.setup()
+    await user.click(screen.getByLabelText('Zielbibliothek'))
+    await user.click(await screen.findByRole('option', { name: 'Rechtsquellen Soziales' }))
+
+    expect(screen.getByRole('button', { name: 'Dokumente indizieren' })).toBeEnabled()
+  })
+
+  it('offers only libraries the user may edit, fetched on open', async () => {
+    renderWithProviders(<AdminDrawer />)
+
+    await waitFor(() => {
+      expect(useIndexingStore.getState().libraries.length).toBeGreaterThan(0)
+    })
+    const user = userEvent.setup()
+    await user.click(screen.getByLabelText('Zielbibliothek'))
+
+    expect(screen.getByRole('option', { name: 'Rechtsquellen Soziales' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Meine Dokumente' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Nur Lesezugriff' })).not.toBeInTheDocument()
   })
 
   it('shows close button', () => {

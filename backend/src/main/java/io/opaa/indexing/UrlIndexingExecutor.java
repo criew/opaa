@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -38,7 +39,7 @@ public class UrlIndexingExecutor {
   }
 
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, UrlIndexingRequest request) {
+  public void execute(UUID jobId, UrlIndexingRequest request, KnowledgeLibrary targetLibrary) {
     int processed = 0;
     int failed = 0;
     int skipped = 0;
@@ -124,7 +125,12 @@ public class UrlIndexingExecutor {
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(
-                  tempFile, entry.name(), entry.url(), entry.lastModified(), fileSize);
+                  tempFile,
+                  entry.name(),
+                  entry.url(),
+                  entry.lastModified(),
+                  fileSize,
+                  targetLibrary);
 
           if (result == FileProcessingResult.SKIPPED) {
             skipped++;

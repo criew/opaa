@@ -14,12 +14,29 @@ describe('MSW Handlers', () => {
 
   describe('POST /api/v1/indexing/trigger', () => {
     it('returns RUNNING status', async () => {
-      const response = await fetch('/api/v1/indexing/trigger', { method: 'POST' })
+      const response = await fetch('/api/v1/indexing/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ libraryId: 'library-1' }),
+      })
       const data = await response.json()
 
       expect(response.status).toBe(202)
       expect(data.status).toBe('RUNNING')
       expect(data.documentCount).toBe(0)
+    })
+
+    it('returns 400 without a libraryId', async () => {
+      // #419 acceptance criteria: no libraryId -> 400.
+      const response = await fetch('/api/v1/indexing/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('libraryId ist erforderlich')
     })
   })
 
@@ -33,7 +50,11 @@ describe('MSW Handlers', () => {
     })
 
     it('progresses to COMPLETED after trigger and multiple polls', async () => {
-      await fetch('/api/v1/indexing/trigger', { method: 'POST' })
+      await fetch('/api/v1/indexing/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ libraryId: 'library-1' }),
+      })
 
       let data
       for (let i = 0; i < 5; i++) {
@@ -44,6 +65,17 @@ describe('MSW Handlers', () => {
       expect(data.status).toBe('COMPLETED')
       expect(data.documentCount).toBe(37)
       expect(data.documentsSkipped).toBe(5)
+    })
+  })
+
+  describe('GET /api/v1/libraries', () => {
+    it('returns the list of libraries', async () => {
+      const response = await fetch('/api/v1/libraries')
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      expect(data.length).toBeGreaterThan(0)
     })
   })
 

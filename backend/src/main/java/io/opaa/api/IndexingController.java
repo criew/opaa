@@ -3,6 +3,9 @@ package io.opaa.api;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.IndexingTriggerRequest;
+import io.opaa.auth.SystemRole;
+import io.opaa.auth.User;
+import io.opaa.auth.UserService;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
@@ -13,41 +16,57 @@ import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/indexing")
 public class IndexingController {
 
+  private static final String UNKNOWN_ISSUER = "unknown";
+
   private final DocumentIndexingService documentIndexingService;
   private final IndexingJobService indexingJobService;
+  private final UserService userService;
 
   public IndexingController(
-      DocumentIndexingService documentIndexingService, IndexingJobService indexingJobService) {
+      DocumentIndexingService documentIndexingService,
+      IndexingJobService indexingJobService,
+      UserService userService) {
     this.documentIndexingService = documentIndexingService;
     this.indexingJobService = indexingJobService;
+    this.userService = userService;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/trigger")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @RequestBody(required = false) IndexingTriggerRequest request) {
+      @RequestBody IndexingTriggerRequest request, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    boolean systemAdmin = currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN;
     IndexingJob job;
-    if (request != null && request.getUrl() != null && !request.getUrl().toString().isBlank()) {
+    if (request.getUrl() != null && !request.getUrl().toString().isBlank()) {
       job =
           documentIndexingService.triggerUrlIndexing(
               new UrlIndexingRequest(
                   request.getUrl().toString(),
                   request.getProxy(),
                   request.getCredentials(),
-                  Boolean.TRUE.equals(request.getInsecureSsl())));
+                  Boolean.TRUE.equals(request.getInsecureSsl())),
+              request.getLibraryId(),
+              currentUser.getId(),
+              systemAdmin);
     } else {
-      job = documentIndexingService.triggerIndexing();
+      job =
+          documentIndexingService.triggerIndexing(
+              request.getLibraryId(), currentUser.getId(), systemAdmin);
     }
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(job));
   }
@@ -101,5 +120,17 @@ public class IndexingController {
       case COMPLETED -> IndexingStatus.COMPLETED;
       case FAILED -> IndexingStatus.FAILED;
     };
+  }
+
+  private User currentUser(Jwt jwt) {
+    String issuer = jwt.getClaimAsString("iss");
+    if (issuer == null || issuer.isBlank()) {
+      issuer = UNKNOWN_ISSUER;
+    }
+
+    return userService
+        .findBySubjectAndIssuer(jwt.getSubject(), issuer)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
   }
 }

@@ -15,8 +15,9 @@ public class IndexingJobService {
   }
 
   @Transactional
-  public IndexingJob startJob() {
+  public IndexingJob startJob(UUID libraryId) {
     var job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(libraryId);
     return indexingJobRepository.save(job);
   }
 

@@ -1,0 +1,33 @@
+databaseChangeLog:
+  # #419: indexing runs now target a caller-chosen library instead of the system library. This
+  # changeSet lets an indexing_jobs row record which library a run wrote into, so a run stays
+  # traceable to its target after the fact (see IndexingJob#libraryId's Javadoc). Nullable and
+  # ON DELETE SET NULL rather than RESTRICT: indexing_jobs is a historical record of past runs,
+  # not a live reference that should ever block deleting the library it once wrote to - unlike
+  # documents.library_id (fk_documents_library_organization, migration 012), which stays RESTRICT
+  # because a document row without its library would be meaningless, not merely stale history.
+  - changeSet:
+      id: 019-indexing-job-library
+      author: opaa
+      comment: "Add library_id to indexing_jobs, recording the target library of a run (#419)"
+      changes:
+        - addColumn:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: library_id
+                  type: uuid
+        - addForeignKeyConstraint:
+            baseTableName: indexing_jobs
+            baseColumnNames: library_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id
+            constraintName: fk_indexing_jobs_library
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: indexing_jobs
+            constraintName: fk_indexing_jobs_library
+        - dropColumn:
+            tableName: indexing_jobs
+            columnName: library_id

@@ -1,5 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { useIndexingStore } from './indexingStore'
+import { server } from '../mocks/server'
+import { http, HttpResponse } from 'msw'
+import { mockLibraries } from '../mocks/fixtures'
 
 describe('indexingStore', () => {
   beforeEach(() => {
@@ -13,6 +16,9 @@ describe('indexingStore', () => {
       isPolling: false,
       drawerOpen: false,
       snackbar: { open: false, message: '', severity: 'success' },
+      libraries: [],
+      librariesLoading: false,
+      selectedLibraryId: null,
     })
   })
 
@@ -27,6 +33,7 @@ describe('indexingStore', () => {
     expect(state.documentsSkipped).toBe(0)
     expect(state.isPolling).toBe(false)
     expect(state.drawerOpen).toBe(false)
+    expect(state.selectedLibraryId).toBeNull()
   })
 
   it('toggles drawer', () => {
@@ -53,8 +60,20 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().snackbar.open).toBe(false)
   })
 
-  it('triggers indexing and starts polling', async () => {
+  it('does not trigger indexing without a selected library and shows an error snackbar', async () => {
+    // #419 acceptance criteria: the UI never allows a run without a target library.
+    await useIndexingStore.getState().triggerIndexing()
+
+    const state = useIndexingStore.getState()
+    expect(state.status).toBe('IDLE')
+    expect(state.snackbar.open).toBe(true)
+    expect(state.snackbar.severity).toBe('error')
+    expect(state.snackbar.message).toBe('Bitte eine Zielbibliothek auswählen')
+  })
+
+  it('triggers indexing with the selected library and starts polling', async () => {
     vi.useFakeTimers()
+    useIndexingStore.getState().setSelectedLibraryId('library-1')
 
     await useIndexingStore.getState().triggerIndexing()
 
@@ -68,6 +87,7 @@ describe('indexingStore', () => {
 
   it('stops polling', async () => {
     vi.useFakeTimers()
+    useIndexingStore.getState().setSelectedLibraryId('library-1')
 
     await useIndexingStore.getState().triggerIndexing()
     expect(useIndexingStore.getState().isPolling).toBe(true)
@@ -76,5 +96,31 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().isPolling).toBe(false)
 
     vi.useRealTimers()
+  })
+
+  it('fetches libraries and offers only those with at least EDITOR', async () => {
+    await useIndexingStore.getState().fetchLibraries()
+
+    const state = useIndexingStore.getState()
+    expect(state.librariesLoading).toBe(false)
+    expect(state.libraries.map((l) => l.id)).toEqual(['library-1', 'library-2'])
+    expect(state.libraries.every((l) => l.myRole !== 'VIEWER')).toBe(true)
+  })
+
+  it('clears libraries when the request fails', async () => {
+    server.use(http.get('/api/v1/libraries', () => HttpResponse.error()))
+
+    useIndexingStore.setState({ libraries: mockLibraries })
+    await useIndexingStore.getState().fetchLibraries()
+
+    expect(useIndexingStore.getState().libraries).toEqual([])
+  })
+
+  it('sets the selected library id', () => {
+    useIndexingStore.getState().setSelectedLibraryId('library-2')
+    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-2')
+
+    useIndexingStore.getState().setSelectedLibraryId(null)
+    expect(useIndexingStore.getState().selectedLibraryId).toBeNull()
   })
 })

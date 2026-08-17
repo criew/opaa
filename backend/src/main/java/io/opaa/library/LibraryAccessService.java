@@ -96,6 +96,19 @@ public class LibraryAccessService {
   }
 
   /**
+   * Whether the user may target this library as the destination of an indexing run (#419) -
+   * requires {@link AssetRole#EDITOR}, one level below {@link #canManage}. A directory or URL
+   * indexing run writes documents into the library, which is a content change, not a configuration
+   * change (rename, visibility, grants) - {@code EDITOR} is the role {@link AssetRole}'s Javadoc
+   * reserves for "change the configuration" one level above {@code VIEWER}, and is deliberately the
+   * floor here rather than {@code MANAGER}: requiring sharing/grant rights just to add documents
+   * would force every indexing operator to also be able to reshape the library's access list.
+   */
+  public boolean canEdit(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
+    return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.EDITOR);
+  }
+
+  /**
    * Whether the user may delete the library (and, once it exists, transfer its ownership) -
    * requires {@link AssetRole#OWNER}, one level above {@link #canManage}. Split out in #202 code
    * review round 3: before this method existed, {@code KnowledgeLibraryService#deleteLibrary}

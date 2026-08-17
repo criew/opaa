@@ -18,6 +18,7 @@ import {
 } from './fixtures'
 import type {
   IndexingStatusResponse,
+  IndexingTriggerRequest,
   LibraryOwnerType,
   LibraryVisibility,
   QueryRequest,
@@ -63,10 +64,13 @@ export const handlers = [
   }),
 
   http.post('/api/v1/indexing/trigger', async ({ request }) => {
-    // Accept optional IndexingTriggerRequest body (ignored in mock)
-    const contentType = request.headers.get('content-type')
-    if (contentType?.includes('application/json')) {
-      await request.json().catch(() => null)
+    // #419: libraryId is required - a missing one mirrors the backend's 400.
+    const body = (await request.json().catch(() => null)) as IndexingTriggerRequest | null
+    if (!body?.libraryId) {
+      return HttpResponse.json(
+        { error: 'libraryId ist erforderlich', status: 400, timestamp: new Date().toISOString() },
+        { status: 400 },
+      )
     }
 
     indexingPollCount = 0

@@ -1,6 +1,9 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.auth.UserRepository;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.IndexingMetrics;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -95,9 +98,17 @@ public class IndexingConfiguration {
   DocumentIndexingService documentIndexingService(
       IndexingJobService indexingJobService,
       AsyncIndexingExecutor asyncIndexingExecutor,
-      UrlIndexingExecutor urlIndexingExecutor) {
+      UrlIndexingExecutor urlIndexingExecutor,
+      UserRepository userRepository,
+      KnowledgeLibraryRepository libraryRepository,
+      LibraryAccessService libraryAccessService) {
     return new DocumentIndexingService(
-        indexingJobService, asyncIndexingExecutor, urlIndexingExecutor);
+        indexingJobService,
+        asyncIndexingExecutor,
+        urlIndexingExecutor,
+        userRepository,
+        libraryRepository,
+        libraryAccessService);
   }
 
   @Bean

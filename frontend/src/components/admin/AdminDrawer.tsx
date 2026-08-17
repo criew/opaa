@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -9,6 +9,7 @@ import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
+import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -29,11 +30,22 @@ export default function AdminDrawer() {
   const timestamp = useIndexingStore((s) => s.timestamp)
   const trigger = useIndexingStore((s) => s.triggerIndexing)
   const setUrlConfig = useIndexingStore((s) => s.setUrlConfig)
+  const libraries = useIndexingStore((s) => s.libraries)
+  const librariesLoading = useIndexingStore((s) => s.librariesLoading)
+  const fetchLibraries = useIndexingStore((s) => s.fetchLibraries)
+  const selectedLibraryId = useIndexingStore((s) => s.selectedLibraryId)
+  const setSelectedLibraryId = useIndexingStore((s) => s.setSelectedLibraryId)
 
   const [url, setUrl] = useState('')
   const [proxy, setProxy] = useState('')
   const [credentials, setCredentials] = useState('')
   const [insecureSsl, setInsecureSsl] = useState(false)
+
+  useEffect(() => {
+    if (drawerOpen) {
+      fetchLibraries()
+    }
+  }, [drawerOpen, fetchLibraries])
 
   const isRunning = status === 'RUNNING'
   const progressPercent =
@@ -83,6 +95,31 @@ export default function AdminDrawer() {
           <Typography variant="overline" color="text.secondary">
             Dokumentenindizierung
           </Typography>
+
+          <TextField
+            select
+            label="Zielbibliothek"
+            value={selectedLibraryId ?? ''}
+            onChange={(e) => setSelectedLibraryId(e.target.value || null)}
+            size="small"
+            fullWidth
+            disabled={isRunning || librariesLoading}
+            sx={{ mt: 1.5, mb: 1.5 }}
+            helperText={
+              librariesLoading
+                ? 'Bibliotheken werden geladen …'
+                : libraries.length === 0
+                  ? 'Keine Bibliothek mit Bearbeitungsrecht verfügbar'
+                  : 'Ohne Auswahl kann keine Indizierung gestartet werden'
+            }
+            slotProps={{ htmlInput: { 'aria-label': 'Zielbibliothek' } }}
+          >
+            {libraries.map((library) => (
+              <MenuItem key={library.id} value={library.id}>
+                {library.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <Accordion
             disableGutters
@@ -152,7 +189,7 @@ export default function AdminDrawer() {
             variant="contained"
             startIcon={<PlayArrowIcon />}
             onClick={handleTrigger}
-            disabled={isRunning}
+            disabled={isRunning || !selectedLibraryId}
             fullWidth
             sx={{ mt: 1, mb: 2 }}
           >

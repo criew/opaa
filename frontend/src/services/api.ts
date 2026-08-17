@@ -179,7 +179,7 @@ export async function deleteSpace(spaceId: string): Promise<void> {
 }
 
 export async function triggerIndexing(
-  request?: IndexingTriggerRequest,
+  request: IndexingTriggerRequest,
 ): Promise<IndexingStatusResponse> {
   try {
     const { data } = await client.post<IndexingStatusResponse>('/v1/indexing/trigger', request)
