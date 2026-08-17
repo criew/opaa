@@ -1,0 +1,7 @@
+Wissensdokument für die E2E-Suite (Issue #424)
+
+Dieses Dokument dient ausschließlich dazu, die Kette Hochladen -> Freigeben -> Finden
+end-to-end zu prüfen (Bibliotheken, Upload, Rechteverwaltung, rechtebewusste Suche).
+Es enthält keinen echten fachlichen Inhalt.
+
+Kennsatz: OPAA-E2E-WISSENSBIBLIOTHEK-424

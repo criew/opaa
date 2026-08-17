@@ -32,6 +32,11 @@ export default function SourceCard({ source }: SourceCardProps) {
   return (
     <Paper
       variant="outlined"
+      // No stable role/label fits a source card as a whole (see e2e/README.md "Selektor-
+      // Konvention"): it renders a file name the E2E suite (test(e2e) #424) must assert on
+      // dynamically, not fixed, human-authored copy.
+      data-testid="source-card"
+      data-cited={source.cited}
       sx={{
         p: 1.5,
         bgcolor: 'background.default',
