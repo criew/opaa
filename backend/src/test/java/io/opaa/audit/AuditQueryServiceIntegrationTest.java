@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.auth.SystemRole;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.lang.reflect.Method;
@@ -13,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -26,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -43,6 +48,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * for exactly this). Matches {@code io.opaa.api.AuditControllerTest}'s {@code
  * noEndpointAcceptsAnActorOrSortRequestParameter}/{@code
  * noParameterIsUnannotatedOrClientControlledSort} for the same claim at the HTTP layer.
+ *
+ * <p>#394: {@link #everySuccessfulAccessWritesItsOwnSelfLogEntry()} through {@link
+ * #queryingTheSelfLogEntriesThemselvesCreatesAnotherOne()} prove the self-logging funnel this class
+ * now wraps every access in - a successful query, a denied one (wrong role, missing reason,
+ * business-rule rejection), that the denied entry survives the very exception that triggered it
+ * (the transactional claim {@link AuditQueryService}'s own Javadoc makes), and that reading the
+ * self-log entries back is itself logged again.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -50,13 +62,19 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class AuditQueryServiceIntegrationTest {
 
+  private static final String REASON = "Quartalsrevision Q1 2026";
+
   @Autowired private AuditQueryService queryService;
   @Autowired private AuditLogService auditLogService;
   @Autowired private AuditLogRepository auditLogRepository;
+  @Autowired private AuditIncidentScopeService incidentScopeService;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private UserRepository userRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
+  private UUID auditorId;
+  private UUID regularUserId;
   // audit_log is partitioned by month (migration 017) with a fixed horizon around the moment the
   // migration ran - a hardcoded historical date can fall outside it and make the recorded_at
   // UPDATE below fail with "no partition of relation found for row", so this anchors to "now"
@@ -69,12 +87,24 @@ class AuditQueryServiceIntegrationTest {
         organizationRepository
             .save(new Organization(UUID.randomUUID(), "Audit Query Test Org"))
             .getId();
+    auditorId = createUser(SystemRole.AUDITOR);
+    regularUserId = createUser(SystemRole.USER);
   }
 
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    userRepository.deleteById(auditorId);
+    userRepository.deleteById(regularUserId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  private UUID createUser(SystemRole role) {
+    User user =
+        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+    user.setOrganizationId(organizationId);
+    user.setSystemRole(role);
+    return userRepository.save(user).getId();
   }
 
   private AuditLogEntry writeEntry(
@@ -114,6 +144,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byObject(
             organizationId,
+            auditorId,
+            REASON,
             AuditObjectType.KNOWLEDGE_LIBRARY,
             "lib-1",
             base.minus(1, ChronoUnit.HOURS),
@@ -132,7 +164,13 @@ class AuditQueryServiceIntegrationTest {
 
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
-            organizationId, base.minus(1, ChronoUnit.HOURS), base.plus(1, ChronoUnit.DAYS), 0, 50);
+            organizationId,
+            auditorId,
+            REASON,
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.DAYS),
+            0,
+            50);
 
     assertThat(result.getContent()).hasSize(2);
   }
@@ -146,6 +184,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byEventType(
             organizationId,
+            auditorId,
+            REASON,
             AuditEventType.LIBRARY_CREATED,
             base.minus(1, ChronoUnit.HOURS),
             base.plus(1, ChronoUnit.HOURS),
@@ -166,6 +206,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byCorrelation(
             organizationId,
+            auditorId,
+            REASON,
             "sync-2026-02-16",
             base.minus(1, ChronoUnit.HOURS),
             base.plus(1, ChronoUnit.HOURS),
@@ -191,6 +233,8 @@ class AuditQueryServiceIntegrationTest {
             () ->
                 queryService.byObject(
                     organizationId,
+                    auditorId,
+                    REASON,
                     AuditObjectType.USER_ACCOUNT,
                     "pseud-some-person",
                     base.minus(1, ChronoUnit.HOURS),
@@ -208,6 +252,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byObject(
             organizationId,
+            auditorId,
+            REASON,
             AuditObjectType.KNOWLEDGE_LIBRARY,
             "lib-1",
             base.minus(1, ChronoUnit.HOURS),
@@ -229,6 +275,8 @@ class AuditQueryServiceIntegrationTest {
             () ->
                 queryService.byTimeRange(
                     organizationId,
+                    auditorId,
+                    REASON,
                     base,
                     base.plus(AuditQueryService.MAX_TIME_RANGE_DAYS + 1, ChronoUnit.DAYS),
                     0,
@@ -241,6 +289,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             organizationId,
+            auditorId,
+            REASON,
             base,
             base.plus(AuditQueryService.MAX_TIME_RANGE_DAYS, ChronoUnit.DAYS),
             0,
@@ -264,6 +314,8 @@ class AuditQueryServiceIntegrationTest {
             () ->
                 queryService.byTimeRange(
                     organizationId,
+                    auditorId,
+                    REASON,
                     base.minus(1, ChronoUnit.HOURS),
                     base.plus(1, ChronoUnit.HOURS),
                     AuditQueryService.MAX_PAGE_INDEX + 1,
@@ -276,6 +328,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             organizationId,
+            auditorId,
+            REASON,
             base.minus(1, ChronoUnit.HOURS),
             base.plus(1, ChronoUnit.HOURS),
             AuditQueryService.MAX_PAGE_INDEX,
@@ -290,6 +344,8 @@ class AuditQueryServiceIntegrationTest {
             () ->
                 queryService.byTimeRange(
                     organizationId,
+                    auditorId,
+                    REASON,
                     base.minus(1, ChronoUnit.HOURS),
                     base.plus(1, ChronoUnit.HOURS),
                     -1,
@@ -299,14 +355,16 @@ class AuditQueryServiceIntegrationTest {
 
   @Test
   void aQueryWithoutAMandatoryTimeRangeIsRejected() {
-    assertThatThrownBy(() -> queryService.byTimeRange(organizationId, null, base, 0, 50))
+    assertThatThrownBy(
+            () -> queryService.byTimeRange(organizationId, auditorId, REASON, null, base, 0, 50))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> queryService.byTimeRange(organizationId, base, null, 0, 50))
+    assertThatThrownBy(
+            () -> queryService.byTimeRange(organizationId, auditorId, REASON, base, null, 0, 50))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
             () ->
                 queryService.byTimeRange(
-                    organizationId, base.plus(1, ChronoUnit.DAYS), base, 0, 50))
+                    organizationId, auditorId, REASON, base.plus(1, ChronoUnit.DAYS), base, 0, 50))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -319,6 +377,8 @@ class AuditQueryServiceIntegrationTest {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             organizationId,
+            auditorId,
+            REASON,
             base.minus(1, ChronoUnit.HOURS),
             base.plus(1, ChronoUnit.HOURS),
             0,
@@ -338,7 +398,13 @@ class AuditQueryServiceIntegrationTest {
 
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
-            organizationId, base.minus(1, ChronoUnit.HOURS), base.plus(3, ChronoUnit.HOURS), 0, 50);
+            organizationId,
+            auditorId,
+            REASON,
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(3, ChronoUnit.HOURS),
+            0,
+            50);
 
     assertThat(result.getContent().stream().map(AuditLogEntry::getObjectId).toList())
         .containsExactly("a-first", "z-second", "m-third");
@@ -349,6 +415,10 @@ class AuditQueryServiceIntegrationTest {
    * exposes takes no actor/person parameter and cannot be asked to sort or group by one - proven
    * structurally (the method signatures below simply do not accept such a parameter) rather than by
    * trying every possible malicious input, which a closed API surface makes unnecessary.
+   *
+   * <p>#394: {@code callerId} is deliberately excluded from the forbidden list - see {@link
+   * AuditQueryService}'s own Javadoc for why identifying who is asking (for self-logging) is not
+   * the same thing as accepting a person filter.
    */
   @Test
   void noAccessPathAcceptsOrSortsByActor() {
@@ -387,5 +457,324 @@ class AuditQueryServiceIntegrationTest {
             .isFalse();
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // #394: the access on audit_log itself creates its own entry, including for a denied attempt.
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  void everySuccessfulAccessWritesItsOwnSelfLogEntry() {
+    queryService.byTimeRange(
+        organizationId,
+        auditorId,
+        REASON,
+        base.minus(1, ChronoUnit.HOURS),
+        base.plus(1, ChronoUnit.HOURS),
+        0,
+        50);
+
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    AuditLogEntry entry = selfLogEntries.get(0);
+    assertThat(entry.getOutcome()).isEqualTo(AuditOutcome.SUCCESS);
+    assertThat(entry.getReason()).isEqualTo(REASON);
+    assertThat(entry.getObjectType()).isEqualTo(AuditObjectType.AUDIT_LOG);
+    assertThat(entry.getAfter()).contains("by-time-range");
+  }
+
+  /**
+   * A non-AUDITOR caller is rejected with {@link AccessDeniedException} - enforced inside {@link
+   * AuditQueryService} itself, not only {@code @PreAuthorize} on the controller, precisely so this
+   * denial can be logged (see the class Javadoc for why an annotation-only check would make this
+   * invisible here).
+   */
+  @Test
+  void aNonAuditorCallerIsDeniedAndTheDenialIsLogged() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    regularUserId,
+                    REASON,
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    0,
+                    50))
+        .isInstanceOf(AccessDeniedException.class);
+
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+  }
+
+  /**
+   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
+   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) - and
+   * the rejection is itself logged, exactly like every other denied attempt.
+   */
+  @Test
+  void aMissingReasonIsRejectedAndTheRejectionIsLogged() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    auditorId,
+                    "   ",
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    0,
+                    50))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Pflichtfeld");
+
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+  }
+
+  /**
+   * A business-rule rejection (here: the mandatory time range) is logged exactly like every other
+   * denied attempt - not just the role/reason checks.
+   */
+  @Test
+  void aRejectedTimeRangeIsAlsoLogged() {
+    assertThatThrownBy(
+            () -> queryService.byTimeRange(organizationId, auditorId, REASON, null, base, 0, 50))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+  }
+
+  /**
+   * The transactional claim {@link AuditQueryService}'s own Javadoc makes: the self-log entry for a
+   * rejected attempt survives the rejection - proven here the same way {@code
+   * AuditLogServiceIntegrationTest} proves the sibling claim for an ordinary event, against a real
+   * transaction manager and real Postgres rather than a mocked one. There is no ambient transaction
+   * around either the failing call above or this test method itself, so the assertion below is
+   * really checking that the write already committed on its own, not merely that it survived a
+   * rollback this test triggered.
+   */
+  @Test
+  void theDeniedEntrySurvivesTheRejectionThatTriggeredIt() {
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    regularUserId,
+                    REASON,
+                    base,
+                    base.plus(1, ChronoUnit.HOURS),
+                    0,
+                    50))
+        .isInstanceOf(AccessDeniedException.class);
+
+    // A fresh read, not the same in-memory reference the failing call above might have held.
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+  }
+
+  /**
+   * Not a special store: the #394 self-log entries are ordinary {@code audit_log} rows, so an
+   * AUDITOR reading them back (e.g. via {@code by-event-type=AUDIT_LOG_ACCESSED}) goes through the
+   * exact same funnel and creates one more entry, on top of the ones already there - "wer ein
+   * Protokoll führen will, das den Blick ins Protokoll ausnimmt, führt keines"
+   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+   */
+  @Test
+  void queryingTheSelfLogEntriesThemselvesCreatesAnotherOne() {
+    queryService.byTimeRange(
+        organizationId,
+        auditorId,
+        REASON,
+        base.minus(1, ChronoUnit.HOURS),
+        base.plus(1, ChronoUnit.HOURS),
+        0,
+        50);
+    assertThat(findAuditLogAccessedEntries()).hasSize(1);
+
+    Page<AuditLogEntry> result =
+        queryService.byEventType(
+            organizationId,
+            auditorId,
+            REASON,
+            AuditEventType.AUDIT_LOG_ACCESSED,
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.HOURS),
+            0,
+            50);
+
+    // The one entry from the by-time-range call above was already visible to this by-event-type
+    // call (recorded before it ran); this call's own self-log entry commits only afterwards.
+    assertThat(result.getContent()).hasSize(1);
+    assertThat(findAuditLogAccessedEntries()).hasSize(2);
+  }
+
+  /**
+   * The issue's own cross-cutting acceptance criterion, checked against every one of the five #393
+   * access paths individually, not just {@code by-time-range}: "ein Test belegt, dass kein
+   * Aufrufweg Protokolldaten liest, ohne einen Eintrag zu erzeugen". Each path is exercised twice -
+   * once permitted (a valid AUDITOR call), once denied (a non-AUDITOR caller) - and both must leave
+   * behind exactly one new self-log entry with the matching outcome. {@link #byIncidentScope} needs
+   * an approved grant first, set up once here rather than per access path above.
+   */
+  @Test
+  void everyAccessPathSelfLogsOnSuccessAndOnDenial() {
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            auditorId,
+            regularUserId,
+            base.minus(1, ChronoUnit.DAYS),
+            base.plus(1, ChronoUnit.DAYS),
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Cross-cutting #394 Testaufbau");
+    UUID otherAuditorId = createUser(SystemRole.AUDITOR);
+    try {
+      incidentScopeService.approve(organizationId, grant.getId(), otherAuditorId);
+
+      Runnable[] permittedCalls = {
+        () ->
+            queryService.byObject(
+                organizationId,
+                auditorId,
+                REASON,
+                AuditObjectType.KNOWLEDGE_LIBRARY,
+                "lib-cross-cutting",
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byTimeRange(
+                organizationId,
+                auditorId,
+                REASON,
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byEventType(
+                organizationId,
+                auditorId,
+                REASON,
+                AuditEventType.LIBRARY_CREATED,
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byCorrelation(
+                organizationId,
+                auditorId,
+                REASON,
+                "cross-cutting-correlation",
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byIncidentScope(
+                organizationId,
+                auditorId,
+                REASON,
+                grant.getId(),
+                base.minus(1, ChronoUnit.DAYS),
+                base.plus(1, ChronoUnit.DAYS),
+                0,
+                50)
+      };
+      Runnable[] deniedCalls = {
+        () ->
+            queryService.byObject(
+                organizationId,
+                regularUserId,
+                REASON,
+                AuditObjectType.KNOWLEDGE_LIBRARY,
+                "lib-cross-cutting",
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byTimeRange(
+                organizationId,
+                regularUserId,
+                REASON,
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byEventType(
+                organizationId,
+                regularUserId,
+                REASON,
+                AuditEventType.LIBRARY_CREATED,
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byCorrelation(
+                organizationId,
+                regularUserId,
+                REASON,
+                "cross-cutting-correlation",
+                base.minus(1, ChronoUnit.HOURS),
+                base.plus(1, ChronoUnit.HOURS),
+                0,
+                50),
+        () ->
+            queryService.byIncidentScope(
+                organizationId,
+                regularUserId,
+                REASON,
+                grant.getId(),
+                base.minus(1, ChronoUnit.DAYS),
+                base.plus(1, ChronoUnit.DAYS),
+                0,
+                50)
+      };
+
+      int expectedCount = 0;
+      for (Runnable call : permittedCalls) {
+        call.run();
+        expectedCount++;
+        assertThat(findAuditLogAccessedEntries()).hasSize(expectedCount);
+        assertThat(findAuditLogAccessedEntries().get(expectedCount - 1).getOutcome())
+            .isEqualTo(AuditOutcome.SUCCESS);
+      }
+      for (Runnable call : deniedCalls) {
+        assertThatThrownBy(call::run).isInstanceOf(AccessDeniedException.class);
+        expectedCount++;
+        assertThat(findAuditLogAccessedEntries()).hasSize(expectedCount);
+        assertThat(findAuditLogAccessedEntries().get(expectedCount - 1).getOutcome())
+            .isEqualTo(AuditOutcome.DENIED);
+      }
+    } finally {
+      // The grant references otherAuditorId as approver (and auditorId/regularUserId as
+      // requester/subject) - must go first, or deleting the user violates
+      // fk_audit_incident_scope_grants_approved_by (no cascade, unlike audit_actor_pseudonyms).
+      jdbcTemplate.update(
+          "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
+      userRepository.deleteById(otherAuditorId);
+    }
+  }
+
+  // Sorted by recordedAt (never actor, per #393) since findAll() itself makes no ordering
+  // guarantee - callers that rely on insertion order (e.g.
+  // everyAccessPathSelfLogsOnSuccessAndOnDenial)
+  // need a deterministic one.
+  private List<AuditLogEntry> findAuditLogAccessedEntries() {
+    return auditLogRepository.findAll().stream()
+        .filter(e -> e.getOrganizationId().equals(organizationId))
+        .filter(e -> e.getEventType() == AuditEventType.AUDIT_LOG_ACCESSED)
+        .sorted(Comparator.comparing(AuditLogEntry::getRecordedAt))
+        .toList();
   }
 }

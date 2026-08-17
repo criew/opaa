@@ -1,12 +1,19 @@
 package io.opaa.audit;
 
+import io.opaa.auth.SystemRole;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,9 +21,44 @@ import org.springframework.stereotype.Service;
  * specification allows
  * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt), plus
  * the one personenbezogene exception. A single class rather than the query methods scattered across
- * callers on purpose: #394 ("Audit-Zugriff protokolliert sich selbst", not built here) adds
- * self-logging by wrapping the methods on this one class, not by finding every place that reads
- * {@code audit_log}.
+ * callers on purpose - and, since #394, the one seam self-logging hooks into rather than finding
+ * every place that reads {@code audit_log}.
+ *
+ * <p><b>#394 self-logging.</b> Every method below is wrapped by {@link #loggedAccess}: it enforces
+ * the AUDITOR role and the mandatory {@code reason} <em>itself</em>, rather than relying solely on
+ * {@code @PreAuthorize} on the controller. That is a deliberate departure from the more common
+ * annotation-only pattern elsewhere in this codebase - {@code @PreAuthorize} throws {@code
+ * AccessDeniedException} from a security interceptor <em>before</em> the controller method body
+ * (and therefore before this class) ever runs, which would make a role-based 403 invisible to the
+ * one class the specification requires to log it ("auch der abgewiesene Versuch erzeugt einen
+ * Eintrag"). {@link io.opaa.api.AuditController} therefore no longer declares {@code @PreAuthorize}
+ * on any of the five read endpoints below; the role check happens here, where it can be logged, and
+ * nowhere else needs to duplicate it.
+ *
+ * <p>{@link #loggedAccess} logs exactly once per call, on every exit path: {@link AuditOutcome#
+ * SUCCESS} if the wrapped query completes, {@link AuditOutcome#DENIED} if anything it does throws a
+ * {@link RuntimeException} - a missing/blank {@code reason}, a caller who is not (or no longer) an
+ * AUDITOR, an invalid or too-wide time range, a page index beyond the bound, {@code objectType ==
+ * USER_ACCOUNT} on {@link #byObject}, or an incident scope that is not approved, expired, or does
+ * not cover the requested range on {@link #byIncidentScope}. The original exception is always
+ * rethrown after logging - the caller still sees exactly the same failure it would without #394.
+ *
+ * <p><b>Chosen transaction behaviour: no method here, and no method it calls, opens or joins an
+ * ambient transaction of its own.</b> A GET request in this codebase runs with no surrounding
+ * {@code @Transactional} (see {@link io.opaa.api.AuditController}, which declares none), so calling
+ * {@link AuditEventRecorder#recordAuditLogAccess} - which bottoms out in {@link
+ * AuditLogService#record}, a plain {@code save()} - opens and commits its own transaction
+ * immediately, on the call, regardless of what this method does afterwards (including rethrowing
+ * the very exception that triggered a {@code DENIED} entry). The self-log entry for a rejected
+ * attempt therefore survives the rejection by construction, without a {@code REQUIRES_NEW} or
+ * {@code noRollbackFor} anywhere: there is no ambient transaction for the rejection to roll back in
+ * the first place. This mirrors {@link AuditLogService}'s own documented choice (see its Javadoc)
+ * rather than repeating one of the three separate-transaction incidents the developer role
+ * contract's Transaktionen section warns against (#280, #297, #299) - the difference here is that
+ * no method in this class is ever annotated {@code @Transactional}, so there is nothing for a
+ * self-log write to be "separate" from. Verified by {@code AuditQueryServiceIntegrationTest}
+ * against a real Postgres database with a real transaction manager, not a mocked one: a rejected
+ * query still leaves its {@code DENIED} entry behind.
  *
  * <p>Every method: requires a non-null, non-inverted {@code from}/{@code to} no wider than {@link
  * #MAX_TIME_RANGE_DAYS} (mandatory, bounded time range, per the specification - "eine Abfrage ohne
@@ -31,6 +73,15 @@ import org.springframework.stereotype.Service;
  * actorRef} never appears as an input anywhere below except {@link #byIncidentScope}, and there it
  * is resolved from the approved grant's subject, not accepted from the caller. {@link #byObject}
  * additionally rejects {@link AuditObjectType#USER_ACCOUNT} - see its own Javadoc.
+ *
+ * <p>{@code callerId} (every method's second parameter) is deliberately not named with "actor" or
+ * "person" in it, and deliberately not a query filter: {@code
+ * AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor} still holds - {@code
+ * callerId} never reaches a {@code WHERE} clause anywhere in this class, it only identifies who to
+ * attribute the #394 self-log entry to. It is the same requirement every other {@link
+ * AuditEventRecorder} caller in this codebase already has (an {@code actorUserId} to pseudonymise),
+ * just newly required here because, until #394, nothing in this class ever wrote an audit entry
+ * itself.
  */
 @Service
 public class AuditQueryService {
@@ -60,19 +111,31 @@ public class AuditQueryService {
    */
   static final long MAX_TIME_RANGE_DAYS = 92;
 
+  /** Matches {@code audit_log.reason varchar(1000)} (migration 017). */
+  static final int MAX_REASON_LENGTH = 1000;
+
+  private static final String NOT_AUDITOR_MESSAGE =
+      "Zugriff verweigert - der Zugriff auf Protokolldaten ist der AUDITOR-Rolle vorbehalten";
+
   private static final Sort RECORDED_AT_ASC = Sort.by(Sort.Direction.ASC, "recordedAt");
 
   private final AuditLogRepository auditLogRepository;
   private final AuditIncidentScopeService incidentScopeService;
   private final AuditActorPseudonymService pseudonymService;
+  private final AuditEventRecorder eventRecorder;
+  private final UserRepository userRepository;
 
   public AuditQueryService(
       AuditLogRepository auditLogRepository,
       AuditIncidentScopeService incidentScopeService,
-      AuditActorPseudonymService pseudonymService) {
+      AuditActorPseudonymService pseudonymService,
+      AuditEventRecorder eventRecorder,
+      UserRepository userRepository) {
     this.auditLogRepository = auditLogRepository;
     this.incidentScopeService = incidentScopeService;
     this.pseudonymService = pseudonymService;
+    this.eventRecorder = eventRecorder;
+    this.userRepository = userRepository;
   }
 
   /**
@@ -91,45 +154,117 @@ public class AuditQueryService {
    */
   public Page<AuditLogEntry> byObject(
       UUID organizationId,
+      UUID callerId,
+      String reason,
       AuditObjectType objectType,
       String objectId,
       Instant from,
       Instant to,
       int page,
       int size) {
-    validateTimeRange(from, to);
-    if (objectType == AuditObjectType.USER_ACCOUNT) {
-      throw new IllegalArgumentException(
-          "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id waere hier"
-              + " dieselbe Pseudonymkennung, die anderswo actor_ref ist; die anlassbezogene"
-              + " Klaerung oder die Rechtehistorie (#238) sind der zulaessige Weg fuer diese Frage");
-    }
-    return auditLogRepository.findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
-        organizationId, objectType, objectId, from, to, pageable(page, size));
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "by-object");
+    scope.put("objectType", str(objectType));
+    scope.put("objectId", objectId);
+    scope.put("from", str(from));
+    scope.put("to", str(to));
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          validateTimeRange(from, to);
+          if (objectType == AuditObjectType.USER_ACCOUNT) {
+            throw new IllegalArgumentException(
+                "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id waere"
+                    + " hier dieselbe Pseudonymkennung, die anderswo actor_ref ist; die"
+                    + " anlassbezogene Klaerung oder die Rechtehistorie (#238) sind der zulaessige"
+                    + " Weg fuer diese Frage");
+          }
+          return auditLogRepository
+              .findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
+                  organizationId, objectType, objectId, from, to, pageable(page, size));
+        });
   }
 
   /** Access path "nach Zeitraum". */
   public Page<AuditLogEntry> byTimeRange(
-      UUID organizationId, Instant from, Instant to, int page, int size) {
-    validateTimeRange(from, to);
-    return auditLogRepository.findByOrganizationIdAndRecordedAtBetween(
-        organizationId, from, to, pageable(page, size));
+      UUID organizationId,
+      UUID callerId,
+      String reason,
+      Instant from,
+      Instant to,
+      int page,
+      int size) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "by-time-range");
+    scope.put("from", str(from));
+    scope.put("to", str(to));
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          validateTimeRange(from, to);
+          return auditLogRepository.findByOrganizationIdAndRecordedAtBetween(
+              organizationId, from, to, pageable(page, size));
+        });
   }
 
   /** Access path "nach Ereignisart". */
   public Page<AuditLogEntry> byEventType(
-      UUID organizationId, AuditEventType eventType, Instant from, Instant to, int page, int size) {
-    validateTimeRange(from, to);
-    return auditLogRepository.findByOrganizationIdAndEventTypeAndRecordedAtBetween(
-        organizationId, eventType, from, to, pageable(page, size));
+      UUID organizationId,
+      UUID callerId,
+      String reason,
+      AuditEventType eventType,
+      Instant from,
+      Instant to,
+      int page,
+      int size) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "by-event-type");
+    scope.put("eventType", str(eventType));
+    scope.put("from", str(from));
+    scope.put("to", str(to));
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          validateTimeRange(from, to);
+          return auditLogRepository.findByOrganizationIdAndEventTypeAndRecordedAtBetween(
+              organizationId, eventType, from, to, pageable(page, size));
+        });
   }
 
   /** Access path "nach Vorgang" (correlation_ref). */
   public Page<AuditLogEntry> byCorrelation(
-      UUID organizationId, String correlationRef, Instant from, Instant to, int page, int size) {
-    validateTimeRange(from, to);
-    return auditLogRepository.findByOrganizationIdAndCorrelationRefAndRecordedAtBetween(
-        organizationId, correlationRef, from, to, pageable(page, size));
+      UUID organizationId,
+      UUID callerId,
+      String reason,
+      String correlationRef,
+      Instant from,
+      Instant to,
+      int page,
+      int size) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "by-correlation");
+    scope.put("correlationRef", correlationRef);
+    scope.put("from", str(from));
+    scope.put("to", str(to));
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          validateTimeRange(from, to);
+          return auditLogRepository.findByOrganizationIdAndCorrelationRefAndRecordedAtBetween(
+              organizationId, correlationRef, from, to, pageable(page, size));
+        });
   }
 
   /**
@@ -146,21 +281,100 @@ public class AuditQueryService {
    * correct, not merely convenient, answer.
    */
   public Page<AuditLogEntry> byIncidentScope(
-      UUID organizationId, UUID scopeId, Instant from, Instant to, int page, int size) {
-    validateTimeRange(from, to);
-    AuditIncidentScopeGrant grant = incidentScopeService.findApproved(organizationId, scopeId);
-    if (!grant.covers(from, to)) {
-      throw new IllegalArgumentException(
-          "Der angefragte Zeitraum liegt außerhalb der freigegebenen Klärung");
+      UUID organizationId,
+      UUID callerId,
+      String reason,
+      UUID scopeId,
+      Instant from,
+      Instant to,
+      int page,
+      int size) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "by-incident-scope");
+    scope.put("scopeId", str(scopeId));
+    scope.put("from", str(from));
+    scope.put("to", str(to));
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          validateTimeRange(from, to);
+          AuditIncidentScopeGrant grant =
+              incidentScopeService.findApproved(organizationId, scopeId);
+          if (!grant.covers(from, to)) {
+            throw new IllegalArgumentException(
+                "Der angefragte Zeitraum liegt außerhalb der freigegebenen Klärung");
+          }
+          Pageable pageable = pageable(page, size);
+          return pseudonymService
+              .findExistingPseudonym(grant.getSubjectUserId())
+              .map(
+                  pseudonym ->
+                      auditLogRepository.findByOrganizationIdAndActorRefAndRecordedAtBetween(
+                          organizationId, pseudonym.toString(), from, to, pageable))
+              .orElseGet(() -> Page.empty(pageable));
+        });
+  }
+
+  /**
+   * Enforces the AUDITOR role and the mandatory {@code reason} (both here, not on the controller -
+   * see the class Javadoc), runs {@code query}, and writes exactly one #394 self-log entry either
+   * way - {@link AuditOutcome#SUCCESS} if {@code query} returns normally, {@link AuditOutcome#
+   * DENIED} if anything above (the role check, the reason check, or {@code query} itself, e.g. an
+   * invalid time range) throws. The original exception always propagates unchanged after logging.
+   */
+  private <T> T loggedAccess(
+      UUID organizationId,
+      UUID callerId,
+      String reason,
+      Map<String, Object> scope,
+      Supplier<T> query) {
+    try {
+      requireAuditor(organizationId, callerId);
+      requireReason(reason);
+      T result = query.get();
+      eventRecorder.recordAuditLogAccess(
+          organizationId, callerId, scope, AuditOutcome.SUCCESS, reason);
+      return result;
+    } catch (RuntimeException ex) {
+      eventRecorder.recordAuditLogAccess(
+          organizationId, callerId, scope, AuditOutcome.DENIED, reason);
+      throw ex;
     }
-    Pageable pageable = pageable(page, size);
-    return pseudonymService
-        .findExistingPseudonym(grant.getSubjectUserId())
-        .map(
-            pseudonym ->
-                auditLogRepository.findByOrganizationIdAndActorRefAndRecordedAtBetween(
-                    organizationId, pseudonym.toString(), from, to, pageable))
-        .orElseGet(() -> Page.empty(pageable));
+  }
+
+  /**
+   * The role check {@code @PreAuthorize("hasRole('AUDITOR')")} would otherwise perform on the
+   * controller - moved here so a denial can be logged (see the class Javadoc). Looks the caller up
+   * by id scoped to {@code organizationId} rather than trusting a bare id, the same tenant boundary
+   * {@link AuditIncidentScopeService#request} already applies to its subject.
+   */
+  private void requireAuditor(UUID organizationId, UUID callerId) {
+    User caller =
+        userRepository
+            .findByIdAndOrganizationId(callerId, organizationId)
+            .orElseThrow(() -> new AccessDeniedException(NOT_AUDITOR_MESSAGE));
+    if (caller.getSystemRole() != SystemRole.AUDITOR) {
+      throw new AccessDeniedException(NOT_AUDITOR_MESSAGE);
+    }
+  }
+
+  /**
+   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
+   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+   */
+  private void requireReason(String reason) {
+    if (reason == null || reason.isBlank()) {
+      throw new IllegalArgumentException(
+          "reason ist ein Pflichtfeld fuer den Zugriff auf Protokolldaten - eine Abfrage ohne"
+              + " Anlass wird abgewiesen");
+    }
+    if (reason.length() > MAX_REASON_LENGTH) {
+      throw new IllegalArgumentException(
+          "reason ist zu lang - maximal " + MAX_REASON_LENGTH + " Zeichen");
+    }
   }
 
   private void validateTimeRange(Instant from, Instant to) {
@@ -193,5 +407,16 @@ public class AuditQueryService {
     }
     int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
     return PageRequest.of(page, safeSize, RECORDED_AT_ASC);
+  }
+
+  /**
+   * Null-safe {@code toString()} for the {@code scope} maps above - {@link AuditEventRecorder}'s
+   * {@code JsonMapper} carries no JSR-310 module, so an {@link Instant} (or any other non-plain
+   * value) must already be a plain {@link String} by the time it reaches {@code toJson}, the same
+   * way every other {@link AuditEventRecorder} caller in this codebase pre-stringifies its own
+   * before/after values (e.g. {@code role.name()} in {@code UserService#updateRole}).
+   */
+  private static String str(Object value) {
+    return value == null ? null : value.toString();
   }
 }

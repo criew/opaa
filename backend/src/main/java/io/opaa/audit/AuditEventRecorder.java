@@ -24,6 +24,13 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class AuditEventRecorder {
 
+  /**
+   * {@code object_id} every #394 self-log entry carries - {@code audit_log} is a singleton per
+   * organization, not an entity with its own id, so there is nothing more specific to name here
+   * (see {@link #recordAuditLogAccess}).
+   */
+  private static final String AUDIT_LOG_SELF_OBJECT_ID = "audit_log";
+
   private final AuditLogService auditLogService;
   private final AuditActorPseudonymService pseudonymService;
   private final JsonMapper jsonMapper = JsonMapper.builder().build();
@@ -165,6 +172,49 @@ public class AuditEventRecorder {
             outcome,
             reason,
             correlationRef));
+  }
+
+  /**
+   * The #394 self-log entry for one access attempt against {@code audit_log} itself - {@code
+   * outcome} {@link AuditOutcome#SUCCESS} for a permitted, executed query, {@link AuditOutcome#
+   * DENIED} for a rejected attempt (missing AUDITOR role, missing {@code reason}, invalid or
+   * too-wide time range, an incident scope outside its approved bounds, ...), so a denied attempt
+   * is recorded exactly like a successful one
+   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt: "auch
+   * der abgewiesene Versuch erzeugt einen Eintrag"). {@code scope} - the access path plus whatever
+   * of object/event type, correlation ref, incident scope id and time range that path takes - is
+   * the record's "Umfang der Abfrage"; there is no dedicated column for it, so it is serialised
+   * into {@code after} the same way every other caller of this class serialises its own
+   * before/after state. {@code reason} is the mandatory Anlass and goes into the entry's own {@code
+   * reason} column - required by the caller ({@link io.opaa.audit.AuditQueryService#loggedAccess})
+   * before this method is ever reached, not re-validated here.
+   *
+   * <p>{@code object_id} is the fixed {@link #AUDIT_LOG_SELF_OBJECT_ID}, not a per-query id: {@code
+   * audit_log} itself is what was accessed, once per organization, regardless of which access path
+   * or which rows the query touched - those live in {@code scope}/{@code after}, not in {@code
+   * object_id}.
+   */
+  public void recordAuditLogAccess(
+      UUID organizationId,
+      UUID actorUserId,
+      Map<String, Object> scope,
+      AuditOutcome outcome,
+      String reason) {
+    String actorRef = pseudonymService.pseudonymFor(actorUserId, organizationId).toString();
+    auditLogService.record(
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            actorRef,
+            AuditEventType.AUDIT_LOG_ACCESSED,
+            AuditObjectType.AUDIT_LOG,
+            AUDIT_LOG_SELF_OBJECT_ID,
+            null,
+            null,
+            toJson(scope),
+            outcome,
+            reason,
+            null));
   }
 
   /**

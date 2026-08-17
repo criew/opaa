@@ -36,6 +36,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
@@ -54,6 +55,14 @@ import org.springframework.web.bind.annotation.RequestParam;
  * and fails if any of them could be used to name, filter, group or sort by a person. {@code
  * io.opaa.audit.AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor()} makes the
  * same proof one layer down, against the service the controller delegates to.
+ *
+ * <p>#394: {@link AuditQueryService} is mocked here (this is a {@code @WebMvcTest} slice), so the
+ * real role/reason enforcement this class now performs is exercised by {@code
+ * AuditQueryServiceIntegrationTest} instead, against the real bean. {@link
+ * #listByObjectAsRegularUserReturns403()} below stubs the mock to throw {@link
+ * AccessDeniedException} - what the real {@link AuditQueryService} now does for a non-AUDITOR
+ * caller - rather than relying on {@code @PreAuthorize}, which no controller method below declares
+ * any more (see {@link AuditController}'s own Javadoc for why).
  */
 @WebMvcTest(AuditController.class)
 @ActiveProfiles("dev")
@@ -62,6 +71,7 @@ class AuditControllerTest {
 
   private static final String TEST_ISSUER = "test-issuer";
   private static final String TEST_SUBJECT = "test-subject";
+  private static final String REASON = "Quartalsrevision Q1 2026";
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuditQueryService queryService;
@@ -118,7 +128,7 @@ class AuditControllerTest {
             AuditOutcome.SUCCESS,
             null,
             null);
-    when(queryService.byObject(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+    when(queryService.byObject(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
         .thenReturn(new PageImpl<>(List.of(entry)));
 
     mockMvc
@@ -128,14 +138,24 @@ class AuditControllerTest {
                 .param("objectType", "KNOWLEDGE_LIBRARY")
                 .param("objectId", "lib-1")
                 .param("from", "2026-02-01T00:00:00Z")
-                .param("to", "2026-02-28T00:00:00Z"))
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.events[0].actorRef").value("pseud-1"))
         .andExpect(jsonPath("$.events[0].objectId").value("lib-1"));
   }
 
+  /**
+   * #394: unlike before, this no longer relies on {@code @PreAuthorize} short-circuiting before the
+   * controller method runs - none of the five read endpoints declares it any more. The 403 comes
+   * from the real {@link AuditQueryService}'s own role check instead, simulated here by stubbing
+   * the mock to throw exactly what that check throws for a non-AUDITOR caller.
+   */
   @Test
   void listByObjectAsRegularUserReturns403() throws Exception {
+    when(queryService.byObject(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenThrow(new AccessDeniedException("Zugriff verweigert"));
+
     mockMvc
         .perform(
             get("/api/v1/audit/events/by-object")
@@ -143,7 +163,8 @@ class AuditControllerTest {
                 .param("objectType", "KNOWLEDGE_LIBRARY")
                 .param("objectId", "lib-1")
                 .param("from", "2026-02-01T00:00:00Z")
-                .param("to", "2026-02-28T00:00:00Z"))
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
         .andExpect(status().isForbidden());
   }
 
@@ -153,7 +174,8 @@ class AuditControllerTest {
         .perform(
             get("/api/v1/audit/events/by-time-range")
                 .with(asAuditor())
-                .param("to", "2026-02-28T00:00:00Z"))
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
         .andExpect(status().is4xxClientError());
   }
 
@@ -171,7 +193,8 @@ class AuditControllerTest {
                 .param("objectType", "NOT_A_REAL_OBJECT_TYPE")
                 .param("objectId", "lib-1")
                 .param("from", "2026-02-01T00:00:00Z")
-                .param("to", "2026-02-28T00:00:00Z"))
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
         .andExpect(status().isBadRequest());
   }
 
@@ -184,6 +207,29 @@ class AuditControllerTest {
                 .param("objectType", "KNOWLEDGE_LIBRARY")
                 .param("objectId", "lib-1")
                 .param("from", "gestern")
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
+        .andExpect(status().isBadRequest());
+  }
+
+  /**
+   * #394 acceptance criterion: "eine Abfrage ohne Anlass wird abgewiesen" - proven here at the HTTP
+   * layer by simulating exactly what the real {@link AuditQueryService} does for a missing reason
+   * (see {@code AuditQueryServiceIntegrationTest#aMissingReasonIsRejectedAndTheRejectionIsLogged}
+   * for the real-service proof, including that the rejection is logged).
+   */
+  @Test
+  void listByObjectWithoutReasonIsRejected() throws Exception {
+    when(queryService.byObject(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenThrow(new IllegalArgumentException("reason ist ein Pflichtfeld"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/audit/events/by-object")
+                .with(asAuditor())
+                .param("objectType", "KNOWLEDGE_LIBRARY")
+                .param("objectId", "lib-1")
+                .param("from", "2026-02-01T00:00:00Z")
                 .param("to", "2026-02-28T00:00:00Z"))
         .andExpect(status().isBadRequest());
   }
