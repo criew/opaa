@@ -156,6 +156,10 @@ letztere ist der Weg bereits gebaut, siehe
 Quellklassen kommen bedarfsgetrieben hinzu; die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
+Wie ein Quellentyp beschrieben, ausgewählt und erweitert wird — einschließlich der typabhängigen
+Behandlung verschwundener Dokumente —, ist in
+[ADR-0015](../decisions/0015-quellentypmodell-indizierung.md) festgehalten.
+
 Diese Spezifikation nennt bewusst **Systemklassen und Protokolle statt Produkte**. Welche
 Einzelprodukte eine Installation anbindet, ist eine Frage der Umsetzung und keine Produktzusage.
 
