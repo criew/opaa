@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung ohne Verweis</title>
+      <description>Diese Mitteilung trägt keinen Link und muss übersprungen werden.</description>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Mitteilung mit Verweis</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-mit-verweis</link>
+      <description>Diese Mitteilung ist vollständig.</description>
+      <pubDate>Mon, 01 Jan 2024 11:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
