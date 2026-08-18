@@ -41,6 +41,7 @@ class DocumentIndexingServiceTest {
   @Mock private IndexingJobService indexingJobService;
   @Mock private SourceIndexingExecutor asyncIndexingExecutor;
   @Mock private SourceIndexingExecutor urlIndexingExecutor;
+  @Mock private SourceIndexingExecutor rssFeedIndexingExecutor;
   @Mock private UserRepository userRepository;
   @Mock private KnowledgeLibraryRepository libraryRepository;
   @Mock private LibraryAccessService libraryAccessService;
@@ -55,8 +56,10 @@ class DocumentIndexingServiceTest {
   void setUp() {
     when(asyncIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.FILESYSTEM);
     when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
+    when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
     var registry =
-        new IndexingSourceExecutorRegistry(List.of(asyncIndexingExecutor, urlIndexingExecutor));
+        new IndexingSourceExecutorRegistry(
+            List.of(asyncIndexingExecutor, urlIndexingExecutor, rssFeedIndexingExecutor));
     service =
         new DocumentIndexingService(
             indexingJobService, registry, userRepository, libraryRepository, libraryAccessService);
@@ -354,6 +357,48 @@ class DocumentIndexingServiceTest {
     assertThatThrownBy(() -> new IndexingSourceExecutorRegistry(List.of()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("FILESYSTEM")
-        .hasMessageContaining("HTTP_DIRECTORY");
+        .hasMessageContaining("HTTP_DIRECTORY")
+        .hasMessageContaining("RSS_FEED");
+  }
+
+  // --- #467: RSS_FEED source type ---
+
+  @Test
+  void anRssFeedRequestWithoutAUrlIsRejectedWithAGermanMessage() {
+    var request =
+        new IndexingTriggerRequest()
+            .libraryId(library.getId())
+            .sourceType(IndexingSourceType.RSS_FEED);
+
+    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> {
+              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
+              assertThat(ex.getReason()).isEqualTo("Der Quellentyp RSS_FEED erfordert eine URL");
+            });
+    verify(indexingJobService, never()).startJob(any());
+    verify(rssFeedIndexingExecutor, never()).execute(any(), any(), any());
+  }
+
+  @Test
+  void anRssFeedRequestWithAUrlStartsTheJobAgainstTheRssFeedExecutor() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    var request =
+        new IndexingTriggerRequest()
+            .libraryId(library.getId())
+            .sourceType(IndexingSourceType.RSS_FEED)
+            .url(URI.create("https://example.com/feed.xml"));
+
+    IndexingJob result = service.triggerIndexing(request, currentUser.getId(), false);
+
+    assertThat(result).isEqualTo(job);
+    verify(rssFeedIndexingExecutor).execute(job.getId(), request, library);
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
+    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
   }
 }

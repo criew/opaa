@@ -192,6 +192,81 @@ public class FileProcessingService {
   }
 
   /**
+   * Processes a single RSS feed entry's already-extracted main text (#467, ADR-0017 decision 2):
+   * unlike {@link #processFile}/{@link #processUrlFile}, there is no file to open or download here
+   * - {@link RssFeedIndexingExecutor} has already fetched the entry's detail page and reduced it to
+   * its main content before calling this method, precisely so that {@code .html} never has to be
+   * added to {@link SupportedDocumentFormats} (see the class Javadoc there). Content-based
+   * deduplication/change detection otherwise mirrors {@link #processUrlFile} exactly: identity by
+   * {@code entryUrl} in {@code file_path}, SHA-256 checksum comparison, and {@code
+   * publishedAt}/{@code last_modified_remote} recorded for the executor's own change check on the
+   * next run.
+   */
+  public FileProcessingResult processRssEntry(
+      String mainText,
+      String entryTitle,
+      String entryUrl,
+      String publishedAt,
+      KnowledgeLibrary targetLibrary) {
+
+    String fileName = (entryTitle != null && !entryTitle.isBlank()) ? entryTitle : entryUrl;
+    byte[] contentBytes = mainText.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    String checksum = checksumService.computeSha256(contentBytes);
+
+    Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
+    if (existing.isPresent()) {
+      Document existingDoc = existing.get();
+      if (checksum.equals(existingDoc.getChecksum())
+          && existingDoc.getStatus() == DocumentStatus.INDEXED
+          && targetLibrary.getId().equals(existingDoc.getLibraryId())) {
+        log.info("Skipping unchanged RSS entry (same checksum): {}", entryUrl);
+        metrics.recordSkipped();
+        return FileProcessingResult.SKIPPED;
+      }
+      logLibraryChange(existingDoc, targetLibrary);
+      vectorStore.delete("document_id == '" + existingDoc.getId().toString() + "'");
+      documentRepository.delete(existingDoc);
+    }
+
+    var doc =
+        new Document(
+            fileName,
+            entryUrl,
+            "text/html",
+            (long) contentBytes.length,
+            DocumentSourceType.RSS_FEED);
+    doc.setLibraryId(targetLibrary.getId());
+    doc.setOrganizationId(targetLibrary.getOrganizationId());
+    doc = documentRepository.save(doc);
+
+    try {
+      List<org.springframework.ai.document.Document> parsed =
+          List.of(new org.springframework.ai.document.Document(mainText));
+
+      List<org.springframework.ai.document.Document> chunks =
+          chunkingService.chunkDocuments(fileName, parsed);
+      log.debug("RSS entry {} produced {} chunks", entryUrl, chunks.size());
+
+      storeChunks(doc, chunks);
+
+      doc.setChunkCount(chunks.size());
+      doc.setIndexedAt(Instant.now());
+      doc.setChecksum(checksum);
+      doc.setLastModifiedRemote(publishedAt);
+      doc.setStatus(DocumentStatus.INDEXED);
+      documentRepository.save(doc);
+    } catch (Exception e) {
+      doc.setStatus(DocumentStatus.FAILED);
+      documentRepository.save(doc);
+      metrics.recordFailed();
+      throw e;
+    }
+
+    metrics.recordProcessed();
+    return FileProcessingResult.PROCESSED;
+  }
+
+  /**
    * Processes a file uploaded through the REST upload endpoint (#420, {@code
    * io.opaa.library.LibraryDocumentService}). Unlike {@link #processFile} and {@link
    * #processUrlFile}, the caller has already decided the target library and organization and

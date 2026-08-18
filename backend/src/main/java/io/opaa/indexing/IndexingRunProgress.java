@@ -39,6 +39,15 @@ final class IndexingRunProgress {
     failed++;
   }
 
+  /**
+   * The number of documents recorded as failed so far - exposed for {@link
+   * RssFeedIndexingExecutor}, which needs to know whether a run failed anything before deciding
+   * whether the feed's conditional-GET state may be persisted (#490 review, finding 3).
+   */
+  int failedCount() {
+    return failed;
+  }
+
   void recordSkipped() {
     skipped++;
   }

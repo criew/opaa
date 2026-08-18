@@ -101,6 +101,28 @@ public class IndexingConfiguration {
         documentRepository);
   }
 
+  @Bean
+  RssFeedParser rssFeedParser() {
+    return new RssFeedParser();
+  }
+
+  @Bean
+  SourceIndexingExecutor rssFeedIndexingExecutor(
+      RssFeedParser rssFeedParser,
+      FileProcessingService fileProcessingService,
+      IndexingJobService indexingJobService,
+      DocumentRepository documentRepository,
+      RssFeedStateRepository rssFeedStateRepository,
+      IndexingProperties properties) {
+    return new RssFeedIndexingExecutor(
+        rssFeedParser,
+        fileProcessingService,
+        indexingJobService,
+        documentRepository,
+        rssFeedStateRepository,
+        properties);
+  }
+
   /**
    * Populated from every {@link SourceIndexingExecutor} bean Spring finds (ADR-0017): a new source
    * type becomes reachable by adding one more bean here, never by editing this method or {@link
