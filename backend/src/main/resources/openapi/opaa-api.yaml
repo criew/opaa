@@ -1773,7 +1773,14 @@ components:
 
     LibraryRequest:
       type: object
-      required: [name]
+      required: [name, sourceType]
+      description: >
+        sourceType is required (ADR-0018): a library's quellentyp is chosen at creation and is
+        never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
+        sourceProxy/sourceCredentials/sourceInsecureSsl may be set depends on sourceType - UPLOAD
+        accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY accepts
+        sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). A combination that
+        contradicts sourceType is rejected with 400.
       properties:
         name:
           type: string
@@ -1801,6 +1808,41 @@ components:
           type: boolean
           nullable: true
           description: Defaults to false
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
+        sourcePath:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Filesystem directory to crawl - only for sourceType FILESYSTEM.
+          example: /data/documents/rechtsquellen
+        sourceUrl:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: >
+            URL of an Apache mod_autoindex directory listing to crawl - only for sourceType
+            HTTP_DIRECTORY.
+          example: https://files.example.com/documents/
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Proxy server in host:port format - only for sourceType HTTP_DIRECTORY.
+          example: proxy.example.com:8080
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: >
+            Basic auth credentials in user:password format - only for sourceType
+            HTTP_DIRECTORY. Write-only: never returned by any API response (ADR-0018).
+          example: admin:secret
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          description: Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY.
+          default: false
 
     LibraryUpdateRequest:
       type: object
@@ -1808,6 +1850,11 @@ components:
       description: >
         Body for updating an existing library. Deliberately narrower than LibraryRequest: owner
         and ownerType cannot be changed here - transferring ownership is out of scope for #201.
+        sourceType and its configuration cannot be changed here either (ADR-0018): the
+        quellentyp is chosen once, at creation, and is permanent. sourceType is accepted as an
+        optional field purely so a client that (mistakenly) resends the current value from
+        LibraryResponse is not rejected for that alone; any value that differs from the
+        library's stored sourceType is rejected with 400.
       properties:
         name:
           type: string
@@ -1825,6 +1872,8 @@ components:
           type: boolean
           nullable: true
           description: Defaults to false
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
 
     LibraryListResponse:
       type: object
@@ -1891,6 +1940,7 @@ components:
         - listed
         - personal
         - myRole
+        - sourceType
         - createdAt
         - updatedAt
       properties:
@@ -1927,6 +1977,27 @@ components:
         documentCount:
           type: integer
           format: int64
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
+        sourcePath:
+          type: string
+          nullable: true
+          description: Set only for sourceType FILESYSTEM.
+        sourceUrl:
+          type: string
+          nullable: true
+          description: Set only for sourceType HTTP_DIRECTORY.
+        sourceProxy:
+          type: string
+          nullable: true
+          description: Set only for sourceType HTTP_DIRECTORY, and only if configured.
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          description: >
+            Set only for sourceType HTTP_DIRECTORY. sourceCredentials is deliberately absent
+            from this response (ADR-0018) - it is a write-only field of LibraryRequest and
+            appears in no API response.
         createdAt:
           type: string
           format: date-time

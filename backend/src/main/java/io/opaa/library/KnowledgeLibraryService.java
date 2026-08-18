@@ -17,6 +17,7 @@ import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.DocumentSourceType;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -130,6 +131,7 @@ public class KnowledgeLibraryService {
     LibraryVisibility visibility =
         request.getVisibility() != null ? request.getVisibility() : LibraryVisibility.PRIVATE;
     boolean listed = Boolean.TRUE.equals(request.getListed());
+    SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
     Group ownerGroup = null;
@@ -152,7 +154,13 @@ public class KnowledgeLibraryService {
               request.getDescription(),
               ownerGroup.getId(),
               visibility,
-              listed);
+              listed,
+              sourceConfiguration.sourceType(),
+              sourceConfiguration.sourcePath(),
+              sourceConfiguration.sourceUrl(),
+              sourceConfiguration.sourceProxy(),
+              sourceConfiguration.sourceCredentials(),
+              sourceConfiguration.sourceInsecureSsl());
     } else {
       library =
           KnowledgeLibrary.ownedByUser(
@@ -162,7 +170,13 @@ public class KnowledgeLibraryService {
               currentUserId,
               visibility,
               listed,
-              false);
+              false,
+              sourceConfiguration.sourceType(),
+              sourceConfiguration.sourcePath(),
+              sourceConfiguration.sourceUrl(),
+              sourceConfiguration.sourceProxy(),
+              sourceConfiguration.sourceCredentials(),
+              sourceConfiguration.sourceInsecureSsl());
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
@@ -260,6 +274,11 @@ public class KnowledgeLibraryService {
     payload.put("name", library.getName());
     payload.put("visibility", library.getVisibility().name());
     payload.put("listed", library.isListed());
+    // sourceType only, deliberately never sourcePath/sourceUrl/sourceCredentials - the audit log
+    // is append-only and never purged the way the library row itself can be (ADR-0018,
+    // Entscheidung 4: credentials must appear in no log, and path/url are not "rechtlich
+    // erheblich" the way LibraryChanged's changedFields comment already reasons for description).
+    payload.put("sourceType", library.getSourceType().name());
     return payload;
   }
 
@@ -349,6 +368,16 @@ public class KnowledgeLibraryService {
           HttpStatus.BAD_REQUEST,
           "Die Sichtbarkeit der persoenlichen Bibliothek kann nicht auf ORGANIZATION gesetzt"
               + " werden");
+    }
+    // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
+    // as a directory crawl cannot become an upload container (or vice versa) without mixing
+    // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.getSourceType() is
+    // optional purely so resending the current value (e.g. a naive client that echoes
+    // LibraryResponse back) is not itself an error - only an actual change is rejected.
+    if (request.getSourceType() != null && request.getSourceType() != library.getSourceType()) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geaendert werden");
     }
 
     String normalizedName = validateName(request.getName());
@@ -577,6 +606,84 @@ public class KnowledgeLibraryService {
     }
   }
 
+  /**
+   * A library's quellentyp is required at creation (ADR-0018) and each type accepts a strictly
+   * different, non-overlapping set of the request's configuration fields - the database enforces
+   * the same rule at the row level via {@code chk_knowledge_libraries_source_configuration}
+   * (migration 024), this is the 400-before-insert half of that same invariant. {@code
+   * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
+   * IndexingTriggerRequest}'s equivalent field.
+   */
+  private SourceConfiguration validateSourceConfiguration(LibraryRequest request) {
+    DocumentSourceType sourceType = request.getSourceType();
+    if (sourceType == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
+    }
+    String sourcePath = blankToNull(request.getSourcePath());
+    String sourceUrl = blankToNull(request.getSourceUrl());
+    String sourceProxy = blankToNull(request.getSourceProxy());
+    String sourceCredentials = blankToNull(request.getSourceCredentials());
+    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
+
+    switch (sourceType) {
+      case UPLOAD -> {
+        if (sourcePath != null
+            || sourceUrl != null
+            || sourceProxy != null
+            || sourceCredentials != null
+            || sourceInsecureSsl) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "sourceType UPLOAD erlaubt keine Quellkonfiguration");
+        }
+      }
+      case FILESYSTEM -> {
+        if (sourcePath == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
+        }
+        if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht"
+                  + " zulaessig");
+        }
+        if (sourceInsecureSsl) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
+        }
+      }
+      case HTTP_DIRECTORY -> {
+        if (sourceUrl == null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourceUrl ist erforderlich, wenn sourceType HTTP_DIRECTORY ist");
+        }
+        if (sourcePath != null) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourcePath ist fuer sourceType HTTP_DIRECTORY nicht zulaessig");
+        }
+      }
+    }
+    return new SourceConfiguration(
+        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  private String blankToNull(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
+  }
+
+  /** Groups a validated {@link LibraryRequest}'s source fields for the two entity factories. */
+  private record SourceConfiguration(
+      DocumentSourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {}
+
   private User requireUser(UUID userId) {
     return userRepository
         .findById(userId)
@@ -640,6 +747,8 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {
+    // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
+    // that appears in no API response, not even for the library's own owner.
     return new LibraryResponse(
             library.getId(),
             library.getName(),
@@ -648,11 +757,16 @@ public class KnowledgeLibraryService {
             library.isListed(),
             library.isPersonal(),
             myRole,
+            library.getSourceType(),
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription())
         .ownerId(library.getOwnerId())
-        .documentCount(documentRepository.countByLibraryId(library.getId()));
+        .documentCount(documentRepository.countByLibraryId(library.getId()))
+        .sourcePath(library.getSourcePath())
+        .sourceUrl(library.getSourceUrl())
+        .sourceProxy(library.getSourceProxy())
+        .sourceInsecureSsl(library.isSourceInsecureSsl());
   }
 
   private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {

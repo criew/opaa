@@ -28,6 +28,7 @@ import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.group.sync.DirectoryUnavailableException;
+import io.opaa.indexing.DocumentSourceType;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
@@ -214,7 +215,9 @@ class AuditEventRecordingIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     LibraryResponse response =
         libraryService.createLibrary(
-            new LibraryRequest("Bibliothek").ownerType(LibraryOwnerType.USER).ownerId(ownerId),
+            new LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD)
+                .ownerType(LibraryOwnerType.USER)
+                .ownerId(ownerId),
             ownerId);
     return response.getId();
   }
