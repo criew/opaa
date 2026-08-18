@@ -156,16 +156,16 @@ letztere ist der Weg bereits gebaut, siehe
 Quellklassen kommen bedarfsgetrieben hinzu; die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
-Wie ein Quellentyp beschrieben, ausgewählt und erweitert wird — einschließlich der typabhängigen
-Behandlung verschwundener Dokumente —, ist in
-[ADR-0015](../decisions/0015-quellentypmodell-indizierung.md) festgehalten.
-
 Diese Spezifikation nennt bewusst **Systemklassen und Protokolle statt Produkte**. Welche
 Einzelprodukte eine Installation anbindet, ist eine Frage der Umsetzung und keine Produktzusage.
 
 Jede Quelle kann **Einschluss- und Ausschlussmuster** tragen — Pfadmuster, Dateitypen, Änderungsalter.
 Sie sind das wirksamste Mittel gegen den häufigsten Fehler bei der Erschließung von Netzlaufwerken:
 zehntausend Dateien einzulesen, von denen dreihundert gemeint waren.
+
+Wie ein Quellentyp beschrieben, ausgewählt und erweitert wird — einschließlich der typabhängigen
+Behandlung verschwundener Dokumente —, ist in
+[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md) festgehalten.
 
 ### Erreichbare Verzeichnislisten im Netz (gebaut)
 
@@ -234,7 +234,9 @@ Damit das trägt, gelten drei Regeln:
    gekennzeichnet.
 2. **Löschen in der Quelle wirkt durch.** Ein in der Quelle entferntes Dokument wird aus dem Index
    genommen. Andernfalls bliebe eine zurückgezogene Weisung antwortfähig — der gefährlichste Fall
-   überhaupt.
+   überhaupt. Das gilt für **vollständig auflistende** Quellentypen, die bei jedem Lauf den gesamten
+   Bestand liefern; für **ergänzende** Quellentypen, die nur einen Ausschnitt führen, siehe
+   [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md).
 3. **Änderungen sind nachvollziehbar.** Die Abfolge der Fassungen bleibt erkennbar, damit eine ältere
    Antwort auf die Fassung verweisen kann, mit der sie erzeugt wurde.
 
