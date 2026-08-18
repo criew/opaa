@@ -212,21 +212,21 @@ konfigurierten Verzeichnisses.
   Weiterleitungen werden gefolgt. Solange nur die Systemverwaltung anstoßen darf, ist die Lage
   beherrschbar; sobald mehrere Personen diese Rolle halten, fällt sie mit der Fähigkeit zusammen, aus
   dem Serverkontext beliebige interne Adressen abzurufen. Die Härtung ist als **Issue #267** erfasst.
-- **Zuordnung zu einer Wissensbibliothek.** Der gebaute Weg kennt die Zuordnung noch nicht; alles
-  landet im einen vorhandenen Bestand. Die in diesem Dokument beschriebene Regel *eine Quelle, eine
-  Bibliothek* ist für ihn Zielbild.
+- **Zuordnung zu einer Wissensbibliothek über die Bibliothek hinaus.** Ziel ist die beim Anstoß
+  angegebene Bibliothek (seit #419 ein Pflichtfeld des Anstoßes); eine darüber hinausgehende, dauerhaft
+  hinterlegte Zuordnung existiert nicht. Die in diesem Dokument beschriebene Regel *eine Quelle, eine
+  Bibliothek* ist für ihn insoweit Zielbild.
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
   nächsten Kapitels ist damit noch nicht erreicht.
 
 ### Feeds als Quelle (gebaut)
 
 Viele Häuser veröffentlichen Neuigkeiten, Bekanntmachungen und Pressemitteilungen als RSS-2.0-Feed —
-darunter das Content-Management-System des Bundes, das den größten Teil dieser Feeds erzeugt. Anders als
-bei der Verzeichnisliste liefert ein Feed keine fertige Liste abzuholender Dateien: Sein `<link>`
-verweist auf eine HTML-Detailseite, nicht auf ein Dokument. Was indiziert werden soll, muss OPAA erst aus
-dieser Seite gewinnen.
+darunter verbreitete Redaktionssysteme der Verwaltung. Anders als bei der Verzeichnisliste liefert ein
+Feed keine fertige Liste abzuholender Dateien: Sein `<link>` verweist auf eine HTML-Detailseite, nicht auf
+ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinnen.
 
-**Ablauf eines Laufs — dreistufig:**
+**Ablauf eines Laufs — dreistufig, und die dritte Stufe nur bei tatsächlicher Verarbeitung:**
 
 1. Der **Feed** wird abgerufen und in seine Einträge zerlegt (Titel, Verweis auf die Detailseite,
    Kurzbeschreibung, Veröffentlichungsdatum).
@@ -240,36 +240,57 @@ dieser Seite gewinnen.
    allgemeine Profil (Endung im Verweisziel, gleicher Ursprung wie die Detailseite) oder das Profil für
    den Government Site Builder, dessen Verweise Anlagen stattdessen über einen Abfrageparameter
    kennzeichnen. Jede gefundene Anlage durchläuft dieselbe Verarbeitungskette wie eine Datei aus einer
-   Verzeichnisliste.
+   Verzeichnisliste. Diese dritte Stufe läuft nicht bei jedem Eintrag: Sie folgt entweder aus einer
+   tatsächlichen Neuverarbeitung (Stufe 2) oder — bei einem unveränderten Eintrag ohne bisherige Anlagen —
+   aus dem Nachholmechanismus der Änderungserkennung unten.
 
 **Änderungserkennung — gestuft, je nach Sicherheit der Angabe:**
 
 - Der **Feed selbst** wird mit einer bedingten Anfrage abgerufen (ETag/`If-Modified-Since`); meldet die
   Gegenstelle „unverändert", endet der Lauf nach dieser einen Anfrage.
 - Jeder **Eintrag** wird zuerst gegen sein zuletzt gesehenes `pubDate` geprüft — bevor die Detailseite
-  überhaupt angefragt wird. Ein unveränderter Eintrag kostet damit nichts über den bereits geladenen Feed
-  hinaus.
+  überhaupt angefragt wird. Ein Eintrag mit unverändertem `pubDate`, der bereits Anlagen-Dokumente
+  besitzt, kostet damit nichts über den bereits geladenen Feed hinaus. **Fehlen ihm noch Anlagen** —
+  dauerhaft bei einem Eintrag ohne Anlagen, einmalig bei einem vor Einführung der Anlagenverarbeitung
+  indizierten Altbestand —, wird seine Detailseite trotzdem einmal abgerufen, ausschließlich um Anlagen
+  nachzuholen; der Artikeltext selbst wird dabei nicht erneut verarbeitet. Ein unveränderter Feed erzeugt
+  also nicht zwangsläufig keine weiteren Anfragen.
 - Erst nach dem Abruf entscheidet eine **Prüfsumme über den Inhalt**, ob eine neue Fassung vorliegt —
   dieselbe Absicherung wie bei der Verzeichnisliste, hier zusätzlich zur Datumsprüfung, weil ein `pubDate`
   fehlen oder sich als unzuverlässig erweisen kann.
+- Das **ETag/Last-Modified des Feeds** wird nur gespeichert, wenn der Lauf **nichts zurückgestellt** hat —
+  keine Kürzung durch eine Obergrenze, keine Abweisung durch die Gegenstelle, keine verlorene Anlage, und
+  kein fehlgeschlagener Eintrag. Sonst würde die bedingte Anfrage des nächsten Laufs genau die Einträge
+  dauerhaft verbergen, die dieser Lauf nicht vollständig verarbeiten konnte — ein unvollständiger Lauf löst
+  deshalb beim nächsten Mal bewusst einen erneuten vollständigen Abruf des Feeds aus.
 
 **Verhalten gegenüber fremden Zielen.** Ein Feed und seine Detailseiten liegen bei einer Stelle, die OPAA
 nicht betreibt und deren Schutzmaßnahmen zu erwarten sind. Der Weg ist entsprechend zurückhaltend gebaut:
 
 - Ein konfigurierbarer **Mindestabstand** zwischen zwei Anfragen an Detailseiten und Anlagen.
 - Eine **wahrheitsgemäße Kennung** (`User-Agent`) — kein Vortäuschen eines Browsers.
-- **Obergrenzen** für die Größe des Feeds, einer Detailseite und einer Anlage, für die Zahl verarbeiteter
-  Einträge je Lauf und die Zahl der Anlagen je Eintrag. Überschreitungen werden protokolliert und
-  abgeschnitten, nicht als Fehler des Laufs gewertet.
+- **Zwei Zählgrenzen** — die Zahl verarbeiteter Einträge je Lauf und die Zahl der Anlagen je Eintrag.
+  Überschreitungen werden protokolliert und abgeschnitten, nicht als Fehler des Laufs gewertet.
+- **Drei Größengrenzen mit je eigener Wirkung**, weil eine zu große Antwort an unterschiedlichen Stellen
+  ankommt: Überschreitet der **Feed selbst** seine Obergrenze, **scheitert der gesamte Lauf** — es gibt
+  ohne einen geparsten Feed keine Einträge, über die einzeln entschieden werden könnte. Überschreitet
+  eine **Detailseite** ihre Obergrenze, wird nur der **betroffene Eintrag übersprungen**, der Lauf läuft
+  weiter. Überschreitet eine **Anlage** ihre Obergrenze, wird nur die **Anlage verworfen**; der Eintrag
+  selbst bleibt davon unberührt.
 - Eine **Same-Host-Regel für Anlagenverweise**, die Schema, Rechnername und Port der Detailseite
   gegenprüft — ein Verweis auf einen anderen Ursprung zählt unter keinem Profil als Anlage.
-- Eine **Content-Type-Prüfung** der Detailseite: Zeigt der `<link>` eines Eintrags direkt auf ein
-  Dokument statt auf eine HTML-Seite, wird der Eintrag übersprungen statt als verstümmelter Text
-  indiziert.
+- Eine **Content-Type-Prüfung** — sowohl der Detailseite als auch jeder einzelnen Anlage. Zeigt der
+  `<link>` eines Eintrags direkt auf ein Dokument statt auf eine HTML-Seite, wird der Eintrag
+  übersprungen statt als verstümmelter Text indiziert. Antwortet ein Anlagenverweis stattdessen mit HTML
+  — typischerweise eine Bot-Schutzseite oder eine mit Status 200 ausgelieferte Fehlerseite —, wird die
+  Anlage verworfen statt als vermeintliches Dokument indiziert. Beim Government-Site-Builder-Profil, dessen
+  Anlagenverweise keine Dateiendung tragen, bestimmt zusätzlich der Content-Type der Antwort den
+  verwendeten Dateinamen samt Endung.
 - **Abweisungen der Gegenstelle** — HTTP 403/429 oder eine Weiterleitung auf einen fremden Rechnername,
   etwa durch eine Bot-Schutzmaßnahme — werden getrennt von eigenen Verarbeitungsfehlern protokolliert.
   Sie sind bei einem gegen fremde Ziele laufenden Weg **zu erwarten**, kein Anzeichen eines Defekts, und
-  brechen weder den einzelnen Eintrag noch den Lauf ab; sie werden übersprungen und gezählt.
+  brechen den Lauf nicht ab; der betroffene Eintrag oder die betroffene Anlage wird übersprungen und
+  gezählt.
 
 **Löschausnahme.** Anders als die Verzeichnisliste führt ein Feed bei jedem Abruf nur einen
 Ausschnitt — üblicherweise die jüngsten Einträge in fester, begrenzter Zahl. Ein zuvor indizierter
@@ -289,8 +310,9 @@ Schnittstelle unter `/api/v1/indexing` an, mit `sourceType: RSS_FEED` und der Fe
   **Issue #485**.
 - **Zuordnung zu einer Wissensbibliothek über die Bibliothek hinaus.** Ziel ist die beim Anstoß
   angegebene Bibliothek; eine je Lauf wählbare Zuordnung existiert nicht. Epic **#486** verlagert die
-  Quellkonfiguration insgesamt in die Bibliothek — dazu läuft **ADR-0018** (**#475**); Näheres wird dort
-  entschieden, nicht hier.
+  Quellkonfiguration insgesamt in die Bibliothek —
+  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) liegt dazu als Vorschlag vor,
+  noch nicht entschieden; Näheres wird dort entschieden, nicht hier.
 - **Herkunftsanzeige.** Eine Anlage führt intern fest, zu welchem Eintrag sie gehört
   (`source_entry_url`), aber weder die Schnittstelle noch die Oberfläche zeigen das an. Erfasst als
   **Issue #493**.
@@ -631,8 +653,10 @@ Idee wieder aufgemacht werden.
   ein angestoßener Sonderweg? Mit dem **Feed** ist inzwischen ein zweiter, ebenso angestoßener Netzweg
   hinzugekommen, der dieselbe Frage aufwirft. Die Zielprüfung aus **Issue #267** ist von dieser Frage
   unabhängig und in jedem Fall nötig, für beide Wege. Die dauerhafte Quellkonfiguration selbst wandert
-  mit Epic **#486** in die Wissensbibliothek — das dazugehörige **ADR-0018** entsteht gerade
-  (**#475**); was das für die einzelnen Netzwege konkret bedeutet, wird dort entschieden, nicht hier.
+  mit Epic **#486** in die Wissensbibliothek —
+  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) liegt dazu als Vorschlag vor,
+  noch nicht entschieden; was das für die einzelnen Netzwege konkret bedeutet, wird dort entschieden,
+  nicht hier.
 - Bleiben die Felder für Netzvermittler, Anmeldung und das Aussetzen der Zertifikatsprüfung in ihrer
   heutigen Form, oder gehören diese Angaben in die Konnektorkonfiguration statt in den Anstoß eines
   einzelnen Laufs?
