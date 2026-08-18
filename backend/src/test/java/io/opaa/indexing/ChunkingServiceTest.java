@@ -24,7 +24,8 @@ class ChunkingServiceTest {
 
   @Test
   void chunksShortTextIntoSingleChunk() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3, null));
+    var service =
+        new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3, null, null));
     var doc = new Document("This is a short text that should fit into one chunk.");
     List<Document> result = service.chunkDocuments("test.txt", List.of(doc));
 
@@ -34,7 +35,7 @@ class ChunkingServiceTest {
 
   @Test
   void chunksLongTextIntoMultipleChunks() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3, null));
+    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3, null, null));
     // Create a long text that needs multiple chunks
     String longText = "This is sentence number one. ".repeat(200);
     var doc = new Document(longText);
@@ -45,7 +46,7 @@ class ChunkingServiceTest {
 
   @Test
   void preservesMetadataInChunks() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3, null));
+    var service = new ChunkingService(new IndexingProperties("./docs", 100, 10, 50, 3, null, null));
     String longText = "Word ".repeat(500);
     var doc = new Document(longText);
     doc.getMetadata().put("source", "test.txt");
@@ -57,7 +58,8 @@ class ChunkingServiceTest {
 
   @Test
   void handlesEmptyDocumentList() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3, null));
+    var service =
+        new ChunkingService(new IndexingProperties("./docs", 1000, 100, 50, 3, null, null));
     List<Document> result = service.chunkDocuments("empty.txt", List.of());
 
     assertThat(result).isEmpty();
@@ -70,7 +72,7 @@ class ChunkingServiceTest {
    */
   @Test
   void everyChunkRepeatsTheTailOfItsPredecessor() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 120, 30, 50, 3, null));
+    var service = new ChunkingService(new IndexingProperties("./docs", 120, 30, 50, 3, null, null));
     var doc = new Document(distinctSentences(400));
 
     List<Document> result = service.chunkDocuments("regulation.md", List.of(doc));
@@ -92,7 +94,7 @@ class ChunkingServiceTest {
   /** An overlap of zero must stay a hard cut — the parameter has to be able to turn itself off. */
   @Test
   void zeroOverlapProducesDisjointChunks() {
-    var service = new ChunkingService(new IndexingProperties("./docs", 120, 0, 50, 3, null));
+    var service = new ChunkingService(new IndexingProperties("./docs", 120, 0, 50, 3, null, null));
     var doc = new Document(distinctSentences(400));
 
     List<Document> result = service.chunkDocuments("regulation.md", List.of(doc));
@@ -107,13 +109,14 @@ class ChunkingServiceTest {
 
   @Test
   void rejectsAnOverlapThatIsNotSmallerThanTheChunkSize() {
-    assertThatThrownBy(() -> new IndexingProperties("./docs", 100, 100, 50, 3, null))
+    assertThatThrownBy(() -> new IndexingProperties("./docs", 100, 100, 50, 3, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("chunkOverlap");
   }
 
   @Test
   void treatsANegativeOverlapAsNoOverlap() {
-    assertThat(new IndexingProperties("./docs", 1000, -1, 50, 3, null).chunkOverlap()).isZero();
+    assertThat(new IndexingProperties("./docs", 1000, -1, 50, 3, null, null).chunkOverlap())
+        .isZero();
   }
 }

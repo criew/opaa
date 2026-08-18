@@ -270,6 +270,12 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | Kern-Threads für asynchrone Indizierung |
 | `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | Maximale Threads für asynchrone Indizierung |
 | `OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY` | `20` | Task-Queue-Kapazität für asynchrone Indizierung |
+| `OPAA_INDEXING_RSS_MAX_ENTRIES` | `200` | Max. Anzahl verarbeiteter RSS-Feed-Einträge je Lauf |
+| `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | `10485760` | Max. Größe des abgerufenen RSS-Feeds in Byte |
+| `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | `5242880` | Max. Größe einer abgerufenen Detailseite in Byte |
+| `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `1000` | Mindestabstand zwischen zwei Detailseiten-Abrufen in ms |
+| `OPAA_INDEXING_RSS_USER_AGENT` | `OPAA-Indexer/1.0` | User-Agent für RSS-Feed- und Detailseiten-Abrufe (kein Browser-Faking) |
+| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | CSS-Selektor (Jsoup-Syntax) für den Hauptinhalt einer Detailseite, Fallback `<body>` |
 | **pgvector** | | |
 | `OPAA_PGVECTOR_DIMENSIONS` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
 | `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |

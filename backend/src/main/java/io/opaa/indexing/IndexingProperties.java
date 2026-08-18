@@ -18,6 +18,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     count used with exponential backoff. Valid range: 0–10.
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
  *     conservative values suitable for typical single-server deployments.
+ * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs (#467) - obergrenzen and
+ *     politeness settings the executor must apply against feed operators it does not control (see
+ *     {@link Rss}'s own Javadoc).
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -26,7 +29,8 @@ public record IndexingProperties(
     int chunkOverlap,
     int batchSize,
     int retryAttempts,
-    ThreadPool threadPool) {
+    ThreadPool threadPool,
+    Rss rss) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -66,6 +70,9 @@ public record IndexingProperties(
     if (threadPool == null) {
       threadPool = new ThreadPool(2, 4, 20);
     }
+    if (rss == null) {
+      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null);
+    }
   }
 
   public record ThreadPool(int coreSize, int maxSize, int queueCapacity) {
@@ -79,6 +86,73 @@ public record IndexingProperties(
       }
       if (queueCapacity < 0) {
         queueCapacity = 20;
+      }
+    }
+  }
+
+  /**
+   * Politeness and DoS-hardening settings for {@link IndexingSourceType#RSS_FEED} runs (#467, PR
+   * #474 review). The addresses an RSS run touches - the feed itself and every entry's detail page
+   * - come from the feed operator, not from OPAA's own configuration; {@link RssFeedParser}
+   * deliberately does not enforce any of these limits itself (it is a pure, unbounded parser meant
+   * to run without network or database), so the executor that drives it is the only place left to
+   * apply them.
+   *
+   * @param maxEntries the maximum number of feed entries processed in a single run. Excess entries
+   *     are logged and dropped, not treated as an error - a feed is allowed to simply carry more
+   *     entries than one run processes.
+   * @param maxFeedSizeBytes the maximum number of bytes read from the feed itself before parsing
+   *     aborts. Enforced while streaming the response, not after it has already been fully
+   *     downloaded (PR #474 review) - the parser has no cap of its own.
+   * @param maxPageSizeBytes the maximum number of bytes read from a single entry's detail page. A
+   *     page exceeding this is skipped like any other rejection by the remote end, not treated as a
+   *     run-ending failure.
+   * @param requestDelayMs the minimum delay, in milliseconds, between two detail-page requests -
+   *     the "Kennung des abrufenden Programms" side of being a well-behaved crawler against sites
+   *     OPAA does not operate. Default 1000: a conservative one request per second.
+   * @param userAgent the {@code User-Agent} header sent with every request this executor makes.
+   *     Deliberately truthful by default (see below) - impersonating a browser is explicitly out of
+   *     scope (#467).
+   * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
+   *     content, tried against the whole document. Falls back to {@code body} when it matches
+   *     nothing, so an unusual page still yields the full page's text rather than nothing at all.
+   */
+  public record Rss(
+      int maxEntries,
+      long maxFeedSizeBytes,
+      long maxPageSizeBytes,
+      long requestDelayMs,
+      String userAgent,
+      String mainContentSelector) {
+
+    /** Truthful default {@code User-Agent} - never a value that impersonates a browser (#467). */
+    static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
+
+    /**
+     * Tried in order against the whole document; the first selector that matches anything wins.
+     * {@code main}/{@code article}/{@code [role=main]} cover the vast majority of German public
+     * administration CMS templates (#467) without any per-site configuration.
+     */
+    static final String DEFAULT_MAIN_CONTENT_SELECTOR = "main, article, [role=main]";
+
+    public Rss {
+      if (maxEntries <= 0) {
+        maxEntries = 200;
+      }
+      if (maxFeedSizeBytes <= 0) {
+        maxFeedSizeBytes = 10_485_760L; // 10 MiB
+      }
+      if (maxPageSizeBytes <= 0) {
+        maxPageSizeBytes = 5_242_880L; // 5 MiB
+      }
+      if (requestDelayMs < 0) {
+        requestDelayMs = 1000L;
+      }
+      if (userAgent == null || userAgent.isBlank()) {
+        userAgent = DEFAULT_USER_AGENT;
+      }
+      if (mainContentSelector == null || mainContentSelector.isBlank()) {
+        mainContentSelector = DEFAULT_MAIN_CONTENT_SELECTOR;
       }
     }
   }

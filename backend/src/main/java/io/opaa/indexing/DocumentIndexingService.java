@@ -100,7 +100,8 @@ public class DocumentIndexingService {
    * an address but got none, or one that must not have one but got one anyway, never starts a job
    * that would find nothing. Only {@code url} is checked - the other type-specific fields ({@code
    * proxy}, {@code credentials}, {@code insecureSsl}) are not validated against {@code sourceType}
-   * here, matching the check this replaces.
+   * here, matching the check this replaces. {@code RSS_FEED} (#467) needs a {@code url} exactly
+   * like {@code HTTP_DIRECTORY} - both address a source over the same field (ADR-0017, decision 2).
    */
   private void requireConsistentSourceType(
       IndexingSourceType sourceType, IndexingTriggerRequest request) {
@@ -108,6 +109,10 @@ public class DocumentIndexingService {
     if (sourceType == IndexingSourceType.HTTP_DIRECTORY && !hasUrl) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Der Quellentyp HTTP_DIRECTORY erfordert eine URL");
+    }
+    if (sourceType == IndexingSourceType.RSS_FEED && !hasUrl) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Der Quellentyp RSS_FEED erfordert eine URL");
     }
     if (sourceType == IndexingSourceType.FILESYSTEM && hasUrl) {
       throw new ResponseStatusException(

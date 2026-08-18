@@ -9,5 +9,6 @@ package io.opaa.indexing;
  */
 public enum IndexingSourceType {
   FILESYSTEM,
-  HTTP_DIRECTORY
+  HTTP_DIRECTORY,
+  RSS_FEED
 }

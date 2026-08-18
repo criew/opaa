@@ -1382,9 +1382,10 @@ components:
         the caller did not choose, and the API answers 400 rather than picking one.
         sourceType is optional (ADR-0017): it picks the run's executor explicitly. When it
         is omitted, the backward-compatible fallback applies - url set means
-        HTTP_DIRECTORY, otherwise FILESYSTEM. A sourceType that contradicts the other
-        fields (e.g. HTTP_DIRECTORY without a url, or FILESYSTEM with one) is rejected with
-        a 400.
+        HTTP_DIRECTORY, otherwise FILESYSTEM. RSS_FEED has no such fallback and must always
+        be stated explicitly. A sourceType that contradicts the other fields (e.g.
+        HTTP_DIRECTORY or RSS_FEED without a url, or FILESYSTEM with one) is rejected with a
+        400.
       required: [libraryId]
       properties:
         libraryId:
@@ -1400,7 +1401,10 @@ components:
         url:
           type: string
           format: uri
-          description: URL of an Apache mod_autoindex directory listing to crawl
+          description: >
+            URL of an Apache mod_autoindex directory listing to crawl (HTTP_DIRECTORY) or
+            of an RSS 2.0 feed to resolve (RSS_FEED) - the same field serves both source
+            types (ADR-0017, decision 2).
           example: https://files.example.com/documents/
         proxy:
           type: string
@@ -1931,7 +1935,7 @@ components:
         A run-based source type - narrower than DocumentSourceType (ADR-0017): it lists
         only the types an indexing run can execute, so UPLOAD (a document's origin, not a
         run type) can never be requested via /api/v1/indexing/trigger.
-      enum: [FILESYSTEM, HTTP_DIRECTORY]
+      enum: [FILESYSTEM, HTTP_DIRECTORY, RSS_FEED]
       example: FILESYSTEM
 
     LibraryDocumentResponse:

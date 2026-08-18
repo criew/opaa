@@ -23,4 +23,18 @@ public class ChecksumService {
       throw new IllegalStateException("SHA-256 algorithm not available", e);
     }
   }
+
+  /**
+   * Computes the SHA-256 checksum of already in-memory content - used for {@link
+   * IndexingSourceType#RSS_FEED} runs (#467), whose text comes from an extracted detail page rather
+   * than a file on disk, so there is nothing to open a {@link Path} against.
+   */
+  public String computeSha256(byte[] content) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      return HexFormat.of().formatHex(digest.digest(content));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
+  }
 }

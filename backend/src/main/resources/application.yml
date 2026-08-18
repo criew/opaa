@@ -95,6 +95,13 @@ opaa:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
+    rss:
+      max-entries: ${OPAA_INDEXING_RSS_MAX_ENTRIES:200}
+      max-feed-size-bytes: ${OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES:10485760}
+      max-page-size-bytes: ${OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES:5242880}
+      request-delay-ms: ${OPAA_INDEXING_RSS_REQUEST_DELAY_MS:1000}
+      user-agent: ${OPAA_INDEXING_RSS_USER_AGENT:OPAA-Indexer/1.0}
+      main-content-selector: ${OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR:main, article, [role=main]}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
