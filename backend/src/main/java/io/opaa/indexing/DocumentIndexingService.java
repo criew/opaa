@@ -1,10 +1,12 @@
 package io.opaa.indexing;
 
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -16,53 +18,118 @@ import org.springframework.web.server.ResponseStatusException;
  * unreachable {@link KnowledgeLibrary#SYSTEM_LIBRARY_ID}) would file a whole batch of documents
  * somewhere nobody chose, exactly the defect this issue closes (see the class-level rationale that
  * used to live on {@code FileProcessingService} before #419).
+ *
+ * <p>ADR-0017 moved the choice of <em>which</em> run type executes from an implicit guess (was
+ * {@code url} set?) to an explicit {@link IndexingSourceType}, resolved through {@link
+ * IndexingSourceExecutorRegistry}. {@link #triggerIndexing(IndexingTriggerRequest, UUID, boolean)}
+ * is the single place that still falls back to the old guess when the caller does not state a
+ * {@code sourceType} - every other method here states its type explicitly and never guesses.
  */
 public class DocumentIndexingService {
 
   private final IndexingJobService indexingJobService;
-  private final AsyncIndexingExecutor asyncIndexingExecutor;
-  private final UrlIndexingExecutor urlIndexingExecutor;
+  private final IndexingSourceExecutorRegistry executorRegistry;
   private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
 
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
-      AsyncIndexingExecutor asyncIndexingExecutor,
-      UrlIndexingExecutor urlIndexingExecutor,
+      IndexingSourceExecutorRegistry executorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService) {
     this.indexingJobService = indexingJobService;
-    this.asyncIndexingExecutor = asyncIndexingExecutor;
-    this.urlIndexingExecutor = urlIndexingExecutor;
+    this.executorRegistry = executorRegistry;
     this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
   }
 
+  /** Triggers a {@link IndexingSourceType#FILESYSTEM} run - the type is never guessed here. */
   public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    if (indexingJobService.isJobRunning()) {
-      throw new IndexingAlreadyRunningException("An indexing job is already running");
-    }
-    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId, systemAdmin);
-    var job = indexingJobService.startJob(targetLibrary.getId());
-    asyncIndexingExecutor.execute(job.getId(), targetLibrary);
-    return job;
+    return trigger(
+        IndexingSourceType.FILESYSTEM,
+        new IndexingTriggerRequest().libraryId(libraryId),
+        currentUserId,
+        systemAdmin);
   }
 
+  /** Triggers a {@link IndexingSourceType#HTTP_DIRECTORY} run - the type is never guessed here. */
   public IndexingJob triggerUrlIndexing(
       UrlIndexingRequest request, UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    if (indexingJobService.isJobRunning()) {
-      throw new IndexingAlreadyRunningException("An indexing job is already running");
-    }
     if (request.url() == null || request.url().isBlank()) {
       throw new IllegalArgumentException("Die URL darf nicht leer sein");
     }
-    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId, systemAdmin);
+    return trigger(
+        IndexingSourceType.HTTP_DIRECTORY,
+        new IndexingTriggerRequest()
+            .libraryId(libraryId)
+            .url(URI.create(request.url()))
+            .proxy(request.proxy())
+            .credentials(request.credentials())
+            .insecureSsl(request.insecureSsl()),
+        currentUserId,
+        systemAdmin);
+  }
+
+  /**
+   * Single entry point used by {@code IndexingController}. Resolves the effective {@link
+   * IndexingSourceType} - {@code request.getSourceType()} if the caller stated one, otherwise the
+   * backward-compatible fallback derived from whether {@code url} is populated (ADR-0017, decision
+   * 1) - checks it against the request's other fields, and delegates to the executor the registry
+   * returns for it. This is the only remaining place in the application that infers a source type
+   * from field presence rather than being told one explicitly.
+   */
+  public IndexingJob triggerIndexing(
+      IndexingTriggerRequest request, UUID currentUserId, boolean systemAdmin) {
+    return trigger(resolveSourceType(request), request, currentUserId, systemAdmin);
+  }
+
+  private IndexingSourceType resolveSourceType(IndexingTriggerRequest request) {
+    if (request.getSourceType() != null) {
+      return request.getSourceType();
+    }
+    return hasUrl(request) ? IndexingSourceType.HTTP_DIRECTORY : IndexingSourceType.FILESYSTEM;
+  }
+
+  private boolean hasUrl(IndexingTriggerRequest request) {
+    return request.getUrl() != null && !request.getUrl().toString().isBlank();
+  }
+
+  private IndexingJob trigger(
+      IndexingSourceType sourceType,
+      IndexingTriggerRequest request,
+      UUID currentUserId,
+      boolean systemAdmin) {
+    if (indexingJobService.isJobRunning()) {
+      throw new IndexingAlreadyRunningException("An indexing job is already running");
+    }
+    requireConsistentSourceType(sourceType, request);
+    KnowledgeLibrary targetLibrary =
+        requireEditableLibrary(request.getLibraryId(), currentUserId, systemAdmin);
+    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
     var job = indexingJobService.startJob(targetLibrary.getId());
-    urlIndexingExecutor.execute(job.getId(), request, targetLibrary);
+    executor.execute(job.getId(), request, targetLibrary);
     return job;
+  }
+
+  /**
+   * Rejects a request whose {@code sourceType} contradicts its other fields (ADR-0017): a run that
+   * needs an address but got none, or one that must not have one but got one anyway, never starts a
+   * job that would find nothing or silently ignore a field the caller set.
+   */
+  private void requireConsistentSourceType(
+      IndexingSourceType sourceType, IndexingTriggerRequest request) {
+    boolean hasUrl = hasUrl(request);
+    if (sourceType == IndexingSourceType.HTTP_DIRECTORY && !hasUrl) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Der Quellentyp HTTP_DIRECTORY erfordert eine URL");
+    }
+    if (sourceType == IndexingSourceType.FILESYSTEM && hasUrl) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Der Quellentyp FILESYSTEM darf keine URL enthalten");
+    }
   }
 
   /**

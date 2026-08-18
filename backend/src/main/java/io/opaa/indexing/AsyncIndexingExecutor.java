@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -9,7 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
-public class AsyncIndexingExecutor {
+/** Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). */
+public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(AsyncIndexingExecutor.class);
 
@@ -29,8 +31,18 @@ public class AsyncIndexingExecutor {
     this.properties = properties;
   }
 
+  @Override
+  public IndexingSourceType sourceType() {
+    return IndexingSourceType.FILESYSTEM;
+  }
+
+  /**
+   * {@code request} is ignored here: a filesystem run always reads from the configured {@code
+   * IndexingProperties#documentPath()}, never from a request field.
+   */
+  @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, IndexingTriggerRequest request, KnowledgeLibrary targetLibrary) {
     int processed = 0;
     int failed = 0;
     int skipped = 0;
@@ -48,7 +60,9 @@ public class AsyncIndexingExecutor {
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
       // documents is lower than the number of files in the directory.
-      skipped += reportRejected(discovered.rejected());
+      skipped +=
+          RejectedDocumentReporter.reportRejected(
+              discovered.rejected().stream().map(p -> p.getFileName().toString()).toList());
 
       indexingJobService.setTotalDocuments(jobId, discovered.totalFound());
       indexingJobService.updateProgress(jobId, processed, failed, skipped);
@@ -79,18 +93,5 @@ public class AsyncIndexingExecutor {
       log.error("Indexing failed unexpectedly", e);
       indexingJobService.failJob(jobId, e.getMessage());
     }
-  }
-
-  /** Names every rejected document in the log and returns how many there were. */
-  private int reportRejected(List<Path> rejected) {
-    if (rejected.isEmpty()) {
-      return 0;
-    }
-    log.warn(
-        "Rejected {} document(s) because of an unsupported format (supported: {}): {}",
-        rejected.size(),
-        SupportedDocumentFormats.extensions(),
-        rejected.stream().map(p -> p.getFileName().toString()).toList());
-    return rejected.size();
   }
 }

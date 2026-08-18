@@ -5,6 +5,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.IndexingMetrics;
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -94,18 +95,27 @@ public class IndexingConfiguration {
         documentRepository);
   }
 
+  /**
+   * Populated from every {@link SourceIndexingExecutor} bean Spring finds (ADR-0017): a new source
+   * type becomes reachable by adding one more bean here, never by editing this method or {@link
+   * DocumentIndexingService}.
+   */
+  @Bean
+  IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
+      List<SourceIndexingExecutor> executors) {
+    return new IndexingSourceExecutorRegistry(executors);
+  }
+
   @Bean
   DocumentIndexingService documentIndexingService(
       IndexingJobService indexingJobService,
-      AsyncIndexingExecutor asyncIndexingExecutor,
-      UrlIndexingExecutor urlIndexingExecutor,
+      IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService) {
     return new DocumentIndexingService(
         indexingJobService,
-        asyncIndexingExecutor,
-        urlIndexingExecutor,
+        indexingSourceExecutorRegistry,
         userRepository,
         libraryRepository,
         libraryAccessService);

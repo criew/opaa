@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -14,8 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
-/** Async executor for URL-based document indexing via Apache mod_autoindex crawling. */
-public class UrlIndexingExecutor {
+/**
+ * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
+ * crawling (ADR-0017).
+ */
+public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(UrlIndexingExecutor.class);
 
@@ -38,8 +42,16 @@ public class UrlIndexingExecutor {
     this.documentRepository = documentRepository;
   }
 
+  @Override
+  public IndexingSourceType sourceType() {
+    return IndexingSourceType.HTTP_DIRECTORY;
+  }
+
+  @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, UrlIndexingRequest request, KnowledgeLibrary targetLibrary) {
+  public void execute(
+      UUID jobId, IndexingTriggerRequest triggerRequest, KnowledgeLibrary targetLibrary) {
+    UrlIndexingRequest request = toUrlIndexingRequest(triggerRequest);
     int processed = 0;
     int failed = 0;
     int skipped = 0;
@@ -97,7 +109,9 @@ public class UrlIndexingExecutor {
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
       // documents is lower than the number of files behind the URL.
-      skipped += reportRejected(rejectedFiles);
+      skipped +=
+          RejectedDocumentReporter.reportRejected(
+              rejectedFiles.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList());
 
       indexingJobService.setTotalDocuments(jobId, allFiles.size());
       indexingJobService.updateProgress(jobId, processed, failed, skipped);
@@ -203,16 +217,17 @@ public class UrlIndexingExecutor {
     return SupportedDocumentFormats.isSupported(entry.name());
   }
 
-  /** Names every rejected document in the log and returns how many there were. */
-  private int reportRejected(List<AutoindexCrawlerService.CrawledFileEntry> rejected) {
-    if (rejected.isEmpty()) {
-      return 0;
-    }
-    log.warn(
-        "Rejected {} document(s) because of an unsupported format (supported: {}): {}",
-        rejected.size(),
-        SupportedDocumentFormats.extensions(),
-        rejected.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList());
-    return rejected.size();
+  /**
+   * Extracts this executor's own fields ({@code url}/{@code proxy}/{@code credentials}/{@code
+   * insecureSsl}) from the generic {@link IndexingTriggerRequest} the registry hands every executor
+   * - the rest of the request (e.g. {@code sourceType}, {@code libraryId}) is not this executor's
+   * concern.
+   */
+  private static UrlIndexingRequest toUrlIndexingRequest(IndexingTriggerRequest request) {
+    return new UrlIndexingRequest(
+        request.getUrl() != null ? request.getUrl().toString() : null,
+        request.getProxy(),
+        request.getCredentials(),
+        Boolean.TRUE.equals(request.getInsecureSsl()));
   }
 }
