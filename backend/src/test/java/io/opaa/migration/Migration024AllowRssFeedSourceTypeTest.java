@@ -25,9 +25,20 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 024 in isolation against a database built from the real, versioned
- * changelog through changeSet 023 - the same pattern as {@code Migration020UploadMetadataTest} and
- * {@code Migration021AuditIncidentScopeGrantsTest}, with {@code test-master-through-023.yaml} as
- * the pre-migration fixture.
+ * changelog through changeSet 020 - the same pattern as {@code
+ * Migration021AuditIncidentScopeGrantsTest}, with {@code test-master-through-020.yaml} (which
+ * already carries {@code chk_documents_source_type}'s full pre-024 history via 004 and 020) as the
+ * pre-migration fixture.
+ *
+ * <p>Deliberately does <b>not</b> bundle a "through 023" fixture spanning the audit chain
+ * (017/021/022/023): migration 024 only ever touches {@code documents}, and {@code
+ * Migration023AuditRetentionTest}'s own setUp comment explains why chaining that role-owned chain
+ * behind a plain superuser connection breaks on the second and third test in a class - a manually
+ * recreated {@code public} schema (this class's {@code tearDown}) drops initdb's implicit {@code
+ * USAGE} grant, which {@code opaa_audit_owner}'s statements in 017/021/022/023 then rely on. {@code
+ * Migration021AuditIncidentScopeGrantsTest} avoids this by never applying 017 in the first place;
+ * this class avoids it by not applying the audit chain at all, since it is irrelevant to {@code
+ * documents}.
  *
  * <p>Covers #466's acceptance criterion that a document with {@code RSS_FEED} can be stored -
  * checked against a Liquibase-built schema, not a Hibernate-built one, because only the former
@@ -57,7 +68,7 @@ class Migration024AllowRssFeedSourceTypeTest {
 
     Liquibase liquibase =
         new Liquibase(
-            "db/changelog/test-master-through-023.yaml",
+            "db/changelog/test-master-through-020.yaml",
             new ClassLoaderResourceAccessor(),
             database);
     liquibase.update(new Contexts());

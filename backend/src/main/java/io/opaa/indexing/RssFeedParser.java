@@ -5,6 +5,8 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -72,17 +74,32 @@ public class RssFeedParser {
           Map.entry("PDT", "-0700"));
 
   /**
-   * Fallback patterns tried, in order, once the standard {@link
-   * DateTimeFormatter#RFC_1123_DATE_TIME} fails - covering the deviations seen in practice: no
-   * day-of-week, no seconds, and two-digit years.
+   * A two-digit-year variant of RFC 822/2822, tried <b>before</b> {@link
+   * DateTimeFormatter#RFC_1123_DATE_TIME} - that formatter also accepts a two-digit year but
+   * resolves it literally (e.g. {@code "24"} becomes the year 24, not 2024), silently producing a
+   * wrong-by-a-millennium date instead of failing. {@link
+   * java.time.format.DateTimeFormatterBuilder#appendValueReduced} maps the two parsed digits into
+   * the century-spanning window {@code [1970, 2069]} (e.g. {@code "99"} -> 1999, {@code "24"} ->
+   * 2024), the same windowing scheme {@code strptime}'s {@code %y} uses. Day-of-week and seconds
+   * are optional here too, matching {@code RFC_1123_DATE_TIME}'s own leniency on those parts. A
+   * four-digit year does not match this formatter at all (the reduced-value field consumes exactly
+   * two digits, leaving trailing digits that make the rest of the pattern fail to match), so trying
+   * this first never misinterprets an ordinary four-digit date.
    */
-  private static final List<DateTimeFormatter> FALLBACK_DATE_FORMATTERS =
-      List.of(
-          DateTimeFormatter.ofPattern("d MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
-          DateTimeFormatter.ofPattern("EEE, d MMM yyyy HH:mm Z", Locale.ENGLISH),
-          DateTimeFormatter.ofPattern("d MMM yyyy HH:mm Z", Locale.ENGLISH),
-          DateTimeFormatter.ofPattern("EEE, d MMM yy HH:mm:ss Z", Locale.ENGLISH),
-          DateTimeFormatter.ofPattern("d MMM yy HH:mm:ss Z", Locale.ENGLISH));
+  private static final DateTimeFormatter TWO_DIGIT_YEAR_DATE_TIME =
+      new DateTimeFormatterBuilder()
+          .parseCaseInsensitive()
+          .optionalStart()
+          .appendPattern("EEE, ")
+          .optionalEnd()
+          .appendPattern("d MMM ")
+          .appendValueReduced(ChronoField.YEAR, 2, 2, 1970)
+          .appendPattern(" HH:mm")
+          .optionalStart()
+          .appendPattern(":ss")
+          .optionalEnd()
+          .appendPattern(" Z")
+          .toFormatter(Locale.ENGLISH);
 
   /**
    * Parses an RSS 2.0 document into its entries. Items without a {@code <link>} are silently
@@ -97,16 +114,29 @@ public class RssFeedParser {
     factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
     factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
 
+    XMLStreamReader reader;
     try {
-      XMLStreamReader reader = factory.createXMLStreamReader(input);
-      try {
-        return readEntries(reader);
-      } finally {
-        reader.close();
-      }
-    } catch (XMLStreamException | RuntimeException e) {
+      reader = factory.createXMLStreamReader(input);
+    } catch (XMLStreamException e) {
       throw new RssFeedParseException(
           "Der RSS-Feed konnte nicht gelesen werden: kein gültiges XML.", e);
+    }
+    try {
+      return readEntries(reader);
+    } catch (XMLStreamException e) {
+      // Only a genuine XML well-formedness failure is reported this way - RssFeedParseException
+      // thrown deliberately inside readEntries (e.g. the wrong-root-element check below) is a
+      // RuntimeException and passes through this catch untouched, keeping its own specific
+      // message instead of being overwritten with the generic one here.
+      throw new RssFeedParseException(
+          "Der RSS-Feed konnte nicht gelesen werden: kein gültiges XML.", e);
+    } finally {
+      try {
+        reader.close();
+      } catch (XMLStreamException ignored) {
+        // closing failure after a result (or another exception) was already determined - nothing
+        // more this method can usefully do about it.
+      }
     }
   }
 
@@ -131,6 +161,13 @@ public class RssFeedParser {
         case XMLStreamConstants.START_ELEMENT -> {
           depth++;
           String localName = reader.getLocalName();
+          if (depth == 1 && !"rss".equals(localName)) {
+            throw new RssFeedParseException(
+                "Das Dokument ist kein RSS-Feed (Wurzelelement <"
+                    + localName
+                    + "> statt <rss>). Andere Formate wie Atom werden hier nicht unterstützt.",
+                null);
+          }
           boolean noNamespace = reader.getNamespaceURI() == null;
           if (!inItem && noNamespace && "item".equals(localName)) {
             inItem = true;
@@ -142,7 +179,10 @@ public class RssFeedParser {
           } else if (inItem
               && depth == itemDepth + 1
               && noNamespace
-              && RECOGNIZED_ITEM_FIELDS.contains(localName)) {
+              && RECOGNIZED_ITEM_FIELDS.contains(localName)
+              && !("link".equals(localName) && link != null)) {
+            // The "link" exclusion keeps the first <link> of an item, not the last - the more
+            // reliable choice if an item ever carries more than one (ADR-0017/#466 review).
             currentField = localName;
             currentText = new StringBuilder();
           }
@@ -199,19 +239,20 @@ public class RssFeedParser {
     }
     String normalized = normalizeZoneAbbreviation(rawValue.trim());
 
+    // Tried first, deliberately: RFC_1123_DATE_TIME below also accepts a two-digit year, but
+    // resolves it literally rather than into a sensible century (see TWO_DIGIT_YEAR_DATE_TIME's
+    // own Javadoc).
+    try {
+      return Optional.of(ZonedDateTime.parse(normalized, TWO_DIGIT_YEAR_DATE_TIME).toInstant());
+    } catch (DateTimeException e) {
+      // fall through - not a two-digit-year date, try the standard formatter below
+    }
+
     try {
       return Optional.of(
           ZonedDateTime.parse(normalized, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant());
     } catch (DateTimeException e) {
-      // fall through to the fallback formatters below
-    }
-
-    for (DateTimeFormatter formatter : FALLBACK_DATE_FORMATTERS) {
-      try {
-        return Optional.of(ZonedDateTime.parse(normalized, formatter).toInstant());
-      } catch (DateTimeException e) {
-        // try the next formatter
-      }
+      // fall through - unparseable
     }
 
     log.debug("Could not parse RSS pubDate '{}', leaving it empty", rawValue);

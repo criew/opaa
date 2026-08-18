@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung mit mehreren Verweisen</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-erster-verweis</link>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-zweiter-verweis</link>
+      <description>Dieser Eintrag trägt versehentlich zwei link-Elemente.</description>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
