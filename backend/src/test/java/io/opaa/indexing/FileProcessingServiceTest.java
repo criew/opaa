@@ -371,6 +371,46 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void processUrlFileRecordsSourceTypeAndOriginEntryForAnAttachment() throws IOException {
+    // #468: an RSS attachment goes through the same processUrlFile chain as an HTTP_DIRECTORY
+    // file, but with RSS_FEED recorded as its source_type and the entry it was found on recorded
+    // as source_entry_url - the trace the issue's acceptance criteria require ("Zu jeder Anlage
+    // ist der Eintrag erkennbar, aus dem sie stammt").
+    Path file = tempDir.resolve("anlage.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-attachment");
+    when(documentRepository.findByFilePath("https://example.gov/downloads/anlage.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("anlage.pdf"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "anlage.pdf",
+            "https://example.gov/downloads/anlage.pdf",
+            null,
+            1024,
+            targetLibrary,
+            DocumentSourceType.RSS_FEED,
+            "https://example.gov/artikel/mein-artikel");
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document lastSaved = docCaptor.getAllValues().getLast();
+    assertThat(lastSaved.getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+    assertThat(lastSaved.getSourceEntryUrl()).isEqualTo("https://example.gov/artikel/mein-artikel");
+  }
+
+  @Test
   void processUrlFileUsesOriginalFilenameNotTempFilename() throws IOException {
     // Reproduces: URL indexer stores temp filename (opaa-xxx.pdf) instead of original filename
     Path tempFile = Files.createTempFile(tempDir, "opaa-", ".pdf");

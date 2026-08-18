@@ -123,6 +123,38 @@ public class FileProcessingService {
       long remoteFileSize,
       KnowledgeLibrary targetLibrary)
       throws IOException {
+    return processUrlFile(
+        localFile,
+        originalFileName,
+        remoteUrl,
+        lastModified,
+        remoteFileSize,
+        targetLibrary,
+        DocumentSourceType.HTTP_DIRECTORY,
+        null);
+  }
+
+  /**
+   * Processes a file downloaded from a remote URL, with an explicit {@link DocumentSourceType} and
+   * origin (#468). Used by both {@link UrlIndexingExecutor} ({@code HTTP_DIRECTORY}, no origin
+   * entry - see the six-argument overload above) and {@link RssFeedIndexingExecutor} for an RSS
+   * entry's attachments ({@code RSS_FEED}, {@code sourceEntryUrl} set to the entry's detail page
+   * URL) - the same processing chain either way, only the recorded provenance differs.
+   *
+   * @param sourceEntryUrl the detail page URL an attachment was found on ({@link
+   *     Document#getSourceEntryUrl}), or {@code null} when this document was not found through
+   *     another document (every {@code HTTP_DIRECTORY} file, and the RSS entry's own document row)
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile,
+      String originalFileName,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize,
+      KnowledgeLibrary targetLibrary,
+      DocumentSourceType sourceType,
+      String sourceEntryUrl)
+      throws IOException {
 
     String fileName = originalFileName;
 
@@ -151,11 +183,10 @@ public class FileProcessingService {
 
     String contentType = Files.probeContentType(localFile);
 
-    var doc =
-        new Document(
-            fileName, remoteUrl, contentType, remoteFileSize, DocumentSourceType.HTTP_DIRECTORY);
+    var doc = new Document(fileName, remoteUrl, contentType, remoteFileSize, sourceType);
     doc.setLibraryId(targetLibrary.getId());
     doc.setOrganizationId(targetLibrary.getOrganizationId());
+    doc.setSourceEntryUrl(sourceEntryUrl);
     doc = documentRepository.save(doc);
 
     try {

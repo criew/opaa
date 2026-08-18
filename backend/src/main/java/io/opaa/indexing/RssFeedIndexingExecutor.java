@@ -46,6 +46,19 @@ import org.springframework.scheduling.annotation.Async;
  * and a truthful, configurable {@code User-Agent} - all from {@link IndexingProperties.Rss}. A
  * single rejected, oversized or unreachable entry never aborts the run; it is skipped, counted and
  * logged, and the run continues (ADR-0017's "Verhalten gegenüber fremden Zielen").
+ *
+ * <p><b>Attachments (#468).</b> Once an entry's detail page has yielded its main text, the same
+ * content area is searched for attachments using the configured {@link
+ * IndexingProperties.Rss#attachmentProfile()} ({@link AttachmentProfile}) - {@code GENERIC} by
+ * default, {@code GSB} for the Government Site Builder's query-parameter attachment pattern. Every
+ * candidate is downloaded (bounded by {@link IndexingProperties.Rss#maxAttachmentSizeBytes()},
+ * subject to the same politeness delay as detail pages) and handed into the same shared processing
+ * chain as an {@code HTTP_DIRECTORY} file via {@link
+ * FileProcessingService#processUrlFile(java.nio.file.Path, String, String, String, long,
+ * KnowledgeLibrary, DocumentSourceType, String)}, with the entry's own URL recorded as {@code
+ * sourceEntryUrl} so the attachment's origin stays traceable. An attachment failure (unreachable,
+ * oversized, unsupported format) is logged and skipped; unlike an entry-level failure it never
+ * affects this entry's own processed/skipped/failed outcome or the run as a whole.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -56,6 +69,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final RssFeedStateRepository feedStateRepository;
+  private final UrlFileDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
 
   public RssFeedIndexingExecutor(
@@ -64,12 +78,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
+      UrlFileDownloader attachmentDownloader,
       IndexingProperties properties) {
     this.feedParser = feedParser;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
     this.feedStateRepository = feedStateRepository;
+    this.attachmentDownloader = attachmentDownloader;
     this.properties = properties.rss();
   }
 
@@ -197,9 +213,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     delayBeforeRequest();
 
-    String mainText;
+    DetailPage detailPage;
     try {
-      mainText = fetchMainText(httpClient, entryUrl);
+      detailPage = fetchDetailPage(httpClient, entryUrl);
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -231,7 +247,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
-    if (mainText == null || mainText.isBlank()) {
+    if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
@@ -241,7 +257,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     try {
       FileProcessingResult result =
           fileProcessingService.processRssEntry(
-              mainText,
+              detailPage.mainText(),
               entry.title(),
               entryUrl,
               publishedAt.map(Instant::toString).orElse(null),
@@ -251,6 +267,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       } else {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
+        // Attachments are only (re-)discovered when the entry itself was actually (re-)processed
+        // (#468) - an unchanged entry (SKIPPED above) already has whatever attachments a previous
+        // run found for it, and re-checking them on every run regardless of the entry's own
+        // pubDate would defeat the change detection this executor otherwise relies on.
+        processAttachments(httpClient, detailPage.attachments(), entryUrl, targetLibrary);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -259,6 +280,122 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       log.error("Fatal error while processing RSS entry: {}", entryUrl, e);
       progress.recordFailed();
     }
+  }
+
+  /**
+   * Downloads and indexes every attachment {@code candidates} lists, up to {@link
+   * IndexingProperties.Rss#maxAttachmentsPerEntry()} (#468). Never throws: a single attachment that
+   * cannot be downloaded, exceeds the configured size limit, or turns out to be an unsupported
+   * format is logged and skipped, exactly as the issue's acceptance criteria require ("Ein
+   * Anlagen-Fehler bricht weder Eintrag noch Lauf ab") - it has no effect on {@code entryUrl}'s own
+   * processed/skipped/failed outcome, which was already decided by the time this method runs.
+   */
+  private void processAttachments(
+      HttpClient httpClient,
+      List<AttachmentCandidate> candidates,
+      String entryUrl,
+      KnowledgeLibrary targetLibrary) {
+    int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
+    if (candidates.size() > limit) {
+      log.info(
+          "RSS entry {} carries {} attachments, processing only the first {}"
+              + " (opaa.indexing.rss.max-attachments-per-entry)",
+          entryUrl,
+          candidates.size(),
+          limit);
+    }
+    for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
+      delayBeforeRequest();
+      processAttachment(httpClient, candidate, entryUrl, targetLibrary);
+    }
+  }
+
+  private void processAttachment(
+      HttpClient httpClient,
+      AttachmentCandidate candidate,
+      String entryUrl,
+      KnowledgeLibrary targetLibrary) {
+    UrlFileDownloader.DownloadedFile downloaded;
+    try {
+      downloaded =
+          attachmentDownloader.downloadBounded(
+              httpClient,
+              candidate.url(),
+              candidate.suggestedFileName(),
+              properties.maxAttachmentSizeBytes());
+    } catch (UrlFileDownloader.AttachmentTooLargeException e) {
+      log.warn(
+          "Skipping RSS attachment exceeding the size limit of {} bytes: {} (from entry {})",
+          properties.maxAttachmentSizeBytes(),
+          candidate.url(),
+          entryUrl);
+      return;
+    } catch (IOException | InterruptedException e) {
+      log.warn(
+          "RSS attachment unreachable, skipping: {} (from entry {}, {})",
+          candidate.url(),
+          entryUrl,
+          e.getMessage());
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      return;
+    }
+
+    try {
+      // The GSB profile's candidates carry no extension in their URL (#468) - resolved here, once
+      // the response's actual Content-Type is known, rather than in AttachmentProfile itself,
+      // which never downloads anything.
+      String fileName = resolveFileName(candidate.suggestedFileName(), downloaded.contentType());
+      if (!SupportedDocumentFormats.isSupported(fileName)) {
+        log.info(
+            "Skipping RSS attachment with an unsupported format: {} (from entry {}, Content-Type"
+                + " {})",
+            candidate.url(),
+            entryUrl,
+            downloaded.contentType());
+        return;
+      }
+
+      long size = java.nio.file.Files.size(downloaded.path());
+      fileProcessingService.processUrlFile(
+          downloaded.path(),
+          fileName,
+          candidate.url(),
+          null,
+          size,
+          targetLibrary,
+          DocumentSourceType.RSS_FEED,
+          entryUrl);
+      log.info("Indexed RSS attachment: {} (from entry {})", candidate.url(), entryUrl);
+    } catch (Exception e) {
+      log.error(
+          "Failed to process RSS attachment: {} (from entry {})", candidate.url(), entryUrl, e);
+    } finally {
+      try {
+        java.nio.file.Files.deleteIfExists(downloaded.path());
+      } catch (IOException e) {
+        log.warn("Failed to delete temp file: {}", downloaded.path(), e);
+      }
+    }
+  }
+
+  /**
+   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} does not
+   * already carry a supported one (#468, the Government Site Builder profile's case) - a no-op for
+   * {@link AttachmentProfile#GENERIC} candidates, which always already carry one.
+   */
+  private static String resolveFileName(String suggestedFileName, String contentType) {
+    if (SupportedDocumentFormats.isSupported(suggestedFileName)) {
+      return suggestedFileName;
+    }
+    String extension = SupportedDocumentFormats.extensionForContentType(contentType);
+    if (extension == null) {
+      return suggestedFileName;
+    }
+    String baseName =
+        suggestedFileName == null || suggestedFileName.isBlank() ? "attachment" : suggestedFileName;
+    return baseName + extension;
   }
 
   private HttpResponse<InputStream> fetchFeed(
@@ -299,12 +436,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Fetches a single entry's detail page and reduces it to its main content's text (#467). {@code
-   * nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
-   * selector is applied, so boilerplate that happens to sit inside the matched main element (a skip
-   * link, a "share this article" bar) does not survive either.
+   * An entry's detail page, reduced to its main content's text and attachment candidates (#468).
    */
-  private String fetchMainText(HttpClient httpClient, String entryUrl)
+  private record DetailPage(String mainText, List<AttachmentCandidate> attachments) {}
+
+  /**
+   * Fetches a single entry's detail page and reduces it to its main content's text (#467), together
+   * with every attachment the configured {@link AttachmentProfile} finds inside that same content
+   * area (#468). {@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before
+   * the configured selector is applied, so boilerplate that happens to sit inside the matched main
+   * element (a skip link, a "share this article" bar) does not survive either, and is never
+   * considered for attachments.
+   */
+  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl)
       throws IOException, InterruptedException {
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -368,7 +512,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       Element main = htmlDoc.selectFirst(properties.mainContentSelector());
       Element content = main != null ? main : htmlDoc.body();
-      return content != null ? content.text() : "";
+      if (content == null) {
+        return new DetailPage("", List.of());
+      }
+      List<AttachmentCandidate> attachments =
+          properties.attachmentProfile().findAttachments(content, URI.create(entryUrl));
+      return new DetailPage(content.text(), attachments);
     }
   }
 

@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.spring.boot.starter.liquibase)
     implementation(libs.caffeine)
     implementation(libs.jtokkit)
+    implementation(libs.jsoup)
     implementation(libs.jjwt.api)
     runtimeOnly(libs.bundles.jjwt.runtime)
     runtimeOnly(libs.bundles.runtime)

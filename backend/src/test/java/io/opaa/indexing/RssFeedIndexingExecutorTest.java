@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -69,7 +70,9 @@ class RssFeedIndexingExecutorTest {
     when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
 
     executor =
-        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null));
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0));
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
@@ -80,6 +83,7 @@ class RssFeedIndexingExecutorTest {
         indexingJobService,
         documentRepository,
         feedStateRepository,
+        new UrlFileDownloader(),
         properties);
   }
 
@@ -377,7 +381,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedExceedingTheSizeLimitFailsTheJobInstead() {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
 
@@ -388,7 +392,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null, null, 0, 0));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -415,7 +419,8 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void entryCountBeyondTheConfiguredLimitIsTruncated() {
-    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null));
+    executor =
+        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -445,7 +450,8 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() {
-    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null));
+    executor =
+        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
     serveFeedWithEtag(
         "/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"etag-truncated\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -472,5 +478,312 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
     verify(feedStateRepository, timeout(2000))
         .save(argThat(state -> "\"etag-success\"".equals(state.getEtag())));
+  }
+
+  // --- #468: attachments ---
+
+  @Test
+  void genericProfileFindsAndIndexesAPdfAttachmentInTheMainContent() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/anlage.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("anlage.pdf"),
+            eq(baseUrl + "/downloads/anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+  }
+
+  @Test
+  void aLinkToAForeignHostIsNeverTreatedAsAnAttachment() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void gsbProfileFindsAQueryParameterAttachmentAndDerivesAFileNameFromContentType()
+      throws IOException {
+    // Generic reproduction of the Government Site Builder pattern (#468) - a fictional
+    // example.gov-style address, never a real institution's.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GSB, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/service/mein-dokument?__blob=publicationFile\">Herunterladen</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/service/mein-dokument",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("mein-dokument.pdf"),
+            eq(baseUrl + "/service/mein-dokument?__blob=publicationFile"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+  }
+
+  @Test
+  void withoutAConfiguredProfileGenericIsUsed() throws IOException {
+    // The default in IndexingProperties.Rss's compact constructor, exercised end to end.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, null, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/anlage.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("anlage.pdf"),
+            eq(baseUrl + "/downloads/anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+  }
+
+  @Test
+  void theSameAttachmentLinkedFromTwoEntriesIsProcessedForEachEntryItAppearsOn()
+      throws IOException {
+    // #468 acceptance criteria: the same attachment linked from two entries becomes one document
+    // - identity is by the attachment's own URL (file_path), the same deduplication
+    // FileProcessingService#processUrlFile already applies for HTTP_DIRECTORY files (see
+    // FileProcessingServiceTest#processUrlFileSkipsUnchangedDocument). This test exercises the
+    // executor's side of that: both entries' detail pages link the identical attachment URL.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/geteilte-anlage.pdf\">Anlage</a></main></body></html>";
+    serve(
+        "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serve("/b.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/geteilte-anlage.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            anyString(),
+            eq(baseUrl + "/downloads/geteilte-anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            anyString(),
+            eq(baseUrl + "/downloads/geteilte-anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/b.html"));
+  }
+
+  @Test
+  void aFailedAttachmentDownloadDoesNotAbortTheEntryOrTheRun() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/fehlt.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serve("/downloads/fehlt.pdf", 404, "text/html", "not found");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    // The entry itself still counts as processed - only the attachment failed.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void anAttachmentExceedingTheSizeLimitIsSkippedWithoutFailingTheEntry() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/gross.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/gross.pdf",
+        200,
+        "application/pdf",
+        "x".repeat(500).getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void attachmentsBeyondTheConfiguredLimitAreNotProcessed() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 1, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/erste.pdf\">Erste</a>"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/zweite.pdf\">Zweite</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+    serveBytes(
+        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("erste.pdf"),
+            eq(baseUrl + "/downloads/erste.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+    verify(fileProcessingService, never())
+        .processUrlFile(
+            any(),
+            eq("zweite.pdf"),
+            eq(baseUrl + "/downloads/zweite.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            any(),
+            any());
   }
 }
