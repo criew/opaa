@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,24 +68,19 @@ class RssFeedIndexingExecutorTest {
     feedStateRepository = mock(RssFeedStateRepository.class);
     when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
 
-    IndexingProperties properties =
-        new IndexingProperties(
-            null,
-            0,
-            0,
-            0,
-            0,
-            null,
-            new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null));
-
     executor =
-        new RssFeedIndexingExecutor(
-            new RssFeedParser(),
-            fileProcessingService,
-            indexingJobService,
-            documentRepository,
-            feedStateRepository,
-            properties);
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null));
+  }
+
+  private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
+    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss);
+    return new RssFeedIndexingExecutor(
+        new RssFeedParser(),
+        fileProcessingService,
+        indexingJobService,
+        documentRepository,
+        feedStateRepository,
+        properties);
   }
 
   @AfterEach
@@ -92,12 +89,29 @@ class RssFeedIndexingExecutorTest {
   }
 
   private void serve(String path, int status, String contentType, String body) {
+    serveBytes(path, status, contentType, body.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private void serveBytes(String path, int status, String contentType, byte[] bytes) {
+    server.createContext(
+        path,
+        exchange -> {
+          exchange.getResponseHeaders().set("Content-Type", contentType);
+          exchange.sendResponseHeaders(status, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+  }
+
+  /** Like {@link #serve}, but with an {@code ETag} the feed-state persistence tests assert on. */
+  private void serveFeedWithEtag(String path, String body, String etag) {
     server.createContext(
         path,
         exchange -> {
           byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().set("Content-Type", contentType);
-          exchange.sendResponseHeaders(status, bytes.length);
+          exchange.getResponseHeaders().set("Content-Type", "application/rss+xml");
+          exchange.getResponseHeaders().set("ETag", etag);
+          exchange.sendResponseHeaders(200, bytes.length);
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
@@ -155,6 +169,71 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void boilerplateIsStrippedEvenWithoutAMainElement_fallsBackToBody() {
+    // #490 review, finding 5: without a <main>/<article>, the selector matches nothing and the
+    // executor falls back to <body> - this is the only case that actually exercises the
+    // nav/header/footer .remove() call, since a matched <main> would exclude siblings anyway.
+    String detailHtml =
+        "<html><body>"
+            + "<nav>Navigation</nav><header>Kopf</header>"
+            + "<div>Eigentlicher Inhalt</div>"
+            + "<footer>Fuss</footer>"
+            + "</body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(
+            eq("Eigentlicher Inhalt"), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+  }
+
+  @Test
+  void detailPageCharsetFromContentTypeIsHonouredInsteadOfHardcodedUtf8() {
+    // #490 review, finding 1: an ISO-8859-1 page hardcoded as UTF-8 turns "Behörde für
+    // Straßenbau" into U+FFFD replacement characters, silently, while still ending up INDEXED.
+    String html = "<html><body><main>Behörde für Straßenbau</main></body></html>";
+    byte[] isoBytes = html.getBytes(StandardCharsets.ISO_8859_1);
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serveBytes("/a.html", 200, "text/html; charset=ISO-8859-1", isoBytes);
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(
+            eq("Behörde für Straßenbau"), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+  }
+
+  @Test
+  void detailPageWithNonHtmlContentTypeIsSkippedAndTheRunContinues() {
+    // #490 review, finding 2: a <link> pointing straight at a PDF must never be pushed through
+    // Jsoup and indexed as garbled binary text.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/doc.pdf", baseUrl + "/ok.html"));
+    serve("/doc.pdf", 200, "application/pdf", "%PDF-1.4 not real content");
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1));
+    verify(fileProcessingService, never())
+        .processRssEntry(anyString(), any(), eq(baseUrl + "/doc.pdf"), any(), any());
+  }
+
+  @Test
   void feedNotModified_endsRunWithoutFetchingAnyDetailPage() {
     server.createContext(
         "/feed.xml",
@@ -180,6 +259,31 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void conditionalGetHeadersAreSentWhenFeedStateExists() {
+    // #490 review, finding 6: the previous 304 test never actually exercised sending
+    // If-None-Match/If-Modified-Since, because the repository stub returned empty.
+    RssFeedState state =
+        new RssFeedState(baseUrl + "/feed.xml", "\"abc123\"", "Mon, 01 Jan 2024 00:00:00 GMT");
+    when(feedStateRepository.findByFeedUrl(baseUrl + "/feed.xml")).thenReturn(Optional.of(state));
+    AtomicReference<String> ifNoneMatch = new AtomicReference<>();
+    AtomicReference<String> ifModifiedSince = new AtomicReference<>();
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          ifNoneMatch.set(exchange.getRequestHeaders().getFirst("If-None-Match"));
+          ifModifiedSince.set(exchange.getRequestHeaders().getFirst("If-Modified-Since"));
+          exchange.sendResponseHeaders(304, -1);
+          exchange.close();
+        });
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0));
+    assertThat(ifNoneMatch.get()).isEqualTo("\"abc123\"");
+    assertThat(ifModifiedSince.get()).isEqualTo("Mon, 01 Jan 2024 00:00:00 GMT");
+  }
+
+  @Test
   void unchangedEntry_skipsTheDetailPageFetchEntirely() {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     AtomicInteger detailPageHits = new AtomicInteger();
@@ -193,12 +297,35 @@ class RssFeedIndexingExecutorTest {
     Document existing = new Document("Titel", baseUrl + "/a.html", "text/html", 10L);
     existing.setStatus(DocumentStatus.INDEXED);
     existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
+    existing.setLibraryId(library.getId());
     when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
     assertThat(detailPageHits.get()).isZero();
+  }
+
+  @Test
+  void anEntryMovedToAnotherLibraryIsNotTreatedAsUnchanged() {
+    // #490 review, finding 8: mirrors FileProcessingService#processRssEntry's own library check -
+    // without it, a library move never took effect for an entry whose pubDate is unchanged,
+    // because this check runs before the detail page (and processRssEntry) is ever reached.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    Document existing = new Document("Titel", baseUrl + "/a.html", "text/html", 10L);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
+    existing.setLibraryId(UUID.randomUUID()); // a different library than the run's target
+    when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
   }
 
   @Test
@@ -250,23 +377,30 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedExceedingTheSizeLimitFailsTheJobInstead() {
-    IndexingProperties properties =
-        new IndexingProperties(
-            null, 0, 0, 0, 0, null, new IndexingProperties.Rss(200, 10, 10_000, 0, null, null));
-    executor =
-        new RssFeedIndexingExecutor(
-            new RssFeedParser(),
-            fileProcessingService,
-            indexingJobService,
-            documentRepository,
-            feedStateRepository,
-            properties);
+    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).failJob(any(), anyString());
+  }
+
+  @Test
+  void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() {
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null));
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve(
+        "/a.html",
+        200,
+        "text/html",
+        "<html><body><main>" + "x".repeat(500) + "</main></body></html>");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(fileProcessingService, never())
+        .processRssEntry(anyString(), any(), anyString(), any(), any());
   }
 
   @Test
@@ -281,17 +415,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void entryCountBeyondTheConfiguredLimitIsTruncated() {
-    IndexingProperties properties =
-        new IndexingProperties(
-            null, 0, 0, 0, 0, null, new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null));
-    executor =
-        new RssFeedIndexingExecutor(
-            new RssFeedParser(),
-            fileProcessingService,
-            indexingJobService,
-            documentRepository,
-            feedStateRepository,
-            properties);
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -304,5 +428,49 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).setTotalDocuments(any(), eq(1));
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), eq(baseUrl + "/b.html"), any(), any());
+  }
+
+  // --- #490 review, finding 3: feed-state persistence must not hide deferred entries ---
+
+  @Test
+  void feedStateIsNotPersistedWhenAnEntryWasRejectedByTheRemoteEnd() {
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/forbidden.html"), "\"etag-rejected\"");
+    serve("/forbidden.html", 403, "text/html", "denied");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
+  void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() {
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null));
+    serveFeedWithEtag(
+        "/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"etag-truncated\"");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
+  void feedStateIsPersistedWhenEveryEntrySucceeded() {
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-success\"");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(feedStateRepository, timeout(2000))
+        .save(argThat(state -> "\"etag-success\"".equals(state.getEtag())));
   }
 }

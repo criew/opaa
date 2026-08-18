@@ -10,12 +10,12 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -92,12 +92,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       HttpResponse<InputStream> feedResponse = fetchFeed(httpClient, feedUrl, feedState);
 
       if (feedResponse.statusCode() == 304) {
+        closeQuietly(feedResponse.body());
         log.info("RSS feed unchanged (304), ending run: {}", feedUrl);
         progress.setTotal(0);
         progress.complete();
         return;
       }
       if (feedResponse.statusCode() != 200) {
+        closeQuietly(feedResponse.body());
         progress.fail(
             "Der RSS-Feed konnte nicht abgerufen werden: HTTP " + feedResponse.statusCode());
         return;
@@ -121,8 +123,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         return;
       }
 
+      // #490 review, finding 3: whether entries were deferred (dropped by the max-entries
+      // truncation below, or skipped because the remote end rejected/failed to hand over a
+      // detail page) decides whether the feed's ETag/Last-Modified may be persisted at all -
+      // see the saveFeedState call below for why.
+      boolean truncated = entries.size() > properties.maxEntries();
       int totalFound = entries.size();
-      if (totalFound > properties.maxEntries()) {
+      if (truncated) {
         log.info(
             "RSS feed {} carries {} entries, processing only the first {} (opaa.indexing.rss.max-entries)",
             feedUrl,
@@ -133,12 +140,25 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       progress.setTotal(entries.size());
       progress.report();
 
+      var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
-        processEntry(httpClient, entry, targetLibrary, progress);
+        processEntry(httpClient, entry, targetLibrary, progress, anyEntryDeferred);
         progress.report();
       }
 
-      saveFeedState(feedUrl, feedResponse);
+      // #490 review, finding 3: an ETag/Last-Modified saved after a run that deferred entries
+      // (truncation, or a detail page the remote end rejected/failed to hand over) would let the
+      // *next* run's feed-level 304 permanently hide those entries - even once the remote side
+      // (e.g. a bot-protection challenge) stops rejecting them. The feed's conditional-GET state
+      // is therefore only advanced once a run has actually accounted for every entry it saw.
+      if (!anyEntryDeferred.get() && progress.failedCount() == 0) {
+        saveFeedState(feedUrl, feedResponse);
+      } else {
+        log.info(
+            "Not persisting RSS feed state for {} - this run deferred or failed at least one"
+                + " entry, so a future 304 must not suppress it",
+            feedUrl);
+      }
       progress.complete();
     } catch (IOException | InterruptedException e) {
       log.error("RSS feed indexing failed: {}", feedUrl, e);
@@ -156,18 +176,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       HttpClient httpClient,
       RssFeedEntry entry,
       KnowledgeLibrary targetLibrary,
-      IndexingRunProgress progress) {
+      IndexingRunProgress progress,
+      AtomicBoolean anyEntryDeferred) {
     String entryUrl = entry.link();
 
     if (!isHttpOrHttps(entryUrl)) {
       log.warn(
           "Skipping RSS entry with a non-http(s) link (rejected by scheme check): {}", entryUrl);
       progress.recordSkipped();
+      anyEntryDeferred.set(true);
       return;
     }
 
     Optional<Instant> publishedAt = entry.publishedAt();
-    if (isUnchanged(entryUrl, publishedAt)) {
+    if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
       progress.recordSkipped();
       return;
@@ -186,10 +208,23 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       log.warn(
           "RSS detail page rejected by remote host, skipping: {} ({})", entryUrl, e.getMessage());
       progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
+    } catch (UnsupportedContentTypeException e) {
+      // #490 review, finding 2: a <link> pointing straight at a PDF (or any non-HTML content)
+      // must not be pushed through Jsoup and indexed as garbled binary text - attachments are
+      // #468's job, not this one's.
+      log.warn(
+          "Skipping RSS detail page with an unsupported content type, skipping: {} ({})",
+          entryUrl,
+          e.getMessage());
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
       return;
     } catch (IOException | InterruptedException e) {
       log.warn("RSS detail page unreachable, skipping: {} ({})", entryUrl, e.getMessage());
       progress.recordSkipped();
+      anyEntryDeferred.set(true);
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
@@ -199,6 +234,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (mainText == null || mainText.isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
       progress.recordSkipped();
+      anyEntryDeferred.set(true);
       return;
     }
 
@@ -281,41 +317,91 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     HttpResponse<InputStream> response =
         httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
-    if (response.statusCode() == 403 || response.statusCode() == 429) {
-      throw new RejectedByRemoteException("HTTP " + response.statusCode());
-    }
-    if (isForeignHostRedirect(entryUrl, response.uri())) {
-      throw new RejectedByRemoteException("redirected to a foreign host: " + response.uri());
-    }
-    if (response.statusCode() != 200) {
-      throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
-    }
-
-    byte[] pageBytes;
+    // #490 review, finding 4: every path below - the three early rejections and the ordinary
+    // 200 - must close the response body. try-with-resources around the whole evaluation (rather
+    // than only around the byte-reading branch, as before) closes it on every exit, including the
+    // three throws, instead of leaking an open connection until GC gets around to it.
     try (InputStream body = response.body()) {
-      pageBytes = readBounded(body, properties.maxPageSizeBytes());
-    } catch (FeedTooLargeException e) {
-      throw new IOException(
-          "Detail page exceeds the configured limit of "
-              + properties.maxPageSizeBytes()
-              + " bytes: "
-              + entryUrl);
+      if (response.statusCode() == 403 || response.statusCode() == 429) {
+        throw new RejectedByRemoteException("HTTP " + response.statusCode());
+      }
+      if (isForeignHostRedirect(entryUrl, response.uri())) {
+        throw new RejectedByRemoteException("redirected to a foreign host: " + response.uri());
+      }
+      if (response.statusCode() != 200) {
+        throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
+      }
+
+      String contentType = response.headers().firstValue("Content-Type").orElse(null);
+      if (!isHtmlContentType(contentType)) {
+        // #490 review, finding 2: a <link> pointing straight at a PDF (or anything else that is
+        // not HTML) must never be pushed through Jsoup - attachments are #468's job.
+        throw new UnsupportedContentTypeException(
+            contentType != null ? contentType : "(kein Content-Type)");
+      }
+
+      byte[] pageBytes;
+      try {
+        pageBytes = readBounded(body, properties.maxPageSizeBytes());
+      } catch (FeedTooLargeException e) {
+        throw new IOException(
+            "Detail page exceeds the configured limit of "
+                + properties.maxPageSizeBytes()
+                + " bytes: "
+                + entryUrl);
+      }
+
+      // #490 review, finding 1: the server's declared charset (Content-Type's charset
+      // parameter) wins when present; otherwise Jsoup.parse(InputStream, ...) itself detects the
+      // charset from a BOM or a <meta> tag and falls back to UTF-8 - never a hardcoded
+      // StandardCharsets.UTF_8, which silently mangled e.g. ISO-8859-1 pages into U+FFFD.
+      org.jsoup.nodes.Document htmlDoc =
+          Jsoup.parse(new ByteArrayInputStream(pageBytes), charsetNameFrom(contentType), entryUrl);
+      // Boilerplate removal (#467 acceptance criteria): nav/header/footer/menu-ish elements
+      // never survive into the index, regardless of whether they sit inside or outside the
+      // matched main element below.
+      htmlDoc
+          .select(
+              "nav, header, footer, [role=navigation], [role=banner], [role=contentinfo],"
+                  + " .nav, .navigation, .menu, .breadcrumb, script, style, noscript")
+          .remove();
+
+      Element main = htmlDoc.selectFirst(properties.mainContentSelector());
+      Element content = main != null ? main : htmlDoc.body();
+      return content != null ? content.text() : "";
     }
+  }
 
-    org.jsoup.nodes.Document htmlDoc =
-        Jsoup.parse(new String(pageBytes, StandardCharsets.UTF_8), entryUrl);
-    // Boilerplate removal (#467 acceptance criteria): nav/header/footer/menu-ish elements never
-    // survive into the index, regardless of whether they sit inside or outside the matched main
-    // element below.
-    htmlDoc
-        .select(
-            "nav, header, footer, [role=navigation], [role=banner], [role=contentinfo],"
-                + " .nav, .navigation, .menu, .breadcrumb, script, style, noscript")
-        .remove();
+  /** Whether {@code contentType} (the raw {@code Content-Type} header value) denotes HTML. */
+  private static boolean isHtmlContentType(String contentType) {
+    if (contentType == null) {
+      return false;
+    }
+    String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(java.util.Locale.ROOT);
+    return mediaType.equals("text/html") || mediaType.equals("application/xhtml+xml");
+  }
 
-    Element main = htmlDoc.selectFirst(properties.mainContentSelector());
-    Element content = main != null ? main : htmlDoc.body();
-    return content != null ? content.text() : "";
+  /**
+   * Extracts the {@code charset} parameter from a {@code Content-Type} header value, or {@code
+   * null} when absent - {@link Jsoup#parse(InputStream, String, String)} treats {@code null} as
+   * "detect from the document itself" (#490 review, finding 1).
+   */
+  private static String charsetNameFrom(String contentType) {
+    if (contentType == null) {
+      return null;
+    }
+    for (String part : contentType.split(";")) {
+      String trimmed = part.strip();
+      if (trimmed.toLowerCase(java.util.Locale.ROOT).startsWith("charset=")) {
+        String charset = trimmed.substring("charset=".length()).strip();
+        // Some servers quote the value ("charset=\"iso-8859-1\"") - Jsoup expects a bare name.
+        if (charset.length() >= 2 && charset.startsWith("\"") && charset.endsWith("\"")) {
+          charset = charset.substring(1, charset.length() - 1);
+        }
+        return charset.isBlank() ? null : charset;
+      }
+    }
+    return null;
   }
 
   /**
@@ -361,14 +447,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * (re-)fetched and the SHA-256 checksum inside {@link FileProcessingService#processRssEntry}
    * becomes the deciding change signal instead.
    */
-  private boolean isUnchanged(String entryUrl, Optional<Instant> publishedAt) {
+  private boolean isUnchanged(
+      String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {
     if (publishedAt.isEmpty()) {
       return false;
     }
     Optional<Document> existing = documentRepository.findByFilePath(entryUrl);
+    // #490 review, finding 8: mirrors the same check FileProcessingService#processRssEntry makes
+    // (library changed -> not unchanged) - without it, moving the target library never took
+    // effect for an entry whose pubDate is otherwise unchanged, because this check runs before
+    // the detail page (and processRssEntry) is ever reached.
     return existing.isPresent()
         && publishedAt.get().toString().equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED;
+        && existing.get().getStatus() == DocumentStatus.INDEXED
+        && targetLibrary.getId().equals(existing.get().getLibraryId());
   }
 
   /**
@@ -385,6 +477,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     return probe;
   }
 
+  /**
+   * Closes a response body on a path that never reads it (a rejection before any bytes are
+   * consumed) - {@code close()} on the {@code InputStream} {@link
+   * HttpResponse.BodyHandlers#ofInputStream()} hands back is what actually releases the underlying
+   * connection; skipping it on every early exit was PR #490 review finding 4 (up to {@code
+   * max-entries} connections left open per run in the mass-rejection case).
+   */
+  private static void closeQuietly(InputStream in) {
+    try {
+      in.close();
+    } catch (IOException e) {
+      log.debug("Failed to close response body", e);
+    }
+  }
+
   /** Thrown by {@link #readBounded} when the configured byte limit is exceeded while streaming. */
   private static final class FeedTooLargeException extends RuntimeException {}
 
@@ -397,6 +504,18 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private static final class RejectedByRemoteException extends RuntimeException {
     RejectedByRemoteException(String message) {
       super(message);
+    }
+  }
+
+  /**
+   * Thrown when a detail page's {@code Content-Type} is not HTML (#490 review, finding 2) - e.g. a
+   * {@code <link>} pointing straight at a PDF. Kept distinct from {@link
+   * RejectedByRemoteException}: the remote end answered normally here, it just did not hand over
+   * something this executor can extract text from. Attachments are #468's job.
+   */
+  private static final class UnsupportedContentTypeException extends RuntimeException {
+    UnsupportedContentTypeException(String actualContentType) {
+      super(actualContentType);
     }
   }
 }
