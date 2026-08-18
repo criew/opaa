@@ -1,0 +1,2 @@
+Dies ist kein XML-Dokument, sondern ein einfacher Text, der versehentlich als RSS-Feed
+eingespielt werden könnte.

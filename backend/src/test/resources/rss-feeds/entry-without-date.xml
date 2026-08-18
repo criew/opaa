@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung ohne Datum</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-ohne-datum</link>
+      <description>Diese Mitteilung trägt kein pubDate.</description>
+    </item>
+  </channel>
+</rss>

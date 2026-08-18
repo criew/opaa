@@ -106,6 +106,7 @@ const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
   UPLOAD: 'Hochgeladen',
   FILESYSTEM: 'Dateisystem',
   HTTP_DIRECTORY: 'Verzeichnisliste',
+  RSS_FEED: 'RSS-Feed',
 }
 
 export function documentSourceTypeLabel(

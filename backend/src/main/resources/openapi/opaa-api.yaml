@@ -1937,7 +1937,7 @@ components:
 
     DocumentSourceType:
       type: string
-      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD]
+      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED]
       example: FILESYSTEM
 
     IndexingSourceType:
