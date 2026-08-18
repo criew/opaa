@@ -5,8 +5,25 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-17T02:02:04Z</updated>
+  <updated>2026-08-18T01:57:35Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 17. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-17.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-17.html</id>
+    <updated>2026-08-18T01:57:35Z</updated>
+    <summary type="text">Epic: Space and asset model — replace the workspace model:
+— Wissensbibliotheken mit Upload, Freigabe und rechtebewusster Suche umgesetzt
+— Historisierung von Rechten und Gruppenmitgliedschaften implementiert
+— E2E-Tests für Bibliotheken-Workflows geschrieben und gemergt
+Epic: Nacharbeiten Wissensbibliotheken und Upload:
+— Elf Nacharbeiten zu Wissensbibliotheken und Upload identifiziert
+Epic: Audit-Betriebshärtung — Nacharbeiten aus Stage A:
+— Sieben Audit-Härtungs- und Nacharbeits-Tickets angelegt
+Sonstiges:
+— UX-Designer-Rolle in Agenten-Organisation eingeführt
+— Audit-Serie abgeschlossen: Protokollablage, Zugriffswege, Selbstprotokolle, Aufbewahrung</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 16. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-16.html"/>
