@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -301,9 +302,24 @@ public class KnowledgeLibraryService {
             .toList();
     Map<UUID, AssetRole> roles =
         accessService.effectiveRolesForReadableLibraries(libraries, currentUserId);
+    // #477: one grouped query for the whole page's document counts instead of countByLibraryId
+    // once per row - a library with no rows here simply has zero documents.
+    Map<UUID, Long> documentCounts =
+        documentRepository
+            .countByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    DocumentRepository.LibraryDocumentCount::getLibraryId,
+                    DocumentRepository.LibraryDocumentCount::getDocumentCount));
 
     return libraries.stream()
-        .map(library -> toLibraryListResponse(library, roles.get(library.getId())))
+        .map(
+            library ->
+                toLibraryListResponse(
+                    library,
+                    roles.get(library.getId()),
+                    documentCounts.getOrDefault(library.getId(), 0L)))
         .toList();
   }
 
@@ -607,7 +623,8 @@ public class KnowledgeLibraryService {
     return library;
   }
 
-  private LibraryListResponse toLibraryListResponse(KnowledgeLibrary library, AssetRole myRole) {
+  private LibraryListResponse toLibraryListResponse(
+      KnowledgeLibrary library, AssetRole myRole, long documentCount) {
     return new LibraryListResponse(
             library.getId(),
             library.getName(),
@@ -616,6 +633,7 @@ public class KnowledgeLibraryService {
             library.isListed(),
             library.isPersonal(),
             myRole,
+            documentCount,
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription());

@@ -38,6 +38,7 @@ const personalLibrary: LibraryListResponse = {
   listed: false,
   personal: true,
   myRole: 'OWNER',
+  documentCount: 1,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -51,6 +52,7 @@ const editorLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'EDITOR',
+  documentCount: 1,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -64,6 +66,7 @@ const viewerLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'VIEWER',
+  documentCount: 1,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
