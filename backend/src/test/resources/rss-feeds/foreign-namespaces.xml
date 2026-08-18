@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <atom:link href="https://feeds.example.invalid/mitteilungen" rel="self" type="application/rss+xml"/>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung mit fremden Namensräumen</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-namensraeume</link>
+      <description>Der Eintrag trägt zusätzliche Elemente aus fremden Namensräumen.</description>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+      <dc:creator>Beispielredaktion</dc:creator>
+      <content:encoded><![CDATA[<p>Ausführlicher Artikeltext, der übergangen werden soll.</p>]]></content:encoded>
+      <media:content url="https://feeds.example.invalid/mitteilungen/bild.jpg" medium="image"/>
+    </item>
+  </channel>
+</rss>

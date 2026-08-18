@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Neue Formularvorlage veröffentlicht</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-1</link>
+      <description>Die Beispielbehörde hat eine neue Formularvorlage veröffentlicht.</description>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Sprechzeiten angepasst</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-2</link>
+      <description>Ab sofort gelten angepasste Sprechzeiten.</description>
+      <pubDate>Tue, 02 Jan 2024 08:30:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

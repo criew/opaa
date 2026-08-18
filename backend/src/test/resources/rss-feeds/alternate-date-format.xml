@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung mit abweichendem Datumsformat</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-abweichend</link>
+      <description>Das Datum verzichtet auf den Wochentag und nutzt eine Zeitzonen-Abkürzung.</description>
+      <pubDate>01 Jan 2024 10:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

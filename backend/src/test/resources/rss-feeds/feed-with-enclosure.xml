@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde Mitteilungen</title>
+    <link>https://feeds.example.invalid/mitteilungen</link>
+    <description>Aktuelle Mitteilungen der Beispielbehörde</description>
+    <item>
+      <title>Mitteilung mit Anhang</title>
+      <link>https://feeds.example.invalid/mitteilungen/artikel-anhang</link>
+      <description>Dieser Eintrag verweist zusätzlich auf eine Anlage.</description>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate>
+      <enclosure url="https://feeds.example.invalid/mitteilungen/anlage.pdf" length="12345" type="application/pdf"/>
+    </item>
+  </channel>
+</rss>
