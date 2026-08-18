@@ -11,7 +11,6 @@ import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
-import io.opaa.indexing.UrlIndexingRequest;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,23 +50,12 @@ public class IndexingController {
       @RequestBody IndexingTriggerRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     boolean systemAdmin = currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN;
-    IndexingJob job;
-    if (request.getUrl() != null && !request.getUrl().toString().isBlank()) {
-      job =
-          documentIndexingService.triggerUrlIndexing(
-              new UrlIndexingRequest(
-                  request.getUrl().toString(),
-                  request.getProxy(),
-                  request.getCredentials(),
-                  Boolean.TRUE.equals(request.getInsecureSsl())),
-              request.getLibraryId(),
-              currentUser.getId(),
-              systemAdmin);
-    } else {
-      job =
-          documentIndexingService.triggerIndexing(
-              request.getLibraryId(), currentUser.getId(), systemAdmin);
-    }
+    // ADR-0017: the source type - explicit or, absent that, the backward-compatible fallback
+    // derived from whether a url was given - is resolved entirely inside
+    // DocumentIndexingService, which looks up the matching executor through the registry. This
+    // controller no longer branches on the request's fields itself.
+    IndexingJob job =
+        documentIndexingService.triggerIndexing(request, currentUser.getId(), systemAdmin);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(job));
   }
 

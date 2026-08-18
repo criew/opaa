@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -20,7 +22,6 @@ import io.opaa.indexing.IndexingAlreadyRunningException;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
-import io.opaa.indexing.UrlIndexingRequest;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -65,11 +66,22 @@ class IndexingControllerTest {
     return jwt().jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER));
   }
 
+  /** Matches an {@link IndexingTriggerRequest} carrying exactly this {@code libraryId}. */
+  private static IndexingTriggerRequest requestWithLibraryId(UUID libraryId) {
+    return argThat(r -> r != null && libraryId.equals(r.getLibraryId()));
+  }
+
+  /** Matches an {@link IndexingTriggerRequest} with no {@code libraryId} at all. */
+  private static IndexingTriggerRequest requestWithoutLibraryId() {
+    return argThat(r -> r != null && r.getLibraryId() == null);
+  }
+
   @Test
   void triggerIndexingReturnsAcceptedWithRunningStatus() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(documentIndexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            requestWithLibraryId(libraryId), eq(currentUser.getId()), eq(true)))
         .thenReturn(job);
 
     mockMvc
@@ -88,7 +100,8 @@ class IndexingControllerTest {
   @Test
   void triggerIndexingReturnsConflictWhenAlreadyRunning() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentIndexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            requestWithLibraryId(libraryId), eq(currentUser.getId()), eq(true)))
         .thenThrow(new IndexingAlreadyRunningException("An indexing job is already running"));
 
     mockMvc
@@ -167,8 +180,8 @@ class IndexingControllerTest {
   void triggerUrlIndexingWithBodyRoutesToUrlIndexing() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(documentIndexingService.triggerUrlIndexing(
-            any(UrlIndexingRequest.class), eq(libraryId), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            any(IndexingTriggerRequest.class), eq(currentUser.getId()), eq(true)))
         .thenReturn(job);
 
     mockMvc
@@ -185,15 +198,93 @@ class IndexingControllerTest {
         .andExpect(status().isAccepted())
         .andExpect(jsonPath("$.status").value("RUNNING"));
 
-    ArgumentCaptor<UrlIndexingRequest> captor = ArgumentCaptor.forClass(UrlIndexingRequest.class);
+    // ADR-0017: the controller no longer decides between two service methods itself - it always
+    // calls the same single entry point and lets DocumentIndexingService resolve the source type
+    // (here: the backward-compatible fallback, since no sourceType was sent) and route to the
+    // matching executor. This still pins that every URL-related field reaches the service intact.
+    ArgumentCaptor<IndexingTriggerRequest> captor =
+        ArgumentCaptor.forClass(IndexingTriggerRequest.class);
     verify(documentIndexingService)
-        .triggerUrlIndexing(captor.capture(), eq(libraryId), eq(currentUser.getId()), eq(true));
-    UrlIndexingRequest captured = captor.getValue();
-    org.assertj.core.api.Assertions.assertThat(captured.url())
+        .triggerIndexing(captor.capture(), eq(currentUser.getId()), eq(true));
+    IndexingTriggerRequest captured = captor.getValue();
+    org.assertj.core.api.Assertions.assertThat(captured.getLibraryId()).isEqualTo(libraryId);
+    org.assertj.core.api.Assertions.assertThat(captured.getUrl().toString())
         .isEqualTo("https://example.com/files/");
-    org.assertj.core.api.Assertions.assertThat(captured.proxy()).isEqualTo("proxy:8080");
-    org.assertj.core.api.Assertions.assertThat(captured.credentials()).isEqualTo("user:pass");
-    org.assertj.core.api.Assertions.assertThat(captured.insecureSsl()).isTrue();
+    org.assertj.core.api.Assertions.assertThat(captured.getProxy()).isEqualTo("proxy:8080");
+    org.assertj.core.api.Assertions.assertThat(captured.getCredentials()).isEqualTo("user:pass");
+    org.assertj.core.api.Assertions.assertThat(captured.getInsecureSsl()).isTrue();
+  }
+
+  @Test
+  void triggerWithExplicitSourceTypePassesItThroughUnchanged() throws Exception {
+    // ADR-0017 acceptance criteria: a run with an explicitly given sourceType selects the
+    // matching executor - the controller itself makes no decision, it just forwards the field.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(documentIndexingService.triggerIndexing(
+            any(IndexingTriggerRequest.class), eq(currentUser.getId()), eq(true)))
+        .thenReturn(job);
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"sourceType\":\"FILESYSTEM\"}"))
+        .andExpect(status().isAccepted());
+
+    ArgumentCaptor<IndexingTriggerRequest> captor =
+        ArgumentCaptor.forClass(IndexingTriggerRequest.class);
+    verify(documentIndexingService)
+        .triggerIndexing(captor.capture(), eq(currentUser.getId()), eq(true));
+    org.assertj.core.api.Assertions.assertThat(captor.getValue().getSourceType())
+        .isEqualTo(io.opaa.indexing.IndexingSourceType.FILESYSTEM);
+  }
+
+  @Test
+  void triggerWithContradictingSourceTypeAndFieldsReturnsBadRequest() throws Exception {
+    // ADR-0017 acceptance criteria: a request whose sourceType contradicts its other fields is
+    // rejected with a German message - DocumentIndexingService owns the actual check, this pins
+    // that its ResponseStatusException reaches the client as the matching HTTP status/body.
+    UUID libraryId = UUID.randomUUID();
+    when(documentIndexingService.triggerIndexing(
+            any(IndexingTriggerRequest.class), eq(currentUser.getId()), eq(true)))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Der Quellentyp HTTP_DIRECTORY erfordert eine URL"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"sourceType\":\"HTTP_DIRECTORY\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Der Quellentyp HTTP_DIRECTORY erfordert eine URL"));
+  }
+
+  @Test
+  void triggerWithAnUnrepresentableSourceTypeReturnsBadRequest() throws Exception {
+    // ADR-0017: sourceType is the narrower IndexingSourceType, not DocumentSourceType - UPLOAD is
+    // not one of its values, so Jackson rejects it during deserialization before the request ever
+    // reaches DocumentIndexingService. A misspelled/unknown value fails the same way.
+    UUID libraryId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"sourceType\":\"UPLOAD\"}"))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            post("/api/v1/indexing/trigger")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"sourceType\":\"NOT_A_TYPE\"}"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -201,7 +292,8 @@ class IndexingControllerTest {
     // #419 acceptance criteria: no libraryId -> 400, no run started. DocumentIndexingService
     // owns the actual validation (see DocumentIndexingServiceTest); this pins that its
     // ResponseStatusException reaches the client as the matching HTTP status.
-    when(documentIndexingService.triggerIndexing(eq(null), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            requestWithoutLibraryId(), eq(currentUser.getId()), eq(true)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.BAD_REQUEST, "libraryId ist erforderlich"));
 
@@ -218,7 +310,8 @@ class IndexingControllerTest {
   @Test
   void triggerWithInsufficientRoleReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentIndexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            requestWithLibraryId(libraryId), eq(currentUser.getId()), eq(true)))
         .thenThrow(
             new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
 
@@ -235,7 +328,8 @@ class IndexingControllerTest {
   @Test
   void triggerWithAForeignLibraryReturnsNotFound() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(documentIndexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(true)))
+    when(documentIndexingService.triggerIndexing(
+            requestWithLibraryId(libraryId), eq(currentUser.getId()), eq(true)))
         .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
 
     mockMvc

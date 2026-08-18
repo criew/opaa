@@ -27,11 +27,12 @@ paths:
       tags: [indexing]
       summary: Trigger document indexing
       description: |
-        Triggers document indexing into a chosen target library. Without a url in the
-        request body, indexes documents from the configured local filesystem path. With a
-        url, crawls an Apache mod_autoindex HTTP directory listing and indexes all
-        discovered documents. libraryId is always required: a directory-wide indexing run
-        must never silently default to a library the caller did not choose.
+        Triggers document indexing into a chosen target library. sourceType picks the run's
+        executor explicitly; when it is omitted, the backward-compatible fallback applies -
+        a url in the request body means an HTTP directory listing crawl, otherwise the
+        configured local filesystem path is indexed. libraryId is always required: a
+        directory-wide indexing run must never silently default to a library the caller did
+        not choose.
       requestBody:
         required: true
         content:
@@ -1378,9 +1379,12 @@ components:
       description: >
         Request body to trigger an indexing run. libraryId is required (#419): a
         directory-wide or URL-wide indexing run must never silently default to a library
-        the caller did not choose, and the API answers 400 rather than picking one. url is
-        optional; without it, the run indexes the configured local filesystem path instead
-        of crawling a URL.
+        the caller did not choose, and the API answers 400 rather than picking one.
+        sourceType is optional (ADR-0017): it picks the run's executor explicitly. When it
+        is omitted, the backward-compatible fallback applies - url set means
+        HTTP_DIRECTORY, otherwise FILESYSTEM. A sourceType that contradicts the other
+        fields (e.g. HTTP_DIRECTORY without a url, or FILESYSTEM with one) is rejected with
+        a 400.
       required: [libraryId]
       properties:
         libraryId:
@@ -1391,6 +1395,8 @@ components:
             The caller must hold at least EDITOR on it (see AssetRole); the /trigger
             endpoint's system-admin requirement applies alongside this check, not instead
             of it.
+        sourceType:
+          $ref: "#/components/schemas/IndexingSourceType"
         url:
           type: string
           format: uri
@@ -1917,6 +1923,15 @@ components:
     DocumentSourceType:
       type: string
       enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD]
+      example: FILESYSTEM
+
+    IndexingSourceType:
+      type: string
+      description: >
+        A run-based source type - narrower than DocumentSourceType (ADR-0017): it lists
+        only the types an indexing run can execute, so UPLOAD (a document's origin, not a
+        run type) can never be requested via /api/v1/indexing/trigger.
+      enum: [FILESYSTEM, HTTP_DIRECTORY]
       example: FILESYSTEM
 
     LibraryDocumentResponse:

@@ -5,6 +5,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.IndexingMetrics;
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
@@ -59,8 +60,14 @@ public class IndexingConfiguration {
         indexingMetrics);
   }
 
+  // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
+  // and are therefore wrapped in a JDK dynamic proxy at runtime, which only implements the
+  // interfaces the target class declares - Spring could not inject the concrete type here even if
+  // this method promised it. Nothing in this application injects AsyncIndexingExecutor or
+  // UrlIndexingExecutor directly; every consumer (IndexingSourceExecutorRegistry) depends on
+  // SourceIndexingExecutor already.
   @Bean
-  AsyncIndexingExecutor asyncIndexingExecutor(
+  SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
@@ -80,7 +87,7 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  UrlIndexingExecutor urlIndexingExecutor(
+  SourceIndexingExecutor urlIndexingExecutor(
       AutoindexCrawlerService autoindexCrawlerService,
       UrlFileDownloader urlFileDownloader,
       FileProcessingService fileProcessingService,
@@ -94,18 +101,27 @@ public class IndexingConfiguration {
         documentRepository);
   }
 
+  /**
+   * Populated from every {@link SourceIndexingExecutor} bean Spring finds (ADR-0017): a new source
+   * type becomes reachable by adding one more bean here, never by editing this method or {@link
+   * DocumentIndexingService}.
+   */
+  @Bean
+  IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
+      List<SourceIndexingExecutor> executors) {
+    return new IndexingSourceExecutorRegistry(executors);
+  }
+
   @Bean
   DocumentIndexingService documentIndexingService(
       IndexingJobService indexingJobService,
-      AsyncIndexingExecutor asyncIndexingExecutor,
-      UrlIndexingExecutor urlIndexingExecutor,
+      IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService) {
     return new DocumentIndexingService(
         indexingJobService,
-        asyncIndexingExecutor,
-        urlIndexingExecutor,
+        indexingSourceExecutorRegistry,
         userRepository,
         libraryRepository,
         libraryAccessService);

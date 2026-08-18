@@ -222,6 +222,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "LibraryVisibility" to "LibraryVisibility",
         "DocumentStatus" to "DocumentStatus",
         "DocumentSourceType" to "DocumentSourceType",
+        "IndexingSourceType" to "IndexingSourceType",
         "AssetRole" to "AssetRole",
         "PermissionSubjectType" to "PermissionSubjectType",
         "AuditActorKind" to "ActorKind",
@@ -244,6 +245,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "LibraryVisibility" to "io.opaa.library.LibraryVisibility",
         "DocumentStatus" to "io.opaa.indexing.DocumentStatus",
         "DocumentSourceType" to "io.opaa.indexing.DocumentSourceType",
+        "IndexingSourceType" to "io.opaa.indexing.IndexingSourceType",
         "AssetRole" to "io.opaa.library.AssetRole",
         "PermissionSubjectType" to "io.opaa.group.PermissionSubjectType",
         "ActorKind" to "io.opaa.audit.ActorKind",
@@ -261,7 +263,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
-        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java").forEach { fileName ->
+        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "IndexingSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java").forEach { fileName ->
             file("$generatedDir/$fileName").delete()
         }
     }
