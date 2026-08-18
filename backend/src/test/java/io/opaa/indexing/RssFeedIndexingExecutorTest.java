@@ -288,7 +288,9 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void unchangedEntry_skipsTheDetailPageFetchEntirely() {
+  void unchangedEntryWithAttachmentsAlreadyIndexedSkipsTheDetailPageFetchEntirely() {
+    // #492 review, finding 1: the cheap path only stays cheap once attachments already exist for
+    // this entry - existsBySourceEntryUrl(true) is exactly that case.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     AtomicInteger detailPageHits = new AtomicInteger();
     server.createContext(
@@ -303,11 +305,61 @@ class RssFeedIndexingExecutorTest {
     existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
     existing.setLibraryId(library.getId());
     when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
+    when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(true);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
     assertThat(detailPageHits.get()).isZero();
+  }
+
+  @Test
+  void unchangedEntryWithoutAttachmentsYetFetchesTheDetailPageAndBackfillsThem()
+      throws IOException {
+    // #492 review, finding 1: an entry indexed before attachment support existed must still get
+    // its attachments backfilled - existsBySourceEntryUrl(false) is that case, and the entry's own
+    // pubDate stays unchanged (its main text is never reprocessed), only the attachment is new.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/anlage.pdf",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    Document existing = new Document("Titel", baseUrl + "/a.html", "text/html", 10L);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
+    existing.setLibraryId(library.getId());
+    when(documentRepository.findByFilePath(baseUrl + "/a.html")).thenReturn(Optional.of(existing));
+    when(documentRepository.existsBySourceEntryUrl(baseUrl + "/a.html")).thenReturn(false);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(),
+            eq("anlage.pdf"),
+            eq(baseUrl + "/downloads/anlage.pdf"),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.RSS_FEED),
+            eq(baseUrl + "/a.html"));
+    // The entry's own main text was never reprocessed - only its attachment was backfilled.
+    verify(fileProcessingService, never())
+        .processRssEntry(anyString(), any(), eq(baseUrl + "/a.html"), any(), any());
   }
 
   @Test
@@ -692,7 +744,7 @@ class RssFeedIndexingExecutorTest {
             + "<a href=\""
             + baseUrl
             + "/downloads/fehlt.pdf\">Anlage</a></main></body></html>";
-    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-lost-attachment\"");
     serve("/a.html", 200, "text/html", detailHtml);
     serve("/downloads/fehlt.pdf", 404, "text/html", "not found");
     when(fileProcessingService.processRssEntry(
@@ -705,6 +757,9 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+    // #492 review, finding 2: a lost attachment must defer the feed's ETag persistence the same
+    // way a lost entry does - otherwise a future 304 would permanently suppress a retry.
+    verify(feedStateRepository, never()).save(any());
   }
 
   @Test
@@ -718,7 +773,7 @@ class RssFeedIndexingExecutorTest {
             + "<a href=\""
             + baseUrl
             + "/downloads/gross.pdf\">Anlage</a></main></body></html>";
-    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-oversize-attachment\"");
     serve("/a.html", 200, "text/html", detailHtml);
     serveBytes(
         "/downloads/gross.pdf",
@@ -734,6 +789,7 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+    verify(feedStateRepository, never()).save(any());
   }
 
   @Test
@@ -785,5 +841,136 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             any());
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
+  void anAttachmentAnsweringWithHtmlInsteadOfTheExpectedFormatIsSkipped() throws IOException {
+    // #492 review, finding 3: a bot-protection challenge or 200-status error page served for a
+    // link a profile identified via its .pdf extension must never be trusted just because the URL
+    // carried a supported extension.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serve(
+        "/downloads/anlage.pdf", 200, "text/html", "<html><body>Zugriff verweigert</body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void anAttachmentRedirectedToAForeignHostIsSkipped() throws IOException {
+    // #492 review, finding 4: a same-host link a profile already vetted must not silently end up
+    // downloading from, and being recorded as originating from, an address the profile never
+    // approved - mirrors fetchDetailPage's own isForeignHostRedirect check.
+    // 127.0.0.2, not 127.0.0.1 - see UrlFileDownloaderTest's identical comment.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    foreignServer.start();
+    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    try {
+      foreignServer.createContext(
+          "/anlage.pdf",
+          exchange -> {
+            byte[] bytes = "fremd".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+
+      executor =
+          newExecutor(
+              new IndexingProperties.Rss(
+                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+      String detailHtml =
+          "<html><body><main>Text"
+              + "<a href=\""
+              + baseUrl
+              + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+      serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+      serve("/a.html", 200, "text/html", detailHtml);
+      server.createContext(
+          "/downloads/anlage.pdf",
+          exchange -> {
+            exchange.getResponseHeaders().set("Location", foreignBaseUrl + "/anlage.pdf");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+          });
+      when(fileProcessingService.processRssEntry(
+              anyString(), anyString(), anyString(), any(), eq(library)))
+          .thenReturn(FileProcessingResult.PROCESSED);
+
+      execute(baseUrl + "/feed.xml");
+
+      verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+      verify(fileProcessingService, never())
+          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+    } finally {
+      foreignServer.stop(0);
+    }
+  }
+
+  @Test
+  void attachmentDownloadSendsTheConfiguredUserAgent() throws IOException {
+    // #492 review, finding 6: the feed and every detail page already send the configured
+    // User-Agent - an attachment request left it out entirely.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200,
+                10_000,
+                10_000,
+                0,
+                "OPAA-Indexer/attachment-test",
+                null,
+                AttachmentProfile.GENERIC,
+                10,
+                10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    AtomicReference<String> userAgent = new AtomicReference<>();
+    server.createContext(
+        "/downloads/anlage.pdf",
+        exchange -> {
+          userAgent.set(exchange.getRequestHeaders().getFirst("User-Agent"));
+          byte[] bytes = "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString());
+    assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
   }
 }

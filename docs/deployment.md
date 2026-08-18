@@ -305,6 +305,8 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | `OPAA_BACKEND_PORT` | `8081` | Backend-Host-Port |
 | `OPAA_FRONTEND_PORT` | `3000` | Frontend-Host-Port |
 
+**Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird vor dem Schreiben auf die temporäre Datei vollständig in den Heap gelesen (`UrlFileDownloader#downloadBounded`) — bis zu `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) je Anlage. Bei knapp bemessenem Heap `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` und die Anlagen-Obergrenzen entsprechend niedriger wählen.
+
 ### Netzwerkzugang
 
 Standardmäßig bindet das Backend an `localhost`. Um OPAA von anderen Geräten im Netzwerk zugänglich zu machen, setzen Sie:

@@ -15,6 +15,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,11 @@ class UrlFileDownloaderTest {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
-    httpClient = HttpClient.newHttpClient();
+    // NORMAL, not the default NEVER (#492 review, finding 4's test needs an actually-followed
+    // redirect to exercise isForeignHostRedirect) - mirrors
+    // AutoindexCrawlerService.buildHttpClient,
+    // the client production code actually uses for every RSS attachment download.
+    httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
   }
 
   @AfterEach
@@ -99,7 +104,8 @@ class UrlFileDownloaderTest {
         });
 
     UrlFileDownloader.DownloadedFile result =
-        downloader.downloadBounded(httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000);
+        downloader.downloadBounded(
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test");
 
     try {
       assertThat(result.contentType()).isEqualTo("application/pdf");
@@ -107,6 +113,27 @@ class UrlFileDownloaderTest {
     } finally {
       Files.deleteIfExists(result.path());
     }
+  }
+
+  @Test
+  void downloadBoundedSendsTheGivenUserAgent() throws IOException, InterruptedException {
+    AtomicReference<String> userAgent = new AtomicReference<>();
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          userAgent.set(exchange.getRequestHeaders().getFirst("User-Agent"));
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    UrlFileDownloader.DownloadedFile result =
+        downloader.downloadBounded(
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test");
+
+    Files.deleteIfExists(result.path());
+    assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/test");
   }
 
   @Test
@@ -121,7 +148,7 @@ class UrlFileDownloaderTest {
         });
 
     assertThatThrownBy(
-            () -> downloader.downloadBounded(httpClient, baseUrl + "/big.pdf", "big.pdf", 10))
+            () -> downloader.downloadBounded(httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null))
         .isInstanceOf(UrlFileDownloader.AttachmentTooLargeException.class);
   }
 
@@ -137,8 +164,43 @@ class UrlFileDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000))
+                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000, null))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("HTTP 404");
+  }
+
+  @Test
+  void downloadBoundedThrowsWhenRedirectedToAForeignHost() throws IOException {
+    // 127.0.0.2, not 127.0.0.1 (also loopback, but a genuinely different host string) - two
+    // servers on 127.0.0.1 at different ports would make isForeignHostRedirect's host-only
+    // comparison see the same host and miss the redirect entirely.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    foreignServer.start();
+    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    try {
+      foreignServer.createContext(
+          "/anlage.pdf",
+          exchange -> {
+            byte[] bytes = "fremd".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+      server.createContext(
+          "/anlage.pdf",
+          exchange -> {
+            exchange.getResponseHeaders().set("Location", foreignBaseUrl + "/anlage.pdf");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+          });
+
+      assertThatThrownBy(
+              () ->
+                  downloader.downloadBounded(
+                      httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null))
+          .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
+    } finally {
+      foreignServer.stop(0);
+    }
   }
 }

@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -60,27 +61,37 @@ public class UrlFileDownloader {
    * OPAA does not control - unlike {@link #download}, used for {@code HTTP_DIRECTORY} crawls of an
    * address the system administration chose deliberately.
    *
+   * @param userAgent the {@code User-Agent} header value to send, or {@code null} to send none - PR
+   *     #492 review, finding 6: {@link RssFeedIndexingExecutor} already sends its configured,
+   *     truthful {@code User-Agent} for the feed and every detail page; an attachment request left
+   *     it out entirely.
    * @return the temp file alongside the response's declared {@code Content-Type}, which the
    *     Government Site Builder attachment profile ({@link AttachmentProfile#GSB}) needs to derive
    *     a file extension its URLs do not carry (#468)
    * @throws AttachmentTooLargeException if the response body exceeds {@code maxBytes}
+   * @throws ForeignHostRedirectException if the request was redirected to a different host than
+   *     {@code fileUrl}'s own (PR #492 review, finding 4) - a same-host attachment link a profile
+   *     already vetted must not silently end up downloading from, and being recorded as originating
+   *     from, an address the profile never approved.
    */
   public DownloadedFile downloadBounded(
-      HttpClient httpClient, String fileUrl, String fileName, long maxBytes)
+      HttpClient httpClient, String fileUrl, String fileName, long maxBytes, String userAgent)
       throws IOException, InterruptedException {
     log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
 
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(fileUrl))
-            .timeout(Duration.ofSeconds(120))
-            .GET()
-            .build();
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(Duration.ofSeconds(120)).GET();
+    if (userAgent != null && !userAgent.isBlank()) {
+      requestBuilder.header("User-Agent", userAgent);
+    }
 
     HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
 
     try (InputStream body = response.body()) {
+      if (isForeignHostRedirect(fileUrl, response.uri())) {
+        throw new ForeignHostRedirectException("redirected to a foreign host: " + response.uri());
+      }
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
       }
@@ -92,6 +103,22 @@ public class UrlFileDownloader {
       String contentType = response.headers().firstValue("Content-Type").orElse(null);
       log.debug("Downloaded {} to {}", fileUrl, tempFile);
       return new DownloadedFile(tempFile, contentType);
+    }
+  }
+
+  /**
+   * Whether {@code finalUri} landed on a different host than {@code originalUrl} - mirrors {@code
+   * RssFeedIndexingExecutor#isForeignHostRedirect}'s treatment of detail-page redirects (PR #492
+   * review, finding 4).
+   */
+  private static boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
+    try {
+      URI originalUri = new URI(originalUrl);
+      return originalUri.getHost() != null
+          && finalUri.getHost() != null
+          && !originalUri.getHost().equalsIgnoreCase(finalUri.getHost());
+    } catch (URISyntaxException e) {
+      return false;
     }
   }
 
@@ -126,4 +153,11 @@ public class UrlFileDownloader {
    * Thrown by {@link #downloadBounded} when the configured byte limit is exceeded while streaming.
    */
   public static final class AttachmentTooLargeException extends RuntimeException {}
+
+  /** Thrown by {@link #downloadBounded} when the request was redirected to a foreign host. */
+  public static final class ForeignHostRedirectException extends RuntimeException {
+    ForeignHostRedirectException(String message) {
+      super(message);
+    }
+  }
 }

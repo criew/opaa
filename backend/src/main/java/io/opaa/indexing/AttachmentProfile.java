@@ -2,9 +2,10 @@ package io.opaa.indexing;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.jsoup.nodes.Element;
 
 /**
@@ -35,7 +36,11 @@ public enum AttachmentProfile {
   GENERIC {
     @Override
     List<AttachmentCandidate> findAttachments(Element contentArea, URI pageUri) {
-      List<AttachmentCandidate> candidates = new ArrayList<>();
+      // LinkedHashSet, not List (PR #492 review, finding 8): the same attachment is routinely
+      // linked twice on one detail page (an inline text link plus a "downloads" list at the
+      // bottom) - without dedup here, the executor would download it twice, wait out politeness
+      // twice, and exhaust maxAttachmentsPerEntry on duplicates rather than distinct attachments.
+      Set<AttachmentCandidate> candidates = new LinkedHashSet<>();
       for (Element link : contentArea.select("a[href]")) {
         String absoluteUrl = link.absUrl("href");
         URI linkUri = parseHttpOrHttps(absoluteUrl);
@@ -48,7 +53,7 @@ public enum AttachmentProfile {
         }
         candidates.add(new AttachmentCandidate(absoluteUrl, fileName));
       }
-      return candidates;
+      return List.copyOf(candidates);
     }
   },
 
@@ -63,7 +68,8 @@ public enum AttachmentProfile {
   GSB {
     @Override
     List<AttachmentCandidate> findAttachments(Element contentArea, URI pageUri) {
-      List<AttachmentCandidate> candidates = new ArrayList<>();
+      // See GENERIC's own comment on the same dedup (PR #492 review, finding 8).
+      Set<AttachmentCandidate> candidates = new LinkedHashSet<>();
       for (Element link : contentArea.select("a[href]")) {
         String absoluteUrl = link.absUrl("href");
         URI linkUri = parseHttpOrHttps(absoluteUrl);
@@ -72,7 +78,7 @@ public enum AttachmentProfile {
         }
         candidates.add(new AttachmentCandidate(absoluteUrl, lastPathSegment(linkUri)));
       }
-      return candidates;
+      return List.copyOf(candidates);
     }
 
     private boolean isBlobLink(URI linkUri) {
@@ -117,10 +123,38 @@ public enum AttachmentProfile {
     }
   }
 
+  /**
+   * Whether {@code linkUri} is the same origin as {@code pageUri} - host, scheme and port all have
+   * to match (PR #492 review, finding 9). Host alone let an {@code http} link on an {@code https}
+   * detail page through, silently downgrading the attachment download to plain text; port alone let
+   * a link to an unrelated service on the same host through. Default ports ({@code 80}/{@code 443})
+   * are normalised so an explicit {@code :443} on an {@code https} link still counts as the same
+   * origin as one without.
+   */
   private static boolean sameHost(URI pageUri, URI linkUri) {
     return pageUri.getHost() != null
         && linkUri.getHost() != null
-        && pageUri.getHost().equalsIgnoreCase(linkUri.getHost());
+        && pageUri.getHost().equalsIgnoreCase(linkUri.getHost())
+        && pageUri.getScheme() != null
+        && linkUri.getScheme() != null
+        && pageUri.getScheme().equalsIgnoreCase(linkUri.getScheme())
+        && normalizedPort(pageUri) == normalizedPort(linkUri);
+  }
+
+  private static int normalizedPort(URI uri) {
+    int port = uri.getPort();
+    if (port != -1) {
+      return port;
+    }
+    String scheme = uri.getScheme();
+    if (scheme == null) {
+      return -1;
+    }
+    return switch (scheme.toLowerCase(Locale.ROOT)) {
+      case "https" -> 443;
+      case "http" -> 80;
+      default -> -1;
+    };
   }
 
   private static String lastPathSegment(URI uri) {
