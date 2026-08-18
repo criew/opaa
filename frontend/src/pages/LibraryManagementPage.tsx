@@ -42,6 +42,10 @@ function ownerTypeSummary(library: LibraryListResponse): string {
   return 'eigene'
 }
 
+function documentCountSummary(documentCount: number): string {
+  return `${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
+}
+
 function LibraryCard({ library }: { library: LibraryListResponse }) {
   const details = useLibraryStore((s) => s.libraryDetails[library.id])
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
@@ -108,7 +112,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
           <Typography sx={{ fontWeight: 600 }}>{library.name}</Typography>
           <Typography variant="body2" color="text.secondary">
             {ownerTypeSummary(library)} · {libraryVisibilityLabel(library.visibility)}
-            {library.listed ? ' · gelistet' : ''}
+            {library.listed ? ' · gelistet' : ''} · {documentCountSummary(library.documentCount)}
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
             <Chip label={assetRoleLabel(library.myRole)} size="small" variant="outlined" />
@@ -135,12 +139,6 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
             Berechtigung.
           </Alert>
         )}
-        {typeof details?.documentCount === 'number' && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {details.documentCount} {details.documentCount === 1 ? 'Dokument' : 'Dokumente'}
-          </Typography>
-        )}
-
         <Stack spacing={1.5} sx={{ mb: 2 }}>
           <TextField
             label="Name der Bibliothek"

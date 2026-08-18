@@ -1828,7 +1828,19 @@ components:
 
     LibraryListResponse:
       type: object
-      required: [id, name, ownerType, visibility, listed, personal, myRole, createdAt, updatedAt]
+      required:
+        [
+          id,
+          name,
+          ownerType,
+          visibility,
+          listed,
+          personal,
+          myRole,
+          documentCount,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -1859,6 +1871,9 @@ components:
             itself.
           allOf:
             - $ref: "#/components/schemas/AssetRole"
+        documentCount:
+          type: integer
+          format: int64
         createdAt:
           type: string
           format: date-time

@@ -24,6 +24,7 @@ const { mockCreateLibrary, mockUpdateLibrary, mockDeleteLibrary, mockGetMyGroups
         listed: request.listed ?? false,
         personal: false,
         myRole: 'OWNER',
+        documentCount: 0,
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       }
@@ -62,6 +63,7 @@ const personalLibrary: LibraryListResponse = {
   listed: false,
   personal: true,
   myRole: 'OWNER',
+  documentCount: 12,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -75,6 +77,7 @@ const managerLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'MANAGER',
+  documentCount: 431,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -88,6 +91,7 @@ const viewerLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'VIEWER',
+  documentCount: 87,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -101,6 +105,7 @@ const editorLibrary: LibraryListResponse = {
   listed: false,
   personal: false,
   myRole: 'EDITOR',
+  documentCount: 5,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -117,6 +122,7 @@ const orgWideGroupLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'VIEWER',
+  documentCount: 87,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -170,6 +176,14 @@ describe('LibraryManagementPage', () => {
     const items = await screen.findAllByText(/persönlich|Rechtsquellen Soziales/)
     expect(items[0]).toHaveTextContent('persönlich')
     expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
+  })
+
+  it('shows the document count per library in the collapsed overview, without expanding', async () => {
+    setLibraryState([managerLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />)
+
+    expect(await screen.findByText(/431 dokumente/i)).toBeInTheDocument()
+    expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no libraries', async () => {

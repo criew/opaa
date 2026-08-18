@@ -472,6 +472,7 @@ export const handlers = [
       listed: body.listed ?? false,
       personal: false,
       myRole: 'OWNER',
+      documentCount: 0,
       createdAt: now,
       updatedAt: now,
     }
@@ -644,6 +645,10 @@ export const handlers = [
     if (detail) {
       detail.documentCount = (detail.documentCount ?? 0) + 1
     }
+    const listEntry = mockLibraries.find((item) => item.id === libraryId)
+    if (listEntry) {
+      listEntry.documentCount = (listEntry.documentCount ?? 0) + 1
+    }
     return HttpResponse.json(document, { status: 201 })
   }),
 
@@ -665,6 +670,10 @@ export const handlers = [
     const detail = mockLibraryDetails[libraryId]
     if (detail && (detail.documentCount ?? 0) > 0) {
       detail.documentCount = (detail.documentCount ?? 0) - 1
+    }
+    const listEntry = mockLibraries.find((item) => item.id === libraryId)
+    if (listEntry && (listEntry.documentCount ?? 0) > 0) {
+      listEntry.documentCount = (listEntry.documentCount ?? 0) - 1
     }
     return new HttpResponse(null, { status: 204 })
   }),
