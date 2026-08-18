@@ -52,9 +52,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   public void execute(
       UUID jobId, IndexingTriggerRequest triggerRequest, KnowledgeLibrary targetLibrary) {
     UrlIndexingRequest request = toUrlIndexingRequest(triggerRequest);
-    int processed = 0;
-    int failed = 0;
-    int skipped = 0;
+    var progress = new IndexingRunProgress(indexingJobService, jobId);
 
     try {
       // Parse proxy config
@@ -109,12 +107,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
       // documents is lower than the number of files behind the URL.
-      skipped +=
+      progress.addSkipped(
           RejectedDocumentReporter.reportRejected(
-              rejectedFiles.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList());
+              IndexingSourceType.HTTP_DIRECTORY,
+              url,
+              rejectedFiles.stream().map(AutoindexCrawlerService.CrawledFileEntry::name).toList()));
 
-      indexingJobService.setTotalDocuments(jobId, allFiles.size());
-      indexingJobService.updateProgress(jobId, processed, failed, skipped);
+      progress.setTotal(allFiles.size());
+      progress.report();
 
       // Build shared HttpClient and auth header for downloads
       HttpClient httpClient =
@@ -126,8 +126,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified())) {
           log.info("Skipping unchanged URL document: {}", entry.name());
-          skipped++;
-          indexingJobService.updateProgress(jobId, processed, failed, skipped);
+          progress.recordSkipped();
+          progress.report();
           continue;
         }
 
@@ -147,18 +147,18 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   targetLibrary);
 
           if (result == FileProcessingResult.SKIPPED) {
-            skipped++;
+            progress.recordSkipped();
           } else {
-            processed++;
+            progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
         } catch (Exception e) {
           log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
-          failed++;
+          progress.recordFailed();
         } catch (Error e) {
           log.error(
               "Fatal error while processing URL document: {} ({})", entry.name(), entry.url(), e);
-          failed++;
+          progress.recordFailed();
         } finally {
           if (tempFile != null) {
             try {
@@ -168,19 +168,19 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             }
           }
         }
-        indexingJobService.updateProgress(jobId, processed, failed, skipped);
+        progress.report();
       }
 
-      indexingJobService.completeJob(jobId, processed, failed, skipped);
+      progress.complete();
     } catch (IOException | InterruptedException e) {
       log.error("URL indexing failed", e);
-      indexingJobService.failJob(jobId, e.getMessage());
+      progress.fail(e.getMessage());
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
     } catch (Exception e) {
       log.error("URL indexing failed unexpectedly", e);
-      indexingJobService.failJob(jobId, e.getMessage());
+      progress.fail(e.getMessage());
     }
   }
 

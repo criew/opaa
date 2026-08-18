@@ -14,7 +14,9 @@ import org.slf4j.LoggerFactory;
  * exact logic against different element types ({@code Path} vs. {@code
  * AutoindexCrawlerService.CrawledFileEntry}, see ADR-0017). Each executor now maps its own
  * rejected-item list down to display names before calling this shared helper, keeping the reporting
- * itself in exactly one place.
+ * itself in exactly one place. {@code sourceType} and {@code location} are passed in explicitly - a
+ * single shared logger name would otherwise erase the run type/origin the two executors' own
+ * loggers used to convey implicitly.
  */
 final class RejectedDocumentReporter {
 
@@ -22,14 +24,21 @@ final class RejectedDocumentReporter {
 
   private RejectedDocumentReporter() {}
 
-  /** Logs every rejected document name and returns how many there were. */
-  static int reportRejected(List<String> rejectedNames) {
+  /**
+   * Logs every rejected document name, naming the run's {@code sourceType} and {@code location}
+   * (directory path or URL), and returns how many there were.
+   */
+  static int reportRejected(
+      IndexingSourceType sourceType, String location, List<String> rejectedNames) {
     if (rejectedNames.isEmpty()) {
       return 0;
     }
     log.warn(
-        "Rejected {} document(s) because of an unsupported format (supported: {}): {}",
+        "[{}] Rejected {} document(s) from {} because of an unsupported format (supported: {}):"
+            + " {}",
+        sourceType,
         rejectedNames.size(),
+        location,
         SupportedDocumentFormats.extensions(),
         rejectedNames);
     return rejectedNames.size();

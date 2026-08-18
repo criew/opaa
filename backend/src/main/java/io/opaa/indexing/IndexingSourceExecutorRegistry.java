@@ -1,7 +1,9 @@
 package io.opaa.indexing;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -15,6 +17,13 @@ import java.util.stream.Collectors;
  * {@code UPLOAD} cannot be looked up here at all, because it is not a value of {@link
  * IndexingSourceType} in the first place - the missing mapping the ADR calls out is excluded by the
  * type system, not handled as a runtime case.
+ *
+ * <p><b>Completeness is checked at construction, not at resolve time.</b> A missing executor for a
+ * declared {@link IndexingSourceType} is a wiring bug (a new enum value was added without its
+ * matching {@code @Bean}), and this constructor fails application startup with a clear message
+ * instead of letting {@link #resolve(IndexingSourceType)} throw the first time some caller happens
+ * to hit the gap - which, reached through an HTTP request, would otherwise surface as an opaque 500
+ * rather than a startup failure a developer sees immediately.
  */
 public class IndexingSourceExecutorRegistry {
 
@@ -26,22 +35,16 @@ public class IndexingSourceExecutorRegistry {
             .collect(
                 Collectors.toUnmodifiableMap(
                     SourceIndexingExecutor::sourceType, Function.identity()));
+    Set<IndexingSourceType> missing = EnumSet.allOf(IndexingSourceType.class);
+    missing.removeAll(executorsByType.keySet());
+    if (!missing.isEmpty()) {
+      throw new IllegalStateException(
+          "No SourceIndexingExecutor bean is registered for source type(s) " + missing);
+    }
   }
 
-  /**
-   * Returns the executor registered for {@code sourceType}.
-   *
-   * @throws IllegalStateException if no executor is registered for {@code sourceType} - a
-   *     verständliche Ablehnung instead of a {@code NullPointerException} further down the call
-   *     chain, and a sign that a new {@link IndexingSourceType} value was added without wiring its
-   *     matching bean in {@code IndexingConfiguration}.
-   */
+  /** Returns the executor registered for {@code sourceType}. Always succeeds after construction. */
   public SourceIndexingExecutor resolve(IndexingSourceType sourceType) {
-    SourceIndexingExecutor executor = executorsByType.get(sourceType);
-    if (executor == null) {
-      throw new IllegalStateException(
-          "No SourceIndexingExecutor is registered for source type " + sourceType);
-    }
-    return executor;
+    return executorsByType.get(sourceType);
   }
 }

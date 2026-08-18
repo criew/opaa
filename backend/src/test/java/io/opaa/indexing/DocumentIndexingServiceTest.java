@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -153,7 +154,8 @@ class DocumentIndexingServiceTest {
     IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
 
     assertThat(result).isEqualTo(job);
-    verify(asyncIndexingExecutor).execute(any(), any(IndexingTriggerRequest.class), any());
+    verify(asyncIndexingExecutor)
+        .execute(eq(job.getId()), any(IndexingTriggerRequest.class), eq(library));
   }
 
   @Test
@@ -225,48 +227,26 @@ class DocumentIndexingServiceTest {
     verify(userRepository, never()).findById(any());
   }
 
-  @Test
-  void triggerUrlIndexingWithoutLibraryIdFailsWithBadRequest() {
-    var request = new UrlIndexingRequest("https://example.com/files/", null, null, false);
+  // --- ADR-0017: explicit sourceType, fallback derivation and contradiction checks ---
+  //
+  // The old triggerUrlIndexing(UrlIndexingRequest, ...) convenience method was removed - it had
+  // no production caller left once IndexingController started calling the unified
+  // triggerIndexing(IndexingTriggerRequest, ...) directly. Its scenarios (no libraryId, a
+  // successful URL run, a blank URL) live on below, expressed through that unified method.
 
-    assertThatThrownBy(() -> service.triggerUrlIndexing(request, null, currentUser.getId(), false))
+  @Test
+  void triggerIndexingWithAnHttpDirectoryRequestWithoutLibraryIdFailsWithBadRequest() {
+    var request =
+        new IndexingTriggerRequest()
+            .sourceType(IndexingSourceType.HTTP_DIRECTORY)
+            .url(URI.create("https://example.com/files/"));
+
+    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400)));
     verify(urlIndexingExecutor, never()).execute(any(), any(), any());
   }
-
-  @Test
-  void triggerUrlIndexingWithAnEditorGrantStartsTheJobAgainstTheChosenLibrary() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    var request = new UrlIndexingRequest("https://example.com/files/", null, null, false);
-
-    IndexingJob result =
-        service.triggerUrlIndexing(request, library.getId(), currentUser.getId(), false);
-
-    assertThat(result).isEqualTo(job);
-    verify(urlIndexingExecutor)
-        .execute(
-            org.mockito.ArgumentMatchers.eq(job.getId()),
-            any(IndexingTriggerRequest.class),
-            org.mockito.ArgumentMatchers.eq(library));
-  }
-
-  @Test
-  void triggerUrlIndexingWithBlankUrlFailsBeforeCheckingTheLibrary() {
-    var request = new UrlIndexingRequest("   ", null, null, false);
-
-    assertThatThrownBy(
-            () -> service.triggerUrlIndexing(request, library.getId(), currentUser.getId(), false))
-        .isInstanceOf(IllegalArgumentException.class);
-    verify(userRepository, never()).findById(any());
-  }
-
-  // --- ADR-0017: explicit sourceType, fallback derivation and contradiction checks ---
 
   @Test
   void triggerIndexingWithAnExplicitSourceTypeSkipsTheFallbackDerivation() {
@@ -366,26 +346,14 @@ class DocumentIndexingServiceTest {
   }
 
   @Test
-  void aSourceTypeWithoutARegisteredExecutorFailsWithAClearErrorInsteadOfANullPointerException() {
-    // ADR-0017 acceptance criteria: a type without a matching executor is a verständliche
-    // Ablehnung, not a NullPointerException - this simulates that gap by using an empty registry.
-    var emptyRegistry = new IndexingSourceExecutorRegistry(List.of());
-    var serviceWithoutExecutors =
-        new DocumentIndexingService(
-            indexingJobService,
-            emptyRegistry,
-            userRepository,
-            libraryRepository,
-            libraryAccessService);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-
-    assertThatThrownBy(
-            () ->
-                serviceWithoutExecutors.triggerIndexing(
-                    library.getId(), currentUser.getId(), false))
+  void aSourceTypeWithoutARegisteredExecutorFailsAtStartupWithAClearErrorInsteadOfAnNpeAtRuntime() {
+    // ADR-0017 acceptance criteria: a source type without a matching executor is a clear
+    // rejection, not a NullPointerException reached through some later HTTP request - the
+    // registry now checks completeness in its constructor, so the failure happens at application
+    // startup instead.
+    assertThatThrownBy(() -> new IndexingSourceExecutorRegistry(List.of()))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("FILESYSTEM");
+        .hasMessageContaining("FILESYSTEM")
+        .hasMessageContaining("HTTP_DIRECTORY");
   }
 }

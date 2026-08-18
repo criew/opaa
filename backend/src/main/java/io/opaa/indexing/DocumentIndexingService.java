@@ -6,7 +6,6 @@ import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -55,24 +54,6 @@ public class DocumentIndexingService {
         systemAdmin);
   }
 
-  /** Triggers a {@link IndexingSourceType#HTTP_DIRECTORY} run - the type is never guessed here. */
-  public IndexingJob triggerUrlIndexing(
-      UrlIndexingRequest request, UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    if (request.url() == null || request.url().isBlank()) {
-      throw new IllegalArgumentException("Die URL darf nicht leer sein");
-    }
-    return trigger(
-        IndexingSourceType.HTTP_DIRECTORY,
-        new IndexingTriggerRequest()
-            .libraryId(libraryId)
-            .url(URI.create(request.url()))
-            .proxy(request.proxy())
-            .credentials(request.credentials())
-            .insecureSsl(request.insecureSsl()),
-        currentUserId,
-        systemAdmin);
-  }
-
   /**
    * Single entry point used by {@code IndexingController}. Resolves the effective {@link
    * IndexingSourceType} - {@code request.getSourceType()} if the caller stated one, otherwise the
@@ -115,9 +96,11 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Rejects a request whose {@code sourceType} contradicts its other fields (ADR-0017): a run that
-   * needs an address but got none, or one that must not have one but got one anyway, never starts a
-   * job that would find nothing or silently ignore a field the caller set.
+   * Rejects a request whose {@code sourceType} contradicts {@code url} (ADR-0017): a run that needs
+   * an address but got none, or one that must not have one but got one anyway, never starts a job
+   * that would find nothing. Only {@code url} is checked - the other type-specific fields ({@code
+   * proxy}, {@code credentials}, {@code insecureSsl}) are not validated against {@code sourceType}
+   * here, matching the check this replaces.
    */
   private void requireConsistentSourceType(
       IndexingSourceType sourceType, IndexingTriggerRequest request) {

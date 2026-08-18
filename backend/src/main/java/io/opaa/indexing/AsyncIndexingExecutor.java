@@ -43,9 +43,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   @Override
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, IndexingTriggerRequest request, KnowledgeLibrary targetLibrary) {
-    int processed = 0;
-    int failed = 0;
-    int skipped = 0;
+    var progress = new IndexingRunProgress(indexingJobService, jobId);
 
     try {
       Path documentDir = Path.of(properties.documentPath());
@@ -60,12 +58,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
       // documents is lower than the number of files in the directory.
-      skipped +=
+      progress.addSkipped(
           RejectedDocumentReporter.reportRejected(
-              discovered.rejected().stream().map(p -> p.getFileName().toString()).toList());
+              IndexingSourceType.FILESYSTEM,
+              documentDir.toString(),
+              discovered.rejected().stream().map(p -> p.getFileName().toString()).toList()));
 
-      indexingJobService.setTotalDocuments(jobId, discovered.totalFound());
-      indexingJobService.updateProgress(jobId, processed, failed, skipped);
+      progress.setTotal(discovered.totalFound());
+      progress.report();
 
       for (Path file : files) {
         String fileName = file.getFileName().toString();
@@ -73,25 +73,25 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           log.info("Processing: {}", fileName);
           FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
           if (result == FileProcessingResult.SKIPPED) {
-            skipped++;
+            progress.recordSkipped();
           } else {
-            processed++;
+            progress.recordProcessed();
             log.info("Indexing completed: {}", fileName);
           }
         } catch (Exception e) {
           log.error("Failed to process file: {}", fileName, e);
-          failed++;
+          progress.recordFailed();
         }
-        indexingJobService.updateProgress(jobId, processed, failed, skipped);
+        progress.report();
       }
 
-      indexingJobService.completeJob(jobId, processed, failed, skipped);
+      progress.complete();
     } catch (IOException e) {
       log.error("Failed to discover files", e);
-      indexingJobService.failJob(jobId, e.getMessage());
+      progress.fail(e.getMessage());
     } catch (Exception e) {
       log.error("Indexing failed unexpectedly", e);
-      indexingJobService.failJob(jobId, e.getMessage());
+      progress.fail(e.getMessage());
     }
   }
 }
