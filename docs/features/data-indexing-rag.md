@@ -488,11 +488,20 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Nachricht aus einem Postfach | — | Einzelnachrichten (`.eml`, `.msg`), Postfachexporte (MBOX, PST) |
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
 
-Die Liste gilt für **beide Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im Dateisystem
-und den Weg über eine Verzeichnisliste im Netz (siehe
+Die Liste gilt für **beide dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im
+Dateisystem und den Weg über eine Verzeichnisliste im Netz (siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md#erreichbare-verzeichnislisten-im-netz-gebaut)).
 Sie ist an genau einer Stelle im Code geführt; dieselbe Datei wird deshalb unabhängig davon, wie sie
 hereinkommt, gleich behandelt.
+
+Der **Feed als Quelle** (siehe
+[Wissensquellen und Konnektoren](./knowledge-sources.md#feeds-als-quelle-gebaut)) ist davon in einem
+Punkt ausgenommen: Der Artikeltext einer Feed-Detailseite ist bereits extrahierter Text, keine Datei —
+er durchläuft deshalb weder die Formaterkennung noch diese Liste, sondern geht direkt in Zerlegung und
+Einbettung ein. `.html` steht bewusst **nicht** in der Liste oben; es wäre auch kein zutreffender
+Eintrag, weil nie eine ganze HTML-Datei indiziert wird, sondern nur ihr bereinigter Hauptinhalt. Anlagen,
+die der Feed-Weg auf derselben Detailseite findet, sind davon nicht betroffen: Sie sind echte Dateien und
+durchlaufen dieselbe Liste wie jede andere.
 
 Eine Einschränkung des gebauten Stands gehört dazu, weil sie sonst überrascht:
 
