@@ -472,6 +472,7 @@ export const handlers = [
       listed: body.listed ?? false,
       personal: false,
       myRole: 'OWNER',
+      documentCount: 0,
       createdAt: now,
       updatedAt: now,
     }

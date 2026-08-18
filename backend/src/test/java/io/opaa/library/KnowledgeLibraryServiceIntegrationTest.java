@@ -1110,6 +1110,37 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void listLibrariesReportsDocumentCountPerLibraryWithoutNPlusOne() {
+    // #477: the list response carries documentCount per row, computed by DocumentRepository
+    // #countByLibraryIdIn - one grouped query for the whole page, not countByLibraryId once per
+    // library. A library with no documents at all (mango) must default to zero, not be missing
+    // from the response or throw on a lookup miss.
+    UUID owner = createUser(organizationA);
+    LibraryResponse zebra = libraryService.createLibrary(new LibraryRequest("Zebra"), owner);
+    LibraryResponse mango = libraryService.createLibrary(new LibraryRequest("Mango"), owner);
+
+    Document first = new Document("a.pdf", "/tmp/477-a.pdf", null, 10L);
+    first.setLibraryId(zebra.getId());
+    first.setOrganizationId(organizationA);
+    documentRepository.save(first);
+    Document second = new Document("b.pdf", "/tmp/477-b.pdf", null, 10L);
+    second.setLibraryId(zebra.getId());
+    second.setOrganizationId(organizationA);
+    documentRepository.save(second);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(zebra.getId()))
+        .extracting(LibraryListResponse::getDocumentCount)
+        .containsExactly(2L);
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(mango.getId()))
+        .extracting(LibraryListResponse::getDocumentCount)
+        .containsExactly(0L);
+  }
+
+  @Test
   void listLibrariesNeverBypassesToOwnerForASystemAdminUnlikeGetLibrary() {
     // #425 review, nit 2 and 3 (orchestrator decision): unlike getLibrary/updateLibrary/
     // deleteLibrary, myRole in listLibraries never bypasses to OWNER for a system admin, and
