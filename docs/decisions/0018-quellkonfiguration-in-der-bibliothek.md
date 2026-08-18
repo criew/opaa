@@ -40,6 +40,13 @@ die `DocumentSourceType` als Ergebnis-Enum kennt) und, für die lauf-basierten T
 Konfiguration: Verzeichnispfad bzw. URL, Proxy, Zugangsdaten, SSL-Schalter. `UPLOAD`-Bibliotheken
 tragen keine Quellkonfiguration.
 
+Als Typ verwendet die Bibliothek **`DocumentSourceType`** — kein drittes Enum: Mit der Ein-Typ-Regel
+ist der Quellentyp jedes Dokuments per Konstruktion der Typ seiner Bibliothek, die Wertemengen fallen
+zusammen. Die Enum-Grenze aus ADR-0017 bleibt: Für den Anstoß wird der lauf-basierte Typ der
+Bibliothek auf `IndexingSourceType` abgebildet, `UPLOAD` hat weiterhin keinen Executor. Die neue
+Spalte erhält eine `CHECK`-Constraint nach dem Migrationsmuster aus ADR-0017; API-seitig wird das
+Enum nach ADR-0006 über `typeMappings` gemappt.
+
 Der Typ wird **bei der Anlage gewählt** — die Oberfläche präsentiert das als Template-Auswahl — und
 ist danach **unveränderlich**. Ein Typwechsel würde Bestand und Löschsemantik vermengen: Eine
 Bibliothek, die erst Uploads sammelte und dann ein Verzeichnis abbildet, enthielte Dokumente, für die
@@ -59,6 +66,14 @@ aus der Bibliothek gelesen, der Executor über die Registry aus ADR-0017/Entsche
 Die typspezifischen Felder des `IndexingTriggerRequest` (`url`, `proxy`, `credentials`,
 `insecureSsl`) und der globale Dateisystempfad entfallen; ein Anstoß für eine `UPLOAD`-Bibliothek
 wird abgelehnt, weil es für sie keinen Lauf gibt.
+
+**Anstoß-Berechtigung:** Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist — dieselbe
+Prüfung, die heute `requireEditableLibrary` durchsetzt. Die zusätzliche `SYSTEM_ADMIN`-Schranke des
+heutigen Trigger-Endpunkts **fällt damit bewusst**: Ein Anstoß-Knopf in der Detailansicht, den nur
+die Systemverwaltung drücken darf, wäre für jeden anderen Eigentümer tot. Diese Öffnung ist die
+Ausführungsseite des in Entscheidung 6 benannten Risikos — die Zielprüfung #267 und die
+Einschränkung #484 sind deshalb gemeinsam Blocker für den Mehrbenutzer-Produktivbetrieb, nicht nur
+für die Konfiguration.
 
 **Das löst ADR-0017, Entscheidung 4 ab** — genau in der dort vorgesehenen Weise: „Sobald eine
 Quellen-Tabelle existiert, wandert dauerhafte Konfiguration dorthin, und der Anstoß-Request reduziert
@@ -102,8 +117,11 @@ Bibliothek werden sie erstmals gespeichert. Dafür gilt ab dem ersten gespeicher
 
 Das Löschen einer Bibliothek ist heute blockiert, solange sie Dokumente enthält. Diese Regel bleibt
 für `UPLOAD` — dort sind Dokumente einzeln löschbar, die Sperre schützt vor dem versehentlichen
-Wegwerfen eines kuratierten Bestands. Für lauf-basierte Bibliotheken wäre sie eine Sackgasse: Ihre
-Dokumente entstehen und verschwinden durch Läufe und sind nicht einzeln löschbar. **Das Löschen einer
+Wegwerfen eines kuratierten Bestands. Für lauf-basierte Bibliotheken wäre sie eine Sackgasse: Eine
+Einzellöschung ist dort zwar technisch möglich, aber **wirkungslos** — der nächste Lauf nimmt das
+Dokument wieder auf, solange der Ausschluss-Mechanismus aus
+[`knowledge-sources.md`](../features/knowledge-sources.md#lebenszyklus-der-dokumente) nicht gebaut
+ist. **Das Löschen einer
 lauf-basierten Bibliothek nimmt deshalb ihren Bestand mit** — Dokumentzeilen, Chunks im
 Vektorspeicher — nach ausdrücklicher Bestätigung und mit Protokolleintrag.
 
@@ -125,8 +143,10 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
   freie Anlage dringlicher, bleibt aber dort zu entscheiden.
 - **Mehrere Quellen desselben Typs je Bibliothek** (etwa zwei Verzeichnispfade). Der Schnitt „eine
   Bibliothek, eine Quelle" ist bewusst streng; sollte sich echter Bedarf zeigen, wäre eine
-  Quellen-Tabelle n:1 zur Bibliothek die Erweiterung — sie widerspräche diesem ADR nicht, solange
-  der Typ je Bibliothek einheitlich bleibt.
+  Quellen-Tabelle n:1 zur Bibliothek die Erweiterung. Sie hätte einen Preis, der dann bewusst zu
+  zahlen wäre: Die Abwesenheitsprüfung dürfte nicht mehr je Bibliothek laufen, sondern müsste auf
+  die einzelne Quelle (Bibliothek + Quelladresse) zurückgestellt werden — genau die Sorgfalt, die
+  ADR-0017/Entscheidung 5 beschreibt und die dieses Modell derzeit überflüssig macht.
 - **Duplikaterkennung über Bibliotheksgrenzen**, wenn derselbe Bestand einmal als Upload und einmal
   als Konnektor existiert.
 
@@ -152,10 +172,24 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
   transiente Modell nicht hatte.
 - **Die Ein-Typ-Regel ist eine Produktfestlegung mit Migrationskante.** Bestehende Bibliotheken
   werden `UPLOAD`; eine Bibliothek, in die bereits per Trigger indiziert *und* hochgeladen wurde,
-  behält ihren gemischten Altbestand, nimmt aber künftig nur noch Uploads an. Das ist hinnehmbar,
-  muss aber in der Migration und der Spezifikation ausdrücklich benannt werden.
-- **Die Spezifikation muss zurückgebaut werden** (#482): Das Konnektor-mit-Quellen-Zielbild und die
-  gemischt gespeisten Bibliotheken stehen dort als Zusagen und werden revidiert.
+  behält ihren gemischten Altbestand, nimmt aber künftig nur noch Uploads an. Wichtiger noch: Jede
+  bislang **rein lauf-gespeiste** Bibliothek — einschließlich der Systembibliothek, in die die
+  Dateisystem-Indizierung aus `opaa.indexing.document-path` schreibt — wird durch den Backfill
+  **lauf-los**; ihr Bestand bleibt liegen und wird von keinem Lauf mehr aktualisiert oder entfernt.
+  Der Betriebsweg dafür ist Teil der Umsetzung (#476) und der Spezifikation: eine neue, typisierte
+  Bibliothek anlegen, neu indizieren, den eingefrorenen Altbestand löschen.
+- **Die Spezifikation muss zurückgebaut werden** (#482), und zwar über das Konnektor-mit-Quellen-
+  Zielbild und die gemischt gespeisten Bibliotheken hinaus: Die Zuständigkeitsregel „die
+  Systemverwaltung entscheidet, wohin indiziert wird" (Überblick und Zuständigkeitstabelle in
+  `knowledge-sources.md`) wird durch Entscheidung 6 aufgehoben; der Abschnitt „Wenn die
+  Zielbibliothek fehlt" wird gegenstandslos (die Quelle *ist* die Bibliothek); Zeitplan und
+  Schonzeitraum „je Konnektor" verlieren ihr Bezugsobjekt (#485 plant je Bibliothek); und die
+  Obergrenze der Freigabe in `spaces-and-assets.md` beruht auf der Trennung „Admin speist ein,
+  Eigentümer gibt frei", die es so nicht mehr gibt — das verschärft #207 und ist dort zu
+  entscheiden. Mehrere bisher offene Fragen in `knowledge-sources.md` sind durch diesen ADR
+  beantwortet (Verzeichnisliste auf das Konfigurationsmodell gehoben; Proxy-/Anmeldefelder in die
+  Konfiguration; Obergrenze bei gemischt gespeisten Bibliotheken entfällt) und werden in „Geklärte
+  Fragen" überführt.
 - **Ein Lauf je Bibliothek statt global einer** verlangt eine kleine, aber echte Änderung an der
   Job-Verwaltung, damit viele Bibliotheken einander nicht blockieren.
 
