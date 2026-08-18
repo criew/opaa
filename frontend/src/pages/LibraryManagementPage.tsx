@@ -43,7 +43,7 @@ function ownerTypeSummary(library: LibraryListResponse): string {
 }
 
 function documentCountSummary(documentCount: number): string {
-  return `${documentCount} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
+  return `${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
 }
 
 function LibraryCard({ library }: { library: LibraryListResponse }) {

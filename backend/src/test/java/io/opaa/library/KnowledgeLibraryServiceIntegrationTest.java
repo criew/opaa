@@ -27,6 +27,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
+import jakarta.persistence.EntityManagerFactory;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,6 +98,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private EntityManagerFactory entityManagerFactory;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -1138,6 +1142,34 @@ class KnowledgeLibraryServiceIntegrationTest {
         .filteredOn(entry -> entry.getId().equals(mango.getId()))
         .extracting(LibraryListResponse::getDocumentCount)
         .containsExactly(0L);
+
+    // Review finding (PR #488): the assertions above would still pass on a rollback to
+    // countByLibraryId once per row - they only check the resulting numbers, not the query
+    // shape. Prove the query count stays flat instead: Hibernate's own prepared-statement
+    // counter for the same call must not grow when a third library (apple, with its own
+    // document) is added to the page.
+    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+    boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
+    statistics.setStatisticsEnabled(true);
+    try {
+      statistics.clear();
+      libraryService.listLibraries(owner, false);
+      long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
+
+      LibraryResponse apple = libraryService.createLibrary(new LibraryRequest("Apple"), owner);
+      Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
+      third.setLibraryId(apple.getId());
+      third.setOrganizationId(organizationA);
+      documentRepository.save(third);
+
+      statistics.clear();
+      libraryService.listLibraries(owner, false);
+      long statementsWithThreeLibraries = statistics.getPrepareStatementCount();
+
+      assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
+    } finally {
+      statistics.setStatisticsEnabled(statisticsWerePreviouslyEnabled);
+    }
   }
 
   @Test
