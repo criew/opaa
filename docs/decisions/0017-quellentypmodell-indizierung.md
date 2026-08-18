@@ -120,6 +120,10 @@ umgesetzt.
 
 ### 4. Typspezifische Konfiguration ohne Quellen-Tabelle
 
+> **Abgelöst durch [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md):** Die dauerhafte
+> Quellkonfiguration lebt in der Wissensbibliothek; der Anstoß-Request reduziert sich auf den
+> Verweis auf die Bibliothek. Mit ihr entfällt auch der Fallback aus Entscheidung 1.
+
 Solange es keine Quellen-Tabelle gibt (siehe „Ausdrücklich offen"), bleibt Konfiguration Teil des
 Anstoß-Requests. `IndexingTriggerRequest` wächst um je Typ optionale Felder (analog zu den heutigen
 `url`, `proxy`, `credentials`, `insecureSsl` für `HTTP_DIRECTORY`) statt um ein generisches
