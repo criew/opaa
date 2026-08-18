@@ -276,6 +276,9 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `1000` | Mindestabstand zwischen zwei Detailseiten-Abrufen in ms |
 | `OPAA_INDEXING_RSS_USER_AGENT` | `OPAA-Indexer/1.0` | User-Agent für RSS-Feed- und Detailseiten-Abrufe (kein Browser-Faking) |
 | `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | CSS-Selektor (Jsoup-Syntax) für den Hauptinhalt einer Detailseite, Fallback `<body>` |
+| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | Anlagenprofil für RSS-Detailseiten: `GENERIC` oder `GSB` (Government Site Builder) — gilt für jeden RSS-Lauf dieser Installation, nicht je Lauf wählbar (#468) |
+| `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `10` | Max. Anzahl heruntergeladener Anlagen je RSS-Eintrag |
+| `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `20971520` | Max. Größe einer einzelnen RSS-Anlage in Byte |
 | **pgvector** | | |
 | `OPAA_PGVECTOR_DIMENSIONS` | `1536` | Vektor-Dimensionen (muss mit Embedding-Modell übereinstimmen) |
 | `OPAA_PGVECTOR_DISTANCE_TYPE` | `cosine_distance` | Distanzfunktion für Ähnlichkeitssuche |
@@ -301,6 +304,8 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | **Docker-Compose-Ports** | | |
 | `OPAA_BACKEND_PORT` | `8081` | Backend-Host-Port |
 | `OPAA_FRONTEND_PORT` | `3000` | Frontend-Host-Port |
+
+**Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird vor dem Schreiben auf die temporäre Datei vollständig in den Heap gelesen (`UrlFileDownloader#downloadBounded`) — bis zu `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) je Anlage. Bei knapp bemessenem Heap `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` und die Anlagen-Obergrenzen entsprechend niedriger wählen.
 
 ### Netzwerkzugang
 

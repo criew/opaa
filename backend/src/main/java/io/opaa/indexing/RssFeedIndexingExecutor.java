@@ -10,9 +10,13 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,6 +50,28 @@ import org.springframework.scheduling.annotation.Async;
  * and a truthful, configurable {@code User-Agent} - all from {@link IndexingProperties.Rss}. A
  * single rejected, oversized or unreachable entry never aborts the run; it is skipped, counted and
  * logged, and the run continues (ADR-0017's "Verhalten gegenüber fremden Zielen").
+ *
+ * <p><b>Attachments (#468).</b> Once an entry's detail page has yielded its main text, the same
+ * content area is searched for attachments using the configured {@link
+ * IndexingProperties.Rss#attachmentProfile()} ({@link AttachmentProfile}) - {@code GENERIC} by
+ * default, {@code GSB} for the Government Site Builder's query-parameter attachment pattern. Every
+ * candidate is downloaded (bounded by {@link IndexingProperties.Rss#maxAttachmentSizeBytes()},
+ * subject to the same politeness delay as detail pages) and handed into the same shared processing
+ * chain as an {@code HTTP_DIRECTORY} file via {@link
+ * FileProcessingService#processUrlFile(java.nio.file.Path, String, String, String, long,
+ * KnowledgeLibrary, DocumentSourceType, String)}, with the entry's own URL recorded as {@code
+ * sourceEntryUrl} so the attachment's origin stays traceable. An attachment failure (unreachable,
+ * oversized, unsupported format) is logged and skipped; unlike an entry-level failure it never
+ * affects this entry's own processed/skipped/failed outcome or the run as a whole - it does,
+ * however, mark the run as having deferred something (see {@link #processAttachments}), the same
+ * way a lost entry does.
+ *
+ * <p><b>Attachments of an already-unchanged entry (#468, PR #492 review finding 1).</b> An entry
+ * whose {@code pubDate} is unchanged still gets a cheap detail-page-free skip - <em>unless</em> it
+ * has no attachment documents yet ({@link DocumentRepository#existsBySourceEntryUrl}), in which
+ * case its detail page is fetched once more for attachments alone; see {@link
+ * #processUnchangedEntry}. Without this, an entry indexed before attachment support existed would
+ * never get attachments discovered for it at all, since its {@code pubDate} never changes again.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -56,6 +82,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final RssFeedStateRepository feedStateRepository;
+  private final UrlFileDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
 
   public RssFeedIndexingExecutor(
@@ -64,12 +91,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
+      UrlFileDownloader attachmentDownloader,
       IndexingProperties properties) {
     this.feedParser = feedParser;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
     this.feedStateRepository = feedStateRepository;
+    this.attachmentDownloader = attachmentDownloader;
     this.properties = properties.rss();
   }
 
@@ -190,16 +219,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
-      log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
-      progress.recordSkipped();
+      processUnchangedEntry(httpClient, entryUrl, progress, anyEntryDeferred, targetLibrary);
       return;
     }
 
     delayBeforeRequest();
 
-    String mainText;
+    DetailPage detailPage;
     try {
-      mainText = fetchMainText(httpClient, entryUrl);
+      detailPage = fetchDetailPage(httpClient, entryUrl);
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -231,7 +259,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
-    if (mainText == null || mainText.isBlank()) {
+    if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
@@ -241,7 +269,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     try {
       FileProcessingResult result =
           fileProcessingService.processRssEntry(
-              mainText,
+              detailPage.mainText(),
               entry.title(),
               entryUrl,
               publishedAt.map(Instant::toString).orElse(null),
@@ -251,6 +279,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       } else {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
+        processAttachments(
+            httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -259,6 +289,257 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       log.error("Fatal error while processing RSS entry: {}", entryUrl, e);
       progress.recordFailed();
     }
+  }
+
+  /**
+   * Handles an entry whose {@code pubDate} is unchanged (#468, PR #492 review finding 1). Before
+   * this fix, an unchanged entry returned immediately - which meant an entry indexed *before*
+   * attachment support existed, or before this feature's attachment profile was configured, never
+   * had its attachments discovered at all: its {@code pubDate} never changes again, so {@link
+   * #processEntry} would forever take this branch and never re-fetch the detail page attachments
+   * are found on. This method closes that gap cheaply: it checks whether at least one attachment
+   * document already exists for this entry ({@link DocumentRepository#existsBySourceEntryUrl}) and
+   * only fetches the detail page - for attachments alone, the entry's own main text is not
+   * reprocessed - when none do. An entry that already has its attachments stays as cheap as before
+   * (no detail-page request at all).
+   */
+  private void processUnchangedEntry(
+      HttpClient httpClient,
+      String entryUrl,
+      IndexingRunProgress progress,
+      AtomicBoolean anyEntryDeferred,
+      KnowledgeLibrary targetLibrary) {
+    progress.recordSkipped();
+    if (documentRepository.existsBySourceEntryUrl(entryUrl)) {
+      log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
+      return;
+    }
+
+    log.info(
+        "RSS entry unchanged but has no attachment documents yet, fetching its detail page to"
+            + " backfill attachments only: {}",
+        entryUrl);
+    delayBeforeRequest();
+    DetailPage detailPage;
+    try {
+      detailPage = fetchDetailPage(httpClient, entryUrl);
+    } catch (RejectedByRemoteException | UnsupportedContentTypeException e) {
+      log.warn(
+          "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
+              + " {} ({})",
+          entryUrl,
+          e.getMessage());
+      anyEntryDeferred.set(true);
+      return;
+    } catch (IOException | InterruptedException e) {
+      log.warn(
+          "RSS detail page unreachable while backfilling attachments, will retry on a future run:"
+              + " {} ({})",
+          entryUrl,
+          e.getMessage());
+      anyEntryDeferred.set(true);
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      return;
+    }
+    processAttachments(
+        httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred);
+  }
+
+  /**
+   * Downloads and indexes every attachment {@code candidates} lists, up to {@link
+   * IndexingProperties.Rss#maxAttachmentsPerEntry()} (#468). Never throws: a single attachment that
+   * cannot be downloaded, exceeds the configured size limit, or turns out to be an unsupported
+   * format is logged and skipped, exactly as the issue's acceptance criteria require ("Ein
+   * Anlagen-Fehler bricht weder Eintrag noch Lauf ab") - it has no effect on {@code entryUrl}'s own
+   * processed/skipped/failed outcome, which was already decided by the time this method runs.
+   *
+   * <p><b>{@code anyEntryDeferred} (PR #492 review, finding 2).</b> A lost attachment - too large,
+   * unreachable, rejected, or cut off by {@link IndexingProperties.Rss#maxAttachmentsPerEntry()} -
+   * marks the run the same way a deferred entry does: without this, {@code saveFeedState} could
+   * persist the feed's ETag for a run that actually lost an attachment, and the entry's own {@code
+   * pubDate} check would then suppress every future attempt to recover it (the #490 finding-3 class
+   * of bug, one level down).
+   */
+  private void processAttachments(
+      HttpClient httpClient,
+      List<AttachmentCandidate> candidates,
+      String entryUrl,
+      KnowledgeLibrary targetLibrary,
+      AtomicBoolean anyEntryDeferred) {
+    int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
+    if (candidates.size() > limit) {
+      log.info(
+          "RSS entry {} carries {} attachments, processing only the first {}"
+              + " (opaa.indexing.rss.max-attachments-per-entry)",
+          entryUrl,
+          candidates.size(),
+          limit);
+      anyEntryDeferred.set(true);
+    }
+    for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
+      delayBeforeRequest();
+      processAttachment(httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred);
+    }
+  }
+
+  /**
+   * Downloads and indexes a single attachment. Deliberately never lets an exception escape - PR
+   * #492 review, finding 11: an attachment that throws an unchecked exception (e.g. an unusual
+   * malformed URL) would otherwise propagate out of {@link #processEntry}'s already-passed {@code
+   * recordProcessed()} call and into its {@code catch (Exception e)}, counting the same entry as
+   * both processed <em>and</em> failed.
+   */
+  private void processAttachment(
+      HttpClient httpClient,
+      AttachmentCandidate candidate,
+      String entryUrl,
+      KnowledgeLibrary targetLibrary,
+      AtomicBoolean anyEntryDeferred) {
+    UrlFileDownloader.DownloadedFile downloaded = null;
+    try {
+      downloaded =
+          attachmentDownloader.downloadBounded(
+              httpClient,
+              candidate.url(),
+              candidate.suggestedFileName(),
+              properties.maxAttachmentSizeBytes(),
+              properties.userAgent());
+
+      String contentType = downloaded.contentType();
+      if (isHtmlContentType(contentType)) {
+        // #492 review, finding 3: an HTML response on what a profile identified as an attachment
+        // link - a bot-protection challenge or a 200-status error page - must never be trusted
+        // just because the *URL* carried a supported extension (GENERIC's case; GSB's candidates
+        // never carry an extension to begin with, so they already went through
+        // extensionForContentType, which has no HTML mapping and would already reject this).
+        log.info(
+            "Skipping RSS attachment that answered with HTML instead of a document (likely a"
+                + " bot-protection or error page): {} (from entry {})",
+            candidate.url(),
+            entryUrl);
+        anyEntryDeferred.set(true);
+        return;
+      }
+
+      // The GSB profile's candidates carry no extension in their URL (#468) - resolved here, once
+      // the response's actual Content-Type is known, rather than in AttachmentProfile itself,
+      // which never downloads anything.
+      String fileName = resolveFileName(candidate.suggestedFileName(), contentType);
+      if (!SupportedDocumentFormats.isSupported(fileName)) {
+        log.info(
+            "Skipping RSS attachment with an unsupported format: {} (from entry {}, Content-Type"
+                + " {})",
+            candidate.url(),
+            entryUrl,
+            contentType);
+        anyEntryDeferred.set(true);
+        return;
+      }
+
+      // #492 review, finding 7: the downloaded temp file's own suffix reflects
+      // candidate.suggestedFileName(), which for a GSB attachment carries no extension at all
+      // (".tmp") - Files.probeContentType inside FileProcessingService#processUrlFile probes that
+      // physical file, not the resolved fileName above, and would find nothing even though the
+      // response's Content-Type was known all along. Renaming the temp file to match the resolved
+      // name's extension lets that probe succeed the normal way, without changing
+      // processUrlFile's signature.
+      Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
+
+      long size = Files.size(indexedFile);
+      fileProcessingService.processUrlFile(
+          indexedFile,
+          fileName,
+          candidate.url(),
+          null,
+          size,
+          targetLibrary,
+          DocumentSourceType.RSS_FEED,
+          entryUrl);
+      log.info("Indexed RSS attachment: {} (from entry {})", candidate.url(), entryUrl);
+    } catch (UrlFileDownloader.AttachmentTooLargeException e) {
+      log.warn(
+          "Skipping RSS attachment exceeding the size limit of {} bytes: {} (from entry {})",
+          properties.maxAttachmentSizeBytes(),
+          candidate.url(),
+          entryUrl);
+      anyEntryDeferred.set(true);
+    } catch (UrlFileDownloader.ForeignHostRedirectException e) {
+      log.warn(
+          "RSS attachment redirected to a foreign host, skipping: {} (from entry {}, {})",
+          candidate.url(),
+          entryUrl,
+          e.getMessage());
+      anyEntryDeferred.set(true);
+    } catch (IOException | InterruptedException e) {
+      log.warn(
+          "RSS attachment unreachable, skipping: {} (from entry {}, {})",
+          candidate.url(),
+          entryUrl,
+          e.getMessage());
+      anyEntryDeferred.set(true);
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+    } catch (Exception e) {
+      log.error(
+          "Failed to process RSS attachment: {} (from entry {})", candidate.url(), entryUrl, e);
+      anyEntryDeferred.set(true);
+    } finally {
+      if (downloaded != null) {
+        try {
+          Files.deleteIfExists(downloaded.path());
+        } catch (IOException e) {
+          log.warn("Failed to delete temp file: {}", downloaded.path(), e);
+        }
+      }
+    }
+  }
+
+  /**
+   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} does not
+   * already carry a supported one (#468, the Government Site Builder profile's case) - a no-op for
+   * {@link AttachmentProfile#GENERIC} candidates, which always already carry one.
+   */
+  private static String resolveFileName(String suggestedFileName, String contentType) {
+    if (SupportedDocumentFormats.isSupported(suggestedFileName)) {
+      return suggestedFileName;
+    }
+    String extension = SupportedDocumentFormats.extensionForContentType(contentType);
+    if (extension == null) {
+      return suggestedFileName;
+    }
+    String baseName =
+        suggestedFileName == null || suggestedFileName.isBlank() ? "attachment" : suggestedFileName;
+    return baseName + extension;
+  }
+
+  /**
+   * Renames {@code tempFile} to a new temp file carrying {@code fileName}'s own extension, when it
+   * does not already have it (#492 review, finding 7). A no-op - returns {@code tempFile} unchanged
+   * - whenever the extension already matches, which covers every {@link AttachmentProfile#GENERIC}
+   * attachment (its candidates already carry a supported extension the download used verbatim).
+   */
+  private static Path withMatchingExtension(Path tempFile, String fileName) throws IOException {
+    String desiredSuffix = extractExtension(fileName);
+    if (tempFile.toString().toLowerCase(Locale.ROOT).endsWith(desiredSuffix)) {
+      return tempFile;
+    }
+    Path renamed = Files.createTempFile("opaa-", desiredSuffix);
+    Files.move(tempFile, renamed, StandardCopyOption.REPLACE_EXISTING);
+    return renamed;
+  }
+
+  private static String extractExtension(String fileName) {
+    if (fileName == null) {
+      return ".tmp";
+    }
+    int dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex >= 0) {
+      return fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
+    }
+    return ".tmp";
   }
 
   private HttpResponse<InputStream> fetchFeed(
@@ -299,12 +580,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Fetches a single entry's detail page and reduces it to its main content's text (#467). {@code
-   * nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
-   * selector is applied, so boilerplate that happens to sit inside the matched main element (a skip
-   * link, a "share this article" bar) does not survive either.
+   * An entry's detail page, reduced to its main content's text and attachment candidates (#468).
    */
-  private String fetchMainText(HttpClient httpClient, String entryUrl)
+  private record DetailPage(String mainText, List<AttachmentCandidate> attachments) {}
+
+  /**
+   * Fetches a single entry's detail page and reduces it to its main content's text (#467), together
+   * with every attachment the configured {@link AttachmentProfile} finds inside that same content
+   * area (#468). {@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before
+   * the configured selector is applied, so boilerplate that happens to sit inside the matched main
+   * element (a skip link, a "share this article" bar) does not survive either, and is never
+   * considered for attachments.
+   */
+  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl)
       throws IOException, InterruptedException {
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -368,7 +656,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       Element main = htmlDoc.selectFirst(properties.mainContentSelector());
       Element content = main != null ? main : htmlDoc.body();
-      return content != null ? content.text() : "";
+      if (content == null) {
+        return new DetailPage("", List.of());
+      }
+      List<AttachmentCandidate> attachments =
+          properties.attachmentProfile().findAttachments(content, URI.create(entryUrl));
+      return new DetailPage(content.text(), attachments);
     }
   }
 
@@ -377,7 +670,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (contentType == null) {
       return false;
     }
-    String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(java.util.Locale.ROOT);
+    String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
     return mediaType.equals("text/html") || mediaType.equals("application/xhtml+xml");
   }
 
@@ -392,7 +685,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     for (String part : contentType.split(";")) {
       String trimmed = part.strip();
-      if (trimmed.toLowerCase(java.util.Locale.ROOT).startsWith("charset=")) {
+      if (trimmed.toLowerCase(Locale.ROOT).startsWith("charset=")) {
         String charset = trimmed.substring("charset=".length()).strip();
         // Some servers quote the value ("charset=\"iso-8859-1\"") - Jsoup expects a bare name.
         if (charset.length() >= 2 && charset.startsWith("\"") && charset.endsWith("\"")) {
@@ -436,7 +729,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (url == null) {
       return false;
     }
-    String lowerCased = url.strip().toLowerCase(java.util.Locale.ROOT);
+    String lowerCased = url.strip().toLowerCase(Locale.ROOT);
     return lowerCased.startsWith("http://") || lowerCased.startsWith("https://");
   }
 

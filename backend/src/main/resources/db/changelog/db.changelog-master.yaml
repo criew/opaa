@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/changes/024-allow-rss-feed-source-type.yaml
   - include:
       file: db/changelog/changes/025-create-rss-feed-state.yaml
+  - include:
+      file: db/changelog/changes/026-add-source-entry-url-to-documents.yaml

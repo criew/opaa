@@ -12,6 +12,16 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   Optional<Document> findByFilePath(String filePath);
 
+  /**
+   * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
+   * file_path}) already exists (#468, PR #492 review finding 1). Backs the "an entry indexed before
+   * attachments existed must still get them backfilled" check in {@link
+   * RssFeedIndexingExecutor#isUnchanged} 's caller - without it, an entry whose {@code pubDate}
+   * never changes again would never have its attachments discovered, even once the feature to find
+   * them exists.
+   */
+  boolean existsBySourceEntryUrl(String sourceEntryUrl);
+
   List<Document> findByLibraryId(UUID libraryId);
 
   long countByLibraryId(UUID libraryId);

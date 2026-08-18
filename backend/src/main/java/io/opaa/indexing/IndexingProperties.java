@@ -71,7 +71,7 @@ public record IndexingProperties(
       threadPool = new ThreadPool(2, 4, 20);
     }
     if (rss == null) {
-      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null);
+      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, null, 0, 0L);
     }
   }
 
@@ -116,6 +116,20 @@ public record IndexingProperties(
    * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
    *     content, tried against the whole document. Falls back to {@code body} when it matches
    *     nothing, so an unusual page still yields the full page's text rather than nothing at all.
+   * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
+   *     count as attachments (#468). Defaults to {@link AttachmentProfile#GENERIC}. This is
+   *     deliberately an application property, not a per-request field on {@code
+   *     IndexingTriggerRequest} - ADR-0018 (#486) is already moving persistent source configuration
+   *     from the trigger request onto the knowledge library, and a new request field here would be
+   *     thrown away the moment that lands. See the #468 pull request description for this deviation
+   *     from the issue's "Profilwahl je Lauf" wording.
+   * @param maxAttachmentsPerEntry the maximum number of attachments downloaded per RSS entry.
+   *     Excess candidates are logged and dropped, not treated as an error - mirrors {@link
+   *     #maxEntries}'s truncation-not-failure treatment.
+   * @param maxAttachmentSizeBytes the maximum number of bytes read from a single attachment.
+   *     Enforced while streaming the response, not after it has already been fully downloaded
+   *     (mirrors {@link #maxPageSizeBytes}). An attachment exceeding this is skipped like any other
+   *     rejected attachment, never a run-ending failure.
    */
   public record Rss(
       int maxEntries,
@@ -123,7 +137,10 @@ public record IndexingProperties(
       long maxPageSizeBytes,
       long requestDelayMs,
       String userAgent,
-      String mainContentSelector) {
+      String mainContentSelector,
+      AttachmentProfile attachmentProfile,
+      int maxAttachmentsPerEntry,
+      long maxAttachmentSizeBytes) {
 
     /** Truthful default {@code User-Agent} - never a value that impersonates a browser (#467). */
     static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
@@ -153,6 +170,15 @@ public record IndexingProperties(
       }
       if (mainContentSelector == null || mainContentSelector.isBlank()) {
         mainContentSelector = DEFAULT_MAIN_CONTENT_SELECTOR;
+      }
+      if (attachmentProfile == null) {
+        attachmentProfile = AttachmentProfile.GENERIC;
+      }
+      if (maxAttachmentsPerEntry <= 0) {
+        maxAttachmentsPerEntry = 10;
+      }
+      if (maxAttachmentSizeBytes <= 0) {
+        maxAttachmentSizeBytes = 20_971_520L; // 20 MiB
       }
     }
   }

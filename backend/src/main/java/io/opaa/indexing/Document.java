@@ -81,6 +81,16 @@ public class Document {
   @Column(name = "uploaded_by_user_id")
   private UUID uploadedByUserId;
 
+  /**
+   * For an attachment discovered on an RSS entry's detail page (#468), the entry's own {@link
+   * #filePath} (its detail page URL) - the trace back to the entry the acceptance criteria of #468
+   * require ("Zu jeder Anlage ist der Eintrag erkennbar, aus dem sie stammt"). {@code null} for
+   * every other document, including the RSS entry's own row and every {@code FILESYSTEM}/{@code
+   * HTTP_DIRECTORY}/{@code UPLOAD} document.
+   */
+  @Column(name = "source_entry_url", length = 2000)
+  private String sourceEntryUrl;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -192,5 +202,13 @@ public class Document {
 
   public void setUploadedByUserId(UUID uploadedByUserId) {
     this.uploadedByUserId = uploadedByUserId;
+  }
+
+  public String getSourceEntryUrl() {
+    return sourceEntryUrl;
+  }
+
+  public void setSourceEntryUrl(String sourceEntryUrl) {
+    this.sourceEntryUrl = sourceEntryUrl;
   }
 }

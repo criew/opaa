@@ -15,6 +15,7 @@ import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -368,6 +369,108 @@ class FileProcessingServiceTest {
     assertThat(lastSaved.getLastModifiedRemote()).isEqualTo("2025-06-15 10:30");
     assertThat(lastSaved.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(lastSaved.getLibraryId()).isEqualTo(targetLibrary.getId());
+  }
+
+  @Test
+  void processUrlFileRecordsSourceTypeAndOriginEntryForAnAttachment() throws IOException {
+    // #468: an RSS attachment goes through the same processUrlFile chain as an HTTP_DIRECTORY
+    // file, but with RSS_FEED recorded as its source_type and the entry it was found on recorded
+    // as source_entry_url - the trace the issue's acceptance criteria require ("Zu jeder Anlage
+    // ist der Eintrag erkennbar, aus dem sie stammt").
+    Path file = tempDir.resolve("anlage.pdf");
+    Files.writeString(file, "pdf content");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-attachment");
+    when(documentRepository.findByFilePath("https://example.gov/downloads/anlage.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("anlage.pdf"), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "anlage.pdf",
+            "https://example.gov/downloads/anlage.pdf",
+            null,
+            1024,
+            targetLibrary,
+            DocumentSourceType.RSS_FEED,
+            "https://example.gov/artikel/mein-artikel");
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
+    Document lastSaved = docCaptor.getAllValues().getLast();
+    assertThat(lastSaved.getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+    assertThat(lastSaved.getSourceEntryUrl()).isEqualTo("https://example.gov/artikel/mein-artikel");
+  }
+
+  @Test
+  void theSameAttachmentUrlFromTwoEntriesBecomesOneDocument() throws IOException {
+    // #492 review, finding 5: the previous dedup test verified two processUrlFile calls against a
+    // mock - the "one document" claim actually rests on findByFilePath, exercised here with a
+    // stateful repository double instead of a plain call-count assertion.
+    Path fileFromFirstEntry = tempDir.resolve("anlage-erster-lauf.pdf");
+    Files.writeString(fileFromFirstEntry, "geteilter inhalt");
+    Path fileFromSecondEntry = tempDir.resolve("anlage-zweiter-lauf.pdf");
+    Files.writeString(fileFromSecondEntry, "geteilter inhalt");
+    String attachmentUrl = "https://example.gov/downloads/geteilte-anlage.pdf";
+
+    when(checksumService.computeSha256(fileFromFirstEntry)).thenReturn("sha256-geteilt");
+    when(checksumService.computeSha256(fileFromSecondEntry)).thenReturn("sha256-geteilt");
+
+    Map<String, Document> savedByFilePath = new HashMap<>();
+    when(documentRepository.findByFilePath(attachmentUrl))
+        .thenAnswer(inv -> Optional.ofNullable(savedByFilePath.get(attachmentUrl)));
+    when(documentRepository.save(any(Document.class)))
+        .thenAnswer(
+            inv -> {
+              Document doc = inv.getArgument(0);
+              savedByFilePath.put(doc.getFilePath(), doc);
+              return doc;
+            });
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(any(Path.class))).thenReturn(parsed);
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(anyString(), eq(parsed))).thenReturn(chunks);
+
+    FileProcessingResult firstResult =
+        service.processUrlFile(
+            fileFromFirstEntry,
+            "anlage.pdf",
+            attachmentUrl,
+            null,
+            17,
+            targetLibrary,
+            DocumentSourceType.RSS_FEED,
+            "https://example.gov/artikel/erster-artikel");
+    FileProcessingResult secondResult =
+        service.processUrlFile(
+            fileFromSecondEntry,
+            "anlage.pdf",
+            attachmentUrl,
+            null,
+            17,
+            targetLibrary,
+            DocumentSourceType.RSS_FEED,
+            "https://example.gov/artikel/zweiter-artikel");
+
+    assertThat(firstResult).isEqualTo(FileProcessingResult.PROCESSED);
+    assertThat(secondResult).isEqualTo(FileProcessingResult.SKIPPED);
+    assertThat(savedByFilePath).hasSize(1);
+    Document onlyDocument = savedByFilePath.get(attachmentUrl);
+    // The first entry's origin survives - the second call never touched the row again.
+    assertThat(onlyDocument.getSourceEntryUrl())
+        .isEqualTo("https://example.gov/artikel/erster-artikel");
+    verify(documentRepository, never()).delete(any());
+    verify(vectorStore, org.mockito.Mockito.times(1)).add(any());
   }
 
   @Test

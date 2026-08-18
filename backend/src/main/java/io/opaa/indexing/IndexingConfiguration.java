@@ -113,6 +113,7 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
+      UrlFileDownloader urlFileDownloader,
       IndexingProperties properties) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
@@ -120,6 +121,7 @@ public class IndexingConfiguration {
         indexingJobService,
         documentRepository,
         rssFeedStateRepository,
+        urlFileDownloader,
         properties);
   }
 

@@ -1,6 +1,8 @@
 package io.opaa.indexing;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -29,6 +31,23 @@ public final class SupportedDocumentFormats {
   private static final Set<String> EXTENSIONS =
       Set.of(".md", ".txt", ".pdf", ".docx", ".doc", ".pptx");
 
+  /**
+   * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
+   * that cannot expose a supported extension in the URL itself - the Government Site Builder
+   * attachment profile (#468, {@link AttachmentProfile#GSB}), whose addresses carry the file
+   * through a query parameter instead of a path extension. Deliberately narrower than what Tika
+   * itself could detect: this map only needs to cover the same formats {@link #EXTENSIONS} already
+   * accepts, not content detection in general (see the class Javadoc's note on issue #404).
+   */
+  private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE =
+      Map.of(
+          "application/pdf", ".pdf",
+          "application/msword", ".doc",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx",
+          "text/plain", ".txt",
+          "text/markdown", ".md");
+
   private SupportedDocumentFormats() {}
 
   /** Whether a document with this file name is accepted for indexing, on either path. */
@@ -43,5 +62,18 @@ public final class SupportedDocumentFormats {
   /** The accepted extensions, sorted, for log and error messages. */
   public static List<String> extensions() {
     return EXTENSIONS.stream().sorted().toList();
+  }
+
+  /**
+   * The extension {@code EXTENSIONS_BY_CONTENT_TYPE} associates with {@code contentType}, or {@code
+   * null} when the content type is absent or unrecognized - the caller then has no better name to
+   * fall back to than what the URL already provided (#468).
+   */
+  public static String extensionForContentType(String contentType) {
+    if (contentType == null) {
+      return null;
+    }
+    String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
+    return EXTENSIONS_BY_CONTENT_TYPE.get(mediaType);
   }
 }
