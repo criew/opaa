@@ -652,6 +652,31 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThem() {
+    // Issue #516: sourceCredentials is write-only (never returned by any API response,
+    // ADR-0018), so a client editing e.g. only sourceUrl through a UI dialog has no value it
+    // could resend even if it wanted to. Omitting the field must not be indistinguishable from
+    // "clear the credential" the way it would be for a plain full-object replace.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://old.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://new.example.com/documents/"));
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSourceUrl()).isEqualTo(URI.create("https://new.example.com/documents/"));
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.getSourceCredentials()).isEqualTo("admin:old-secret");
+  }
+
+  @Test
   void updateLibraryRejectsAConfigurationThatContradictsTheExistingSourceType() {
     // The same 400-before-write validation applies on update, keyed on the library's own,
     // unchangeable sourceType (FILESYSTEM here), not any sourceType in the request.

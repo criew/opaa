@@ -2097,7 +2097,10 @@ components:
           description: >
             Basic auth credentials in user:password format - only for sourceType
             HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
-            (ADR-0018).
+            (ADR-0018). Omitting this field while replacing the rest of the configuration (e.g.
+            only sourceUrl changes) leaves the currently stored credentials untouched - there is
+            no way to read them back to resend, and no way to explicitly clear them via this
+            request.
           example: admin:secret
         sourceInsecureSsl:
           type: boolean

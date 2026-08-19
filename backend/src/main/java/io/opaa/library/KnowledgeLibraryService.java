@@ -385,9 +385,7 @@ public class KnowledgeLibraryService {
     // absent from that unrelated request.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     SourceConfiguration sourceConfiguration =
-        replacesSourceConfiguration
-            ? validateSourceConfigurationForUpdate(library.getSourceType(), request)
-            : null;
+        replacesSourceConfiguration ? validateSourceConfigurationForUpdate(library, request) : null;
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
@@ -703,14 +701,27 @@ public class KnowledgeLibraryService {
    * stay updatable even though {@code sourceType} itself never is. {@code sourceType} is always the
    * library's own, already-immutable value - never taken from the update request - so a caller
    * cannot use this path to smuggle in a type change.
+   *
+   * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
+   * request omits it (issue #516): credentials are write-only (never returned by any API response,
+   * ADR-0018), so a client editing e.g. only {@code sourceUrl} has no value it could resend even if
+   * it wanted to. Without this fallback, replacing any other configuration field would silently
+   * wipe an unrelated, previously configured credential. There is deliberately no way to explicitly
+   * clear a stored credential through this request - moving a URL-based source back to "no
+   * credentials" is not a use case any acceptance criterion asks for, and blank input is
+   * indistinguishable from "leave unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
-      DocumentSourceType sourceType, LibraryUpdateRequest request) {
+      KnowledgeLibrary library, LibraryUpdateRequest request) {
+    DocumentSourceType sourceType = library.getSourceType();
     String sourcePath = blankToNull(request.getSourcePath());
     String sourceUrl =
         blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     String sourceProxy = blankToNull(request.getSourceProxy());
     String sourceCredentials = blankToNull(request.getSourceCredentials());
+    if (sourceCredentials == null) {
+      sourceCredentials = library.getSourceCredentials();
+    }
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
 
     validateConfigurationForType(

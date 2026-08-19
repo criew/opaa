@@ -438,6 +438,55 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  it('offers "Bearbeiten" for a MANAGER on a connector library but hides it for a VIEWER', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByRole('button', { name: /^bearbeiten$/i })).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/quellkonfiguration/i)
+    expect(screen.queryByRole('button', { name: /^bearbeiten$/i })).not.toBeInTheDocument()
+  })
+
+  it('edits the source configuration through the dialog, resending the unrelated Stammdaten fields untouched', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: /^bearbeiten$/i }))
+    const pathField = await screen.findByLabelText(/verzeichnispfad/i)
+    await user.clear(pathField)
+    await user.type(pathField, '/data/umgezogen')
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
+        name: ownerLibrary.name,
+        description: ownerLibrary.description,
+        visibility: ownerLibrary.visibility,
+        listed: ownerLibrary.listed,
+        sourcePath: '/data/umgezogen',
+        sourceUrl: undefined,
+        sourceProxy: undefined,
+        sourceCredentials: undefined,
+        sourceInsecureSsl: false,
+      } satisfies LibraryUpdateRequest)
+    })
+  })
+
   it('shows the plain document wording for a completed FILESYSTEM run', async () => {
     setLibraryState(
       managerLibrary,
