@@ -1,7 +1,20 @@
+import { AxiosError } from 'axios'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../mocks/server'
-import { getHealth, sendQuery, updateSpaceDetails } from './api'
+import { getHealth, normalizeError, sendQuery, updateSpaceDetails } from './api'
+
+/** Minimal stand-in for the parts of AxiosResponse that normalizeError reads. */
+function axiosErrorWithResponse(status: number, data: unknown): AxiosError {
+  return new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status,
+    statusText: '',
+    headers: {},
+    // AxiosResponse requires a config; not read by normalizeError, so an empty object suffices.
+    config: {} as never,
+    data,
+  })
+}
 
 describe('api service', () => {
   describe('getHealth', () => {
@@ -78,7 +91,46 @@ describe('api service', () => {
       await expect(getHealth()).rejects.toThrow(/HTTP 502/)
     })
 
-    it('translates a non-JSON 413 (e.g. the nginx reverse proxy HTML page) to a German message', async () => {
+    // The four cases below cover normalizeError's context-scoped 413 handling directly with a
+    // constructed AxiosError rather than a real upload request through uploadDocument(): a real
+    // multipart POST carrying a File/Blob body hangs indefinitely against msw/node in this
+    // project's jsdom test environment (reproduced independently of this change), so the
+    // upload-only branch cannot be exercised end-to-end here. normalizeError is exported from
+    // api.ts for exactly this purpose.
+
+    it('translates a non-JSON 413 (e.g. the nginx reverse proxy HTML page) to a German message for an upload call', () => {
+      const err = axiosErrorWithResponse(
+        413,
+        '<html><body>413 Request Entity Too Large</body></html>',
+      )
+
+      expect(() => normalizeError(err, 'upload')).toThrow(
+        'Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.',
+      )
+    })
+
+    it('still surfaces the backend JSON ErrorResponse message for a 413 on an upload call', () => {
+      const err = axiosErrorWithResponse(413, {
+        error: 'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+        status: 413,
+        timestamp: new Date().toISOString(),
+      })
+
+      expect(() => normalizeError(err, 'upload')).toThrow(
+        'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+      )
+    })
+
+    it('does not translate a non-JSON 413 on a call without upload context - falls back to the generic HTTP message', () => {
+      const err = axiosErrorWithResponse(
+        413,
+        '<html><body>413 Request Entity Too Large</body></html>',
+      )
+
+      expect(() => normalizeError(err)).toThrow(/HTTP 413/)
+    })
+
+    it('does not translate a non-JSON 413 on a real (non-upload) network call either', async () => {
       server.use(
         http.get('/api/health', () => {
           return new HttpResponse('<html><body>413 Request Entity Too Large</body></html>', {
@@ -88,28 +140,7 @@ describe('api service', () => {
         }),
       )
 
-      await expect(getHealth()).rejects.toThrow(
-        'Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.',
-      )
-    })
-
-    it('still surfaces the backend JSON ErrorResponse message for a 413 with a valid body', async () => {
-      server.use(
-        http.get('/api/health', () => {
-          return HttpResponse.json(
-            {
-              error: 'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
-              status: 413,
-              timestamp: new Date().toISOString(),
-            },
-            { status: 413 },
-          )
-        }),
-      )
-
-      await expect(getHealth()).rejects.toThrow(
-        'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
-      )
+      await expect(getHealth()).rejects.toThrow(/HTTP 413/)
     })
 
     it('falls back to error message on network error', async () => {
