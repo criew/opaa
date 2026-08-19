@@ -1,0 +1,1059 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-08-18",
+  "generated_at": "2026-08-19T03:59:51.456432+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-08-18T00:00:00+02:00",
+  "window_end": "2026-08-18T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 477,
+      "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+      "url": "https://github.com/criew/opaa/issues/477",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Kontext\n\n`LibraryResponse` (Detail) führt `documentCount`, `LibraryListResponse` nicht. Die Bibliotheksübersicht soll je Bibliothek die Dokumentzahl zeigen, ohne jede Karte aufklappen zu müssen.\n\n## Umfang\n\n- `documentCount` in `LibraryListResponse`-Einträge aufnehmen (OpenAPI-Spec zuerst, ADR-0006); Zählung ohne N+1 (gruppierte Query statt `countByLibraryId` je Zeile)\n- Anzeige in der Übersicht (`LibraryManagementPage`)\n\n## Abnahmekriterien\n\n- [ ] Liste liefert je Bibliothek die Dokumentzahl; eine Abfrage, kein N+1\n- [ ] Übersicht zeigt die Zahl je Bibliothek\n- [ ] Backend- und Frontend-Checks bestehen",
+      "closes": []
+    },
+    {
+      "number": 475,
+      "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+      "url": "https://github.com/criew/opaa/issues/475",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nDie Konfiguration eines Indizierungslaufs ist heute request-basiert: `IndexingTriggerRequest` trägt `url`, `proxy`, `credentials`, `insecureSsl` pro Aufruf, der Dateisystempfad ist global (`opaa.indexing.document-path`). [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) hat diesen Zustand in Entscheidung 4 ausdrücklich als Übergang deklariert, bis eine Quellen-Tabelle existiert.\n\nDiese Quellen-Tabelle kommt jetzt — aber nicht als eigene Tabelle, sondern als Teil der Wissensbibliothek selbst: **Eine Bibliothek trägt genau einen Quellentyp und genau eine Quellkonfiguration.**\n\n## Zu entscheiden\n\n- **Ein-Typ-Regel:** Jede Bibliothek hat genau einen `sourceType` (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration. Der Typ wird bei der Anlage gewählt und ist danach unveränderlich. Gemischt gespeiste Bibliotheken (Konnektor + Upload) gibt es nicht mehr — die bisherige Spezifikationsaussage wird zurückgenommen.\n- **Ablösung von ADR-0017, Entscheidung 4:** Der Anstoß eines Laufs reduziert sich auf den Verweis auf die Bibliothek; typspezifische Felder verschwinden aus dem Trigger-Request. Der rückwärtskompatible `url`-Fallback aus Entscheidung 1 entfällt mit dem Umbau.\n- **Vereinfachte Löschsemantik:** Die Abwesenheitsprüfung „je Quelle\" aus ADR-0017 Entscheidung 5 fällt mit „je Bibliothek\" zusammen; der dort benannte gefährlichste Umsetzungsfehler (Lauf trifft Upload-Dokumente derselben Bibliothek) ist strukturell ausgeschlossen.\n- **Zugangsdaten werden persistent:** Grundsätze — niemals in API-Antworten zurückgeben, Ablageform (Verschlüsselung) und Wechsel ohne Laufausfall als eigenes Ticket.\n- **Löschregel für Konnektorbibliotheken:** Upload-Bibliotheken behalten die heutige Sperre bei vorhandenen Dokumenten; das Löschen einer Konnektorbibliothek nimmt Bestand und Chunks mit (mit Bestätigung), weil eine Einzellöschung dort wirkungslos ist — der nächste Lauf nimmt das Dokument wieder auf, solange der Ausschluss-Mechanismus aus `knowledge-sources.md` nicht gebaut ist.\n- **Berechtigung:** Anlage aller Typen zunächst für jeden mit Anlage-Recht; die Einschränkung (Pfad-Allowlist, Rollenbindung, Bezug #267) ist bewusst aufgeschoben und als eigenes Ticket benannt.\n\n## Abnahmekriterien\n\n- [ ] ADR-0018 liegt unter `docs/decisions/` im Format der bestehenden ADRs vor\n- [ ] Verhältnis zu ADR-0017 ist ausdrücklich beschrieben (was bleibt, was wird abgelöst)\n- [ ] Verworfene Alternativen sind dokumentiert (eigene Quellen-Tabelle n:1 zur Bibliothek; gemischte Bibliotheken beibehalten)\n- [ ] `README`/Verweise in betroffenen Spezifikationen sind mindestens als Folgeticket benannt",
+      "closes": []
+    },
+    {
+      "number": 466,
+      "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+      "url": "https://github.com/criew/opaa/issues/466",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\n`RSS_FEED` als dritter Wert von `DocumentSourceType`, samt der dafür nötigen Datenbankmigration, und ein Parser, der einen RSS-2.0-Feed in seine Einträge zerlegt. Noch ohne Indizierungslauf — dieses Ticket liefert das Gerüst, das ohne Netz und ohne Datenbank prüfbar ist.\n\n## Motivation\n\nDer Schnitt zwischen Parser und Lauf ist bewusst gesetzt. Ein Feed-Parser ist reine Umformung: Text hinein, Einträge heraus. Er lässt sich gegen eingecheckte Beispieldateien vollständig prüfen, einschließlich der Fälle, die im Betrieb selten und dann folgenreich sind — fehlendes Datum, leerer Feed, unbekannte Zeitzone, fremde Zusatzelemente. Diese Prüfung an einen Lauf zu hängen, der Netz und Datenbank braucht, würde sie langsam und lückenhaft machen.\n\n## Ist-Zustand\n\n`DocumentSourceType` kennt `FILESYSTEM`, `HTTP_DIRECTORY` und `UPLOAD`. Die Werte stehen an drei Stellen: im Java-Enum, im Schema `DocumentSourceType` der OpenAPI-Spezifikation und — das ist die stillste — als `CHECK`-Constraint auf `documents.source_type`. Deren maßgeblicher Stand ist das changeSet `020-allow-upload-source-type` in `db/changelog/changes/020-add-upload-metadata-to-documents.yaml`, das die Constraint aus 004 bereits einmal abgelöst hat. Ein neuer Enum-Wert ohne neue Migration übersetzt sich anstandslos und scheitert erst beim ersten Insert zur Laufzeit.\n\n## Umfang\n\n- `RSS_FEED` in `DocumentSourceType`\n- **Neue Liquibase-Migration**, die die `CHECK`-Constraint auf `documents.source_type` um den Wert erweitert — als **neues changeSet nach dem Muster von `020-allow-upload-source-type`** (Constraint fallen lassen und mit allen Werten neu anlegen); ein bereits ausgeführtes changeSet wird nie bearbeitet. Eingehängt in `db.changelog-master.yaml`\n- `RSS_FEED` im Schema `DocumentSourceType` der OpenAPI-Spezifikation\n- **Feed-Parser** in `io.opaa.indexing`, der aus einem RSS-2.0-Dokument die Einträge mit Titel, Verweis, Beschreibung und Veröffentlichungszeitpunkt liest. Umgesetzt mit den XML-Mitteln des JDK — eine zusätzliche Bibliothek ist dafür nicht nötig\n- **Der Parser wird gegen externe Entitäten abgeriegelt.** Ein Feed ist fremdkontrollierter Inhalt; ein XML-Parser in Voreinstellung liest daraus auf Wunsch des Absenders lokale Dateien. Externe DTDs und Entitäten werden ausgeschaltet\n- **Zeitpunkte robust lesen.** `pubDate` ist im Feed ein RFC-822-Datum, kommt in der Praxis aber in mehreren Schreibweisen vor. Ein nicht lesbares Datum macht den Eintrag nicht ungültig\n- **Nachsicht gegenüber Abweichungen.** Unbekannte Elemente und fremde Namensräume werden übergangen, nicht als Fehler behandelt. Ein Eintrag ohne Verweis wird übersprungen; ein Feed, der sich gar nicht als RSS lesen lässt, scheitert mit verständlicher deutscher Meldung\n\n## Testdaten\n\nDie Beispiel-Feeds unter `backend/src/test/resources/` werden **erfunden und generisch** gehalten — ausgedachte Stelle, `example`-Domänen, ausgedachte Titel. Kein Verweis auf eine reale Einrichtung oder einen realen Feed wird eingecheckt. Der Grund ist nicht Förmlichkeit: Ein Test, der an einer fremden Adresse hängt, wird irgendwann rot, weil dort jemand etwas umgestellt hat, und niemand versteht dann noch, was der Test eigentlich zusichern wollte.\n\nAbgedeckt gehören mindestens: der übliche Feed, ein leerer Feed, ein Eintrag ohne Datum, ein Eintrag ohne Verweis, ein Datum in abweichender Schreibweise, ein Feed mit fremden Namensräumen, ein Feed mit `<enclosure>`, ein Dokument mit äußerer Entität, sowie kein XML.\n\n## Außerhalb des Umfangs\n\n- Der Indizierungslauf, das Abrufen von Detailseiten, Anlagen\n- Änderungen am Frontend\n\n## Abnahmekriterien\n\n- [ ] `RSS_FEED` steht in Java-Enum, OpenAPI-Schema und Datenbank-Constraint\n- [ ] Ein Dokument mit `RSS_FEED` lässt sich in `documents` speichern — geprüft gegen ein von Liquibase erzeugtes Schema, nicht gegen ein von Hibernate erzeugtes, weil nur ersteres die Constraint trägt\n- [ ] Der Parser liest einen üblichen Feed in seine Einträge\n- [ ] Ein Dokument mit äußerer Entität führt weder zu einem Dateizugriff noch zu einem Netzabruf\n- [ ] Ein unlesbares Datum lässt den Eintrag bestehen, statt ihn zu verwerfen\n- [ ] Ein Eintrag ohne Verweis wird übersprungen\n- [ ] Kein Test verweist auf eine reale Adresse",
+      "closes": []
+    },
+    {
+      "number": 465,
+      "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+      "url": "https://github.com/criew/opaa/issues/465",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\nDer Quellentyp wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf. Die heutige Ableitung „`url` gesetzt heißt Netz, sonst Dateisystem\" entfällt als Entscheidungsgrundlage, bleibt aber als Rückfallverhalten für Aufrufer erhalten, die den Typ nicht mitschicken.\n\n## Motivation\n\nEin dritter Quellentyp ist über das heutige Verfahren nicht erreichbar: „`url` ist gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste. Beide sind eine Adresse im Netz, und die Adresse allein sagt nicht, was hinter ihr liegt. Es aus der Adresse raten zu wollen — etwa an der Endung `.xml` — wäre die schlechteste der möglichen Lösungen: Sie funktioniert bei den geläufigen Fällen und scheitert still bei den übrigen.\n\nZugleich ist der Zeitpunkt der letzte günstige, um die Duplikation zwischen den beiden vorhandenen Executoren einzufangen. Sie ist heute zweifach und damit gerade noch überschaubar; mit dem dritten Weg wird sie dreifach und beginnt auseinanderzulaufen — genau so, wie es bei den Dateiendungslisten schon einmal geschehen ist (#375: eine `.doc`-Datei wurde angenommen, wenn sie aus dem Netz kam, und abgelehnt, wenn sie im Verzeichnis lag).\n\n## Umfang\n\n- **Interface für den Indizierungsweg** in `io.opaa.indexing`, das den Enum-Wert seines Typs kennt und einen Lauf für eine Anfrage ausführt\n- **Registry**, die den zuständigen Weg über den Typ auflöst und bei einem Typ ohne Weg verständlich scheitert. Achtung: `DocumentSourceType` führt inzwischen auch `UPLOAD` — ein Herkunftswert ohne Indizierungslauf. Ob der Anstoß eines Laufs deshalb ein eigenes, engeres Enum bekommt oder `DocumentSourceType` mit benannter Ausnahme verwendet, entscheidet der ADR aus #464; die Umsetzung folgt ihm. Ein neuer Typ wird durch Hinzufügen einer Bean erschlossen, nicht durch Ändern einer bestehenden Fallunterscheidung\n- **`sourceType` im Anstoß eines Laufs**, ergänzt in `backend/src/main/resources/openapi/opaa-api.yaml`. Das DTO wird generiert, nicht geschrieben. Feld optional: Fehlt es, greift die bisherige Ableitung, damit vorhandene Aufrufer und die Oberfläche weiterlaufen\n- **Widerspruchsprüfung.** Ein Typ, der eine Adresse braucht, aber keine bekommt — oder umgekehrt — wird mit einer verständlichen deutschen Meldung abgewiesen, statt einen Lauf zu starten, der nichts findet\n- **Gemeinsame Bestandteile zusammenführen**: die Meldung abgelehnter Formate und die Fortschreibung der Zähler stehen an einer Stelle statt in jedem Executor\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidungen\n- Beans in `IndexingConfiguration` entsprechend verdrahtet\n\n## Außerhalb des Umfangs\n\n- Neue Quellentypen — dieses Ticket ändert kein Verhalten, es ordnet nur die Auswahl\n- Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten\n- Die Zielprüfung aus #267\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf mit ausdrücklich gesetztem `sourceType` wählt den zugehörigen Weg\n- [ ] Ein Lauf ohne `sourceType` verhält sich wie bisher — mit Adresse in das Netz, ohne in das Dateisystem\n- [ ] Ein Typ ohne zugehörigen Weg führt zu einer verständlichen Ablehnung, nicht zu einem `NullPointerException`\n- [ ] Eine Anfrage, deren Typ und Felder einander widersprechen, wird mit deutscher Meldung abgewiesen\n- [ ] Die Meldung abgelehnter Formate steht nur noch an einer Stelle im Code\n- [ ] Die Paritäts-Invariante beider Wege (`DocumentFormatParityTest`) gilt unverändert\n- [ ] Bestehende Tests zu `IndexingController` laufen ohne fachliche Anpassung",
+      "closes": []
+    },
+    {
+      "number": 464,
+      "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+      "url": "https://github.com/criew/opaa/issues/464",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "backend",
+        "size:S"
+      ],
+      "body": "## Zusammenfassung\n\nEin Architecture Decision Record, der festhält, wie ein Quellentyp der Indizierung beschrieben, ausgewählt und erweitert wird. Er geht dem Umbau in #463 voraus und begründet ihn.\n\n## Motivation\n\nZu Ingestion und Konnektoren existiert bislang **kein einziger ADR**. Die 14 vorhandenen betreffen Workflow, Technologiestack, Formatierung, Authentifizierung, DTO-Generierung, Teststrategie, Retrieval-Evaluierung und Produktausrichtung — die Frage, wie Wissen überhaupt hereinkommt, ist nie festgehalten worden.\n\nDas war tragbar, solange es zwei Wege gab, die sich über ein einzelnes Feld unterscheiden ließen. Mit dem dritten Typ entscheidet sich, ob der vierte billig oder wieder teuer wird. Diese Entscheidung gehört aufgeschrieben, bevor sie im Code steht — sonst ist sie in einem Jahr nicht mehr auffindbar und wird als neue Idee wieder aufgemacht.\n\n## Ist-Zustand (geprüft)\n\n- **Auswahl über eine Fallunterscheidung.** `IndexingController` leitet den Typ daraus ab, ob `url` gesetzt ist; `DocumentIndexingService` wiederholt die Unterscheidung mit zwei getrennten Methoden. `IndexingTriggerRequest` in der OpenAPI-Spezifikation hat kein Feld für den Typ.\n- **Kein gemeinsames Interface.** `AsyncIndexingExecutor` und `UrlIndexingExecutor` teilen weder Oberklasse noch Interface und duplizieren ihre Zähl- und Meldelogik sichtbar (`reportRejected` steht in beiden nahezu wortgleich).\n- **Enum am Dokument, nicht an der Quelle.** `DocumentSourceType` markiert das Ergebnis (`FILESYSTEM`, `HTTP_DIRECTORY`), beschreibt aber keinen Weg. Eine Tabelle für Quellen gibt es nicht; die Konfiguration eines Laufs wird pro Aufruf übergeben und danach verworfen.\n- **Eine `CHECK`-Constraint bindet die Datenbank an die Enum-Werte** (`004-add-source-type-to-documents.yaml`). Ein neuer Wert ohne Migration scheitert erst zur Laufzeit beim Insert.\n- **Kein Scheduling** im gesamten Backend.\n\n## Umfang\n\nEin ADR unter `docs/decisions/`, der mindestens festlegt:\n\n- **Wie ein Quellentyp ausgewählt wird** — ausdrücklich übergeben statt aus der Belegung anderer Felder erraten, und wie das rückwärtskompatibel eingeführt wird\n- **Was ein Quellentyp beitragen muss** und was die gemeinsame Verarbeitungskette übernimmt. Die Grenze verläuft an der Frage „woraus entsteht die Liste der zu verarbeitenden Inhalte\" — alles danach (Formatprüfung, Extraktion, Zerlegung, Einbettung) ist typunabhängig und bleibt es\n- **Wie ein Typ registriert wird** und warum die Auflösung über den Enum-Wert läuft statt über eine Fallunterscheidung\n- **Wie typspezifische Konfiguration übergeben wird**, solange es keine Quellen-Tabelle gibt\n- **Welche typabhängigen Verhaltensweisen es geben darf.** Der bekannte Fall: Ob ein in der Quelle verschwundenes Dokument aus dem Index genommen wird, ist **nicht** für alle Typen gleich zu beantworten. Bei einem Verzeichnis ist Verschwinden eine Aussage; bei einem Feed, der nur die jüngsten Einträge führt, ist es keine\n- **Was ausdrücklich offen bleibt** — Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten, Plugin-Fähigkeit\n- Verhältnis zu `docs/discussions/discussion-plugin-architecture.md`: Dieser ADR entscheidet die Plugin-Frage nicht, sondern verbaut sie nur nicht\n\n## Außerhalb des Umfangs\n\n- Der Umbau selbst — der folgt im nächsten Ticket\n- Eine Quellen-Tabelle, Zeitpläne, die Verwahrung von Zugangsdaten\n- Die Entscheidung über eine Plugin-Architektur\n\n## Abnahmekriterien\n\n- [ ] ADR liegt unter `docs/decisions/` mit fortlaufender Nummer und folgt dem Aufbau der vorhandenen ADRs\n- [ ] Status, Kontext, Entscheidung, Konsequenzen und verworfene Alternativen sind ausgeführt\n- [ ] Mindestens eine ernsthaft erwogene und begründet verworfene Alternative ist benannt\n- [ ] Die typabhängige Behandlung verschwundener Dokumente ist entschieden, nicht nur erwähnt\n- [ ] Aus `docs/features/knowledge-sources.md` wird auf den ADR verwiesen",
+      "closes": []
+    },
+    {
+      "number": 461,
+      "title": "Roadmap-Meilenstein 1 (31.08.2026) in Produktvision aufnehmen",
+      "url": "https://github.com/criew/opaa/issues/461",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:S"
+      ],
+      "body": "Ergänzt die Produktvision um den ersten datierten Meilenstein (31.08.2026), der zwischen bugpuritz und criew abgestimmt wurde.\n\n## Inhalt\n\n- Neuer Abschnitt „Roadmap\" in `docs/VISION.md` mit Meilenstein 1: UI-Redesign, Anlegen von Wissensdatenbanken (Konnektoren + Upload), Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen\n- Bewusste Einschränkung für den Meilenstein dokumentiert: Assets/Spaces-Konzept wird umgesetzt, volle Berechtigungsproblematik folgt später\n- Arbeitsteilung festgehalten: bugpuritz (UI-Design), criew (Wissensbibliotheken, Konnektoren, Verlinkung zu Spaces)\n- Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im Abschnitt „Anmeldung und Identität\"\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 486,
+      "title": "feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek",
+      "url": "https://github.com/criew/opaa/issues/486",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "epic",
+        "backend",
+        "frontend"
+      ],
+      "body": "Wissensbibliotheken und Indizierung wachsen zusammen: Eine Bibliothek wird künftig aus einem **Template** angelegt und trägt damit genau **einen Quellentyp** und **eine Quellkonfiguration** — Upload, Dateisystem-Verzeichnis oder Web-Adresse (mit dem RSS-Feed aus Epic #463 als nächstem Typ). Der separate Indizierungsbereich und die getrennte Dokumentenseite entfallen; die Bibliotheksdetailseite zeigt je nach Typ ein Uploadfeld oder Konfiguration samt „Jetzt indizieren\". Damit entsteht die Quellen-Persistenz, die [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) in Entscheidung 4 ausdrücklich als Übergang offen gelassen hat.\n\n### Hintergrund\n\n- [docs/decisions/0017-quellentypmodell-indizierung.md](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) — Quellentypmodell; Entscheidung 4 (Konfiguration im Anstoß-Request) wird durch ADR-0018 (#475) abgelöst, Registry und Löschsemantik bleiben\n- [docs/features/knowledge-sources.md](../blob/main/docs/features/knowledge-sources.md) — wird in #482 nachgeführt (gemischt gespeiste Bibliotheken entfallen)\n- Epic #463 — die Registry (#465) ist Voraussetzung des neuen Anstoßes; #466–#468 sind unberührt; #469 wird umformuliert (Typauswahl wandert in die Bibliotheksanlage)\n- #207 — die 1:1-Zuordnung Quelle→Bibliothek wird strukturell erzwungen; offen bleibt dort die Obergrenze der Freigabe\n\n### Phasen\n\n**Phase 1 — Entscheidung und Datenmodell.** ADR-0018 (#475) legt Ein-Typ-Regel, Ablösung von ADR-0017/Entscheidung 4, Credentials-Grundsätze und Löschregel fest; #476 baut Schema, Entity und API. Ohne diese Grundlage würde jedes weitere Ticket das Request-Modell fortschreiben.\n\n**Phase 2 — Verhalten.** #478 stellt den Anstoß auf „je Bibliothek aus gespeicherter Konfiguration\" um (setzt die Registry aus #465 voraus), #479 zieht Upload- und Löschregeln nach, #477 liefert die Dokumentzahl in der Übersicht.\n\n**Phase 3 — Oberfläche und Doku.** #480 (Anlage mit Template), #481 (Detailseite, Ablösung von Dokumentenseite und Admin-Drawer), #482 (Spezifikation).\n\n**Sicherheits-Nachzügler (vor Produktivbetrieb):** #483 (Zugangsdaten-Verwahrung), #484 (Pfad-Allowlist und Berechtigung) — bewusst aus Phase 1 herausgehalten, damit der Umbau nicht an offenen Sicherheitsentscheidungen hängt, aber vor einem Mehrbenutzerbetrieb zwingend.\n\n### Abhängigkeiten\n\n```\n#475 ──> #476 ──┬──> #478 ──> #481 ──> #482\n ADR    Schema  │  (braucht #465)\n                ├──> #479\n                ├──> #480 ──> #481\n                ├──> #483\n                └──> #484\n#477 unabhängig\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Eine Bibliothek wird aus einem Template angelegt und trägt Typ + Konfiguration; der Typ ist unveränderlich\n- [ ] Bestehende Bibliotheken sind `UPLOAD`; kein Verhalten des Bestands ändert sich außer dem Wegfall der alten Wege\n- [ ] Der Indizierungsanstoß kennt nur noch die Bibliothek; typspezifische Felder sind aus dem Trigger-Request verschwunden\n- [ ] Die Übersicht zeigt die Dokumentzahl; die Detailseite zeigt je Typ Uploadfeld bzw. Konfiguration + „Jetzt indizieren\"\n- [ ] `/documents` und der Indizierungsabschnitt im Admin-Drawer sind entfernt\n- [ ] Zugangsdaten stehen in keiner API-Antwort; ihre verschlüsselte Ablage ist umgesetzt oder als Blocker vor Produktivbetrieb markiert\n\n### Außerhalb des Umfangs (separate Epics/Issues)\n\n- Zeitplan je Bibliothek — #485\n- RSS-Feed als Typ — Epic #463 (liefert `RSS_FEED` in das hier gebaute Modell)\n- Zielprüfung gegen private Adressbereiche — #267\n- Obergrenze der Freigabe — #207\n\n### Referenzen\n\n- `docs/features/knowledge-sources.md`\n- `docs/features/spaces-and-assets.md`\n- `docs/decisions/0017-quellentypmodell-indizierung.md`",
+      "closes": []
+    },
+    {
+      "number": 485,
+      "title": "feat(indexing): Zeitplan je Bibliothek für Indizierungsläufe",
+      "url": "https://github.com/criew/opaa/issues/485",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "## Kontext\n\nMit ADR-0018 liegt die Quellkonfiguration an der Bibliothek — damit hat ein Zeitplan erstmals einen natürlichen Ort: als Teil der Bibliothekskonfiguration. Das Epic #463 hatte Scheduling ausdrücklich ausgeklammert; die Infrastruktur (`@EnableScheduling`, `AuditRetentionScheduler`) existiert.\n\n## Umfang (grob, vor Umsetzung zu verfeinern)\n\n- Zeitplan (Cron o. ä.) je Konnektorbibliothek, an- und abschaltbar\n- Anzeige „letzter/nächster Lauf\" in der Detailansicht\n- Antwort auf verteilte Ausführung bei mehreren Backend-Instanzen (Lock/Leader)\n- Vorrangregeln aus `docs/features/knowledge-sources.md` (sofort/regulär/nachrangig) mindestens vorbereiten\n\nAbhängig vom Epic „Bibliothekstypen\" (Anstoß je Bibliothek).",
+      "closes": []
+    },
+    {
+      "number": 484,
+      "title": "feat(security): Pfad-Allowlist und Berechtigung für Konnektorbibliotheken",
+      "url": "https://github.com/criew/opaa/issues/484",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M",
+        "security"
+      ],
+      "body": "## Kontext\n\nNach ADR-0018 darf zunächst jeder mit Anlage-Recht Bibliotheken jedes Typs anlegen. Damit kann jede Person beliebige Serverpfade indizieren lassen (Konfigurationsdateien, Uploads fremder Bibliotheken) und beliebige interne Adressen abrufen lassen — die SSRF-Härtung #267 weitet sich von der Systemverwaltung auf alle Nutzer aus. Diese Einschränkung wurde bewusst aufgeschoben und ist **vor einem Mehrbenutzer-Produktivbetrieb** nachzuholen.\n\n## Umfang\n\n- Pfad-Allowlist für `FILESYSTEM`-Bibliotheken (konfigurierte Basisverzeichnisse; Pfade außerhalb → 400)\n- Entscheidung und Umsetzung, welche Rolle Konnektorbibliotheken anlegen darf (z. B. `SYSTEM_ADMIN` oder dediziertes Recht)\n- Zusammenspiel mit #267 (Zielprüfung gegen private Adressbereiche) benennen; #267 bleibt eigenständig\n\n## Abnahmekriterien\n\n- [ ] Pfade außerhalb der Allowlist werden bei Anlage und Lauf abgelehnt\n- [ ] Berechtigungsregel umgesetzt und dokumentiert\n- [ ] Backend-Format, Build und Tests bestehen",
+      "closes": []
+    },
+    {
+      "number": 483,
+      "title": "feat(security): Zugangsdaten der Quellkonfiguration sicher verwahren",
+      "url": "https://github.com/criew/opaa/issues/483",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M",
+        "security"
+      ],
+      "body": "## Kontext\n\nMit der Quellkonfiguration an der Bibliothek werden Zugangsdaten erstmals **persistent** (bisher nur transient im Trigger-Request). ADR-0018 legt die Grundsätze fest; dieses Ticket setzt die Ablage um.\n\n## Umfang\n\n- Verschlüsselte Ablage der Zugangsdaten (Schlüssel aus Umgebungsvariable, nicht im Repo; Verfahren im ADR bzw. hier festhalten)\n- Zugangsdaten erscheinen in keiner API-Antwort und keinem Log; Setzen/Ändern über die API als Nur-Schreiben-Feld\n- Wechsel der Zugangsdaten ohne Ausfall eines geplanten Laufs\n\n## Abnahmekriterien\n\n- [ ] Zugangsdaten liegen nicht im Klartext in der Datenbank\n- [ ] Kein API-Response und kein Logeintrag enthält Zugangsdaten (Tests)\n- [ ] Backend-Format, Build und Tests bestehen",
+      "closes": []
+    },
+    {
+      "number": 482,
+      "title": "docs(sources): Spezifikation auf Bibliothekstypen nachführen",
+      "url": "https://github.com/criew/opaa/issues/482",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:M"
+      ],
+      "body": "## Kontext\n\n`docs/features/knowledge-sources.md` beschreibt gemischt gespeiste Bibliotheken („Upload und Konnektor können in derselben Bibliothek zusammentreffen\", „mehrere Quellen in dieselbe Bibliothek\") und ein Konnektor-mit-Quellen-Zielbild. Beides widerspricht nach ADR-0018 dem gebauten Modell.\n\n## Umfang\n\n- `knowledge-sources.md` auf die Ein-Typ-Regel nachführen: Bibliothekstypen, Anlage aus Template, Konfiguration an der Bibliothek, (gebaut)-Markierungen aktualisieren\n- Abschnitt „Erreichbare Verzeichnislisten im Netz\": Auslösung und Zuordnung an den neuen Stand anpassen; beantwortete offene Fragen (Proxy/Anmeldung in die Konfiguration) in „Geklärte Fragen\" überführen\n- Querverweise in `spaces-and-assets.md` / `data-indexing-rag.md` prüfen\n- Issue #207 kommentieren/anpassen: die 1:1-Zuordnung ist strukturell erzwungen, offen bleibt die Obergrenze der Freigabe\n\n## Abnahmekriterien\n\n- [ ] Spezifikation beschreibt den gebauten Stand, nicht das alte Zielbild\n- [ ] Keine Aussage über gemischt gespeiste Bibliotheken mehr; Löschsemantik verweist auf ADR-0017/0018",
+      "closes": []
+    },
+    {
+      "number": 481,
+      "title": "feat(frontend): Bibliotheksdetailseite mit typspezifischem Bereich",
+      "url": "https://github.com/criew/opaa/issues/481",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:L"
+      ],
+      "body": "## Kontext\n\nDetails einer Bibliothek liegen heute in aufklappbaren Karten der `LibraryManagementPage`; Uploads laufen über die separate `DocumentsPage`, der Indizierungsanstoß über den Admin-Drawer. Nach ADR-0018 bündelt eine **Bibliotheksdetailseite** beides typabhängig.\n\n## Umfang\n\n- Neue Route `/libraries/:id` mit Detailseite: Stammdaten, Freigaben, Dokumentliste, Dokumentzahl\n- Typspezifischer Bereich: `UPLOAD` → Upload-Zone + Dokumentverwaltung (Funktionsumfang der heutigen `DocumentsPage`); Konnektortypen → Konfigurationsanzeige, Knopf „Jetzt indizieren\", Status/letzter Lauf (Polling wie heute im `indexingStore`)\n- Ablösung: `DocumentsPage` (Route `/documents`) und der Abschnitt „Dokumentenindizierung\" im `AdminDrawer` entfallen; Navigation nachziehen\n- Barrierefreiheit und deutsche Oberflächentexte\n\n## Abhängig von\n\nSchema/API-, Trigger- und Anlagedialog-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Upload und Dokumentlöschung funktionieren auf der Detailseite einer `UPLOAD`-Bibliothek\n- [ ] Konnektorbibliothek zeigt Konfiguration und stößt einen Lauf an; Fortschritt sichtbar\n- [ ] `/documents` und Admin-Drawer-Indizierung sind entfernt, keine toten Links\n- [ ] Lint, Build und Tests bestehen; E2E-Anpassung mit dem QA-Engineer abgestimmt",
+      "closes": []
+    },
+    {
+      "number": 480,
+      "title": "feat(frontend): Bibliotheksanlage mit Typauswahl aus Templates",
+      "url": "https://github.com/criew/opaa/issues/480",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nDie Bibliotheksanlage (`CreateLibraryDialog`) kennt heute nur Name, Beschreibung und Sichtbarkeit. Nach ADR-0018 beginnt die Anlage mit der Auswahl eines Templates = Quellentyps.\n\n## Umfang\n\n- Typauswahl bei der Anlage (Upload / Dateisystem-Verzeichnis / Web-Adresse; `RSS_FEED` erscheint automatisch, sobald das Backend ihn anbietet — Typenliste nicht im Frontend verdrahten)\n- Typspezifische Konfigurationsfelder im Anlagedialog (Pfad bzw. URL, Proxy, Anmeldedaten, SSL-Schalter); Feldtexte auf Deutsch\n- Nach der Anlage ist der Typ sichtbar, aber nicht änderbar\n\n## Abhängig von\n\nSchema/API-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Anlage jedes Typs mit gültiger Konfiguration möglich; Validierungsfehler werden angezeigt\n- [ ] Typ ist nach Anlage nicht änderbar\n- [ ] Lint, Build und Tests (Vitest, MSW-Handler nachgezogen) bestehen",
+      "closes": []
+    },
+    {
+      "number": 479,
+      "title": "feat(library): Upload nur in UPLOAD-Bibliotheken und Löschverhalten für Konnektorbibliotheken",
+      "url": "https://github.com/criew/opaa/issues/479",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nMit der Ein-Typ-Regel aus ADR-0018 ist der Upload-Endpunkt nur noch für `UPLOAD`-Bibliotheken sinnvoll, und das Löschverhalten muss je Typ unterscheiden: eine Einzellöschung von Konnektor-Dokumenten ist wirkungslos (der nächste Lauf nimmt das Dokument wieder auf, ein Ausschluss-Mechanismus existiert noch nicht), und die heutige generelle Löschsperre (`deleteLibrary` blockt bei > 0 Dokumenten) würde Konnektorbibliotheken faktisch unlöschbar machen.\n\n## Umfang\n\n- `POST /libraries/{id}/documents` nur für `UPLOAD`-Bibliotheken; sonst 409 mit nutzerseitiger Fehlermeldung\n- Löschen einer Konnektorbibliothek (`FILESYSTEM`/`HTTP_DIRECTORY`/`RSS_FEED`): entfernt Dokumentzeilen und Chunks im Vektorspeicher mit; `UPLOAD` behält die bestehende Sperre\n- `DELETE .../documents/{documentId}` bleibt auf `UPLOAD`-Dokumente beschränkt (heutiges Verhalten)\n\n## Abnahmekriterien\n\n- [ ] Upload in eine Konnektorbibliothek → 409\n- [ ] Löschen einer Konnektorbibliothek entfernt Dokumente und Chunks; Protokolleintrag vorhanden\n- [ ] Löschen einer `UPLOAD`-Bibliothek mit Dokumenten bleibt blockiert\n- [ ] Backend-Format, Build und Tests bestehen",
+      "closes": []
+    },
+    {
+      "number": 478,
+      "title": "feat(indexing): Indizierungsanstoß je Bibliothek aus gespeicherter Konfiguration",
+      "url": "https://github.com/criew/opaa/issues/478",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nHeute erhält `POST /api/v1/indexing/trigger` die komplette Quellkonfiguration im Request und errät den Weg aus der Belegung von `url`. Nach ADR-0018 liegen Typ und Konfiguration an der Bibliothek; der Anstoß reduziert sich auf den Verweis auf die Bibliothek.\n\n## Umfang\n\n- Anstoß je Bibliothek (z. B. `POST /api/v1/libraries/{libraryId}/indexing`): Typ und Konfiguration werden aus der Bibliothek gelesen, der Executor über die Registry aus #465 aufgelöst\n- `UPLOAD`-Bibliothek → 409 (kein Lauf-Typ)\n- Nebenläufigkeit: ein laufender Job **je Bibliothek** statt global einer (`IndexingJobService`)\n- Der alte Endpunkt `/api/v1/indexing/trigger` samt `url`-Fallback aus ADR-0017 entfällt; Status-Endpunkt entsprechend nachziehen\n- Berechtigung: mindestens `EDITOR` an der Bibliothek (wie heute `requireEditableLibrary`), Rate-Limit bleibt\n\n## Abhängig von\n\n#465 (Registry), Schema-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Lauf einer `FILESYSTEM`- und einer `HTTP_DIRECTORY`-Bibliothek nutzt ausschließlich die gespeicherte Konfiguration\n- [ ] `UPLOAD`-Bibliothek → 409; zweiter Anstoß derselben Bibliothek während eines Laufs → 409; Läufe verschiedener Bibliotheken parallel möglich\n- [ ] Alte Trigger-Felder sind aus der OpenAPI-Spec entfernt\n- [ ] Backend-Format, Build und Tests bestehen",
+      "closes": []
+    },
+    {
+      "number": 477,
+      "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+      "url": "https://github.com/criew/opaa/issues/477",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Kontext\n\n`LibraryResponse` (Detail) führt `documentCount`, `LibraryListResponse` nicht. Die Bibliotheksübersicht soll je Bibliothek die Dokumentzahl zeigen, ohne jede Karte aufklappen zu müssen.\n\n## Umfang\n\n- `documentCount` in `LibraryListResponse`-Einträge aufnehmen (OpenAPI-Spec zuerst, ADR-0006); Zählung ohne N+1 (gruppierte Query statt `countByLibraryId` je Zeile)\n- Anzeige in der Übersicht (`LibraryManagementPage`)\n\n## Abnahmekriterien\n\n- [ ] Liste liefert je Bibliothek die Dokumentzahl; eine Abfrage, kein N+1\n- [ ] Übersicht zeigt die Zahl je Bibliothek\n- [ ] Backend- und Frontend-Checks bestehen",
+      "closes": []
+    },
+    {
+      "number": 476,
+      "title": "feat(library): Quellentyp und Quellkonfiguration an der Bibliothek (Schema, Entity, API)",
+      "url": "https://github.com/criew/opaa/issues/476",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:L"
+      ],
+      "body": "## Kontext\n\nNach ADR-0018 trägt eine Wissensbibliothek ihren Quellentyp und dessen Konfiguration selbst. `KnowledgeLibrary` ist heute ein reiner Container ohne Quellenbezug.\n\n## Umfang\n\n- Liquibase-Migration: `knowledge_libraries.source_type` (NOT NULL, CHECK-Constraint analog `chk_documents_source_type`), Backfill des Bestands auf `UPLOAD`; typspezifische Konfigurationsspalten (Verzeichnispfad bzw. URL, Proxy, Zugangsdaten, SSL-Schalter)\n- Entity + Service: Typ bei Anlage Pflicht, danach unveränderlich; Validierung der Konfiguration je Typ (Pfad nur bei `FILESYSTEM`, URL nur bei `HTTP_DIRECTORY`/`RSS_FEED`, nichts bei `UPLOAD`)\n- OpenAPI-Spezifikation: `LibraryRequest`/`LibraryResponse`/`LibraryUpdateRequest` um `sourceType` und Konfiguration erweitern (DTO-Generierung nach ADR-0006, `typeMappings` für das neue Enum); **Zugangsdaten erscheinen in keiner Antwort**\n- Persönliche Bibliotheken (`ensurePersonalLibrary`) und System-Library werden `UPLOAD`\n\n**Nicht enthalten:** Verhalten des Indizierungsanstoßes (Folgeticket), Frontend, Verschlüsselung der Zugangsdaten (eigenes Ticket).\n\n## Abnahmekriterien\n\n- [ ] Bestehende Bibliotheken sind nach der Migration `UPLOAD`\n- [ ] Anlage mit Typ + gültiger Konfiguration je Typ; ungültige Kombinationen → 400\n- [ ] Typwechsel über die Update-API wird abgelehnt\n- [ ] Zugangsdaten tauchen in keiner API-Antwort auf (Test)\n- [ ] Backend-Format, Build und Tests bestehen",
+      "closes": []
+    },
+    {
+      "number": 475,
+      "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+      "url": "https://github.com/criew/opaa/issues/475",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "size:M"
+      ],
+      "body": "## Kontext\n\nDie Konfiguration eines Indizierungslaufs ist heute request-basiert: `IndexingTriggerRequest` trägt `url`, `proxy`, `credentials`, `insecureSsl` pro Aufruf, der Dateisystempfad ist global (`opaa.indexing.document-path`). [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) hat diesen Zustand in Entscheidung 4 ausdrücklich als Übergang deklariert, bis eine Quellen-Tabelle existiert.\n\nDiese Quellen-Tabelle kommt jetzt — aber nicht als eigene Tabelle, sondern als Teil der Wissensbibliothek selbst: **Eine Bibliothek trägt genau einen Quellentyp und genau eine Quellkonfiguration.**\n\n## Zu entscheiden\n\n- **Ein-Typ-Regel:** Jede Bibliothek hat genau einen `sourceType` (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration. Der Typ wird bei der Anlage gewählt und ist danach unveränderlich. Gemischt gespeiste Bibliotheken (Konnektor + Upload) gibt es nicht mehr — die bisherige Spezifikationsaussage wird zurückgenommen.\n- **Ablösung von ADR-0017, Entscheidung 4:** Der Anstoß eines Laufs reduziert sich auf den Verweis auf die Bibliothek; typspezifische Felder verschwinden aus dem Trigger-Request. Der rückwärtskompatible `url`-Fallback aus Entscheidung 1 entfällt mit dem Umbau.\n- **Vereinfachte Löschsemantik:** Die Abwesenheitsprüfung „je Quelle\" aus ADR-0017 Entscheidung 5 fällt mit „je Bibliothek\" zusammen; der dort benannte gefährlichste Umsetzungsfehler (Lauf trifft Upload-Dokumente derselben Bibliothek) ist strukturell ausgeschlossen.\n- **Zugangsdaten werden persistent:** Grundsätze — niemals in API-Antworten zurückgeben, Ablageform (Verschlüsselung) und Wechsel ohne Laufausfall als eigenes Ticket.\n- **Löschregel für Konnektorbibliotheken:** Upload-Bibliotheken behalten die heutige Sperre bei vorhandenen Dokumenten; das Löschen einer Konnektorbibliothek nimmt Bestand und Chunks mit (mit Bestätigung), weil eine Einzellöschung dort wirkungslos ist — der nächste Lauf nimmt das Dokument wieder auf, solange der Ausschluss-Mechanismus aus `knowledge-sources.md` nicht gebaut ist.\n- **Berechtigung:** Anlage aller Typen zunächst für jeden mit Anlage-Recht; die Einschränkung (Pfad-Allowlist, Rollenbindung, Bezug #267) ist bewusst aufgeschoben und als eigenes Ticket benannt.\n\n## Abnahmekriterien\n\n- [ ] ADR-0018 liegt unter `docs/decisions/` im Format der bestehenden ADRs vor\n- [ ] Verhältnis zu ADR-0017 ist ausdrücklich beschrieben (was bleibt, was wird abgelöst)\n- [ ] Verworfene Alternativen sind dokumentiert (eigene Quellen-Tabelle n:1 zur Bibliothek; gemischte Bibliotheken beibehalten)\n- [ ] `README`/Verweise in betroffenen Spezifikationen sind mindestens als Folgeticket benannt",
+      "closes": []
+    },
+    {
+      "number": 471,
+      "title": "test(e2e): RSS-Quelle über die Admin-Oberfläche indizieren",
+      "url": "https://github.com/criew/opaa/issues/471",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\nEin End-to-End-Test in der Playwright-Suite unter `e2e/`, der den RSS-Weg über die Oberfläche prüft: Quellentyp wählen, Lauf anstoßen, Ergebnis im Bestand sehen.\n\n## Motivation\n\nDie Tickets des Epics #463 prüfen Parser, Executor und Formular jeweils für sich. Was keiner dieser Tests belegt: dass die Kette **zusammen** funktioniert — das Formular schickt den Typ, der richtige Weg läuft an, die Dokumente erscheinen, und der Fortschritt ist während des Laufs sichtbar. Genau an solchen Nahtstellen ist das Projekt schon einmal auseinandergelaufen (#375: zwei Wege, zwei Endungslisten).\n\nDer Test folgt dem Muster von #232 (Indizierung des Demo-Korpus über die Admin-Oberfläche) und #229 (Korpus als statisches HTTP-Verzeichnis im Compose-Stack).\n\n## Umfang\n\n- **Ein generischer Beispiel-Feed als statischer Inhalt im Compose-Stack der E2E-Suite**: eine RSS-2.0-Datei mit erfundenen Einträgen, dazu je Eintrag eine kleine HTML-Detailseite mit einer verlinkten Anlage (z. B. eine kleine PDF- oder Textdatei). Ausgeliefert vom selben statischen Webserver, den die Suite bereits kennt. **Keine realen Adressen oder Einrichtungen** — ausgedachte Stelle, interne Stack-Hostnamen\n- **Testablauf**: als Systemverwaltung anmelden → im Indizierungsformular den Quellentyp „RSS-Feed\" wählen → Adresse des Stack-Feeds eintragen → Lauf anstoßen → auf Abschluss warten (Polling der Statusanzeige) → prüfen, dass je Eintrag ein Dokument mit dem Text der Detailseite und die verlinkte Anlage im Bestand erscheinen\n- **Negativpfad**: ein Eintrag, dessen Detailseite im Stack einen Fehler liefert (404), lässt den Lauf durchlaufen; das Ergebnis weist den übersprungenen Eintrag aus\n- **Zweiter Lauf** über denselben unveränderten Feed endet ohne neue Dokumente\n- Einbettung in die bestehende Suite (`e2e/README.md` beachten): Start und Stopp über das vorhandene Verfahren, keine Sonderwege\n\n## Außerhalb des Umfangs\n\n- Bot-Schutz-Szenarien — die Abweisung durch eine Gegenstelle lässt sich im Stack nicht ehrlich nachstellen\n- Zeitplan (existiert nicht)\n- Last- und Mengentests\n\n## Abnahmekriterien\n\n- [ ] Der Test läuft in der bestehenden Suite über `npm test` in `e2e/` und in der CI mit\n- [ ] Der Feed und seine Detailseiten sind erfundene, generische Testdaten im Repo\n- [ ] Positivpfad: Dokumente und Anlage erscheinen nach dem Lauf im Bestand\n- [ ] Negativpfad: ein fehlschlagender Eintrag bricht den Lauf nicht ab und ist im Ergebnis ausgewiesen\n- [ ] Ein zweiter Lauf über den unveränderten Feed erzeugt keine neuen Dokumente",
+      "closes": []
+    },
+    {
+      "number": 470,
+      "title": "docs(sources): Feed-Quellen und Quellentypmodell in der Spezifikation nachführen",
+      "url": "https://github.com/criew/opaa/issues/470",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:S"
+      ],
+      "body": "## Zusammenfassung\n\n`docs/features/knowledge-sources.md` wird auf den Stand gebracht, den dieses Epic hergestellt hat.\n\n## Motivation\n\nDie Spezifikation kennzeichnet ausdrücklich, was gebaut ist und was Zielbild bleibt — das ist ihre nützlichste Eigenschaft und zugleich die, die als erste verfällt. Nach diesem Epic stimmt sie an mehreren Stellen nicht mehr, und ein Dokument, das an einer Stelle nachweislich falsch ist, wird an allen anderen nicht mehr geglaubt.\n\nDieses Ticket steht am Ende des Epics, weil es erst dann etwas Wahres schreiben kann.\n\n## Umfang\n\nNachzuführen sind mindestens:\n\n- Der Abschnitt zu den Quellklassen: Feeds sind ein gebauter Weg, nicht mehr eine der noch anzubindenden Systemklassen\n- Ein eigener Abschnitt zum Feed als Quelle — was er kann, wie er Änderungen erkennt, wie er sich zur Verzeichnisliste unterscheidet\n- **Die typabhängige Ausnahme beim Löschen.** Die Regel „Löschen in der Quelle wirkt durch\" gilt für Feeds nicht, und zwar aus einem Grund, der aufgeschrieben gehört: Ein Feed führt nur seine jüngsten Einträge. Ohne diesen Satz wird die Ausnahme später als Fehler gelesen und weggeräumt\n- Verweis auf den ADR aus dem ersten Ticket\n- Die offene Frage, ob der Netzweg auf das volle Konnektormodell gehoben wird, wird um die Feststellung ergänzt, dass es nun mehrere Netzwege gibt\n- Das Verhalten gegenüber fremden Zielen: Abstand zwischen Abrufen, Kennung, Obergrenzen — und dass mit Abweisungen durch Schutzmaßnahmen der Gegenstelle zu rechnen ist\n- Prüfen, ob `docs/features/data-indexing-rag.md` durch die Übernahme von Seitentext nachzuführen ist\n- Betriebsseitige Einstellungen in `docs/deployment.md` und `.env.example`, soweit die vorangehenden Tickets sie nicht schon eingetragen haben\n\n## Was nicht geschieht\n\nDas Zielbild wird nicht kleingeschrieben, nur weil ein Stück davon gebaut ist. Was weiterhin fehlt — Zeitplan, Zuordnung zu einer Bibliothek, gespeicherte Quellkonfiguration —, bleibt als Fehlendes benannt.\n\n## Abnahmekriterien\n\n- [ ] Kein Abschnitt beschreibt den Feed-Weg als Zielbild\n- [ ] Die Ausnahme beim Löschen ist mit ihrer Begründung festgehalten\n- [ ] Der ADR ist verlinkt\n- [ ] Betriebsseitige Einstellungen sind vollständig beschrieben\n- [ ] Was weiterhin fehlt, ist unverändert als Fehlendes benannt",
+      "closes": []
+    },
+    {
+      "number": 469,
+      "title": "feat(admin): Quellentyp im Indizierungsformular wählbar machen",
+      "url": "https://github.com/criew/opaa/issues/469",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "frontend",
+        "size:S"
+      ],
+      "body": "## Zusammenfassung\n\nDie Systemverwaltung wählt den Quellentyp in der Oberfläche, statt ihn daraus abzuleiten, ob sie eine Adresse eingetragen hat. Die typabhängigen Felder erscheinen zum gewählten Typ.\n\n## Motivation\n\nDas heutige Formular trägt die Überschrift „URL-Quelle (optional)\" und erschließt den Typ daraus, ob das Feld gefüllt ist. Sobald zwei Typen eine Adresse verlangen, ist das für die bedienende Person nicht mehr entscheidbar: Sie trägt eine Adresse ein und weiß nicht, was daraufhin geschieht.\n\n## Ist-Zustand\n\n- `AdminDrawer.tsx` enthält Felder für Adresse, Netzvermittler, Anmeldung und das Aussetzen der Zertifikatsprüfung; die Angaben werden zu einer Anfrage zusammengesetzt\n- **`sourceType` kommt im Frontend an keiner Stelle vor**\n- `frontend/src/types/generated/api.ts` ist veraltet: Es kennt noch Bezeichnungen aus dem abgelösten Workspace-Modell und weder `LibraryDocumentResponse` noch `DocumentSourceType`. Die Typen müssen ohnehin neu erzeugt werden\n\n## Umfang\n\n- Auswahl des Quellentyps im Formular, mit dem Dateisystem als Voreinstellung\n- Nur die zum Typ gehörenden Felder erscheinen. Ein Netzvermittler bei einem Lauf über das Dateisystem ist keine unschädliche Zusatzangabe, sondern eine Frage, die die bedienende Person unnötig beantworten muss\n- Für den Feed die zusätzlichen Angaben aus den vorangehenden Tickets, soweit sie im Anstoß eines Laufs sinnvoll sind\n- `sourceType` wird ausdrücklich mitgeschickt\n- Neu erzeugte Typen aus der OpenAPI-Spezifikation\n- Beschriftungen und Hilfetexte auf Deutsch, `aria-label` inbegriffen\n- **Was der gewählte Typ bedeutet, steht am Formular.** Bei einem Feed werden fremde Seiten abgerufen, deren Adressen nicht von der bedienenden Person stammen. Das gehört an der Stelle gesagt, an der die Entscheidung fällt, und nicht in eine Betriebsanleitung\n\n## Außerhalb des Umfangs\n\n- Verwaltung dauerhaft gespeicherter Quellen — es gibt weiterhin nur den Anstoß eines einzelnen Laufs\n- Zeitplan\n- Anzeige des Quellentyps in der Dokumentenliste\n\n## Abnahmekriterien\n\n- [ ] Der Quellentyp ist im Formular wählbar und wird mitgeschickt\n- [ ] Zum gewählten Typ erscheinen nur die zugehörigen Felder\n- [ ] Ein Wechsel des Typs hinterlässt keine Angaben, die zum neuen Typ nicht passen\n- [ ] Die erzeugten Typen sind aktuell\n- [ ] Alle sichtbaren Texte sind deutsch\n- [ ] Lint, Formatprüfung, Build und Tests des Frontends laufen durch",
+      "closes": []
+    },
+    {
+      "number": 468,
+      "title": "feat(indexing): Anlagen an Detailseiten übernehmen, mit Profil für den Government Site Builder",
+      "url": "https://github.com/criew/opaa/issues/468",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\nAnlagen, die an einer Detailseite hängen, werden gefunden und als eigene Dokumente indiziert. Welche Verweise einer Seite als Anlage gelten, beschreibt ein **Profil** — mitgeliefert werden ein allgemeines Profil und eines für den Government Site Builder.\n\n## Motivation\n\nBei einem behördlichen Schreiben trägt der Artikeltext die Einordnung, die Anlage aber den Inhalt. Wer nach der Regelung selbst fragt und nur die Ankündigung im Index hat, bekommt eine Antwort, die höflich am Thema vorbeigeht. Der Nutzen des ganzen Weges hängt an diesem Schritt.\n\nZugleich ist es der Schritt, der am ehesten zu einer Sonderbehandlung im Code verführt. Das URL-Muster, mit dem der Government Site Builder seine Anhänge ausliefert, ist wiedererkennbar — und genau deshalb steht es nicht im Code, sondern in einer Konfiguration. Ein zweites Haus mit einem anderen CMS wäre sonst ein neuer `if`-Zweig, und das ist das Muster, das dieses Epic gerade beseitigt.\n\n## Umfang\n\n- **Profilbegriff**: benannte, konfigurierbare Beschreibung dessen, welche Verweise einer Detailseite eine Anlage sind — Einschränkung auf einen Bereich der Seite, Muster für die Adresse, zulässige Dateitypen\n- **Allgemeines Profil** als Voreinstellung: Verweise auf die ohnehin unterstützten Dateitypen, beschränkt auf denselben Auftritt\n- **Profil für den Government Site Builder**: Das CMS des Bundes liefert Anhänge nicht unter einer Adresse mit Dateiendung aus, sondern über einen Abfrageparameter an der Seitenadresse. Ein Weg, der Dateitypen an der Endung erkennt, findet dort nichts. Das Profil beschreibt dieses Muster und leitet einen brauchbaren Dateinamen her\n- **Profilwahl je Lauf**, mit dem allgemeinen Profil als Voreinstellung. Keine Erkennung des CMS anhand der Adresse — das wäre wieder Raten\n- Anlagen laufen durch dieselbe Verarbeitungskette wie jedes andere Dokument, einschließlich Formatprüfung und Prüfsumme\n- **Herkunft bleibt erkennbar.** Eine Anlage weiß, aus welchem Eintrag sie stammt. Ohne das steht später ein PDF im Index, dessen Zusammenhang niemand mehr herstellen kann — und die Belegangabe in einer Antwort verweist ins Leere\n- **Dieselbe Anlage an mehreren Einträgen** wird einmal indiziert, nicht mehrfach\n- Obergrenzen für Zahl und Größe der Anlagen je Eintrag\n\n## Nebenbefund, der hier mit erledigt wird\n\nJsoup wird bereits produktiv verwendet, ist aber **nirgends deklariert** — weder in `libs.versions.toml` noch in `build.gradle.kts`. Die Bibliothek kommt bislang nur transitiv über den Tika-Dokumentleser herein und würde bei einem Versionssprung von Spring AI ohne Vorwarnung verschwinden. Da dieses Ticket die Abhängigkeit ausweitet, wird sie hier ordentlich in den Versionskatalog aufgenommen. Das entspricht der verbindlichen Regel aus `AGENTS.md`.\n\n## Außerhalb des Umfangs\n\n- Erkennung des CMS anhand der Adresse\n- Weitere CMS-Profile\n- Anlagen, die erst durch Skriptausführung im Browser sichtbar werden\n\n## Abnahmekriterien\n\n- [ ] Eine Detailseite mit verlinkten Anlagen führt zu je einem Dokument pro Anlage\n- [ ] Das Profil für den Government Site Builder findet Anhänge, die über einen Abfrageparameter statt über eine Dateiendung ausgeliefert werden, und leitet einen brauchbaren Dateinamen her\n- [ ] Ohne Profilangabe greift das allgemeine Profil\n- [ ] Verweise, die aus der Seite hinausführen, gelten nicht als Anlage\n- [ ] Zu jeder Anlage ist der Eintrag erkennbar, aus dem sie stammt\n- [ ] Dieselbe Anlage an zwei Einträgen erzeugt ein Dokument, nicht zwei\n- [ ] Jsoup ist im Versionskatalog deklariert und wird über `libs.*` referenziert\n- [ ] Kein Test verweist auf eine reale Adresse; das CMS-Profil wird gegen nachgebildete Seiten geprüft",
+      "closes": []
+    },
+    {
+      "number": 467,
+      "title": "feat(indexing): RSS-Feeds indizieren — Einträge auflösen und Detailseiten übernehmen",
+      "url": "https://github.com/criew/opaa/issues/467",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:L"
+      ],
+      "body": "## Zusammenfassung\n\nDer Indizierungsweg für `RSS_FEED`: Feed abrufen, Einträge auflösen, den Text der Detailseite als Dokument übernehmen. Damit wird der Typ erstmals lauffähig.\n\n## Motivation\n\nEin RSS-Feed verweist nicht auf Dateien. Sein `<link>` zeigt auf eine HTML-Detailseite, und `<enclosure>` fehlt bei den Feeds der öffentlichen Verwaltung in aller Regel. Der Feed ist ein **Änderungsmelder**, kein Dateiverzeichnis. Der bestehende Netzweg kann damit nichts anfangen: Er erwartet eine Liste, deren Einträge unmittelbar herunterladbare Dokumente sind.\n\nDer Text einer Detailseite ist zugleich der Teil, der die Frage beantwortet, um die es meistens geht — worum es in der Sache überhaupt geht. Die Anlagen tragen die Einzelheiten, aber ohne den Artikeltext steht ein Schreiben ohne Einordnung im Index.\n\n## Umfang\n\n**Ablauf eines Laufs**\n\n1. Feed abrufen und zerlegen\n2. Je Eintrag prüfen, ob er sich seit dem letzten Lauf geändert hat — unveränderte Einträge werden übersprungen, **bevor** die Detailseite abgerufen wird\n3. Detailseite laden, Haupttext gewinnen\n4. Text in die bestehende Verarbeitungskette geben — Prüfsumme, Zerlegung, Einbettung, Speicherung laufen unverändert\n\n**Haupttext statt ganzer Seite.** Eine Behördenseite besteht zu einem erheblichen Teil aus Navigation, Verwaltungsmenü, Fußzeile und Hinweisen. Diese Bestandteile in den Index zu geben, erzeugt Chunks, die auf jede Frage ein bisschen passen und auf keine gut. Der Haupttext wird mit den bereits im Projekt vorhandenen HTML-Mitteln gewonnen; die Auswahl ist konfigurierbar, mit einem Standardverhalten, das ohne Konfiguration brauchbar ist.\n\n**HTML kommt nicht in die Formatliste.** `SupportedDocumentFormats` um `.html` zu erweitern, wäre der naheliegende, aber falsche Weg: Der bestehende Verzeichnis-Crawler würde damit anfangen, jede Navigationsseite einzusaugen. Stattdessen gewinnt dieser Weg den Text **vor** der Übergabe und reicht Text ein.\n\n**Änderungserkennung, gestuft**\n\n- Auf den Feed selbst: `ETag` und `If-Modified-Since`. Ein unveränderter Feed beendet den Lauf in einer Anfrage\n- Je Eintrag: der Veröffentlichungszeitpunkt, abgelegt im vorhandenen Feld `last_modified_remote` — dasselbe Muster, das der Verzeichnisweg bereits verwendet\n- Nach dem Abruf: die vorhandene Prüfsumme über den Inhalt\n\n**Verschwundene Einträge bleiben.** Ein Feed führt nur seine jüngsten Einträge. Dass ein Eintrag nicht mehr darin steht, heißt nicht, dass das Dokument zurückgezogen wurde — es heißt, dass es älter geworden ist. Ein Löschabgleich wäre hier nicht Sorgfalt, sondern Datenverlust, und zwar stiller. Das gilt ausdrücklich abweichend von `docs/features/knowledge-sources.md`, wo Löschen in der Quelle durchwirkt; die typabhängige Ausnahme wird im ADR festgehalten.\n\n**Verhalten gegenüber fremden Zielen.** Die abgerufenen Adressen stammen nicht von der Systemverwaltung, sondern vom Betreiber des Feeds. Daraus folgt:\n\n- **Ein einzelner Eintrag darf den Lauf nicht zu Fall bringen.** Nicht erreichbar, abgewiesen, umgeleitet, unerwarteter Inhaltstyp, zu groß — jeweils überspringen, zählen, protokollieren, weiterlaufen\n- **Abstand zwischen den Abrufen**, konfigurierbar. Ein Lauf, der zwanzig Detailseiten in zwanzig Millisekunden anfragt, sieht von der Gegenseite aus wie das, wogegen ihre Schutzmaßnahmen gerichtet sind\n- **Kennung des abrufenden Programms konfigurierbar**, mit einem wahrheitsgemäßen Standardwert. Etliche Auftritte der öffentlichen Verwaltung stehen hinter einem Bot-Schutz, der Anfragen ohne erkennbare Kennung abweist. Eine Kennung zu setzen, die einen Browser vorgibt, ist ausdrücklich **nicht** gemeint\n- **Obergrenze für die Zahl der Einträge je Lauf** und für die Größe einer abgerufenen Seite\n\n**Zu erwarten ist, dass Detailseiten abgewiesen werden.** Bei der Vorbereitung dieses Epics wurde das an einem realen Auftritt beobachtet: Der Feed war frei abrufbar, die Detailseiten leiteten auf eine Prüfseite des Bot-Schutzes um. Der Lauf muss das als das melden, was es ist — eine Abweisung durch die Gegenstelle —, statt es als Verarbeitungsfehler des Dokuments auszuweisen. Wer den Lauf betrachtet, muss unterscheiden können, ob OPAA ein Dokument nicht verarbeiten konnte oder ob die Gegenstelle es nicht herausgegeben hat.\n\n## Außerhalb des Umfangs\n\n- Anlagen an den Detailseiten — folgt im nächsten Ticket\n- Zeitplan\n- Zielprüfung gegen private Adressbereiche (#267)\n- Zuordnung zu einer Wissensbibliothek (#207)\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf über einen Feed legt je Eintrag ein Dokument mit dem Haupttext der Detailseite an\n- [ ] Navigation, Menü und Fußzeile stehen nicht im übernommenen Text\n- [ ] Ein zweiter Lauf über einen unveränderten Feed ruft keine Detailseite ab\n- [ ] Ein Eintrag, dessen Detailseite abgewiesen wird, wird übersprungen; der Lauf läuft weiter und weist ihn getrennt von Verarbeitungsfehlern aus\n- [ ] Ein aus dem Feed verschwundener Eintrag bleibt im Index\n- [ ] Der Abstand zwischen Abrufen und die Kennung des Programms sind konfigurierbar und in `docs/deployment.md` sowie `.env.example` beschrieben\n- [ ] Kein Test und keine Voreinstellung verweist auf eine reale Adresse",
+      "closes": []
+    },
+    {
+      "number": 466,
+      "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+      "url": "https://github.com/criew/opaa/issues/466",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\n`RSS_FEED` als dritter Wert von `DocumentSourceType`, samt der dafür nötigen Datenbankmigration, und ein Parser, der einen RSS-2.0-Feed in seine Einträge zerlegt. Noch ohne Indizierungslauf — dieses Ticket liefert das Gerüst, das ohne Netz und ohne Datenbank prüfbar ist.\n\n## Motivation\n\nDer Schnitt zwischen Parser und Lauf ist bewusst gesetzt. Ein Feed-Parser ist reine Umformung: Text hinein, Einträge heraus. Er lässt sich gegen eingecheckte Beispieldateien vollständig prüfen, einschließlich der Fälle, die im Betrieb selten und dann folgenreich sind — fehlendes Datum, leerer Feed, unbekannte Zeitzone, fremde Zusatzelemente. Diese Prüfung an einen Lauf zu hängen, der Netz und Datenbank braucht, würde sie langsam und lückenhaft machen.\n\n## Ist-Zustand\n\n`DocumentSourceType` kennt `FILESYSTEM`, `HTTP_DIRECTORY` und `UPLOAD`. Die Werte stehen an drei Stellen: im Java-Enum, im Schema `DocumentSourceType` der OpenAPI-Spezifikation und — das ist die stillste — als `CHECK`-Constraint auf `documents.source_type`. Deren maßgeblicher Stand ist das changeSet `020-allow-upload-source-type` in `db/changelog/changes/020-add-upload-metadata-to-documents.yaml`, das die Constraint aus 004 bereits einmal abgelöst hat. Ein neuer Enum-Wert ohne neue Migration übersetzt sich anstandslos und scheitert erst beim ersten Insert zur Laufzeit.\n\n## Umfang\n\n- `RSS_FEED` in `DocumentSourceType`\n- **Neue Liquibase-Migration**, die die `CHECK`-Constraint auf `documents.source_type` um den Wert erweitert — als **neues changeSet nach dem Muster von `020-allow-upload-source-type`** (Constraint fallen lassen und mit allen Werten neu anlegen); ein bereits ausgeführtes changeSet wird nie bearbeitet. Eingehängt in `db.changelog-master.yaml`\n- `RSS_FEED` im Schema `DocumentSourceType` der OpenAPI-Spezifikation\n- **Feed-Parser** in `io.opaa.indexing`, der aus einem RSS-2.0-Dokument die Einträge mit Titel, Verweis, Beschreibung und Veröffentlichungszeitpunkt liest. Umgesetzt mit den XML-Mitteln des JDK — eine zusätzliche Bibliothek ist dafür nicht nötig\n- **Der Parser wird gegen externe Entitäten abgeriegelt.** Ein Feed ist fremdkontrollierter Inhalt; ein XML-Parser in Voreinstellung liest daraus auf Wunsch des Absenders lokale Dateien. Externe DTDs und Entitäten werden ausgeschaltet\n- **Zeitpunkte robust lesen.** `pubDate` ist im Feed ein RFC-822-Datum, kommt in der Praxis aber in mehreren Schreibweisen vor. Ein nicht lesbares Datum macht den Eintrag nicht ungültig\n- **Nachsicht gegenüber Abweichungen.** Unbekannte Elemente und fremde Namensräume werden übergangen, nicht als Fehler behandelt. Ein Eintrag ohne Verweis wird übersprungen; ein Feed, der sich gar nicht als RSS lesen lässt, scheitert mit verständlicher deutscher Meldung\n\n## Testdaten\n\nDie Beispiel-Feeds unter `backend/src/test/resources/` werden **erfunden und generisch** gehalten — ausgedachte Stelle, `example`-Domänen, ausgedachte Titel. Kein Verweis auf eine reale Einrichtung oder einen realen Feed wird eingecheckt. Der Grund ist nicht Förmlichkeit: Ein Test, der an einer fremden Adresse hängt, wird irgendwann rot, weil dort jemand etwas umgestellt hat, und niemand versteht dann noch, was der Test eigentlich zusichern wollte.\n\nAbgedeckt gehören mindestens: der übliche Feed, ein leerer Feed, ein Eintrag ohne Datum, ein Eintrag ohne Verweis, ein Datum in abweichender Schreibweise, ein Feed mit fremden Namensräumen, ein Feed mit `<enclosure>`, ein Dokument mit äußerer Entität, sowie kein XML.\n\n## Außerhalb des Umfangs\n\n- Der Indizierungslauf, das Abrufen von Detailseiten, Anlagen\n- Änderungen am Frontend\n\n## Abnahmekriterien\n\n- [ ] `RSS_FEED` steht in Java-Enum, OpenAPI-Schema und Datenbank-Constraint\n- [ ] Ein Dokument mit `RSS_FEED` lässt sich in `documents` speichern — geprüft gegen ein von Liquibase erzeugtes Schema, nicht gegen ein von Hibernate erzeugtes, weil nur ersteres die Constraint trägt\n- [ ] Der Parser liest einen üblichen Feed in seine Einträge\n- [ ] Ein Dokument mit äußerer Entität führt weder zu einem Dateizugriff noch zu einem Netzabruf\n- [ ] Ein unlesbares Datum lässt den Eintrag bestehen, statt ihn zu verwerfen\n- [ ] Ein Eintrag ohne Verweis wird übersprungen\n- [ ] Kein Test verweist auf eine reale Adresse",
+      "closes": []
+    },
+    {
+      "number": 465,
+      "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+      "url": "https://github.com/criew/opaa/issues/465",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "size:M"
+      ],
+      "body": "## Zusammenfassung\n\nDer Quellentyp wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf. Die heutige Ableitung „`url` gesetzt heißt Netz, sonst Dateisystem\" entfällt als Entscheidungsgrundlage, bleibt aber als Rückfallverhalten für Aufrufer erhalten, die den Typ nicht mitschicken.\n\n## Motivation\n\nEin dritter Quellentyp ist über das heutige Verfahren nicht erreichbar: „`url` ist gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste. Beide sind eine Adresse im Netz, und die Adresse allein sagt nicht, was hinter ihr liegt. Es aus der Adresse raten zu wollen — etwa an der Endung `.xml` — wäre die schlechteste der möglichen Lösungen: Sie funktioniert bei den geläufigen Fällen und scheitert still bei den übrigen.\n\nZugleich ist der Zeitpunkt der letzte günstige, um die Duplikation zwischen den beiden vorhandenen Executoren einzufangen. Sie ist heute zweifach und damit gerade noch überschaubar; mit dem dritten Weg wird sie dreifach und beginnt auseinanderzulaufen — genau so, wie es bei den Dateiendungslisten schon einmal geschehen ist (#375: eine `.doc`-Datei wurde angenommen, wenn sie aus dem Netz kam, und abgelehnt, wenn sie im Verzeichnis lag).\n\n## Umfang\n\n- **Interface für den Indizierungsweg** in `io.opaa.indexing`, das den Enum-Wert seines Typs kennt und einen Lauf für eine Anfrage ausführt\n- **Registry**, die den zuständigen Weg über den Typ auflöst und bei einem Typ ohne Weg verständlich scheitert. Achtung: `DocumentSourceType` führt inzwischen auch `UPLOAD` — ein Herkunftswert ohne Indizierungslauf. Ob der Anstoß eines Laufs deshalb ein eigenes, engeres Enum bekommt oder `DocumentSourceType` mit benannter Ausnahme verwendet, entscheidet der ADR aus #464; die Umsetzung folgt ihm. Ein neuer Typ wird durch Hinzufügen einer Bean erschlossen, nicht durch Ändern einer bestehenden Fallunterscheidung\n- **`sourceType` im Anstoß eines Laufs**, ergänzt in `backend/src/main/resources/openapi/opaa-api.yaml`. Das DTO wird generiert, nicht geschrieben. Feld optional: Fehlt es, greift die bisherige Ableitung, damit vorhandene Aufrufer und die Oberfläche weiterlaufen\n- **Widerspruchsprüfung.** Ein Typ, der eine Adresse braucht, aber keine bekommt — oder umgekehrt — wird mit einer verständlichen deutschen Meldung abgewiesen, statt einen Lauf zu starten, der nichts findet\n- **Gemeinsame Bestandteile zusammenführen**: die Meldung abgelehnter Formate und die Fortschreibung der Zähler stehen an einer Stelle statt in jedem Executor\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidungen\n- Beans in `IndexingConfiguration` entsprechend verdrahtet\n\n## Außerhalb des Umfangs\n\n- Neue Quellentypen — dieses Ticket ändert kein Verhalten, es ordnet nur die Auswahl\n- Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten\n- Die Zielprüfung aus #267\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf mit ausdrücklich gesetztem `sourceType` wählt den zugehörigen Weg\n- [ ] Ein Lauf ohne `sourceType` verhält sich wie bisher — mit Adresse in das Netz, ohne in das Dateisystem\n- [ ] Ein Typ ohne zugehörigen Weg führt zu einer verständlichen Ablehnung, nicht zu einem `NullPointerException`\n- [ ] Eine Anfrage, deren Typ und Felder einander widersprechen, wird mit deutscher Meldung abgewiesen\n- [ ] Die Meldung abgelehnter Formate steht nur noch an einer Stelle im Code\n- [ ] Die Paritäts-Invariante beider Wege (`DocumentFormatParityTest`) gilt unverändert\n- [ ] Bestehende Tests zu `IndexingController` laufen ohne fachliche Anpassung",
+      "closes": []
+    },
+    {
+      "number": 464,
+      "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+      "url": "https://github.com/criew/opaa/issues/464",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "backend",
+        "size:S"
+      ],
+      "body": "## Zusammenfassung\n\nEin Architecture Decision Record, der festhält, wie ein Quellentyp der Indizierung beschrieben, ausgewählt und erweitert wird. Er geht dem Umbau in #463 voraus und begründet ihn.\n\n## Motivation\n\nZu Ingestion und Konnektoren existiert bislang **kein einziger ADR**. Die 14 vorhandenen betreffen Workflow, Technologiestack, Formatierung, Authentifizierung, DTO-Generierung, Teststrategie, Retrieval-Evaluierung und Produktausrichtung — die Frage, wie Wissen überhaupt hereinkommt, ist nie festgehalten worden.\n\nDas war tragbar, solange es zwei Wege gab, die sich über ein einzelnes Feld unterscheiden ließen. Mit dem dritten Typ entscheidet sich, ob der vierte billig oder wieder teuer wird. Diese Entscheidung gehört aufgeschrieben, bevor sie im Code steht — sonst ist sie in einem Jahr nicht mehr auffindbar und wird als neue Idee wieder aufgemacht.\n\n## Ist-Zustand (geprüft)\n\n- **Auswahl über eine Fallunterscheidung.** `IndexingController` leitet den Typ daraus ab, ob `url` gesetzt ist; `DocumentIndexingService` wiederholt die Unterscheidung mit zwei getrennten Methoden. `IndexingTriggerRequest` in der OpenAPI-Spezifikation hat kein Feld für den Typ.\n- **Kein gemeinsames Interface.** `AsyncIndexingExecutor` und `UrlIndexingExecutor` teilen weder Oberklasse noch Interface und duplizieren ihre Zähl- und Meldelogik sichtbar (`reportRejected` steht in beiden nahezu wortgleich).\n- **Enum am Dokument, nicht an der Quelle.** `DocumentSourceType` markiert das Ergebnis (`FILESYSTEM`, `HTTP_DIRECTORY`), beschreibt aber keinen Weg. Eine Tabelle für Quellen gibt es nicht; die Konfiguration eines Laufs wird pro Aufruf übergeben und danach verworfen.\n- **Eine `CHECK`-Constraint bindet die Datenbank an die Enum-Werte** (`004-add-source-type-to-documents.yaml`). Ein neuer Wert ohne Migration scheitert erst zur Laufzeit beim Insert.\n- **Kein Scheduling** im gesamten Backend.\n\n## Umfang\n\nEin ADR unter `docs/decisions/`, der mindestens festlegt:\n\n- **Wie ein Quellentyp ausgewählt wird** — ausdrücklich übergeben statt aus der Belegung anderer Felder erraten, und wie das rückwärtskompatibel eingeführt wird\n- **Was ein Quellentyp beitragen muss** und was die gemeinsame Verarbeitungskette übernimmt. Die Grenze verläuft an der Frage „woraus entsteht die Liste der zu verarbeitenden Inhalte\" — alles danach (Formatprüfung, Extraktion, Zerlegung, Einbettung) ist typunabhängig und bleibt es\n- **Wie ein Typ registriert wird** und warum die Auflösung über den Enum-Wert läuft statt über eine Fallunterscheidung\n- **Wie typspezifische Konfiguration übergeben wird**, solange es keine Quellen-Tabelle gibt\n- **Welche typabhängigen Verhaltensweisen es geben darf.** Der bekannte Fall: Ob ein in der Quelle verschwundenes Dokument aus dem Index genommen wird, ist **nicht** für alle Typen gleich zu beantworten. Bei einem Verzeichnis ist Verschwinden eine Aussage; bei einem Feed, der nur die jüngsten Einträge führt, ist es keine\n- **Was ausdrücklich offen bleibt** — Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten, Plugin-Fähigkeit\n- Verhältnis zu `docs/discussions/discussion-plugin-architecture.md`: Dieser ADR entscheidet die Plugin-Frage nicht, sondern verbaut sie nur nicht\n\n## Außerhalb des Umfangs\n\n- Der Umbau selbst — der folgt im nächsten Ticket\n- Eine Quellen-Tabelle, Zeitpläne, die Verwahrung von Zugangsdaten\n- Die Entscheidung über eine Plugin-Architektur\n\n## Abnahmekriterien\n\n- [ ] ADR liegt unter `docs/decisions/` mit fortlaufender Nummer und folgt dem Aufbau der vorhandenen ADRs\n- [ ] Status, Kontext, Entscheidung, Konsequenzen und verworfene Alternativen sind ausgeführt\n- [ ] Mindestens eine ernsthaft erwogene und begründet verworfene Alternative ist benannt\n- [ ] Die typabhängige Behandlung verschwundener Dokumente ist entschieden, nicht nur erwähnt\n- [ ] Aus `docs/features/knowledge-sources.md` wird auf den ADR verwiesen",
+      "closes": []
+    },
+    {
+      "number": 463,
+      "title": "Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen",
+      "url": "https://github.com/criew/opaa/issues/463",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "epic",
+        "backend"
+      ],
+      "body": "OPAA kennt heute zwei Wege, an Dokumente zu kommen: ein Verzeichnis im Dateisystem und eine über HTTP erreichbare Verzeichnisliste. Beide sind fest verdrahtet — welcher Weg läuft, entscheidet ein `if` im `IndexingController`, abgeleitet daraus, ob das Feld `url` gesetzt ist oder nicht. Ein dritter Quellentyp passt in diese Konstruktion nicht mehr hinein, denn „URL gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste.\n\nDieses Epic tut deshalb zweierlei: Es macht den Quellentyp zu einer **ausdrücklichen, erweiterbaren Größe** und erschließt als ersten Nutzer dieser Erweiterbarkeit **RSS-Feeds**. Der zweite Teil ist der Praxistest des ersten — eine Erweiterbarkeit, die nie erweitert wurde, ist eine Behauptung.\n\n### Hintergrund\n\nBehörden veröffentlichen laufend gepflegte Bestände über RSS: Erlasse, Schreiben, Rundverfügungen, Pressemitteilungen. Diese Feeds werden vom **Government Site Builder (GSB)** erzeugt, dem CMS des Bundes, und liefern **Standard-RSS 2.0** ohne proprietäre Erweiterungen. Ein RSS-Konnektor ist damit nicht auf ein Haus zugeschnitten, sondern trägt für jede Stelle, die einen Feed anbietet.\n\nDer entscheidende Unterschied zur bestehenden Verzeichnisliste: **Ein Feed verweist nicht auf Dateien.** Sein `<link>` zeigt auf eine HTML-Detailseite, `<enclosure>` fehlt in der Praxis. Der Feed ist ein Änderungsmelder, kein Dateiverzeichnis. Was indiziert werden soll — der Artikeltext und die an der Detailseite hängenden Anlagen — muss in einem zweiten Schritt aus der Seite gewonnen werden. Genau dieser Schritt ist es, der ein Quellentypmodell nötig macht, das mehr kann als „Liste von Datei-URLs\".\n\nSpezifikation: [`docs/features/knowledge-sources.md`](../blob/main/docs/features/knowledge-sources.md), insbesondere „Erreichbare Verzeichnislisten im Netz (gebaut)\" und „Selbst aktualisierende Wissensblöcke\". Verarbeitungskette: [`docs/features/data-indexing-rag.md`](../blob/main/docs/features/data-indexing-rag.md).\n\n### Phasen\n\n**Phase 1 — Das Modell tragfähig machen.** Zuerst der ADR, der festhält, wie ein Quellentyp künftig beschrieben wird, dann die Ablösung der `if`-Auswahl durch eine Registry. Diese Reihenfolge ist nicht Förmlichkeit: Zu Ingestion und Konnektoren existiert bislang **kein einziger ADR**, und der dritte Typ ist der Punkt, an dem sich entscheidet, ob der vierte billig wird oder wieder teuer. Wer hier mit dem Feature anfängt, baut das dritte `if` und zementiert die Duplikation.\n\n**Phase 2 — RSS als erster neuer Typ.** Enum, Migration und Feed-Parser bilden das Gerüst; der Executor macht daraus einen laufenden Weg. Der Schnitt zwischen beiden ist bewusst: Der Parser ist ohne Netz und ohne Datenbank prüfbar, der Executor braucht beides.\n\n**Phase 3 — Anlagen und Oberfläche.** Das Anlagenprofil trennt „welche Links einer Detailseite sind Dokumente\" von der übrigen Auflösungslogik, damit das GSB-Muster eine Konfiguration bleibt und keine Sonderbehandlung im Code. Zuletzt wird der Typ in der Verwaltungsoberfläche wählbar und die Spezifikation nachgeführt.\n\n### Abhängigkeiten\n\n```\n#464 ──> #465 ──> #466 ──> #467 ──> #468 ──┬──> #469\n ADR    Registry   Typ+     Executor  Anlagen │    Frontend\n                   Parser                     └──> #470\n                                                   Doku\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Ein neuer Quellentyp lässt sich ergänzen, ohne eine bestehende Fallunterscheidung anzufassen — belegt dadurch, dass `RSS_FEED` genau so hinzugekommen ist\n- [ ] Der Quellentyp wird ausdrücklich übergeben, nicht aus der Belegung anderer Felder erraten\n- [ ] Ein RSS-Feed wird indiziert: Artikeltext der Detailseiten und die daran hängenden Anlagen landen als Dokumente im Index\n- [ ] Ein unveränderter Feed erzeugt keinen erneuten Abruf der Detailseiten\n- [ ] Ein einzelnes nicht erreichbares oder abgewiesenes Item bricht den Lauf nicht ab\n- [ ] Die Systemverwaltung kann den Quellentyp in der Oberfläche wählen\n- [ ] `docs/features/knowledge-sources.md` beschreibt den gebauten Stand, nicht das Zielbild\n\n### Außerhalb des Umfangs (separate Epics)\n\n- **Zeitplan für Läufe.** Ein Feed ohne wiederkehrenden Lauf ist halb so viel wert. Scheduling-Infrastruktur ist im Backend zwar vorhanden (`@EnableScheduling`, genutzt vom `AuditRetentionScheduler`), aber es gibt keinen Zeitplan für Indizierungsläufe und keine Antwort auf die verteilte Ausführung bei mehreren Instanzen. Das ist ein eigenes Vorhaben und nicht Teil dieses Epics. Bis dahin wird ein RSS-Lauf angestoßen wie jeder andere.\n- **Zielprüfung gegen private Adressbereiche** — #267. Für RSS verschärft sich die Lage, weil die abgerufenen Adressen nicht mehr von der Systemverwaltung stammen, sondern vom Betreiber des Feeds. Das Ticket bleibt eigenständig; dieses Epic setzt es nicht voraus, benennt die Verschärfung aber.\n- **Zuordnung einer Quelle zu einer Wissensbibliothek** — #207.\n- **Speicherung von Quellkonfigurationen** (Adresse, Zugang, Zeitplan als dauerhafte Größe statt als Feld im Anstoß eines Laufs). Heute wird alles pro Aufruf übergeben; das zu ändern gehört mit dem Zeitplan zusammen.\n- Weitere Quellentypen (Netzlaufwerke, Wikis, Postfächer).\n\n### Referenzen\n\n- `docs/features/knowledge-sources.md`\n- `docs/features/data-indexing-rag.md`\n- `docs/discussions/discussion-plugin-architecture.md` — die längerfristige Frage, ob Konnektoren einmal Plugins werden; dieses Epic greift ihr nicht vor",
+      "closes": []
+    },
+    {
+      "number": 461,
+      "title": "Roadmap-Meilenstein 1 (31.08.2026) in Produktvision aufnehmen",
+      "url": "https://github.com/criew/opaa/issues/461",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "size:S"
+      ],
+      "body": "Ergänzt die Produktvision um den ersten datierten Meilenstein (31.08.2026), der zwischen bugpuritz und criew abgestimmt wurde.\n\n## Inhalt\n\n- Neuer Abschnitt „Roadmap\" in `docs/VISION.md` mit Meilenstein 1: UI-Redesign, Anlegen von Wissensdatenbanken (Konnektoren + Upload), Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen\n- Bewusste Einschränkung für den Meilenstein dokumentiert: Assets/Spaces-Konzept wird umgesetzt, volle Berechtigungsproblematik folgt später\n- Arbeitsteilung festgehalten: bugpuritz (UI-Design), criew (Wissensbibliotheken, Konnektoren, Verlinkung zu Spaces)\n- Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im Abschnitt „Anmeldung und Identität\"\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 488,
+      "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+      "url": "https://github.com/criew/opaa/pull/488",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "frontend"
+      ],
+      "body": "## Zusammenfassung\n\n`LibraryListResponse` traegt je Eintrag jetzt `documentCount` (OpenAPI-Spec zuerst, ADR-0006). Die Zaehlung laeuft ueber eine neue gruppierte Query (`DocumentRepository#countByLibraryIdIn`) fuer die ganze Seite auf einmal, statt `countByLibraryId` einmal pro Bibliothek aufzurufen (kein N+1). Die Bibliotheksuebersicht (`LibraryManagementPage`) zeigt die Zahl je Bibliothek direkt in der eingeklappten Kopfzeile, ohne die Karte aufklappen zu muessen. Der bisherige Dokumentzaehler in der aufgeklappten Detailansicht wurde entfernt, da er nun redundant zur Kopfzeile ist.\n\nTeil von Epic #486 (Phase 2, laut Epic-Beschreibung unabhaengig von den uebrigen Tickets).\n\n## Zugehörige Issues\n\nCloses #477\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Backend: `spotlessCheck`, `build`/`test`; Frontend: `format:check`, `lint`, `build`, `test` — alle gruen)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, kein Bugfix\n- [ ] Dokumentation aktualisiert (falls zutreffend) — kein Doku-Bedarf für diese Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        477
+      ],
+      "additions": 154,
+      "deletions": 10,
+      "changed_files": 9
+    },
+    {
+      "number": 487,
+      "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+      "url": "https://github.com/criew/opaa/pull/487",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "enhancement"
+      ],
+      "body": "## Zusammenfassung\n\nADR-0018 legt fest, dass die dauerhafte Quellkonfiguration in der Wissensbibliothek selbst lebt: Jede Bibliothek trägt genau einen Quellentyp (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration, gewählt bei der Anlage aus einem Template und danach unveränderlich. Der Indizierungsanstoß reduziert sich auf den Verweis auf die Bibliothek (Auflösung über die Registry aus #465); die Oberfläche bündelt Upload, Konfiguration und Anstoß an der Bibliothek. Damit wird Entscheidung 4 aus ADR-0017 planmäßig abgelöst; Registry, Enum-Grenzen und Löschsemantik aus ADR-0017 bleiben in Kraft. Gemischt gespeiste Bibliotheken entfallen; Zugangsdaten-Persistenz (#483), Pfad-Allowlist/Berechtigung (#484) und Zeitplan (#485) sind als Folgetickets benannt.\n\nGrundlage von Epic #486.\n\n## Zugehörige Issues\n\nCloses #475\n\nTeil von Epic #486; Verhältnis zu Epic #463 (Registry #465 als Grundlage, #469 wird umformuliert) ist im ADR und im Epic beschrieben.\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code, Claude Fable 5)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011suLbBhNcCeU73UauvLDM6",
+      "closes": [
+        475
+      ],
+      "additions": 220,
+      "deletions": 0,
+      "changed_files": 2
+    },
+    {
+      "number": 474,
+      "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+      "url": "https://github.com/criew/opaa/pull/474",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "## Zusammenfassung\n\n`RSS_FEED` wird dritter Wert von `DocumentSourceType` (Java-Enum, OpenAPI-Schema `DocumentSourceType`), begleitet von einer neuen Liquibase-Migration, die `chk_documents_source_type` entsprechend erweitert. Zusätzlich ein `RssFeedParser`, der ein RSS-2.0-Dokument mit JDK-eigenem StAX in seine Einträge (Titel, Verweis, Beschreibung, Veröffentlichungszeitpunkt) zerlegt.\n\nNoch **kein** Indizierungslauf – das Gerüst ist bewusst ohne Netz und ohne Datenbank prüfbar (#466, ADR-0017). Der Lauf folgt in #467. `IndexingSourceType` (aus #465) bleibt unangetastet – `RSS_FEED` wird dort erst in #467 registriert.\n\n## Entscheidungen\n\n- **Migration 024** (`024-allow-rss-feed-source-type.yaml`) folgt exakt dem Muster von `020-allow-upload-source-type`: Constraint droppen, mit allen vier Werten neu anlegen. Das ausgeführte changeSet 020 wurde nicht angefasst. Fixture `test-master-through-023.yaml` neu angelegt (Analogon zu `test-master-through-020.yaml`) für den isolierten Migrationstest.\n- **Parser-Grenze** folgt ADR-0017, Entscheidung 2: Der Parser liest ausschließlich Titel/Verweis/Beschreibung/Datum aus `<item>`; die Auflösung der Detailseite ist bewusst außerhalb dieses Tickets (#467/#468).\n- **XXE-Härtung**: `XMLInputFactory.SUPPORT_DTD` und `IS_SUPPORTING_EXTERNAL_ENTITIES` auf `false` – Standard-StAX-Gegenmaßnahme (OWASP XXE Prevention Cheat Sheet). Ein Test mit externer Entität (Fixture `external-entity.xml`) belegt, dass der referenzierte (nicht existierende) Pfad nie in einer Fehlermeldung auftaucht, also nie aufzulösen versucht wurde.\n- **pubDate**: erst `DateTimeFormatter.RFC_1123_DATE_TIME`, danach eine Reihe von Fallback-Mustern (ohne Wochentag, ohne Sekunden, zweistelliges Jahr) sowie eine Umschreibung gängiger Zeitzonen-Kürzel (GMT/UT/UTC/EST/…) in numerische Offsets. Ein nicht lesbares Datum liefert `Optional.empty()`, der Eintrag bleibt bestehen.\n- **Nachsicht**: Elemente aus fremden Namensräumen (z. B. `atom:link`, `media:content`, `content:encoded`) werden ignoriert (nur Elemente ohne Namensraum direkt unter `<item>` zählen); ein Eintrag ohne `<link>` wird übersprungen; ein Dokument, das gar nicht als XML lesbar ist, scheitert mit einer deutschen, nutzerseitigen Fehlermeldung (`RssFeedParseException`), die später im Jobstatus (#467) landet.\n- Fixtures unter `backend/src/test/resources/rss-feeds/` sind vollständig erfunden: `example.invalid`-Domänen, ausgedachte „Beispielbehörde\", ausgedachte Titel. Kein Bezug zu einer realen Einrichtung.\n\n## Zugehörige Issues\n\nCloses #466\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Testergebnisse\n\n`./gradlew spotlessApply build test` (Backend) – **BUILD SUCCESSFUL**, auch nach dem Rebase auf `origin/main` (inkl. bereits gemergtem #465/PR #473).\n\n- `RssFeedParserTest`: 9/9 grün (üblicher Feed, leerer Feed, Eintrag ohne Datum, Eintrag ohne Verweis, abweichendes Datumsformat, fremde Namensräume, `enclosure`, externe Entität, kein XML).\n- `Migration024AllowRssFeedSourceTypeTest`: 3 Tests, lokal ohne Docker übersprungen (`@Testcontainers(disabledWithoutDocker = true)`, wie alle bestehenden Migrationstests in diesem Modul) – läuft in CI mit Docker.\n\nWährend der Entwicklung zwei reale Fehlschläge behoben, siehe Commit-Historie: ein `multi-catch`-Compile-Fehler (`DateTimeParseException` ist Unterklasse von `DateTimeException`) und ein Normalisierungsfehler bei Zeitzonen-Kürzeln (fehlendes Leerzeichen vor dem numerischen Offset), der `alternateDateFormatWithoutWeekdayAndWithZoneAbbreviationIsStillParsed` real scheitern ließ, bevor er behoben wurde.\n\n## Checkliste\n\n- [x] Tests bestehen lokal\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend) – kein Doku-Update nötig, ADR-0017 ist bereits auf main\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Claude Agent SDK)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        466
+      ],
+      "additions": 837,
+      "deletions": 2,
+      "changed_files": 22
+    },
+    {
+      "number": 473,
+      "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+      "url": "https://github.com/criew/opaa/pull/473",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "## Zusammenfassung\n\nSetzt ADR-0017 um: der Quellentyp eines Indizierungslaufs wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf, statt aus der Belegung von `url` erraten zu werden.\n\n- `IndexingTriggerRequest` bekommt ein optionales Feld `sourceType` mit dem neuen, engeren Enum `IndexingSourceType` (`FILESYSTEM`, `HTTP_DIRECTORY`). `RSS_FEED` kommt erst in #466. `UPLOAD` (Herkunft eines Dokuments, kein Lauftyp) ist bewusst **nicht** in `IndexingSourceType` enthalten und kann über `/api/v1/indexing/trigger` nie angefordert werden.\n- Fehlt `sourceType`, gilt weiterhin die bisherige Ableitung (`url` gesetzt → `HTTP_DIRECTORY`, sonst → `FILESYSTEM`) — konsolidiert an genau einer Stelle in `DocumentIndexingService`, nicht mehr verteilt über Controller und Service.\n- Neues gemeinsames Interface `SourceIndexingExecutor`, implementiert von `AsyncIndexingExecutor` (`FILESYSTEM`) und `UrlIndexingExecutor` (`HTTP_DIRECTORY`). `IndexingSourceExecutorRegistry` löst den Executor über den Quellentyp auf; ein Typ ohne registrierten Executor scheitert mit einer `IllegalStateException` statt einer `NullPointerException`.\n- Eine Anfrage, deren `sourceType` den übrigen Feldern widerspricht (z. B. `HTTP_DIRECTORY` ohne `url`, oder `FILESYSTEM` mit `url`), wird mit einer deutschen 400-Meldung abgewiesen.\n- Die strukturgleiche `reportRejected`-Duplikation zwischen beiden Executoren (unterschiedliche Parametertypen `List<Path>` vs. `List<CrawledFileEntry>`) ist im neuen `RejectedDocumentReporter` zusammengeführt.\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidung zwischen Dateisystem- und URL-Lauf; der Controller ruft nur noch einen einzigen Einstiegspunkt auf, der die Registry befragt. Beans dafür sind in `IndexingConfiguration` verdrahtet.\n- DTOs bleiben generiert (ADR-0006): `IndexingSourceType` ist in `opaa-api.yaml` als Schema ergänzt und in `build.gradle.kts` über `typeMappings`/`importMappings`/den `doLast`-Cleanup auf das Domain-Enum in `io.opaa.indexing` gemappt.\n\n**Abweichung von \"ohne fachliche Anpassung\":** `IndexingControllerTest` musste mechanisch angepasst werden, weil der Controller jetzt einen statt zwei unterscheidbaren Methodenaufrufen auf `DocumentIndexingService` macht (ADR-0017 verlangt ausdrücklich, dass der Controller seine Fallunterscheidung verliert). Jedes bisherige Szenario (Status, Fehlerantworten, welche Felder beim URL-Lauf ankommen) ist unverändert erhalten geblieben — nur das Mock-Ziel wechselte von zwei Methoden auf eine. Neue Tests für explizites `sourceType`, den Widerspruchsfall und die fehlende Executor-Registrierung wurden ergänzt.\n\n## Zugehörige Issues\n\nCloses #465\nTeil von #463\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [x] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build test` — grün, keine Fehlschläge)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — nicht zutreffend, kein Bugfix\n- [ ] Dokumentation aktualisiert (falls zutreffend) — ADR-0017 ist bereits gemergt, keine weitere Doku-Änderung nötig\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+      "closes": [
+        465
+      ],
+      "additions": 626,
+      "deletions": 151,
+      "changed_files": 14
+    },
+    {
+      "number": 472,
+      "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+      "url": "https://github.com/criew/opaa/pull/472",
+      "author": "criew",
+      "labels": [
+        "documentation",
+        "backend"
+      ],
+      "body": "## Zusammenfassung\n\nNeuer Architecture Decision Record (ADR-0015), der festhält, wie ein Quellentyp der Indizierung\nkünftig beschrieben, ausgewählt, registriert und erweitert wird — Voraussetzung für den geplanten\nRSS-Feed-Konnektor (Epic #463). `docs/features/knowledge-sources.md` verweist an passender Stelle auf\nden ADR.\n\n## Zugehörige Issues\n\nCloses #464\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste laut AGENTS.md nicht anwendbar)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Claude Agent SDK)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+      "closes": [
+        464
+      ],
+      "additions": 278,
+      "deletions": 1,
+      "changed_files": 2
+    },
+    {
+      "number": 462,
+      "title": "docs(vision): Roadmap-Meilenstein 1 zum 31.08.2026 ergänzen",
+      "url": "https://github.com/criew/opaa/pull/462",
+      "author": "criew",
+      "labels": [
+        "documentation"
+      ],
+      "body": "## Zusammenfassung\n\nErgänzt `docs/VISION.md` um den ersten datierten Roadmap-Meilenstein (31.08.2026), abgestimmt zwischen bugpuritz und criew: UI-Redesign, Anlegen von Wissensdatenbanken über Konnektoren und Upload, Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen. Die bewusste Einschränkung (Berechtigungsproblematik folgt später) und die Arbeitsteilung sind dokumentiert.\n\nZusätzlich eine Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im bestehenden Abschnitt „Anmeldung und Identität\".\n\n## Zugehörige Issues\n\nCloses #461\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, kein Code betroffen)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Sonnet 5)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+      "closes": [
+        461
+      ],
+      "additions": 33,
+      "deletions": 0,
+      "changed_files": 2
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 489,
+      "title": "feat(library): Quellentyp und Quellkonfiguration an der Bibliothek",
+      "url": "https://github.com/criew/opaa/pull/489",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 105,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/32198712720",
+    "title": "docs(sources): Feed-Quellen und Quellentypmodell in der Spezifikation…",
+    "finished_at": "2026-08-18T23:54:58Z"
+  },
+  "highlights": {
+    "486": [
+      {
+        "nummer": 476,
+        "text": "Quellentyp und Quellkonfiguration an Bibliothek gespeichert"
+      },
+      {
+        "nummer": 480,
+        "text": "Bibliotheksanlage mit Typauswahl aus Templates"
+      },
+      {
+        "nummer": 481,
+        "text": "Bibliotheksdetailseite mit typspezifischem Bereich"
+      },
+      {
+        "nummer": 483,
+        "text": "Zugangsdaten der Quellkonfiguration verschlüsselt verwahrt"
+      }
+    ],
+    "463": [
+      {
+        "nummer": 466,
+        "text": "RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds"
+      },
+      {
+        "nummer": 467,
+        "text": "RSS-Feeds indizieren mit Detailseiten-Übernahme"
+      },
+      {
+        "nummer": 469,
+        "text": "Quellentyp im Indizierungsformular wählbar"
+      },
+      {
+        "nummer": 468,
+        "text": "Anlagen an Detailseiten mit Profilen indizieren"
+      }
+    ],
+    "sonstiges": [
+      {
+        "nummer": 462,
+        "text": "Roadmap-Meilenstein 1 zum 31.08.2026 dokumentiert"
+      }
+    ]
+  },
+  "epics": [
+    {
+      "number": 486,
+      "title": "feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek",
+      "tickets_total": 10,
+      "tickets_closed": 2,
+      "opened": [
+        {
+          "number": 484,
+          "title": "feat(security): Pfad-Allowlist und Berechtigung für Konnektorbibliotheken",
+          "url": "https://github.com/criew/opaa/issues/484",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M",
+            "security"
+          ],
+          "body": "## Kontext\n\nNach ADR-0018 darf zunächst jeder mit Anlage-Recht Bibliotheken jedes Typs anlegen. Damit kann jede Person beliebige Serverpfade indizieren lassen (Konfigurationsdateien, Uploads fremder Bibliotheken) und beliebige interne Adressen abrufen lassen — die SSRF-Härtung #267 weitet sich von der Systemverwaltung auf alle Nutzer aus. Diese Einschränkung wurde bewusst aufgeschoben und ist **vor einem Mehrbenutzer-Produktivbetrieb** nachzuholen.\n\n## Umfang\n\n- Pfad-Allowlist für `FILESYSTEM`-Bibliotheken (konfigurierte Basisverzeichnisse; Pfade außerhalb → 400)\n- Entscheidung und Umsetzung, welche Rolle Konnektorbibliotheken anlegen darf (z. B. `SYSTEM_ADMIN` oder dediziertes Recht)\n- Zusammenspiel mit #267 (Zielprüfung gegen private Adressbereiche) benennen; #267 bleibt eigenständig\n\n## Abnahmekriterien\n\n- [ ] Pfade außerhalb der Allowlist werden bei Anlage und Lauf abgelehnt\n- [ ] Berechtigungsregel umgesetzt und dokumentiert\n- [ ] Backend-Format, Build und Tests bestehen",
+          "closes": []
+        },
+        {
+          "number": 483,
+          "title": "feat(security): Zugangsdaten der Quellkonfiguration sicher verwahren",
+          "url": "https://github.com/criew/opaa/issues/483",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M",
+            "security"
+          ],
+          "body": "## Kontext\n\nMit der Quellkonfiguration an der Bibliothek werden Zugangsdaten erstmals **persistent** (bisher nur transient im Trigger-Request). ADR-0018 legt die Grundsätze fest; dieses Ticket setzt die Ablage um.\n\n## Umfang\n\n- Verschlüsselte Ablage der Zugangsdaten (Schlüssel aus Umgebungsvariable, nicht im Repo; Verfahren im ADR bzw. hier festhalten)\n- Zugangsdaten erscheinen in keiner API-Antwort und keinem Log; Setzen/Ändern über die API als Nur-Schreiben-Feld\n- Wechsel der Zugangsdaten ohne Ausfall eines geplanten Laufs\n\n## Abnahmekriterien\n\n- [ ] Zugangsdaten liegen nicht im Klartext in der Datenbank\n- [ ] Kein API-Response und kein Logeintrag enthält Zugangsdaten (Tests)\n- [ ] Backend-Format, Build und Tests bestehen",
+          "closes": []
+        },
+        {
+          "number": 482,
+          "title": "docs(sources): Spezifikation auf Bibliothekstypen nachführen",
+          "url": "https://github.com/criew/opaa/issues/482",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "size:M"
+          ],
+          "body": "## Kontext\n\n`docs/features/knowledge-sources.md` beschreibt gemischt gespeiste Bibliotheken („Upload und Konnektor können in derselben Bibliothek zusammentreffen\", „mehrere Quellen in dieselbe Bibliothek\") und ein Konnektor-mit-Quellen-Zielbild. Beides widerspricht nach ADR-0018 dem gebauten Modell.\n\n## Umfang\n\n- `knowledge-sources.md` auf die Ein-Typ-Regel nachführen: Bibliothekstypen, Anlage aus Template, Konfiguration an der Bibliothek, (gebaut)-Markierungen aktualisieren\n- Abschnitt „Erreichbare Verzeichnislisten im Netz\": Auslösung und Zuordnung an den neuen Stand anpassen; beantwortete offene Fragen (Proxy/Anmeldung in die Konfiguration) in „Geklärte Fragen\" überführen\n- Querverweise in `spaces-and-assets.md` / `data-indexing-rag.md` prüfen\n- Issue #207 kommentieren/anpassen: die 1:1-Zuordnung ist strukturell erzwungen, offen bleibt die Obergrenze der Freigabe\n\n## Abnahmekriterien\n\n- [ ] Spezifikation beschreibt den gebauten Stand, nicht das alte Zielbild\n- [ ] Keine Aussage über gemischt gespeiste Bibliotheken mehr; Löschsemantik verweist auf ADR-0017/0018",
+          "closes": []
+        },
+        {
+          "number": 481,
+          "title": "feat(frontend): Bibliotheksdetailseite mit typspezifischem Bereich",
+          "url": "https://github.com/criew/opaa/issues/481",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "frontend",
+            "size:L"
+          ],
+          "body": "## Kontext\n\nDetails einer Bibliothek liegen heute in aufklappbaren Karten der `LibraryManagementPage`; Uploads laufen über die separate `DocumentsPage`, der Indizierungsanstoß über den Admin-Drawer. Nach ADR-0018 bündelt eine **Bibliotheksdetailseite** beides typabhängig.\n\n## Umfang\n\n- Neue Route `/libraries/:id` mit Detailseite: Stammdaten, Freigaben, Dokumentliste, Dokumentzahl\n- Typspezifischer Bereich: `UPLOAD` → Upload-Zone + Dokumentverwaltung (Funktionsumfang der heutigen `DocumentsPage`); Konnektortypen → Konfigurationsanzeige, Knopf „Jetzt indizieren\", Status/letzter Lauf (Polling wie heute im `indexingStore`)\n- Ablösung: `DocumentsPage` (Route `/documents`) und der Abschnitt „Dokumentenindizierung\" im `AdminDrawer` entfallen; Navigation nachziehen\n- Barrierefreiheit und deutsche Oberflächentexte\n\n## Abhängig von\n\nSchema/API-, Trigger- und Anlagedialog-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Upload und Dokumentlöschung funktionieren auf der Detailseite einer `UPLOAD`-Bibliothek\n- [ ] Konnektorbibliothek zeigt Konfiguration und stößt einen Lauf an; Fortschritt sichtbar\n- [ ] `/documents` und Admin-Drawer-Indizierung sind entfernt, keine toten Links\n- [ ] Lint, Build und Tests bestehen; E2E-Anpassung mit dem QA-Engineer abgestimmt",
+          "closes": []
+        },
+        {
+          "number": 480,
+          "title": "feat(frontend): Bibliotheksanlage mit Typauswahl aus Templates",
+          "url": "https://github.com/criew/opaa/issues/480",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "frontend",
+            "size:M"
+          ],
+          "body": "## Kontext\n\nDie Bibliotheksanlage (`CreateLibraryDialog`) kennt heute nur Name, Beschreibung und Sichtbarkeit. Nach ADR-0018 beginnt die Anlage mit der Auswahl eines Templates = Quellentyps.\n\n## Umfang\n\n- Typauswahl bei der Anlage (Upload / Dateisystem-Verzeichnis / Web-Adresse; `RSS_FEED` erscheint automatisch, sobald das Backend ihn anbietet — Typenliste nicht im Frontend verdrahten)\n- Typspezifische Konfigurationsfelder im Anlagedialog (Pfad bzw. URL, Proxy, Anmeldedaten, SSL-Schalter); Feldtexte auf Deutsch\n- Nach der Anlage ist der Typ sichtbar, aber nicht änderbar\n\n## Abhängig von\n\nSchema/API-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Anlage jedes Typs mit gültiger Konfiguration möglich; Validierungsfehler werden angezeigt\n- [ ] Typ ist nach Anlage nicht änderbar\n- [ ] Lint, Build und Tests (Vitest, MSW-Handler nachgezogen) bestehen",
+          "closes": []
+        },
+        {
+          "number": 479,
+          "title": "feat(library): Upload nur in UPLOAD-Bibliotheken und Löschverhalten für Konnektorbibliotheken",
+          "url": "https://github.com/criew/opaa/issues/479",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Kontext\n\nMit der Ein-Typ-Regel aus ADR-0018 ist der Upload-Endpunkt nur noch für `UPLOAD`-Bibliotheken sinnvoll, und das Löschverhalten muss je Typ unterscheiden: eine Einzellöschung von Konnektor-Dokumenten ist wirkungslos (der nächste Lauf nimmt das Dokument wieder auf, ein Ausschluss-Mechanismus existiert noch nicht), und die heutige generelle Löschsperre (`deleteLibrary` blockt bei > 0 Dokumenten) würde Konnektorbibliotheken faktisch unlöschbar machen.\n\n## Umfang\n\n- `POST /libraries/{id}/documents` nur für `UPLOAD`-Bibliotheken; sonst 409 mit nutzerseitiger Fehlermeldung\n- Löschen einer Konnektorbibliothek (`FILESYSTEM`/`HTTP_DIRECTORY`/`RSS_FEED`): entfernt Dokumentzeilen und Chunks im Vektorspeicher mit; `UPLOAD` behält die bestehende Sperre\n- `DELETE .../documents/{documentId}` bleibt auf `UPLOAD`-Dokumente beschränkt (heutiges Verhalten)\n\n## Abnahmekriterien\n\n- [ ] Upload in eine Konnektorbibliothek → 409\n- [ ] Löschen einer Konnektorbibliothek entfernt Dokumente und Chunks; Protokolleintrag vorhanden\n- [ ] Löschen einer `UPLOAD`-Bibliothek mit Dokumenten bleibt blockiert\n- [ ] Backend-Format, Build und Tests bestehen",
+          "closes": []
+        },
+        {
+          "number": 478,
+          "title": "feat(indexing): Indizierungsanstoß je Bibliothek aus gespeicherter Konfiguration",
+          "url": "https://github.com/criew/opaa/issues/478",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Kontext\n\nHeute erhält `POST /api/v1/indexing/trigger` die komplette Quellkonfiguration im Request und errät den Weg aus der Belegung von `url`. Nach ADR-0018 liegen Typ und Konfiguration an der Bibliothek; der Anstoß reduziert sich auf den Verweis auf die Bibliothek.\n\n## Umfang\n\n- Anstoß je Bibliothek (z. B. `POST /api/v1/libraries/{libraryId}/indexing`): Typ und Konfiguration werden aus der Bibliothek gelesen, der Executor über die Registry aus #465 aufgelöst\n- `UPLOAD`-Bibliothek → 409 (kein Lauf-Typ)\n- Nebenläufigkeit: ein laufender Job **je Bibliothek** statt global einer (`IndexingJobService`)\n- Der alte Endpunkt `/api/v1/indexing/trigger` samt `url`-Fallback aus ADR-0017 entfällt; Status-Endpunkt entsprechend nachziehen\n- Berechtigung: mindestens `EDITOR` an der Bibliothek (wie heute `requireEditableLibrary`), Rate-Limit bleibt\n\n## Abhängig von\n\n#465 (Registry), Schema-Ticket dieses Epics\n\n## Abnahmekriterien\n\n- [ ] Lauf einer `FILESYSTEM`- und einer `HTTP_DIRECTORY`-Bibliothek nutzt ausschließlich die gespeicherte Konfiguration\n- [ ] `UPLOAD`-Bibliothek → 409; zweiter Anstoß derselben Bibliothek während eines Laufs → 409; Läufe verschiedener Bibliotheken parallel möglich\n- [ ] Alte Trigger-Felder sind aus der OpenAPI-Spec entfernt\n- [ ] Backend-Format, Build und Tests bestehen",
+          "closes": []
+        },
+        {
+          "number": 477,
+          "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+          "url": "https://github.com/criew/opaa/issues/477",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "frontend",
+            "size:S"
+          ],
+          "body": "## Kontext\n\n`LibraryResponse` (Detail) führt `documentCount`, `LibraryListResponse` nicht. Die Bibliotheksübersicht soll je Bibliothek die Dokumentzahl zeigen, ohne jede Karte aufklappen zu müssen.\n\n## Umfang\n\n- `documentCount` in `LibraryListResponse`-Einträge aufnehmen (OpenAPI-Spec zuerst, ADR-0006); Zählung ohne N+1 (gruppierte Query statt `countByLibraryId` je Zeile)\n- Anzeige in der Übersicht (`LibraryManagementPage`)\n\n## Abnahmekriterien\n\n- [ ] Liste liefert je Bibliothek die Dokumentzahl; eine Abfrage, kein N+1\n- [ ] Übersicht zeigt die Zahl je Bibliothek\n- [ ] Backend- und Frontend-Checks bestehen",
+          "closes": []
+        },
+        {
+          "number": 476,
+          "title": "feat(library): Quellentyp und Quellkonfiguration an der Bibliothek (Schema, Entity, API)",
+          "url": "https://github.com/criew/opaa/issues/476",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:L"
+          ],
+          "body": "## Kontext\n\nNach ADR-0018 trägt eine Wissensbibliothek ihren Quellentyp und dessen Konfiguration selbst. `KnowledgeLibrary` ist heute ein reiner Container ohne Quellenbezug.\n\n## Umfang\n\n- Liquibase-Migration: `knowledge_libraries.source_type` (NOT NULL, CHECK-Constraint analog `chk_documents_source_type`), Backfill des Bestands auf `UPLOAD`; typspezifische Konfigurationsspalten (Verzeichnispfad bzw. URL, Proxy, Zugangsdaten, SSL-Schalter)\n- Entity + Service: Typ bei Anlage Pflicht, danach unveränderlich; Validierung der Konfiguration je Typ (Pfad nur bei `FILESYSTEM`, URL nur bei `HTTP_DIRECTORY`/`RSS_FEED`, nichts bei `UPLOAD`)\n- OpenAPI-Spezifikation: `LibraryRequest`/`LibraryResponse`/`LibraryUpdateRequest` um `sourceType` und Konfiguration erweitern (DTO-Generierung nach ADR-0006, `typeMappings` für das neue Enum); **Zugangsdaten erscheinen in keiner Antwort**\n- Persönliche Bibliotheken (`ensurePersonalLibrary`) und System-Library werden `UPLOAD`\n\n**Nicht enthalten:** Verhalten des Indizierungsanstoßes (Folgeticket), Frontend, Verschlüsselung der Zugangsdaten (eigenes Ticket).\n\n## Abnahmekriterien\n\n- [ ] Bestehende Bibliotheken sind nach der Migration `UPLOAD`\n- [ ] Anlage mit Typ + gültiger Konfiguration je Typ; ungültige Kombinationen → 400\n- [ ] Typwechsel über die Update-API wird abgelehnt\n- [ ] Zugangsdaten tauchen in keiner API-Antwort auf (Test)\n- [ ] Backend-Format, Build und Tests bestehen",
+          "closes": []
+        },
+        {
+          "number": 475,
+          "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+          "url": "https://github.com/criew/opaa/issues/475",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "enhancement",
+            "size:M"
+          ],
+          "body": "## Kontext\n\nDie Konfiguration eines Indizierungslaufs ist heute request-basiert: `IndexingTriggerRequest` trägt `url`, `proxy`, `credentials`, `insecureSsl` pro Aufruf, der Dateisystempfad ist global (`opaa.indexing.document-path`). [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) hat diesen Zustand in Entscheidung 4 ausdrücklich als Übergang deklariert, bis eine Quellen-Tabelle existiert.\n\nDiese Quellen-Tabelle kommt jetzt — aber nicht als eigene Tabelle, sondern als Teil der Wissensbibliothek selbst: **Eine Bibliothek trägt genau einen Quellentyp und genau eine Quellkonfiguration.**\n\n## Zu entscheiden\n\n- **Ein-Typ-Regel:** Jede Bibliothek hat genau einen `sourceType` (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration. Der Typ wird bei der Anlage gewählt und ist danach unveränderlich. Gemischt gespeiste Bibliotheken (Konnektor + Upload) gibt es nicht mehr — die bisherige Spezifikationsaussage wird zurückgenommen.\n- **Ablösung von ADR-0017, Entscheidung 4:** Der Anstoß eines Laufs reduziert sich auf den Verweis auf die Bibliothek; typspezifische Felder verschwinden aus dem Trigger-Request. Der rückwärtskompatible `url`-Fallback aus Entscheidung 1 entfällt mit dem Umbau.\n- **Vereinfachte Löschsemantik:** Die Abwesenheitsprüfung „je Quelle\" aus ADR-0017 Entscheidung 5 fällt mit „je Bibliothek\" zusammen; der dort benannte gefährlichste Umsetzungsfehler (Lauf trifft Upload-Dokumente derselben Bibliothek) ist strukturell ausgeschlossen.\n- **Zugangsdaten werden persistent:** Grundsätze — niemals in API-Antworten zurückgeben, Ablageform (Verschlüsselung) und Wechsel ohne Laufausfall als eigenes Ticket.\n- **Löschregel für Konnektorbibliotheken:** Upload-Bibliotheken behalten die heutige Sperre bei vorhandenen Dokumenten; das Löschen einer Konnektorbibliothek nimmt Bestand und Chunks mit (mit Bestätigung), weil eine Einzellöschung dort wirkungslos ist — der nächste Lauf nimmt das Dokument wieder auf, solange der Ausschluss-Mechanismus aus `knowledge-sources.md` nicht gebaut ist.\n- **Berechtigung:** Anlage aller Typen zunächst für jeden mit Anlage-Recht; die Einschränkung (Pfad-Allowlist, Rollenbindung, Bezug #267) ist bewusst aufgeschoben und als eigenes Ticket benannt.\n\n## Abnahmekriterien\n\n- [ ] ADR-0018 liegt unter `docs/decisions/` im Format der bestehenden ADRs vor\n- [ ] Verhältnis zu ADR-0017 ist ausdrücklich beschrieben (was bleibt, was wird abgelöst)\n- [ ] Verworfene Alternativen sind dokumentiert (eigene Quellen-Tabelle n:1 zur Bibliothek; gemischte Bibliotheken beibehalten)\n- [ ] `README`/Verweise in betroffenen Spezifikationen sind mindestens als Folgeticket benannt",
+          "closes": []
+        }
+      ],
+      "closed": [
+        {
+          "number": 477,
+          "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+          "url": "https://github.com/criew/opaa/issues/477",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "frontend",
+            "size:S"
+          ],
+          "body": "## Kontext\n\n`LibraryResponse` (Detail) führt `documentCount`, `LibraryListResponse` nicht. Die Bibliotheksübersicht soll je Bibliothek die Dokumentzahl zeigen, ohne jede Karte aufklappen zu müssen.\n\n## Umfang\n\n- `documentCount` in `LibraryListResponse`-Einträge aufnehmen (OpenAPI-Spec zuerst, ADR-0006); Zählung ohne N+1 (gruppierte Query statt `countByLibraryId` je Zeile)\n- Anzeige in der Übersicht (`LibraryManagementPage`)\n\n## Abnahmekriterien\n\n- [ ] Liste liefert je Bibliothek die Dokumentzahl; eine Abfrage, kein N+1\n- [ ] Übersicht zeigt die Zahl je Bibliothek\n- [ ] Backend- und Frontend-Checks bestehen",
+          "closes": []
+        },
+        {
+          "number": 475,
+          "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+          "url": "https://github.com/criew/opaa/issues/475",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "enhancement",
+            "size:M"
+          ],
+          "body": "## Kontext\n\nDie Konfiguration eines Indizierungslaufs ist heute request-basiert: `IndexingTriggerRequest` trägt `url`, `proxy`, `credentials`, `insecureSsl` pro Aufruf, der Dateisystempfad ist global (`opaa.indexing.document-path`). [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) hat diesen Zustand in Entscheidung 4 ausdrücklich als Übergang deklariert, bis eine Quellen-Tabelle existiert.\n\nDiese Quellen-Tabelle kommt jetzt — aber nicht als eigene Tabelle, sondern als Teil der Wissensbibliothek selbst: **Eine Bibliothek trägt genau einen Quellentyp und genau eine Quellkonfiguration.**\n\n## Zu entscheiden\n\n- **Ein-Typ-Regel:** Jede Bibliothek hat genau einen `sourceType` (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration. Der Typ wird bei der Anlage gewählt und ist danach unveränderlich. Gemischt gespeiste Bibliotheken (Konnektor + Upload) gibt es nicht mehr — die bisherige Spezifikationsaussage wird zurückgenommen.\n- **Ablösung von ADR-0017, Entscheidung 4:** Der Anstoß eines Laufs reduziert sich auf den Verweis auf die Bibliothek; typspezifische Felder verschwinden aus dem Trigger-Request. Der rückwärtskompatible `url`-Fallback aus Entscheidung 1 entfällt mit dem Umbau.\n- **Vereinfachte Löschsemantik:** Die Abwesenheitsprüfung „je Quelle\" aus ADR-0017 Entscheidung 5 fällt mit „je Bibliothek\" zusammen; der dort benannte gefährlichste Umsetzungsfehler (Lauf trifft Upload-Dokumente derselben Bibliothek) ist strukturell ausgeschlossen.\n- **Zugangsdaten werden persistent:** Grundsätze — niemals in API-Antworten zurückgeben, Ablageform (Verschlüsselung) und Wechsel ohne Laufausfall als eigenes Ticket.\n- **Löschregel für Konnektorbibliotheken:** Upload-Bibliotheken behalten die heutige Sperre bei vorhandenen Dokumenten; das Löschen einer Konnektorbibliothek nimmt Bestand und Chunks mit (mit Bestätigung), weil eine Einzellöschung dort wirkungslos ist — der nächste Lauf nimmt das Dokument wieder auf, solange der Ausschluss-Mechanismus aus `knowledge-sources.md` nicht gebaut ist.\n- **Berechtigung:** Anlage aller Typen zunächst für jeden mit Anlage-Recht; die Einschränkung (Pfad-Allowlist, Rollenbindung, Bezug #267) ist bewusst aufgeschoben und als eigenes Ticket benannt.\n\n## Abnahmekriterien\n\n- [ ] ADR-0018 liegt unter `docs/decisions/` im Format der bestehenden ADRs vor\n- [ ] Verhältnis zu ADR-0017 ist ausdrücklich beschrieben (was bleibt, was wird abgelöst)\n- [ ] Verworfene Alternativen sind dokumentiert (eigene Quellen-Tabelle n:1 zur Bibliothek; gemischte Bibliotheken beibehalten)\n- [ ] `README`/Verweise in betroffenen Spezifikationen sind mindestens als Folgeticket benannt",
+          "closes": []
+        }
+      ],
+      "merged": [
+        {
+          "number": 488,
+          "title": "feat(library): Dokumentzahl in der Bibliotheksliste",
+          "url": "https://github.com/criew/opaa/pull/488",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "frontend"
+          ],
+          "body": "## Zusammenfassung\n\n`LibraryListResponse` traegt je Eintrag jetzt `documentCount` (OpenAPI-Spec zuerst, ADR-0006). Die Zaehlung laeuft ueber eine neue gruppierte Query (`DocumentRepository#countByLibraryIdIn`) fuer die ganze Seite auf einmal, statt `countByLibraryId` einmal pro Bibliothek aufzurufen (kein N+1). Die Bibliotheksuebersicht (`LibraryManagementPage`) zeigt die Zahl je Bibliothek direkt in der eingeklappten Kopfzeile, ohne die Karte aufklappen zu muessen. Der bisherige Dokumentzaehler in der aufgeklappten Detailansicht wurde entfernt, da er nun redundant zur Kopfzeile ist.\n\nTeil von Epic #486 (Phase 2, laut Epic-Beschreibung unabhaengig von den uebrigen Tickets).\n\n## Zugehörige Issues\n\nCloses #477\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (Backend: `spotlessCheck`, `build`/`test`; Frontend: `format:check`, `lint`, `build`, `test` — alle gruen)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — entfällt, kein Bugfix\n- [ ] Dokumentation aktualisiert (falls zutreffend) — kein Doku-Bedarf für diese Änderung\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+          "closes": [
+            477
+          ],
+          "additions": 154,
+          "deletions": 10,
+          "changed_files": 9
+        },
+        {
+          "number": 487,
+          "title": "docs(decisions): ADR-0018 — Quellkonfiguration in der Bibliothek",
+          "url": "https://github.com/criew/opaa/pull/487",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "enhancement"
+          ],
+          "body": "## Zusammenfassung\n\nADR-0018 legt fest, dass die dauerhafte Quellkonfiguration in der Wissensbibliothek selbst lebt: Jede Bibliothek trägt genau einen Quellentyp (`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, künftig `RSS_FEED`) und höchstens eine Quellkonfiguration, gewählt bei der Anlage aus einem Template und danach unveränderlich. Der Indizierungsanstoß reduziert sich auf den Verweis auf die Bibliothek (Auflösung über die Registry aus #465); die Oberfläche bündelt Upload, Konfiguration und Anstoß an der Bibliothek. Damit wird Entscheidung 4 aus ADR-0017 planmäßig abgelöst; Registry, Enum-Grenzen und Löschsemantik aus ADR-0017 bleiben in Kraft. Gemischt gespeiste Bibliotheken entfallen; Zugangsdaten-Persistenz (#483), Pfad-Allowlist/Berechtigung (#484) und Zeitplan (#485) sind als Folgetickets benannt.\n\nGrundlage von Epic #486.\n\n## Zugehörige Issues\n\nCloses #475\n\nTeil von Epic #486; Verhältnis zu Epic #463 (Registry #465 als Grundlage, #469 wird umformuliert) ist im ADR und im Epic beschrieben.\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code, Claude Fable 5)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011suLbBhNcCeU73UauvLDM6",
+          "closes": [
+            475
+          ],
+          "additions": 220,
+          "deletions": 0,
+          "changed_files": 2
+        }
+      ]
+    },
+    {
+      "number": 463,
+      "title": "Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen",
+      "tickets_total": 8,
+      "tickets_closed": 6,
+      "opened": [
+        {
+          "number": 471,
+          "title": "test(e2e): RSS-Quelle über die Admin-Oberfläche indizieren",
+          "url": "https://github.com/criew/opaa/issues/471",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "frontend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\nEin End-to-End-Test in der Playwright-Suite unter `e2e/`, der den RSS-Weg über die Oberfläche prüft: Quellentyp wählen, Lauf anstoßen, Ergebnis im Bestand sehen.\n\n## Motivation\n\nDie Tickets des Epics #463 prüfen Parser, Executor und Formular jeweils für sich. Was keiner dieser Tests belegt: dass die Kette **zusammen** funktioniert — das Formular schickt den Typ, der richtige Weg läuft an, die Dokumente erscheinen, und der Fortschritt ist während des Laufs sichtbar. Genau an solchen Nahtstellen ist das Projekt schon einmal auseinandergelaufen (#375: zwei Wege, zwei Endungslisten).\n\nDer Test folgt dem Muster von #232 (Indizierung des Demo-Korpus über die Admin-Oberfläche) und #229 (Korpus als statisches HTTP-Verzeichnis im Compose-Stack).\n\n## Umfang\n\n- **Ein generischer Beispiel-Feed als statischer Inhalt im Compose-Stack der E2E-Suite**: eine RSS-2.0-Datei mit erfundenen Einträgen, dazu je Eintrag eine kleine HTML-Detailseite mit einer verlinkten Anlage (z. B. eine kleine PDF- oder Textdatei). Ausgeliefert vom selben statischen Webserver, den die Suite bereits kennt. **Keine realen Adressen oder Einrichtungen** — ausgedachte Stelle, interne Stack-Hostnamen\n- **Testablauf**: als Systemverwaltung anmelden → im Indizierungsformular den Quellentyp „RSS-Feed\" wählen → Adresse des Stack-Feeds eintragen → Lauf anstoßen → auf Abschluss warten (Polling der Statusanzeige) → prüfen, dass je Eintrag ein Dokument mit dem Text der Detailseite und die verlinkte Anlage im Bestand erscheinen\n- **Negativpfad**: ein Eintrag, dessen Detailseite im Stack einen Fehler liefert (404), lässt den Lauf durchlaufen; das Ergebnis weist den übersprungenen Eintrag aus\n- **Zweiter Lauf** über denselben unveränderten Feed endet ohne neue Dokumente\n- Einbettung in die bestehende Suite (`e2e/README.md` beachten): Start und Stopp über das vorhandene Verfahren, keine Sonderwege\n\n## Außerhalb des Umfangs\n\n- Bot-Schutz-Szenarien — die Abweisung durch eine Gegenstelle lässt sich im Stack nicht ehrlich nachstellen\n- Zeitplan (existiert nicht)\n- Last- und Mengentests\n\n## Abnahmekriterien\n\n- [ ] Der Test läuft in der bestehenden Suite über `npm test` in `e2e/` und in der CI mit\n- [ ] Der Feed und seine Detailseiten sind erfundene, generische Testdaten im Repo\n- [ ] Positivpfad: Dokumente und Anlage erscheinen nach dem Lauf im Bestand\n- [ ] Negativpfad: ein fehlschlagender Eintrag bricht den Lauf nicht ab und ist im Ergebnis ausgewiesen\n- [ ] Ein zweiter Lauf über den unveränderten Feed erzeugt keine neuen Dokumente",
+          "closes": []
+        },
+        {
+          "number": 470,
+          "title": "docs(sources): Feed-Quellen und Quellentypmodell in der Spezifikation nachführen",
+          "url": "https://github.com/criew/opaa/issues/470",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "size:S"
+          ],
+          "body": "## Zusammenfassung\n\n`docs/features/knowledge-sources.md` wird auf den Stand gebracht, den dieses Epic hergestellt hat.\n\n## Motivation\n\nDie Spezifikation kennzeichnet ausdrücklich, was gebaut ist und was Zielbild bleibt — das ist ihre nützlichste Eigenschaft und zugleich die, die als erste verfällt. Nach diesem Epic stimmt sie an mehreren Stellen nicht mehr, und ein Dokument, das an einer Stelle nachweislich falsch ist, wird an allen anderen nicht mehr geglaubt.\n\nDieses Ticket steht am Ende des Epics, weil es erst dann etwas Wahres schreiben kann.\n\n## Umfang\n\nNachzuführen sind mindestens:\n\n- Der Abschnitt zu den Quellklassen: Feeds sind ein gebauter Weg, nicht mehr eine der noch anzubindenden Systemklassen\n- Ein eigener Abschnitt zum Feed als Quelle — was er kann, wie er Änderungen erkennt, wie er sich zur Verzeichnisliste unterscheidet\n- **Die typabhängige Ausnahme beim Löschen.** Die Regel „Löschen in der Quelle wirkt durch\" gilt für Feeds nicht, und zwar aus einem Grund, der aufgeschrieben gehört: Ein Feed führt nur seine jüngsten Einträge. Ohne diesen Satz wird die Ausnahme später als Fehler gelesen und weggeräumt\n- Verweis auf den ADR aus dem ersten Ticket\n- Die offene Frage, ob der Netzweg auf das volle Konnektormodell gehoben wird, wird um die Feststellung ergänzt, dass es nun mehrere Netzwege gibt\n- Das Verhalten gegenüber fremden Zielen: Abstand zwischen Abrufen, Kennung, Obergrenzen — und dass mit Abweisungen durch Schutzmaßnahmen der Gegenstelle zu rechnen ist\n- Prüfen, ob `docs/features/data-indexing-rag.md` durch die Übernahme von Seitentext nachzuführen ist\n- Betriebsseitige Einstellungen in `docs/deployment.md` und `.env.example`, soweit die vorangehenden Tickets sie nicht schon eingetragen haben\n\n## Was nicht geschieht\n\nDas Zielbild wird nicht kleingeschrieben, nur weil ein Stück davon gebaut ist. Was weiterhin fehlt — Zeitplan, Zuordnung zu einer Bibliothek, gespeicherte Quellkonfiguration —, bleibt als Fehlendes benannt.\n\n## Abnahmekriterien\n\n- [ ] Kein Abschnitt beschreibt den Feed-Weg als Zielbild\n- [ ] Die Ausnahme beim Löschen ist mit ihrer Begründung festgehalten\n- [ ] Der ADR ist verlinkt\n- [ ] Betriebsseitige Einstellungen sind vollständig beschrieben\n- [ ] Was weiterhin fehlt, ist unverändert als Fehlendes benannt",
+          "closes": []
+        },
+        {
+          "number": 469,
+          "title": "feat(admin): Quellentyp im Indizierungsformular wählbar machen",
+          "url": "https://github.com/criew/opaa/issues/469",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "frontend",
+            "size:S"
+          ],
+          "body": "## Zusammenfassung\n\nDie Systemverwaltung wählt den Quellentyp in der Oberfläche, statt ihn daraus abzuleiten, ob sie eine Adresse eingetragen hat. Die typabhängigen Felder erscheinen zum gewählten Typ.\n\n## Motivation\n\nDas heutige Formular trägt die Überschrift „URL-Quelle (optional)\" und erschließt den Typ daraus, ob das Feld gefüllt ist. Sobald zwei Typen eine Adresse verlangen, ist das für die bedienende Person nicht mehr entscheidbar: Sie trägt eine Adresse ein und weiß nicht, was daraufhin geschieht.\n\n## Ist-Zustand\n\n- `AdminDrawer.tsx` enthält Felder für Adresse, Netzvermittler, Anmeldung und das Aussetzen der Zertifikatsprüfung; die Angaben werden zu einer Anfrage zusammengesetzt\n- **`sourceType` kommt im Frontend an keiner Stelle vor**\n- `frontend/src/types/generated/api.ts` ist veraltet: Es kennt noch Bezeichnungen aus dem abgelösten Workspace-Modell und weder `LibraryDocumentResponse` noch `DocumentSourceType`. Die Typen müssen ohnehin neu erzeugt werden\n\n## Umfang\n\n- Auswahl des Quellentyps im Formular, mit dem Dateisystem als Voreinstellung\n- Nur die zum Typ gehörenden Felder erscheinen. Ein Netzvermittler bei einem Lauf über das Dateisystem ist keine unschädliche Zusatzangabe, sondern eine Frage, die die bedienende Person unnötig beantworten muss\n- Für den Feed die zusätzlichen Angaben aus den vorangehenden Tickets, soweit sie im Anstoß eines Laufs sinnvoll sind\n- `sourceType` wird ausdrücklich mitgeschickt\n- Neu erzeugte Typen aus der OpenAPI-Spezifikation\n- Beschriftungen und Hilfetexte auf Deutsch, `aria-label` inbegriffen\n- **Was der gewählte Typ bedeutet, steht am Formular.** Bei einem Feed werden fremde Seiten abgerufen, deren Adressen nicht von der bedienenden Person stammen. Das gehört an der Stelle gesagt, an der die Entscheidung fällt, und nicht in eine Betriebsanleitung\n\n## Außerhalb des Umfangs\n\n- Verwaltung dauerhaft gespeicherter Quellen — es gibt weiterhin nur den Anstoß eines einzelnen Laufs\n- Zeitplan\n- Anzeige des Quellentyps in der Dokumentenliste\n\n## Abnahmekriterien\n\n- [ ] Der Quellentyp ist im Formular wählbar und wird mitgeschickt\n- [ ] Zum gewählten Typ erscheinen nur die zugehörigen Felder\n- [ ] Ein Wechsel des Typs hinterlässt keine Angaben, die zum neuen Typ nicht passen\n- [ ] Die erzeugten Typen sind aktuell\n- [ ] Alle sichtbaren Texte sind deutsch\n- [ ] Lint, Formatprüfung, Build und Tests des Frontends laufen durch",
+          "closes": []
+        },
+        {
+          "number": 468,
+          "title": "feat(indexing): Anlagen an Detailseiten übernehmen, mit Profil für den Government Site Builder",
+          "url": "https://github.com/criew/opaa/issues/468",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\nAnlagen, die an einer Detailseite hängen, werden gefunden und als eigene Dokumente indiziert. Welche Verweise einer Seite als Anlage gelten, beschreibt ein **Profil** — mitgeliefert werden ein allgemeines Profil und eines für den Government Site Builder.\n\n## Motivation\n\nBei einem behördlichen Schreiben trägt der Artikeltext die Einordnung, die Anlage aber den Inhalt. Wer nach der Regelung selbst fragt und nur die Ankündigung im Index hat, bekommt eine Antwort, die höflich am Thema vorbeigeht. Der Nutzen des ganzen Weges hängt an diesem Schritt.\n\nZugleich ist es der Schritt, der am ehesten zu einer Sonderbehandlung im Code verführt. Das URL-Muster, mit dem der Government Site Builder seine Anhänge ausliefert, ist wiedererkennbar — und genau deshalb steht es nicht im Code, sondern in einer Konfiguration. Ein zweites Haus mit einem anderen CMS wäre sonst ein neuer `if`-Zweig, und das ist das Muster, das dieses Epic gerade beseitigt.\n\n## Umfang\n\n- **Profilbegriff**: benannte, konfigurierbare Beschreibung dessen, welche Verweise einer Detailseite eine Anlage sind — Einschränkung auf einen Bereich der Seite, Muster für die Adresse, zulässige Dateitypen\n- **Allgemeines Profil** als Voreinstellung: Verweise auf die ohnehin unterstützten Dateitypen, beschränkt auf denselben Auftritt\n- **Profil für den Government Site Builder**: Das CMS des Bundes liefert Anhänge nicht unter einer Adresse mit Dateiendung aus, sondern über einen Abfrageparameter an der Seitenadresse. Ein Weg, der Dateitypen an der Endung erkennt, findet dort nichts. Das Profil beschreibt dieses Muster und leitet einen brauchbaren Dateinamen her\n- **Profilwahl je Lauf**, mit dem allgemeinen Profil als Voreinstellung. Keine Erkennung des CMS anhand der Adresse — das wäre wieder Raten\n- Anlagen laufen durch dieselbe Verarbeitungskette wie jedes andere Dokument, einschließlich Formatprüfung und Prüfsumme\n- **Herkunft bleibt erkennbar.** Eine Anlage weiß, aus welchem Eintrag sie stammt. Ohne das steht später ein PDF im Index, dessen Zusammenhang niemand mehr herstellen kann — und die Belegangabe in einer Antwort verweist ins Leere\n- **Dieselbe Anlage an mehreren Einträgen** wird einmal indiziert, nicht mehrfach\n- Obergrenzen für Zahl und Größe der Anlagen je Eintrag\n\n## Nebenbefund, der hier mit erledigt wird\n\nJsoup wird bereits produktiv verwendet, ist aber **nirgends deklariert** — weder in `libs.versions.toml` noch in `build.gradle.kts`. Die Bibliothek kommt bislang nur transitiv über den Tika-Dokumentleser herein und würde bei einem Versionssprung von Spring AI ohne Vorwarnung verschwinden. Da dieses Ticket die Abhängigkeit ausweitet, wird sie hier ordentlich in den Versionskatalog aufgenommen. Das entspricht der verbindlichen Regel aus `AGENTS.md`.\n\n## Außerhalb des Umfangs\n\n- Erkennung des CMS anhand der Adresse\n- Weitere CMS-Profile\n- Anlagen, die erst durch Skriptausführung im Browser sichtbar werden\n\n## Abnahmekriterien\n\n- [ ] Eine Detailseite mit verlinkten Anlagen führt zu je einem Dokument pro Anlage\n- [ ] Das Profil für den Government Site Builder findet Anhänge, die über einen Abfrageparameter statt über eine Dateiendung ausgeliefert werden, und leitet einen brauchbaren Dateinamen her\n- [ ] Ohne Profilangabe greift das allgemeine Profil\n- [ ] Verweise, die aus der Seite hinausführen, gelten nicht als Anlage\n- [ ] Zu jeder Anlage ist der Eintrag erkennbar, aus dem sie stammt\n- [ ] Dieselbe Anlage an zwei Einträgen erzeugt ein Dokument, nicht zwei\n- [ ] Jsoup ist im Versionskatalog deklariert und wird über `libs.*` referenziert\n- [ ] Kein Test verweist auf eine reale Adresse; das CMS-Profil wird gegen nachgebildete Seiten geprüft",
+          "closes": []
+        },
+        {
+          "number": 467,
+          "title": "feat(indexing): RSS-Feeds indizieren — Einträge auflösen und Detailseiten übernehmen",
+          "url": "https://github.com/criew/opaa/issues/467",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:L"
+          ],
+          "body": "## Zusammenfassung\n\nDer Indizierungsweg für `RSS_FEED`: Feed abrufen, Einträge auflösen, den Text der Detailseite als Dokument übernehmen. Damit wird der Typ erstmals lauffähig.\n\n## Motivation\n\nEin RSS-Feed verweist nicht auf Dateien. Sein `<link>` zeigt auf eine HTML-Detailseite, und `<enclosure>` fehlt bei den Feeds der öffentlichen Verwaltung in aller Regel. Der Feed ist ein **Änderungsmelder**, kein Dateiverzeichnis. Der bestehende Netzweg kann damit nichts anfangen: Er erwartet eine Liste, deren Einträge unmittelbar herunterladbare Dokumente sind.\n\nDer Text einer Detailseite ist zugleich der Teil, der die Frage beantwortet, um die es meistens geht — worum es in der Sache überhaupt geht. Die Anlagen tragen die Einzelheiten, aber ohne den Artikeltext steht ein Schreiben ohne Einordnung im Index.\n\n## Umfang\n\n**Ablauf eines Laufs**\n\n1. Feed abrufen und zerlegen\n2. Je Eintrag prüfen, ob er sich seit dem letzten Lauf geändert hat — unveränderte Einträge werden übersprungen, **bevor** die Detailseite abgerufen wird\n3. Detailseite laden, Haupttext gewinnen\n4. Text in die bestehende Verarbeitungskette geben — Prüfsumme, Zerlegung, Einbettung, Speicherung laufen unverändert\n\n**Haupttext statt ganzer Seite.** Eine Behördenseite besteht zu einem erheblichen Teil aus Navigation, Verwaltungsmenü, Fußzeile und Hinweisen. Diese Bestandteile in den Index zu geben, erzeugt Chunks, die auf jede Frage ein bisschen passen und auf keine gut. Der Haupttext wird mit den bereits im Projekt vorhandenen HTML-Mitteln gewonnen; die Auswahl ist konfigurierbar, mit einem Standardverhalten, das ohne Konfiguration brauchbar ist.\n\n**HTML kommt nicht in die Formatliste.** `SupportedDocumentFormats` um `.html` zu erweitern, wäre der naheliegende, aber falsche Weg: Der bestehende Verzeichnis-Crawler würde damit anfangen, jede Navigationsseite einzusaugen. Stattdessen gewinnt dieser Weg den Text **vor** der Übergabe und reicht Text ein.\n\n**Änderungserkennung, gestuft**\n\n- Auf den Feed selbst: `ETag` und `If-Modified-Since`. Ein unveränderter Feed beendet den Lauf in einer Anfrage\n- Je Eintrag: der Veröffentlichungszeitpunkt, abgelegt im vorhandenen Feld `last_modified_remote` — dasselbe Muster, das der Verzeichnisweg bereits verwendet\n- Nach dem Abruf: die vorhandene Prüfsumme über den Inhalt\n\n**Verschwundene Einträge bleiben.** Ein Feed führt nur seine jüngsten Einträge. Dass ein Eintrag nicht mehr darin steht, heißt nicht, dass das Dokument zurückgezogen wurde — es heißt, dass es älter geworden ist. Ein Löschabgleich wäre hier nicht Sorgfalt, sondern Datenverlust, und zwar stiller. Das gilt ausdrücklich abweichend von `docs/features/knowledge-sources.md`, wo Löschen in der Quelle durchwirkt; die typabhängige Ausnahme wird im ADR festgehalten.\n\n**Verhalten gegenüber fremden Zielen.** Die abgerufenen Adressen stammen nicht von der Systemverwaltung, sondern vom Betreiber des Feeds. Daraus folgt:\n\n- **Ein einzelner Eintrag darf den Lauf nicht zu Fall bringen.** Nicht erreichbar, abgewiesen, umgeleitet, unerwarteter Inhaltstyp, zu groß — jeweils überspringen, zählen, protokollieren, weiterlaufen\n- **Abstand zwischen den Abrufen**, konfigurierbar. Ein Lauf, der zwanzig Detailseiten in zwanzig Millisekunden anfragt, sieht von der Gegenseite aus wie das, wogegen ihre Schutzmaßnahmen gerichtet sind\n- **Kennung des abrufenden Programms konfigurierbar**, mit einem wahrheitsgemäßen Standardwert. Etliche Auftritte der öffentlichen Verwaltung stehen hinter einem Bot-Schutz, der Anfragen ohne erkennbare Kennung abweist. Eine Kennung zu setzen, die einen Browser vorgibt, ist ausdrücklich **nicht** gemeint\n- **Obergrenze für die Zahl der Einträge je Lauf** und für die Größe einer abgerufenen Seite\n\n**Zu erwarten ist, dass Detailseiten abgewiesen werden.** Bei der Vorbereitung dieses Epics wurde das an einem realen Auftritt beobachtet: Der Feed war frei abrufbar, die Detailseiten leiteten auf eine Prüfseite des Bot-Schutzes um. Der Lauf muss das als das melden, was es ist — eine Abweisung durch die Gegenstelle —, statt es als Verarbeitungsfehler des Dokuments auszuweisen. Wer den Lauf betrachtet, muss unterscheiden können, ob OPAA ein Dokument nicht verarbeiten konnte oder ob die Gegenstelle es nicht herausgegeben hat.\n\n## Außerhalb des Umfangs\n\n- Anlagen an den Detailseiten — folgt im nächsten Ticket\n- Zeitplan\n- Zielprüfung gegen private Adressbereiche (#267)\n- Zuordnung zu einer Wissensbibliothek (#207)\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf über einen Feed legt je Eintrag ein Dokument mit dem Haupttext der Detailseite an\n- [ ] Navigation, Menü und Fußzeile stehen nicht im übernommenen Text\n- [ ] Ein zweiter Lauf über einen unveränderten Feed ruft keine Detailseite ab\n- [ ] Ein Eintrag, dessen Detailseite abgewiesen wird, wird übersprungen; der Lauf läuft weiter und weist ihn getrennt von Verarbeitungsfehlern aus\n- [ ] Ein aus dem Feed verschwundener Eintrag bleibt im Index\n- [ ] Der Abstand zwischen Abrufen und die Kennung des Programms sind konfigurierbar und in `docs/deployment.md` sowie `.env.example` beschrieben\n- [ ] Kein Test und keine Voreinstellung verweist auf eine reale Adresse",
+          "closes": []
+        },
+        {
+          "number": 466,
+          "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+          "url": "https://github.com/criew/opaa/issues/466",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\n`RSS_FEED` als dritter Wert von `DocumentSourceType`, samt der dafür nötigen Datenbankmigration, und ein Parser, der einen RSS-2.0-Feed in seine Einträge zerlegt. Noch ohne Indizierungslauf — dieses Ticket liefert das Gerüst, das ohne Netz und ohne Datenbank prüfbar ist.\n\n## Motivation\n\nDer Schnitt zwischen Parser und Lauf ist bewusst gesetzt. Ein Feed-Parser ist reine Umformung: Text hinein, Einträge heraus. Er lässt sich gegen eingecheckte Beispieldateien vollständig prüfen, einschließlich der Fälle, die im Betrieb selten und dann folgenreich sind — fehlendes Datum, leerer Feed, unbekannte Zeitzone, fremde Zusatzelemente. Diese Prüfung an einen Lauf zu hängen, der Netz und Datenbank braucht, würde sie langsam und lückenhaft machen.\n\n## Ist-Zustand\n\n`DocumentSourceType` kennt `FILESYSTEM`, `HTTP_DIRECTORY` und `UPLOAD`. Die Werte stehen an drei Stellen: im Java-Enum, im Schema `DocumentSourceType` der OpenAPI-Spezifikation und — das ist die stillste — als `CHECK`-Constraint auf `documents.source_type`. Deren maßgeblicher Stand ist das changeSet `020-allow-upload-source-type` in `db/changelog/changes/020-add-upload-metadata-to-documents.yaml`, das die Constraint aus 004 bereits einmal abgelöst hat. Ein neuer Enum-Wert ohne neue Migration übersetzt sich anstandslos und scheitert erst beim ersten Insert zur Laufzeit.\n\n## Umfang\n\n- `RSS_FEED` in `DocumentSourceType`\n- **Neue Liquibase-Migration**, die die `CHECK`-Constraint auf `documents.source_type` um den Wert erweitert — als **neues changeSet nach dem Muster von `020-allow-upload-source-type`** (Constraint fallen lassen und mit allen Werten neu anlegen); ein bereits ausgeführtes changeSet wird nie bearbeitet. Eingehängt in `db.changelog-master.yaml`\n- `RSS_FEED` im Schema `DocumentSourceType` der OpenAPI-Spezifikation\n- **Feed-Parser** in `io.opaa.indexing`, der aus einem RSS-2.0-Dokument die Einträge mit Titel, Verweis, Beschreibung und Veröffentlichungszeitpunkt liest. Umgesetzt mit den XML-Mitteln des JDK — eine zusätzliche Bibliothek ist dafür nicht nötig\n- **Der Parser wird gegen externe Entitäten abgeriegelt.** Ein Feed ist fremdkontrollierter Inhalt; ein XML-Parser in Voreinstellung liest daraus auf Wunsch des Absenders lokale Dateien. Externe DTDs und Entitäten werden ausgeschaltet\n- **Zeitpunkte robust lesen.** `pubDate` ist im Feed ein RFC-822-Datum, kommt in der Praxis aber in mehreren Schreibweisen vor. Ein nicht lesbares Datum macht den Eintrag nicht ungültig\n- **Nachsicht gegenüber Abweichungen.** Unbekannte Elemente und fremde Namensräume werden übergangen, nicht als Fehler behandelt. Ein Eintrag ohne Verweis wird übersprungen; ein Feed, der sich gar nicht als RSS lesen lässt, scheitert mit verständlicher deutscher Meldung\n\n## Testdaten\n\nDie Beispiel-Feeds unter `backend/src/test/resources/` werden **erfunden und generisch** gehalten — ausgedachte Stelle, `example`-Domänen, ausgedachte Titel. Kein Verweis auf eine reale Einrichtung oder einen realen Feed wird eingecheckt. Der Grund ist nicht Förmlichkeit: Ein Test, der an einer fremden Adresse hängt, wird irgendwann rot, weil dort jemand etwas umgestellt hat, und niemand versteht dann noch, was der Test eigentlich zusichern wollte.\n\nAbgedeckt gehören mindestens: der übliche Feed, ein leerer Feed, ein Eintrag ohne Datum, ein Eintrag ohne Verweis, ein Datum in abweichender Schreibweise, ein Feed mit fremden Namensräumen, ein Feed mit `<enclosure>`, ein Dokument mit äußerer Entität, sowie kein XML.\n\n## Außerhalb des Umfangs\n\n- Der Indizierungslauf, das Abrufen von Detailseiten, Anlagen\n- Änderungen am Frontend\n\n## Abnahmekriterien\n\n- [ ] `RSS_FEED` steht in Java-Enum, OpenAPI-Schema und Datenbank-Constraint\n- [ ] Ein Dokument mit `RSS_FEED` lässt sich in `documents` speichern — geprüft gegen ein von Liquibase erzeugtes Schema, nicht gegen ein von Hibernate erzeugtes, weil nur ersteres die Constraint trägt\n- [ ] Der Parser liest einen üblichen Feed in seine Einträge\n- [ ] Ein Dokument mit äußerer Entität führt weder zu einem Dateizugriff noch zu einem Netzabruf\n- [ ] Ein unlesbares Datum lässt den Eintrag bestehen, statt ihn zu verwerfen\n- [ ] Ein Eintrag ohne Verweis wird übersprungen\n- [ ] Kein Test verweist auf eine reale Adresse",
+          "closes": []
+        },
+        {
+          "number": 465,
+          "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+          "url": "https://github.com/criew/opaa/issues/465",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\nDer Quellentyp wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf. Die heutige Ableitung „`url` gesetzt heißt Netz, sonst Dateisystem\" entfällt als Entscheidungsgrundlage, bleibt aber als Rückfallverhalten für Aufrufer erhalten, die den Typ nicht mitschicken.\n\n## Motivation\n\nEin dritter Quellentyp ist über das heutige Verfahren nicht erreichbar: „`url` ist gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste. Beide sind eine Adresse im Netz, und die Adresse allein sagt nicht, was hinter ihr liegt. Es aus der Adresse raten zu wollen — etwa an der Endung `.xml` — wäre die schlechteste der möglichen Lösungen: Sie funktioniert bei den geläufigen Fällen und scheitert still bei den übrigen.\n\nZugleich ist der Zeitpunkt der letzte günstige, um die Duplikation zwischen den beiden vorhandenen Executoren einzufangen. Sie ist heute zweifach und damit gerade noch überschaubar; mit dem dritten Weg wird sie dreifach und beginnt auseinanderzulaufen — genau so, wie es bei den Dateiendungslisten schon einmal geschehen ist (#375: eine `.doc`-Datei wurde angenommen, wenn sie aus dem Netz kam, und abgelehnt, wenn sie im Verzeichnis lag).\n\n## Umfang\n\n- **Interface für den Indizierungsweg** in `io.opaa.indexing`, das den Enum-Wert seines Typs kennt und einen Lauf für eine Anfrage ausführt\n- **Registry**, die den zuständigen Weg über den Typ auflöst und bei einem Typ ohne Weg verständlich scheitert. Achtung: `DocumentSourceType` führt inzwischen auch `UPLOAD` — ein Herkunftswert ohne Indizierungslauf. Ob der Anstoß eines Laufs deshalb ein eigenes, engeres Enum bekommt oder `DocumentSourceType` mit benannter Ausnahme verwendet, entscheidet der ADR aus #464; die Umsetzung folgt ihm. Ein neuer Typ wird durch Hinzufügen einer Bean erschlossen, nicht durch Ändern einer bestehenden Fallunterscheidung\n- **`sourceType` im Anstoß eines Laufs**, ergänzt in `backend/src/main/resources/openapi/opaa-api.yaml`. Das DTO wird generiert, nicht geschrieben. Feld optional: Fehlt es, greift die bisherige Ableitung, damit vorhandene Aufrufer und die Oberfläche weiterlaufen\n- **Widerspruchsprüfung.** Ein Typ, der eine Adresse braucht, aber keine bekommt — oder umgekehrt — wird mit einer verständlichen deutschen Meldung abgewiesen, statt einen Lauf zu starten, der nichts findet\n- **Gemeinsame Bestandteile zusammenführen**: die Meldung abgelehnter Formate und die Fortschreibung der Zähler stehen an einer Stelle statt in jedem Executor\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidungen\n- Beans in `IndexingConfiguration` entsprechend verdrahtet\n\n## Außerhalb des Umfangs\n\n- Neue Quellentypen — dieses Ticket ändert kein Verhalten, es ordnet nur die Auswahl\n- Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten\n- Die Zielprüfung aus #267\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf mit ausdrücklich gesetztem `sourceType` wählt den zugehörigen Weg\n- [ ] Ein Lauf ohne `sourceType` verhält sich wie bisher — mit Adresse in das Netz, ohne in das Dateisystem\n- [ ] Ein Typ ohne zugehörigen Weg führt zu einer verständlichen Ablehnung, nicht zu einem `NullPointerException`\n- [ ] Eine Anfrage, deren Typ und Felder einander widersprechen, wird mit deutscher Meldung abgewiesen\n- [ ] Die Meldung abgelehnter Formate steht nur noch an einer Stelle im Code\n- [ ] Die Paritäts-Invariante beider Wege (`DocumentFormatParityTest`) gilt unverändert\n- [ ] Bestehende Tests zu `IndexingController` laufen ohne fachliche Anpassung",
+          "closes": []
+        },
+        {
+          "number": 464,
+          "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+          "url": "https://github.com/criew/opaa/issues/464",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "backend",
+            "size:S"
+          ],
+          "body": "## Zusammenfassung\n\nEin Architecture Decision Record, der festhält, wie ein Quellentyp der Indizierung beschrieben, ausgewählt und erweitert wird. Er geht dem Umbau in #463 voraus und begründet ihn.\n\n## Motivation\n\nZu Ingestion und Konnektoren existiert bislang **kein einziger ADR**. Die 14 vorhandenen betreffen Workflow, Technologiestack, Formatierung, Authentifizierung, DTO-Generierung, Teststrategie, Retrieval-Evaluierung und Produktausrichtung — die Frage, wie Wissen überhaupt hereinkommt, ist nie festgehalten worden.\n\nDas war tragbar, solange es zwei Wege gab, die sich über ein einzelnes Feld unterscheiden ließen. Mit dem dritten Typ entscheidet sich, ob der vierte billig oder wieder teuer wird. Diese Entscheidung gehört aufgeschrieben, bevor sie im Code steht — sonst ist sie in einem Jahr nicht mehr auffindbar und wird als neue Idee wieder aufgemacht.\n\n## Ist-Zustand (geprüft)\n\n- **Auswahl über eine Fallunterscheidung.** `IndexingController` leitet den Typ daraus ab, ob `url` gesetzt ist; `DocumentIndexingService` wiederholt die Unterscheidung mit zwei getrennten Methoden. `IndexingTriggerRequest` in der OpenAPI-Spezifikation hat kein Feld für den Typ.\n- **Kein gemeinsames Interface.** `AsyncIndexingExecutor` und `UrlIndexingExecutor` teilen weder Oberklasse noch Interface und duplizieren ihre Zähl- und Meldelogik sichtbar (`reportRejected` steht in beiden nahezu wortgleich).\n- **Enum am Dokument, nicht an der Quelle.** `DocumentSourceType` markiert das Ergebnis (`FILESYSTEM`, `HTTP_DIRECTORY`), beschreibt aber keinen Weg. Eine Tabelle für Quellen gibt es nicht; die Konfiguration eines Laufs wird pro Aufruf übergeben und danach verworfen.\n- **Eine `CHECK`-Constraint bindet die Datenbank an die Enum-Werte** (`004-add-source-type-to-documents.yaml`). Ein neuer Wert ohne Migration scheitert erst zur Laufzeit beim Insert.\n- **Kein Scheduling** im gesamten Backend.\n\n## Umfang\n\nEin ADR unter `docs/decisions/`, der mindestens festlegt:\n\n- **Wie ein Quellentyp ausgewählt wird** — ausdrücklich übergeben statt aus der Belegung anderer Felder erraten, und wie das rückwärtskompatibel eingeführt wird\n- **Was ein Quellentyp beitragen muss** und was die gemeinsame Verarbeitungskette übernimmt. Die Grenze verläuft an der Frage „woraus entsteht die Liste der zu verarbeitenden Inhalte\" — alles danach (Formatprüfung, Extraktion, Zerlegung, Einbettung) ist typunabhängig und bleibt es\n- **Wie ein Typ registriert wird** und warum die Auflösung über den Enum-Wert läuft statt über eine Fallunterscheidung\n- **Wie typspezifische Konfiguration übergeben wird**, solange es keine Quellen-Tabelle gibt\n- **Welche typabhängigen Verhaltensweisen es geben darf.** Der bekannte Fall: Ob ein in der Quelle verschwundenes Dokument aus dem Index genommen wird, ist **nicht** für alle Typen gleich zu beantworten. Bei einem Verzeichnis ist Verschwinden eine Aussage; bei einem Feed, der nur die jüngsten Einträge führt, ist es keine\n- **Was ausdrücklich offen bleibt** — Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten, Plugin-Fähigkeit\n- Verhältnis zu `docs/discussions/discussion-plugin-architecture.md`: Dieser ADR entscheidet die Plugin-Frage nicht, sondern verbaut sie nur nicht\n\n## Außerhalb des Umfangs\n\n- Der Umbau selbst — der folgt im nächsten Ticket\n- Eine Quellen-Tabelle, Zeitpläne, die Verwahrung von Zugangsdaten\n- Die Entscheidung über eine Plugin-Architektur\n\n## Abnahmekriterien\n\n- [ ] ADR liegt unter `docs/decisions/` mit fortlaufender Nummer und folgt dem Aufbau der vorhandenen ADRs\n- [ ] Status, Kontext, Entscheidung, Konsequenzen und verworfene Alternativen sind ausgeführt\n- [ ] Mindestens eine ernsthaft erwogene und begründet verworfene Alternative ist benannt\n- [ ] Die typabhängige Behandlung verschwundener Dokumente ist entschieden, nicht nur erwähnt\n- [ ] Aus `docs/features/knowledge-sources.md` wird auf den ADR verwiesen",
+          "closes": []
+        }
+      ],
+      "closed": [
+        {
+          "number": 466,
+          "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+          "url": "https://github.com/criew/opaa/issues/466",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\n`RSS_FEED` als dritter Wert von `DocumentSourceType`, samt der dafür nötigen Datenbankmigration, und ein Parser, der einen RSS-2.0-Feed in seine Einträge zerlegt. Noch ohne Indizierungslauf — dieses Ticket liefert das Gerüst, das ohne Netz und ohne Datenbank prüfbar ist.\n\n## Motivation\n\nDer Schnitt zwischen Parser und Lauf ist bewusst gesetzt. Ein Feed-Parser ist reine Umformung: Text hinein, Einträge heraus. Er lässt sich gegen eingecheckte Beispieldateien vollständig prüfen, einschließlich der Fälle, die im Betrieb selten und dann folgenreich sind — fehlendes Datum, leerer Feed, unbekannte Zeitzone, fremde Zusatzelemente. Diese Prüfung an einen Lauf zu hängen, der Netz und Datenbank braucht, würde sie langsam und lückenhaft machen.\n\n## Ist-Zustand\n\n`DocumentSourceType` kennt `FILESYSTEM`, `HTTP_DIRECTORY` und `UPLOAD`. Die Werte stehen an drei Stellen: im Java-Enum, im Schema `DocumentSourceType` der OpenAPI-Spezifikation und — das ist die stillste — als `CHECK`-Constraint auf `documents.source_type`. Deren maßgeblicher Stand ist das changeSet `020-allow-upload-source-type` in `db/changelog/changes/020-add-upload-metadata-to-documents.yaml`, das die Constraint aus 004 bereits einmal abgelöst hat. Ein neuer Enum-Wert ohne neue Migration übersetzt sich anstandslos und scheitert erst beim ersten Insert zur Laufzeit.\n\n## Umfang\n\n- `RSS_FEED` in `DocumentSourceType`\n- **Neue Liquibase-Migration**, die die `CHECK`-Constraint auf `documents.source_type` um den Wert erweitert — als **neues changeSet nach dem Muster von `020-allow-upload-source-type`** (Constraint fallen lassen und mit allen Werten neu anlegen); ein bereits ausgeführtes changeSet wird nie bearbeitet. Eingehängt in `db.changelog-master.yaml`\n- `RSS_FEED` im Schema `DocumentSourceType` der OpenAPI-Spezifikation\n- **Feed-Parser** in `io.opaa.indexing`, der aus einem RSS-2.0-Dokument die Einträge mit Titel, Verweis, Beschreibung und Veröffentlichungszeitpunkt liest. Umgesetzt mit den XML-Mitteln des JDK — eine zusätzliche Bibliothek ist dafür nicht nötig\n- **Der Parser wird gegen externe Entitäten abgeriegelt.** Ein Feed ist fremdkontrollierter Inhalt; ein XML-Parser in Voreinstellung liest daraus auf Wunsch des Absenders lokale Dateien. Externe DTDs und Entitäten werden ausgeschaltet\n- **Zeitpunkte robust lesen.** `pubDate` ist im Feed ein RFC-822-Datum, kommt in der Praxis aber in mehreren Schreibweisen vor. Ein nicht lesbares Datum macht den Eintrag nicht ungültig\n- **Nachsicht gegenüber Abweichungen.** Unbekannte Elemente und fremde Namensräume werden übergangen, nicht als Fehler behandelt. Ein Eintrag ohne Verweis wird übersprungen; ein Feed, der sich gar nicht als RSS lesen lässt, scheitert mit verständlicher deutscher Meldung\n\n## Testdaten\n\nDie Beispiel-Feeds unter `backend/src/test/resources/` werden **erfunden und generisch** gehalten — ausgedachte Stelle, `example`-Domänen, ausgedachte Titel. Kein Verweis auf eine reale Einrichtung oder einen realen Feed wird eingecheckt. Der Grund ist nicht Förmlichkeit: Ein Test, der an einer fremden Adresse hängt, wird irgendwann rot, weil dort jemand etwas umgestellt hat, und niemand versteht dann noch, was der Test eigentlich zusichern wollte.\n\nAbgedeckt gehören mindestens: der übliche Feed, ein leerer Feed, ein Eintrag ohne Datum, ein Eintrag ohne Verweis, ein Datum in abweichender Schreibweise, ein Feed mit fremden Namensräumen, ein Feed mit `<enclosure>`, ein Dokument mit äußerer Entität, sowie kein XML.\n\n## Außerhalb des Umfangs\n\n- Der Indizierungslauf, das Abrufen von Detailseiten, Anlagen\n- Änderungen am Frontend\n\n## Abnahmekriterien\n\n- [ ] `RSS_FEED` steht in Java-Enum, OpenAPI-Schema und Datenbank-Constraint\n- [ ] Ein Dokument mit `RSS_FEED` lässt sich in `documents` speichern — geprüft gegen ein von Liquibase erzeugtes Schema, nicht gegen ein von Hibernate erzeugtes, weil nur ersteres die Constraint trägt\n- [ ] Der Parser liest einen üblichen Feed in seine Einträge\n- [ ] Ein Dokument mit äußerer Entität führt weder zu einem Dateizugriff noch zu einem Netzabruf\n- [ ] Ein unlesbares Datum lässt den Eintrag bestehen, statt ihn zu verwerfen\n- [ ] Ein Eintrag ohne Verweis wird übersprungen\n- [ ] Kein Test verweist auf eine reale Adresse",
+          "closes": []
+        },
+        {
+          "number": 465,
+          "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+          "url": "https://github.com/criew/opaa/issues/465",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend",
+            "size:M"
+          ],
+          "body": "## Zusammenfassung\n\nDer Quellentyp wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf. Die heutige Ableitung „`url` gesetzt heißt Netz, sonst Dateisystem\" entfällt als Entscheidungsgrundlage, bleibt aber als Rückfallverhalten für Aufrufer erhalten, die den Typ nicht mitschicken.\n\n## Motivation\n\nEin dritter Quellentyp ist über das heutige Verfahren nicht erreichbar: „`url` ist gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste. Beide sind eine Adresse im Netz, und die Adresse allein sagt nicht, was hinter ihr liegt. Es aus der Adresse raten zu wollen — etwa an der Endung `.xml` — wäre die schlechteste der möglichen Lösungen: Sie funktioniert bei den geläufigen Fällen und scheitert still bei den übrigen.\n\nZugleich ist der Zeitpunkt der letzte günstige, um die Duplikation zwischen den beiden vorhandenen Executoren einzufangen. Sie ist heute zweifach und damit gerade noch überschaubar; mit dem dritten Weg wird sie dreifach und beginnt auseinanderzulaufen — genau so, wie es bei den Dateiendungslisten schon einmal geschehen ist (#375: eine `.doc`-Datei wurde angenommen, wenn sie aus dem Netz kam, und abgelehnt, wenn sie im Verzeichnis lag).\n\n## Umfang\n\n- **Interface für den Indizierungsweg** in `io.opaa.indexing`, das den Enum-Wert seines Typs kennt und einen Lauf für eine Anfrage ausführt\n- **Registry**, die den zuständigen Weg über den Typ auflöst und bei einem Typ ohne Weg verständlich scheitert. Achtung: `DocumentSourceType` führt inzwischen auch `UPLOAD` — ein Herkunftswert ohne Indizierungslauf. Ob der Anstoß eines Laufs deshalb ein eigenes, engeres Enum bekommt oder `DocumentSourceType` mit benannter Ausnahme verwendet, entscheidet der ADR aus #464; die Umsetzung folgt ihm. Ein neuer Typ wird durch Hinzufügen einer Bean erschlossen, nicht durch Ändern einer bestehenden Fallunterscheidung\n- **`sourceType` im Anstoß eines Laufs**, ergänzt in `backend/src/main/resources/openapi/opaa-api.yaml`. Das DTO wird generiert, nicht geschrieben. Feld optional: Fehlt es, greift die bisherige Ableitung, damit vorhandene Aufrufer und die Oberfläche weiterlaufen\n- **Widerspruchsprüfung.** Ein Typ, der eine Adresse braucht, aber keine bekommt — oder umgekehrt — wird mit einer verständlichen deutschen Meldung abgewiesen, statt einen Lauf zu starten, der nichts findet\n- **Gemeinsame Bestandteile zusammenführen**: die Meldung abgelehnter Formate und die Fortschreibung der Zähler stehen an einer Stelle statt in jedem Executor\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidungen\n- Beans in `IndexingConfiguration` entsprechend verdrahtet\n\n## Außerhalb des Umfangs\n\n- Neue Quellentypen — dieses Ticket ändert kein Verhalten, es ordnet nur die Auswahl\n- Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten\n- Die Zielprüfung aus #267\n\n## Abnahmekriterien\n\n- [ ] Ein Lauf mit ausdrücklich gesetztem `sourceType` wählt den zugehörigen Weg\n- [ ] Ein Lauf ohne `sourceType` verhält sich wie bisher — mit Adresse in das Netz, ohne in das Dateisystem\n- [ ] Ein Typ ohne zugehörigen Weg führt zu einer verständlichen Ablehnung, nicht zu einem `NullPointerException`\n- [ ] Eine Anfrage, deren Typ und Felder einander widersprechen, wird mit deutscher Meldung abgewiesen\n- [ ] Die Meldung abgelehnter Formate steht nur noch an einer Stelle im Code\n- [ ] Die Paritäts-Invariante beider Wege (`DocumentFormatParityTest`) gilt unverändert\n- [ ] Bestehende Tests zu `IndexingController` laufen ohne fachliche Anpassung",
+          "closes": []
+        },
+        {
+          "number": 464,
+          "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+          "url": "https://github.com/criew/opaa/issues/464",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "backend",
+            "size:S"
+          ],
+          "body": "## Zusammenfassung\n\nEin Architecture Decision Record, der festhält, wie ein Quellentyp der Indizierung beschrieben, ausgewählt und erweitert wird. Er geht dem Umbau in #463 voraus und begründet ihn.\n\n## Motivation\n\nZu Ingestion und Konnektoren existiert bislang **kein einziger ADR**. Die 14 vorhandenen betreffen Workflow, Technologiestack, Formatierung, Authentifizierung, DTO-Generierung, Teststrategie, Retrieval-Evaluierung und Produktausrichtung — die Frage, wie Wissen überhaupt hereinkommt, ist nie festgehalten worden.\n\nDas war tragbar, solange es zwei Wege gab, die sich über ein einzelnes Feld unterscheiden ließen. Mit dem dritten Typ entscheidet sich, ob der vierte billig oder wieder teuer wird. Diese Entscheidung gehört aufgeschrieben, bevor sie im Code steht — sonst ist sie in einem Jahr nicht mehr auffindbar und wird als neue Idee wieder aufgemacht.\n\n## Ist-Zustand (geprüft)\n\n- **Auswahl über eine Fallunterscheidung.** `IndexingController` leitet den Typ daraus ab, ob `url` gesetzt ist; `DocumentIndexingService` wiederholt die Unterscheidung mit zwei getrennten Methoden. `IndexingTriggerRequest` in der OpenAPI-Spezifikation hat kein Feld für den Typ.\n- **Kein gemeinsames Interface.** `AsyncIndexingExecutor` und `UrlIndexingExecutor` teilen weder Oberklasse noch Interface und duplizieren ihre Zähl- und Meldelogik sichtbar (`reportRejected` steht in beiden nahezu wortgleich).\n- **Enum am Dokument, nicht an der Quelle.** `DocumentSourceType` markiert das Ergebnis (`FILESYSTEM`, `HTTP_DIRECTORY`), beschreibt aber keinen Weg. Eine Tabelle für Quellen gibt es nicht; die Konfiguration eines Laufs wird pro Aufruf übergeben und danach verworfen.\n- **Eine `CHECK`-Constraint bindet die Datenbank an die Enum-Werte** (`004-add-source-type-to-documents.yaml`). Ein neuer Wert ohne Migration scheitert erst zur Laufzeit beim Insert.\n- **Kein Scheduling** im gesamten Backend.\n\n## Umfang\n\nEin ADR unter `docs/decisions/`, der mindestens festlegt:\n\n- **Wie ein Quellentyp ausgewählt wird** — ausdrücklich übergeben statt aus der Belegung anderer Felder erraten, und wie das rückwärtskompatibel eingeführt wird\n- **Was ein Quellentyp beitragen muss** und was die gemeinsame Verarbeitungskette übernimmt. Die Grenze verläuft an der Frage „woraus entsteht die Liste der zu verarbeitenden Inhalte\" — alles danach (Formatprüfung, Extraktion, Zerlegung, Einbettung) ist typunabhängig und bleibt es\n- **Wie ein Typ registriert wird** und warum die Auflösung über den Enum-Wert läuft statt über eine Fallunterscheidung\n- **Wie typspezifische Konfiguration übergeben wird**, solange es keine Quellen-Tabelle gibt\n- **Welche typabhängigen Verhaltensweisen es geben darf.** Der bekannte Fall: Ob ein in der Quelle verschwundenes Dokument aus dem Index genommen wird, ist **nicht** für alle Typen gleich zu beantworten. Bei einem Verzeichnis ist Verschwinden eine Aussage; bei einem Feed, der nur die jüngsten Einträge führt, ist es keine\n- **Was ausdrücklich offen bleibt** — Quellen-Tabelle, Zeitplan, Verwahrung von Zugangsdaten, Plugin-Fähigkeit\n- Verhältnis zu `docs/discussions/discussion-plugin-architecture.md`: Dieser ADR entscheidet die Plugin-Frage nicht, sondern verbaut sie nur nicht\n\n## Außerhalb des Umfangs\n\n- Der Umbau selbst — der folgt im nächsten Ticket\n- Eine Quellen-Tabelle, Zeitpläne, die Verwahrung von Zugangsdaten\n- Die Entscheidung über eine Plugin-Architektur\n\n## Abnahmekriterien\n\n- [ ] ADR liegt unter `docs/decisions/` mit fortlaufender Nummer und folgt dem Aufbau der vorhandenen ADRs\n- [ ] Status, Kontext, Entscheidung, Konsequenzen und verworfene Alternativen sind ausgeführt\n- [ ] Mindestens eine ernsthaft erwogene und begründet verworfene Alternative ist benannt\n- [ ] Die typabhängige Behandlung verschwundener Dokumente ist entschieden, nicht nur erwähnt\n- [ ] Aus `docs/features/knowledge-sources.md` wird auf den ADR verwiesen",
+          "closes": []
+        }
+      ],
+      "merged": [
+        {
+          "number": 474,
+          "title": "feat(indexing): RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds",
+          "url": "https://github.com/criew/opaa/pull/474",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend"
+          ],
+          "body": "## Zusammenfassung\n\n`RSS_FEED` wird dritter Wert von `DocumentSourceType` (Java-Enum, OpenAPI-Schema `DocumentSourceType`), begleitet von einer neuen Liquibase-Migration, die `chk_documents_source_type` entsprechend erweitert. Zusätzlich ein `RssFeedParser`, der ein RSS-2.0-Dokument mit JDK-eigenem StAX in seine Einträge (Titel, Verweis, Beschreibung, Veröffentlichungszeitpunkt) zerlegt.\n\nNoch **kein** Indizierungslauf – das Gerüst ist bewusst ohne Netz und ohne Datenbank prüfbar (#466, ADR-0017). Der Lauf folgt in #467. `IndexingSourceType` (aus #465) bleibt unangetastet – `RSS_FEED` wird dort erst in #467 registriert.\n\n## Entscheidungen\n\n- **Migration 024** (`024-allow-rss-feed-source-type.yaml`) folgt exakt dem Muster von `020-allow-upload-source-type`: Constraint droppen, mit allen vier Werten neu anlegen. Das ausgeführte changeSet 020 wurde nicht angefasst. Fixture `test-master-through-023.yaml` neu angelegt (Analogon zu `test-master-through-020.yaml`) für den isolierten Migrationstest.\n- **Parser-Grenze** folgt ADR-0017, Entscheidung 2: Der Parser liest ausschließlich Titel/Verweis/Beschreibung/Datum aus `<item>`; die Auflösung der Detailseite ist bewusst außerhalb dieses Tickets (#467/#468).\n- **XXE-Härtung**: `XMLInputFactory.SUPPORT_DTD` und `IS_SUPPORTING_EXTERNAL_ENTITIES` auf `false` – Standard-StAX-Gegenmaßnahme (OWASP XXE Prevention Cheat Sheet). Ein Test mit externer Entität (Fixture `external-entity.xml`) belegt, dass der referenzierte (nicht existierende) Pfad nie in einer Fehlermeldung auftaucht, also nie aufzulösen versucht wurde.\n- **pubDate**: erst `DateTimeFormatter.RFC_1123_DATE_TIME`, danach eine Reihe von Fallback-Mustern (ohne Wochentag, ohne Sekunden, zweistelliges Jahr) sowie eine Umschreibung gängiger Zeitzonen-Kürzel (GMT/UT/UTC/EST/…) in numerische Offsets. Ein nicht lesbares Datum liefert `Optional.empty()`, der Eintrag bleibt bestehen.\n- **Nachsicht**: Elemente aus fremden Namensräumen (z. B. `atom:link`, `media:content`, `content:encoded`) werden ignoriert (nur Elemente ohne Namensraum direkt unter `<item>` zählen); ein Eintrag ohne `<link>` wird übersprungen; ein Dokument, das gar nicht als XML lesbar ist, scheitert mit einer deutschen, nutzerseitigen Fehlermeldung (`RssFeedParseException`), die später im Jobstatus (#467) landet.\n- Fixtures unter `backend/src/test/resources/rss-feeds/` sind vollständig erfunden: `example.invalid`-Domänen, ausgedachte „Beispielbehörde\", ausgedachte Titel. Kein Bezug zu einer realen Einrichtung.\n\n## Zugehörige Issues\n\nCloses #466\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [x] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Testergebnisse\n\n`./gradlew spotlessApply build test` (Backend) – **BUILD SUCCESSFUL**, auch nach dem Rebase auf `origin/main` (inkl. bereits gemergtem #465/PR #473).\n\n- `RssFeedParserTest`: 9/9 grün (üblicher Feed, leerer Feed, Eintrag ohne Datum, Eintrag ohne Verweis, abweichendes Datumsformat, fremde Namensräume, `enclosure`, externe Entität, kein XML).\n- `Migration024AllowRssFeedSourceTypeTest`: 3 Tests, lokal ohne Docker übersprungen (`@Testcontainers(disabledWithoutDocker = true)`, wie alle bestehenden Migrationstests in diesem Modul) – läuft in CI mit Docker.\n\nWährend der Entwicklung zwei reale Fehlschläge behoben, siehe Commit-Historie: ein `multi-catch`-Compile-Fehler (`DateTimeParseException` ist Unterklasse von `DateTimeException`) und ein Normalisierungsfehler bei Zeitzonen-Kürzeln (fehlendes Leerzeichen vor dem numerischen Offset), der `alternateDateFormatWithoutWeekdayAndWithZoneAbbreviationIsStillParsed` real scheitern ließ, bevor er behoben wurde.\n\n## Checkliste\n\n- [x] Tests bestehen lokal\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend) – kein Doku-Update nötig, ADR-0017 ist bereits auf main\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Claude Agent SDK)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+          "closes": [
+            466
+          ],
+          "additions": 837,
+          "deletions": 2,
+          "changed_files": 22
+        },
+        {
+          "number": 473,
+          "title": "refactor(indexing): Quellentyp ausdrücklich übergeben und Executor über eine Registry auflösen",
+          "url": "https://github.com/criew/opaa/pull/473",
+          "author": "criew",
+          "labels": [
+            "enhancement",
+            "backend"
+          ],
+          "body": "## Zusammenfassung\n\nSetzt ADR-0017 um: der Quellentyp eines Indizierungslaufs wird ausdrücklich übergeben und löst den zuständigen Executor über eine Registry auf, statt aus der Belegung von `url` erraten zu werden.\n\n- `IndexingTriggerRequest` bekommt ein optionales Feld `sourceType` mit dem neuen, engeren Enum `IndexingSourceType` (`FILESYSTEM`, `HTTP_DIRECTORY`). `RSS_FEED` kommt erst in #466. `UPLOAD` (Herkunft eines Dokuments, kein Lauftyp) ist bewusst **nicht** in `IndexingSourceType` enthalten und kann über `/api/v1/indexing/trigger` nie angefordert werden.\n- Fehlt `sourceType`, gilt weiterhin die bisherige Ableitung (`url` gesetzt → `HTTP_DIRECTORY`, sonst → `FILESYSTEM`) — konsolidiert an genau einer Stelle in `DocumentIndexingService`, nicht mehr verteilt über Controller und Service.\n- Neues gemeinsames Interface `SourceIndexingExecutor`, implementiert von `AsyncIndexingExecutor` (`FILESYSTEM`) und `UrlIndexingExecutor` (`HTTP_DIRECTORY`). `IndexingSourceExecutorRegistry` löst den Executor über den Quellentyp auf; ein Typ ohne registrierten Executor scheitert mit einer `IllegalStateException` statt einer `NullPointerException`.\n- Eine Anfrage, deren `sourceType` den übrigen Feldern widerspricht (z. B. `HTTP_DIRECTORY` ohne `url`, oder `FILESYSTEM` mit `url`), wird mit einer deutschen 400-Meldung abgewiesen.\n- Die strukturgleiche `reportRejected`-Duplikation zwischen beiden Executoren (unterschiedliche Parametertypen `List<Path>` vs. `List<CrawledFileEntry>`) ist im neuen `RejectedDocumentReporter` zusammengeführt.\n- `IndexingController` und `DocumentIndexingService` verlieren ihre Fallunterscheidung zwischen Dateisystem- und URL-Lauf; der Controller ruft nur noch einen einzigen Einstiegspunkt auf, der die Registry befragt. Beans dafür sind in `IndexingConfiguration` verdrahtet.\n- DTOs bleiben generiert (ADR-0006): `IndexingSourceType` ist in `opaa-api.yaml` als Schema ergänzt und in `build.gradle.kts` über `typeMappings`/`importMappings`/den `doLast`-Cleanup auf das Domain-Enum in `io.opaa.indexing` gemappt.\n\n**Abweichung von \"ohne fachliche Anpassung\":** `IndexingControllerTest` musste mechanisch angepasst werden, weil der Controller jetzt einen statt zwei unterscheidbaren Methodenaufrufen auf `DocumentIndexingService` macht (ADR-0017 verlangt ausdrücklich, dass der Controller seine Fallunterscheidung verliert). Jedes bisherige Szenario (Status, Fehlerantworten, welche Felder beim URL-Lauf ankommen) ist unverändert erhalten geblieben — nur das Mock-Ziel wechselte von zwei Methoden auf eine. Neue Tests für explizites `sourceType`, den Widerspruchsfall und die fehlende Executor-Registrierung wurden ergänzt.\n\n## Zugehörige Issues\n\nCloses #465\nTeil von #463\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [x] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (`./gradlew spotlessCheck build test` — grün, keine Fehlschläge)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — nicht zutreffend, kein Bugfix\n- [ ] Dokumentation aktualisiert (falls zutreffend) — ADR-0017 ist bereits gemergt, keine weitere Doku-Änderung nötig\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+          "closes": [
+            465
+          ],
+          "additions": 626,
+          "deletions": 151,
+          "changed_files": 14
+        },
+        {
+          "number": 472,
+          "title": "docs(decisions): ADR zum Quellentypmodell der Indizierung",
+          "url": "https://github.com/criew/opaa/pull/472",
+          "author": "criew",
+          "labels": [
+            "documentation",
+            "backend"
+          ],
+          "body": "## Zusammenfassung\n\nNeuer Architecture Decision Record (ADR-0015), der festhält, wie ein Quellentyp der Indizierung\nkünftig beschrieben, ausgewählt, registriert und erweitert wird — Voraussetzung für den geplanten\nRSS-Feed-Konnektor (Epic #463). `docs/features/knowledge-sources.md` verweist an passender Stelle auf\nden ADR.\n\n## Zugehörige Issues\n\nCloses #464\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, Pre-Push-Checkliste laut AGENTS.md nicht anwendbar)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Fable 5, Claude Agent SDK)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst",
+          "closes": [
+            464
+          ],
+          "additions": 278,
+          "deletions": 1,
+          "changed_files": 2
+        }
+      ]
+    }
+  ],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 486,
+        "title": "feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek",
+        "url": "https://github.com/criew/opaa/issues/486",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "epic",
+          "backend",
+          "frontend"
+        ],
+        "body": "Wissensbibliotheken und Indizierung wachsen zusammen: Eine Bibliothek wird künftig aus einem **Template** angelegt und trägt damit genau **einen Quellentyp** und **eine Quellkonfiguration** — Upload, Dateisystem-Verzeichnis oder Web-Adresse (mit dem RSS-Feed aus Epic #463 als nächstem Typ). Der separate Indizierungsbereich und die getrennte Dokumentenseite entfallen; die Bibliotheksdetailseite zeigt je nach Typ ein Uploadfeld oder Konfiguration samt „Jetzt indizieren\". Damit entsteht die Quellen-Persistenz, die [ADR-0017](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) in Entscheidung 4 ausdrücklich als Übergang offen gelassen hat.\n\n### Hintergrund\n\n- [docs/decisions/0017-quellentypmodell-indizierung.md](../blob/main/docs/decisions/0017-quellentypmodell-indizierung.md) — Quellentypmodell; Entscheidung 4 (Konfiguration im Anstoß-Request) wird durch ADR-0018 (#475) abgelöst, Registry und Löschsemantik bleiben\n- [docs/features/knowledge-sources.md](../blob/main/docs/features/knowledge-sources.md) — wird in #482 nachgeführt (gemischt gespeiste Bibliotheken entfallen)\n- Epic #463 — die Registry (#465) ist Voraussetzung des neuen Anstoßes; #466–#468 sind unberührt; #469 wird umformuliert (Typauswahl wandert in die Bibliotheksanlage)\n- #207 — die 1:1-Zuordnung Quelle→Bibliothek wird strukturell erzwungen; offen bleibt dort die Obergrenze der Freigabe\n\n### Phasen\n\n**Phase 1 — Entscheidung und Datenmodell.** ADR-0018 (#475) legt Ein-Typ-Regel, Ablösung von ADR-0017/Entscheidung 4, Credentials-Grundsätze und Löschregel fest; #476 baut Schema, Entity und API. Ohne diese Grundlage würde jedes weitere Ticket das Request-Modell fortschreiben.\n\n**Phase 2 — Verhalten.** #478 stellt den Anstoß auf „je Bibliothek aus gespeicherter Konfiguration\" um (setzt die Registry aus #465 voraus), #479 zieht Upload- und Löschregeln nach, #477 liefert die Dokumentzahl in der Übersicht.\n\n**Phase 3 — Oberfläche und Doku.** #480 (Anlage mit Template), #481 (Detailseite, Ablösung von Dokumentenseite und Admin-Drawer), #482 (Spezifikation).\n\n**Sicherheits-Nachzügler (vor Produktivbetrieb):** #483 (Zugangsdaten-Verwahrung), #484 (Pfad-Allowlist und Berechtigung) — bewusst aus Phase 1 herausgehalten, damit der Umbau nicht an offenen Sicherheitsentscheidungen hängt, aber vor einem Mehrbenutzerbetrieb zwingend.\n\n### Abhängigkeiten\n\n```\n#475 ──> #476 ──┬──> #478 ──> #481 ──> #482\n ADR    Schema  │  (braucht #465)\n                ├──> #479\n                ├──> #480 ──> #481\n                ├──> #483\n                └──> #484\n#477 unabhängig\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Eine Bibliothek wird aus einem Template angelegt und trägt Typ + Konfiguration; der Typ ist unveränderlich\n- [ ] Bestehende Bibliotheken sind `UPLOAD`; kein Verhalten des Bestands ändert sich außer dem Wegfall der alten Wege\n- [ ] Der Indizierungsanstoß kennt nur noch die Bibliothek; typspezifische Felder sind aus dem Trigger-Request verschwunden\n- [ ] Die Übersicht zeigt die Dokumentzahl; die Detailseite zeigt je Typ Uploadfeld bzw. Konfiguration + „Jetzt indizieren\"\n- [ ] `/documents` und der Indizierungsabschnitt im Admin-Drawer sind entfernt\n- [ ] Zugangsdaten stehen in keiner API-Antwort; ihre verschlüsselte Ablage ist umgesetzt oder als Blocker vor Produktivbetrieb markiert\n\n### Außerhalb des Umfangs (separate Epics/Issues)\n\n- Zeitplan je Bibliothek — #485\n- RSS-Feed als Typ — Epic #463 (liefert `RSS_FEED` in das hier gebaute Modell)\n- Zielprüfung gegen private Adressbereiche — #267\n- Obergrenze der Freigabe — #207\n\n### Referenzen\n\n- `docs/features/knowledge-sources.md`\n- `docs/features/spaces-and-assets.md`\n- `docs/decisions/0017-quellentypmodell-indizierung.md`",
+        "closes": []
+      },
+      {
+        "number": 485,
+        "title": "feat(indexing): Zeitplan je Bibliothek für Indizierungsläufe",
+        "url": "https://github.com/criew/opaa/issues/485",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "backend"
+        ],
+        "body": "## Kontext\n\nMit ADR-0018 liegt die Quellkonfiguration an der Bibliothek — damit hat ein Zeitplan erstmals einen natürlichen Ort: als Teil der Bibliothekskonfiguration. Das Epic #463 hatte Scheduling ausdrücklich ausgeklammert; die Infrastruktur (`@EnableScheduling`, `AuditRetentionScheduler`) existiert.\n\n## Umfang (grob, vor Umsetzung zu verfeinern)\n\n- Zeitplan (Cron o. ä.) je Konnektorbibliothek, an- und abschaltbar\n- Anzeige „letzter/nächster Lauf\" in der Detailansicht\n- Antwort auf verteilte Ausführung bei mehreren Backend-Instanzen (Lock/Leader)\n- Vorrangregeln aus `docs/features/knowledge-sources.md` (sofort/regulär/nachrangig) mindestens vorbereiten\n\nAbhängig vom Epic „Bibliothekstypen\" (Anstoß je Bibliothek).",
+        "closes": []
+      },
+      {
+        "number": 463,
+        "title": "Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen",
+        "url": "https://github.com/criew/opaa/issues/463",
+        "author": "criew",
+        "labels": [
+          "enhancement",
+          "epic",
+          "backend"
+        ],
+        "body": "OPAA kennt heute zwei Wege, an Dokumente zu kommen: ein Verzeichnis im Dateisystem und eine über HTTP erreichbare Verzeichnisliste. Beide sind fest verdrahtet — welcher Weg läuft, entscheidet ein `if` im `IndexingController`, abgeleitet daraus, ob das Feld `url` gesetzt ist oder nicht. Ein dritter Quellentyp passt in diese Konstruktion nicht mehr hinein, denn „URL gesetzt\" unterscheidet einen Feed nicht von einer Verzeichnisliste.\n\nDieses Epic tut deshalb zweierlei: Es macht den Quellentyp zu einer **ausdrücklichen, erweiterbaren Größe** und erschließt als ersten Nutzer dieser Erweiterbarkeit **RSS-Feeds**. Der zweite Teil ist der Praxistest des ersten — eine Erweiterbarkeit, die nie erweitert wurde, ist eine Behauptung.\n\n### Hintergrund\n\nBehörden veröffentlichen laufend gepflegte Bestände über RSS: Erlasse, Schreiben, Rundverfügungen, Pressemitteilungen. Diese Feeds werden vom **Government Site Builder (GSB)** erzeugt, dem CMS des Bundes, und liefern **Standard-RSS 2.0** ohne proprietäre Erweiterungen. Ein RSS-Konnektor ist damit nicht auf ein Haus zugeschnitten, sondern trägt für jede Stelle, die einen Feed anbietet.\n\nDer entscheidende Unterschied zur bestehenden Verzeichnisliste: **Ein Feed verweist nicht auf Dateien.** Sein `<link>` zeigt auf eine HTML-Detailseite, `<enclosure>` fehlt in der Praxis. Der Feed ist ein Änderungsmelder, kein Dateiverzeichnis. Was indiziert werden soll — der Artikeltext und die an der Detailseite hängenden Anlagen — muss in einem zweiten Schritt aus der Seite gewonnen werden. Genau dieser Schritt ist es, der ein Quellentypmodell nötig macht, das mehr kann als „Liste von Datei-URLs\".\n\nSpezifikation: [`docs/features/knowledge-sources.md`](../blob/main/docs/features/knowledge-sources.md), insbesondere „Erreichbare Verzeichnislisten im Netz (gebaut)\" und „Selbst aktualisierende Wissensblöcke\". Verarbeitungskette: [`docs/features/data-indexing-rag.md`](../blob/main/docs/features/data-indexing-rag.md).\n\n### Phasen\n\n**Phase 1 — Das Modell tragfähig machen.** Zuerst der ADR, der festhält, wie ein Quellentyp künftig beschrieben wird, dann die Ablösung der `if`-Auswahl durch eine Registry. Diese Reihenfolge ist nicht Förmlichkeit: Zu Ingestion und Konnektoren existiert bislang **kein einziger ADR**, und der dritte Typ ist der Punkt, an dem sich entscheidet, ob der vierte billig wird oder wieder teuer. Wer hier mit dem Feature anfängt, baut das dritte `if` und zementiert die Duplikation.\n\n**Phase 2 — RSS als erster neuer Typ.** Enum, Migration und Feed-Parser bilden das Gerüst; der Executor macht daraus einen laufenden Weg. Der Schnitt zwischen beiden ist bewusst: Der Parser ist ohne Netz und ohne Datenbank prüfbar, der Executor braucht beides.\n\n**Phase 3 — Anlagen und Oberfläche.** Das Anlagenprofil trennt „welche Links einer Detailseite sind Dokumente\" von der übrigen Auflösungslogik, damit das GSB-Muster eine Konfiguration bleibt und keine Sonderbehandlung im Code. Zuletzt wird der Typ in der Verwaltungsoberfläche wählbar und die Spezifikation nachgeführt.\n\n### Abhängigkeiten\n\n```\n#464 ──> #465 ──> #466 ──> #467 ──> #468 ──┬──> #469\n ADR    Registry   Typ+     Executor  Anlagen │    Frontend\n                   Parser                     └──> #470\n                                                   Doku\n```\n\n### Abnahmekriterien (Epic-Ebene)\n\n- [ ] Ein neuer Quellentyp lässt sich ergänzen, ohne eine bestehende Fallunterscheidung anzufassen — belegt dadurch, dass `RSS_FEED` genau so hinzugekommen ist\n- [ ] Der Quellentyp wird ausdrücklich übergeben, nicht aus der Belegung anderer Felder erraten\n- [ ] Ein RSS-Feed wird indiziert: Artikeltext der Detailseiten und die daran hängenden Anlagen landen als Dokumente im Index\n- [ ] Ein unveränderter Feed erzeugt keinen erneuten Abruf der Detailseiten\n- [ ] Ein einzelnes nicht erreichbares oder abgewiesenes Item bricht den Lauf nicht ab\n- [ ] Die Systemverwaltung kann den Quellentyp in der Oberfläche wählen\n- [ ] `docs/features/knowledge-sources.md` beschreibt den gebauten Stand, nicht das Zielbild\n\n### Außerhalb des Umfangs (separate Epics)\n\n- **Zeitplan für Läufe.** Ein Feed ohne wiederkehrenden Lauf ist halb so viel wert. Scheduling-Infrastruktur ist im Backend zwar vorhanden (`@EnableScheduling`, genutzt vom `AuditRetentionScheduler`), aber es gibt keinen Zeitplan für Indizierungsläufe und keine Antwort auf die verteilte Ausführung bei mehreren Instanzen. Das ist ein eigenes Vorhaben und nicht Teil dieses Epics. Bis dahin wird ein RSS-Lauf angestoßen wie jeder andere.\n- **Zielprüfung gegen private Adressbereiche** — #267. Für RSS verschärft sich die Lage, weil die abgerufenen Adressen nicht mehr von der Systemverwaltung stammen, sondern vom Betreiber des Feeds. Das Ticket bleibt eigenständig; dieses Epic setzt es nicht voraus, benennt die Verschärfung aber.\n- **Zuordnung einer Quelle zu einer Wissensbibliothek** — #207.\n- **Speicherung von Quellkonfigurationen** (Adresse, Zugang, Zeitplan als dauerhafte Größe statt als Feld im Anstoß eines Laufs). Heute wird alles pro Aufruf übergeben; das zu ändern gehört mit dem Zeitplan zusammen.\n- Weitere Quellentypen (Netzlaufwerke, Wikis, Postfächer).\n\n### Referenzen\n\n- `docs/features/knowledge-sources.md`\n- `docs/features/data-indexing-rag.md`\n- `docs/discussions/discussion-plugin-architecture.md` — die längerfristige Frage, ob Konnektoren einmal Plugins werden; dieses Epic greift ihr nicht vor",
+        "closes": []
+      },
+      {
+        "number": 461,
+        "title": "Roadmap-Meilenstein 1 (31.08.2026) in Produktvision aufnehmen",
+        "url": "https://github.com/criew/opaa/issues/461",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:S"
+        ],
+        "body": "Ergänzt die Produktvision um den ersten datierten Meilenstein (31.08.2026), der zwischen bugpuritz und criew abgestimmt wurde.\n\n## Inhalt\n\n- Neuer Abschnitt „Roadmap\" in `docs/VISION.md` mit Meilenstein 1: UI-Redesign, Anlegen von Wissensdatenbanken (Konnektoren + Upload), Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen\n- Bewusste Einschränkung für den Meilenstein dokumentiert: Assets/Spaces-Konzept wird umgesetzt, volle Berechtigungsproblematik folgt später\n- Arbeitsteilung festgehalten: bugpuritz (UI-Design), criew (Wissensbibliotheken, Konnektoren, Verlinkung zu Spaces)\n- Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im Abschnitt „Anmeldung und Identität\"\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 461,
+        "title": "Roadmap-Meilenstein 1 (31.08.2026) in Produktvision aufnehmen",
+        "url": "https://github.com/criew/opaa/issues/461",
+        "author": "criew",
+        "labels": [
+          "documentation",
+          "size:S"
+        ],
+        "body": "Ergänzt die Produktvision um den ersten datierten Meilenstein (31.08.2026), der zwischen bugpuritz und criew abgestimmt wurde.\n\n## Inhalt\n\n- Neuer Abschnitt „Roadmap\" in `docs/VISION.md` mit Meilenstein 1: UI-Redesign, Anlegen von Wissensdatenbanken (Konnektoren + Upload), Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen\n- Bewusste Einschränkung für den Meilenstein dokumentiert: Assets/Spaces-Konzept wird umgesetzt, volle Berechtigungsproblematik folgt später\n- Arbeitsteilung festgehalten: bugpuritz (UI-Design), criew (Wissensbibliotheken, Konnektoren, Verlinkung zu Spaces)\n- Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im Abschnitt „Anmeldung und Identität\"\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 462,
+        "title": "docs(vision): Roadmap-Meilenstein 1 zum 31.08.2026 ergänzen",
+        "url": "https://github.com/criew/opaa/pull/462",
+        "author": "criew",
+        "labels": [
+          "documentation"
+        ],
+        "body": "## Zusammenfassung\n\nErgänzt `docs/VISION.md` um den ersten datierten Roadmap-Meilenstein (31.08.2026), abgestimmt zwischen bugpuritz und criew: UI-Redesign, Anlegen von Wissensdatenbanken über Konnektoren und Upload, Testsystem mit erweitertem Testkorpus, Aufstellung der bisher implementierten Leistungen. Die bewusste Einschränkung (Berechtigungsproblematik folgt später) und die Arbeitsteilung sind dokumentiert.\n\nZusätzlich eine Backlog-Notiz zu mehreren gleichzeitig nutzbaren OIDC-Anbietern in `docs/features/access-control.md` ergänzt, im bestehenden Abschnitt „Anmeldung und Identität\".\n\n## Zugehörige Issues\n\nCloses #461\n\n## Art der Änderung\n\n- [ ] Bugfix\n- [ ] Neues Feature\n- [x] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Checkliste\n\n- [x] Tests bestehen lokal (reine Dokumentationsänderung, kein Code betroffen)\n- [ ] Bei Bugfix: Reproduktionsnachweis erbracht\n- [x] Dokumentation aktualisiert (falls zutreffend)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [ ] CLA unterzeichnet (Erstbeitragende: Unterzeichnungskommentar unten posten, oder wurde bereits unterzeichnet)\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code / Sonnet 5)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_018dWaYdNfVutt4SgqGwH17U",
+        "closes": [
+          461
+        ],
+        "additions": 33,
+        "deletions": 0,
+        "changed_files": 2
+      }
+    ]
+  }
+}

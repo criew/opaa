@@ -5,8 +5,26 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-18T01:57:35Z</updated>
+  <updated>2026-08-19T01:59:51Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 18. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-18.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-18.html</id>
+    <updated>2026-08-19T01:59:51Z</updated>
+    <summary type="text">feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek:
+— Quellentyp und Quellkonfiguration an Bibliothek gespeichert
+— Bibliotheksanlage mit Typauswahl aus Templates
+— Bibliotheksdetailseite mit typspezifischem Bereich
+— Zugangsdaten der Quellkonfiguration verschlüsselt verwahrt
+Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen:
+— RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds
+— RSS-Feeds indizieren mit Detailseiten-Übernahme
+— Quellentyp im Indizierungsformular wählbar
+— Anlagen an Detailseiten mit Profilen indizieren
+Sonstiges:
+— Roadmap-Meilenstein 1 zum 31.08.2026 dokumentiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 17. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-17.html"/>
