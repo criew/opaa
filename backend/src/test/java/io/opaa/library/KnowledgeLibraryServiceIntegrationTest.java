@@ -1539,6 +1539,31 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void listLibrariesReportsSourceTypePerLibrary() {
+    // #481 review comment on #476: LibraryListResponse did not carry sourceType (unlike
+    // LibraryResponse), so the overview could not show the type chip without a per-library
+    // detail round trip. Mirrors the documentCount coverage above for the same reason.
+    UUID owner = createUser(organizationA);
+    LibraryResponse upload =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+    LibraryResponse filesystem =
+        libraryService.createLibrary(
+            new LibraryRequest("Mango", DocumentSourceType.FILESYSTEM).sourcePath("/tmp/481"),
+            owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(upload.getId()))
+        .extracting(LibraryListResponse::getSourceType)
+        .containsExactly(DocumentSourceType.UPLOAD);
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(filesystem.getId()))
+        .extracting(LibraryListResponse::getSourceType)
+        .containsExactly(DocumentSourceType.FILESYSTEM);
+  }
+
+  @Test
   void listLibrariesNeverBypassesToOwnerForASystemAdminUnlikeGetLibrary() {
     // #425 review, nit 2 and 3 (orchestrator decision): unlike getLibrary/updateLibrary/
     // deleteLibrary, myRole in listLibraries never bypasses to OWNER for a system admin, and

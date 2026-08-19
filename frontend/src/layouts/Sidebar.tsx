@@ -13,7 +13,6 @@ import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ChatIcon from '@mui/icons-material/Chat'
-import DescriptionIcon from '@mui/icons-material/Description'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupsIcon from '@mui/icons-material/Groups'
@@ -197,17 +196,6 @@ export default function Sidebar() {
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="Einstellungen" />
-        </ListItemButton>
-        <ListItemButton
-          component={NavLink}
-          to="/documents"
-          selected={location.pathname === '/documents'}
-          sx={{ borderRadius: 2 }}
-        >
-          <ListItemIcon sx={{ minWidth: 36 }}>
-            <DescriptionIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Dokumente" />
         </ListItemButton>
         <ListItemButton
           component={NavLink}

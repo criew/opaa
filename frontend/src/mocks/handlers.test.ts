@@ -119,7 +119,7 @@ describe('MSW Handlers', () => {
   })
 
   // Upload/format/size/dedup handling of the POST handler is exercised end-to-end through
-  // DocumentsPage.test.tsx and documentStore.test.ts instead of a raw multipart request here:
+  // LibraryDetailPage.test.tsx and documentStore.test.ts instead of a raw multipart request here:
   // driving request.formData() through a jsdom-environment fetch()/axios body never resolves in
   // this handler (a known jsdom/undici stream interaction, not specific to this handler), so a
   // multipart POST cannot be exercised directly against MSW from this test file.
