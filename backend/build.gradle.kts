@@ -181,6 +181,26 @@ tasks.withType<Test> {
     systemProperty("file.encoding", "UTF-8")
 }
 
+// #514/PR #537 review (coordinator-reported CI failure): the "test" source set alone now holds
+// well over a dozen @SpringBootTest classes that each spin up their own Testcontainers Postgres
+// instance and ApplicationContext (io.opaa.api.LibraryControllerCredentialsIntegrationTest and
+// its siblings) - Spring's context cache cannot share these across classes once each declares its
+// own @DynamicPropertySource method (the cache key resolves the dynamic-property customizer per
+// declaring method, not per equivalent body), so several of these heavy contexts are alive at
+// once during a single-JVM test run. That, not a leak, is what pushed the CI runner's constrained
+// heap into OutOfMemoryError once this PR added one more such context - main itself ran (and
+// still runs) green with the pre-existing set. The structural fix for this specific PR was
+// removing the added context again (see LibraryControllerCredentialsIntegrationTest's Javadoc);
+// this explicit ceiling is additional headroom for the existing, already-tight baseline once
+// that's happened, rather than reversible by that fix alone - default JVM heap sizing on
+// constrained CI runners is well below what over a dozen concurrently-cached
+// EntityManagerFactory/HikariPool/VectorStore instances need. Backend-only: eval tasks stay on
+// the default (they run a different, much smaller source set and were never part of this
+// problem).
+tasks.named<Test>("test") {
+    maxHeapSize = "2g"
+}
+
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
     generatorName.set("spring")
     inputSpec.set(layout.projectDirectory.file("src/main/resources/openapi/opaa-api.yaml").asFile.absolutePath)

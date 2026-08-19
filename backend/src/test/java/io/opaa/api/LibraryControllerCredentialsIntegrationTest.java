@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
@@ -32,6 +33,20 @@ import org.testcontainers.utility.DockerImageName;
  * forwarded verbatim (ADR-0018, Entscheidung 4). Asserts against the raw JSON response body via
  * MockMvc, not a Java object's toString(), because only the raw body is what an actual HTTP client
  * - and therefore any log or proxy that captures it - ever sees.
+ *
+ * <p><b>Also carries {@code POST /api/v1/libraries/source-test}'s HTTP-layer coverage (#514, PR
+ * #537 review).</b> That endpoint originally had its own {@code
+ * LibraryControllerSourceTestIntegrationTest} class - byte-for-byte the same
+ * {@code @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("dev") @Testcontainers} shape as
+ * this class, including its own {@code @Container} Postgres instance. Two test classes with an
+ * identical shape still do <em>not</em> share a cached Spring context when each declares its own
+ * {@code @DynamicPropertySource} method (Spring's context-cache key resolves the dynamic-property
+ * customizer per declaring method, not per equivalent body) - so that second class meant a second,
+ * fully independent {@code ApplicationContext} plus a second Postgres container alive at once,
+ * which was the direct cause of the CI backend-test job's {@code OutOfMemoryError} once this PR
+ * added it (a coordinator-reported CI failure, main itself green throughout). Moving those tests
+ * here instead - onto the container and context this class needs regardless - removes that second
+ * context entirely rather than trying to make two different classes share one.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -139,5 +154,90 @@ class LibraryControllerCredentialsIntegrationTest {
 
     String rawResponseBody = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(rawResponseBody).doesNotContain(SECRET);
+  }
+
+  // --- POST /api/v1/libraries/source-test (#514) -------------------------------------------
+  //
+  // Wiring, authentication, and that a caller need not own or hold any role on an (as yet
+  // nonexistent) library - the same minimum bar POST /api/v1/libraries itself applies. {@link
+  // io.opaa.library.SourceConnectionTestServiceTest} already covers the per-quellentyp behaviour
+  // in depth; these only pin the HTTP layer around it. See this class's own Javadoc for why they
+  // live here rather than in a dedicated test class.
+
+  @Test
+  void sourceTestRejectsAnUnknownDevUserWithA401JustLikeEveryOtherLibraryEndpoint()
+      throws Exception {
+    // DevAuthFilter's own contract (see its Javadoc): an unrecognised X-OPAA-Dev-User subject is
+    // rejected with 401 rather than silently falling back to the default user - this endpoint
+    // goes through the exact same filter as every other /api/v1/libraries endpoint, so it must
+    // reject the same way.
+    String body =
+        """
+        { "sourceType": "UPLOAD" }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/source-test")
+                .header(DevAuthFilter.DEV_USER_HEADER, "no-such-user")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(body))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void sourceTestRejectsUploadSourceTypeWithA400() throws Exception {
+    String body =
+        """
+        { "sourceType": "UPLOAD" }
+        """;
+
+    mockMvc
+        .perform(post("/api/v1/libraries/source-test").with(devUser()).content(body))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void sourceTestRejectsANonHttpUrlWithA400() throws Exception {
+    String body =
+        """
+        { "sourceType": "HTTP_DIRECTORY", "sourceUrl": "ftp://files.example.com" }
+        """;
+
+    mockMvc
+        .perform(post("/api/v1/libraries/source-test").with(devUser()).content(body))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void sourceTestReportsAnUnreachableHttpDirectoryAs200WithReachableFalse() throws Exception {
+    // Port 1 is a reserved, never-listening port - the connection itself fails, distinct from
+    // the source configuration being invalid (400 above).
+    String body =
+        """
+        { "sourceType": "HTTP_DIRECTORY", "sourceUrl": "http://127.0.0.1:1/" }
+        """;
+
+    mockMvc
+        .perform(post("/api/v1/libraries/source-test").with(devUser()).content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(false))
+        .andExpect(jsonPath("$.message").isNotEmpty());
+  }
+
+  @Test
+  void sourceTestFilesystemOutsideTheAllowlistIsRejectedWithA400JustLikeLibraryCreation()
+      throws Exception {
+    // Mirrors this class's own dev-profile allowlist expectations (application.yml:
+    // opaa.indexing.filesystem-allowlist=/data,/tmp for the "dev" profile) - path enumeration
+    // outside it must be rejected exactly like POST /api/v1/libraries itself.
+    String body =
+        """
+        { "sourceType": "FILESYSTEM", "sourcePath": "/etc/shadow" }
+        """;
+
+    mockMvc
+        .perform(post("/api/v1/libraries/source-test").with(devUser()).content(body))
+        .andExpect(status().isBadRequest());
   }
 }
