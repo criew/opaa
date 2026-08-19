@@ -146,12 +146,16 @@ Drei Zustände werden unterschieden:
 - Migrationen bis `015-replace-space-kind-with-is-default.yaml` — die Space-Arten sind durch Attribute
   ersetzt (#333)
 
-**Im Bau** — Epic #198 mit #203 bis #216
+**Im Bau** — Epic #198 mit #203 bis #216, sowie Epic #523
 - Assoziation von Assets an Spaces als reine Kuratierung (#203) · strenger Modus (#204) · dauerhafte
   Chats im Space (#205) · Artefakte mit Lebenszyklus (#206) · Agenten- und Prompt-Assets mit
   Freigabekette (#209) · Parameter statt Abspaltung (#210) · Versionierung mit Sofortwirkung (#211) ·
   Rückruf durch Deaktivierung (#212) · Abkömmlinge mit Herkunft (#213) · mitgelieferte Assets (#214) ·
   Katalog mit Auffindbarkeit (#215) · Mitbestimmungs-Steuerung (#216)
+- **Epic #523 — Chats im Space und Suchbereich per @-Bibliotheksreferenzen:** Chat-Persistenz in genau
+  einem Space (Vorstufe zu #205, das ab dieser Grundlage nur noch den Kollaborationsteil trägt) und
+  Ablösung der wirkungslosen Space-Auswahl im Suchfeld durch den Schalter „Wissen nutzen" und sticky
+  @-Bibliotheksreferenzen je Chat.
 
 **Geplant (Phase 3)**
 - Freigabe- und Prüfworkflow über Stufen · organisationsweiter Katalog · Vorlagenkatalog nach

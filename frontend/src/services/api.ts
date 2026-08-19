@@ -36,12 +36,30 @@ setupAuthInterceptors(
   () => useAuthStore.getState().logout(),
 )
 
-function normalizeError(err: unknown): never {
+// #519 (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
+// shared by every endpoint in this file, most of which only ever send small JSON payloads. Scoping
+// the translated message to callers that actually upload a file (currently just uploadDocument)
+// keeps it honest instead of guessing "Datei" for a hypothetical 413 on, say, updateSpaceDetails.
+//
+// Exported (only) so api.test.ts can exercise the context-scoping directly with a constructed
+// AxiosError: a real multipart POST with a File/Blob body hangs indefinitely against msw/node in
+// this project's jsdom test environment (reproduced independently of this change - plain JSON and
+// urlencoded FormData bodies work fine, only a binary Blob/File part inside FormData hangs), so the
+// upload-specific branch below cannot be exercised end-to-end through uploadDocument() in tests.
+export function normalizeError(err: unknown, context?: 'upload'): never {
   if (err instanceof AxiosError) {
     const data = err.response?.data
 
     if (isErrorResponse(data)) {
       throw new Error(data.error)
+    }
+
+    // #519: the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
+    // client_max_body_size with a bare HTML 413 page, not the backend's JSON ErrorResponse -
+    // isErrorResponse above is false for that body, so this would otherwise fall through to the
+    // generic "HTTP 413: ..." message below, which is neither German nor understandable to users.
+    if (err.response?.status === 413 && context === 'upload') {
+      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.')
     }
 
     if (err.response?.status) {
@@ -368,7 +386,7 @@ export async function uploadDocument(
     )
     return data
   } catch (err) {
-    normalizeError(err)
+    normalizeError(err, 'upload')
   }
 }
 
