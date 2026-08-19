@@ -446,6 +446,11 @@ export const handlers = [
       visibility?: LibraryVisibility
       listed?: boolean
       sourceType: DocumentSourceType
+      sourcePath?: string | null
+      sourceUrl?: string | null
+      sourceProxy?: string | null
+      sourceCredentials?: string | null
+      sourceInsecureSsl?: boolean | null
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
@@ -460,6 +465,72 @@ export const handlers = [
         { error: 'Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen' },
         { status: 403 },
       )
+    }
+    // Mirrors KnowledgeLibraryService#validateConfigurationForType (ADR-0018): only the fields
+    // matching sourceType may be set, and the run-based types require their address field.
+    if (body.sourceType === 'UPLOAD') {
+      if (
+        body.sourcePath ||
+        body.sourceUrl ||
+        body.sourceProxy ||
+        body.sourceCredentials ||
+        body.sourceInsecureSsl
+      ) {
+        return HttpResponse.json(
+          { error: 'sourceType UPLOAD erlaubt keine Quellkonfiguration' },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'FILESYSTEM') {
+      if (!body.sourcePath) {
+        return HttpResponse.json(
+          { error: 'sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourcePath.startsWith('/')) {
+        return HttpResponse.json(
+          { error: 'sourcePath muss ein absoluter Pfad sein' },
+          { status: 400 },
+        )
+      }
+      if (body.sourceUrl || body.sourceProxy || body.sourceCredentials) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht' +
+              ' zulaessig',
+          },
+          { status: 400 },
+        )
+      }
+      if (body.sourceInsecureSsl) {
+        return HttpResponse.json(
+          { error: 'sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig' },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED') {
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: `sourceUrl ist erforderlich, wenn sourceType ${body.sourceType} ist` },
+          { status: 400 },
+        )
+      }
+      if (body.sourcePath) {
+        return HttpResponse.json(
+          { error: `sourcePath ist fuer sourceType ${body.sourceType} nicht zulaessig` },
+          { status: 400 },
+        )
+      }
+      if (!/^https?:\/\//i.test(body.sourceUrl)) {
+        return HttpResponse.json(
+          { error: 'sourceUrl muss mit http:// oder https:// beginnen' },
+          { status: 400 },
+        )
+      }
     }
     const id = `library-${crypto.randomUUID().slice(0, 8)}`
     const now = new Date().toISOString()
@@ -484,6 +555,20 @@ export const handlers = [
       documentCount: 0,
       // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveraenderlich.
       sourceType: body.sourceType,
+      sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
+      sourceUrl:
+        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+          ? (body.sourceUrl ?? null)
+          : null,
+      sourceProxy:
+        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+          ? (body.sourceProxy ?? null)
+          : null,
+      // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
+      sourceInsecureSsl:
+        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+          ? Boolean(body.sourceInsecureSsl)
+          : null,
     }
     mockLibraryDetails[id] = detail
     return HttpResponse.json(detail, { status: 201 })

@@ -116,6 +116,49 @@ export function documentSourceTypeLabel(
   return documentSourceTypeLabels[sourceType as DocumentSourceType] ?? sourceType
 }
 
+// One sentence per source type, shown as the template description in CreateLibraryDialog.
+const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
+  UPLOAD: 'Dokumente werden manuell hochgeladen und einzeln verwaltet.',
+  FILESYSTEM: 'Ein Verzeichnis auf dem Server wird regelmäßig eingelesen.',
+  HTTP_DIRECTORY: 'Eine im Web erreichbare Verzeichnisliste wird abgerufen.',
+  RSS_FEED: 'Ein RSS-Feed und die verlinkten Detailseiten werden abgerufen.',
+}
+
+export function documentSourceTypeDescription(
+  sourceType: DocumentSourceType | string | undefined,
+): string {
+  if (!sourceType) return ''
+  return documentSourceTypeDescriptions[sourceType as DocumentSourceType] ?? 'Weiterer Quellentyp.'
+}
+
+// Derived from documentSourceTypeLabels rather than written out again, so it stays in sync with
+// that Record<DocumentSourceType, string> - which itself is exhaustive over the generated
+// DocumentSourceType union at compile time: TypeScript rejects the file if a new enum value (like
+// a future connector type) is added to the OpenAPI spec without also giving it a label here.
+// openapi-typescript erases enums to a type-only union - there is no runtime array to import
+// straight from the generated spec types - so this is the closest a purely frontend change gets
+// to "the template list follows the spec automatically" without a build-time codegen step.
+export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
+
+/**
+ * Which configuration fields CreateLibraryDialog renders and validates for each source type,
+ * mirroring KnowledgeLibraryService#validateConfigurationForType (ADR-0018):
+ * - 'none': no source configuration fields are shown/sent (UPLOAD).
+ * - 'path': a required, server-absolute directory path (FILESYSTEM).
+ * - 'url': a required http(s) URL plus optional proxy/credentials/insecure-SSL (HTTP_DIRECTORY,
+ *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
+ *
+ * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
+ * a future enum value forces a compile error here instead of silently rendering as a template with
+ * no configuration fields at all.
+ */
+export const documentSourceTypeConfigKind: Record<DocumentSourceType, 'none' | 'path' | 'url'> = {
+  UPLOAD: 'none',
+  FILESYSTEM: 'path',
+  HTTP_DIRECTORY: 'url',
+  RSS_FEED: 'url',
+}
+
 /** Formats a byte count as a German-locale size string (e.g. "1,2 MB"), or an em dash if unknown. */
 export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null) return '—'

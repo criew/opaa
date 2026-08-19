@@ -67,6 +67,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   createNewLibrary: async (request) => {
     const library = await createLibrary(request)
+    // Caches the full LibraryResponse (including sourceType) right away, so the overview can show
+    // the newly created library's source type without an extra round trip - LibraryListResponse
+    // does not carry sourceType (see the note in LibraryManagementPage).
+    set({ libraryDetails: { ...get().libraryDetails, [library.id]: library } })
     await get().loadLibraries()
     return library.id
   },

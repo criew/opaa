@@ -20,7 +20,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, LibraryListResponse, LibraryVisibility } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
-import { assetRoleLabel, libraryVisibilityLabel } from '../utils/labels'
+import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from '../utils/labels'
 import CreateLibraryDialog from '../components/CreateLibraryDialog'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 
@@ -115,6 +115,20 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
             {library.listed ? ' · gelistet' : ''} · {documentCountSummary(library.documentCount)}
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+            {/* LibraryListResponse traegt kein sourceType (nur LibraryResponse) - der Chip
+                erscheint deshalb erst, sobald die Bibliothek einmal per loadLibraryDetails
+                geladen wurde (Aufklappen) oder gerade frisch angelegt wurde. Fuer eine
+                Bibliothek, die noch nie aufgeklappt wurde, fehlt er in der Uebersicht; das
+                waere nur durch eine Erweiterung von LibraryListResponse im Backend zu
+                schliessen (siehe PR-Beschreibung). */}
+            {details && (
+              <Chip
+                label={documentSourceTypeLabel(details.sourceType)}
+                size="small"
+                variant="outlined"
+                color="default"
+              />
+            )}
             <Chip label={assetRoleLabel(library.myRole)} size="small" variant="outlined" />
             {isAdministrativeOverride && (
               <Chip label="administrativ" size="small" color="info" variant="outlined" />
@@ -140,6 +154,12 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
           </Alert>
         )}
         <Stack spacing={1.5} sx={{ mb: 2 }}>
+          {details && (
+            <Typography variant="caption" color="text.secondary">
+              Quellentyp: {documentSourceTypeLabel(details.sourceType)} — kann nach der Anlage nicht
+              geändert werden.
+            </Typography>
+          )}
           <TextField
             label="Name der Bibliothek"
             value={name}
