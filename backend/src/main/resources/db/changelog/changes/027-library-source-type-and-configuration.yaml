@@ -1,0 +1,184 @@
+databaseChangeLog:
+  # ADR-0018: the wissensbibliothek itself becomes the quelle. Four changeSets, in dependency
+  # order:
+  #   1. 027-add-source-columns-to-knowledge-libraries - all columns nullable first, so the
+  #      ALTER TABLE does not require a value for existing rows
+  #   2. 027-backfill-knowledge-libraries-source-type   - every pre-existing library (#201's
+  #      migrated bestand, the seeded system library, and every personal library) becomes UPLOAD;
+  #      none of them carried a source of any kind before this issue
+  #   3. 027-enforce-knowledge-libraries-source-type     - NOT NULL, only once every row has a
+  #      value, plus the CHECK constraint on the allowed enum values (analog to
+  #      chk_documents_source_type, migration 004/020)
+  #   4. 027-check-knowledge-libraries-source-configuration - the CHECK constraint binding
+  #      config columns to source_type: UPLOAD carries none, FILESYSTEM carries only
+  #      source_path, HTTP_DIRECTORY carries only source_url (optionally source_proxy /
+  #      source_credentials / source_insecure_ssl)
+  #
+  # Rollback order (reverse of apply order):
+  # 027-check-knowledge-libraries-source-configuration
+  # 027-enforce-knowledge-libraries-source-type
+  # 027-backfill-knowledge-libraries-source-type (irreversible no-op, see its rollback block)
+  # 027-add-source-columns-to-knowledge-libraries
+
+  - changeSet:
+      id: 027-add-source-columns-to-knowledge-libraries
+      author: opaa
+      comment: >
+        Adds source_type and its typed configuration columns to knowledge_libraries (ADR-0018):
+        a library now carries its own quellentyp and quellkonfiguration instead of the caller
+        supplying them per indexing-Anstoss (ADR-0017, Entscheidung 4, now abgeloest). source_type
+        is nullable here so the ALTER TABLE does not require a value for existing rows - the
+        backfill changeSet below fills it in, then 027-enforce-knowledge-libraries-source-type
+        makes it NOT NULL. source_insecure_ssl gets its NOT NULL/default immediately since a
+        boolean with a default requires no backfill. Column widths mirror documents.file_path
+        (varchar(2000), migration 002) for source_path/source_url; source_proxy and
+        source_credentials mirror the equivalent, until now transient, fields of
+        IndexingTriggerRequest (host:port / user:password strings).
+      changes:
+        - addColumn:
+            tableName: knowledge_libraries
+            columns:
+              - column:
+                  name: source_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_path
+                  type: varchar(2000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_url
+                  type: varchar(2000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_proxy
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_credentials
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_insecure_ssl
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_insecure_ssl
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_credentials
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_proxy
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_url
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_path
+        - dropColumn:
+            tableName: knowledge_libraries
+            columnName: source_type
+
+  - changeSet:
+      id: 027-backfill-knowledge-libraries-source-type
+      author: opaa
+      comment: >
+        Every knowledge library that predates this issue - the seeded system library (migration
+        012), every personal library, every library created through the API so far - carried no
+        source of any kind (#201 introduced libraries purely as containers). ADR-0018 states this
+        explicitly: "Bestehende Bibliotheken werden UPLOAD". A single UPDATE, the same reasoning as
+        012-backfill-document-library-id: one transaction, all rows or none, resumability comes
+        from Liquibase's own DATABASECHANGELOG bookkeeping at the changeSet level, not from
+        batch-level commits - safe at the current, pre-1.0 data volume.
+      changes:
+        - sql:
+            sql: >
+              UPDATE knowledge_libraries
+              SET source_type = 'UPLOAD'
+              WHERE source_type IS NULL;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible, same reasoning as 012-backfill-document-library-id's rollback: a
+              rolled-back application code path could still insert new libraries with source_type
+              already set to UPLOAD, indistinguishable here from rows this changeSet touched.
+              Deliberate no-op so the rollback of the surrounding, lossless changeSets is not
+              blocked.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 027-enforce-knowledge-libraries-source-type
+      author: opaa
+      comment: >
+        source_type is now NOT NULL - every library has exactly one quellentyp (ADR-0018) - and
+        chk_knowledge_libraries_source_type binds it to the full value set DocumentSourceType
+        knows today, including RSS_FEED (#474), the same value set chk_documents_source_type
+        accepts as of 024-allow-rss-feed-source-type.
+      changes:
+        - addNotNullConstraint:
+            tableName: knowledge_libraries
+            columnName: source_type
+            columnDataType: varchar(20)
+        - sql:
+            comment: "Add check constraint for knowledge_libraries.source_type values"
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_source_type
+              CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED'));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_source_type;
+        - dropNotNullConstraint:
+            tableName: knowledge_libraries
+            columnName: source_type
+            columnDataType: varchar(20)
+
+  - changeSet:
+      id: 027-check-knowledge-libraries-source-configuration
+      author: opaa
+      comment: >
+        Binds the configuration columns to source_type (ADR-0018, Entscheidung 1): UPLOAD carries
+        no configuration at all (source_path, source_url, source_proxy, source_credentials all
+        NULL, source_insecure_ssl false); FILESYSTEM carries source_path only, never a URL, proxy
+        or credentials; HTTP_DIRECTORY and RSS_FEED (#474) both carry source_url only, never a
+        path (proxy/credentials/insecureSsl are optional for either, mirroring the equivalent,
+        until now transient, IndexingTriggerRequest fields). Mirrors chk_knowledge_libraries_owner's
+        shape (migration 012) - one CHECK with an OR-branch per enum value, so an invalid
+        column/type combination fails at the database, not only in application code.
+      changes:
+        - sql:
+            comment: "Add check constraint binding knowledge_libraries source columns to source_type"
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+              CHECK (
+                (source_type = 'UPLOAD'
+                  AND source_path IS NULL AND source_url IS NULL
+                  AND source_proxy IS NULL AND source_credentials IS NULL
+                  AND source_insecure_ssl = false)
+                OR (source_type = 'FILESYSTEM'
+                  AND source_path IS NOT NULL AND source_url IS NULL
+                  AND source_proxy IS NULL AND source_credentials IS NULL
+                  AND source_insecure_ssl = false)
+                OR (source_type = 'HTTP_DIRECTORY'
+                  AND source_path IS NULL AND source_url IS NOT NULL)
+                OR (source_type = 'RSS_FEED'
+                  AND source_path IS NULL AND source_url IS NOT NULL)
+              );
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_source_configuration;

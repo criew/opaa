@@ -116,7 +116,8 @@ class LibraryDocumentServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest = new io.opaa.api.dto.LibraryRequest("Bibliothek");
+    var libraryRequest =
+        new io.opaa.api.dto.LibraryRequest("Bibliothek", DocumentSourceType.UPLOAD);
     var library = libraryService.createLibrary(libraryRequest, editor.getId());
     libraryId = library.getId();
 
@@ -241,7 +242,8 @@ class LibraryDocumentServiceIntegrationTest {
                     .isEqualTo(HttpStatus.CONFLICT));
     assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
 
-    var secondLibraryRequest = new io.opaa.api.dto.LibraryRequest("Zweite Bibliothek");
+    var secondLibraryRequest =
+        new io.opaa.api.dto.LibraryRequest("Zweite Bibliothek", DocumentSourceType.UPLOAD);
     var secondLibrary = libraryService.createLibrary(secondLibraryRequest, editor.getId());
     try {
       LibraryDocumentResponse response =

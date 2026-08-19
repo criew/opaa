@@ -51,3 +51,5 @@ databaseChangeLog:
       file: db/changelog/changes/025-create-rss-feed-state.yaml
   - include:
       file: db/changelog/changes/026-add-source-entry-url-to-documents.yaml
+  - include:
+      file: db/changelog/changes/027-library-source-type-and-configuration.yaml

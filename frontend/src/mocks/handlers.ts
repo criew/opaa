@@ -445,6 +445,7 @@ export const handlers = [
       ownerId?: string
       visibility?: LibraryVisibility
       listed?: boolean
+      sourceType: DocumentSourceType
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
@@ -481,6 +482,8 @@ export const handlers = [
       ...listEntry,
       ownerId: ownerType === 'GROUP' ? (body.ownerId ?? null) : 'mock-user-id',
       documentCount: 0,
+      // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveraenderlich.
+      sourceType: body.sourceType,
     }
     mockLibraryDetails[id] = detail
     return HttpResponse.json(detail, { status: 201 })

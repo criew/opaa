@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.indexing.DocumentSourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,6 +27,12 @@ import java.util.UUID;
  * ownerGroupId} only, {@code SYSTEM} carries neither. {@link #getOwnerId()} exposes whichever one
  * is set as a single id, for callers (the API response, access checks) that only care "who owns
  * this", not which column backs it.
+ *
+ * <p><b>Since ADR-0018, a library also carries the single quellentyp and quellkonfiguration its
+ * content comes from</b> ({@link #sourceType} and its associated columns) - it <em>is</em> the
+ * source, replacing the per-request configuration {@code IndexingTriggerRequest} used to carry
+ * (ADR-0017, Entscheidung 4, now superseded). See {@link #sourceType}'s own Javadoc for which
+ * columns each type carries.
  */
 @Entity
 @Table(name = "knowledge_libraries")
@@ -78,6 +85,44 @@ public class KnowledgeLibrary {
   @Column(name = "personal", nullable = false)
   private boolean personal;
 
+  /**
+   * The library's single quellentyp (ADR-0018) - chosen at creation, never changed afterwards (see
+   * {@link KnowledgeLibraryService#updateLibrary}, which rejects a request that names a different
+   * one). {@code UPLOAD} carries no {@link #sourcePath}/{@link #sourceUrl}/{@link
+   * #sourceProxy}/{@link #sourceCredentials}, {@code FILESYSTEM} carries {@link #sourcePath} only,
+   * {@code HTTP_DIRECTORY} and {@code RSS_FEED} both carry {@link #sourceUrl} (optionally {@link
+   * #sourceProxy}, {@link #sourceCredentials}, {@link #sourceInsecureSsl}) - enforced both by
+   * {@code KnowledgeLibraryService#validateSourceConfiguration} and by the database ({@code
+   * chk_knowledge_libraries_source_configuration}, migration 027). The typed <em>configuration</em>
+   * (as opposed to the type itself) can still change after creation, via {@link
+   * #updateSourceConfiguration} - e.g. rotating {@link #sourceCredentials} or moving a crawl target
+   * does not require deleting and recreating the library.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "source_type", nullable = false, length = 20)
+  private DocumentSourceType sourceType;
+
+  @Column(name = "source_path", length = 2000)
+  private String sourcePath;
+
+  @Column(name = "source_url", length = 2000)
+  private String sourceUrl;
+
+  @Column(name = "source_proxy", length = 255)
+  private String sourceProxy;
+
+  /**
+   * Never exposed by the API in any response (ADR-0018, Entscheidung 4) - {@code
+   * KnowledgeLibraryService} must not read this field into any {@code LibraryResponse}/{@code
+   * LibraryListResponse}. Stored in cleartext for now; encrypting it at rest is #483, a named
+   * blocker before production use, not decided by this class.
+   */
+  @Column(name = "source_credentials", length = 500)
+  private String sourceCredentials;
+
+  @Column(name = "source_insecure_ssl", nullable = false)
+  private boolean sourceInsecureSsl;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -95,7 +140,13 @@ public class KnowledgeLibrary {
       UUID ownerGroupId,
       LibraryVisibility visibility,
       boolean listed,
-      boolean personal) {
+      boolean personal,
+      DocumentSourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
     this.name = name;
@@ -106,6 +157,41 @@ public class KnowledgeLibrary {
     this.visibility = visibility;
     this.listed = listed;
     this.personal = personal;
+    this.sourceType = sourceType;
+    this.sourcePath = sourcePath;
+    this.sourceUrl = sourceUrl;
+    this.sourceProxy = sourceProxy;
+    this.sourceCredentials = sourceCredentials;
+    this.sourceInsecureSsl = sourceInsecureSsl;
+  }
+
+  /**
+   * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
+   * DocumentSourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 has
+   * after migration 027's backfill.
+   */
+  public static KnowledgeLibrary ownedByUser(
+      UUID organizationId,
+      String name,
+      String description,
+      UUID ownerUserId,
+      LibraryVisibility visibility,
+      boolean listed,
+      boolean personal) {
+    return ownedByUser(
+        organizationId,
+        name,
+        description,
+        ownerUserId,
+        visibility,
+        listed,
+        personal,
+        DocumentSourceType.UPLOAD,
+        null,
+        null,
+        null,
+        null,
+        false);
   }
 
   public static KnowledgeLibrary ownedByUser(
@@ -115,7 +201,13 @@ public class KnowledgeLibrary {
       UUID ownerUserId,
       LibraryVisibility visibility,
       boolean listed,
-      boolean personal) {
+      boolean personal,
+      DocumentSourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
     return new KnowledgeLibrary(
         organizationId,
         name,
@@ -125,7 +217,40 @@ public class KnowledgeLibrary {
         null,
         visibility,
         listed,
-        personal);
+        personal,
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl);
+  }
+
+  /**
+   * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
+   * DocumentSourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
+   * #ownedByUser(UUID, String, String, UUID, LibraryVisibility, boolean, boolean)}.
+   */
+  public static KnowledgeLibrary ownedByGroup(
+      UUID organizationId,
+      String name,
+      String description,
+      UUID ownerGroupId,
+      LibraryVisibility visibility,
+      boolean listed) {
+    return ownedByGroup(
+        organizationId,
+        name,
+        description,
+        ownerGroupId,
+        visibility,
+        listed,
+        DocumentSourceType.UPLOAD,
+        null,
+        null,
+        null,
+        null,
+        false);
   }
 
   public static KnowledgeLibrary ownedByGroup(
@@ -134,7 +259,13 @@ public class KnowledgeLibrary {
       String description,
       UUID ownerGroupId,
       LibraryVisibility visibility,
-      boolean listed) {
+      boolean listed,
+      DocumentSourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
     return new KnowledgeLibrary(
         organizationId,
         name,
@@ -144,7 +275,13 @@ public class KnowledgeLibrary {
         ownerGroupId,
         visibility,
         listed,
-        false);
+        false,
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl);
   }
 
   @PrePersist
@@ -167,6 +304,26 @@ public class KnowledgeLibrary {
       this.visibility = visibility;
     }
     this.listed = listed;
+  }
+
+  /**
+   * Replaces the typed source configuration in place, {@link #sourceType} itself never changing
+   * (that immutability is enforced by {@link KnowledgeLibraryService#updateLibrary}, not here).
+   * Lets a caller rotate {@link #sourceCredentials} or move a crawl target ({@link #sourcePath}/
+   * {@link #sourceUrl}) without deleting and recreating the library - the configuration, unlike the
+   * quellentyp, is not itself part of ADR-0018's "gewaehlt einmal, permanent" rule.
+   */
+  public void updateSourceConfiguration(
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
+    this.sourcePath = sourcePath;
+    this.sourceUrl = sourceUrl;
+    this.sourceProxy = sourceProxy;
+    this.sourceCredentials = sourceCredentials;
+    this.sourceInsecureSsl = sourceInsecureSsl;
   }
 
   public boolean isOwnedByUser(UUID userId) {
@@ -231,6 +388,30 @@ public class KnowledgeLibrary {
 
   public boolean isPersonal() {
     return personal;
+  }
+
+  public DocumentSourceType getSourceType() {
+    return sourceType;
+  }
+
+  public String getSourcePath() {
+    return sourcePath;
+  }
+
+  public String getSourceUrl() {
+    return sourceUrl;
+  }
+
+  public String getSourceProxy() {
+    return sourceProxy;
+  }
+
+  public String getSourceCredentials() {
+    return sourceCredentials;
+  }
+
+  public boolean isSourceInsecureSsl() {
+    return sourceInsecureSsl;
   }
 
   public Instant getCreatedAt() {

@@ -104,8 +104,9 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, personal, created_at, updated_at)"
-            + " VALUES (?, ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false, false, now(), now())",
+            + " visibility, listed, personal, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false, false, 'UPLOAD',"
+            + " now(), now())",
         libraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);
@@ -317,9 +318,9 @@ class QueryIntegrationTest {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, personal, created_at, updated_at)"
-            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, false, now(),"
-            + " now())",
+            + " visibility, listed, personal, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, false, 'UPLOAD',"
+            + " now(), now())",
         ungrantedLibraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);

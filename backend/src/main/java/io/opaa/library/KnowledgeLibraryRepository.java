@@ -18,7 +18,9 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    * SpaceRepository#insertPersonalSpaceIfAbsent} for the full reasoning (#201/#305 code review).
    * {@code ON CONFLICT (owner_user_id) WHERE personal = true} targets the partial unique index
    * {@code uk_knowledge_libraries_personal_owner} (migration 012); any other constraint violation
-   * (e.g. a dangling {@code ownerUserId}) still throws normally.
+   * (e.g. a dangling {@code ownerUserId}) still throws normally. {@code source_type} is always
+   * {@code UPLOAD} (ADR-0018: "Bestehende Bibliotheken werden UPLOAD" applies equally to every
+   * personal library this method ever creates - it never carries a Verzeichnis or URL config.
    *
    * <p>Returns the number of rows actually inserted (0 or 1, via {@code executeUpdate}'s own
    * result) - {@link KnowledgeLibraryService#ensurePersonalLibrary} historises the new library only
@@ -30,9 +32,9 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   @Query(
       value =
           "INSERT INTO knowledge_libraries"
-              + "  (id, organization_id, name, description, owner_type, owner_user_id, visibility, listed, personal, created_at, updated_at)"
+              + "  (id, organization_id, name, description, owner_type, owner_user_id, visibility, listed, personal, source_type, source_insecure_ssl, created_at, updated_at)"
               + " VALUES"
-              + "  (:id, :organizationId, :name, :description, 'USER', :ownerUserId, 'PRIVATE', false, true, now(), now())"
+              + "  (:id, :organizationId, :name, :description, 'USER', :ownerUserId, 'PRIVATE', false, true, 'UPLOAD', false, now(), now())"
               + " ON CONFLICT (owner_user_id) WHERE personal = true DO NOTHING",
       nativeQuery = true)
   int insertPersonalLibraryIfAbsent(
