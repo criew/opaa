@@ -376,6 +376,43 @@ class QueryServiceTest {
   }
 
   @Test
+  void queryWithUseKnowledgeTrueIgnoresLibraryIdsAndSearchesAllReadableLibraries() {
+    UUID otherReadableLibraryId = UUID.randomUUID();
+    when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
+        .thenReturn(Set.of(readableLibraryId, otherReadableLibraryId));
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    // useKnowledge = true with a non-empty libraryIds: the list must be ignored, and the search
+    // scope stays every readable library - not just the one referenced here.
+    queryService.query("Question", null, currentUserId, true, List.of(readableLibraryId));
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    String filterExpression = captor.getValue().getFilterExpression().toString();
+    assertThat(filterExpression).contains(readableLibraryId.toString());
+    assertThat(filterExpression).contains(otherReadableLibraryId.toString());
+  }
+
+  @Test
+  void
+      queryWithUseKnowledgeFalseAndNullLibraryIdsSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    // null requestedLibraryIds must behave exactly like an empty list, not throw or search
+    // everything readable.
+    QueryResponse response = queryService.query("Question", null, currentUserId, false, null);
+
+    assertThat(response.getSources()).isEmpty();
+    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+  }
+
+  @Test
   void queryPreservesCitedFlagWhenDeduplicatingChunksFromSameFile() {
     when(chatMemory.get(any())).thenReturn(List.of());
     var citedChunk =

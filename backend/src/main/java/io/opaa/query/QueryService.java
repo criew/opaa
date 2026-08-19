@@ -216,28 +216,33 @@ public class QueryService {
   }
 
   /**
-   * #238's regression check - see {@link #query}'s Javadoc. {@code appliedScope} is exactly the
-   * filter about to be handed to the vector store; any id in it the permission history does not
-   * also grant at {@code asOf} is a mismatch, logged as a single warning per query (not once per
-   * offending library - code review of #427, nit 2), never silently ignored. {@code asOf} is the
-   * instant {@code appliedScope} was itself computed at, not a fresh {@code Instant.now()} taken
-   * here - reusing it avoids a false-positive mismatch from a permission change landing in the gap
-   * between the two computations.
+   * #238's regression check - see {@link #query}'s Javadoc. {@code readableScope} is the full set
+   * {@link LibraryAccessService#readableLibraryIds} computed for this query at {@code asOf} - not
+   * necessarily the narrower {@code searchScope} #526's {@code useKnowledge = false} may actually
+   * hand to the vector store, since that mode can restrict the search to a subset of what is merely
+   * readable. Any id in {@code readableScope} the permission history does not also grant as of
+   * {@code asOf} is a mismatch, logged as a single warning per query (not once per offending
+   * library - code review of #427, nit 2), never silently ignored. {@code asOf} is the instant
+   * {@code readableScope} was itself computed at, not a fresh {@code Instant.now()} taken here -
+   * reusing it avoids a false-positive mismatch from a permission change landing in the gap between
+   * the two computations.
    */
   private void checkAgainstPermissionHistory(
-      Set<UUID> appliedScope, UUID currentUserId, UUID organizationId, Instant asOf) {
-    if (appliedScope.isEmpty()) {
+      Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
+    if (readableScope.isEmpty()) {
       return;
     }
     Set<UUID> historized =
         permissionHistoryService.readableLibraryIdsAsOf(currentUserId, organizationId, asOf);
-    Set<UUID> mismatched = new HashSet<>(appliedScope);
+    Set<UUID> mismatched = new HashSet<>(readableScope);
     mismatched.removeAll(historized);
     if (!mismatched.isEmpty()) {
       log.warn(
-          "Permission history regression check: query for user {} applied {} librar{} to the"
-              + " search scope the permission history does not grant as of {} - possible"
-              + " enforcement drift between the live and historized rights computation: {}",
+          "Permission history regression check: user {} was granted {} librar{} as readable the"
+              + " permission history does not confirm as of {} - possible enforcement drift"
+              + " between the live and historized rights computation. This checks the full"
+              + " readable set, not the (possibly narrower, #526 useKnowledge=false) scope"
+              + " actually searched: {}",
           currentUserId,
           mismatched.size(),
           mismatched.size() == 1 ? "y" : "ies",
