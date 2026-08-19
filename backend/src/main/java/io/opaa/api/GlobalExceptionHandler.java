@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import java.time.Instant;
 import org.slf4j.Logger;
@@ -214,6 +215,27 @@ public class GlobalExceptionHandler {
                 Instant.now()));
   }
 
+  /**
+   * #483: raised by {@code CredentialsEncryptor} when {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} is
+   * missing or invalid at the moment a library's {@code sourceCredentials} would actually be
+   * encrypted or decrypted. Mapped to a distinct {@code 503} - not the {@link
+   * #handleGenericException} {@code 500} fallback - so an operator sees "set the key" rather than
+   * an opaque server error. The exception can surface either directly from {@code
+   * KnowledgeLibraryService} (thrown while the JPA flush that runs the {@code
+   * SourceCredentialsConverter} is still on this request's call stack) or wrapped by JPA/Spring's
+   * exception translation, which is why {@link #handleGenericException} also unwraps for it via
+   * {@link #findCause}.
+   */
+  @ExceptionHandler(CredentialsEncryptionKeyMissingException.class)
+  public ResponseEntity<ErrorResponse> handleCredentialsEncryptionKeyMissingException(
+      CredentialsEncryptionKeyMissingException ex) {
+    log.error("Credentials encryption key missing or invalid", ex);
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(
+            new ErrorResponse(
+                ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
+  }
+
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
       DataIntegrityViolationException ex) {
@@ -260,10 +282,27 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    CredentialsEncryptionKeyMissingException credentialsCause =
+        findCause(ex, CredentialsEncryptionKeyMissingException.class);
+    if (credentialsCause != null) {
+      return handleCredentialsEncryptionKeyMissingException(credentialsCause);
+    }
     log.error("Unexpected error", ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             new ErrorResponse(
                 "Interner Serverfehler", HttpStatus.INTERNAL_SERVER_ERROR.value(), Instant.now()));
+  }
+
+  private <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
+    for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+      if (type.isInstance(cause)) {
+        return type.cast(cause);
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return null;
   }
 }

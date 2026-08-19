@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.library.UploadProperties;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -213,6 +214,37 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals("Die hochgeladene Datei konnte nicht verarbeitet werden", body.getError());
+  }
+
+  @Test
+  void handleCredentialsEncryptionKeyMissingExceptionReturnsServiceUnavailable() {
+    // #483: a missing/invalid OPAA_CREDENTIALS_ENCRYPTION_KEY must surface as a clear 503, not the
+    // opaque 500 handleGenericException falls back to.
+    var response =
+        handler.handleCredentialsEncryptionKeyMissingException(
+            new CredentialsEncryptionKeyMissingException(
+                "OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(503, body.getStatus());
+    assertEquals("OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt", body.getError());
+  }
+
+  @Test
+  void handleGenericExceptionUnwrapsAWrappedCredentialsEncryptionKeyMissingException() {
+    // JPA/Spring exception translation can wrap the exception raised inside
+    // SourceCredentialsConverter (during flush) before it reaches this handler - the fallback
+    // Exception handler must still recognize it via its cause chain rather than reporting a bare
+    // 500.
+    var cause =
+        new CredentialsEncryptionKeyMissingException(
+            "OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt");
+    var response = handler.handleGenericException(new RuntimeException("wrapped", cause));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt", body.getError());
   }
 
   private DataIntegrityViolationException dataIntegrityViolation(String sqlState, String message) {

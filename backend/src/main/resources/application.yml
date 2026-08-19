@@ -122,6 +122,13 @@ opaa:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   directory-sync:
     change-threshold-fraction: ${OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION:0.3}
+  security:
+    credentials:
+      # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
+      # rest (#483). No default here on purpose - a real deployment must set one before storing any
+      # library's credentials; see docs/deployment.md. The dev profile below (not local) sets an
+      # explicitly-marked non-production default so bootRun and tests work without operator setup.
+      encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
 
 management:
   endpoints:
@@ -199,3 +206,11 @@ opaa:
         - subject: dev-user
           email: dev-user@opaa.local
           display-name: Dev User
+  security:
+    credentials:
+      # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known 32-byte AES key so bootRun and
+      # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials
+      # without operator setup (#483). Any deployment that does not activate the "dev" profile
+      # falls back to the (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY
+      # itself - see docs/deployment.md.
+      encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}

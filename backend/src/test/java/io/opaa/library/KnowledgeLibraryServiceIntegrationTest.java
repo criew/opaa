@@ -447,6 +447,101 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void sourceCredentialsAreStoredEncryptedNotAsCleartextInTheDatabase() {
+    // #483: knowledge_libraries.source_credentials must never hold the plaintext value - checked
+    // against the raw column via JdbcTemplate, bypassing SourceCredentialsConverter entirely, so
+    // this actually exercises what is on disk rather than what the entity mapping presents.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Verschluesselte Zugangsdaten", DocumentSourceType.HTTP_DIRECTORY)
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:super-secret-password");
+
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    String rawColumnValue =
+        jdbcTemplate.queryForObject(
+            "SELECT source_credentials FROM knowledge_libraries WHERE id = ?",
+            String.class,
+            response.getId());
+    assertThat(rawColumnValue).isNotNull();
+    assertThat(rawColumnValue).doesNotContain("admin:super-secret-password");
+    assertThat(rawColumnValue).startsWith("enc:v1:");
+
+    // The entity mapping (via SourceCredentialsConverter) still transparently decrypts on load -
+    // both the indexing executors and libraryRepository.findById see the plaintext, unchanged from
+    // before #483 (see
+    // createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials
+    // above).
+    KnowledgeLibrary reloaded = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(reloaded.getSourceCredentials()).isEqualTo("admin:super-secret-password");
+  }
+
+  @Test
+  void aMaximumLengthCredentialSurvivesEncryptionWithoutTruncation() {
+    // #483/migration 029: source_credentials was widened from varchar(500) to varchar(3000) to fit
+    // the encrypted encoding of exactly the longest plaintext LibraryRequest.sourceCredentials
+    // still
+    // allows (maxLength: 500, openapi/opaa-api.yaml) - this pins that the column is actually wide
+    // enough, not just declared so in the migration's comment.
+    UUID owner = createUser(organizationA);
+    String longCredentials = "u".repeat(245) + ":" + "p".repeat(254); // exactly 500 characters
+    assertThat(longCredentials).hasSize(500);
+    LibraryRequest request =
+        new LibraryRequest("Maximallange Zugangsdaten", DocumentSourceType.HTTP_DIRECTORY)
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials(longCredentials);
+
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    KnowledgeLibrary reloaded = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(reloaded.getSourceCredentials()).isEqualTo(longCredentials);
+  }
+
+  @Test
+  void
+      aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt() {
+    // PR #504 review, finding 1: a lost/rotated key (or a corrupted stored value) must not turn
+    // GET /api/v1/libraries into a 503 for every library that shares this key - only the affected
+    // library's sourceCredentials reads as null. The documented repair path (docs/deployment.md,
+    // "Bei Schluesselverlust") - setting new credentials via the update API - depends on that same
+    // load succeeding first.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest(
+                "Zugangsdaten mit verlorenem Schluessel", DocumentSourceType.HTTP_DIRECTORY)
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:super-secret-password");
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    // Simulate a lost/rotated encryption key (or a corrupted column value) by writing a value
+    // directly that carries the "enc:v1:" marker but no key can ever turn back into plaintext.
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
+        "enc:v1:not-decryptable-with-any-key",
+        response.getId());
+
+    // The list read must not fail for the whole set just because one library's credentials are
+    // undecryptable.
+    assertThat(libraryService.listLibraries(owner, false))
+        .anySatisfy(listed -> assertThat(listed.getId()).isEqualTo(response.getId()));
+
+    KnowledgeLibrary reloaded = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(reloaded.getSourceCredentials()).isNull();
+
+    // The repair: rotating the credentials via the existing update API works, precisely because
+    // the load that precedes the update no longer fails on the old, undecryptable value.
+    LibraryUpdateRequest repair =
+        new LibraryUpdateRequest("Zugangsdaten mit verlorenem Schluessel")
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:repaired-password");
+    libraryService.updateLibrary(response.getId(), repair, owner, false);
+
+    KnowledgeLibrary repaired = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(repaired.getSourceCredentials()).isEqualTo("admin:repaired-password");
+  }
+
+  @Test
   void updateLibraryRejectsAChangeOfSourceType() {
     UUID owner = createUser(organizationA);
     LibraryResponse library =
