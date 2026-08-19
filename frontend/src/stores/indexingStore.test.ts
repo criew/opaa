@@ -72,8 +72,10 @@ describe('indexingStore', () => {
   })
 
   it('triggers indexing with the selected library and starts polling', async () => {
+    // 'library-personal' is UPLOAD and has no run type at all (see the dedicated 409 test below) -
+    // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-personal')
+    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
 
     await useIndexingStore.getState().triggerIndexing()
 
@@ -87,7 +89,7 @@ describe('indexingStore', () => {
 
   it('stops polling', async () => {
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-personal')
+    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
 
     await useIndexingStore.getState().triggerIndexing()
     expect(useIndexingStore.getState().isPolling).toBe(true)
@@ -96,6 +98,20 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().isPolling).toBe(false)
 
     vi.useRealTimers()
+  })
+
+  it('shows a specific message and leaves status untouched when the target is an UPLOAD library', async () => {
+    // #500 review, finding 5: an UPLOAD library has no run type at all (backend 409) - no run was
+    // ever started, so overwriting status to FAILED would misleadingly suggest one broke.
+    useIndexingStore.getState().setSelectedLibraryId('library-personal')
+
+    await useIndexingStore.getState().triggerIndexing()
+
+    const state = useIndexingStore.getState()
+    expect(state.status).toBe('IDLE')
+    expect(state.snackbar.open).toBe(true)
+    expect(state.snackbar.severity).toBe('error')
+    expect(state.snackbar.message).toBe('Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
   })
 
   it('fetches libraries and offers only those with at least EDITOR', async () => {

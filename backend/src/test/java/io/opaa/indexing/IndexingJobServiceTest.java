@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
@@ -27,7 +30,7 @@ class IndexingJobServiceTest {
   @Test
   void startJobCreatesRunningJob() {
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class))).thenReturn(job);
 
     IndexingJob result = service.startJob(UUID.randomUUID());
 
@@ -39,11 +42,28 @@ class IndexingJobServiceTest {
   void startJobRecordsTheTargetLibrary() {
     // #419 acceptance criteria: the indexing job records its target library.
     UUID libraryId = UUID.randomUUID();
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
 
     IndexingJob result = service.startJob(libraryId);
 
     assertThat(result.getLibraryId()).isEqualTo(libraryId);
+  }
+
+  @Test
+  void startJobMapsAConstraintViolationOnTheUniqueRunningIndexTo409() {
+    // #500 review, finding 3 (TOCTOU): DocumentIndexingService's own isJobRunning check and this
+    // insert are not atomic - a concurrent second trigger for the same library can pass that check
+    // before either has inserted, so the database's partial unique index
+    // (uk_indexing_jobs_library_running, migration 028) is the guard that actually always holds.
+    UUID libraryId = UUID.randomUUID();
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
+        .thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+    assertThatThrownBy(() -> service.startJob(libraryId))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT)
+        .hasMessageContaining("Fuer diese Bibliothek laeuft bereits ein Indizierungslauf");
   }
 
   @Test

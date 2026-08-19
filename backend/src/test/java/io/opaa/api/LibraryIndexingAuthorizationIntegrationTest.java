@@ -183,6 +183,46 @@ class LibraryIndexingAuthorizationIntegrationTest {
   }
 
   @Test
+  void aNonAdminUserWithAnExplicitEditorGrantSucceeds() throws Exception {
+    // #500 review, finding 4: aRegularUserWithAnExplicitEditorGrantSucceedsWithoutBeingSystemAdmin
+    // above actually runs as devAdmin (devUser(null) defaults to the configured default user, which
+    // is SYSTEM_ADMIN) - it only proves the missing grant on that one library, not that a genuinely
+    // non-privileged caller can trigger a run at all. "dev-user" (application.yml) does not match
+    // opaa.auth.initial-admin-email, so UserProvisioningFilter provisions it as a plain USER.
+    User regularUser = provisionDevUser();
+
+    KnowledgeLibrary library = createForeignLibraryWithNoGrantForDevAdmin();
+    grantRepository.save(
+        AssetGrant.forUser(
+            library.getId(),
+            Organization.DEFAULT_ID,
+            regularUser.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + library.getId() + "/indexing").with(devUser("dev-user")))
+        .andExpect(status().isAccepted());
+
+    awaitJobFinished(library.getId());
+  }
+
+  private User provisionDevUser() throws Exception {
+    mockMvc.perform(
+        get("/api/v1/libraries/" + UUID.randomUUID() + "/indexing/status")
+            .with(devUser("dev-user")));
+    User user =
+        userRepository.findAll().stream()
+            .filter(u -> "dev-user@opaa.local".equals(u.getEmail()))
+            .findFirst()
+            .orElseThrow();
+    org.assertj.core.api.Assertions.assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
+    return user;
+  }
+
+  @Test
   void anUploadLibraryIsRejectedWithConflict() throws Exception {
     KnowledgeLibrary library =
         libraryRepository.save(

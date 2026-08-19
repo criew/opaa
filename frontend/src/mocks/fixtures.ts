@@ -496,7 +496,10 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     personal: false,
     myRole: 'MANAGER',
     documentCount: 431,
-    sourceType: 'UPLOAD',
+    // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
+    // is the fixture the indexing-trigger tests use to exercise a successful run, since UPLOAD
+    // libraries have no run type at all (DocumentIndexingService#toIndexingSourceType, 409).
+    sourceType: 'FILESYSTEM',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },

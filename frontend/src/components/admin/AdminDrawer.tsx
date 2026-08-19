@@ -28,12 +28,24 @@ export default function AdminDrawer() {
   const fetchLibraries = useIndexingStore((s) => s.fetchLibraries)
   const selectedLibraryId = useIndexingStore((s) => s.selectedLibraryId)
   const setSelectedLibraryId = useIndexingStore((s) => s.setSelectedLibraryId)
+  const fetchStatus = useIndexingStore((s) => s.fetchStatus)
 
   useEffect(() => {
     if (drawerOpen) {
       fetchLibraries()
     }
   }, [drawerOpen, fetchLibraries])
+
+  useEffect(() => {
+    // Reflect a run already in progress for the current selection - without this, reopening the
+    // drawer (e.g. after a reload) shows IDLE even though indexing is still running.
+    if (drawerOpen && selectedLibraryId) {
+      fetchStatus(selectedLibraryId)
+    }
+    // Deliberately runs only on drawerOpen transitions, not on every selectedLibraryId change -
+    // setSelectedLibraryId in the store already fetches status itself when the selection changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerOpen])
 
   const isRunning = status === 'RUNNING'
   const progressPercent =
@@ -84,7 +96,7 @@ export default function AdminDrawer() {
             onChange={(e) => setSelectedLibraryId(e.target.value || null)}
             size="small"
             fullWidth
-            disabled={isRunning || librariesLoading}
+            disabled={librariesLoading}
             sx={{ mt: 1.5, mb: 1.5 }}
             helperText={
               librariesLoading

@@ -33,11 +33,11 @@ class RateLimitFilterTest {
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put("^/api/v1/query", queryLimiter);
-    perIpLimiters.put("^/api/v1/libraries/[^/]+/indexing$", indexingLimiter);
+    perIpLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", indexingLimiter);
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put("^/api/v1/query", globalQueryLimiter);
-    globalLimiters.put("^/api/v1/libraries/[^/]+/indexing$", globalIndexingLimiter);
+    globalLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", globalIndexingLimiter);
 
     when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
     when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
@@ -89,6 +89,40 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+  }
+
+  @Test
+  void indexingLimitIsKeyedPerLibraryNotJustPerClientIp() throws Exception {
+    // Real RateLimitService instead of a mock: the finding was that a limiter shared across
+    // libraries would block a second library's trigger from the very same client. Using a real
+    // instance with maxRequests=1 proves the key now includes the library id.
+    var realIndexingLimiter = new RateLimitService(1, 60);
+    Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
+    perIpLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", realIndexingLimiter);
+    Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
+    globalLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", globalIndexingLimiter);
+    var perLibraryFilter = new RateLimitFilter(perIpLimiters, globalLimiters, jsonMapper);
+
+    var libraryOne = java.util.UUID.randomUUID();
+    var libraryTwo = java.util.UUID.randomUUID();
+
+    var firstLibraryFirstRequest =
+        new MockHttpServletRequest("POST", "/api/v1/libraries/" + libraryOne + "/indexing");
+    var firstResponse = new MockHttpServletResponse();
+    perLibraryFilter.doFilter(firstLibraryFirstRequest, firstResponse, new MockFilterChain());
+    assertThat(firstResponse.getStatus()).isEqualTo(200);
+
+    var secondLibraryFirstRequest =
+        new MockHttpServletRequest("POST", "/api/v1/libraries/" + libraryTwo + "/indexing");
+    var secondResponse = new MockHttpServletResponse();
+    perLibraryFilter.doFilter(secondLibraryFirstRequest, secondResponse, new MockFilterChain());
+    assertThat(secondResponse.getStatus()).isEqualTo(200);
+
+    var firstLibrarySecondRequest =
+        new MockHttpServletRequest("POST", "/api/v1/libraries/" + libraryOne + "/indexing");
+    var thirdResponse = new MockHttpServletResponse();
+    perLibraryFilter.doFilter(firstLibrarySecondRequest, thirdResponse, new MockFilterChain());
+    assertThat(thirdResponse.getStatus()).isEqualTo(429);
   }
 
   @Test

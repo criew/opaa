@@ -31,9 +31,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * (and, where the match must not consume an unrelated sub-path, {@code $}) themselves, the same
    * way {@code "/api/v1/query"} used to behave as an implicit prefix match. This lets a single rule
    * target a path that carries a variable segment - e.g. {@code
-   * "^/api/v1/libraries/[^/]+/indexing$"} for the per-library indexing trigger (#478) - which a
+   * "^/api/v1/libraries/([^/]+)/indexing$"} for the per-library indexing trigger (#478) - which a
    * plain {@code String#startsWith} could not express without also matching every other
    * sub-resource under {@code /api/v1/libraries/{libraryId}/...}.
+   *
+   * <p>If a {@code perIpLimiters} pattern contains a capture group (as the per-library indexing
+   * rule does), the captured value is appended to the client IP to form the rate-limit key (e.g.
+   * {@code clientIp + ":" + libraryId}). Without this, all clients would share a single bucket per
+   * IP across every library, and a client who just triggered indexing for one library would be
+   * blocked from triggering it for a different one. {@code globalLimiters} are unaffected - they
+   * always use the fixed {@link #GLOBAL_KEY}, since they are meant to cap total request volume
+   * across all libraries.
    */
   public RateLimitFilter(
       Map<String, RateLimitService> perIpLimiters,
@@ -69,9 +77,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     for (var entry : perIpLimiters.entrySet()) {
-      if (entry.getKey().matcher(path).find()) {
-        if (!entry.getValue().isAllowed(clientIp)) {
-          log.warn("Rate limit exceeded for {} on {}", clientIp, path);
+      var matcher = entry.getKey().matcher(path);
+      if (matcher.find()) {
+        String key = matcher.groupCount() >= 1 ? clientIp + ":" + matcher.group(1) : clientIp;
+        if (!entry.getValue().isAllowed(key)) {
+          log.warn("Rate limit exceeded for {} on {}", key, path);
           writeRateLimitResponse(response);
           return;
         }

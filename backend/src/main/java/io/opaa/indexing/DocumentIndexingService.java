@@ -55,6 +55,12 @@ public class DocumentIndexingService {
    * executor ({@code UPLOAD} - 409, see {@link #toIndexingSourceType}), then rejects a second
    * trigger while a run for this same library is still in progress (409). Only once all three pass
    * does a job actually start.
+   *
+   * <p>The {@link IndexingJobService#isJobRunning(UUID)} check above is an optimization, not the
+   * only guard - two concurrent triggers can both pass it before either has inserted its row.
+   * {@link IndexingJobService#startJob(UUID)} closes that TOCTOU gap at the database level (#500
+   * review, finding 3, see that method's Javadoc), so the second of two racing triggers still gets
+   * 409, just from the database constraint instead of this in-memory check.
    */
   public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId, systemAdmin);

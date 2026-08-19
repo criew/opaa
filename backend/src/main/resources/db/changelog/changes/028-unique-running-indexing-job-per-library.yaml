@@ -1,0 +1,23 @@
+databaseChangeLog:
+  # #500 review, finding 3 (TOCTOU): DocumentIndexingService#triggerIndexing checks
+  # IndexingJobService#isJobRunning(libraryId) and only then calls #startJob(libraryId) - two
+  # separate statements with no lock between them, so two concurrent triggers for the same library
+  # can both pass the check and both insert a RUNNING row. A partial unique index closes the gap at
+  # the database level: at most one RUNNING row per library can ever exist, and a second concurrent
+  # insert fails with a unique violation the service layer turns into 409 (see
+  # DocumentIndexingService). Partial (WHERE status = 'RUNNING') rather than a plain unique
+  # constraint on library_id, since a library legitimately accumulates many COMPLETED/FAILED rows
+  # over its history - only concurrent RUNNING rows must be prevented.
+  - changeSet:
+      id: 028-unique-running-indexing-job-per-library
+      author: opaa
+      comment: "Partial unique index preventing two concurrent RUNNING indexing_jobs per library (#478 review)"
+      changes:
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uk_indexing_jobs_library_running
+              ON indexing_jobs (library_id)
+              WHERE status = 'RUNNING'
+      rollback:
+        - sql:
+            sql: DROP INDEX uk_indexing_jobs_library_running
