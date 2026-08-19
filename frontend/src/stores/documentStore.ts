@@ -7,9 +7,29 @@ import {
 } from '../services/api'
 
 const POLL_INTERVAL_MS = 3000
+export const DEFAULT_PAGE_SIZE = 20
+
+// The paging/search state a library's document list was last loaded with (#517) - kept alongside
+// the loaded page itself so a poll tick (see startPolling) and a post-upload/-delete refresh (see
+// LibraryDetailPage's onDocumentsChanged) both re-fetch the same page/query the user is currently
+// looking at, instead of silently resetting them to page 0 with no search term.
+interface DocumentPageState {
+  page: number
+  size: number
+  q: string
+  totalElements: number
+}
+
+const defaultPageState: DocumentPageState = {
+  page: 0,
+  size: DEFAULT_PAGE_SIZE,
+  q: '',
+  totalElements: 0,
+}
 
 interface DocumentState {
   documentsByLibrary: Record<string, LibraryDocumentResponse[]>
+  pageStateByLibrary: Record<string, DocumentPageState>
   isLoading: boolean
   error: string | null
   // A list rather than a single message: uploadNewDocument is called once per file from a
@@ -21,7 +41,10 @@ interface DocumentState {
   isUploading: boolean
 
   reset: () => void
-  loadDocuments: (libraryId: string) => Promise<void>
+  loadDocuments: (
+    libraryId: string,
+    options?: { page?: number; size?: number; q?: string },
+  ) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   clearUploadErrors: () => void
@@ -37,6 +60,7 @@ function hasPendingDocument(documents: LibraryDocumentResponse[] | undefined): b
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documentsByLibrary: {},
+  pageStateByLibrary: {},
   isLoading: false,
   error: null,
   uploadErrors: [],
@@ -47,6 +71,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
     set({
       documentsByLibrary: {},
+      pageStateByLibrary: {},
       isLoading: false,
       error: null,
       uploadErrors: [],
@@ -55,15 +80,29 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     })
   },
 
-  loadDocuments: async (libraryId: string) => {
+  loadDocuments: async (libraryId, options) => {
+    const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
+    const page = options?.page ?? previous.page
+    const size = options?.size ?? previous.size
+    const q = options?.q ?? previous.q
+
     set({ isLoading: true, error: null })
     try {
-      const documents = await getLibraryDocuments(libraryId)
+      const response = await getLibraryDocuments(libraryId, { page, size, q })
       set({
-        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: documents },
+        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
+        pageStateByLibrary: {
+          ...get().pageStateByLibrary,
+          [libraryId]: {
+            page: response.page,
+            size: response.size,
+            q,
+            totalElements: response.totalElements,
+          },
+        },
         isLoading: false,
       })
-      if (hasPendingDocument(documents)) {
+      if (hasPendingDocument(response.items)) {
         startPolling(libraryId, set, get)
       } else {
         get().stopPolling(libraryId)
@@ -77,18 +116,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   uploadNewDocument: async (libraryId: string, file: File) => {
     set({ isUploading: true })
     try {
-      const document = await uploadDocumentRequest(libraryId, file)
-      const existing = get().documentsByLibrary[libraryId] ?? []
-      set({
-        documentsByLibrary: {
-          ...get().documentsByLibrary,
-          [libraryId]: [document, ...existing],
-        },
-        isUploading: false,
-      })
-      if (document.status === 'PENDING') {
-        startPolling(libraryId, set, get)
-      }
+      await uploadDocumentRequest(libraryId, file)
+      set({ isUploading: false })
     } catch (err) {
       const rawMessage =
         err instanceof Error ? err.message : 'Datei konnte nicht hochgeladen werden'
@@ -98,6 +127,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({ uploadErrors: [...get().uploadErrors, message], isUploading: false })
       throw err
     }
+    // #517 code review, finding 2 (Szenario C): the uploaded file was only ever prepended to the
+    // locally cached page before, regardless of whether it actually belongs on the page the user
+    // is looking at (an active search term it does not match, or a page that was already full) -
+    // totalElements never moved either. Reloading the current page from the server is the only way
+    // to know whether/where the new document actually landed.
+    await reloadCurrentPage(libraryId, get)
   },
 
   removeDocument: async (libraryId: string, documentId: string) => {
@@ -108,14 +143,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({ deleteError: message })
       throw err
     }
-    const existing = get().documentsByLibrary[libraryId] ?? []
-    set({
-      documentsByLibrary: {
-        ...get().documentsByLibrary,
-        [libraryId]: existing.filter((doc) => doc.id !== documentId),
-      },
-      deleteError: null,
-    })
+    set({ deleteError: null })
+    // #517 code review, finding 2 (Szenario A/B): filtering the row out of the locally cached page
+    // alone leaves totalElements and the neighbouring pages stale - a full page loses its would-be
+    // last entry, and deleting a page's only document empties it without ever dropping back to a
+    // page that still has content. Reloading from the server, then stepping back a page if this
+    // one is now empty, keeps both in sync with what the backend actually holds.
+    await reloadCurrentPage(libraryId, get)
+    const pageState = get().pageStateByLibrary[libraryId]
+    const stillEmpty = (get().documentsByLibrary[libraryId] ?? []).length === 0
+    if (stillEmpty && pageState && pageState.page > 0) {
+      await get().loadDocuments(libraryId, { page: pageState.page - 1 })
+    }
   },
 
   clearUploadErrors: () => set({ uploadErrors: [] }),
@@ -130,6 +169,19 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 }))
 
+// Re-fetches the page/search a library's document list is currently showing (#517 code review,
+// finding 2) - shared by uploadNewDocument/removeDocument so a mutation is always followed by
+// server truth instead of a local array splice/unshift that can drift from totalElements or the
+// active search filter.
+async function reloadCurrentPage(libraryId: string, get: () => DocumentState) {
+  const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
+  await get().loadDocuments(libraryId, {
+    page: pageState.page,
+    size: pageState.size,
+    q: pageState.q,
+  })
+}
+
 function startPolling(
   libraryId: string,
   set: (partial: Partial<DocumentState>) => void,
@@ -139,9 +191,20 @@ function startPolling(
 
   pollIntervalIds[libraryId] = setInterval(async () => {
     try {
-      const documents = await getLibraryDocuments(libraryId)
-      set({ documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: documents } })
-      if (!hasPendingDocument(documents)) {
+      const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
+      const response = await getLibraryDocuments(libraryId, {
+        page: pageState.page,
+        size: pageState.size,
+        q: pageState.q,
+      })
+      set({
+        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
+        pageStateByLibrary: {
+          ...get().pageStateByLibrary,
+          [libraryId]: { ...pageState, totalElements: response.totalElements },
+        },
+      })
+      if (!hasPendingDocument(response.items)) {
         get().stopPolling(libraryId)
       }
     } catch {

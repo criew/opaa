@@ -682,16 +682,16 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('/api/v1/libraries/:libraryId/documents', ({ params }) => {
+  http.get('/api/v1/libraries/:libraryId/documents', ({ params, request }) => {
     const libraryId = String(params.libraryId)
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    const documents = mockLibraryDocuments[libraryId] ?? []
+    const allDocuments = mockLibraryDocuments[libraryId] ?? []
     // Simulates the indexing pipeline resolving a freshly uploaded document after a couple of
     // polls, mirroring the INDEXING_POLL_STEPS pattern above - lets tests exercise the "PENDING
     // until the list refresh settles" acceptance criterion without staying PENDING forever.
-    documents.forEach((doc) => {
+    allDocuments.forEach((doc) => {
       if (doc.status !== 'PENDING') return
       const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
       documentPollCounts.set(doc.id, pollCount)
@@ -701,7 +701,20 @@ export const handlers = [
         doc.indexedAt = new Date().toISOString()
       }
     })
-    return HttpResponse.json(documents)
+
+    // Mirrors LibraryController#listDocuments / KnowledgeLibraryService#listDocuments (#517): page/
+    // size/q query params, a case-insensitive substring match on fileName, and the paged response
+    // envelope { items, page, size, totalElements }.
+    const url = new URL(request.url)
+    const q = url.searchParams.get('q')
+    const page = Number(url.searchParams.get('page') ?? '0')
+    const size = Number(url.searchParams.get('size') ?? '20')
+    const filtered = q
+      ? allDocuments.filter((doc) => doc.fileName.toLowerCase().includes(q.toLowerCase()))
+      : allDocuments
+    const items = filtered.slice(page * size, page * size + size)
+
+    return HttpResponse.json({ items, page, size, totalElements: filtered.length })
   }),
 
   http.post('/api/v1/libraries/:libraryId/documents', async ({ params, request }) => {

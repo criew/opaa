@@ -161,10 +161,10 @@ describe('MSW Handlers', () => {
     // document, unknown library) rather than a 403 is under test.
     const editableLibraryId = 'library-referat-50'
 
-    it('lists the documents of a library', async () => {
+    it('lists the documents of a library as a paged response', async () => {
       const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/documents`)
       expect(response.status).toBe(200)
-      expect(await response.json()).toEqual([])
+      expect(await response.json()).toEqual({ items: [], page: 0, size: 20, totalElements: 0 })
     })
 
     it('returns 404 for an unknown library', async () => {

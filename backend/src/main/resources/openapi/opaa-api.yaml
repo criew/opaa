@@ -766,16 +766,47 @@ paths:
     get:
       operationId: listLibraryDocuments
       tags: [library]
-      summary: List documents contained in a library
+      summary: >
+        List documents contained in a library, paged and optionally filtered by a case-insensitive
+        substring of the file name (#517). Available for every sourceType, not just UPLOAD - a
+        connector library's indexed bestand is just as visible here. Ordered by fileName ascending,
+        id ascending as a tiebreaker - a deterministic total order, not just "ascending fileName":
+        without it, LIMIT/OFFSET across two separate requests (e.g. two pages fetched moments
+        apart, or the same page re-polled while indexing concurrently updates a row) has no
+        guaranteed stable result in PostgreSQL and could return a document twice or skip it.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring match against the document's file name.
+          schema:
+            type: string
       responses:
         "200":
-          description: List of documents
+          description: Page of documents
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LibraryDocumentResponse"
+                $ref: "#/components/schemas/LibraryDocumentPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2137,6 +2168,25 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+
+    LibraryDocumentPageResponse:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryDocumentResponse"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of documents matching the (optional) q filter, across all pages.
 
     AssetRole:
       type: string

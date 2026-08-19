@@ -128,12 +128,15 @@ async function triggerIndexingAndWaitForCompletion(
  * caller can compare against an expected set without depending on server-side ordering.
  */
 async function fetchLibraryDocumentFileNames(page: Page, libraryId: string): Promise<string[]> {
-  const response = await page.request.get(`/api/v1/libraries/${libraryId}/documents`, {
-    headers: { [DEV_USER_HEADER]: 'dev-admin' },
-  })
+  // size=100 (#517): well above anything this suite's feeds produce, so every document lands on
+  // the single page fetched here without this helper having to walk pages itself.
+  const response = await page.request.get(
+    `/api/v1/libraries/${libraryId}/documents?size=100`,
+    { headers: { [DEV_USER_HEADER]: 'dev-admin' } },
+  )
   expect(response.ok()).toBe(true)
-  const documents = (await response.json()) as Array<{ fileName: string }>
-  return documents.map((d) => d.fileName).sort()
+  const body = (await response.json()) as { items: Array<{ fileName: string }> }
+  return body.items.map((d) => d.fileName).sort()
 }
 
 /**

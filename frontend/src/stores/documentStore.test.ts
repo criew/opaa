@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
-import type { LibraryDocumentResponse } from '../types/api'
+import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
 
 const { mockGetLibraryDocuments, mockUploadDocument, mockDeleteLibraryDocument } = vi.hoisted(
   () => ({
@@ -36,6 +36,13 @@ const pendingDocument: LibraryDocumentResponse = {
   indexedAt: null,
 }
 
+function page(
+  items: LibraryDocumentResponse[],
+  overrides?: Partial<LibraryDocumentPageResponse>,
+): LibraryDocumentPageResponse {
+  return { items, page: 0, size: 20, totalElements: items.length, ...overrides }
+}
+
 describe('documentStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,13 +55,39 @@ describe('documentStore', () => {
   })
 
   it('loads documents for a library', async () => {
-    mockGetLibraryDocuments.mockResolvedValueOnce([indexedDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
 
     await useDocumentStore.getState().loadDocuments('library-1')
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
+      page: 0,
+      size: 20,
+      q: '',
+      totalElements: 1,
+    })
     expect(useDocumentStore.getState().isLoading).toBe(false)
     expect(useDocumentStore.getState().error).toBeNull()
+  })
+
+  it('passes page/size/q through to the API and stores the response paging state', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      page([indexedDocument], { page: 2, size: 5, totalElements: 42 }),
+    )
+
+    await useDocumentStore.getState().loadDocuments('library-1', { page: 2, size: 5, q: 'dienst' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+      page: 2,
+      size: 5,
+      q: 'dienst',
+    })
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
+      page: 2,
+      size: 5,
+      q: 'dienst',
+      totalElements: 42,
+    })
   })
 
   it('shows a German error message when loading fails', async () => {
@@ -65,16 +98,30 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().error).toBe('Zugriff verweigert')
   })
 
-  it('prepends an uploaded document to the existing list', async () => {
-    useDocumentStore.setState({ documentsByLibrary: { 'library-1': [indexedDocument] } })
+  it('reloads the current page from the server after a successful upload', async () => {
+    // #517 code review, finding 2 (Szenario C): a local prepend cannot know whether the new
+    // document actually belongs on the page/search the user is looking at - only the server can.
+    useDocumentStore.setState({
+      documentsByLibrary: { 'library-1': [indexedDocument] },
+      pageStateByLibrary: { 'library-1': { page: 1, size: 5, q: 'dienst', totalElements: 6 } },
+    })
     mockUploadDocument.mockResolvedValueOnce(pendingDocument)
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      page([indexedDocument, pendingDocument], { page: 1, size: 5, totalElements: 7 }),
+    )
 
     await useDocumentStore.getState().uploadNewDocument('library-1', new File(['x'], 'x.pdf'))
 
+    expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+      page: 1,
+      size: 5,
+      q: 'dienst',
+    })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
-      pendingDocument,
       indexedDocument,
+      pendingDocument,
     ])
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(7)
     expect(useDocumentStore.getState().isUploading).toBe(false)
   })
 
@@ -132,14 +179,51 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().uploadErrors).toEqual([])
   })
 
-  it('removes a document after successful deletion', async () => {
-    useDocumentStore.setState({ documentsByLibrary: { 'library-1': [indexedDocument] } })
+  it('reloads the current page from the server after a successful deletion', async () => {
+    useDocumentStore.setState({
+      documentsByLibrary: { 'library-1': [indexedDocument] },
+      pageStateByLibrary: { 'library-1': { page: 0, size: 20, q: '', totalElements: 2 } },
+    })
     mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([], { totalElements: 1 }))
 
     await useDocumentStore.getState().removeDocument('library-1', 'document-1')
 
+    expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+      page: 0,
+      size: 20,
+      q: '',
+    })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([])
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(1)
     expect(useDocumentStore.getState().deleteError).toBeNull()
+  })
+
+  it('steps back a page when deleting empties the last page (Szenario A)', async () => {
+    useDocumentStore.setState({
+      documentsByLibrary: { 'library-1': [indexedDocument] },
+      pageStateByLibrary: { 'library-1': { page: 2, size: 1, q: '', totalElements: 21 } },
+    })
+    mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
+    // The reload of the now-deleted page 2 comes back empty (nothing left to show there)...
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([], { page: 2, size: 1, totalElements: 20 }))
+    // ...so removeDocument steps back to page 1, which still has content.
+    const previousPageDocument = { ...indexedDocument, id: 'document-3' }
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      page([previousPageDocument], { page: 1, size: 1, totalElements: 20 }),
+    )
+
+    await useDocumentStore.getState().removeDocument('library-1', 'document-1')
+
+    expect(mockGetLibraryDocuments).toHaveBeenNthCalledWith(2, 'library-1', {
+      page: 1,
+      size: 1,
+      q: '',
+    })
+    expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
+      previousPageDocument,
+    ])
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1'].page).toBe(1)
   })
 
   it('shows a German error and keeps the document listed when deletion fails', async () => {
@@ -168,12 +252,12 @@ describe('documentStore', () => {
 
   it('polls until no document is PENDING anymore, then stops', async () => {
     vi.useFakeTimers()
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
 
     await useDocumentStore.getState().loadDocuments('library-1')
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([pendingDocument])
 
-    mockGetLibraryDocuments.mockResolvedValueOnce([indexedDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
@@ -181,9 +265,9 @@ describe('documentStore', () => {
 
   it('stops every running poll interval on reset, not just the last-loaded library', async () => {
     vi.useFakeTimers()
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
     await useDocumentStore.getState().loadDocuments('library-1')
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
     await useDocumentStore.getState().loadDocuments('library-2')
 
     useDocumentStore.getState().reset()
