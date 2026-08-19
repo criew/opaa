@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
-| **Suchfilter** | die Abfrage auf ausgewählte Arbeitsräume eingrenzen | ja — Eingrenzung auf Arbeitsräume; weitere Filter siehe unten |
+| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | nein — Zielbild; die heute gebaute Eingrenzung auf Arbeitsräume ist ohne Wirkung im Backend und entfällt (siehe unten) |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -59,28 +59,40 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
 
-### Gesprächsverwaltung und Suchfilter
+### Dokumentenübersicht, Gesprächsverwaltung und Suchfilter
 
-Zwei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
+Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
 tatsächlichen Stand abgeglichen sind. Gesprächsverwaltung ist **Zielbild** und heute nicht gebaut.
 Die Dokumentenübersicht ist inzwischen gebaut — die Bibliotheksdetailseite (`LibraryDetailPage.tsx`)
 zeigt den Bestand einer Wissensbibliothek mit Indizierungsstand je Dokument; das Öffnen eines
 Dokuments im Original bleibt Zielbild.
 
-**Gesprächsverwaltung.** Ein Gespräch überlebt heute das Neuladen der Seite nicht. Im Zielbild
-gehört ein Gespräch in einen Arbeitsraum: benannt, wiederauffindbar, für die Mitglieder des
-Arbeitsraums sichtbar, sobald der Autor es dort ablegt — bis dahin bleibt es Entwurf und damit beim
-Autor (siehe [spaces-and-assets.md](./spaces-and-assets.md)). Dazu gehören das Löschen des eigenen
-Verlaufs und ein Export des Gesprächs samt Fundstellen, weil ein Gesprächsergebnis in der Verwaltung
-regelmäßig in einen Vorgang übernommen wird.
+**Gesprächsverwaltung.** Ein Gespräch überlebt heute das Neuladen der Seite nicht. Im Zielbild ist
+ein Gespräch ein persistentes Objekt, das **von Anfang an in genau einem Arbeitsraum** liegt — dort
+erstellt, dort gelistet, nicht verschiebbar (siehe [Chats](./spaces-and-assets.md#chats)). Es entsteht
+als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des Arbeitsraums erst sichtbar,
+sobald der Autor es dort teilt. Dazu gehören das Löschen des eigenen Verlaufs und ein Export des
+Gesprächs samt Fundstellen, weil ein Gesprächsergebnis in der Verwaltung regelmäßig in einen Vorgang
+übernommen wird.
 
 Die Aufbewahrungsdauer abgelegter Gespräche ist eine Betriebs- und Mitbestimmungsfrage, keine
 Voreinstellung des Produkts.
 
-**Suchfilter.** Gebaut ist die Eingrenzung auf ausgewählte Arbeitsräume. Im Zielbild kommen die
-Eingrenzung auf einzelne Wissensbibliotheken, auf den Dokumenttyp und auf den Stand der Indizierung
-hinzu. Ein Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die
-Sicht, sie erweitern sie nie.
+**Suchfilter.** Gebaut ist eine Eingrenzung auf ausgewählte Arbeitsräume — ohne Wirkung im Backend,
+weil der zugrundeliegende Parameter dort ignoriert wird. Sie entfällt **ersatzlos**: Ein Gespräch
+liegt bereits in genau einem Arbeitsraum, eine zusätzliche Space-Auswahl je Anfrage wäre redundant
+und suggerierte eine Wirkung, die es nicht gibt. An ihre Stelle tritt eine gesprächsbezogene, keine
+anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)):
+
+- ein Schalter **„Wissen nutzen"** (Standard: an) — an durchsucht im Zielbild die dem Arbeitsraum
+  assoziierten Wissensbibliotheken, aus durchsucht ausschließlich die per @ referenzierten,
+- **@-Bibliotheksreferenzen** direkt im Eingabefeld: Tippen von `@` schlägt alle Bibliotheken vor, die
+  der Nutzer lesen darf, unabhängig vom Arbeitsraum. Gesetzte Referenzen bleiben als entfernbare Chips
+  **sticky am Gespräch** erhalten, nicht nur für eine einzelne Anfrage.
+
+Im Zielbild kommen dazu die Eingrenzung auf den Dokumenttyp und auf den Stand der Indizierung. Ein
+Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die Sicht, sie
+erweitern sie nie.
 
 ### Belegbarkeit ist Oberfläche, nicht Beiwerk
 
@@ -171,7 +183,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; optional auf ausgewählte Arbeitsräume eingegrenzt | `POST /api/v1/query` | ja |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | teilweise — Frage, Antwort und Fundstellen sind gebaut; die heutige, wirkungslose Eingrenzung auf Arbeitsräume entfällt, Schalter und @-Referenzen sind Zielbild |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
