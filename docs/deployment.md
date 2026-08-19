@@ -296,6 +296,8 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | **Entwicklungs-Auth (`dev`)** | | |
 | `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird |
+| **Zugangsdaten-Verschlüsselung** | | |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb der Profile `local`/`dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** — siehe [Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung-483) |
 | **OIDC** | | |
 | `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK-Set-URI für Token-Verifizierung |
 | `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung |
@@ -363,6 +365,47 @@ OPAA_OPENAI_BASE_URL=http://your-vllm-server:8000/v1
 ```
 
 Dies ist erforderlich, weil Spring Boots Standard-HTTP-Client HTTP/2 bevorzugt, was bei Uvicorn-basierten Servern wie vLLM zu Verbindungsfehlern führt.
+
+### Zugangsdaten-Verschlüsselung (#483)
+
+Eine Bibliothek vom Quellentyp `HTTP_DIRECTORY` oder `RSS_FEED` kann Zugangsdaten
+(`sourceCredentials`, Basic-Auth-Format `user:password`) tragen. Diese liegen **verschlüsselt** in
+der Datenbank (AES-256-GCM, zufälliger Initialisierungsvektor je Wert) und erscheinen in keiner
+API-Antwort und keinem Log (ADR-0018, Entscheidung 4) — die API behandelt das Feld als
+Nur-Schreiben-Feld.
+
+**Schlüssel erzeugen und setzen:**
+
+```bash
+openssl rand -base64 32
+```
+
+Das Ergebnis (ein Base64-kodierter 256-Bit-Schlüssel) als `OPAA_CREDENTIALS_ENCRYPTION_KEY` setzen
+— **nicht** ins Repository committen, wie jede andere Zugangsinformation außerhalb von
+Umgebungsvariablen behandeln (Passwort-Tresor, Secret-Manager der Zielumgebung o. Ä.).
+
+**Kein Zwang, keinen zu haben:** Ohne gesetzten Schlüssel startet das Backend normal — die meisten
+Bibliotheken (`UPLOAD`, `FILESYSTEM`, oder ein `HTTP_DIRECTORY`/`RSS_FEED` ohne Zugangsdaten)
+brauchen keinen. Erst der Versuch, eine Bibliothek **mit** Zugangsdaten anzulegen oder zu ändern,
+schlägt ohne gültigen Schlüssel mit `503` fehl (`io.opaa.security.CredentialsEncryptor`) — eine klare
+Fehlermeldung statt eines unspezifischen `500`. Für lokale Entwicklung und Tests (Profile `local`,
+`dev`) ist ein fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel voreingestellt
+(`backend/src/main/resources/application.yml`), damit `bootRun` und die Testsuite ohne
+Betreiber-Eingriff laufen.
+
+**Bei Schlüsselverlust:** Bereits verschlüsselte `sourceCredentials`-Werte sind ohne den
+ursprünglichen Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des
+Schlüssels selbst. Betroffen sind ausschließlich die Zugangsdaten selbst, nicht die übrige
+Bibliothekskonfiguration oder der bereits indizierte Bestand. Abhilfe: Zugangsdaten über die
+bestehende Bibliotheks-API (`PATCH /api/v1/libraries/{id}`) neu setzen — derselbe Weg, über den
+Zugangsdaten ohnehin rotiert werden, ohne dass ein laufender oder künftiger Indizierungslauf dafür
+unterbrochen werden muss.
+
+**Altbestand vor #483:** Werte, die vor Einführung dieser Verschlüsselung im Klartext geschrieben
+wurden, erkennt `CredentialsEncryptor` beim Lesen an einem fehlenden Format-Präfix und behandelt sie
+weiterhin als Klartext — eine Liquibase-Migration kann sie nicht verschlüsseln, da der Schlüssel nur
+der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (z. B. eine
+Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert.
 
 ## Authentifizierung
 
