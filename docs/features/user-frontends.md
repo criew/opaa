@@ -182,7 +182,7 @@ Zweck, nicht nach Pfad.
 | Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja |
 | Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/libraries/{id}/grants` | ja |
 | Indizierung einer Bibliothek auslösen — aus ihrer eigenen, gespeicherten Quellkonfiguration; wer an der Bibliothek mindestens `EDITOR` ist, darf anstoßen | `POST /api/v1/libraries/{id}/indexing` | ja |
-| Stand des letzten Indizierungslaufs einer Bibliothek abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/libraries/{id}/indexing/status` | ja |
+| Stand des letzten Indizierungslaufs einer Bibliothek abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext; bei einem RSS-Lauf zusätzlich die Gesamtzahl indizierter Dokumente einschließlich Anhängen (`documentsIndexedTotal`), getrennt von der Zahl verarbeiteter Feed-Einträge (`documentCount`) (#518) | `GET /api/v1/libraries/{id}/indexing/status` | ja |
 | Dokument hochladen und wieder entfernen | `POST`/`DELETE /api/v1/libraries/{libraryId}/documents` | ja (#420, #422) |
 
 **Arbeitsräume und Gruppen**

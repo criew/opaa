@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { IndexingStatus } from '../types/api'
+import type { DocumentSourceType, IndexingStatus } from '../types/api'
 import { triggerIndexing, getIndexingStatus } from '../services/api'
 
 const POLL_INTERVAL_MS = 2000
@@ -31,6 +31,7 @@ interface IndexingRunState {
   documentCount: number
   totalDocuments: number
   documentsSkipped: number
+  documentsFailed: number
   // #518: the true count of indexed documents, including RSS attachments - equals documentCount
   // for FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but can
   // exceed it for an RSS_FEED run whose entries carry attachments.
@@ -38,6 +39,11 @@ interface IndexingRunState {
   message: string | null
   timestamp: string | null
   isPolling: boolean
+  // #518 review, finding 1: which wording a run uses (feed entries vs. plain document count) must
+  // be decided by the library's own, unchanging sourceType - never by comparing documentCount and
+  // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
+  // attachments at all and would otherwise make the same library's label flicker from run to run.
+  sourceType: DocumentSourceType | null
 }
 
 export const IDLE_RUN_STATE: IndexingRunState = {
@@ -45,18 +51,20 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   documentCount: 0,
   totalDocuments: 0,
   documentsSkipped: 0,
+  documentsFailed: 0,
   documentsIndexedTotal: 0,
   message: null,
   timestamp: null,
   isPolling: false,
+  sourceType: null,
 }
 
 interface IndexingState {
   runsByLibrary: Record<string, IndexingRunState>
   snackbar: Snackbar
 
-  triggerIndexing: (libraryId: string) => Promise<void>
-  loadStatus: (libraryId: string) => Promise<void>
+  triggerIndexing: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
+  loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
   stopPolling: (libraryId: string) => void
   closeSnackbar: () => void
 }
@@ -64,25 +72,34 @@ interface IndexingState {
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
 
 /**
- * Formats a completed run's counts for the completion snackbar (#518). documentsIndexedTotal only
- * diverges from documentCount on an RSS_FEED run whose entries carry attachments - a
- * FILESYSTEM/HTTP_DIRECTORY run, where one processed file is exactly one document, always has the
- * two equal, so it keeps the original, shorter wording unchanged.
+ * Formats a completed run's counts for the completion snackbar (#518). Which wording is used is
+ * decided by isRssFeed (the library's own sourceType, #518 review finding 1) rather than by
+ * comparing documentsIndexedTotal to documentCount - an RSS_FEED run whose entries carried no
+ * attachments would otherwise wrongly fall back to the FILESYSTEM/HTTP_DIRECTORY wording.
  */
-function formatCompletionMessage(response: {
-  documentCount: number
-  totalDocuments: number
-  documentsSkipped: number
-  documentsIndexedTotal: number
-}): string {
-  if (response.documentsIndexedTotal !== response.documentCount) {
+function formatCompletionMessage(
+  response: {
+    documentCount: number
+    totalDocuments: number
+    documentsSkipped: number
+    documentsFailed: number
+    documentsIndexedTotal: number
+  },
+  isRssFeed: boolean,
+): string {
+  // #518 review, finding 3: documentsFailed used to be visible only inside the backend's own
+  // free-text message, never in the client-built one - named explicitly here, but only when it
+  // actually occurred, so a clean run's message stays as short as before.
+  const failedSuffix =
+    response.documentsFailed > 0 ? `, davon ${response.documentsFailed} fehlgeschlagen` : ''
+  if (isRssFeed) {
     return (
       `Indizierung abgeschlossen: ${response.totalDocuments} Feed-Einträge, ` +
       `${response.documentsSkipped} übersprungen, ${response.documentCount} indiziert ` +
-      `(${response.documentsIndexedTotal} Dokumente insgesamt)`
+      `(${response.documentsIndexedTotal} Dokumente insgesamt)${failedSuffix}`
     )
   }
-  return `Indizierung abgeschlossen: ${response.documentCount} verarbeitet, ${response.documentsSkipped} übersprungen`
+  return `Indizierung abgeschlossen: ${response.documentCount} verarbeitet, ${response.documentsSkipped} übersprungen${failedSuffix}`
 }
 
 function setRun(
@@ -101,10 +118,11 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   runsByLibrary: {},
   snackbar: { open: false, message: '', severity: 'success' },
 
-  triggerIndexing: async (libraryId: string) => {
+  triggerIndexing: async (libraryId: string, sourceType: DocumentSourceType) => {
     try {
       // #478: sourceType and every typed configuration field come from the library itself
-      // (ADR-0018) - the trigger only ever names the library.
+      // (ADR-0018) - the trigger only ever names the library. sourceType is passed in purely for
+      // this store's own wording decisions (#518 review, finding 1), not sent to the backend.
       const response = await triggerIndexing(libraryId)
       setRun(
         libraryId,
@@ -113,9 +131,11 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsFailed: response.documentsFailed,
           documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
+          sourceType,
         },
         set,
         get,
@@ -129,17 +149,17 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // suggest one started and broke, so only the snackbar reports it, and status is left as-is.
       const isUploadLibrary = message === UPLOAD_LIBRARY_INDEXING_ERROR
       if (!isUploadLibrary) {
-        setRun(libraryId, { status: 'FAILED', message }, set, get)
+        setRun(libraryId, { status: 'FAILED', message, sourceType }, set, get)
       }
       set({ snackbar: { open: true, message, severity: 'error' } })
     }
   },
 
-  loadStatus: async (libraryId: string) => {
+  loadStatus: async (libraryId: string, sourceType: DocumentSourceType) => {
     // Reset to IDLE up front: if this library never had a status loaded before, or the fetch
     // below fails, the section must show this library's own default rather than whatever another
     // library left behind in a shared field.
-    setRun(libraryId, IDLE_RUN_STATE, set, get)
+    setRun(libraryId, { ...IDLE_RUN_STATE, sourceType }, set, get)
     try {
       const response = await getIndexingStatus(libraryId)
       setRun(
@@ -149,9 +169,11 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsFailed: response.documentsFailed,
           documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
+          sourceType,
         },
         set,
         get,
@@ -188,6 +210,9 @@ function startPolling(
   pollIntervalIds[libraryId] = setInterval(async () => {
     try {
       const response = await getIndexingStatus(libraryId)
+      // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
+      // polling ever starts (#518 review, finding 1) - polling itself never learns it anew.
+      const isRssFeed = get().runsByLibrary[libraryId]?.sourceType === 'RSS_FEED'
       setRun(
         libraryId,
         {
@@ -195,6 +220,7 @@ function startPolling(
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsFailed: response.documentsFailed,
           documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
@@ -210,7 +236,7 @@ function startPolling(
             open: true,
             message:
               response.status === 'COMPLETED'
-                ? formatCompletionMessage(response)
+                ? formatCompletionMessage(response, isRssFeed)
                 : (response.message ?? 'Indizierung fehlgeschlagen'),
             severity: response.status === 'COMPLETED' ? 'success' : 'error',
           },

@@ -198,7 +198,7 @@ public class LibraryController {
             libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN)
         .map(this::toIndexingStatusResponse)
         .orElse(
-            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, Instant.now())
+            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now())
                 .message("Kein Indizierungslauf gefunden")
                 .libraryId(libraryId));
   }
@@ -223,6 +223,7 @@ public class LibraryController {
             job.getDocumentsProcessed(),
             job.getDocumentsTotal(),
             job.getDocumentsSkipped(),
+            job.getDocumentsFailed(),
             job.getDocumentsIndexedTotal(),
             job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
         .message(message)

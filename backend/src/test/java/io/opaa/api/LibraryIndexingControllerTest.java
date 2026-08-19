@@ -196,8 +196,10 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.status").value("COMPLETED"))
         .andExpect(jsonPath("$.documentCount").value(10))
         .andExpect(jsonPath("$.documentsSkipped").value(5))
+        .andExpect(jsonPath("$.documentsFailed").value(1))
         .andExpect(jsonPath("$.documentsIndexedTotal").value(23))
-        .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")));
+        .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")))
+        .andExpect(jsonPath("$.message").value(containsString("1 fehlgeschlagen")));
   }
 
   @Test

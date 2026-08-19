@@ -1283,6 +1283,7 @@ components:
           documentCount,
           totalDocuments,
           documentsSkipped,
+          documentsFailed,
           documentsIndexedTotal,
           timestamp,
         ]
@@ -1302,6 +1303,13 @@ components:
           example: 42
         documentsSkipped:
           type: integer
+          example: 0
+        documentsFailed:
+          type: integer
+          description: >
+            The number of source items this run failed to process (#518 review, finding 3) -
+            previously only visible inside the free-text message field, not as its own value the
+            UI could name explicitly.
           example: 0
         documentsIndexedTotal:
           type: integer
