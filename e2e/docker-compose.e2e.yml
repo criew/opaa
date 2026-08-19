@@ -32,6 +32,16 @@ services:
       # exercised by whatever a future scenario adds for it, this only widens the window enough for
       # a same-run rerun.
       OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS: "20"
+      # PR #510 review, finding 1: RateLimitFilter checks this GLOBAL sliding-window counter
+      # (default 5 requests/60s, application.yml) *before* the per-library one above, across every
+      # library and every caller. CI's own retry (playwright.config.ts: retries: 1 on CI) re-runs a
+      # whole failed test.describe.serial group from its first test, so a transient failure alone
+      # already means 2x this spec's own POST .../indexing calls in the same 60s window - on top of
+      # whatever other spec ran in the same suite invocation. Left at the default, that retry could
+      # never turn green (the 6th+ POST getting a 429 whose GET .../indexing/status the store then
+      # never reaches COMPLETED for, timing out the test instead of failing it cleanly). Raised for
+      # the same reason as the per-library limit above, not disabled.
+      OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS: "20"
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.

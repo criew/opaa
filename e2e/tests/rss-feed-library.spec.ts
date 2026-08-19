@@ -9,11 +9,31 @@ import type { Page, Response } from '@playwright/test'
 const FEED_URL_OK = 'http://rss-feed/feed-ok.xml'
 const FEED_URL_ERROR = 'http://rss-feed/feed-error.xml'
 
+// The two entry titles from feed-ok.xml (used verbatim as the resulting documents' fileName, see
+// FileProcessingService#processRssEntry) plus the one attachment linked from the first entry's
+// detail page (e2e/fixtures/rss-feed/htdocs/seiten/oeffnungszeiten.html) - filename resolved
+// as-is by AttachmentProfile.GENERIC since ".txt" already is a supported extension.
+const ENTRY_TITLE_OEFFNUNGSZEITEN = 'Öffnungszeiten der Bürgerauskunft angepasst'
+const ENTRY_TITLE_STATISTIK = 'Neuigkeiten aus dem Amt für Statistik'
+const ATTACHMENT_FILE_NAME = 'merkblatt.txt'
+// feed-error.xml's one entry that actually resolves (its second entry's detail page is a genuine
+// 404, see createRssLibrary's caller below).
+const ENTRY_TITLE_SITZUNGSTERMINE = 'Sitzungstermine des Ausschusses'
+
 // Unique per run so re-runs against a stack that was not torn down never collide with a leftover
 // library of the same name (same reasoning as knowledge-libraries.spec.ts's LIBRARY_NAME).
 const runId = Date.now()
 const LIBRARY_NAME_OK = `E2E RSS-Bibliothek ${runId}`
 const LIBRARY_NAME_ERROR = `E2E RSS-Bibliothek Fehlerfall ${runId}`
+
+// Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER - not imported from there since e2e/
+// is its own npm package with no dependency on frontend/src (see e2e/package.json). Used below to
+// call the library documents API directly as dev-admin, bypassing the UI entirely (PR #510
+// review, finding 2): GET /api/v1/libraries/{id}/documents still exists and still returns each
+// document's fileName (LibraryController#listDocuments) even though #481 removed the connector
+// library's own document list from the UI - this is the one place this suite can still assert on
+// individual RSS/attachment documents by name, not just by aggregate count.
+const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
 interface IndexingStatusResponse {
   status: 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'
@@ -102,27 +122,49 @@ async function triggerIndexingAndWaitForCompletion(
 }
 
 /**
+ * Reads a library's document filenames straight from the API (PR #510 review, finding 2) rather
+ * than the aggregate `documentCount` alone - a plain count stays green even if the attachment
+ * never got indexed and some other entry happened to produce two documents instead. Sorted so the
+ * caller can compare against an expected set without depending on server-side ordering.
+ */
+async function fetchLibraryDocumentFileNames(page: Page, libraryId: string): Promise<string[]> {
+  const response = await page.request.get(`/api/v1/libraries/${libraryId}/documents`, {
+    headers: { [DEV_USER_HEADER]: 'dev-admin' },
+  })
+  expect(response.ok()).toBe(true)
+  const documents = (await response.json()) as Array<{ fileName: string }>
+  return documents.map((d) => d.fileName).sort()
+}
+
+/**
  * Covers test(e2e) #471: the RSS path over the full stack, via the library creation/detail UI
  * #480/#481 introduced for the source-type selection (the issue's original "im
  * Indizierungsformular den Quellentyp wählen" wording is outdated, see the issue's own
  * coordination comment) - template selection, feed indexing, progress/result visibility, the
  * entry-level negative path and the unchanged-feed idempotency all in one chain.
  *
- * **Content verification is intentionally count-based, not citation-based (Annahme, see PR).**
- * `e2e/ai-stub` always answers `POST /v1/embeddings` with the *same fixed vector* regardless of
- * input (see e2e/README.md, "KI-Stub statt echtem Modell") - the chat/search path this suite
- * otherwise uses (`source-card`, #424) cannot distinguish which of this library's own documents a
- * particular query "found", since every chunk in every library the asking user can read is equally
- * "relevant". This spec instead asserts the indexing run's own document counts (entries processed
- * vs. skipped) and the library's aggregate `documentCount` - the run api indexing/status and
- * `GET .../libraries/{id}` both computed straight from `document_repository.countByLibraryId`, not
- * from anything content-dependent. There is also no UI at all for a connector library's own
- * document list any more (#481 removed the per-document Dokumente table for non-UPLOAD source
- * types together with DocumentsPage.tsx) - so per-entry filenames or boilerplate-stripped text are
- * not independently checkable from this suite; RssFeedIndexingExecutorTest and
- * RssFeedIndexingExecutorAttachmentTest already cover that at the backend integration level.
+ * **Content verification is API-based, not citation-based (Annahme, see PR).** `e2e/ai-stub`
+ * always answers `POST /v1/embeddings` with the *same fixed vector* regardless of input (see
+ * e2e/README.md, "KI-Stub statt echtem Modell") - the chat/search path this suite otherwise uses
+ * (`source-card`, #424) cannot distinguish which of this library's own documents a particular
+ * query "found", since every chunk in every library the asking user can read is equally
+ * "relevant". This spec instead asserts the indexing run's own document counts (via
+ * .../indexing/status) and each document's own fileName (via GET .../documents, see
+ * fetchLibraryDocumentFileNames) - none of it content-dependent. Boilerplate stripping itself
+ * (nav/footer text never ending up in a document) stays unverifiable from here: #481 removed the
+ * only UI that ever showed a connector library's document *content*, and the documents API itself
+ * never returns chunk text - RssFeedIndexingExecutorTest already covers that at the backend
+ * integration level.
+ *
+ * **Selector convention (PR #510 review, finding 4).** Per e2e/README.md's "Selektor-Konvention",
+ * `getByText` on human-authored copy is to be avoided where a role/label/testid alternative
+ * exists - none of the three fits an indexing run's free-text status paragraph, and this PR
+ * intentionally does not touch frontend/src to add a data-testid for it (out of scope for a test-
+ * only PR). The one `getByText` below is kept deliberately minimal: it is not load-bearing (the
+ * preceding `expect(status...)` assertions on the actual API response already prove the run's
+ * outcome) and only spot-checks that the UI actually renders that outcome at all.
  */
-test.describe.serial('RSS-Feed-Quelle: Positiv-/Negativpfad, unveränderter Feed (#471)', () => {
+test.describe.serial('RSS-Feed-Quelle: Positivpfad, unveränderter Feed (#471)', () => {
   let libraryIdOk: string
 
   test('1. Bibliothek aus dem RSS-Feed-Template anlegen und indizieren', async ({
@@ -139,13 +181,18 @@ test.describe.serial('RSS-Feed-Quelle: Positiv-/Negativpfad, unveränderter Feed
     expect(status.totalDocuments).toBe(2)
     expect(status.documentCount).toBe(2)
     expect(status.documentsSkipped).toBe(0)
+    // Not load-bearing (see the module doc comment on the selector convention) - a minimal spot
+    // check that the UI actually surfaces this run's outcome, not just the API.
     await expect(page.getByText('Letzter Lauf: Abgeschlossen')).toBeVisible()
 
-    // The library's own aggregate documentCount (2 entries + 1 attachment = 3) is not refreshed
-    // by LibraryIndexingSection on completion (#481 left no such hook) - a reload re-runs
-    // LibraryDetailPage's loadLibraryDetails effect, which is what actually re-fetches it.
-    await page.reload()
-    await expect(page.getByText('3 Dokumente')).toBeVisible()
+    // The library's aggregate documentCount (2 entries + 1 attachment = 3) and, more importantly,
+    // which three documents those are - verified straight from the API, not the UI (PR #510
+    // review, finding 2): no reload/UI-refresh dance needed either, unlike the "N Dokumente"
+    // header text this replaces, which only updates on a fresh page load.
+    const fileNames = await fetchLibraryDocumentFileNames(page, libraryIdOk)
+    expect(fileNames).toEqual(
+      [ENTRY_TITLE_OEFFNUNGSZEITEN, ENTRY_TITLE_STATISTIK, ATTACHMENT_FILE_NAME].sort(),
+    )
   })
 
   test('2. Zweiter Lauf über den unveränderten Feed erzeugt keine neuen Dokumente', async ({
@@ -154,24 +201,36 @@ test.describe.serial('RSS-Feed-Quelle: Positiv-/Negativpfad, unveränderter Feed
     await gotoLibraryDetail(page, libraryIdOk)
 
     // "No new documents" (#471 acceptance criteria) can be reached two different ways here, and
-    // this run's own outcome depends on which one applies (documented in the task's own "ACHTUNG"
-    // note, not just this comment): run 1 deferred nothing and failed nothing, so it persisted the
-    // feed's ETag/Last-Modified (RssFeedIndexingExecutor#saveFeedState) - this run's conditional
-    // GET for feed-ok.xml itself then answers 304, and the run ends with totalDocuments = 0
-    // without ever looking at the individual entries again (httpd:2.4-alpine serves static files
-    // with an ETag out of the box, so this is the path this suite's own fixture actually takes).
-    // Had run 1 deferred or failed anything, no feed state would have been saved, and this run
-    // would instead re-fetch the feed and skip each entry individually by its unchanged pubDate
-    // (totalDocuments = 2, documentsSkipped = 2) - either way documentCount, the "were any new
-    // documents processed" figure, is 0.
+    // this run's own outcome depends on which one applies (documented in the task's own
+    // "ACHTUNG" note, not just this comment): run 1 deferred nothing and failed nothing, so it
+    // persisted the feed's ETag/Last-Modified (RssFeedIndexingExecutor#saveFeedState) - this
+    // run's conditional GET for feed-ok.xml itself then answers 304, and the run ends with
+    // totalDocuments = 0 without ever looking at the individual entries again
+    // (httpd:2.4-alpine serves static files with an ETag out of the box, so this is the path this
+    // suite's own fixture actually takes). Had run 1 deferred or failed anything, no feed state
+    // would have been saved, and this run would instead re-fetch the feed and skip each entry
+    // individually by its unchanged pubDate (totalDocuments = 2, documentsSkipped = 2) - either
+    // way documentCount, the "were any new documents processed" figure, is 0.
     const status = await triggerIndexingAndWaitForCompletion(page, libraryIdOk)
     expect(status.status).toBe('COMPLETED')
     expect(status.documentCount).toBe(0)
 
-    await page.reload()
-    await expect(page.getByText('3 Dokumente')).toBeVisible()
+    // Same three documents as after run 1, not just the same count - a run that quietly replaced
+    // one document with a differently-named other one would still pass a bare count check.
+    const fileNames = await fetchLibraryDocumentFileNames(page, libraryIdOk)
+    expect(fileNames).toEqual(
+      [ENTRY_TITLE_OEFFNUNGSZEITEN, ENTRY_TITLE_STATISTIK, ATTACHMENT_FILE_NAME].sort(),
+    )
   })
+})
 
+// PR #510 review, finding 3: kept out of the describe.serial group above on purpose. It shares no
+// state with scenarios 1/2 (its own library, its own feed), so serializing it with them only cost
+// independence: CI's retries: 1 (playwright.config.ts) re-runs a whole failed serial group from
+// its first test, which - combined with finding 1's rate-limit headroom - means a transient
+// failure in scenario 1 no longer drags this one's own retry budget down with it, and a failure
+// here does not block scenario 1/2's own result either.
+test.describe('RSS-Feed-Quelle: Negativpfad, ein fehlerhafter Eintrag (#471)', () => {
   test('3. Ein fehlerhafter Eintrag (404) bricht den Lauf nicht ab und wird ausgewiesen', async ({
     authenticatedPage: page,
   }) => {
@@ -185,15 +244,8 @@ test.describe.serial('RSS-Feed-Quelle: Positiv-/Negativpfad, unveränderter Feed
     expect(status.totalDocuments).toBe(2)
     expect(status.documentCount).toBe(1)
     expect(status.documentsSkipped).toBe(1)
-    await expect(page.getByText('Letzter Lauf: Abgeschlossen')).toBeVisible()
-    // Not a plain /1 übersprungen/ text match (strict-mode violation): the just-finished run's
-    // success snackbar ("Indizierung abgeschlossen: 1 verarbeitet, 1 übersprungen") and
-    // LibraryIndexingSection's own persistent status line both carry that phrase at the same time.
-    // The status line's exact wording (indexingStore.ts / LibraryIndexingSection) is the one this
-    // assertion actually cares about - it is what stays on screen, unlike the snackbar.
-    await expect(page.getByText('Dokumente: 1 verarbeitet (1 übersprungen)')).toBeVisible()
 
-    await page.reload()
-    await expect(page.getByText('1 Dokument', { exact: true })).toBeVisible()
+    const fileNames = await fetchLibraryDocumentFileNames(page, libraryIdError)
+    expect(fileNames).toEqual([ENTRY_TITLE_SITZUNGSTERMINE])
   })
 })
