@@ -40,7 +40,7 @@ const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
     // Simulates the real backend response influencing the next getLibraries() call, so the AC
     // "erscheint ohne Neuladen in der Liste" is actually exercised instead of assumed.
     useLibraryStore.setState((state) => ({ libraries: [...state.libraries, created] }))
-    return { ...created, ownerId: null, documentCount: 0 } as LibraryResponse
+    return { ...created, ownerId: 'mock-user-id', documentCount: 0 } as LibraryResponse
   }),
   mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
 }))
@@ -89,7 +89,7 @@ const viewerLibrary: LibraryListResponse = {
   id: 'library-readonly',
   name: 'Dienstanweisungen',
   description: 'Organisationsweit',
-  ownerType: 'SYSTEM',
+  ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
   personal: false,

@@ -140,9 +140,8 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryRepository.findAll().stream()
             .filter(
                 l ->
-                    !l.isSystemLibrary()
-                        && (createdUserIds.contains(l.getOwnerUserId())
-                            || createdGroupIds.contains(l.getOwnerGroupId())))
+                    createdUserIds.contains(l.getOwnerUserId())
+                        || createdGroupIds.contains(l.getOwnerGroupId()))
             .toList();
     for (KnowledgeLibrary library : ownLibraries) {
       documentRepository.deleteAll(documentRepository.findByLibraryId(library.getId()));
@@ -214,21 +213,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(response.getVisibility()).isEqualTo(LibraryVisibility.PRIVATE);
     assertThat(response.getListed()).isFalse();
     assertThat(response.getPersonal()).isFalse();
-  }
-
-  @Test
-  void createLibraryRejectsCallerSuppliedSystemOwnerType() {
-    UUID owner = createUser(organizationA);
-    LibraryRequest request =
-        new LibraryRequest("Verboten", DocumentSourceType.UPLOAD)
-            .ownerType(LibraryOwnerType.SYSTEM);
-
-    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
   }
 
   @Test
@@ -806,100 +790,14 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void theSeededSystemLibraryIsClosedToOrdinaryUsers() {
-    KnowledgeLibrary systemLibrary =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    UUID regularUser = createUser(systemLibrary.getOrganizationId());
-    UUID systemAdmin = createUser(systemLibrary.getOrganizationId());
+  void personalLibraryCannotBeDeletedEvenByASystemAdmin() {
+    // Until #521, the system library carried the same guard - see that issue for why it was
+    // deleted outright instead of kept as a permanently undeletable special case.
+    UUID admin = createUser(organizationA);
 
-    assertThatThrownBy(
-            () -> libraryService.getLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, regularUser, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
-
-    LibraryResponse response =
-        libraryService.getLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, systemAdmin, true);
-    assertThat(response.getId()).isEqualTo(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-  }
-
-  @Test
-  void bothRightsPathsAgreeOnTheSystemLibraryBeforeAndAfterItIsOpened() {
-    KnowledgeLibrary systemLibrary =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    UUID organizationId = systemLibrary.getOrganizationId();
-    UUID regularUser = createUser(organizationId);
-
-    // #406: the library API asked effectiveRole, the search asked readableLibraryIds, and only the
-    // former knew a system-library special case. Asserting both together is the point - either one
-    // alone was green while the pair contradicted each other.
-    assertThat(accessService.canRead(systemLibrary, regularUser, false)).isFalse();
-    assertThat(accessService.readableLibraryIds(regularUser, organizationId))
-        .doesNotContain(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-
-    openSystemLibraryToTheOrganization();
-
-    KnowledgeLibrary opened =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    assertThat(accessService.canRead(opened, regularUser, false)).isTrue();
-    assertThat(accessService.readableLibraryIds(regularUser, organizationId))
-        .contains(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
-  }
-
-  @Test
-  void openingTheSystemLibraryRequiresASystemAdmin() {
-    KnowledgeLibrary systemLibrary =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    UUID regularUser = createUser(systemLibrary.getOrganizationId());
-
-    LibraryUpdateRequest request = new LibraryUpdateRequest();
-    request.setName(systemLibrary.getName());
-    request.setVisibility(LibraryVisibility.ORGANIZATION);
-
-    // The migrated stock stays an administrative decision: nobody else can hold MANAGER on a
-    // library with no owner and no grants, so nobody else can widen it.
-    assertThatThrownBy(
-            () ->
-                libraryService.updateLibrary(
-                    KnowledgeLibrary.SYSTEM_LIBRARY_ID, request, regularUser, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
-  }
-
-  private void openSystemLibraryToTheOrganization() {
-    KnowledgeLibrary systemLibrary =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    UUID systemAdmin = createUser(systemLibrary.getOrganizationId());
-    LibraryUpdateRequest request = new LibraryUpdateRequest();
-    request.setName(systemLibrary.getName());
-    request.setDescription(systemLibrary.getDescription());
-    request.setVisibility(LibraryVisibility.ORGANIZATION);
-    libraryService.updateLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, request, systemAdmin, true);
-  }
-
-  @Test
-  void systemLibraryAndPersonalLibraryCannotBeDeletedEvenByASystemAdmin() {
-    KnowledgeLibrary systemLibrary =
-        libraryRepository.findById(KnowledgeLibrary.SYSTEM_LIBRARY_ID).orElseThrow();
-    UUID admin = createUser(systemLibrary.getOrganizationId());
-
-    assertThatThrownBy(
-            () -> libraryService.deleteLibrary(KnowledgeLibrary.SYSTEM_LIBRARY_ID, admin, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
-
-    libraryService.ensurePersonalLibrary(admin, systemLibrary.getOrganizationId());
+    libraryService.ensurePersonalLibrary(admin, organizationA);
     List<KnowledgeLibrary> personalLibraries =
-        libraryRepository.findByOrganizationIdAndOwnerUserId(
-            systemLibrary.getOrganizationId(), admin);
+        libraryRepository.findByOrganizationIdAndOwnerUserId(organizationA, admin);
     assertThat(personalLibraries).hasSize(1);
 
     assertThatThrownBy(
@@ -1512,10 +1410,10 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void listLibrariesShowsNothingToAUserWithNoAccessPathNotEvenTheSystemLibrary() {
+  void listLibrariesShowsNothingToAUserWithNoAccessPath() {
     // Negative test: without ownership, a grant or organization-wide visibility, a library must not
-    // appear - and this must hold for the system library too (#406: the formula knows no exception
-    // for it).
+    // appear - the formula knows no exception for any library, including the well-known system
+    // library that existed until #521.
     UUID owner = createUser(organizationA);
     UUID outsider = createUser(organizationA);
     LibraryResponse library =
@@ -1525,9 +1423,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     List<LibraryListResponse> listed = libraryService.listLibraries(outsider, false);
 
     assertThat(listed).extracting(LibraryListResponse::getId).doesNotContain(library.getId());
-    assertThat(listed)
-        .extracting(LibraryListResponse::getId)
-        .doesNotContain(KnowledgeLibrary.SYSTEM_LIBRARY_ID);
   }
 
   @Test

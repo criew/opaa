@@ -118,8 +118,7 @@ export default function LibraryDetailPage() {
   const roleGrantsEdit = canEditLibrary(library?.myRole)
   const roleGrantsDelete = canDeleteLibrary(library?.myRole)
   const canEdit = roleGrantsEdit || isSystemAdmin
-  const canDelete =
-    (roleGrantsDelete || isSystemAdmin) && !library?.personal && library?.ownerType !== 'SYSTEM'
+  const canDelete = (roleGrantsDelete || isSystemAdmin) && !library?.personal
   const canManageGrants = canEdit && !library?.personal
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
   const editableVisibilities = library?.personal ? personalLibraryVisibilities : allVisibilities

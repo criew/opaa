@@ -3,7 +3,6 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,7 +156,10 @@ class DocumentIndexingServiceTest {
   @Test
   void aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected() {
     // ADR-0018, Entscheidung 2: canEdit must be consulted with systemAdmin=false regardless of the
-    // caller's real role - a system admin without any grant must not silently gain EDITOR.
+    // caller's real role - a system admin without any grant must not silently gain EDITOR. #521
+    // removed the one carve-out that used to exist here (the well-known SYSTEM-owned library,
+    // seeded with no owner and no grants, which a system admin could target without a grant) - this
+    // also pins that canEdit is now consulted unconditionally, the same as for any other library.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(false);
@@ -167,44 +169,8 @@ class DocumentIndexingServiceTest {
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
     verify(indexingJobService, never()).startJob(any());
+    verify(libraryAccessService).canEdit(library, currentUser.getId(), false);
     verify(libraryAccessService, never()).canEdit(library, currentUser.getId(), true);
-  }
-
-  @Test
-  void aSystemAdminMayTargetTheSystemLibraryWithoutAnExplicitGrant() {
-    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
-    UUID systemLibraryId = UUID.randomUUID();
-    when(systemLibrary.getId()).thenReturn(systemLibraryId);
-    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
-    when(systemLibrary.isSystemLibrary()).thenReturn(true);
-    when(systemLibrary.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(systemLibraryId)).thenReturn(job);
-
-    IndexingJob result = service.triggerIndexing(systemLibraryId, currentUser.getId(), true);
-
-    assertThat(result).isEqualTo(job);
-    verify(libraryAccessService, never())
-        .canEdit(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
-  }
-
-  @Test
-  void aNonSystemAdminMayNotTargetTheSystemLibraryWithoutAGrant() {
-    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
-    UUID systemLibraryId = UUID.randomUUID();
-    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
-    // systemAdmin=false short-circuits "systemAdmin && library.isSystemLibrary()" before
-    // isSystemLibrary() is ever called, so it is deliberately left unstubbed.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
-    when(libraryAccessService.canEdit(systemLibrary, currentUser.getId(), false)).thenReturn(false);
-
-    assertThatThrownBy(() -> service.triggerIndexing(systemLibraryId, currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
   }
 
   @Test

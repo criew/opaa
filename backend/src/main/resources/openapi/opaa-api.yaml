@@ -737,11 +737,11 @@ paths:
       operationId: deleteLibrary
       tags: [library]
       summary: >
-        Delete a library (owner only; the personal library and the system library cannot be
-        deleted). A non-empty UPLOAD library is rejected with 409 (documents must be removed
-        individually first). A non-empty connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED)
-        is deleted together with its documents and vector store chunks - deleting individual
-        connector documents would be undone by the next indexing run (ADR-0018, Entscheidung 5).
+        Delete a library (owner only; the personal library cannot be deleted). A non-empty UPLOAD
+        library is rejected with 409 (documents must be removed individually first). A non-empty
+        connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) is deleted together with its
+        documents and vector store chunks - deleting individual connector documents would be
+        undone by the next indexing run (ADR-0018, Entscheidung 5).
       responses:
         "204":
           description: Library deleted
@@ -1811,11 +1811,8 @@ components:
 
     LibraryOwnerType:
       type: string
-      description: >
-        Who owns a library. USER and GROUP are the only values a client may submit; SYSTEM (the
-        migration target for pre-#201 documents, readable by system admins only) is never
-        creatable through this API - see #201.
-      enum: [USER, GROUP, SYSTEM]
+      description: Who owns a library - a single person or a group.
+      enum: [USER, GROUP]
       example: USER
 
     LibraryVisibility:
@@ -2055,6 +2052,7 @@ components:
         - id
         - name
         - ownerType
+        - ownerId
         - visibility
         - listed
         - personal
@@ -2077,8 +2075,7 @@ components:
         ownerId:
           type: string
           format: uuid
-          nullable: true
-          description: Null only for the SYSTEM-owned library
+          description: The owning user or group, whichever ownerType names.
         visibility:
           $ref: "#/components/schemas/LibraryVisibility"
         listed:

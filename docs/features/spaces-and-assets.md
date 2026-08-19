@@ -100,12 +100,14 @@ lesbare_Bibliotheken(u) =
 
 **Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
 
-**Der Ausdruck kennt keine Ausnahme — auch nicht für die System-Bibliothek.** Sie ist beim Anlegen
-`PRIVATE` und ohne Grants, fällt also von sich aus aus jeder lesbaren Menge heraus; sie ist aber
-keine Bibliothek mit eigenen Regeln. Beide Wege, auf denen Rechte geprüft werden — die Anzeige einer
-einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das nicht
-taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
-([#406](https://github.com/criew/opaa/issues/406)).
+**Der Ausdruck kennt keine Ausnahme.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige
+einer einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das
+nicht taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
+([#406](https://github.com/criew/opaa/issues/406)). Bis [#521](https://github.com/criew/opaa/issues/521)
+bewährte sich das an einer System-Bibliothek ohne Eigentümer (`PRIVATE`, ohne Grants seit ihrer
+Migration-Saat, #201) — die keine Bibliothek mit eigenen Regeln war, sondern von sich aus aus jeder
+lesbaren Menge herausfiel. #521 hat sie samt Inhalt gelöscht; jede verbleibende Bibliothek hat einen
+echten Eigentümer.
 
 ### Gruppen als Rechtesubjekt
 
@@ -664,10 +666,11 @@ Der Gedanke, alles einheitlich als Asset zu modellieren, ist naheliegend, trägt
 
 **Umsetzungsstand:** Die Wissensbibliothek als Container ist mit #201 umgesetzt (Migration 012 in
 [docs/migrations/012-knowledge-library.md](../migrations/012-knowledge-library.md)) — Eigentümerschaft
-(Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag und die Zuweisung jedes
-bestehenden Dokuments an eine System-Bibliothek. Die abgestuften Asset-Rollen weiter unten
+(Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag und, bis #521, die
+Zuweisung jedes bestehenden Dokuments an eine eigens dafür angelegte System-Bibliothek (#521 hat sie
+samt Inhalt gelöscht, siehe oben). Die abgestuften Asset-Rollen weiter unten
 (`VIEWER`/`EDITOR`/`MANAGER`/`OWNER`) und die rechtebewusste Vektorsuche folgen mit #202 — bis
-dahin gilt eine grobe Zugriffslogik (Eigentümer, Gruppenmitglied, `ORGANIZATION`-Sichtbarkeit,
+dahin galt eine grobe Zugriffslogik (Eigentümer, Gruppenmitglied, `ORGANIZATION`-Sichtbarkeit,
 System-Admin), dokumentiert auf `KnowledgeLibraryService`.
 
 Der Dokumentencontainer ist die Wissensbibliothek, nicht der Space. Jedes Dokument gehört zu genau einer Bibliothek; jeder Chunk trägt die Bibliotheks-Kennung als Filterachse.
@@ -902,7 +905,7 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`); zusätzlich entsteht je Nutzer eine persönliche Wissensbibliothek „Meine Dokumente", die dort assoziiert wird |
 | Gemeinsame Workspaces | werden gewöhnliche Spaces mit `memberSource = MANUAL` |
 | Mitgliedschaften | `VIEWER→MEMBER`, `EDITOR→CURATOR`, `ADMIN→ADMIN`, `OWNER→ADMIN`; die Verantwortlichkeit steckt bereits im `ownerId`-Attribut |
-| Bestehende Dokumente | haben heute **keine** Workspace-Zuordnung. Sie werden einer System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** ist. Eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar |
+| Bestehende Dokumente | hatten zuvor **keine** Workspace-Zuordnung. Sie wurden einer eigens angelegten System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** war — eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar gewesen. #521 hat diese System-Bibliothek samt Inhalt ersatzlos gelöscht |
 | Global eindeutige Namen | entfallen |
 | Endpunkt für Workspace-Dokumente | war nie implementiert und entfällt ersatzlos; Nachfolger ist der Bibliotheks-Endpunkt |
 

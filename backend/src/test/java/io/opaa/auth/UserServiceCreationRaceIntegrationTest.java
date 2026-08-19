@@ -106,10 +106,7 @@ class UserServiceCreationRaceIntegrationTest {
   @BeforeEach
   void cleanUp() {
     spaceRepository.deleteAll();
-    // Never touches the one seeded SYSTEM library (#201) - only non-personal-owner cleanup would
-    // even be at risk of that, and this class only ever creates USER-owned personal libraries.
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    libraryRepository.deleteAll();
     // #238 code review, finding 2+4 - see UserServicePersonalSpaceIntegrationTest#cleanUp's
     // identical comment.
     grantHistoryRepository.deleteAll();

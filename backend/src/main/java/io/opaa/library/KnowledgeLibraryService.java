@@ -59,20 +59,12 @@ import org.springframework.web.server.ResponseStatusException;
  * The accepted price is that the personal {@code OWNER} grant is lost when its holder leaves - #240
  * (succession instead of blocking) is what regulates that case, not this class.
  *
- * <p>{@link LibraryOwnerType#SYSTEM} libraries (exactly one per organization, see {@link
- * KnowledgeLibrary#SYSTEM_LIBRARY_ID}) are fail-closed by their seeded state, not by a special case
- * in the rights model (#406): {@code PRIVATE} with no grants excludes everyone under the ordinary
- * formula, and {@link #createLibrary} rejects a caller-supplied {@code SYSTEM} owner type outright
- * - only the migration (012-seed-system-library) ever creates one. {@link #deleteLibrary} still
- * refuses to remove it.
- *
- * <p>What that state does <b>not</b> do any more is make the library permanently unreachable. Its
- * whole content is what the indexing pipeline writes ({@code FileProcessingService}), so a rule
- * that no grant and no visibility could ever open it did not protect a migrated remnant - it made
- * every indexed document unfindable for everyone, system admins included, since the search reads
- * with the asking user's own rights and never bypasses them. Widening it requires {@code MANAGER},
- * which on a library with no owner and no grants only a system admin holds; the decision therefore
- * stays where #201 put it, but it can now actually be taken.
+ * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
+ * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
+ * #521 deleted that library and its content outright (migration {@code
+ * 031-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
+ * the deleted {@code LibraryOwnerType.SYSTEM} for the history. Every library now has a real owner,
+ * and {@link #createLibrary}/{@link #deleteLibrary} carry no owner-kind-specific exception.
  */
 @Service
 @Transactional(readOnly = true)
@@ -132,13 +124,6 @@ public class KnowledgeLibraryService {
 
     LibraryOwnerType ownerType =
         request.getOwnerType() != null ? request.getOwnerType() : LibraryOwnerType.USER;
-    if (ownerType == LibraryOwnerType.SYSTEM) {
-      // Only the migration (012-seed-system-library) creates a SYSTEM-owned library; accepting it
-      // here would let any caller mint a second "readable by system admins only" library outside
-      // that fail-closed, single-row invariant.
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "ownerType SYSTEM kann nicht ueber die API angelegt werden");
-    }
 
     LibraryVisibility visibility =
         request.getVisibility() != null ? request.getVisibility() : LibraryVisibility.PRIVATE;
@@ -479,10 +464,6 @@ public class KnowledgeLibraryService {
   @Transactional
   public void deleteLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (library.isSystemLibrary()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Die System-Bibliothek kann nicht geloescht werden");
-    }
     if (library.isPersonal()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Die persoenliche Bibliothek kann nicht geloescht werden");
@@ -923,6 +904,7 @@ public class KnowledgeLibraryService {
             library.getId(),
             library.getName(),
             library.getOwnerType(),
+            library.getOwnerId(),
             library.getVisibility(),
             library.isListed(),
             library.isPersonal(),
@@ -931,7 +913,6 @@ public class KnowledgeLibraryService {
             library.getCreatedAt(),
             library.getUpdatedAt())
         .description(library.getDescription())
-        .ownerId(library.getOwnerId())
         .documentCount(documentRepository.countByLibraryId(library.getId()))
         .sourcePath(library.getSourcePath())
         .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))

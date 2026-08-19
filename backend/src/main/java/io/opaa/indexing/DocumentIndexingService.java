@@ -63,7 +63,7 @@ public class DocumentIndexingService {
    * 409, just from the database constraint instead of this in-memory check.
    */
   public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId, systemAdmin);
+    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId);
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
     if (indexingJobService.isJobRunning(targetLibrary.getId())) {
       throw new ResponseStatusException(
@@ -115,18 +115,16 @@ public class DocumentIndexingService {
    * "Anstoss-Knopf" only the systemwide administration could ever press would be dead for every
    * other library owner.
    *
-   * <p><b>Deliberately no blanket system-admin bypass here</b>, mirroring the endpoint this
-   * replaces: {@code canEdit} is always called with {@code systemAdmin = false}, so the real
-   * grant/visibility formula decides - the one exception is {@link
-   * KnowledgeLibrary#isSystemLibrary() the system library} itself, seeded with no owner and no
-   * grants (migration 012), which only a system admin may target without an explicit grant.
+   * <p><b>No blanket system-admin bypass here</b>, mirroring the endpoint this replaces: {@code
+   * canEdit} is always called with {@code systemAdmin = false}, so the real grant/visibility
+   * formula decides, unconditionally. Until #521, this method took a {@code systemAdmin} parameter
+   * for one exception - the well-known system library, seeded with no owner and no grants
+   * (migration 012) - that a system admin could target without a grant; #521 deleted that library
+   * outright, so the parameter had nothing left to do and is gone too.
    */
-  private KnowledgeLibrary requireEditableLibrary(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+  private KnowledgeLibrary requireEditableLibrary(UUID libraryId, UUID currentUserId) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    boolean systemAdminOnSystemLibrary = systemAdmin && library.isSystemLibrary();
-    if (!systemAdminOnSystemLibrary
-        && !libraryAccessService.canEdit(library, currentUserId, false)) {
+    if (!libraryAccessService.canEdit(library, currentUserId, false)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return library;

@@ -25,7 +25,7 @@ const dienstanweisungen: LibraryListResponse = {
   id: 'library-dienstanweisungen',
   name: 'Dienstanweisungen',
   description: 'Organisationsweite Vorgaben',
-  ownerType: 'SYSTEM',
+  ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
   personal: false,

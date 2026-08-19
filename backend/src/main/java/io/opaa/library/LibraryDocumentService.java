@@ -62,9 +62,9 @@ import org.springframework.web.server.ResponseStatusException;
  * indexing directory, and {@code HTTP_DIRECTORY} ones do not name a local file OPAA owns at all.
  * Deleting on the strength of that column alone - without checking {@link Document#getSourceType()}
  * and that the path actually resolves under this library's own upload subdirectory - would let
- * anyone with {@code EDITOR} on a library that also happens to hold crawled documents (nothing
- * today reserves the system library's grants, and #419 will route regular crawl runs into ordinary
- * libraries) delete a file outside OPAA's own data directory entirely, with no undo.
+ * anyone with {@code EDITOR} on a library that also happens to hold crawled documents (every
+ * library can, since #419 routes crawl runs into a caller-chosen library rather than a single
+ * reserved one) delete a file outside OPAA's own data directory entirely, with no undo.
  */
 @Service
 public class LibraryDocumentService {

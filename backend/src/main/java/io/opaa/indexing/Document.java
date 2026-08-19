@@ -54,11 +54,10 @@ public class Document {
    * callers set it explicitly after construction, the same way {@code checksum} and {@code status}
    * are set. Since #419, a directory or URL indexing run always targets a library the caller chose
    * and holds at least {@code EDITOR} on ({@code FileProcessingService#processFile}/{@code
-   * #processUrlFile}) - the earlier interim state, where this always resolved to the single
-   * well-known system library ({@link io.opaa.library.KnowledgeLibrary#SYSTEM_LIBRARY_ID}), is gone
-   * for new and re-indexed documents. Pre-existing documents that were written into the system
-   * library before #419 stay there; #419 deliberately does not re-home them (see the epic, #198,
-   * "Zwischenzustand"). Selecting a target library per connector source is still open, #207.
+   * #processUrlFile}) - the earlier interim state, where this always resolved to a single
+   * well-known system library, is gone for new and re-indexed documents; #521 later deleted that
+   * system library and its content outright. Selecting a target library per connector source is
+   * still open, #207.
    */
   @Column(name = "library_id")
   private UUID libraryId;

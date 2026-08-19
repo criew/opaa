@@ -320,11 +320,11 @@ class RetrievalEvaluationHarnessTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
-  // set up once per run, not pinned to KnowledgeLibrary.SYSTEM_LIBRARY_ID, since that constant
-  // is no longer what production indexing targets by default. The measurements themselves are
-  // unaffected: this harness reads via vectorStore.similaritySearch (see the class Javadoc), not
-  // through the permission-aware query path, so which library the corpus lands in does not change
-  // what is measured.
+  // set up once per run, not pinned to a well-known system library id, since #419 already stopped
+  // production indexing from targeting one by default and #521 later deleted it outright. The
+  // measurements themselves are unaffected: this harness reads via vectorStore.similaritySearch
+  // (see the class Javadoc), not through the permission-aware query path, so which library the
+  // corpus lands in does not change what is measured.
   private UUID evalUserId;
   private UUID evalLibraryId;
 
@@ -354,9 +354,10 @@ class RetrievalEvaluationHarnessTest {
     evalLibraryId = library.getId();
 
     // KnowledgeLibraryRepository#save alone does not grant an AssetGrant (only
-    // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService no longer
-    // bypasses the EDITOR check for a system admin on an ordinary library (PR #431 review, Befund
-    // 2), only on the system library. Grant OWNER explicitly, same as any real library creation.
+    // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService never bypasses
+    // the EDITOR check for a system admin (PR #431 review, Befund 2; the one exception that used to
+    // exist for the well-known system library is gone too, #521). Grant OWNER explicitly, same as
+    // any real library creation.
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"

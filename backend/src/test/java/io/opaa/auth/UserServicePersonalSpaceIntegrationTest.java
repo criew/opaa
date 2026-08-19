@@ -75,8 +75,7 @@ class UserServicePersonalSpaceIntegrationTest {
   @BeforeEach
   void cleanUp() {
     spaceRepository.deleteAll();
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    libraryRepository.deleteAll();
     // #238 code review, finding 2+4: ensurePersonalLibrary now historises the personal library and
     // its owner grant on every first login this class exercises, and
     // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT

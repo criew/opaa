@@ -14,7 +14,7 @@ const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
       name: request.name,
       description: request.description ?? null,
       ownerType: request.ownerType ?? 'USER',
-      ownerId: null,
+      ownerId: 'mock-user-id',
       visibility: request.visibility ?? 'PRIVATE',
       listed: request.listed ?? false,
       personal: false,

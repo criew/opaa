@@ -587,7 +587,7 @@ export const handlers = [
     mockLibraries.push(listEntry)
     const detail: (typeof mockLibraryDetails)[string] = {
       ...listEntry,
-      ownerId: ownerType === 'GROUP' ? (body.ownerId ?? null) : 'mock-user-id',
+      ownerId: ownerType === 'GROUP' ? (body.ownerId ?? 'mock-group-id') : 'mock-user-id',
       documentCount: 0,
       // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveraenderlich.
       sourceType: body.sourceType,
@@ -660,17 +660,11 @@ export const handlers = [
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    // Mirrors KnowledgeLibraryService#deleteLibrary: neither the personal nor the SYSTEM library
-    // can ever be deleted, regardless of caller.
+    // Mirrors KnowledgeLibraryService#deleteLibrary: the personal library can never be deleted,
+    // regardless of caller.
     if (library.personal) {
       return HttpResponse.json(
         { error: 'Die persoenliche Bibliothek kann nicht geloescht werden' },
-        { status: 400 },
-      )
-    }
-    if (library.ownerType === 'SYSTEM') {
-      return HttpResponse.json(
-        { error: 'Die System-Bibliothek kann nicht geloescht werden' },
         { status: 400 },
       )
     }

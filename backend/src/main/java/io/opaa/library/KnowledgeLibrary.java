@@ -25,9 +25,10 @@ import java.util.UUID;
  * migration 012), which a single polymorphic column could not. The check constraint {@code
  * chk_knowledge_libraries_owner} enforces that exactly the column matching {@link #ownerType} is
  * non-null: {@code USER} carries {@code ownerUserId} only, {@code GROUP} carries {@code
- * ownerGroupId} only, {@code SYSTEM} carries neither. {@link #getOwnerId()} exposes whichever one
- * is set as a single id, for callers (the API response, access checks) that only care "who owns
- * this", not which column backs it.
+ * ownerGroupId} only. {@link #getOwnerId()} exposes whichever one is set as a single id, for
+ * callers (the API response, access checks) that only care "who owns this", not which column backs
+ * it. A third kind, {@code SYSTEM}, carrying neither column, existed from #201 until #521 (see
+ * {@link LibraryOwnerType}'s own Javadoc) - every library now has a real owner.
  *
  * <p><b>Since ADR-0018, a library also carries the single quellentyp and quellkonfiguration its
  * content comes from</b> ({@link #sourceType} and its associated columns) - it <em>is</em> the
@@ -38,16 +39,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "knowledge_libraries")
 public class KnowledgeLibrary {
-
-  /**
-   * The single, well-known system library that existing documents were migrated into (#201) - they
-   * carried no container of any kind before this issue. Seeded by migration 012 alongside {@link
-   * io.opaa.organization.Organization#DEFAULT_ID}; referenced directly by id rather than looked up,
-   * the same pattern {@code Organization.DEFAULT_ID} already uses, because this stage of the
-   * product has exactly one organization and therefore exactly one system library.
-   */
-  public static final UUID SYSTEM_LIBRARY_ID =
-      UUID.fromString("00000000-0000-0000-0000-000000000002");
 
   @Id private UUID id;
 
@@ -341,19 +332,11 @@ public class KnowledgeLibrary {
     return ownerType == LibraryOwnerType.GROUP && ownerGroupId.equals(groupId);
   }
 
-  public boolean isSystemLibrary() {
-    return ownerType == LibraryOwnerType.SYSTEM;
-  }
-
-  /**
-   * The owning user or group id, whichever {@link #ownerType} points at; {@code null} for {@link
-   * LibraryOwnerType#SYSTEM}.
-   */
+  /** The owning user or group id, whichever {@link #ownerType} points at. */
   public UUID getOwnerId() {
     return switch (ownerType) {
       case USER -> ownerUserId;
       case GROUP -> ownerGroupId;
-      case SYSTEM -> null;
     };
   }
 
