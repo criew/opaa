@@ -26,7 +26,7 @@ import org.hibernate.type.SqlTypes;
  * <p>{@link #sequence} is an application-assigned, per-chat ordinal (0, 1, 2, ...) - {@code
  * created_at} alone is not a reliable ordering for two messages of the same turn written moments
  * apart (#525 review, finding/nit c), so every read orders by {@code (chat_id, sequence)}, never by
- * {@code created_at} alone. {@code uk_chat_messages_chat_sequence} (migration 031) enforces
+ * {@code created_at} alone. {@code uk_chat_messages_chat_sequence} (migration 032) enforces
  * uniqueness at the database level too.
  */
 @Entity

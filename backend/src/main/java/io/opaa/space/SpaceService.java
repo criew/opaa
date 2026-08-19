@@ -379,7 +379,7 @@ public class SpaceService {
     // #525: chats are composition, not association - docs/features/spaces-and-assets.md#chats-
     // sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
     // erhalten", so deleting the space they live in must not silently destroy them. fk_chats_space
-    // is ON DELETE RESTRICT (migration 031) and would reject this anyway, but a raw constraint
+    // is ON DELETE RESTRICT (migration 032) and would reject this anyway, but a raw constraint
     // violation surfaces as an opaque 500 - this check turns it into an understandable 409 instead.
     if (chatRepository.existsBySpaceId(spaceId)) {
       throw new ResponseStatusException(

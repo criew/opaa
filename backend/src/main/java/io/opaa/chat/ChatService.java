@@ -20,10 +20,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
@@ -60,12 +64,20 @@ public class ChatService {
   private static final Logger log = LoggerFactory.getLogger(ChatService.class);
   private static final int DERIVED_TITLE_MAX_LENGTH = 80;
 
+  /**
+   * Upper bound on {@link #appendTurn}'s retry loop - see that method's Javadoc (#525 review round
+   * 2, finding/nit 2). Three is generous for a two-row insert colliding on a per-chat sequence: the
+   * realistic contention is "one other concurrent question in the very same chat", never a herd.
+   */
+  private static final int APPEND_TURN_MAX_ATTEMPTS = 3;
+
   private final ChatRepository chatRepository;
   private final ChatMessageRepository chatMessageRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceMembershipRepository spaceMembershipRepository;
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
+  private final TransactionTemplate requiresNewTransactionTemplate;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -73,13 +85,17 @@ public class ChatService {
       SpaceRepository spaceRepository,
       SpaceMembershipRepository spaceMembershipRepository,
       LibraryAccessService libraryAccessService,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      PlatformTransactionManager transactionManager) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
     this.spaceMembershipRepository = spaceMembershipRepository;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
+    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+    this.requiresNewTransactionTemplate.setPropagationBehavior(
+        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
   }
 
   @Transactional
@@ -211,21 +227,57 @@ public class ChatService {
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code
    * chat} belongs to the requesting user via {@link #findOwnedChat}.
    *
-   * <p><b>{@code REQUIRES_NEW} (#525 review, finding 1 - critical):</b> {@code QueryService#query}
-   * runs inside a class-level {@code @Transactional(readOnly = true)} transaction. A caller in a
-   * read-only transaction that merely joined this method's writes would never actually flush them -
-   * Hibernate silently drops modifications made under a read-only transaction, so every persisted
-   * turn and title would vanish without error the moment the outer transaction committed. {@code
-   * REQUIRES_NEW} opens an independent, writable transaction that commits on its own, exactly like
-   * {@code SpaceService#ensureDefaultSpace} already does for the same reason (see that method's
-   * Javadoc). Reproduced empirically: with plain {@code @Transactional}, {@code chat_messages}
-   * contains zero rows after a real {@code QueryService#query} call against Postgres - see {@code
-   * QueryServiceIntegrationTest#queryPersistsTheTurnForARealChat} and its Javadoc for the exact
-   * failure.
+   * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
+   * {@code @Transactional(readOnly = true)}</b> (#525 review round 2, finding A): {@code
+   * QueryService#query} deliberately runs with no ambient transaction of its own (see that method's
+   * Javadoc) precisely so that this method's writes never share a connection with the read-only
+   * work that precedes them - but without an explicit override here, calling this public method
+   * through the Spring proxy would still open an ambient read-only transaction for this method's
+   * entire duration (the class-level annotation applies to every public method unless overridden),
+   * and {@link #requiresNewTransactionTemplate} below would then need a <em>second</em>,
+   * independent connection for its own transaction - two connections held by one caller at once,
+   * the same class of bug #299 fixed in {@code UserService.findOrCreateUser} and {@code
+   * SpaceService#ensureDefaultSpace} (see that method's Javadoc for the identical pattern this one
+   * mirrors). {@code NOT_SUPPORTED} suspends any ambient transaction for this method's duration and
+   * leaves only the one connection each retry attempt below actually needs.
+   *
+   * <p><b>Retries on a {@code sequence} collision</b> (#525 review round 2, finding/nit 2): {@link
+   * #nextSequenceFor} is a plain {@code COUNT(*)}, not a locking read - two turns appended to the
+   * same chat at nearly the same instant (e.g. a user double-submitting, or two browser tabs on the
+   * same chat) can both compute the same next sequence and race to insert it, and {@code
+   * uk_chat_messages_chat_sequence} (migration 032) then rejects the loser with a {@link
+   * DataIntegrityViolationException} - after its answer had already been generated by the LLM call
+   * in {@code QueryService#query}, so simply failing the request would discard a real answer over a
+   * retriable persistence collision. Each attempt runs in its own fresh {@code REQUIRES_NEW}
+   * transaction (via {@link #requiresNewTransactionTemplate}, never a plain {@code @Transactional}
+   * on this method, precisely so a failed attempt's rollback cannot poison a subsequent one) and
+   * recomputes the sequence from scratch, so a retry after losing the race simply picks the number
+   * the winner just took.
    */
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void appendTurn(Chat chat, String question, String answer, List<SourceReference> sources) {
-    int nextSequence = chatMessageRepository.countByChatId(chat.getId());
+    for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
+      try {
+        requiresNewTransactionTemplate.executeWithoutResult(
+            status -> appendTurnOnce(chat, question, answer, sources));
+        return;
+      } catch (DataIntegrityViolationException e) {
+        if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
+          throw e;
+        }
+        log.warn(
+            "appendTurn: sequence collision on chat {} (attempt {}/{}), retrying",
+            chat.getId(),
+            attempt,
+            APPEND_TURN_MAX_ATTEMPTS,
+            e);
+      }
+    }
+  }
+
+  private void appendTurnOnce(
+      Chat chat, String question, String answer, List<SourceReference> sources) {
+    int nextSequence = nextSequenceFor(chat.getId());
     chatMessageRepository.save(
         new ChatMessage(chat.getId(), nextSequence, ChatRole.USER, question, null));
     chatMessageRepository.save(
@@ -237,6 +289,10 @@ public class ChatService {
     // use" ordering (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
     chat.touch();
     chatRepository.save(chat);
+  }
+
+  private int nextSequenceFor(UUID chatId) {
+    return chatMessageRepository.countByChatId(chatId);
   }
 
   private ChatSummary toSummary(Chat chat) {

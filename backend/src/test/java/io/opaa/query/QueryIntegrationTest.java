@@ -511,6 +511,64 @@ class QueryIntegrationTest {
   }
 
   /**
+   * #525 review round 2, finding B: the previous version of this test (see git history) never
+   * actually proved the cache-key qualification, because it never populated the owner's cache entry
+   * and never inspected what a stranger's prompt actually contained - it would have stayed green
+   * even with the bug the userId-qualified cache key (see {@code QueryService#query}'s Javadoc)
+   * fixes. This version forces the owner's history into the in-memory cache first, then proves the
+   * stranger's prompt does not contain it.
+   *
+   * <p>Reproduction (fix temporarily reverted to a bare, unqualified {@code chatId.toString()}
+   * cache key): {@code ownerQuestionLeakedIntoStrangersPrompt} was {@code true} - the owner's
+   * question appeared verbatim in the stranger's {@link Prompt}. With the {@code userId}-qualified
+   * key restored, it is {@code false} - see the PR description for the exact captured failure.
+   */
+  @Test
+  void queryWithAForeignChatIdNeverLeaksTheOwnersCachedHistoryIntoTheStrangersPrompt() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    // Owner asks a question first - this both persists it to chat_messages and, critically for
+    // this test, warms the in-memory conversation cache under the owner-scoped key.
+    var ownerAnswer =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Besitzer"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(ownerAnswer);
+    queryService.query(
+        "Geheime Eigentümerfrage über Gehaltsdaten", chatId, userId, true, List.of());
+
+    UUID strangerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        strangerId,
+        "query-it-stranger-" + strangerId,
+        "test-issuer",
+        "stranger@example.com",
+        "Stranger",
+        DEFAULT_ORGANIZATION_ID);
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    var strangerAnswer =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Fremden"))));
+    when(chatModel.call(promptCaptor.capture())).thenReturn(strangerAnswer);
+
+    try {
+      // Stranger queries with the owner's real chatId - not an unresolvable random one.
+      queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+
+      boolean ownerQuestionLeakedIntoStrangersPrompt =
+          promptCaptor.getValue().getInstructions().stream()
+              .anyMatch(
+                  m -> m.getText() != null && m.getText().contains("Geheime Eigentümerfrage"));
+      assertThat(ownerQuestionLeakedIntoStrangersPrompt)
+          .as("the owner's cached question must never appear in a stranger's prompt")
+          .isFalse();
+    } finally {
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  /**
    * #525 review, finding 4: an author removed from the chat's space must not be able to keep
    * querying through it, even though the chat itself (and its history) remains theirs to read via
    * GET /api/v1/chats/{chatId} - see ChatService#requireStillSpaceMember's Javadoc.

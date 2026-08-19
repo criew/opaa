@@ -6,6 +6,7 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.PrePersist;
@@ -52,10 +53,19 @@ public class Chat {
   /**
    * Sticky @-references (epic #523 "Entschiedene Semantik"). Used as the search scope when {@link
    * #useKnowledge} is {@code false}; ignored when it is {@code true}. Backed by the
-   * chat_library_references join table (migration 030), not an array column, so both foreign keys
+   * chat_library_references join table (migration 032), not an array column, so both foreign keys
    * are enforced at the database level.
+   *
+   * <p>{@code EAGER} (#525 review round 2, finding A): {@code QueryService#query} deliberately runs
+   * with no ambient transaction (see that method's Javadoc), so a {@link Chat} loaded by {@code
+   * ChatService#findOwnedChat} is detached by the time {@code QueryService} reads this collection a
+   * few lines later - the default {@code LAZY} fetch would throw {@code
+   * LazyInitializationException} there instead of a normal, harmless empty/small collection access.
+   * {@code EAGER} is safe to pay unconditionally here because the collection is small (a handful of
+   * sticky @-references at most) and read on essentially every load of a {@link Chat} anyway (
+   * {@code effectiveLibraryScope} needs it for every persisted-chat query).
    */
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "chat_library_references", joinColumns = @JoinColumn(name = "chat_id"))
   @Column(name = "library_id")
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();

@@ -34,7 +34,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 public class QueryService {
@@ -131,8 +130,23 @@ public class QueryService {
    * so the caller can distinguish "no knowledge base searched" from "searched but found nothing" -
    * the same distinction applies to a persisted chat whose own {@code useKnowledge} is off with no
    * (readable) sticky reference.
+   *
+   * <p><b>Deliberately <em>not</em> {@code @Transactional}</b> (#525 review round 2, finding A -
+   * the same reasoning {@code UserService#findOrCreateUser} documents, and the same class of bug
+   * #299 fixed there): this method used to carry {@code @Transactional(readOnly = true)}, which
+   * held one JDBC connection open for its entire duration - including the LLM call inside {@code
+   * answerGenerationService.generateAnswer}, easily the slowest step - while {@code
+   * ChatService#appendTurn} afterwards needed a <em>second</em>, independently held connection to
+   * write. Under N concurrent persisted-chat queries with Hikari's default pool size of 10, once N
+   * reached 10 every caller's outer transaction had claimed a connection and was waiting on the LLM
+   * response, and no {@code appendTurn} call could obtain the second connection it needed - a full
+   * pool deadlock, not merely contention, and reachable by ordinary chat traffic. Without an
+   * ambient transaction here, every repository/service call below (each individually
+   * {@code @Transactional} via Spring Data or its own explicit demarcation - see {@code
+   * ChatService#appendTurn}'s Javadoc for its own, retry-capable one) is a short-lived,
+   * independently connection-scoped call that releases its connection immediately, exactly like
+   * {@code UserService.findOrCreateUser}.
    */
-  @Transactional(readOnly = true)
   public QueryResponse query(
       String question,
       UUID chatId,

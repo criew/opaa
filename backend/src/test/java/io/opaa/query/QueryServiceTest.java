@@ -611,15 +611,23 @@ class QueryServiceTest {
     assertThat(captor.getValue().getQuery()).isEqualTo("First question");
   }
 
+  /**
+   * #525 review round 2, finding A: {@code query()} deliberately carries no {@code @Transactional}
+   * annotation at all - an ambient (even read-only) transaction held for this method's whole
+   * duration, including the LLM call, would starve the connection pool once {@code
+   * ChatService#appendTurn} needed a second connection to write under load (see {@code
+   * QueryService#query}'s Javadoc for the full pool-deadlock reasoning, the same class of bug #299
+   * fixed in {@code UserService.findOrCreateUser}). This test pins the absence of the annotation
+   * itself, not merely its former {@code readOnly = true} value - the previous version of this test
+   * asserted the exact setting finding A required removing.
+   */
   @Test
-  void queryMethodIsAnnotatedWithTransactionalReadOnly() throws NoSuchMethodException {
+  void queryMethodCarriesNoTransactionalAnnotation() throws NoSuchMethodException {
     Method queryMethod =
         QueryService.class.getMethod(
             "query", String.class, UUID.class, UUID.class, boolean.class, List.class);
-    Transactional transactional = queryMethod.getAnnotation(Transactional.class);
 
-    assertThat(transactional).isNotNull();
-    assertThat(transactional.readOnly()).isTrue();
+    assertThat(queryMethod.getAnnotation(Transactional.class)).isNull();
   }
 
   @Nested

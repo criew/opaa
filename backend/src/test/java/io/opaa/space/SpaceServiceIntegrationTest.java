@@ -70,7 +70,7 @@ class SpaceServiceIntegrationTest {
     // Each test creates its own throwaway organizations instead, scoped by random ids, and removes
     // them again in tearDown() - see tearDown() below.
     // #525: fk_chats_space is ON DELETE RESTRICT (chats survive their space being deleted, see
-    // migration 031), so a leftover chat from this class's own previous test would otherwise block
+    // migration 032), so a leftover chat from this class's own previous test would otherwise block
     // spaceRepository.deleteAll() below.
     chatRepository.deleteAll();
     membershipRepository.deleteAll();

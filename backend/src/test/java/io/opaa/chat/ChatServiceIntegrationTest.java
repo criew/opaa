@@ -49,7 +49,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * fk_knowledge_libraries_owner_user} RESTRICT violation. {@code chats.author_id} and {@code
  * chats.space_id} are plain {@code UUID} columns without {@code @ManyToOne}; Hibernate does not
  * create foreign keys for those, Liquibase does ({@code fk_chats_space}, {@code fk_chats_author},
- * migration 030).
+ * migration 032).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -363,9 +363,16 @@ class ChatServiceIntegrationTest {
     UUID spaceId = createSpaceWithMember(author);
     ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
     Chat chat = chatRepository.findById(created.getId()).orElseThrow();
-    java.time.Instant createdUpdatedAt = chat.getUpdatedAt();
 
     chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
+    // #525 review round 2, finding/nit 1: the first turn's title-set already produces an UPDATE
+    // by itself (deriveTitleFromFirstQuestionIfAbsent), so comparing against the pre-turn
+    // updatedAt would pass even without touch() - the assertion that actually exercises touch()
+    // must compare against the state *after* a turn that changes nothing else, i.e. the second
+    // one, whose only field-level change is touch()'s own timestamp.
+    Chat afterFirstTurn = chatRepository.findById(chat.getId()).orElseThrow();
+    java.time.Instant updatedAtAfterFirstTurn = afterFirstTurn.getUpdatedAt();
+
     chatService.appendTurn(chat, "Zweite Frage", "Zweite Antwort", List.of());
 
     List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
@@ -378,7 +385,38 @@ class ChatServiceIntegrationTest {
     // #525 review, finding/nit d: updated_at must move even though appendTurn's second call
     // changes no other field (the title was already set by the first call).
     Chat reloaded = chatRepository.findById(chat.getId()).orElseThrow();
-    assertThat(reloaded.getUpdatedAt()).isAfter(createdUpdatedAt);
+    assertThat(reloaded.getUpdatedAt()).isAfter(updatedAtAfterFirstTurn);
+  }
+
+  /**
+   * #525 review round 2, finding/nit 2: {@code nextSequenceFor} is a plain {@code COUNT(*)}, not a
+   * locking read, so two turns appended to the same chat at nearly the same instant can compute the
+   * same next sequence and race to insert it. Deterministically forces exactly that collision by
+   * pre-inserting a row at the sequence {@code appendTurn} is about to compute, instead of relying
+   * on genuine thread concurrency (flaky and slow) - {@code appendTurn} must recover via its retry
+   * loop rather than surfacing the {@code uk_chat_messages_chat_sequence} violation to the caller.
+   */
+  @Test
+  void appendTurnRetriesPastASequenceCollisionInsteadOfFailing() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    // Simulates a concurrent turn that already won sequence 0 by the time this call's own
+    // COUNT(*)-based nextSequenceFor would otherwise compute the same number.
+    jdbcTemplate.update(
+        "INSERT INTO chat_messages (id, chat_id, sequence, role, content, created_at)"
+            + " VALUES (?, ?, 0, 'USER', 'Konkurrierende Frage', now())",
+        UUID.randomUUID(),
+        chat.getId());
+
+    chatService.appendTurn(chat, "Meine Frage", "Meine Antwort", List.of());
+
+    List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    assertThat(messages).hasSize(3);
+    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 1, 2);
+    assertThat(messages.get(1).getContent()).isEqualTo("Meine Frage");
+    assertThat(messages.get(2).getContent()).isEqualTo("Meine Antwort");
   }
 
   @Test
