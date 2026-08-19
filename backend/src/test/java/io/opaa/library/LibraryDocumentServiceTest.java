@@ -92,6 +92,11 @@ class LibraryDocumentServiceTest {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
     when(library.getOrganizationId()).thenReturn(organizationId);
+    // Every existing test here exercises an UPLOAD library - #479's requireUploadLibrary check
+    // (see uploadingIntoAConnectorLibraryIsRejectedWithConflict below for the connector case)
+    // would otherwise reject every upload with 409 before reaching the behaviour under test,
+    // since Mockito's default for an unstubbed getSourceType() is null, not UPLOAD.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.UPLOAD);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
   }
 
@@ -193,6 +198,29 @@ class LibraryDocumentServiceTest {
                     libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void uploadingIntoAConnectorLibraryIsRejectedWithConflict() throws IOException {
+    // #479, ADR-0018 Entscheidung 1: only a UPLOAD library accepts manually uploaded files - a
+    // connector library rejects the attempt outright, before any format/size/dedup validation.
+    grantEditor();
+    KnowledgeLibrary connectorLibrary = mock(KnowledgeLibrary.class);
+    when(connectorLibrary.getId()).thenReturn(libraryId);
+    when(connectorLibrary.getOrganizationId()).thenReturn(organizationId);
+    when(connectorLibrary.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(connectorLibrary));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT);
+
+    assertNoFilesWereStored();
+    verify(fileProcessingService, never())
+        .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
   }
 
   @Test

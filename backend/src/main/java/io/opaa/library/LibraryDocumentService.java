@@ -103,6 +103,7 @@ public class LibraryDocumentService {
       UUID libraryId, MultipartFile file, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     requireEditable(library, currentUserId, systemAdmin);
+    requireUploadLibrary(library);
 
     if (file == null || file.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datei ist erforderlich");
@@ -244,6 +245,22 @@ public class LibraryDocumentService {
             deleteQuietly(path);
           }
         });
+  }
+
+  /**
+   * ADR-0018, Entscheidung 1: only a {@code UPLOAD} library accepts manually uploaded files - a
+   * lauf-basierte (connector) library's content comes exclusively from its own indexing run, so a
+   * human upload into it would be indistinguishable from a crawled document the next run considers
+   * gone (ADR-0017, Entscheidung 5's "je Quelle, niemals bibliotheksweit" absence check has no way
+   * to tell the two apart). {@code 409} rather than {@code 400}: the request is well-formed, it
+   * simply conflicts with this library's fixed, immutable source type (#479).
+   */
+  private void requireUploadLibrary(KnowledgeLibrary library) {
+    if (library.getSourceType() != DocumentSourceType.UPLOAD) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
+    }
   }
 
   /**

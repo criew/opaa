@@ -701,6 +701,18 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
+    // Mirrors LibraryDocumentService#requireUploadLibrary (#479, ADR-0018 Entscheidung 1): only a
+    // UPLOAD library accepts manually uploaded files - a connector library's content comes
+    // exclusively from its own indexing run.
+    if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error:
+            'Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads',
+        },
+        { status: 409 },
+      )
+    }
     const formData = await request.formData()
     const file = formData.get('file')
     if (!(file instanceof File) || file.size === 0) {

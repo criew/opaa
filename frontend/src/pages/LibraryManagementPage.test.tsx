@@ -424,6 +424,26 @@ describe('LibraryManagementPage', () => {
     })
   })
 
+  it('warns that a connector library delete also removes its indexed documents', async () => {
+    // #479, ADR-0018 Entscheidung 5: deleting a connector library takes its bestand with it -
+    // the confirmation must say so, unlike the plain UPLOAD confirmation exercised above.
+    const deletableConnectorLibrary: LibraryListResponse = { ...managerLibrary, myRole: 'OWNER' }
+    setLibraryState([deletableConnectorLibrary], {
+      'library-team': { ...detailsOf(deletableConnectorLibrary, 431), sourceType: 'FILESYSTEM' },
+    })
+    renderWithProviders(<LibraryManagementPage />)
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await user.click(await screen.findByText('Rechtsquellen Soziales'))
+    await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
+
+    await waitFor(() => {
+      expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
+    })
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/indizierten dokumente/i))
+  })
+
   it('creates a new library owned by the caller and shows it without a reload', async () => {
     setLibraryState([])
     renderWithProviders(<LibraryManagementPage />)

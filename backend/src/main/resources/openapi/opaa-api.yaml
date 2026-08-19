@@ -736,7 +736,12 @@ paths:
     delete:
       operationId: deleteLibrary
       tags: [library]
-      summary: Delete a library (owner only; the personal library and the system library cannot be deleted)
+      summary: >
+        Delete a library (owner only; the personal library and the system library cannot be
+        deleted). A non-empty UPLOAD library is rejected with 409 (documents must be removed
+        individually first). A non-empty connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED)
+        is deleted together with its documents and vector store chunks - deleting individual
+        connector documents would be undone by the next indexing run (ADR-0018, Entscheidung 5).
       responses:
         "204":
           description: Library deleted
@@ -746,6 +751,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries/{libraryId}/documents:
     parameters:
@@ -778,8 +785,10 @@ paths:
       operationId: uploadLibraryDocument
       tags: [library]
       summary: >
-        Upload a document into a library (EDITOR role or above required). Processed through the
-        same indexing pipeline (chunking, checksum, metadata) used by the other ingestion paths.
+        Upload a document into a library (EDITOR role or above required). Only accepted for
+        libraries with sourceType UPLOAD - a connector library (FILESYSTEM/HTTP_DIRECTORY/
+        RSS_FEED) rejects the upload with 409 (ADR-0018, #479). Processed through the same
+        indexing pipeline (chunking, checksum, metadata) used by the other ingestion paths.
         Malware scanning is explicitly out of scope - see #420.
       requestBody:
         required: true
