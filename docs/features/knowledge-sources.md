@@ -99,12 +99,13 @@ Ablauf beim Hochladen:
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
    dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
-5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
-   Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
-   eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad. Es gibt
-   dazu genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek (`LibraryDetailPage.tsx`),
-   die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint nur, solange die dort geöffnete
-   Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke nie widersprechen können.
+5. Ziel ist jede Bibliothek, an der die Person mindestens `EDITOR` ist — es gibt keine Vorauswahl
+   (bis #522 war das standardmäßig die automatisch angelegte persönliche Bibliothek; diese
+   Automatik entfiel ersatzlos, siehe [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md)).
+   **Gebaut** — es gibt genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek
+   (`LibraryDetailPage.tsx`), die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint
+   nur, solange die dort geöffnete Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke
+   nie widersprechen können.
 
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die

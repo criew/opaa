@@ -419,7 +419,7 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
 // read-only rendering in tests.
 export const mockLibraries: LibraryListResponse[] = [
   {
-    id: 'library-personal',
+    id: 'library-mine',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
     ownerType: 'USER',
@@ -477,8 +477,8 @@ export const mockLibraries: LibraryListResponse[] = [
 ]
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
-  'library-personal': {
-    id: 'library-personal',
+  'library-mine': {
+    id: 'library-mine',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
     ownerType: 'USER',
@@ -552,7 +552,7 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
 )
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
-  'library-personal': [
+  'library-mine': [
     {
       id: 'document-dienstanweisung',
       fileName: 'dienstanweisung-2024.pdf',
@@ -668,7 +668,7 @@ const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
       updatedAt: '2026-03-01T10:00:00Z',
     },
   ],
-  'library-personal': [],
+  'library-mine': [],
   'library-dienstanweisungen': [],
   // #423 code review, nit 4: the library's only active OWNER grant, matching its myRole: 'OWNER'
   // fixture - exercises the 409 "last active OWNER" guard on both downgrade (POST) and revoke

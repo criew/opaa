@@ -13,7 +13,7 @@ describe('MSW Handlers', () => {
   })
 
   describe('POST /api/v1/libraries/:libraryId/indexing', () => {
-    // 'library-personal' is UPLOAD, which has no run type at all (see the 409 test below) -
+    // 'library-mine' is UPLOAD, which has no run type at all (see the 409 test below) -
     // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
     it('returns RUNNING status', async () => {
       const response = await fetch('/api/v1/libraries/library-referat-50/indexing', {
@@ -41,7 +41,7 @@ describe('MSW Handlers', () => {
     it('returns 409 for an UPLOAD library', async () => {
       // #500 review, finding 5: mirrors DocumentIndexingService#toIndexingSourceType - UPLOAD has
       // no run type, the library is a valid target, it simply has nothing to run.
-      const response = await fetch('/api/v1/libraries/library-personal/indexing', {
+      const response = await fetch('/api/v1/libraries/library-mine/indexing', {
         method: 'POST',
       })
       const data = await response.json()

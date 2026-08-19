@@ -169,8 +169,9 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 
 1. **Anlage.** Ein Konto entsteht durch die Bereitstellung aus dem Verzeichnis, nicht durch eine
    Einladung im Produkt. Wer im Verzeichnis nicht existiert, hat in OPAA nichts.
-2. **Erste Anmeldung.** Persönlicher Space und persönliche Wissensbibliothek entstehen dabei; ein
-   Anlaufbestand an Assets ergibt sich aus den Gruppen der Person.
+2. **Erste Anmeldung.** Der persönliche Space entsteht dabei; eine Wissensbibliothek legt die Person
+   bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
+   Assets ergibt sich aus den Gruppen der Person.
 3. **Änderung.** Wechselt jemand das Referat, ändern sich seine Gruppenmitgliedschaften — und damit
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).

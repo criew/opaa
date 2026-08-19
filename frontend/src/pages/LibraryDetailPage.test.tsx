@@ -122,7 +122,7 @@ const viewerLibrary: LibraryListResponse = {
 }
 
 const personalLibrary: LibraryListResponse = {
-  id: 'library-personal',
+  id: 'library-mine',
   name: 'Meine Dokumente',
   description: 'Private Dokumente',
   ownerType: 'USER',
@@ -175,14 +175,14 @@ describe('LibraryDetailPage', () => {
     useDocumentStore.getState().reset()
     useIndexingStore.getState().stopPolling('library-team')
     useIndexingStore.getState().stopPolling('library-readonly')
-    useIndexingStore.getState().stopPolling('library-personal')
+    useIndexingStore.getState().stopPolling('library-mine')
   })
 
   afterEach(() => {
     useAuthStore.setState({ user: null })
     useIndexingStore.getState().stopPolling('library-team')
     useIndexingStore.getState().stopPolling('library-readonly')
-    useIndexingStore.getState().stopPolling('library-personal')
+    useIndexingStore.getState().stopPolling('library-mine')
   })
 
   it('shows neither edit nor delete controls for a VIEWER', async () => {
