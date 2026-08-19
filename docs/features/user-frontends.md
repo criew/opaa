@@ -181,8 +181,8 @@ Zweck, nicht nach Pfad.
 | Wissensbibliotheken anlegen, umbenennen, beschreiben, auflisten, löschen | `/api/v1/libraries` und `/api/v1/libraries/{id}` | ja |
 | Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja |
 | Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/libraries/{id}/grants` | ja |
-| Indizierung auslösen, wahlweise für den konfigurierten Bestand oder für eine angegebene Adresse; der Systemverwaltung vorbehalten | `POST /api/v1/indexing/trigger` | ja |
-| Stand des letzten Indizierungslaufs abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/indexing/status` | ja |
+| Indizierung einer Bibliothek auslösen — aus ihrer eigenen, gespeicherten Quellkonfiguration; wer an der Bibliothek mindestens `EDITOR` ist, darf anstoßen | `POST /api/v1/libraries/{id}/indexing` | ja |
+| Stand des letzten Indizierungslaufs einer Bibliothek abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/libraries/{id}/indexing/status` | ja |
 | Dokument hochladen und wieder entfernen | — | nein — Zielbild; Bestände kommen heute über Konnektoren und den Indizierungslauf |
 
 **Arbeitsräume und Gruppen**
@@ -227,9 +227,11 @@ Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter i
 - **Anfragekontingente.** Sie greifen je aufrufender Netzadresse und zusätzlich für die Installation
   insgesamt, in einem gleitenden Zeitfenster. Die Abfrage und das Auslösen der Indizierung haben getrennte, für
   sich gesetzte Kontingente — der Indizierungspfad ist deutlich enger begrenzt, weil ein einzelner
-  Aufruf dort viel Arbeit auslöst. Alle Werte sind über Umgebungsvariablen einstellbar; die
-  ausgelieferten Voreinstellungen und ihre Bedeutung stehen in [deployment.md](../deployment.md).
-  Ein überschrittenes Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort.
+  Aufruf dort viel Arbeit auslöst; seit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)
+  gilt das Kontingent je Bibliothek, und es läuft höchstens ein Lauf gleichzeitig je Bibliothek. Alle
+  Werte sind über Umgebungsvariablen einstellbar; die ausgelieferten Voreinstellungen und ihre Bedeutung
+  stehen in [deployment.md](../deployment.md). Ein überschrittenes Kontingent führt zu einer klaren
+  Ablehnung, nicht zu einer langsamen Antwort.
 
 **Zielbild:**
 
