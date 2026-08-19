@@ -9,7 +9,6 @@ import io.opaa.audit.AuditObjectType;
 import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -18,19 +17,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 017 in isolation against a database built from the real, versioned
@@ -59,11 +49,7 @@ import org.testcontainers.utility.DockerImageName;
  * intentionally out of scope here.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class Migration017AuditLogTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration017AuditLogTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
   private static final String AUDIT_APP_ROLE = "audit_app_role";
@@ -98,65 +84,45 @@ class Migration017AuditLogTest {
           "reason",
           "correlation_ref");
 
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-016.yaml";
+  }
+
   private Connection bootstrapConnection;
   private Connection appConnection;
-  private Database database;
 
   @BeforeEach
   void setUp() throws Exception {
-    bootstrapConnection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(bootstrapConnection));
-
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-016.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    bootstrapConnection.setAutoCommit(true);
+    bootstrapConnection = connect();
 
     createNonSuperuserApplicationRole();
 
-    appConnection =
-        DriverManager.getConnection(postgres.getJdbcUrl(), AUDIT_APP_ROLE, AUDIT_APP_ROLE_PASSWORD);
-    Database appDatabase =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(appConnection));
-    Liquibase auditLogLiquibase =
-        new Liquibase(
-            "db/changelog/changes/017-audit-log.yaml",
-            new ClassLoaderResourceAccessor(),
-            appDatabase);
-    auditLogLiquibase.update(new Contexts());
-    appConnection.setAutoCommit(true);
+    appConnection = connect(AUDIT_APP_ROLE, AUDIT_APP_ROLE_PASSWORD);
+    applyChangelog(appConnection, "db/changelog/changes/017-audit-log.yaml");
   }
 
   @AfterEach
   void tearDown() throws SQLException {
     appConnection.close();
-    bootstrapConnection.setAutoCommit(true);
-    try (Statement statement = bootstrapConnection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
-      // A freshly initdb'd database's public schema carries an implicit "USAGE granted to PUBLIC"
-      // default that only initdb itself applies - a manually recreated schema does not get it back
-      // automatically. Without this, every test after the first in this class would fail with
-      // "no schema has been selected to create in" the moment AUDIT_APP_ROLE tries to resolve the
-      // unqualified table name in its own CREATE TABLE statement.
-      statement.execute("GRANT USAGE ON SCHEMA public TO PUBLIC");
+    // bootstrapConnection is itself a connection to this test's per-test database, so it must be
+    // closed before that database is dropped below.
+    bootstrapConnection.close();
+    // AUDIT_APP_ROLE/OWNER_ROLE/DEMO_OWNER_ROLE are cluster-wide roles (issue #497's
+    // AbstractMigrationTest Javadoc explains why they cannot live in the per-class template
+    // database) - they must keep being dropped per test method here, exactly as before dropping
+    // the whole per-test database was introduced. DROP ROLE fails while a role still owns
+    // objects anywhere in the cluster, so this test's own per-test database - the only database
+    // that ever gave these roles ownership of anything - must be dropped first, and the DROP ROLE
+    // statements below use a fresh connection to the container's stable bootstrap database rather
+    // than the now-closed, now-dropped bootstrapConnection.
+    dropCurrentDatabaseNow();
+    try (Connection admin = adminConnection();
+        Statement statement = admin.createStatement()) {
       statement.execute("DROP ROLE IF EXISTS " + AUDIT_APP_ROLE);
-      // opaa_audit_owner (and opaa_audit_owner_demo, used only by
-      // theEscalationFailsWhenTheOwnerRoleIsProvisionedByASeparateIdentity) own nothing once the
-      // schema above is gone (every table either owned lived in public), so both can be dropped
-      // cleanly here rather than accumulating across test methods sharing this container.
       statement.execute("DROP ROLE IF EXISTS " + OWNER_ROLE);
       statement.execute("DROP ROLE IF EXISTS " + DEMO_OWNER_ROLE);
     }
-    bootstrapConnection.close();
   }
 
   /**
@@ -175,6 +141,11 @@ class Migration017AuditLogTest {
    * on the second connection.
    */
   private void createNonSuperuserApplicationRole() throws SQLException {
+    // Defensive cleanup (issue #497): AUDIT_APP_ROLE/OWNER_ROLE/DEMO_OWNER_ROLE are cluster-wide
+    // role names this class shares with Migration022AuditorRoleEventTypesTest and
+    // Migration023AuditRetentionTest against the same singleton container - see
+    // AbstractMigrationTest#dropRolesIfExist(...).
+    dropRolesIfExist(bootstrapConnection, AUDIT_APP_ROLE, OWNER_ROLE, DEMO_OWNER_ROLE);
     try (Statement statement = bootstrapConnection.createStatement()) {
       statement.execute(
           "CREATE ROLE "

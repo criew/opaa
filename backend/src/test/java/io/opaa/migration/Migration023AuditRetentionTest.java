@@ -4,25 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 023 in isolation, on top of 017 - the same restricted-role pattern
@@ -43,80 +33,58 @@ import org.testcontainers.utility.DockerImageName;
  * actually passing would.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class Migration023AuditRetentionTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration023AuditRetentionTest extends AbstractMigrationTest {
 
   private static final String AUDIT_APP_ROLE = "audit_app_role";
   private static final String AUDIT_APP_ROLE_PASSWORD = "audit_app_role_password";
   private static final String OWNER_ROLE = "opaa_audit_owner";
 
+  @Override
+  protected String baseFixtureChangelogPath() {
+    // Matching Migration017AuditLogTest and Migration022AuditorRoleEventTypesTest's own
+    // precedent exactly: opaa_audit_owner must be created by AUDIT_APP_ROLE itself (017, applied
+    // below via appConnection), not by the superuser bootstrap account, so AUDIT_APP_ROLE
+    // actually receives the CREATEROLE-time automatic membership 023's ownership-transfer
+    // statements rely on. Templating a bundled "through 022" fixture instead (an earlier version
+    // of this test did exactly that) leaves AUDIT_APP_ROLE with no relationship whatsoever to
+    // opaa_audit_owner and every later GRANT ... WITH SET TRUE fails with "permission denied to
+    // grant role".
+    return "db/changelog/test-master-through-016.yaml";
+  }
+
   private Connection bootstrapConnection;
   private Connection appConnection;
-  private Database database;
 
   @BeforeEach
   void setUp() throws Exception {
-    bootstrapConnection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(bootstrapConnection));
-
-    // Bootstrap only through 016 (as bootstrapConnection/superuser) - matching
-    // Migration017AuditLogTest
-    // and Migration022AuditorRoleEventTypesTest's own precedent exactly: opaa_audit_owner must be
-    // created by AUDIT_APP_ROLE itself (017, applied below via appConnection), not by the
-    // superuser bootstrap account, so AUDIT_APP_ROLE actually receives the CREATEROLE-time
-    // automatic membership 023's ownership-transfer statements rely on. Applying a bundled
-    // "through 022" fixture as the superuser bootstrap account instead (an earlier version of this
-    // test did exactly that) leaves AUDIT_APP_ROLE with no relationship whatsoever to
-    // opaa_audit_owner and every later GRANT ... WITH SET TRUE fails with "permission denied to
-    // grant role".
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-016.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    bootstrapConnection.setAutoCommit(true);
+    bootstrapConnection = connect();
 
     createNonSuperuserApplicationRole();
 
-    appConnection =
-        DriverManager.getConnection(postgres.getJdbcUrl(), AUDIT_APP_ROLE, AUDIT_APP_ROLE_PASSWORD);
-    Database appDatabase =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(appConnection));
-    applyChangelog(appDatabase, "db/changelog/changes/017-audit-log.yaml");
-    applyChangelog(appDatabase, "db/changelog/changes/023-audit-retention.yaml");
-    appConnection.setAutoCommit(true);
-  }
-
-  private void applyChangelog(Database appDatabase, String changelogPath) throws Exception {
-    Liquibase liquibase =
-        new Liquibase(changelogPath, new ClassLoaderResourceAccessor(), appDatabase);
-    liquibase.update(new Contexts());
+    appConnection = connect(AUDIT_APP_ROLE, AUDIT_APP_ROLE_PASSWORD);
+    applyChangelog(appConnection, "db/changelog/changes/017-audit-log.yaml");
+    applyChangelog(appConnection, "db/changelog/changes/023-audit-retention.yaml");
   }
 
   @AfterEach
   void tearDown() throws SQLException {
     appConnection.close();
-    bootstrapConnection.setAutoCommit(true);
-    try (Statement statement = bootstrapConnection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
-      statement.execute("GRANT USAGE ON SCHEMA public TO PUBLIC");
+    // See Migration017AuditLogTest#tearDown() for why the database is dropped before the
+    // cluster-wide roles, and via a fresh admin connection rather than bootstrapConnection.
+    bootstrapConnection.close();
+    dropCurrentDatabaseNow();
+    try (Connection admin = adminConnection();
+        Statement statement = admin.createStatement()) {
       statement.execute("DROP ROLE IF EXISTS " + AUDIT_APP_ROLE);
       statement.execute("DROP ROLE IF EXISTS " + OWNER_ROLE);
     }
-    bootstrapConnection.close();
   }
 
   private void createNonSuperuserApplicationRole() throws SQLException {
+    // Defensive cleanup (issue #497): AUDIT_APP_ROLE/OWNER_ROLE are cluster-wide role names this
+    // class shares with Migration017AuditLogTest and Migration022AuditorRoleEventTypesTest
+    // against the same singleton container - see AbstractMigrationTest#dropRolesIfExist(...).
+    dropRolesIfExist(bootstrapConnection, AUDIT_APP_ROLE, OWNER_ROLE);
     try (Statement statement = bootstrapConnection.createStatement()) {
       statement.execute(
           "CREATE ROLE "

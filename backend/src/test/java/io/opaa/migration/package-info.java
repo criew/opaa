@@ -7,6 +7,16 @@
  * test-master-through-XXX.yaml}, seed representative legacy rows directly through JDBC, apply only
  * the new changelog file, and assert on the resulting schema and data.
  *
+ * <p><b>Since issue #497:</b> every test class in this package extends {@link
+ * io.opaa.migration.AbstractMigrationTest}, which owns the Postgres Testcontainer (a single
+ * instance shared across this whole package, not one per class) and the fixture changelog
+ * application (built once per class into a template database, then cloned per test method via
+ * {@code CREATE DATABASE ... TEMPLATE ...} instead of re-applied per test method). See that class's
+ * own Javadoc for the full reasoning, in particular why cluster-wide roles (as used by {@code
+ * Migration017AuditLogTest}, {@code Migration022AuditorRoleEventTypesTest} and {@code
+ * Migration023AuditRetentionTest}) are deliberately kept out of the template and still
+ * created/dropped per test method.
+ *
  * <p><b>Mandatory teardown pattern (#288):</b> {@code Liquibase.update(...)} leaves the JDBC
  * connection's auto-commit disabled. Every test class in this package MUST call {@code
  * connection.setAutoCommit(true)} immediately after each {@code update()} call - unconditionally,
