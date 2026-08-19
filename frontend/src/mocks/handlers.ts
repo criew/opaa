@@ -216,7 +216,7 @@ export const handlers = [
           durationMs: 120,
           answeredWithoutKnowledge: true,
         },
-        conversationId: body.conversationId ?? crypto.randomUUID(),
+        chatId: body.chatId ?? crypto.randomUUID(),
       })
     }
     const mockResponse = getRandomMockResponse()

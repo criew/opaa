@@ -14,6 +14,12 @@ databaseChangeLog:
   # the column exists so the SHARED/WITHDRAWN axis from the specification's sharing model (#205)
   # can be added later without a further migration.
   #
+  # fk_chats_space is ON DELETE RESTRICT, not CASCADE: docs/features/spaces-and-assets.md#chats-
+  # sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
+  # erhalten" - a cascading delete would silently destroy every chat in a space the moment the
+  # space itself is deleted, the opposite of that guarantee. SpaceService#deleteSpace checks for
+  # existing chats itself and rejects with a clear 409 before this constraint would ever fire.
+  #
   # Rollback order (reverse of apply order):
   # 032-create-chat-messages
   # 032-create-chat-library-references
@@ -91,13 +97,20 @@ databaseChangeLog:
             referencedTableName: spaces
             referencedColumnNames: id
             constraintName: fk_chats_space
-            onDelete: CASCADE
+            onDelete: RESTRICT
         - addForeignKeyConstraint:
             baseTableName: chats
             baseColumnNames: author_id
             referencedTableName: users
             referencedColumnNames: id
             constraintName: fk_chats_author
+            onDelete: RESTRICT
+        - addForeignKeyConstraint:
+            baseTableName: chats
+            baseColumnNames: organization_id
+            referencedTableName: organizations
+            referencedColumnNames: id
+            constraintName: fk_chats_organization
             onDelete: RESTRICT
         - createIndex:
             tableName: chats
@@ -179,7 +192,10 @@ databaseChangeLog:
         TTL-evicted CaffeineChatMemoryRepository for chats that have a persisted chat_id; that cache
         may remain in front of it as a pure read optimisation, but is no longer where multi-turn
         context actually lives. sources is a JSON array shaped like QueryResponse.sources
-        (SourceReference), nullable because a USER message never carries any.
+        (SourceReference), nullable because a USER message never carries any. sequence is a
+        per-chat, application-assigned ordinal (0, 1, 2, ...) - created_at alone is not a reliable
+        ordering for two messages of the same turn written moments apart (timestamp resolution/
+        clock skew), so ordering queries sort by (chat_id, sequence), never by created_at alone.
       changes:
         - createTable:
             tableName: chat_messages
@@ -193,6 +209,11 @@ databaseChangeLog:
               - column:
                   name: chat_id
                   type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence
+                  type: int
                   constraints:
                     nullable: false
               - column:
@@ -229,6 +250,10 @@ databaseChangeLog:
             columns:
               - column:
                   name: chat_id
+        - addUniqueConstraint:
+            tableName: chat_messages
+            columnNames: chat_id, sequence
+            constraintName: uk_chat_messages_chat_sequence
         - sql:
             comment: "Add check constraint for chat message role values"
             sql: >

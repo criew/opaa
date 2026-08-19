@@ -148,15 +148,16 @@ class QueryServiceTest {
   void queryScopesAndPersistsWhenChatIdBelongsToTheCaller() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatMemory.get(chatId.toString())).thenReturn(List.of());
+    when(chatMemory.get(conversationKey)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), eq(chatId.toString())))
+    when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey)))
         .thenReturn(chatResponse);
 
     QueryResponse response = queryService.query("Question", chatId, currentUserId, true, List.of());
@@ -181,7 +182,7 @@ class QueryServiceTest {
             Set.of(readableLibraryId));
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatMemory.get(chatId.toString())).thenReturn(List.of());
+    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
     // Only the sticky reference, not the second library the caller can also read - the scope
     // that the chat's own useKnowledge=false restricts to (epic #523), regardless of the
@@ -232,6 +233,7 @@ class QueryServiceTest {
   void queryEnrichesSearchFromPersistedHistoryOnAColdConversationCache() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
 
     List<Message> persistedHistory =
@@ -240,7 +242,7 @@ class QueryServiceTest {
             new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."));
     // First call (the seeding check) sees a cold cache; the second call (inside
     // buildSearchQuery) sees it warmed by the seeding this test asserts happened.
-    when(chatMemory.get(chatId.toString())).thenReturn(List.of(), persistedHistory);
+    when(chatMemory.get(conversationKey)).thenReturn(List.of(), persistedHistory);
     when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(persistedHistory);
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
@@ -251,7 +253,7 @@ class QueryServiceTest {
     queryService.query(
         "Mach daraus eine tabellarische Auflistung", chatId, currentUserId, true, List.of());
 
-    verify(chatMemory).add(chatId.toString(), persistedHistory);
+    verify(chatMemory).add(conversationKey, persistedHistory);
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
@@ -552,7 +554,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesSearchWithConversationHistory() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(chatId.toString()))
+    when(chatMemory.get(currentUserId + ":" + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -574,7 +576,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesThirdMessageWithFirstUserQuestion() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(chatId.toString()))
+    when(chatMemory.get(currentUserId + ":" + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),

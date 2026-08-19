@@ -16,4 +16,12 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
   Optional<Chat> findByIdAndAuthorId(UUID id, UUID authorId);
 
   List<Chat> findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc(UUID spaceId, UUID authorId);
+
+  /**
+   * Used by {@code SpaceService#deleteSpace} to reject the delete with a clear 409 before it ever
+   * reaches {@code fk_chats_space} (ON DELETE RESTRICT, migration 031) - see
+   * docs/features/spaces-and-assets.md#chats-sind-vor-fremder-löschung-geschützt (#525 review,
+   * finding 5).
+   */
+  boolean existsBySpaceId(UUID spaceId);
 }

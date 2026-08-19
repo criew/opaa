@@ -90,7 +90,10 @@ class Migration032CreateChatsTest {
   }
 
   @Test
-  void deletingTheSpaceCascadesToItsChats() throws Exception {
+  void deletingASpaceWithAChatIsRestrictedAtTheDatabaseLevel() throws Exception {
+    // docs/features/spaces-and-assets.md#chats-sind-vor-fremder-löschung-geschützt: a chat
+    // survives deletion of anything but itself. fk_chats_space is ON DELETE RESTRICT, not
+    // CASCADE, so this is enforced even below SpaceService's own check (#525 review, finding 5).
     applyChangelog032();
 
     UUID author = insertUser();
@@ -98,11 +101,15 @@ class Migration032CreateChatsTest {
     UUID chat = UUID.randomUUID();
     insertChat(chat, space, author);
 
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DELETE FROM spaces WHERE id = '" + space + "'");
-    }
-
-    assertThat(chatExists(chat)).isFalse();
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM spaces WHERE id = '" + space + "'");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_chats_space");
+    assertThat(chatExists(chat)).isTrue();
   }
 
   @Test
@@ -116,7 +123,7 @@ class Migration032CreateChatsTest {
     insertChat(chat, space, author);
     insertLibraryReference(chat, library);
     UUID message = UUID.randomUUID();
-    insertMessage(message, chat, "USER", "Wie hoch ist die Rueckstellung?", null);
+    insertMessage(message, chat, 0, "USER", "Wie hoch ist die Rueckstellung?", null);
 
     try (Statement statement = connection.createStatement()) {
       statement.execute("DELETE FROM chats WHERE id = '" + chat + "'");
@@ -135,9 +142,54 @@ class Migration032CreateChatsTest {
     UUID chat = UUID.randomUUID();
     insertChat(chat, space, author);
 
-    assertThatThrownBy(() -> insertMessage(UUID.randomUUID(), chat, "SYSTEM", "not allowed", null))
+    assertThatThrownBy(
+            () -> insertMessage(UUID.randomUUID(), chat, 0, "SYSTEM", "not allowed", null))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_chat_messages_role");
+  }
+
+  @Test
+  void chatMessageSequenceIsUniquePerChat() throws Exception {
+    applyChangelog032();
+
+    UUID author = insertUser();
+    UUID space = insertSpace(author);
+    UUID chat = UUID.randomUUID();
+    insertChat(chat, space, author);
+    insertMessage(UUID.randomUUID(), chat, 0, "USER", "Erste Frage", null);
+
+    assertThatThrownBy(
+            () -> insertMessage(UUID.randomUUID(), chat, 0, "ASSISTANT", "Doppelte Sequenz", null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("uk_chat_messages_chat_sequence");
+  }
+
+  @Test
+  void aChatCannotReferenceANonExistentOrganization() throws Exception {
+    applyChangelog032();
+
+    UUID author = insertUser();
+    UUID space = insertSpace(author);
+    UUID chat = UUID.randomUUID();
+    assertThatThrownBy(
+            () -> {
+              try (Statement statement = connection.createStatement()) {
+                statement.execute(
+                    "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge,"
+                        + " status, created_at, updated_at) "
+                        + "VALUES ('"
+                        + chat
+                        + "', '"
+                        + space
+                        + "', '"
+                        + author
+                        + "', '"
+                        + UUID.randomUUID()
+                        + "', true, 'PRIVATE', now(), now())");
+              }
+            })
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_chats_organization");
   }
 
   @Test
@@ -152,7 +204,7 @@ class Migration032CreateChatsTest {
     String sources =
         "[{\"fileName\": \"readme.md\", \"relevanceScore\": 0.9, \"matchCount\": 1, \"cited\":"
             + " true}]";
-    insertMessage(message, chat, "ASSISTANT", "Die Antwort lautet 42.", sources);
+    insertMessage(message, chat, 0, "ASSISTANT", "Die Antwort lautet 42.", sources);
 
     assertThat(columnValue("chat_messages", message, "content"))
         .isEqualTo("Die Antwort lautet 42.");
@@ -258,17 +310,20 @@ class Migration032CreateChatsTest {
     }
   }
 
-  private void insertMessage(UUID id, UUID chatId, String role, String content, String sources)
+  private void insertMessage(
+      UUID id, UUID chatId, int sequence, String role, String content, String sources)
       throws SQLException {
     String sourcesLiteral = sources == null ? "NULL" : "'" + sources + "'::json";
     try (Statement statement = connection.createStatement()) {
       statement.execute(
-          "INSERT INTO chat_messages (id, chat_id, role, content, sources, created_at) "
+          "INSERT INTO chat_messages (id, chat_id, sequence, role, content, sources, created_at) "
               + "VALUES ('"
               + id
               + "', '"
               + chatId
-              + "', '"
+              + "', "
+              + sequence
+              + ", '"
               + role
               + "', '"
               + content

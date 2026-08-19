@@ -22,6 +22,12 @@ import org.hibernate.type.SqlTypes;
  * {@code json}), shaped like {@code QueryResponse.sources} ({@code SourceReference}) - it is
  * (de)serialized by {@code ChatService}, not mapped field by field here, so this entity does not
  * need a dependency on the generated API DTOs.
+ *
+ * <p>{@link #sequence} is an application-assigned, per-chat ordinal (0, 1, 2, ...) - {@code
+ * created_at} alone is not a reliable ordering for two messages of the same turn written moments
+ * apart (#525 review, finding/nit c), so every read orders by {@code (chat_id, sequence)}, never by
+ * {@code created_at} alone. {@code uk_chat_messages_chat_sequence} (migration 031) enforces
+ * uniqueness at the database level too.
  */
 @Entity
 @Table(name = "chat_messages")
@@ -31,6 +37,9 @@ public class ChatMessage {
 
   @Column(name = "chat_id", nullable = false, updatable = false)
   private UUID chatId;
+
+  @Column(name = "sequence", nullable = false, updatable = false)
+  private int sequence;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20, updatable = false)
@@ -48,9 +57,10 @@ public class ChatMessage {
 
   protected ChatMessage() {}
 
-  public ChatMessage(UUID chatId, ChatRole role, String content, String sources) {
+  public ChatMessage(UUID chatId, int sequence, ChatRole role, String content, String sources) {
     this.id = UUID.randomUUID();
     this.chatId = chatId;
+    this.sequence = sequence;
     this.role = role;
     this.content = content;
     this.sources = sources;
@@ -67,6 +77,10 @@ public class ChatMessage {
 
   public UUID getChatId() {
     return chatId;
+  }
+
+  public int getSequence() {
+    return sequence;
   }
 
   public ChatRole getRole() {

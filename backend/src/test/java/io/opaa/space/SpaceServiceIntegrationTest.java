@@ -11,12 +11,15 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.chat.Chat;
+import io.opaa.chat.ChatRepository;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +56,7 @@ class SpaceServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private ChatRepository chatRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
@@ -65,6 +69,10 @@ class SpaceServiceIntegrationTest {
     // UserServicePersonalSpaceIntegrationTest) rely on that row existing (fk_users_organization).
     // Each test creates its own throwaway organizations instead, scoped by random ids, and removes
     // them again in tearDown() - see tearDown() below.
+    // #525: fk_chats_space is ON DELETE RESTRICT (chats survive their space being deleted, see
+    // migration 031), so a leftover chat from this class's own previous test would otherwise block
+    // spaceRepository.deleteAll() below.
+    chatRepository.deleteAll();
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
@@ -90,6 +98,7 @@ class SpaceServiceIntegrationTest {
     // (fk_users_organization) - delete them first, then remove only the two organizations this
     // test created (by id), never Organization.DEFAULT_ID or organizations created by other tests
     // sharing this context.
+    chatRepository.deleteAll();
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
     libraryRepository.deleteAll();
@@ -231,6 +240,28 @@ class SpaceServiceIntegrationTest {
 
     assertThat(spaceRepository.findById(saved.getId())).isEmpty();
     assertThat(membershipRepository.findBySpaceId(saved.getId())).isEmpty();
+  }
+
+  @Test
+  void spaceWithAChatCannotBeDeleted() {
+    // #525 review, finding 5: docs/features/spaces-and-assets.md#chats-sind-vor-fremder-
+    // löschung-geschützt - a chat must survive its space being deleted, so the space itself must
+    // not be deletable while it still contains one.
+    UUID owner = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+    chatRepository.save(
+        new Chat(saved.getId(), owner, organizationA, "Meine Frage", true, Set.of()));
+
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(spaceRepository.findById(saved.getId())).isPresent();
   }
 
   @Test

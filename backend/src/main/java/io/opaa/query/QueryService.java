@@ -153,6 +153,11 @@ public class QueryService {
                                     HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
 
                 Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
+                // #525 review, finding 4: querying is chatting, and chatting requires space
+                // membership even for an author who already owns the chat - see
+                // ChatService#requireStillSpaceMember's Javadoc for why this check lives only on
+                // this path and not on getChat/updateChat/deleteChat.
+                chat.ifPresent(chatService::requireStillSpaceMember);
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") still runs ephemerally rather than being rejected - the pre-#525
                 // behaviour, preserved for callers that have not moved to persisted chats yet
@@ -160,11 +165,21 @@ public class QueryService {
                 // caller supplied one, exactly as the old free-form conversationId was, so a
                 // client round-tripping the previous response's chatId still gets multi-turn
                 // continuity without ever persisting anything.
-                String conversationKey =
-                    chat.map(c -> c.getId().toString())
-                        .orElseGet(
-                            () ->
-                                chatId != null ? chatId.toString() : UUID.randomUUID().toString());
+                //
+                // #525 review, finding 3 (critical): always qualified with currentUserId. Without
+                // this, a chatId that does not resolve to an owned chat (a genuinely unknown id, or
+                // - the actual leak - another user's real chat id) would use the bare chatId as the
+                // cache key, which for a real chat is the exact key its owner's own persisted-chat
+                // path also uses (see below) - a second user supplying it would read the first
+                // user's conversation history straight into their own prompt, and their own message
+                // would then be appended into the first user's cache entry. Qualifying every key
+                // this way, not only the fallback branch, keeps the persisted-chat and ephemeral
+                // cases using the same key for the same (user, chat) pair while making it
+                // structurally impossible for two different users to ever collide on one key.
+                UUID effectiveChatId =
+                    chat.map(Chat::getId)
+                        .orElseGet(() -> chatId != null ? chatId : UUID.randomUUID());
+                String conversationKey = currentUserId + ":" + effectiveChatId;
                 seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
                 String searchQuery = buildSearchQuery(question, conversationKey);
@@ -231,13 +246,11 @@ public class QueryService {
                 metrics.recordSuccess(tokenCount);
 
                 chat.ifPresent(c -> chatService.appendTurn(c, question, answer, sources));
-                UUID responseChatId =
-                    chat.map(Chat::getId).orElse(UUID.fromString(conversationKey));
 
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge);
-                return new QueryResponse(answer, sources, metadata, responseChatId);
+                return new QueryResponse(answer, sources, metadata, effectiveChatId);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;

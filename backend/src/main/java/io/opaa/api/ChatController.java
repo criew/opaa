@@ -41,7 +41,7 @@ public class ChatController {
   @PostMapping("/spaces/{spaceId}/chats")
   public ResponseEntity<ChatDetail> createChat(
       @PathVariable UUID spaceId,
-      @RequestBody(required = false) ChatCreateRequest request,
+      @Valid @RequestBody(required = false) ChatCreateRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     ChatDetail response = chatService.createChat(spaceId, currentUser.getId(), request);

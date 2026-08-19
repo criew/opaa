@@ -129,6 +129,18 @@ public class Chat {
     }
   }
 
+  /**
+   * Forces {@link #updatedAt} to the current time even if no other field changed - {@link
+   * #onUpdate} only fires when Hibernate's dirty checking already produces an UPDATE statement for
+   * some other reason, which a turn that neither changes the title nor any other field would not
+   * (#525 review, finding/nit d: without this, the chat list's "sorted by last use" ordering goes
+   * stale for every follow-up question after the first). Called explicitly by {@code
+   * ChatService#appendTurn} before saving.
+   */
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
+
   public UUID getId() {
     return id;
   }

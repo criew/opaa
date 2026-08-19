@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.TestcontainersConfiguration;
@@ -76,8 +77,7 @@ class ChatServiceIntegrationTest {
     chatRepository.deleteAll();
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    libraryRepository.deleteAll();
     grantHistoryRepository.deleteAll();
     membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
@@ -91,15 +91,15 @@ class ChatServiceIntegrationTest {
     chatRepository.deleteAll();
     spaceMembershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    libraryRepository.deleteAll();
     grantHistoryRepository.deleteAll();
     membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
     organizationRepository.deleteById(organizationA);
   }
 
-  private UUID createLibrary(UUID ownerId) {
+  /** A library {@code readerId} may actually read - i.e. also holds an explicit grant on. */
+  private UUID createLibrary(UUID readerId) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
@@ -108,7 +108,17 @@ class ChatServiceIntegrationTest {
             + " now(), now())",
         id,
         organizationA,
-        ownerId);
+        readerId);
+    // #202: ownership alone does not grant read access - LibraryAccessService#readableLibraryIds
+    // only ever consults asset_grants (plus group grants and ORGANIZATION visibility).
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at)"
+            + " VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        id,
+        organizationA,
+        readerId);
     return id;
   }
 
@@ -231,6 +241,74 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
+  void createChatRejectsAnUnreadableReferencedLibraryWithoutRevealingWhy() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID unreadableLibrary = UUID.randomUUID(); // does not even exist
+
+    assertThatThrownBy(
+            () ->
+                chatService.createChat(
+                    spaceId,
+                    author,
+                    new ChatCreateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException statusException = (ResponseStatusException) ex;
+              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              // #525 review, finding/nit b: identical message whether the library exists and is
+              // merely unreadable, or does not exist at all - no existence oracle.
+              assertThat(statusException.getReason())
+                  .isEqualTo("referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
+            });
+  }
+
+  @Test
+  void createChatRejectsAnExistingButUnreadableLibraryWithTheIdenticalMessage() {
+    UUID author = createUser();
+    UUID otherUser = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    // Owned and readable by otherUser, not by author - exists, but author has no grant on it.
+    UUID unreadableLibrary = createLibrary(otherUser);
+
+    assertThatThrownBy(
+            () ->
+                chatService.createChat(
+                    spaceId,
+                    author,
+                    new ChatCreateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException statusException = (ResponseStatusException) ex;
+              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(statusException.getReason())
+                  .isEqualTo("referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
+            });
+  }
+
+  @Test
+  void updateChatRejectsAnUnreadableReferencedLibrary() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    UUID unreadableLibrary = UUID.randomUUID();
+
+    assertThatThrownBy(
+            () ->
+                chatService.updateChat(
+                    created.getId(),
+                    author,
+                    new ChatUpdateRequest().referencedLibraryIds(List.of(unreadableLibrary))))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
   void deleteChatRemovesItForItsAuthor() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
@@ -277,6 +355,54 @@ class ChatServiceIntegrationTest {
 
     ChatDetail detail = chatService.getChat(created.getId(), author);
     assertThat(detail.getTitle()).isEqualTo("Mein Titel");
+  }
+
+  @Test
+  void appendTurnOrdersMessagesBySequenceAndTouchesUpdatedAt() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    ChatDetail created = chatService.createChat(spaceId, author, new ChatCreateRequest());
+    Chat chat = chatRepository.findById(created.getId()).orElseThrow();
+    java.time.Instant createdUpdatedAt = chat.getUpdatedAt();
+
+    chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
+    chatService.appendTurn(chat, "Zweite Frage", "Zweite Antwort", List.of());
+
+    List<ChatMessage> messages = chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId());
+    assertThat(messages).hasSize(4);
+    assertThat(messages).extracting(ChatMessage::getSequence).containsExactly(0, 1, 2, 3);
+    assertThat(messages.get(0).getRole()).isEqualTo(ChatRole.USER);
+    assertThat(messages.get(0).getContent()).isEqualTo("Erste Frage");
+    assertThat(messages.get(2).getContent()).isEqualTo("Zweite Frage");
+
+    // #525 review, finding/nit d: updated_at must move even though appendTurn's second call
+    // changes no other field (the title was already set by the first call).
+    Chat reloaded = chatRepository.findById(chat.getId()).orElseThrow();
+    assertThat(reloaded.getUpdatedAt()).isAfter(createdUpdatedAt);
+  }
+
+  @Test
+  void requireStillSpaceMemberRejectsAnAuthorNoLongerInTheSpace() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    spaceMembershipRepository.deleteAll(spaceMembershipRepository.findBySpaceId(spaceId));
+
+    assertThatThrownBy(() -> chatService.requireStillSpaceMember(chat))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void requireStillSpaceMemberAllowsAnAuthorStillInTheSpace() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    assertThatCode(() -> chatService.requireStillSpaceMember(chat)).doesNotThrowAnyException();
   }
 
   @Test

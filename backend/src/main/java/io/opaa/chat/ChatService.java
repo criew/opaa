@@ -6,6 +6,7 @@ import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatUpdateRequest;
 import io.opaa.api.dto.SourceReference;
+import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
@@ -21,6 +22,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
@@ -37,9 +39,19 @@ import tools.jackson.databind.ObjectMapper;
  * {@link #updateChat}) follow the same convention as {@code SpaceService}: they accept the
  * generated request DTO directly and return the generated response DTO, so {@code ChatController}
  * stays a thin translation from HTTP to this service. The entity-returning methods below them
- * ({@link #findOwnedChat}, {@link #effectiveLibraryScope}, {@link #historyAsSpringAiMessages},
- * {@link #appendTurn}) exist for {@code QueryService}, which needs the {@link Chat} entity itself,
- * not a response shape.
+ * ({@link #findOwnedChat}, {@link #requireStillSpaceMember}, {@link #effectiveLibraryScope}, {@link
+ * #historyAsSpringAiMessages}, {@link #appendTurn}) exist for {@code QueryService}, which needs the
+ * {@link Chat} entity itself, not a response shape.
+ *
+ * <p><b>{@link #getChat}/{@link #updateChat}/{@link #deleteChat} deliberately stay author-exclusive
+ * even without space membership</b> (#525 review, finding 4) - a chat's private content belongs to
+ * its author per docs/features/spaces-and-assets.md#private-inhalte-sind-nicht-teil-der-akte
+ * regardless of whether that author is still a space member, mirroring how a departed employee's
+ * private mail is not thrown away the moment their department changes. {@link
+ * #requireStillSpaceMember} is the one exception: <b>querying is chatting</b>, and chatting
+ * requires membership - a departed author must not be able to keep running new questions through a
+ * space's knowledge scope after losing access to it, even though their existing chat and its
+ * history remain theirs to read.
  */
 @Service
 @Transactional(readOnly = true)
@@ -52,6 +64,7 @@ public class ChatService {
   private final ChatMessageRepository chatMessageRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceMembershipRepository spaceMembershipRepository;
+  private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
 
   public ChatService(
@@ -59,11 +72,13 @@ public class ChatService {
       ChatMessageRepository chatMessageRepository,
       SpaceRepository spaceRepository,
       SpaceMembershipRepository spaceMembershipRepository,
+      LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
     this.spaceMembershipRepository = spaceMembershipRepository;
+    this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
   }
 
@@ -76,6 +91,7 @@ public class ChatService {
         request == null || request.getReferencedLibraryIds() == null
             ? Set.of()
             : new LinkedHashSet<>(request.getReferencedLibraryIds());
+    requireReadableLibraries(referencedLibraryIds, authorId, space.getOrganizationId());
 
     Chat chat =
         new Chat(
@@ -107,6 +123,9 @@ public class ChatService {
         request.getReferencedLibraryIds() == null
             ? null
             : new LinkedHashSet<>(request.getReferencedLibraryIds());
+    if (referencedLibraryIds != null) {
+      requireReadableLibraries(referencedLibraryIds, authorId, chat.getOrganizationId());
+    }
     chat.applyUpdate(request.getTitle(), request.getUseKnowledge(), referencedLibraryIds);
     return toDetail(chatRepository.save(chat));
   }
@@ -141,9 +160,28 @@ public class ChatService {
     return chatRepository.findByIdAndAuthorId(chatId, authorId);
   }
 
-  /** The persisted history as Spring AI messages, in chronological order. */
+  /**
+   * Verifies the chat's author still belongs to the chat's space - see this class's Javadoc for why
+   * only the query path requires this and {@link #getChat}/{@link #updateChat}/{@link #deleteChat}
+   * deliberately do not (#525 review, finding 4).
+   */
+  public void requireStillSpaceMember(Chat chat) {
+    boolean member =
+        spaceMembershipRepository
+            .findByUserIdAndSpaceId(chat.getAuthorId(), chat.getSpaceId())
+            .isPresent();
+    if (!member) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space mehr");
+    }
+  }
+
+  /**
+   * The persisted history as Spring AI messages, ordered by the application-assigned {@code
+   * sequence} (see {@link ChatMessage}'s Javadoc), not {@code created_at}.
+   */
   public List<Message> historyAsSpringAiMessages(UUID chatId) {
-    return chatMessageRepository.findByChatIdOrderByCreatedAtAsc(chatId).stream()
+    return chatMessageRepository.findByChatIdOrderBySequenceAsc(chatId).stream()
         .<Message>map(
             m ->
                 m.getRole() == ChatRole.USER
@@ -172,13 +210,32 @@ public class ChatService {
    * one from the question (#525's "Titel-Default aus der ersten Frage ableiten"). Called from
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code
    * chat} belongs to the requesting user via {@link #findOwnedChat}.
+   *
+   * <p><b>{@code REQUIRES_NEW} (#525 review, finding 1 - critical):</b> {@code QueryService#query}
+   * runs inside a class-level {@code @Transactional(readOnly = true)} transaction. A caller in a
+   * read-only transaction that merely joined this method's writes would never actually flush them -
+   * Hibernate silently drops modifications made under a read-only transaction, so every persisted
+   * turn and title would vanish without error the moment the outer transaction committed. {@code
+   * REQUIRES_NEW} opens an independent, writable transaction that commits on its own, exactly like
+   * {@code SpaceService#ensureDefaultSpace} already does for the same reason (see that method's
+   * Javadoc). Reproduced empirically: with plain {@code @Transactional}, {@code chat_messages}
+   * contains zero rows after a real {@code QueryService#query} call against Postgres - see {@code
+   * QueryServiceIntegrationTest#queryPersistsTheTurnForARealChat} and its Javadoc for the exact
+   * failure.
    */
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void appendTurn(Chat chat, String question, String answer, List<SourceReference> sources) {
-    chatMessageRepository.save(new ChatMessage(chat.getId(), ChatRole.USER, question, null));
+    int nextSequence = chatMessageRepository.countByChatId(chat.getId());
     chatMessageRepository.save(
-        new ChatMessage(chat.getId(), ChatRole.ASSISTANT, answer, serializeSources(sources)));
+        new ChatMessage(chat.getId(), nextSequence, ChatRole.USER, question, null));
+    chatMessageRepository.save(
+        new ChatMessage(
+            chat.getId(), nextSequence + 1, ChatRole.ASSISTANT, answer, serializeSources(sources)));
     chat.deriveTitleFromFirstQuestionIfAbsent(deriveTitle(question));
+    // #525 review, finding/nit d: touch() forces updated_at even when neither the title nor any
+    // other chat field actually changed this turn - without it, the chat list's "sorted by last
+    // use" ordering (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
+    chat.touch();
     chatRepository.save(chat);
   }
 
@@ -197,7 +254,7 @@ public class ChatService {
 
   private ChatDetail toDetail(Chat chat) {
     List<ChatMessageResponse> messages =
-        chatMessageRepository.findByChatIdOrderByCreatedAtAsc(chat.getId()).stream()
+        chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId()).stream()
             .map(this::toMessageResponse)
             .toList();
     return new ChatDetail(
@@ -270,5 +327,25 @@ public class ChatService {
           HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
     }
     return space;
+  }
+
+  /**
+   * Rejects any id in {@code referencedLibraryIds} the caller may not read - including one that
+   * does not exist at all, with the identical message for both cases (#525 review, finding/nit b):
+   * distinguishing "not readable" from "does not exist" would let a caller probe for library ids
+   * they have no rights on, and a bare foreign-key violation from {@code chat_library_references}
+   * would otherwise surface as an opaque 500 instead of a 400.
+   */
+  private void requireReadableLibraries(
+      Set<UUID> referencedLibraryIds, UUID authorId, UUID organizationId) {
+    if (referencedLibraryIds.isEmpty()) {
+      return;
+    }
+    Set<UUID> readable = libraryAccessService.readableLibraryIds(authorId, organizationId);
+    if (!readable.containsAll(referencedLibraryIds)) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist");
+    }
   }
 }

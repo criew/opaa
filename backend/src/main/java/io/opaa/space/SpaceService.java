@@ -13,6 +13,7 @@ import io.opaa.audit.AuditOutcome;
 import io.opaa.audit.AuditSubjectKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.chat.ChatRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -40,14 +41,17 @@ public class SpaceService {
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
+  private final ChatRepository chatRepository;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public SpaceService(
       SpaceRepository spaceRepository,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder,
+      ChatRepository chatRepository,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
+    this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
@@ -370,6 +374,17 @@ public class SpaceService {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN,
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
+    }
+
+    // #525: chats are composition, not association - docs/features/spaces-and-assets.md#chats-
+    // sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
+    // erhalten", so deleting the space they live in must not silently destroy them. fk_chats_space
+    // is ON DELETE RESTRICT (migration 031) and would reject this anyway, but a raw constraint
+    // violation surfaces as an opaque 500 - this check turns it into an understandable 409 instead.
+    if (chatRepository.existsBySpaceId(spaceId)) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Der Space enthält noch Chats und kann deshalb nicht gelöscht werden");
     }
 
     auditEventRecorder.recordUserAction(
