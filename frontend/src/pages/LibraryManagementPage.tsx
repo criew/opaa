@@ -236,6 +236,12 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
                       description: description.trim() || undefined,
                       visibility,
                       listed,
+                      // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die
+                      // gespeicherte Konfiguration unverändert, solange keines der
+                      // sourcePath/sourceUrl/sourceProxy/sourceCredentials/sourceInsecureSsl-
+                      // Felder in der Anfrage vorhanden ist (ADR-0018). Eine UI zum Bearbeiten
+                      // der Quellkonfiguration folgt in #480.
+                      sourceInsecureSsl: null,
                     })
                   } catch (err) {
                     setLocalError(

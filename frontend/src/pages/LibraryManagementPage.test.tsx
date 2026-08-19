@@ -128,7 +128,7 @@ const orgWideGroupLibrary: LibraryListResponse = {
 }
 
 function detailsOf(library: LibraryListResponse, documentCount: number): LibraryResponse {
-  return { ...library, ownerId: null, documentCount }
+  return { ...library, ownerId: null, documentCount, sourceType: 'UPLOAD' }
 }
 
 function setLibraryState(
@@ -402,6 +402,7 @@ describe('LibraryManagementPage', () => {
         description: 'Aktualisierte Beschreibung',
         visibility: 'PRIVATE',
         listed: false,
+        sourceInsecureSsl: null,
       })
     })
   })
@@ -438,6 +439,8 @@ describe('LibraryManagementPage', () => {
         description: undefined,
         ownerType: 'USER',
         ownerId: undefined,
+        sourceType: 'UPLOAD',
+        sourceInsecureSsl: false,
       })
     })
     expect(await screen.findByText('Frisch angelegte Bibliothek')).toBeInTheDocument()
@@ -474,6 +477,8 @@ describe('LibraryManagementPage', () => {
         description: undefined,
         ownerType: 'GROUP',
         ownerId: 'group-referat-50',
+        sourceType: 'UPLOAD',
+        sourceInsecureSsl: false,
       })
     })
   })

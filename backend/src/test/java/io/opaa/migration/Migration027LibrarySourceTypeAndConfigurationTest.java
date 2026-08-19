@@ -24,10 +24,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Applies Liquibase changelog 024 in isolation against a database built from the real, versioned
+ * Applies Liquibase changelog 027 in isolation against a database built from the real, versioned
  * changelog through changeSet 016 - the same pattern {@code Migration020UploadMetadataTest} and
  * {@code Migration023AuditRetentionTest} establish (see their own Javadoc): the bootstrap fixture
- * deliberately stops at 016, not 023, because 024 (like 020) touches none of the audit-log
+ * deliberately stops at 016, not 023, because 027 (like 020) touches none of the audit-log
  * infrastructure 017-023 introduce, and applying 017's ownership transfer of {@code audit_log} to
  * {@code opaa_audit_owner} under a plain superuser bootstrap connection - rather than the
  * restricted {@code AUDIT_APP_ROLE} those tests use - is neither needed here nor safe to skip
@@ -35,15 +35,15 @@ import org.testcontainers.utility.DockerImageName;
  * knowledge_libraries, users and organizations all already exist by changeSet 012, well within the
  * 016 fixture.
  *
- * <p>Covers the claims 024's changeSet comments make that {@code
+ * <p>Covers the claims 027's changeSet comments make that {@code
  * KnowledgeLibraryServiceIntegrationTest} cannot: that the backfill actually widens a table with
  * pre-existing rows (that test only ever inserts through the application, which never violates the
- * post-024 constraints either way), and that {@code chk_knowledge_libraries_source_configuration}
+ * post-027 constraints either way), and that {@code chk_knowledge_libraries_source_configuration}
  * rejects an invalid column/type combination at the database level, not only in {@code
  * KnowledgeLibraryService}.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class Migration024LibrarySourceTypeAndConfigurationTest {
+class Migration027LibrarySourceTypeAndConfigurationTest {
 
   @Container
   static PostgreSQLContainer postgres =
@@ -86,11 +86,11 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
   @Test
   void backfillAssignsUploadToEveryPreExistingLibraryIncludingTheSeededSystemLibrary()
       throws Exception {
-    // A pre-024 library, written before source_type existed at all - the seeded system library
+    // A pre-027 library, written before source_type existed at all - the seeded system library
     // (012-seed-system-library) is exactly this case, still present from test-master-through-023.
     UUID ownedLibrary = insertLibraryWithoutSourceType("USER");
 
-    applyChangelog024();
+    applyChangelog027();
 
     assertThat(sourceType(ownedLibrary)).isEqualTo("UPLOAD");
     assertThat(sourceType(UUID.fromString(SYSTEM_LIBRARY_ID))).isEqualTo("UPLOAD");
@@ -98,7 +98,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void enforcedNotNullAndCheckConstraintRejectAnUnknownSourceTypeAfterMigration() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     // An unknown source_type violates both chk_knowledge_libraries_source_type (not one of the
     // known values) and chk_knowledge_libraries_source_configuration (matches none of its
@@ -112,7 +112,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckAcceptsUploadWithNoConfiguration() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     UUID library = insertLibraryWithSourceType("USER", "UPLOAD", null, null);
 
@@ -121,7 +121,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckRejectsUploadCombinedWithAPath() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     assertThatThrownBy(() -> insertLibraryWithSourceType("USER", "UPLOAD", "/data/documents", null))
         .isInstanceOf(SQLException.class)
@@ -130,7 +130,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckAcceptsFilesystemWithOnlyAPath() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     UUID library = insertLibraryWithSourceType("USER", "FILESYSTEM", "/data/documents", null);
 
@@ -140,7 +140,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckRejectsFilesystemWithoutAPath() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     assertThatThrownBy(() -> insertLibraryWithSourceType("USER", "FILESYSTEM", null, null))
         .isInstanceOf(SQLException.class)
@@ -149,7 +149,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckRejectsFilesystemCombinedWithAUrl() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     assertThatThrownBy(
             () ->
@@ -161,7 +161,7 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckAcceptsHttpDirectoryWithOnlyAUrl() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     UUID library =
         insertLibraryWithSourceType("USER", "HTTP_DIRECTORY", null, "https://files.example.com/");
@@ -172,17 +172,49 @@ class Migration024LibrarySourceTypeAndConfigurationTest {
 
   @Test
   void configurationCheckRejectsHttpDirectoryWithoutAUrl() throws Exception {
-    applyChangelog024();
+    applyChangelog027();
 
     assertThatThrownBy(() -> insertLibraryWithSourceType("USER", "HTTP_DIRECTORY", null, null))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_knowledge_libraries_source_configuration");
   }
 
-  private void applyChangelog024() throws Exception {
+  @Test
+  void configurationCheckAcceptsRssFeedWithOnlyAUrl() throws Exception {
+    applyChangelog027();
+
+    UUID library =
+        insertLibraryWithSourceType("USER", "RSS_FEED", null, "https://example.com/feed.xml");
+
+    assertThat(sourceType(library)).isEqualTo("RSS_FEED");
+    assertThat(columnValue("source_url", library)).isEqualTo("https://example.com/feed.xml");
+  }
+
+  @Test
+  void configurationCheckRejectsRssFeedCombinedWithAPath() throws Exception {
+    applyChangelog027();
+
+    assertThatThrownBy(
+            () ->
+                insertLibraryWithSourceType(
+                    "USER", "RSS_FEED", "/data/documents", "https://example.com/feed.xml"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
+  }
+
+  @Test
+  void configurationCheckRejectsRssFeedWithoutAUrl() throws Exception {
+    applyChangelog027();
+
+    assertThatThrownBy(() -> insertLibraryWithSourceType("USER", "RSS_FEED", null, null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
+  }
+
+  private void applyChangelog027() throws Exception {
     Liquibase liquibase =
         new Liquibase(
-            "db/changelog/changes/024-library-source-type-and-configuration.yaml",
+            "db/changelog/changes/027-library-source-type-and-configuration.yaml",
             new ClassLoaderResourceAccessor(),
             database);
     liquibase.update(new Contexts());

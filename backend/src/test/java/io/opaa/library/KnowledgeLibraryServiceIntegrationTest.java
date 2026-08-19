@@ -29,6 +29,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import jakarta.persistence.EntityManagerFactory;
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -264,7 +265,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryRequest request =
         new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
             .sourcePath("/data/documents")
-            .sourceUrl("https://files.example.com/documents/");
+            .sourceUrl(URI.create("https://files.example.com/documents/"));
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
         .isInstanceOf(ResponseStatusException.class)
@@ -303,6 +304,104 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void createLibraryRejectsFilesystemSourceTypeCombinedWithCredentialsAndProxy() {
+    // PR #489 review, Befund 6b: a FILESYSTEM request that only ever carries sourceCredentials/
+    // sourceProxy (no sourceUrl at all) must still be rejected - the earlier
+    // createLibraryRejectsFilesystemSourceTypeCombinedWithAUrl only exercised the sourceUrl branch
+    // of the same check.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents")
+            .sourceCredentials("admin:secret")
+            .sourceProxy("proxy.example.com:8080");
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createLibraryRejectsFilesystemSourceTypeWithARelativePath() {
+    // PR #489 review, Befund 5: sourcePath must be absolute.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("relative/documents");
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createLibraryRejectsHttpDirectorySourceTypeWithANonHttpUrl() {
+    // PR #489 review, Befund 5: sourceUrl is restricted to http/https.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+            .sourceUrl(URI.create("ftp://files.example.com/documents/"));
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createLibraryAcceptsARssFeedSourceTypeWithAUrl() {
+    // PR #489 review, Befund 1: RSS_FEED (#474) is validated exactly like HTTP_DIRECTORY - a
+    // required sourceUrl, no sourcePath.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
+            .sourceUrl(URI.create("https://example.com/feed.xml"));
+
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+    assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
+    assertThat(response.getSourcePath()).isNull();
+  }
+
+  @Test
+  void createLibraryRejectsRssFeedSourceTypeWithoutAUrl() {
+    UUID owner = createUser(organizationA);
+    LibraryRequest request = new LibraryRequest("Feed-Bibliothek", DocumentSourceType.RSS_FEED);
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createLibraryRejectsRssFeedSourceTypeCombinedWithAPath() {
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
+            .sourceUrl(URI.create("https://example.com/feed.xml"))
+            .sourcePath("/data/documents");
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
   void createLibraryAcceptsAFilesystemSourceTypeWithAPath() {
     UUID owner = createUser(organizationA);
     LibraryRequest request =
@@ -322,7 +421,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID owner = createUser(organizationA);
     LibraryRequest request =
         new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
-            .sourceUrl("https://files.example.com/documents/")
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
             .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true);
@@ -330,7 +429,8 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryResponse response = libraryService.createLibrary(request, owner);
 
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
-    assertThat(response.getSourceUrl()).isEqualTo("https://files.example.com/documents/");
+    assertThat(response.getSourceUrl())
+        .isEqualTo(URI.create("https://files.example.com/documents/"));
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();
     assertThat(response.toString()).doesNotContain("admin:secret");
@@ -382,6 +482,85 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThat(updated.getName()).isEqualTo("Upload umbenannt");
     assertThat(updated.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+  }
+
+  @Test
+  void updateLibraryReplacesTheSourceConfigurationWithoutChangingTheSourceType() {
+    // PR #489 review, Befund 4: rotating credentials or moving a crawl target must not require
+    // deleting and recreating the library.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://old.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://new.example.com/documents/"))
+            .sourceCredentials("admin:new-secret")
+            .sourceProxy("proxy.example.com:8080")
+            .sourceInsecureSsl(true);
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(updated.getSourceUrl()).isEqualTo(URI.create("https://new.example.com/documents/"));
+    assertThat(updated.getSourceProxy()).isEqualTo("proxy.example.com:8080");
+    assertThat(updated.getSourceInsecureSsl()).isTrue();
+    assertThat(updated.toString()).doesNotContain("new-secret").doesNotContain("old-secret");
+
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.getSourceCredentials()).isEqualTo("admin:new-secret");
+  }
+
+  @Test
+  void updateLibraryRejectsAConfigurationThatContradictsTheExistingSourceType() {
+    // The same 400-before-write validation applies on update, keyed on the library's own,
+    // unchangeable sourceType (FILESYSTEM here), not any sourceType in the request.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Verzeichnis")
+            .sourceUrl(URI.create("https://files.example.com/documents/"));
+
+    assertThatThrownBy(() -> libraryService.updateLibrary(library.getId(), request, owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    assertThat(libraryRepository.findById(library.getId()).orElseThrow().getSourcePath())
+        .isEqualTo("/data/documents");
+  }
+
+  @Test
+  void updateLibraryLeavesTheSourceConfigurationUntouchedWhenTheRequestCarriesNoConfigField() {
+    // A request that only renames the library - every caller today, e.g.
+    // LibraryManagementPage's rename/visibility form - must not null out an existing
+    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED configuration merely because those fields were absent
+    // from that unrelated request.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents"),
+            owner);
+
+    LibraryUpdateRequest request = new LibraryUpdateRequest("Verzeichnis umbenannt");
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getName()).isEqualTo("Verzeichnis umbenannt");
+    assertThat(updated.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(libraryRepository.findById(library.getId()).orElseThrow().getSourcePath())
+        .isEqualTo("/data/documents");
   }
 
   @Test
@@ -1303,8 +1482,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     // library. A library with no documents at all (mango) must default to zero, not be missing
     // from the response or throw on a lookup miss.
     UUID owner = createUser(organizationA);
-    LibraryResponse zebra = libraryService.createLibrary(new LibraryRequest("Zebra"), owner);
-    LibraryResponse mango = libraryService.createLibrary(new LibraryRequest("Mango"), owner);
+    LibraryResponse zebra =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+    LibraryResponse mango =
+        libraryService.createLibrary(new LibraryRequest("Mango", DocumentSourceType.UPLOAD), owner);
 
     Document first = new Document("a.pdf", "/tmp/477-a.pdf", null, 10L);
     first.setLibraryId(zebra.getId());
@@ -1339,7 +1520,9 @@ class KnowledgeLibraryServiceIntegrationTest {
       libraryService.listLibraries(owner, false);
       long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
 
-      LibraryResponse apple = libraryService.createLibrary(new LibraryRequest("Apple"), owner);
+      LibraryResponse apple =
+          libraryService.createLibrary(
+              new LibraryRequest("Apple", DocumentSourceType.UPLOAD), owner);
       Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
       third.setLibraryId(apple.getId());
       third.setOrganizationId(organizationA);

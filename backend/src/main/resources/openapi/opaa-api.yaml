@@ -1778,9 +1778,9 @@ components:
         sourceType is required (ADR-0018): a library's quellentyp is chosen at creation and is
         never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
         sourceProxy/sourceCredentials/sourceInsecureSsl may be set depends on sourceType - UPLOAD
-        accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY accepts
-        sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). A combination that
-        contradicts sourceType is rejected with 400.
+        accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED
+        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). A
+        combination that contradicts sourceType is rejected with 400.
       properties:
         name:
           type: string
@@ -1814,21 +1814,22 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          description: Filesystem directory to crawl - only for sourceType FILESYSTEM.
+          description: Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute path.
           example: /data/documents/rechtsquellen
         sourceUrl:
           type: string
-          maxLength: 2000
+          format: uri
           nullable: true
           description: >
-            URL of an Apache mod_autoindex directory listing to crawl - only for sourceType
-            HTTP_DIRECTORY.
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
+            (RSS_FEED) to crawl. http/https only.
           example: https://files.example.com/documents/
         sourceProxy:
           type: string
           maxLength: 255
           nullable: true
-          description: Proxy server in host:port format - only for sourceType HTTP_DIRECTORY.
+          description: >
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
@@ -1836,12 +1837,14 @@ components:
           nullable: true
           description: >
             Basic auth credentials in user:password format - only for sourceType
-            HTTP_DIRECTORY. Write-only: never returned by any API response (ADR-0018).
+            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
+            (ADR-0018).
           example: admin:secret
         sourceInsecureSsl:
           type: boolean
           nullable: true
-          description: Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY.
+          description: >
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
           default: false
 
     LibraryUpdateRequest:
@@ -1850,11 +1853,17 @@ components:
       description: >
         Body for updating an existing library. Deliberately narrower than LibraryRequest: owner
         and ownerType cannot be changed here - transferring ownership is out of scope for #201.
-        sourceType and its configuration cannot be changed here either (ADR-0018): the
-        quellentyp is chosen once, at creation, and is permanent. sourceType is accepted as an
-        optional field purely so a client that (mistakenly) resends the current value from
-        LibraryResponse is not rejected for that alone; any value that differs from the
-        library's stored sourceType is rejected with 400.
+        sourceType itself cannot be changed here (ADR-0018): the quellentyp is chosen once, at
+        creation, and is permanent. sourceType is accepted as an optional field purely so a
+        client that (mistakenly) resends the current value from LibraryResponse is not rejected
+        for that alone; any value that differs from the library's stored sourceType is rejected
+        with 400. The typed configuration fields (sourcePath/sourceUrl/sourceProxy/
+        sourceCredentials/sourceInsecureSsl) can be updated - e.g. rotating credentials or moving
+        a crawl target does not require deleting and recreating the library - and are validated
+        against the library's existing (unchangeable) sourceType exactly like LibraryRequest. The
+        configuration is only replaced (as a whole) when the request carries at least one of
+        these fields; a request that omits all of them (e.g. renaming the library) leaves the
+        stored configuration untouched rather than clearing it.
       properties:
         name:
           type: string
@@ -1874,6 +1883,42 @@ components:
           description: Defaults to false
         sourceType:
           $ref: "#/components/schemas/DocumentSourceType"
+        sourcePath:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute path.
+          example: /data/documents/rechtsquellen
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: >
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
+            (RSS_FEED) to crawl. http/https only.
+          example: https://files.example.com/documents/
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: >
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+          example: proxy.example.com:8080
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: >
+            Basic auth credentials in user:password format - only for sourceType
+            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
+            (ADR-0018).
+          example: admin:secret
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          description: >
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+          default: false
 
     LibraryListResponse:
       type: object
@@ -1985,19 +2030,21 @@ components:
           description: Set only for sourceType FILESYSTEM.
         sourceUrl:
           type: string
+          format: uri
           nullable: true
-          description: Set only for sourceType HTTP_DIRECTORY.
+          description: Set only for sourceType HTTP_DIRECTORY or RSS_FEED.
         sourceProxy:
           type: string
           nullable: true
-          description: Set only for sourceType HTTP_DIRECTORY, and only if configured.
+          description: >
+            Set only for sourceType HTTP_DIRECTORY or RSS_FEED, and only if configured.
         sourceInsecureSsl:
           type: boolean
           nullable: true
           description: >
-            Set only for sourceType HTTP_DIRECTORY. sourceCredentials is deliberately absent
-            from this response (ADR-0018) - it is a write-only field of LibraryRequest and
-            appears in no API response.
+            Set only for sourceType HTTP_DIRECTORY or RSS_FEED. sourceCredentials is
+            deliberately absent from this response (ADR-0018) - it is a write-only field of
+            LibraryRequest and appears in no API response.
         createdAt:
           type: string
           format: date-time

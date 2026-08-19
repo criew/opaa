@@ -18,6 +18,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -379,6 +380,18 @@ public class KnowledgeLibraryService {
           HttpStatus.BAD_REQUEST,
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geaendert werden");
     }
+    // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
+    // updated (credential rotation, moving a crawl target) without deleting and recreating the
+    // library. Only actually replaced when the request carries at least one configuration field
+    // (hasSourceConfigurationFields) - a request that only renames the library (every existing
+    // caller, e.g. LibraryManagementPage) must leave a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED
+    // library's configuration untouched rather than nulling it out because the fields were simply
+    // absent from that unrelated request.
+    boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
+    SourceConfiguration sourceConfiguration =
+        replacesSourceConfiguration
+            ? validateSourceConfigurationForUpdate(library.getSourceType(), request)
+            : null;
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
@@ -389,6 +402,14 @@ public class KnowledgeLibraryService {
     boolean previousListed = library.isListed();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
+    if (replacesSourceConfiguration) {
+      library.updateSourceConfiguration(
+          sourceConfiguration.sourcePath(),
+          sourceConfiguration.sourceUrl(),
+          sourceConfiguration.sourceProxy(),
+          sourceConfiguration.sourceCredentials(),
+          sourceConfiguration.sourceInsecureSsl());
+    }
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean visibilityOrListedChanged =
         updated.getVisibility() != previousVisibility || updated.isListed() != previousListed;
@@ -610,7 +631,7 @@ public class KnowledgeLibraryService {
    * A library's quellentyp is required at creation (ADR-0018) and each type accepts a strictly
    * different, non-overlapping set of the request's configuration fields - the database enforces
    * the same rule at the row level via {@code chk_knowledge_libraries_source_configuration}
-   * (migration 024), this is the 400-before-insert half of that same invariant. {@code
+   * (migration 027), this is the 400-before-insert half of that same invariant. {@code
    * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
    * IndexingTriggerRequest}'s equivalent field.
    */
@@ -620,11 +641,74 @@ public class KnowledgeLibraryService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
     }
     String sourcePath = blankToNull(request.getSourcePath());
-    String sourceUrl = blankToNull(request.getSourceUrl());
+    String sourceUrl =
+        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     String sourceProxy = blankToNull(request.getSourceProxy());
     String sourceCredentials = blankToNull(request.getSourceCredentials());
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
 
+    validateConfigurationForType(
+        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+    return new SourceConfiguration(
+        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  /**
+   * Whether {@code request} carries at least one source configuration field - the signal {@link
+   * #updateLibrary} uses to decide whether this call intends to touch the configuration at all.
+   * {@code sourceType} deliberately does not count here: it is accepted purely for the
+   * resend-the-current-value case (see {@link #updateLibrary}'s own Javadoc comment) and carries no
+   * configuration-change intent of its own.
+   */
+  private boolean hasSourceConfigurationFields(LibraryUpdateRequest request) {
+    return request.getSourcePath() != null
+        || request.getSourceUrl() != null
+        || request.getSourceProxy() != null
+        || request.getSourceCredentials() != null
+        || request.getSourceInsecureSsl() != null;
+  }
+
+  /**
+   * Same per-type validation {@link #validateSourceConfiguration} applies at creation, reused for
+   * {@link #updateLibrary} (issue #476, review finding 4): passwordrotation or moving a crawl
+   * target must not force deleting and recreating the library, so the typed configuration fields
+   * stay updatable even though {@code sourceType} itself never is. {@code sourceType} is always the
+   * library's own, already-immutable value - never taken from the update request - so a caller
+   * cannot use this path to smuggle in a type change.
+   */
+  private SourceConfiguration validateSourceConfigurationForUpdate(
+      DocumentSourceType sourceType, LibraryUpdateRequest request) {
+    String sourcePath = blankToNull(request.getSourcePath());
+    String sourceUrl =
+        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
+    String sourceProxy = blankToNull(request.getSourceProxy());
+    String sourceCredentials = blankToNull(request.getSourceCredentials());
+    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
+
+    validateConfigurationForType(
+        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+    return new SourceConfiguration(
+        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  /**
+   * The type-bound half of {@code chk_knowledge_libraries_source_configuration} (migration 027),
+   * enforced here as a 400 before the insert/update ever reaches the database. {@code RSS_FEED}
+   * (#474) is deliberately handled like {@code HTTP_DIRECTORY} - both are run-based, URL-fetched
+   * source types (ADR-0018/{@code IndexingSourceType}) with the identical configuration shape. The
+   * {@code default} branch is a deliberate fallback for a {@link DocumentSourceType} value this
+   * method has not been taught yet: without it, a future enum constant would fall through
+   * unvalidated, hit the database's CHECK constraint instead, and surface as an unhandled 500 whose
+   * Postgres error text includes the failing row (and thus {@code source_credentials}) - exactly
+   * what ADR-0018, Entscheidung 4 rules out.
+   */
+  private void validateConfigurationForType(
+      DocumentSourceType sourceType,
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
     switch (sourceType) {
       case UPLOAD -> {
         if (sourcePath != null
@@ -642,6 +726,10 @@ public class KnowledgeLibraryService {
               HttpStatus.BAD_REQUEST,
               "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
         }
+        if (!sourcePath.startsWith("/")) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "sourcePath muss ein absoluter Pfad sein");
+        }
         if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
@@ -654,21 +742,38 @@ public class KnowledgeLibraryService {
               "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
         }
       }
-      case HTTP_DIRECTORY -> {
-        if (sourceUrl == null) {
+      case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
+      case RSS_FEED -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
+      default ->
           throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "sourceUrl ist erforderlich, wenn sourceType HTTP_DIRECTORY ist");
-        }
-        if (sourcePath != null) {
-          throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "sourcePath ist fuer sourceType HTTP_DIRECTORY nicht zulaessig");
-        }
-      }
+              HttpStatus.BAD_REQUEST, "sourceType " + sourceType + " wird nicht unterstuetzt");
     }
-    return new SourceConfiguration(
-        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  /** Shared by {@code HTTP_DIRECTORY} and {@code RSS_FEED} (#474) - both carry sourceUrl only. */
+  private void validateUrlBasedConfiguration(
+      DocumentSourceType sourceType, String sourcePath, String sourceUrl) {
+    if (sourceUrl == null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourceUrl ist erforderlich, wenn sourceType " + sourceType + " ist");
+    }
+    if (sourcePath != null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourcePath ist fuer sourceType " + sourceType + " nicht zulaessig");
+    }
+    URI uri;
+    try {
+      uri = URI.create(sourceUrl);
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gueltige URL");
+    }
+    String scheme = uri.getScheme();
+    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "sourceUrl muss mit http:// oder https:// beginnen");
+    }
   }
 
   private String blankToNull(String value) {
@@ -764,7 +869,7 @@ public class KnowledgeLibraryService {
         .ownerId(library.getOwnerId())
         .documentCount(documentRepository.countByLibraryId(library.getId()))
         .sourcePath(library.getSourcePath())
-        .sourceUrl(library.getSourceUrl())
+        .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
         .sourceProxy(library.getSourceProxy())
         .sourceInsecureSsl(library.isSourceInsecureSsl());
   }

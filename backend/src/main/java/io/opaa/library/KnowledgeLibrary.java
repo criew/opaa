@@ -90,10 +90,13 @@ public class KnowledgeLibrary {
    * {@link KnowledgeLibraryService#updateLibrary}, which rejects a request that names a different
    * one). {@code UPLOAD} carries no {@link #sourcePath}/{@link #sourceUrl}/{@link
    * #sourceProxy}/{@link #sourceCredentials}, {@code FILESYSTEM} carries {@link #sourcePath} only,
-   * {@code HTTP_DIRECTORY} carries {@link #sourceUrl} (optionally {@link #sourceProxy}, {@link
-   * #sourceCredentials}, {@link #sourceInsecureSsl}) - enforced both by {@code
-   * KnowledgeLibraryService#validateSourceConfiguration} and by the database ({@code
-   * chk_knowledge_libraries_source_configuration}, migration 024).
+   * {@code HTTP_DIRECTORY} and {@code RSS_FEED} both carry {@link #sourceUrl} (optionally {@link
+   * #sourceProxy}, {@link #sourceCredentials}, {@link #sourceInsecureSsl}) - enforced both by
+   * {@code KnowledgeLibraryService#validateSourceConfiguration} and by the database ({@code
+   * chk_knowledge_libraries_source_configuration}, migration 027). The typed <em>configuration</em>
+   * (as opposed to the type itself) can still change after creation, via {@link
+   * #updateSourceConfiguration} - e.g. rotating {@link #sourceCredentials} or moving a crawl target
+   * does not require deleting and recreating the library.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type", nullable = false, length = 20)
@@ -165,7 +168,7 @@ public class KnowledgeLibrary {
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
    * DocumentSourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 has
-   * after migration 024's backfill.
+   * after migration 027's backfill.
    */
   public static KnowledgeLibrary ownedByUser(
       UUID organizationId,
@@ -301,6 +304,26 @@ public class KnowledgeLibrary {
       this.visibility = visibility;
     }
     this.listed = listed;
+  }
+
+  /**
+   * Replaces the typed source configuration in place, {@link #sourceType} itself never changing
+   * (that immutability is enforced by {@link KnowledgeLibraryService#updateLibrary}, not here).
+   * Lets a caller rotate {@link #sourceCredentials} or move a crawl target ({@link #sourcePath}/
+   * {@link #sourceUrl}) without deleting and recreating the library - the configuration, unlike the
+   * quellentyp, is not itself part of ADR-0018's "gewaehlt einmal, permanent" rule.
+   */
+  public void updateSourceConfiguration(
+      String sourcePath,
+      String sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      boolean sourceInsecureSsl) {
+    this.sourcePath = sourcePath;
+    this.sourceUrl = sourceUrl;
+    this.sourceProxy = sourceProxy;
+    this.sourceCredentials = sourceCredentials;
+    this.sourceInsecureSsl = sourceInsecureSsl;
   }
 
   public boolean isOwnedByUser(UUID userId) {

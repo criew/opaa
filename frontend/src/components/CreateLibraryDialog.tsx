@@ -90,6 +90,11 @@ export default function CreateLibraryDialog({
         description: description.trim() || undefined,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
+        // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveränderlich. Eine
+        // Auswahl des Quellentyps im Dialog folgt in #480 - bis dahin legt dieser Dialog
+        // ausschließlich Upload-Bibliotheken an, die keine Quellkonfiguration tragen.
+        sourceType: 'UPLOAD',
+        sourceInsecureSsl: false,
       })
       setName('')
       setDescription('')
