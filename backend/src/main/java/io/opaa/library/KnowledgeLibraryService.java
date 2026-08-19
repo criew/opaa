@@ -18,6 +18,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -89,6 +90,7 @@ public class KnowledgeLibraryService {
   private final AuditEventRecorder auditEventRecorder;
   private final VectorStore vectorStore;
   private final TransactionTemplate requiresNewTransactionTemplate;
+  private final FilesystemPathAllowlist filesystemAllowlist;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -101,7 +103,8 @@ public class KnowledgeLibraryService {
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorStore vectorStore,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      FilesystemPathAllowlist filesystemAllowlist) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -115,6 +118,7 @@ public class KnowledgeLibraryService {
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.filesystemAllowlist = filesystemAllowlist;
   }
 
   @Transactional
@@ -767,6 +771,23 @@ public class KnowledgeLibraryService {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
               "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
+        }
+        // #484/ADR-0018 Entscheidung 6: the actual security boundary for FILESYSTEM - anlage-recht
+        // alone no longer gates which sourcePath a caller may configure, the operator-controlled
+        // allowlist does. An empty allowlist (the default) disables FILESYSTEM entirely rather than
+        // defaulting to "everything allowed", so this check fires before - and independent of -
+        // whether sourcePath itself is inside it.
+        if (!filesystemAllowlist.isConfigured()) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse fuer"
+                  + " Dateisystem-Bibliotheken freigegeben");
+        }
+        if (!filesystemAllowlist.isAllowed(sourcePath)) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST,
+              "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
+                  + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
         }
       }
       case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);

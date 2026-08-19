@@ -51,6 +51,9 @@ class OpenAiIntegrationTest {
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> tempDir.toAbsolutePath().toString());
+    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
+    // inside the allowlist.
+    registry.add("opaa.indexing.filesystem-allowlist", () -> tempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 200);
     registry.add("opaa.indexing.batch-size", () -> 10);
     registry.add("opaa.indexing.retry-attempts", () -> 1);

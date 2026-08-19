@@ -22,14 +22,17 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentService documentService;
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
+  private final FilesystemPathAllowlist filesystemAllowlist;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService) {
+      IndexingJobService indexingJobService,
+      FilesystemPathAllowlist filesystemAllowlist) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
+    this.filesystemAllowlist = filesystemAllowlist;
   }
 
   @Override
@@ -41,6 +44,24 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
+
+    // #484/ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update
+    // time - the operator-configured allowlist can be narrowed after a FILESYSTEM library was
+    // created, and a Bestandsbibliothek whose sourcePath has since fallen outside it must not run
+    // just because it once passed validation. The job is started (see DocumentIndexingService)
+    // before this executor ever runs, so rejecting it here means the job, not the trigger,
+    // FAILED.
+    if (!filesystemAllowlist.isAllowed(targetLibrary.getSourcePath())) {
+      log.warn(
+          "Refusing to index library {}: sourcePath {} is outside the configured filesystem"
+              + " allowlist",
+          targetLibrary.getId(),
+          targetLibrary.getSourcePath());
+      progress.fail(
+          "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse - der Lauf"
+              + " wurde nicht gestartet");
+      return;
+    }
 
     try {
       Path documentDir = Path.of(targetLibrary.getSourcePath());

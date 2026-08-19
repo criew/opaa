@@ -105,6 +105,10 @@ opaa:
       attachment-profile: ${OPAA_INDEXING_RSS_ATTACHMENT_PROFILE:GENERIC}
       max-attachments-per-entry: ${OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY:10}
       max-attachment-size-bytes: ${OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES:20971520}
+    # #484/ADR-0018 Entscheidung 6: absolute base directories a FILESYSTEM library's sourcePath
+    # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
+    # quellentyp entirely, the safe default for a fresh installation.
+    filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
@@ -206,6 +210,14 @@ opaa:
         - subject: dev-user
           email: dev-user@opaa.local
           display-name: Dev User
+  indexing:
+    # #484: the dev profile (also active for the backend test suite, see AGENTS.md) opens /data and
+    # /tmp so existing FILESYSTEM fixtures (literal "/data/documents"/"/tmp/..." sourcePaths in
+    # KnowledgeLibraryServiceIntegrationTest et al.) keep working without every test wiring its own
+    # allowlist. Tests that need a genuinely different allowlist (e.g. an empty one, to exercise the
+    # "FILESYSTEM disabled" path, or a @TempDir outside /tmp) override
+    # opaa.indexing.filesystem-allowlist via @DynamicPropertySource.
+    filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:/data,/tmp}
   security:
     credentials:
       # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known 32-byte AES key so bootRun and

@@ -416,6 +416,63 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void createLibraryRejectsAFilesystemSourceTypeWithAPathOutsideTheAllowlist() {
+    // #484/ADR-0018 Entscheidung 6: the test suite's dev-profile allowlist (application.yml) is
+    // /data,/tmp - a path outside both must be rejected even though it is a perfectly valid
+    // absolute path.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/etc/shadow");
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void createLibraryRejectsAFilesystemSourceTypeWithATraversalPathThatEscapesTheAllowlist() {
+    // #484: sourcePath is normalised (Path.normalize()) before the allowlist check, so a "../"
+    // segment cannot lexically escape an allowed base directory - /data/../etc/shadow normalises
+    // to /etc/shadow, outside both configured base directories (/data, /tmp).
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/../etc/shadow");
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void updateLibraryRejectsAFilesystemSourcePathOutsideTheAllowlist() {
+    // #484: the allowlist is enforced again on update, not only at creation - moving an existing
+    // FILESYSTEM library's crawl target to a path outside the allowlist must fail exactly like
+    // choosing that path at creation would have.
+    UUID owner = createUser(organizationA);
+    LibraryResponse created =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents"),
+            owner);
+
+    LibraryUpdateRequest update = new LibraryUpdateRequest("Verzeichnis").sourcePath("/etc/shadow");
+
+    assertThatThrownBy(() -> libraryService.updateLibrary(created.getId(), update, owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
   void createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials() {
     // Abnahmekriterium: Zugangsdaten tauchen in keiner API-Antwort auf (ADR-0018, Entscheidung 4).
     UUID owner = createUser(organizationA);

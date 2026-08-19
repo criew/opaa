@@ -15,6 +15,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,10 @@ class KnowledgeLibraryServiceTest {
     VectorStore vectorStore = mock(VectorStore.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
+    // Not exercised by any test in this class - only ensurePersonalLibrary is under test here,
+    // which never reaches the FILESYSTEM allowlist check (see
+    // KnowledgeLibraryServiceIntegrationTest for that).
+    FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     libraryService =
         new KnowledgeLibraryService(
             libraryRepository,
@@ -68,7 +73,8 @@ class KnowledgeLibraryServiceTest {
             permissionHistoryService,
             auditEventRecorder,
             vectorStore,
-            transactionManager);
+            transactionManager,
+            filesystemAllowlist);
   }
 
   @Test

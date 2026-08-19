@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -26,6 +27,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param rss settings governing {@link IndexingSourceType#RSS_FEED} runs (#467) - obergrenzen and
  *     politeness settings the executor must apply against feed operators it does not control (see
  *     {@link Rss}'s own Javadoc).
+ * @param filesystemAllowlist absolute base directories a {@code FILESYSTEM} library's {@code
+ *     sourcePath} must resolve underneath (#484, ADR-0018 Entscheidung 6). Every path with
+ *     anlage-recht may still choose {@code FILESYSTEM} as a quellentyp - this is the actual
+ *     security boundary: a caller-chosen path outside every configured base directory is rejected,
+ *     and an <b>empty allowlist (the default) disables the FILESYSTEM quellentyp entirely</b>
+ *     rather than defaulting to "everything allowed". Checked by {@link FilesystemPathAllowlist},
+ *     both at library creation/update time ({@code KnowledgeLibraryService}) and again at run time
+ *     ({@link AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was
+ *     created. Bound from a comma-separated environment variable ({@code
+ *     OPAA_INDEXING_FILESYSTEM_ALLOWLIST}) like any other {@code List<String>} property.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -35,7 +46,8 @@ public record IndexingProperties(
     int batchSize,
     int retryAttempts,
     ThreadPool threadPool,
-    Rss rss) {
+    Rss rss,
+    List<String> filesystemAllowlist) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -77,6 +89,9 @@ public record IndexingProperties(
     }
     if (rss == null) {
       rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, null, 0, 0L);
+    }
+    if (filesystemAllowlist == null) {
+      filesystemAllowlist = List.of();
     }
   }
 
