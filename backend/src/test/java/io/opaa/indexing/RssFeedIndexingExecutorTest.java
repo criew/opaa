@@ -177,7 +177,7 @@ class RssFeedIndexingExecutorTest {
             eq(baseUrl + "/b.html"),
             any(),
             eq(library));
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
   }
 
   @Test
@@ -240,7 +240,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), eq(baseUrl + "/doc.pdf"), any(), any());
   }
@@ -264,7 +264,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     assertThat(detailPageHits.get()).isZero();
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), anyString(), any(), any());
@@ -290,7 +290,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     assertThat(ifNoneMatch.get()).isEqualTo("\"abc123\"");
     assertThat(ifModifiedSince.get()).isEqualTo("Mon, 01 Jan 2024 00:00:00 GMT");
   }
@@ -317,7 +317,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     assertThat(detailPageHits.get()).isZero();
   }
 
@@ -368,6 +368,9 @@ class RssFeedIndexingExecutorTest {
     // The entry's own main text was never reprocessed - only its attachment was backfilled.
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), eq(baseUrl + "/a.html"), any(), any());
+    // #518: the backfilled attachment still adds to documentsIndexedTotal even though the entry
+    // itself counts as skipped (unchanged), not processed.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(1));
   }
 
   @Test
@@ -407,7 +410,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
   }
 
   @Test
@@ -425,7 +428,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
   }
 
   @Test
@@ -434,7 +437,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), anyString(), any(), any());
   }
@@ -462,7 +465,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), anyString(), any(), any());
   }
@@ -504,7 +507,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(feedStateRepository, never()).save(any());
   }
 
@@ -521,7 +524,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(feedStateRepository, never()).save(any());
   }
 
@@ -535,7 +538,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(feedStateRepository, timeout(2000))
         .save(argThat(state -> "\"etag-success\"".equals(state.getEtag())));
   }
@@ -579,6 +582,53 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"));
+    // #518: documentsIndexedTotal counts the entry's own document plus its attachment (2), while
+    // documentsProcessed still counts only the one feed entry.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(2));
+  }
+
+  @Test
+  void anEntryWithMultipleAttachmentsIncreasesTheDocumentCounterForEachAttachment()
+      throws IOException {
+    // #518 acceptance criteria: a feed entry carrying several attachments must increase the
+    // document counter (documentsIndexedTotal) by one for every attachment indexed, not just for
+    // the entry itself - documentsProcessed stays at one feed entry regardless of how many
+    // attachments it carries.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/erste.pdf\">Erste</a>"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/zweite.pdf\">Zweite</a>"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/dritte.pdf\">Dritte</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    serveBytes(
+        "/downloads/erste.pdf", 200, "application/pdf", "erste".getBytes(StandardCharsets.UTF_8));
+    serveBytes(
+        "/downloads/zweite.pdf", 200, "application/pdf", "zweite".getBytes(StandardCharsets.UTF_8));
+    serveBytes(
+        "/downloads/dritte.pdf", 200, "application/pdf", "dritte".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    // One feed entry processed, but four documents indexed in total: the entry's own document
+    // plus its three attachments.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(4));
   }
 
   @Test
@@ -598,7 +648,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
   }
@@ -762,7 +812,7 @@ class RssFeedIndexingExecutorTest {
     execute(baseUrl + "/feed.xml");
 
     // The entry itself still counts as processed - only the attachment failed.
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
     // #492 review, finding 2: a lost attachment must defer the feed's ETag persistence the same
@@ -794,7 +844,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
     verify(feedStateRepository, never()).save(any());
@@ -876,7 +926,7 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
   }
@@ -925,7 +975,7 @@ class RssFeedIndexingExecutorTest {
 
       execute(baseUrl + "/feed.xml");
 
-      verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0));
+      verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
       verify(fileProcessingService, never())
           .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
     } finally {

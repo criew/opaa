@@ -17,6 +17,16 @@ final class IndexingRunProgress {
   private int failed;
   private int skipped;
 
+  /**
+   * The true count of documents indexed so far (#518) - distinct from {@code processed}, which on
+   * an RSS_FEED run counts feed entries, not documents: an entry's own document and every
+   * attachment indexed for it (#468) each add to this count, while only the entry itself adds to
+   * {@code processed}. {@link #recordProcessed} increments both (an entry has exactly one document
+   * of its own); {@link #recordDocumentIndexed} increments only this one, for an attachment
+   * document that has no processed/skipped/failed outcome of its own to record.
+   */
+  private int documentsIndexedTotal;
+
   IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
     this.jobId = jobId;
@@ -33,6 +43,18 @@ final class IndexingRunProgress {
 
   void recordProcessed() {
     processed++;
+    documentsIndexedTotal++;
+  }
+
+  /**
+   * Records an additional document indexed beyond the current entry itself - an RSS attachment
+   * (#468, #518). A failed attachment must never call this: {@link
+   * RssFeedIndexingExecutor#processAttachment} only reaches the {@code
+   * fileProcessingService.processUrlFile} call - and therefore this method - once the attachment
+   * download and format checks it guards have all succeeded.
+   */
+  void recordDocumentIndexed() {
+    documentsIndexedTotal++;
   }
 
   void recordFailed() {
@@ -54,11 +76,11 @@ final class IndexingRunProgress {
 
   /** Reports the current counters. Callers decide when a report is due, exactly as before. */
   void report() {
-    indexingJobService.updateProgress(jobId, processed, failed, skipped);
+    indexingJobService.updateProgress(jobId, processed, failed, skipped, documentsIndexedTotal);
   }
 
   void complete() {
-    indexingJobService.completeJob(jobId, processed, failed, skipped);
+    indexingJobService.completeJob(jobId, processed, failed, skipped, documentsIndexedTotal);
   }
 
   void fail(String message) {

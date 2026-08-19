@@ -31,6 +31,18 @@ public class IndexingJob {
   @Column(name = "documents_skipped")
   private int documentsSkipped;
 
+  /**
+   * The true count of documents indexed by this run (#518) - equals {@code documentsProcessed} for
+   * FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but exceeds it for
+   * an RSS_FEED run whose entries carry attachments (#468): every attachment indexed for an entry -
+   * including one backfilled for an otherwise-unchanged entry - adds to this count without adding
+   * another processed entry. {@link IndexingRunProgress#recordProcessed} increments this alongside
+   * {@code documentsProcessed}; {@link IndexingRunProgress#recordDocumentIndexed} increments only
+   * this one, for a document that has no processed/skipped/failed outcome of its own.
+   */
+  @Column(name = "documents_indexed_total")
+  private int documentsIndexedTotal;
+
   @Column(name = "started_at", nullable = false, updatable = false)
   private Instant startedAt;
 
@@ -100,6 +112,14 @@ public class IndexingJob {
 
   public void setDocumentsSkipped(int documentsSkipped) {
     this.documentsSkipped = documentsSkipped;
+  }
+
+  public int getDocumentsIndexedTotal() {
+    return documentsIndexedTotal;
+  }
+
+  public void setDocumentsIndexedTotal(int documentsIndexedTotal) {
+    this.documentsIndexedTotal = documentsIndexedTotal;
   }
 
   public Instant getStartedAt() {

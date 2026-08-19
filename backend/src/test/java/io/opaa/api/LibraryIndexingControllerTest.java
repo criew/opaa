@@ -182,6 +182,10 @@ class LibraryIndexingControllerTest {
     job.setDocumentsFailed(1);
     job.setDocumentsSkipped(5);
     job.setDocumentsTotal(16);
+    // #518: an RSS_FEED run's documentsIndexedTotal (here: entries plus their attachments) can
+    // exceed documentsProcessed (feed entries alone) - distinct values below prove the response
+    // actually carries the new field rather than aliasing documentCount.
+    job.setDocumentsIndexedTotal(23);
     job.setCompletedAt(Instant.now());
     when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenReturn(Optional.of(job));
@@ -192,6 +196,7 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.status").value("COMPLETED"))
         .andExpect(jsonPath("$.documentCount").value(10))
         .andExpect(jsonPath("$.documentsSkipped").value(5))
+        .andExpect(jsonPath("$.documentsIndexedTotal").value(23))
         .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")));
   }
 

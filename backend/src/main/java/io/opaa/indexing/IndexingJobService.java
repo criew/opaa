@@ -46,7 +46,11 @@ public class IndexingJobService {
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(
-      UUID jobId, int documentsProcessed, int documentsFailed, int documentsSkipped) {
+      UUID jobId,
+      int documentsProcessed,
+      int documentsFailed,
+      int documentsSkipped,
+      int documentsIndexedTotal) {
     var job =
         indexingJobRepository
             .findById(jobId)
@@ -55,6 +59,7 @@ public class IndexingJobService {
     job.setDocumentsProcessed(documentsProcessed);
     job.setDocumentsFailed(documentsFailed);
     job.setDocumentsSkipped(documentsSkipped);
+    job.setDocumentsIndexedTotal(documentsIndexedTotal);
     job.setCompletedAt(Instant.now());
     indexingJobRepository.save(job);
   }
@@ -83,7 +88,11 @@ public class IndexingJobService {
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(
-      UUID jobId, int documentsProcessed, int documentsFailed, int documentsSkipped) {
+      UUID jobId,
+      int documentsProcessed,
+      int documentsFailed,
+      int documentsSkipped,
+      int documentsIndexedTotal) {
     var job =
         indexingJobRepository
             .findById(jobId)
@@ -91,6 +100,7 @@ public class IndexingJobService {
     job.setDocumentsProcessed(documentsProcessed);
     job.setDocumentsFailed(documentsFailed);
     job.setDocumentsSkipped(documentsSkipped);
+    job.setDocumentsIndexedTotal(documentsIndexedTotal);
     indexingJobRepository.save(job);
   }
 

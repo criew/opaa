@@ -31,6 +31,10 @@ interface IndexingRunState {
   documentCount: number
   totalDocuments: number
   documentsSkipped: number
+  // #518: the true count of indexed documents, including RSS attachments - equals documentCount
+  // for FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but can
+  // exceed it for an RSS_FEED run whose entries carry attachments.
+  documentsIndexedTotal: number
   message: string | null
   timestamp: string | null
   isPolling: boolean
@@ -41,6 +45,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   documentCount: 0,
   totalDocuments: 0,
   documentsSkipped: 0,
+  documentsIndexedTotal: 0,
   message: null,
   timestamp: null,
   isPolling: false,
@@ -57,6 +62,28 @@ interface IndexingState {
 }
 
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
+
+/**
+ * Formats a completed run's counts for the completion snackbar (#518). documentsIndexedTotal only
+ * diverges from documentCount on an RSS_FEED run whose entries carry attachments - a
+ * FILESYSTEM/HTTP_DIRECTORY run, where one processed file is exactly one document, always has the
+ * two equal, so it keeps the original, shorter wording unchanged.
+ */
+function formatCompletionMessage(response: {
+  documentCount: number
+  totalDocuments: number
+  documentsSkipped: number
+  documentsIndexedTotal: number
+}): string {
+  if (response.documentsIndexedTotal !== response.documentCount) {
+    return (
+      `Indizierung abgeschlossen: ${response.totalDocuments} Feed-Einträge, ` +
+      `${response.documentsSkipped} übersprungen, ${response.documentCount} indiziert ` +
+      `(${response.documentsIndexedTotal} Dokumente insgesamt)`
+    )
+  }
+  return `Indizierung abgeschlossen: ${response.documentCount} verarbeitet, ${response.documentsSkipped} übersprungen`
+}
 
 function setRun(
   libraryId: string,
@@ -86,6 +113,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
         },
@@ -121,6 +149,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
         },
@@ -166,6 +195,7 @@ function startPolling(
           documentCount: response.documentCount,
           totalDocuments: response.totalDocuments,
           documentsSkipped: response.documentsSkipped,
+          documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
         },
@@ -180,7 +210,7 @@ function startPolling(
             open: true,
             message:
               response.status === 'COMPLETED'
-                ? `Indizierung abgeschlossen: ${response.documentCount} verarbeitet, ${response.documentsSkipped} übersprungen`
+                ? formatCompletionMessage(response)
                 : (response.message ?? 'Indizierung fehlgeschlagen'),
             severity: response.status === 'COMPLETED' ? 'success' : 'error',
           },

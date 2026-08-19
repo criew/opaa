@@ -619,7 +619,18 @@ interface LibraryIndexingSectionProps {
 
 function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndexingSectionProps) {
   const run = useIndexingStore((s) => s.runsByLibrary[libraryId] ?? IDLE_RUN_STATE)
-  const { status, documentCount, totalDocuments, documentsSkipped, timestamp } = run
+  const {
+    status,
+    documentCount,
+    totalDocuments,
+    documentsSkipped,
+    documentsIndexedTotal,
+    timestamp,
+  } = run
+  // #518: an RSS_FEED run's documentsIndexedTotal (entries plus their attachments) can exceed
+  // documentCount (feed entries alone) - a FILESYSTEM/HTTP_DIRECTORY run, where one processed file
+  // is exactly one document, always has the two equal, so its display stays unchanged.
+  const showsSeparateDocumentTotal = documentsIndexedTotal !== documentCount
   const trigger = useIndexingStore((s) => s.triggerIndexing)
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
@@ -705,8 +716,9 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
                 Letzter Lauf: {status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Dokumente: {documentCount} verarbeitet
-                {documentsSkipped > 0 && ` (${documentsSkipped} übersprungen)`}
+                {showsSeparateDocumentTotal
+                  ? `${totalDocuments} Feed-Einträge, ${documentsSkipped} übersprungen, ${documentCount} indiziert (${documentsIndexedTotal} Dokumente insgesamt)`
+                  : `Dokumente: ${documentCount} verarbeitet${documentsSkipped > 0 ? ` (${documentsSkipped} übersprungen)` : ''}`}
               </Typography>
               {timestamp && (
                 <Typography variant="caption" color="text.secondary">

@@ -18,6 +18,7 @@ function runningStatus(overrides: Partial<IndexingStatusResponse> = {}): Indexin
     documentCount: 1,
     totalDocuments: 5,
     documentsSkipped: 0,
+    documentsIndexedTotal: 1,
     message: null,
     timestamp: '2026-03-01T10:00:00Z',
     ...overrides,
@@ -132,5 +133,52 @@ describe('indexingStore', () => {
     await vi.advanceTimersByTimeAsync(2000)
     expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-a')
     expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-b')
+  })
+
+  it('shows the extended RSS message with entries and document total when attachments were indexed', async () => {
+    // #518: documentsIndexedTotal (39) exceeds documentCount (13) once RSS attachments are counted
+    // - the completion snackbar must name both, not just the one FILESYSTEM/HTTP_DIRECTORY has
+    // always shown.
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a')
+
+    mockGetIndexingStatus.mockResolvedValueOnce(
+      runningStatus({
+        status: 'COMPLETED',
+        documentCount: 13,
+        totalDocuments: 18,
+        documentsSkipped: 5,
+        documentsIndexedTotal: 39,
+      }),
+    )
+    await vi.advanceTimersByTimeAsync(2000)
+
+    expect(useIndexingStore.getState().snackbar.message).toBe(
+      'Indizierung abgeschlossen: 18 Feed-Einträge, 5 übersprungen, 13 indiziert (39 Dokumente insgesamt)',
+    )
+  })
+
+  it('keeps the original short message when documentsIndexedTotal equals documentCount', async () => {
+    // FILESYSTEM/HTTP_DIRECTORY runs: one processed file is exactly one document, so the display
+    // must stay unchanged (#518 acceptance criteria).
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a')
+
+    mockGetIndexingStatus.mockResolvedValueOnce(
+      runningStatus({
+        status: 'COMPLETED',
+        documentCount: 10,
+        totalDocuments: 12,
+        documentsSkipped: 2,
+        documentsIndexedTotal: 10,
+      }),
+    )
+    await vi.advanceTimersByTimeAsync(2000)
+
+    expect(useIndexingStore.getState().snackbar.message).toBe(
+      'Indizierung abgeschlossen: 10 verarbeitet, 2 übersprungen',
+    )
   })
 })
