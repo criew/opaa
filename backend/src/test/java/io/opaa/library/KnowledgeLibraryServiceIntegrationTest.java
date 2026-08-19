@@ -652,28 +652,59 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThem() {
+  void
+      updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThemAndTheOriginIsUnchanged() {
     // Issue #516: sourceCredentials is write-only (never returned by any API response,
-    // ADR-0018), so a client editing e.g. only sourceUrl through a UI dialog has no value it
-    // could resend even if it wanted to. Omitting the field must not be indistinguishable from
-    // "clear the credential" the way it would be for a plain full-object replace.
+    // ADR-0018), so a client editing e.g. only the path portion of sourceUrl through a UI dialog
+    // has no value it could resend even if it wanted to. Omitting the field must not be
+    // indistinguishable from "clear the credential" the way it would be for a plain full-object
+    // replace - as long as the request still names the same origin (PR #542 review finding 1;
+    // see the sibling test below for a host change, which must drop the credential instead).
     UUID owner = createUser(organizationA);
     LibraryResponse library =
         libraryService.createLibrary(
             new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create("https://old.example.com/documents/"))
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
                 .sourceCredentials("admin:old-secret"),
             owner);
 
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Web-Verzeichnis")
-            .sourceUrl(URI.create("https://new.example.com/documents/"));
+            .sourceUrl(URI.create("https://files.example.com/other-documents/"));
 
     LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
 
-    assertThat(updated.getSourceUrl()).isEqualTo(URI.create("https://new.example.com/documents/"));
+    assertThat(updated.getSourceUrl())
+        .isEqualTo(URI.create("https://files.example.com/other-documents/"));
     KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
     assertThat(stored.getSourceCredentials()).isEqualTo("admin:old-secret");
+  }
+
+  @Test
+  void updateLibraryDropsStoredCredentialsWhenSourceUrlMovesToADifferentHost() {
+    // PR #542 review finding 1: without this, a MANAGER who does not know a configured
+    // credential could redirect it to a host they control by pointing sourceUrl at their own
+    // server and leaving the credentials field blank - AutoindexCrawlerService sends the stored
+    // Authorization header preemptively on the very first request, so the attacker's server would
+    // receive the credential in plaintext without ever needing to know it.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://internal.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://attacker.example.com/documents/"));
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSourceUrl())
+        .isEqualTo(URI.create("https://attacker.example.com/documents/"));
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.getSourceCredentials()).isNull();
   }
 
   @Test

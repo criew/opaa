@@ -2242,6 +2242,14 @@ components:
             Set only for sourceType HTTP_DIRECTORY or RSS_FEED. sourceCredentials is
             deliberately absent from this response (ADR-0018) - it is a write-only field of
             LibraryRequest and appears in no API response.
+        sourceCredentialsSet:
+          type: boolean
+          description: >
+            Whether a credential is currently stored for this library - never the credential
+            itself (ADR-0018). Only meaningful for sourceType HTTP_DIRECTORY or RSS_FEED; always
+            false otherwise. Lets a client (e.g. the source configuration edit dialog) phrase an
+            accurate "leave blank to keep the current credential" hint only when one actually
+            exists, instead of implying one is configured when none is.
         createdAt:
           type: string
           format: date-time

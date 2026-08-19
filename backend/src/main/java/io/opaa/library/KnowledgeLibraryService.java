@@ -703,13 +703,21 @@ public class KnowledgeLibraryService {
    * cannot use this path to smuggle in a type change.
    *
    * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
-   * request omits it (issue #516): credentials are write-only (never returned by any API response,
-   * ADR-0018), so a client editing e.g. only {@code sourceUrl} has no value it could resend even if
-   * it wanted to. Without this fallback, replacing any other configuration field would silently
-   * wipe an unrelated, previously configured credential. There is deliberately no way to explicitly
-   * clear a stored credential through this request - moving a URL-based source back to "no
-   * credentials" is not a use case any acceptance criterion asks for, and blank input is
-   * indistinguishable from "leave unchanged" by design.
+   * request omits it <em>and</em> the new {@code sourceUrl} still names the same origin (scheme,
+   * host and port) as the currently stored one (issue #516, PR #542 review finding 1): credentials
+   * are write-only (never returned by any API response, ADR-0018), so a client editing e.g. only
+   * the path portion of {@code sourceUrl} has no value it could resend even if it wanted to, and
+   * without this fallback that edit alone would silently wipe an unrelated, previously configured
+   * credential. The fallback is deliberately restricted to the same origin: {@link
+   * io.opaa.indexing.AutoindexCrawlerService} sends the stored {@code Authorization} header
+   * preemptively on the very first request (RFC 7617 does not require a 401 challenge first), so a
+   * caller who does not know a configured credential could otherwise redirect it to a host they
+   * control simply by changing {@code sourceUrl} and leaving the credentials field blank - turning
+   * "must know the credential" into "can exfiltrate the credential". A host change intentionally
+   * drops the stored credential instead (matching the pre-fallback behaviour of #476), forcing the
+   * caller to re-enter it for the new host. There is deliberately no way to explicitly clear a
+   * stored credential while keeping the same origin - blank input is indistinguishable from "leave
+   * unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
       KnowledgeLibrary library, LibraryUpdateRequest request) {
@@ -719,7 +727,7 @@ public class KnowledgeLibraryService {
         blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     String sourceProxy = blankToNull(request.getSourceProxy());
     String sourceCredentials = blankToNull(request.getSourceCredentials());
-    if (sourceCredentials == null) {
+    if (sourceCredentials == null && sameSourceOrigin(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();
     }
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
@@ -728,6 +736,37 @@ public class KnowledgeLibraryService {
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
     return new SourceConfiguration(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  /**
+   * Whether {@code previousUrl} and {@code nextUrl} name the same origin - scheme, host and
+   * (explicit or scheme-default) port - the boundary the stored-credentials fallback in {@link
+   * #validateSourceConfigurationForUpdate} is restricted to (issue #516, PR #542 review finding 1).
+   * Either URL being {@code null} (FILESYSTEM carries no sourceUrl at all, or the request carries
+   * no sourceUrl of its own) or unparsable is treated conservatively as "different origin" - the
+   * caller then re-requires the credential rather than risking a false positive match.
+   */
+  private boolean sameSourceOrigin(String previousUrl, String nextUrl) {
+    if (previousUrl == null || nextUrl == null) {
+      return false;
+    }
+    try {
+      URI previous = URI.create(previousUrl);
+      URI next = URI.create(nextUrl);
+      return Objects.equals(previous.getScheme(), next.getScheme())
+          && Objects.equals(previous.getHost(), next.getHost())
+          && defaultedPort(previous) == defaultedPort(next);
+    } catch (IllegalArgumentException ex) {
+      return false;
+    }
+  }
+
+  /** Resolves the scheme's default port (http 80, https 443) when a URI carries no explicit one. */
+  private int defaultedPort(URI uri) {
+    if (uri.getPort() != -1) {
+      return uri.getPort();
+    }
+    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 
   /**
@@ -928,7 +967,11 @@ public class KnowledgeLibraryService {
         .sourcePath(library.getSourcePath())
         .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
         .sourceProxy(library.getSourceProxy())
-        .sourceInsecureSsl(library.isSourceInsecureSsl());
+        .sourceInsecureSsl(library.isSourceInsecureSsl())
+        // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
+        // a client phrase an accurate "leave blank to keep the current credential" hint only when
+        // one is actually stored.
+        .sourceCredentialsSet(library.getSourceCredentials() != null);
   }
 
   private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {

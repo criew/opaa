@@ -44,6 +44,12 @@ const httpDirectoryLibrary = {
   sourceUrl: 'https://old.example.com/documents/',
   sourceProxy: 'proxy.old.example.com:8080',
   sourceInsecureSsl: true,
+  sourceCredentialsSet: true,
+}
+
+const httpDirectoryLibraryWithoutCredentials = {
+  ...httpDirectoryLibrary,
+  sourceCredentialsSet: false,
 }
 
 describe('EditLibrarySourceDialog', () => {
@@ -177,7 +183,7 @@ describe('EditLibrarySourceDialog', () => {
     expect(mockUpdateLibrary).not.toHaveBeenCalled()
   })
 
-  it('leaves stored credentials untouched (omits the field) when the credentials input stays blank', async () => {
+  it('leaves stored credentials untouched (omits the field) when only the path changes on the same host', async () => {
     renderWithProviders(
       <EditLibrarySourceDialog
         open
@@ -190,18 +196,58 @@ describe('EditLibrarySourceDialog', () => {
 
     const urlField = await screen.findByLabelText(/adresse \(url\)/i)
     await user.clear(urlField)
-    await user.type(urlField, 'https://new.example.com/documents/')
+    await user.type(urlField, 'https://old.example.com/other-documents/')
     await user.click(screen.getByRole('button', { name: /^speichern$/i }))
 
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith(
         'library-2',
         expect.objectContaining({
-          sourceUrl: 'https://new.example.com/documents/',
+          sourceUrl: 'https://old.example.com/other-documents/',
           sourceCredentials: undefined,
         }),
       )
     })
+  })
+
+  it('shows an accurate hint when no credentials are stored for the source, and never claims otherwise', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-2"
+        library={httpDirectoryLibraryWithoutCredentials}
+      />,
+    )
+
+    expect(await screen.findByText(/aktuell keine zugangsdaten hinterlegt/i)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/leer lassen, um die bestehenden zugangsdaten/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('warns that changing the address to another host discards the stored credentials', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-2"
+        library={httpDirectoryLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+
+    expect(screen.getByText(/leer lassen, um die bestehenden zugangsdaten/i)).toBeInTheDocument()
+
+    const urlField = await screen.findByLabelText(/adresse \(url\)/i)
+    await user.clear(urlField)
+    await user.type(urlField, 'https://attacker.example.com/documents/')
+
+    expect(
+      await screen.findByText(
+        /zeigt auf einen anderen server.*bestehenden zugangsdaten werden dabei verworfen/i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('sends newly entered credentials to replace the stored ones', async () => {

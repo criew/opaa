@@ -144,8 +144,21 @@ Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
 **Quellentyp** — Dateisystem-Verzeichnis, Webverzeichnis, RSS-Feed — und, für diesen
 Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
-Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
-verlangt eine neue Bibliothek.
+**Typ** wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
+verlangt eine neue Bibliothek. Die **Konfiguration** dagegen ist keine reine Anlage-Entscheidung mehr:
+Berechtigte (MANAGER/OWNER, oder ein Systemadministrator ohne eigene Berechtigung) können sie auf der
+Bibliotheks-Detailseite jederzeit bearbeiten (**gebaut, #516**) — etwa um ein Crawl-Ziel zu verschieben
+oder Zugangsdaten zu rotieren, ohne die Bibliothek samt Index löschen und neu anlegen zu müssen. Der
+Dialog übernimmt Felder und Validierungen des Erstellungsdialogs, zeigt bestehende Zugangsdaten nie an
+und weist darauf hin, dass eine Änderung erst mit dem nächsten Indizierungslauf wirkt. Aus
+Zugangsdaten selbst wird beim Speichern eine Bindung an den bisherigen Ursprung: bleiben Schema, Host
+und Port der Adresse unverändert und wird kein neuer Wert eingegeben, bleiben die gespeicherten
+Zugangsdaten erhalten; wandert die Adresse auf einen anderen Host, werden sie verworfen und müssen neu
+eingegeben werden — sonst könnte eine berechtigte Person ohne Kenntnis des Passworts es allein durch
+eine Adressänderung an einen von ihr kontrollierten Server umleiten (`AutoindexCrawlerService` sendet
+den `Authorization`-Header präemptiv, ohne vorherige 401-Aufforderung der Gegenstelle). Ein explizites
+Entfernen hinterlegter Zugangsdaten (Quelle wird auf "keine Authentifizierung" umgestellt) ist über
+diesen Weg bewusst **nicht** möglich — dafür bleibt nur das Löschen und Neuanlegen der Bibliothek.
 
 **Verbindungstest vor dem Anlegen (gebaut, #514).** Im Erstellungsdialog prüft ein „Verbindung
 testen"-Knopf die eingegebene Quellkonfiguration serverseitig, bevor die Bibliothek überhaupt
@@ -718,10 +731,10 @@ Idee wieder aufgemacht werden.
   (ADR-0018, Entscheidung 6) ist diese Frage dringlicher geworden, nicht weniger relevant. Entschieden
   wird das in **Issue #207**.
 - Welche Quellsysteme geben Rechte belastbar genug heraus, dass Option 2 der Spiegelung sich lohnt?
-- Wie werden Zugangsdaten für Quellsysteme **gewechselt**, ohne dass ein Lauf ausfällt? Die Verwahrung
-  selbst ist geklärt — verschlüsselt, write-only, keine Rückgabe in keiner API-Antwort
-  ([ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 4) —, der
-  Wechselweg (Rotation eines kompromittierten oder ablaufenden Zugangs) bleibt offen.
+- **Der Rotationsweg für Zugangsdaten ist geklärt (gebaut, #516):** die Detailseite bearbeitet die
+  Quellkonfiguration einer Bibliothek jederzeit, ohne einen Lauf zu unterbrechen (siehe oben, Abschnitt
+  „Konnektor“). Offen bleibt die davon getrennte Frage, ob und wie sich hinterlegte Zugangsdaten
+  **entfernen** lassen sollen, ohne die Bibliothek neu anzulegen — bislang bewusst nicht vorgesehen.
 - Soll ein Konnektor Dokumente aus dem Quellsystem **zwischenspeichern** dürfen, damit Belegsprünge auch
   bei nicht erreichbarem Quellsystem funktionieren? Das erhöht den Nutzen und zugleich die
   Datenhaltung.

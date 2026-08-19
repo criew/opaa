@@ -12,6 +12,11 @@ import TextField from '@mui/material/TextField'
 import type { DocumentSourceType, LibraryVisibility } from '../types/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import { documentSourceTypeConfigKind } from '../utils/labels'
+import {
+  deriveLibrarySourceConfigPayload,
+  sameLibrarySourceOrigin,
+  validateLibrarySourceFields,
+} from '../utils/librarySourceConfig'
 
 /**
  * Editable snapshot of a connector library's source configuration. Deliberately narrower than
@@ -30,6 +35,9 @@ export interface EditableLibrarySource {
   sourceUrl?: string | null
   sourceProxy?: string | null
   sourceInsecureSsl?: boolean | null
+  // Optional/nullable to tolerate a LibraryResponse fixture that predates #542 finding 3 -
+  // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
+  sourceCredentialsSet?: boolean | null
 }
 
 interface EditLibrarySourceDialogProps {
@@ -46,6 +54,7 @@ export default function EditLibrarySourceDialog({
   library,
 }: EditLibrarySourceDialogProps) {
   const configKind = documentSourceTypeConfigKind[library.sourceType]
+  const credentialsStored = Boolean(library.sourceCredentialsSet)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
 
   // Prefilled once from the library's current, non-secret configuration via useState
@@ -63,28 +72,29 @@ export default function EditLibrarySourceDialog({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // #542 review finding 1: KnowledgeLibraryService only carries a stored credential forward when
+  // the new sourceUrl still names the same origin as the stored one - a host change drops it,
+  // requiring re-entry, so a caller without the credential cannot redirect it to a server they
+  // control. This mirrors that check purely to phrase an accurate hint; the backend re-derives it
+  // from the persisted value and remains the only authoritative check.
+  const originChanged =
+    credentialsStored &&
+    configKind === 'url' &&
+    sourceUrl.trim() !== '' &&
+    !sameLibrarySourceOrigin(library.sourceUrl, sourceUrl)
+
   function handleClose() {
     if (submitting) return
     onClose()
   }
 
   async function handleSave() {
-    const trimmedPath = sourcePath.trim()
-    if (configKind === 'path' && !trimmedPath) {
-      setError('Verzeichnispfad ist erforderlich')
-      return
-    }
-    if (configKind === 'path' && !trimmedPath.startsWith('/')) {
-      setError('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
-      return
-    }
-    const trimmedUrl = sourceUrl.trim()
-    if (configKind === 'url' && !trimmedUrl) {
-      setError('Adresse (URL) ist erforderlich')
-      return
-    }
-    if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
-      setError('Adresse (URL) muss mit http:// oder https:// beginnen')
+    const validationError = validateLibrarySourceFields(library.sourceType, {
+      sourcePath,
+      sourceUrl,
+    })
+    if (validationError) {
+      setError(validationError)
       return
     }
     setError(null)
@@ -99,15 +109,18 @@ export default function EditLibrarySourceDialog({
         description: library.description ?? undefined,
         visibility: library.visibility,
         listed: library.listed,
-        sourcePath: configKind === 'path' ? trimmedPath : undefined,
-        sourceUrl: configKind === 'url' ? trimmedUrl : undefined,
-        sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
-        // Left blank -> undefined -> backend keeps the currently stored credentials unchanged
-        // (KnowledgeLibraryService#validateSourceConfigurationForUpdate, issue #516). Only a
-        // non-empty value here replaces them.
-        sourceCredentials:
-          configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
-        sourceInsecureSsl: configKind === 'url' ? sourceInsecureSsl : false,
+        // Left blank -> sourceCredentials undefined -> backend keeps the currently stored
+        // credentials unchanged, but only if sourceUrl still names the same origin as before;
+        // otherwise it drops them regardless of what is sent here
+        // (KnowledgeLibraryService#validateSourceConfigurationForUpdate, issue #516/#542 finding
+        // 1). Only a non-empty value here ever replaces them outright.
+        ...deriveLibrarySourceConfigPayload(library.sourceType, {
+          sourcePath,
+          sourceUrl,
+          sourceProxy,
+          sourceCredentials,
+          sourceInsecureSsl,
+        }),
       })
       onClose()
     } catch (err) {
@@ -118,6 +131,16 @@ export default function EditLibrarySourceDialog({
       setSubmitting(false)
     }
   }
+
+  // #542 review, nit 3: must not claim a credential exists (or would be discarded by a host
+  // change) when none is actually stored - blankToNull/hasSourceConfigurationFields do not
+  // support removing a stored credential through this request, so credentialsStored can only
+  // ever be widened here, never narrowed by anything the user types into this dialog.
+  const credentialsHelperText = !credentialsStored
+    ? 'Für diese Quelle sind aktuell keine Zugangsdaten hinterlegt. Nur ausfüllen, wenn die Quelle eine Anmeldung verlangt.'
+    : originChanged
+      ? 'Die Adresse zeigt auf einen anderen Server - die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
+      : 'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.'
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -171,7 +194,7 @@ export default function EditLibrarySourceDialog({
                 value={sourceCredentials}
                 onChange={(e) => setSourceCredentials(e.target.value)}
                 placeholder="benutzer:passwort"
-                helperText="Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben."
+                helperText={credentialsHelperText}
                 autoComplete="new-password"
                 slotProps={{ htmlInput: { maxLength: 500 } }}
               />

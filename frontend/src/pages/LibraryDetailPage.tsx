@@ -141,8 +141,9 @@ export default function LibraryDetailPage() {
         listed,
         // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
         // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
-        // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Eine
-        // Oberfläche zum Bearbeiten der Quellkonfiguration ist nicht Teil dieses Tickets.
+        // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
+        // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
+        // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.
         sourceInsecureSsl: null,
       })
       setDraft(null)
@@ -704,6 +705,7 @@ interface LibraryIndexingSectionProps {
     sourceUrl?: string | null
     sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
+    sourceCredentialsSet?: boolean | null
   }
   canTrigger: boolean
   canEditSource: boolean
@@ -754,7 +756,11 @@ function LibraryIndexingSection({
       >
         <Typography variant="subtitle1">Quellkonfiguration</Typography>
         {canEditSource && (
-          <Button size="small" onClick={() => setEditSourceOpen(true)}>
+          <Button
+            size="small"
+            onClick={() => setEditSourceOpen(true)}
+            aria-label="Quellkonfiguration bearbeiten"
+          >
             Bearbeiten
           </Button>
         )}

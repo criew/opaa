@@ -445,7 +445,9 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    expect(await screen.findByRole('button', { name: /^bearbeiten$/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).toBeInTheDocument()
     unmount()
 
     setLibraryState(
@@ -454,7 +456,9 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await screen.findByText(/quellkonfiguration/i)
-    expect(screen.queryByRole('button', { name: /^bearbeiten$/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('edits the source configuration through the dialog, resending the unrelated Stammdaten fields untouched', async () => {
@@ -466,7 +470,9 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /^bearbeiten$/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    )
     const pathField = await screen.findByLabelText(/verzeichnispfad/i)
     await user.clear(pathField)
     await user.type(pathField, '/data/umgezogen')
