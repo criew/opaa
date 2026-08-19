@@ -577,7 +577,6 @@ export const handlers = [
       ownerType,
       visibility: body.visibility ?? 'PRIVATE',
       listed: body.listed ?? false,
-      personal: false,
       myRole: 'OWNER',
       sourceType: body.sourceType,
       documentCount: 0,
@@ -675,17 +674,6 @@ export const handlers = [
       visibility?: LibraryVisibility
       listed?: boolean
     }
-    // Mirrors KnowledgeLibraryService#updateLibrary: the personal library's visibility can never
-    // be ORGANIZATION, since that would expose its owner's private documents to everyone.
-    if (library.personal && body.visibility === 'ORGANIZATION') {
-      return HttpResponse.json(
-        {
-          error:
-            'Die Sichtbarkeit der persoenlichen Bibliothek kann nicht auf ORGANIZATION gesetzt werden',
-        },
-        { status: 400 },
-      )
-    }
     library.name = body.name
     library.description = body.description ?? null
     library.visibility = body.visibility ?? library.visibility
@@ -702,14 +690,6 @@ export const handlers = [
     const library = mockLibraryDetails[libraryId]
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
-    }
-    // Mirrors KnowledgeLibraryService#deleteLibrary: the personal library can never be deleted,
-    // regardless of caller.
-    if (library.personal) {
-      return HttpResponse.json(
-        { error: 'Die persoenliche Bibliothek kann nicht geloescht werden' },
-        { status: 400 },
-      )
     }
     delete mockLibraryDetails[libraryId]
     const idx = mockLibraries.findIndex((item) => item.id === libraryId)
@@ -883,14 +863,6 @@ export const handlers = [
     }
     if (!canManageMockLibraryGrants(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
-    }
-    // Mirrors KnowledgeLibraryService/AssetGrantService#upsertGrant: no grants on the personal
-    // library, which is meant to reach only its owner.
-    if (library.personal) {
-      return HttpResponse.json(
-        { error: 'Auf die persoenliche Bibliothek koennen keine Berechtigungen vergeben werden' },
-        { status: 400 },
-      )
     }
     const body = (await request.json()) as AssetGrantRequest
     if (!body.subjectType || !body.subjectId || !body.role) {

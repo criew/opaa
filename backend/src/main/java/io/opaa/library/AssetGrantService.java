@@ -67,10 +67,8 @@ import org.springframework.web.server.ResponseStatusException;
  * staleness but deadlocked under real concurrency, and settling on a per-library advisory lock plus
  * a plain scalar count (round 3, blocker 2) - see both methods' Javadoc for the full history.
  *
- * <p>Also enforces two narrower rules from the feature spec: a grant can never be created or
- * updated on the automatic personal library (it is meant to reach only its owner, see {@code
- * KnowledgeLibraryService#updateLibrary}'s identical guard against widening its visibility), and a
- * grant can never be created or updated to target a dissolved group ({@code
+ * <p>Also enforces a narrower rule from the feature spec: a grant can never be created or updated
+ * to target a dissolved group ({@code
  * docs/features/spaces-and-assets.md#reorganisation-umbenennung-zusammenlegung}: "bestehende Grants
  * bleiben bestehen ... koennen aber nicht erweitert werden" - existing grants to a group that was
  * dissolved keep working, but no new or updated grant may target it).
@@ -136,14 +134,6 @@ public class AssetGrantService {
     }
     if (request.getRole() == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role ist erforderlich");
-    }
-    // The personal library is meant to reach only its owner (KnowledgeLibraryService#createLibrary
-    // grants that OWNER role directly) - a grant through this API would reopen exactly the leak
-    // KnowledgeLibraryService#updateLibrary already closes for widening its visibility.
-    if (library.isPersonal()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "Auf die persoenliche Bibliothek koennen keine Berechtigungen vergeben werden");
     }
     // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
     // The guard's catch block pseudonymises request.getSubjectId() as the DENIED entry's

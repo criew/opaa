@@ -69,15 +69,6 @@ public class KnowledgeLibrary {
   private boolean listed;
 
   /**
-   * Set only for the automatically created "Meine Dokumente" library that accompanies every user's
-   * personal space (see {@link KnowledgeLibraryService#ensurePersonalLibrary}). Backs the partial
-   * unique index {@code uk_knowledge_libraries_personal_owner} that caps a user at one personal
-   * library, mirroring {@code uk_spaces_personal_owner} (migration 010) for personal spaces.
-   */
-  @Column(name = "personal", nullable = false)
-  private boolean personal;
-
-  /**
    * The library's single quellentyp (ADR-0018) - chosen at creation, never changed afterwards (see
    * {@link KnowledgeLibraryService#updateLibrary}, which rejects a request that names a different
    * one). {@code UPLOAD} carries no {@link #sourcePath}/{@link #sourceUrl}/{@link
@@ -138,7 +129,6 @@ public class KnowledgeLibrary {
       UUID ownerGroupId,
       LibraryVisibility visibility,
       boolean listed,
-      boolean personal,
       DocumentSourceType sourceType,
       String sourcePath,
       String sourceUrl,
@@ -154,7 +144,6 @@ public class KnowledgeLibrary {
     this.ownerGroupId = ownerGroupId;
     this.visibility = visibility;
     this.listed = listed;
-    this.personal = personal;
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
@@ -174,8 +163,7 @@ public class KnowledgeLibrary {
       String description,
       UUID ownerUserId,
       LibraryVisibility visibility,
-      boolean listed,
-      boolean personal) {
+      boolean listed) {
     return ownedByUser(
         organizationId,
         name,
@@ -183,7 +171,6 @@ public class KnowledgeLibrary {
         ownerUserId,
         visibility,
         listed,
-        personal,
         DocumentSourceType.UPLOAD,
         null,
         null,
@@ -199,7 +186,6 @@ public class KnowledgeLibrary {
       UUID ownerUserId,
       LibraryVisibility visibility,
       boolean listed,
-      boolean personal,
       DocumentSourceType sourceType,
       String sourcePath,
       String sourceUrl,
@@ -215,7 +201,6 @@ public class KnowledgeLibrary {
         null,
         visibility,
         listed,
-        personal,
         sourceType,
         sourcePath,
         sourceUrl,
@@ -227,7 +212,7 @@ public class KnowledgeLibrary {
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
    * DocumentSourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
-   * #ownedByUser(UUID, String, String, UUID, LibraryVisibility, boolean, boolean)}.
+   * #ownedByUser(UUID, String, String, UUID, LibraryVisibility, boolean)}.
    */
   public static KnowledgeLibrary ownedByGroup(
       UUID organizationId,
@@ -273,7 +258,6 @@ public class KnowledgeLibrary {
         ownerGroupId,
         visibility,
         listed,
-        false,
         sourceType,
         sourcePath,
         sourceUrl,
@@ -374,10 +358,6 @@ public class KnowledgeLibrary {
 
   public boolean isListed() {
     return listed;
-  }
-
-  public boolean isPersonal() {
-    return personal;
   }
 
   public DocumentSourceType getSourceType() {

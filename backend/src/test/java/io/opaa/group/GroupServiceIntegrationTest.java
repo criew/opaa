@@ -222,7 +222,7 @@ class GroupServiceIntegrationTest {
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationA, "Rechtsquellen", null, owner, LibraryVisibility.PRIVATE, false, false);
+            organizationA, "Rechtsquellen", null, owner, LibraryVisibility.PRIVATE, false);
     KnowledgeLibrary savedLibrary = libraryRepository.save(library);
     AssetGrant grant =
         AssetGrant.forGroup(

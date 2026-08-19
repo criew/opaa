@@ -100,7 +100,6 @@ const managerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'SHARED',
   listed: true,
-  personal: false,
   myRole: 'MANAGER',
   sourceType: 'UPLOAD',
   documentCount: 431,
@@ -115,7 +114,6 @@ const viewerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
-  personal: false,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
   documentCount: 87,
@@ -130,7 +128,6 @@ const personalLibrary: LibraryListResponse = {
   ownerType: 'USER',
   visibility: 'PRIVATE',
   listed: false,
-  personal: true,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
   documentCount: 12,
@@ -215,27 +212,6 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('never offers deleting or sharing the personal library, even for its OWNER', async () => {
-    setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('does not offer ORGANIZATION visibility for the personal library', async () => {
-    setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
-
-    expect(screen.getByRole('option', { name: 'privat' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'geteilt' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'organisationsweit' })).not.toBeInTheDocument()
   })
 
   it('lets a system admin edit and delete a library without an own grant', async () => {

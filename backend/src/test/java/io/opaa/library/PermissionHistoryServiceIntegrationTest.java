@@ -299,15 +299,14 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   @Test
-  void
-      liveReadableLibraryIdsAndTheAsOfReconstructionAgreeForNowIncludingAPersonalLibraryFromEnsurePersonalLibrary() {
+  void liveReadableLibraryIdsAndTheAsOfReconstructionAgreeForNowIncludingTheUsersOwnLibrary() {
     // Code review of #427 (nit 1): the two formulas' central claim is that they agree - not just
     // structurally, but on the same real fixture, at "now". This is also the test that would have
-    // caught finding 2 (ensurePersonalLibrary never historising): before that fix, the personal
-    // library appeared in readableLibraryIds (via its direct grant) but never in
+    // caught finding 2 (a library's own creation never historising): before that fix, a freshly
+    // created library appeared in readableLibraryIds (via its direct OWNER grant) but never in
     // readableLibraryIdsAsOf, so this assertion would have failed.
     UUID user = createUser();
-    libraryService.ensurePersonalLibrary(user, organizationId);
+    UUID ownLibraryId = createLibrary(user);
 
     UUID sharedOwner = createUser();
     UUID sharedLibraryId = createLibrary(sharedOwner);
@@ -344,13 +343,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     assertThat(historized).isEqualTo(live);
     assertThat(historized)
-        .contains(sharedLibraryId, groupLibraryId, orgWideLibraryId)
-        .anyMatch(
-            id ->
-                libraryRepository
-                    .findById(id)
-                    .map(l -> l.isPersonal() && user.equals(l.getOwnerUserId()))
-                    .orElse(false));
+        .contains(sharedLibraryId, groupLibraryId, orgWideLibraryId, ownLibraryId);
   }
 
   @Test

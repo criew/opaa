@@ -76,7 +76,7 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 - **Konnektoren (System-Admin):** System-Admins konfigurieren Konnektoren und legen fest, welche Quelle in
   welche Wissensbibliothek indiziert. Der primäre Weg für automatisierte Massenaufnahme.
 - **Manuelle Uploads:** Wer an einer Wissensbibliothek mindestens `EDITOR` ist, kann Dokumente hochladen —
-  in seine persönliche Bibliothek oder in jede andere, an der er dieses Recht hat.
+  in eine eigene Bibliothek oder in jede andere, an der er dieses Recht hat.
 
 Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
