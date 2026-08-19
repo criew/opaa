@@ -91,18 +91,34 @@ public class QueryService {
    * matching content takes, so the resulting message cannot be used to distinguish "no permission
    * on anything" from "nothing matched" (#202 acceptance criteria).
    *
-   * <p><b>#238's regression check:</b> the applied search scope ({@code readableLibraryIds} below)
-   * is compared against {@link PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction
-   * for the same instant, logging a warning if the live computation reaches a library the history
-   * would not - a beweisbarer Durchsetzungsfehler per
+   * <p><b>#238's regression check:</b> the readable set ({@code readableLibraryIds} below, distinct
+   * from the narrower {@code searchScope} #526 may derive from it) is compared against {@link
+   * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
+   * a warning if the live computation reaches a library the history would not - a beweisbarer
+   * Durchsetzungsfehler per
    * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten.
    * Deliberately not a per-query log line of the full permission set itself: the feature spec
    * rejects that as an unnecessary expansion of personal data (see the same section), so only a
    * detected mismatch - not every query - is written to the application log, and even then only the
    * offending library id, not the caller's whole readable set.
+   *
+   * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}:
+   * {@code useKnowledge = true} preserves the behaviour above exactly - every library {@code
+   * currentUserId} may read, {@code requestedLibraryIds} ignored. {@code useKnowledge = false}
+   * narrows the scope to {@code requestedLibraryIds} intersected with the readable set - never
+   * widened beyond it, matching #526's acceptance criteria that a referenced but unreadable library
+   * yields no hits rather than being silently granted. An empty intersection in that mode also
+   * takes the empty-scope short-circuit above and additionally marks {@link
+   * QueryMetadata#getAnsweredWithoutKnowledge()} so the caller can distinguish "no knowledge base
+   * searched" from "searched but found nothing".
    */
   @Transactional(readOnly = true)
-  public QueryResponse query(String question, String conversationId, UUID currentUserId) {
+  public QueryResponse query(
+      String question,
+      String conversationId,
+      UUID currentUserId,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds) {
     return metrics
         .queryTimer()
         .record(
@@ -132,15 +148,21 @@ public class QueryService {
                     currentUser.getOrganizationId(),
                     scopeComputedAt);
 
+                Set<UUID> searchScope =
+                    useKnowledge
+                        ? readableLibraryIds
+                        : intersectWithReadable(requestedLibraryIds, readableLibraryIds);
+                boolean answeredWithoutKnowledge = !useKnowledge && searchScope.isEmpty();
+
                 List<Document> relevantChunks =
-                    readableLibraryIds.isEmpty()
+                    searchScope.isEmpty()
                         ? List.of()
                         : vectorStore.similaritySearch(
                             SearchRequest.builder()
                                 .query(searchQuery)
                                 .topK(queryProperties.topK())
                                 .similarityThreshold(queryProperties.similarityThreshold())
-                                .filterExpression(libraryFilter(readableLibraryIds))
+                                .filterExpression(libraryFilter(searchScope))
                                 .build());
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());
@@ -167,11 +189,10 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
-                return new QueryResponse(
-                    answer,
-                    sources,
-                    new QueryMetadata(model, tokenCount, durationMs),
-                    effectiveConversationId);
+                QueryMetadata metadata =
+                    new QueryMetadata(model, tokenCount, durationMs)
+                        .answeredWithoutKnowledge(answeredWithoutKnowledge);
+                return new QueryResponse(answer, sources, metadata, effectiveConversationId);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;
@@ -180,28 +201,48 @@ public class QueryService {
   }
 
   /**
-   * #238's regression check - see {@link #query}'s Javadoc. {@code appliedScope} is exactly the
-   * filter about to be handed to the vector store; any id in it the permission history does not
-   * also grant at {@code asOf} is a mismatch, logged as a single warning per query (not once per
-   * offending library - code review of #427, nit 2), never silently ignored. {@code asOf} is the
-   * instant {@code appliedScope} was itself computed at, not a fresh {@code Instant.now()} taken
-   * here - reusing it avoids a false-positive mismatch from a permission change landing in the gap
-   * between the two computations.
+   * {@code requestedLibraryIds ∩ readableLibraryIds} - the #526 search scope for {@code
+   * useKnowledge = false}. Deliberately never adds anything beyond {@code readableLibraryIds}: a
+   * reference to a library the caller cannot read is silently dropped, not honoured.
+   */
+  private Set<UUID> intersectWithReadable(
+      List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {
+    if (requestedLibraryIds == null || requestedLibraryIds.isEmpty()) {
+      return Set.of();
+    }
+    Set<UUID> scope = new HashSet<>(requestedLibraryIds);
+    scope.retainAll(readableLibraryIds);
+    return scope;
+  }
+
+  /**
+   * #238's regression check - see {@link #query}'s Javadoc. {@code readableScope} is the full set
+   * {@link LibraryAccessService#readableLibraryIds} computed for this query at {@code asOf} - not
+   * necessarily the narrower {@code searchScope} #526's {@code useKnowledge = false} may actually
+   * hand to the vector store, since that mode can restrict the search to a subset of what is merely
+   * readable. Any id in {@code readableScope} the permission history does not also grant as of
+   * {@code asOf} is a mismatch, logged as a single warning per query (not once per offending
+   * library - code review of #427, nit 2), never silently ignored. {@code asOf} is the instant
+   * {@code readableScope} was itself computed at, not a fresh {@code Instant.now()} taken here -
+   * reusing it avoids a false-positive mismatch from a permission change landing in the gap between
+   * the two computations.
    */
   private void checkAgainstPermissionHistory(
-      Set<UUID> appliedScope, UUID currentUserId, UUID organizationId, Instant asOf) {
-    if (appliedScope.isEmpty()) {
+      Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
+    if (readableScope.isEmpty()) {
       return;
     }
     Set<UUID> historized =
         permissionHistoryService.readableLibraryIdsAsOf(currentUserId, organizationId, asOf);
-    Set<UUID> mismatched = new HashSet<>(appliedScope);
+    Set<UUID> mismatched = new HashSet<>(readableScope);
     mismatched.removeAll(historized);
     if (!mismatched.isEmpty()) {
       log.warn(
-          "Permission history regression check: query for user {} applied {} librar{} to the"
-              + " search scope the permission history does not grant as of {} - possible"
-              + " enforcement drift between the live and historized rights computation: {}",
+          "Permission history regression check: user {} was granted {} librar{} as readable the"
+              + " permission history does not confirm as of {} - possible enforcement drift"
+              + " between the live and historized rights computation. This checks the full"
+              + " readable set, not the (possibly narrower, #526 useKnowledge=false) scope"
+              + " actually searched: {}",
           currentUserId,
           mismatched.size(),
           mismatched.size() == 1 ? "y" : "ies",

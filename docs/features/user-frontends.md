@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
-| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | nein — Zielbild; die heute gebaute Eingrenzung auf Arbeitsräume ist ohne Wirkung im Backend und entfällt (siehe unten) |
+| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | ja — die Space-Auswahl ist entfernt; Schalter, @-Autocomplete und sticky Chips sind gebaut (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -78,17 +78,20 @@ Gesprächs samt Fundstellen, weil ein Gesprächsergebnis in der Verwaltung regel
 Die Aufbewahrungsdauer abgelegter Gespräche ist eine Betriebs- und Mitbestimmungsfrage, keine
 Voreinstellung des Produkts.
 
-**Suchfilter.** Gebaut ist eine Eingrenzung auf ausgewählte Arbeitsräume — ohne Wirkung im Backend,
-weil der zugrundeliegende Parameter dort ignoriert wird. Sie entfällt **ersatzlos**: Ein Gespräch
-liegt bereits in genau einem Arbeitsraum, eine zusätzliche Space-Auswahl je Anfrage wäre redundant
-und suggerierte eine Wirkung, die es nicht gibt. An ihre Stelle tritt eine gesprächsbezogene, keine
+**Suchfilter.** Die frühere Eingrenzung auf ausgewählte Arbeitsräume ist entfernt — sie hatte ohnehin
+keine Wirkung im Backend, weil der zugrundeliegende Parameter dort ignoriert wurde. Ein Gespräch liegt
+bereits in genau einem Arbeitsraum, eine zusätzliche Space-Auswahl je Anfrage wäre redundant gewesen
+und hätte eine Wirkung suggeriert, die es nicht gab. An ihre Stelle tritt eine gesprächsbezogene, keine
 anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)):
 
-- ein Schalter **„Wissen nutzen"** (Standard: an) — an durchsucht im Zielbild die dem Arbeitsraum
-  assoziierten Wissensbibliotheken, aus durchsucht ausschließlich die per @ referenzierten,
+- ein Schalter **„Wissen nutzen"** (Standard: an) — an durchsucht heute alle Wissensbibliotheken, die
+  der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten), aus
+  durchsucht ausschließlich die per @ referenzierten. Ist aus und keine Bibliothek referenziert,
+  antwortet das Modell ohne Wissensbasis, sichtbar gekennzeichnet in Eingabefeld und Antwort,
 - **@-Bibliotheksreferenzen** direkt im Eingabefeld: Tippen von `@` schlägt alle Bibliotheken vor, die
-  der Nutzer lesen darf, unabhängig vom Arbeitsraum. Gesetzte Referenzen bleiben als entfernbare Chips
-  **sticky am Gespräch** erhalten, nicht nur für eine einzelne Anfrage.
+  der Nutzer lesen darf, unabhängig vom Arbeitsraum, per Tastatur oder Maus auswählbar. Gesetzte
+  Referenzen bleiben als entfernbare Chips **sticky am Gespräch** erhalten, nicht nur für eine einzelne
+  Anfrage — bis zur Chat-Persistenz (#525/#527) nur für die geöffnete Sitzung.
 
 Im Zielbild kommen dazu die Eingrenzung auf den Dokumenttyp und auf den Stand der Indizierung. Ein
 Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die Sicht, sie
@@ -183,7 +186,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | teilweise — Frage, Antwort und Fundstellen sind gebaut; die heutige, wirkungslose Eingrenzung auf Arbeitsräume entfällt, Schalter und @-Referenzen sind Zielbild |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen, Schalter und @-Referenzen sind gebaut; die Space↔Bibliothek-Assoziation (#203) bleibt Zielbild |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**

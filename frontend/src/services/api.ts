@@ -84,10 +84,18 @@ export async function getHealth(): Promise<HealthResponse> {
 export async function sendQuery(
   question: string,
   conversationId?: string,
-  spaceIds?: string[],
+  useKnowledge = true,
+  libraryIds?: string[],
 ): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question, conversationId, spaceIds }
+    // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
+    // ignores it otherwise (#526), so omitting it keeps the request honest about what it does.
+    const request: QueryRequest = {
+      question,
+      conversationId,
+      useKnowledge,
+      ...(useKnowledge ? {} : { libraryIds }),
+    }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
   } catch (err) {
