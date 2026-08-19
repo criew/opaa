@@ -53,7 +53,7 @@ describe('CreateLibraryDialog', () => {
 
     expect(await screen.findByRole('radio', { name: /hochgeladen/i })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /dateisystem/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /verzeichnisliste/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /webverzeichnis/i })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /rss-feed/i })).toBeInTheDocument()
     expect(screen.getByText(/dokumente werden manuell hochgeladen/i)).toBeInTheDocument()
   })
@@ -121,8 +121,8 @@ describe('CreateLibraryDialog', () => {
     renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
-    await user.type(screen.getByLabelText(/^name/i), 'Verzeichnisliste')
+    await user.click(screen.getByRole('radio', { name: /webverzeichnis/i }))
+    await user.type(screen.getByLabelText(/^name/i), 'Webverzeichnis')
     await user.type(screen.getByLabelText(/adresse \(url\)/i), 'ftp://files.example.com')
     await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
 
@@ -136,8 +136,8 @@ describe('CreateLibraryDialog', () => {
     renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
-    await user.type(screen.getByLabelText(/^name/i), 'Verzeichnisliste')
+    await user.click(screen.getByRole('radio', { name: /webverzeichnis/i }))
+    await user.type(screen.getByLabelText(/^name/i), 'Webverzeichnis')
     await user.type(
       screen.getByLabelText(/adresse \(url\)/i),
       'https://files.example.com/dokumente/',
@@ -150,7 +150,7 @@ describe('CreateLibraryDialog', () => {
     await waitFor(() => {
       expect(mockCreateLibrary).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'Verzeichnisliste',
+          name: 'Webverzeichnis',
           sourceType: 'HTTP_DIRECTORY',
           sourceUrl: 'https://files.example.com/dokumente/',
           sourceProxy: 'proxy.example.com:8080',
@@ -187,7 +187,7 @@ describe('CreateLibraryDialog', () => {
     renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
+    await user.click(screen.getByRole('radio', { name: /webverzeichnis/i }))
 
     expect(screen.getByLabelText(/anmeldedaten/i)).toHaveAttribute('autocomplete', 'new-password')
     expect(screen.getByLabelText(/^proxy/i)).toHaveAttribute('autocomplete', 'off')
