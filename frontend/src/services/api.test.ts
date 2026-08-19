@@ -78,6 +78,40 @@ describe('api service', () => {
       await expect(getHealth()).rejects.toThrow(/HTTP 502/)
     })
 
+    it('translates a non-JSON 413 (e.g. the nginx reverse proxy HTML page) to a German message', async () => {
+      server.use(
+        http.get('/api/health', () => {
+          return new HttpResponse('<html><body>413 Request Entity Too Large</body></html>', {
+            status: 413,
+            headers: { 'Content-Type': 'text/html' },
+          })
+        }),
+      )
+
+      await expect(getHealth()).rejects.toThrow(
+        'Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.',
+      )
+    })
+
+    it('still surfaces the backend JSON ErrorResponse message for a 413 with a valid body', async () => {
+      server.use(
+        http.get('/api/health', () => {
+          return HttpResponse.json(
+            {
+              error: 'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+              status: 413,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 413 },
+          )
+        }),
+      )
+
+      await expect(getHealth()).rejects.toThrow(
+        'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+      )
+    })
+
     it('falls back to error message on network error', async () => {
       server.use(
         http.get('/api/health', () => {

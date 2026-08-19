@@ -44,6 +44,14 @@ function normalizeError(err: unknown): never {
       throw new Error(data.error)
     }
 
+    // #519: the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
+    // client_max_body_size with a bare HTML 413 page, not the backend's JSON ErrorResponse -
+    // isErrorResponse above is false for that body, so this would otherwise fall through to the
+    // generic "HTTP 413: ..." message below, which is neither German nor understandable to users.
+    if (err.response?.status === 413) {
+      throw new Error('Die Datei ist zu groß für den Upload. Bitte eine kleinere Datei wählen.')
+    }
+
     if (err.response?.status) {
       throw new Error(`HTTP ${err.response.status}: ${err.message}`)
     }
