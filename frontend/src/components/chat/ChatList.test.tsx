@@ -1,7 +1,9 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
+import { server } from '../../mocks/server'
 import ChatList from './ChatList'
 import { useChatListStore } from '../../stores/chatListStore'
 
@@ -37,18 +39,19 @@ describe('ChatList', () => {
     expect(await screen.findByText('Noch keine Chats in diesem Space.')).toBeInTheDocument()
   })
 
-  it('creates a new chat and navigates to it', async () => {
+  // #548 review, nit a: "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
+  // the not-yet-created "new" chat state, so the implicit creation on the first sent message
+  // (chatStore#sendMessage) stays the single chat-creation path.
+  it('navigates to the not-yet-created chat instead of eagerly creating one', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
     await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/spaces\/space-personal\/chats\/.+$/),
-      )
-    })
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new')
+    // The existing chats are untouched - nothing was created.
+    expect(useChatListStore.getState().chatsBySpaceId['space-personal']).toHaveLength(2)
   })
 
   it('renames a chat via the edit action', async () => {
@@ -85,6 +88,45 @@ describe('ChatList', () => {
 
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
 
+    expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
+  })
+
+  // #548 review, nit b: a failed delete used to reject silently (unhandled rejection) instead of
+  // surfacing anything to the user.
+  it('shows an error and keeps the chat when deletion fails on the server', async () => {
+    server.use(
+      http.delete('/api/v1/chats/:chatId', () => {
+        return HttpResponse.json({ error: 'Löschen fehlgeschlagen' }, { status: 500 })
+      }),
+    )
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+
+    expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
+    expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
+  })
+
+  // #548 review, nit b: same for a failed rename.
+  it('shows an error and keeps the old title when renaming fails on the server', async () => {
+    server.use(
+      http.patch('/api/v1/chats/:chatId', () => {
+        return HttpResponse.json({ error: 'Umbenennen fehlgeschlagen' }, { status: 500 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    const field = screen.getByLabelText('Chat-Titel')
+    await user.clear(field)
+    await user.type(field, 'Neuer Titel{Enter}')
+
+    expect(await screen.findByText('Umbenennen fehlgeschlagen')).toBeInTheDocument()
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
 })

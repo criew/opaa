@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '../mocks/server'
 import { useChatStore } from './chatStore'
+import { useChatListStore } from './chatListStore'
 
 const SPACE_ID = 'space-personal'
 const EXISTING_CHAT_ID = 'chat-personal-1'
@@ -18,12 +19,14 @@ function resetChatStore() {
     error: null,
     useKnowledge: true,
     referencedLibraryIds: [],
+    pendingSettingsUpdate: null,
   })
 }
 
 describe('chatStore', () => {
   beforeEach(() => {
     resetChatStore()
+    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
   it('starts with empty state', () => {
@@ -83,6 +86,84 @@ describe('chatStore', () => {
       const state = useChatStore.getState()
       expect(state.error).toBeTruthy()
       expect(state.isLoadingChat).toBe(false)
+    })
+
+    // #548 review, finding 2: a failed load used to leave the previously active chat (id, space,
+    // history) in place, so the next message would silently go to a chat the user is no longer
+    // looking at, even though the error alert is shown.
+    it('clears the previously active chat when loading a different chat fails', async () => {
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().chatId).toBe(EXISTING_CHAT_ID)
+
+      await useChatStore.getState().loadChat('chat-unknown')
+
+      const state = useChatStore.getState()
+      expect(state.error).toBeTruthy()
+      expect(state.chatId).toBeNull()
+      expect(state.spaceId).toBeNull()
+      expect(state.messages).toEqual([])
+      expect(state.title).toBeNull()
+    })
+
+    // #548 review, finding d: a slower-arriving response for an earlier loadChat call must not
+    // overwrite a faster, later one - only the most recently requested chat may end up active.
+    it('ignores a stale loadChat response that arrives after a newer one resolved', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          if (params.chatId === EXISTING_CHAT_ID) {
+            // Slow response for the chat requested first.
+            await new Promise((resolve) => setTimeout(resolve, 30))
+          }
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: `Titel ${params.chatId}`,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      const slowLoad = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      const fastLoad = useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      await Promise.all([slowLoad, fastLoad])
+
+      expect(useChatStore.getState().chatId).toBe(EMPTY_CHAT_ID)
+    })
+
+    // #548 review, finding d: a synchronous startNewChat while a loadChat is still in flight must
+    // not be clobbered once that stale response eventually arrives.
+    it('does not let a stale loadChat response overwrite a subsequent startNewChat', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          await new Promise((resolve) => setTimeout(resolve, 30))
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      const pendingLoad = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      useChatStore.getState().startNewChat(SPACE_ID)
+      await pendingLoad
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBeNull()
+      expect(state.messages).toEqual([])
     })
   })
 
@@ -175,6 +256,57 @@ describe('chatStore', () => {
       expect(capturedBody?.libraryIds).toEqual(['library-a', 'library-b'])
       expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
     })
+
+    // #548 review, finding 4: an implicitly created chat must show up in its space's chat list
+    // right away, not only after a manual reload of the list.
+    it('adds the implicitly created chat to chatListStore', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+
+      const chatId = useChatStore.getState().chatId
+      const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
+      expect(chats?.some((chat) => chat.id === chatId)).toBe(true)
+    })
+
+    // #548 review, finding 4: every turn should bump the chat to the top of its space's list, the
+    // same way the backend's own updatedAt bump would once the list is reloaded.
+    it('touches the chat in chatListStore after every turn', async () => {
+      useChatListStore.setState({
+        chatsBySpaceId: {
+          [SPACE_ID]: [
+            {
+              id: EMPTY_CHAT_ID,
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              createdAt: '2020-01-01T00:00:00Z',
+              updatedAt: '2020-01-01T00:00:00Z',
+            },
+            {
+              id: 'chat-personal-2',
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: 'Neuer als der Ziel-Chat',
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              createdAt: '2027-01-01T00:00:00Z',
+              updatedAt: '2027-01-01T00:00:00Z',
+            },
+          ],
+        },
+      })
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
+      expect(chats?.[0].id).toBe(EMPTY_CHAT_ID)
+    })
   })
 
   describe('setUseKnowledge / addReferencedLibrary / removeReferencedLibrary', () => {
@@ -246,6 +378,94 @@ describe('chatStore', () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(patchedBody?.referencedLibraryIds).toEqual([])
+    })
+
+    // #548 review, finding 3: a failed PATCH used to leave the UI showing a setting the server
+    // never applied (chat settings take precedence server-side) - it must roll back and surface
+    // the error instead.
+    it('rolls back useKnowledge and shows an error when the PATCH fails', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () => {
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().useKnowledge).toBe(true)
+
+      useChatStore.getState().setUseKnowledge(false)
+      // Immediately after the call, the switch already reflects the optimistic value.
+      expect(useChatStore.getState().useKnowledge).toBe(false)
+
+      await useChatStore.getState().pendingSettingsUpdate
+
+      const state = useChatStore.getState()
+      expect(state.useKnowledge).toBe(true)
+      expect(state.error).toBeTruthy()
+    })
+
+    it('rolls back referencedLibraryIds and shows an error when the PATCH fails', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () => {
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      useChatStore.getState().addReferencedLibrary('library-a')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
+
+      await useChatStore.getState().pendingSettingsUpdate
+
+      const state = useChatStore.getState()
+      expect(state.referencedLibraryIds).toEqual([])
+      expect(state.error).toBeTruthy()
+    })
+
+    // #548 review, finding 3: sendMessage must await a still-in-flight settings PATCH before
+    // querying, or the query could reach the server (and be answered using the chat's persisted
+    // settings) before the PATCH that was meant to change them.
+    it('awaits a pending settings PATCH before sending the query', async () => {
+      const events: string[] = []
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async () => {
+          events.push('patch-start')
+          await new Promise((resolve) => setTimeout(resolve, 30))
+          events.push('patch-end')
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+        http.post('/api/v1/query', async ({ request }) => {
+          events.push('query-start')
+          const body = (await request.json()) as { chatId?: string }
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: {
+              model: 'gpt-4o',
+              tokenCount: 5,
+              durationMs: 1,
+              answeredWithoutKnowledge: false,
+            },
+            chatId: body.chatId,
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+
+      useChatStore.getState().setUseKnowledge(false)
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(events).toEqual(['patch-start', 'patch-end', 'query-start'])
     })
   })
 })

@@ -35,7 +35,6 @@ export default function ChatList({ spaceId }: ChatListProps) {
   const isLoading = useChatListStore((s) => s.isLoading)
   const error = useChatListStore((s) => s.error)
   const loadChats = useChatListStore((s) => s.loadChats)
-  const createChatInSpace = useChatListStore((s) => s.createChatInSpace)
   const renameChat = useChatListStore((s) => s.renameChat)
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
 
@@ -48,9 +47,11 @@ export default function ChatList({ spaceId }: ChatListProps) {
     }
   }, [spaceId, chats, loadChats])
 
-  async function handleNewChat() {
-    const chat = await createChatInSpace(spaceId)
-    navigate(`/spaces/${spaceId}/chats/${chat.id}`)
+  // Routes through the not-yet-persisted "new" chat state instead of eagerly creating a chat here
+  // - the first sent message is the only place a chat gets created (chatStore#sendMessage), so a
+  // chat that's never actually used never gets persisted either (#548 review, nit a).
+  function handleNewChat() {
+    navigate(`/spaces/${spaceId}/chats/new`)
   }
 
   function startRename(chat: ChatSummary) {

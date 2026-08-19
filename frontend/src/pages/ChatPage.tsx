@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -21,6 +21,19 @@ export default function ChatPage() {
   const storeSpaceId = useChatStore((s) => s.spaceId)
   const storeChatId = useChatStore((s) => s.chatId)
 
+  // Read via a ref, not a reactive dependency: sendMessage sets the store's chatId as soon as it
+  // implicitly creates a chat, well before the query itself resolves. If that update re-ran this
+  // effect while the route still said "new", the isNewChat branch below would call startNewChat
+  // again and wipe the just-sent, still in-flight user message right back out (#548 review,
+  // finding 1) - the effect must only react to the route changing, and read the store's current
+  // chatId (via the ref) purely to decide whether a refetch is necessary once it does. Synced in
+  // its own effect (not during render) so it is up to date by the time the route actually changes,
+  // without itself being a dependency that re-triggers the routing effect below.
+  const storeChatIdRef = useRef(storeChatId)
+  useEffect(() => {
+    storeChatIdRef.current = storeChatId
+  }, [storeChatId])
+
   const isNewChat = !routeChatId || routeChatId === 'new'
 
   // Loads the requested chat's history, or resets to a blank not-yet-persisted chat for the
@@ -29,7 +42,12 @@ export default function ChatPage() {
   useEffect(() => {
     if (!spaceId) return
     if (!isNewChat && routeChatId) {
-      void loadChat(routeChatId)
+      // Already the active chat (e.g. just implicitly created by sendMessage, which replaces the
+      // URL to point at it) - refetching here would load the not-yet-persisted history and
+      // overwrite the message just shown (#548 review, finding 1).
+      if (routeChatId !== storeChatIdRef.current) {
+        void loadChat(routeChatId)
+      }
     } else {
       startNewChat(spaceId)
     }

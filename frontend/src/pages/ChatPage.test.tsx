@@ -28,6 +28,7 @@ function resetChatStore() {
     error: null,
     useKnowledge: true,
     referencedLibraryIds: [],
+    pendingSettingsUpdate: null,
   })
 }
 
