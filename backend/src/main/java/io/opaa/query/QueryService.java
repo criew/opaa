@@ -7,6 +7,8 @@ import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.chat.Chat;
+import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -16,9 +18,9 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +41,6 @@ public class QueryService {
 
   private static final Logger log = LoggerFactory.getLogger(QueryService.class);
 
-  private static final Pattern VALID_CONVERSATION_ID = Pattern.compile("^[a-zA-Z0-9-]{1,50}$");
   private static final String LIBRARY_ID_METADATA_KEY = "library_id";
 
   private final VectorStore vectorStore;
@@ -50,6 +51,7 @@ public class QueryService {
   private final UserRepository userRepository;
   private final LibraryAccessService libraryAccessService;
   private final PermissionHistoryService permissionHistoryService;
+  private final ChatService chatService;
   private final QueryMetrics metrics;
   private final QueryProperties queryProperties;
 
@@ -62,6 +64,7 @@ public class QueryService {
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
       PermissionHistoryService permissionHistoryService,
+      ChatService chatService,
       QueryMetrics metrics,
       QueryProperties queryProperties) {
     this.vectorStore = vectorStore;
@@ -72,6 +75,7 @@ public class QueryService {
     this.userRepository = userRepository;
     this.libraryAccessService = libraryAccessService;
     this.permissionHistoryService = permissionHistoryService;
+    this.chatService = chatService;
     this.metrics = metrics;
     this.queryProperties = queryProperties;
   }
@@ -91,8 +95,22 @@ public class QueryService {
    * matching content takes, so the resulting message cannot be used to distinguish "no permission
    * on anything" from "nothing matched" (#202 acceptance criteria).
    *
+   * <p><b>#525 - persisted chats.</b> {@code chatId} is optional. When it names a chat {@code
+   * currentUserId} authored (see {@link ChatService#findOwnedChat}), the query runs against that
+   * chat: the search scope comes from the chat's own {@code useKnowledge}/{@code
+   * referencedLibraryIds} settings ({@link ChatService#effectiveLibraryScope}) - the {@code
+   * useKnowledge}/{@code requestedLibraryIds} parameters below are then ignored, not merely
+   * defaulted - the question and answer are persisted as {@link io.opaa.chat.ChatMessage}s, and the
+   * conversation-memory cache ({@link #chatMemory}, still Caffeine-backed - see {@code
+   * CaffeineChatMemoryRepository}) is seeded from the persisted history on a cache miss, so a
+   * restart or eviction never loses context for a persisted chat. When {@code chatId} is absent, or
+   * does not resolve to a chat the caller authored, the query runs ephemerally instead: not
+   * persisted, and the search scope is governed by {@code useKnowledge}/{@code requestedLibraryIds}
+   * exactly as #526 introduced them, remembered only in the in-memory cache under a key reused from
+   * a caller-supplied {@code chatId} when one was given, or freshly generated otherwise.
+   *
    * <p><b>#238's regression check:</b> the readable set ({@code readableLibraryIds} below, distinct
-   * from the narrower {@code searchScope} #526 may derive from it) is compared against {@link
+   * from the narrower {@code searchScope} #525/#526 may derive from it) is compared against {@link
    * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
    * a warning if the live computation reaches a library the history would not - a beweisbarer
    * Durchsetzungsfehler per
@@ -102,20 +120,22 @@ public class QueryService {
    * detected mismatch - not every query - is written to the application log, and even then only the
    * offending library id, not the caller's whole readable set.
    *
-   * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}:
-   * {@code useKnowledge = true} preserves the behaviour above exactly - every library {@code
-   * currentUserId} may read, {@code requestedLibraryIds} ignored. {@code useKnowledge = false}
-   * narrows the scope to {@code requestedLibraryIds} intersected with the readable set - never
-   * widened beyond it, matching #526's acceptance criteria that a referenced but unreadable library
-   * yields no hits rather than being silently granted. An empty intersection in that mode also
-   * takes the empty-scope short-circuit above and additionally marks {@link
-   * QueryMetadata#getAnsweredWithoutKnowledge()} so the caller can distinguish "no knowledge base
-   * searched" from "searched but found nothing".
+   * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}
+   * (only consulted for a query with no persisted chat, see above): {@code useKnowledge = true}
+   * preserves the behaviour above exactly - every library {@code currentUserId} may read, {@code
+   * requestedLibraryIds} ignored. {@code useKnowledge = false} narrows the scope to {@code
+   * requestedLibraryIds} intersected with the readable set - never widened beyond it, matching
+   * #526's acceptance criteria that a referenced but unreadable library yields no hits rather than
+   * being silently granted. An empty intersection in that mode also takes the empty-scope
+   * short-circuit above and additionally marks {@link QueryMetadata#getAnsweredWithoutKnowledge()}
+   * so the caller can distinguish "no knowledge base searched" from "searched but found nothing" -
+   * the same distinction applies to a persisted chat whose own {@code useKnowledge} is off with no
+   * (readable) sticky reference.
    */
   @Transactional(readOnly = true)
   public QueryResponse query(
       String question,
-      String conversationId,
+      UUID chatId,
       UUID currentUserId,
       boolean useKnowledge,
       List<UUID> requestedLibraryIds) {
@@ -132,9 +152,22 @@ public class QueryService {
                                 new ResponseStatusException(
                                     HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
 
-                String effectiveConversationId = validateConversationId(conversationId);
+                Optional<Chat> chat = chatService.findOwnedChat(chatId, currentUserId);
+                // A chatId that does not resolve to an owned persisted chat (including "none
+                // given") still runs ephemerally rather than being rejected - the pre-#525
+                // behaviour, preserved for callers that have not moved to persisted chats yet
+                // (see #527). It is reused as the in-memory conversation-cache key when the
+                // caller supplied one, exactly as the old free-form conversationId was, so a
+                // client round-tripping the previous response's chatId still gets multi-turn
+                // continuity without ever persisting anything.
+                String conversationKey =
+                    chat.map(c -> c.getId().toString())
+                        .orElseGet(
+                            () ->
+                                chatId != null ? chatId.toString() : UUID.randomUUID().toString());
+                seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
-                String searchQuery = buildSearchQuery(question, effectiveConversationId);
+                String searchQuery = buildSearchQuery(question, conversationKey);
 
                 long startTime = System.currentTimeMillis();
 
@@ -148,11 +181,19 @@ public class QueryService {
                     currentUser.getOrganizationId(),
                     scopeComputedAt);
 
+                // A persisted chat's own settings govern the scope entirely (#525); only an
+                // ephemeral query (no owned chat) falls back to the request-level useKnowledge/
+                // requestedLibraryIds #526 introduced.
                 Set<UUID> searchScope =
-                    useKnowledge
-                        ? readableLibraryIds
-                        : intersectWithReadable(requestedLibraryIds, readableLibraryIds);
-                boolean answeredWithoutKnowledge = !useKnowledge && searchScope.isEmpty();
+                    chat.map(c -> chatService.effectiveLibraryScope(c, readableLibraryIds))
+                        .orElseGet(
+                            () ->
+                                useKnowledge
+                                    ? readableLibraryIds
+                                    : intersectWithReadable(
+                                        requestedLibraryIds, readableLibraryIds));
+                boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
+                boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
 
                 List<Document> relevantChunks =
                     searchScope.isEmpty()
@@ -169,7 +210,7 @@ public class QueryService {
 
                 ChatResponse chatResponse =
                     answerGenerationService.generateAnswer(
-                        question, relevantChunks, effectiveConversationId);
+                        question, relevantChunks, conversationKey);
 
                 String answer = extractAnswer(chatResponse);
                 Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
@@ -189,10 +230,14 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
+                chat.ifPresent(c -> chatService.appendTurn(c, question, answer, sources));
+                UUID responseChatId =
+                    chat.map(Chat::getId).orElse(UUID.fromString(conversationKey));
+
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge);
-                return new QueryResponse(answer, sources, metadata, effectiveConversationId);
+                return new QueryResponse(answer, sources, metadata, responseChatId);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;
@@ -201,9 +246,11 @@ public class QueryService {
   }
 
   /**
-   * {@code requestedLibraryIds ∩ readableLibraryIds} - the #526 search scope for {@code
-   * useKnowledge = false}. Deliberately never adds anything beyond {@code readableLibraryIds}: a
-   * reference to a library the caller cannot read is silently dropped, not honoured.
+   * {@code requestedLibraryIds ∩ readableLibraryIds} - the #526 search scope for an ephemeral query
+   * (no persisted chat) with {@code useKnowledge = false}. Deliberately never adds anything beyond
+   * {@code readableLibraryIds}: a reference to a library the caller cannot read is silently
+   * dropped, not honoured. A persisted chat's sticky references go through {@link
+   * ChatService#effectiveLibraryScope} instead, which applies the identical rule.
    */
   private Set<UUID> intersectWithReadable(
       List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {
@@ -216,16 +263,36 @@ public class QueryService {
   }
 
   /**
+   * Seeds the in-memory conversation cache from the persisted chat history on a cache miss - the
+   * mechanism that makes {@link #buildSearchQuery} and {@link
+   * AnswerGenerationService#generateAnswer} see the persisted history even though neither was
+   * changed to read from the database directly (#525's "Gesprächsgedächtnis speist sich aus den
+   * persistierten Nachrichten (Caffeine darf Cache bleiben)"). Only touches the cache when it is
+   * actually empty for this key - a chat with history already in the warm cache is left alone, both
+   * because re-adding would duplicate every message and because the warm cache is already
+   * authoritative for the current process.
+   */
+  private void seedConversationMemoryFromPersistedHistory(
+      Optional<Chat> chat, String conversationKey) {
+    if (chat.isEmpty() || !chatMemory.get(conversationKey).isEmpty()) {
+      return;
+    }
+    List<Message> persistedHistory = chatService.historyAsSpringAiMessages(chat.get().getId());
+    if (!persistedHistory.isEmpty()) {
+      chatMemory.add(conversationKey, persistedHistory);
+    }
+  }
+
+  /**
    * #238's regression check - see {@link #query}'s Javadoc. {@code readableScope} is the full set
    * {@link LibraryAccessService#readableLibraryIds} computed for this query at {@code asOf} - not
-   * necessarily the narrower {@code searchScope} #526's {@code useKnowledge = false} may actually
-   * hand to the vector store, since that mode can restrict the search to a subset of what is merely
-   * readable. Any id in {@code readableScope} the permission history does not also grant as of
-   * {@code asOf} is a mismatch, logged as a single warning per query (not once per offending
-   * library - code review of #427, nit 2), never silently ignored. {@code asOf} is the instant
-   * {@code readableScope} was itself computed at, not a fresh {@code Instant.now()} taken here -
-   * reusing it avoids a false-positive mismatch from a permission change landing in the gap between
-   * the two computations.
+   * necessarily the narrower {@code searchScope} #525/#526 may actually hand to the vector store,
+   * since either can restrict the search to a subset of what is merely readable. Any id in {@code
+   * readableScope} the permission history does not also grant as of {@code asOf} is a mismatch,
+   * logged as a single warning per query (not once per offending library - code review of #427, nit
+   * 2), never silently ignored. {@code asOf} is the instant {@code readableScope} was itself
+   * computed at, not a fresh {@code Instant.now()} taken here - reusing it avoids a false-positive
+   * mismatch from a permission change landing in the gap between the two computations.
    */
   private void checkAgainstPermissionHistory(
       Set<UUID> readableScope, UUID currentUserId, UUID organizationId, Instant asOf) {
@@ -241,8 +308,8 @@ public class QueryService {
           "Permission history regression check: user {} was granted {} librar{} as readable the"
               + " permission history does not confirm as of {} - possible enforcement drift"
               + " between the live and historized rights computation. This checks the full"
-              + " readable set, not the (possibly narrower, #526 useKnowledge=false) scope"
-              + " actually searched: {}",
+              + " readable set, not the (possibly narrower, #525/#526) scope actually searched:"
+              + " {}",
           currentUserId,
           mismatched.size(),
           mismatched.size() == 1 ? "y" : "ies",
@@ -359,16 +426,6 @@ public class QueryService {
       return response.getMetadata().getUsage().getTotalTokens();
     }
     return 0;
-  }
-
-  String validateConversationId(String conversationId) {
-    if (conversationId == null || conversationId.isBlank()) {
-      return UUID.randomUUID().toString();
-    }
-    if (!VALID_CONVERSATION_ID.matcher(conversationId).matches()) {
-      throw new IllegalArgumentException("Ungültiges Format der conversationId");
-    }
-    return conversationId;
   }
 
   String buildSearchQuery(String question, String conversationId) {

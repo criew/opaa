@@ -222,7 +222,7 @@ export const handlers = [
     const mockResponse = getRandomMockResponse()
     return HttpResponse.json({
       ...mockResponse,
-      conversationId: body.conversationId ?? crypto.randomUUID(),
+      chatId: body.chatId ?? crypto.randomUUID(),
     })
   }),
 

@@ -1,10 +1,10 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +13,8 @@ import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.chat.Chat;
+import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -33,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
@@ -53,6 +56,7 @@ class QueryServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private PermissionHistoryService permissionHistoryService;
+  @Mock private ChatService chatService;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -71,14 +75,15 @@ class QueryServiceTest {
             userRepository,
             libraryAccessService,
             permissionHistoryService,
+            chatService,
             new QueryMetrics(new SimpleMeterRegistry()),
             new QueryProperties(5, 0.3));
 
     User user = new User("subject", "issuer", "user@example.com", "User");
     user.setOrganizationId(organizationId);
-    // lenient: not every test in this class exercises the full query() path (e.g.
-    // validateConversationId and the mergeSourceReferences nested tests call other members
-    // directly), so MockitoExtension's strict stubbing would otherwise flag these as unused.
+    // lenient: not every test in this class exercises the full query() path (e.g. the
+    // mergeSourceReferences nested tests call other members directly), so MockitoExtension's
+    // strict stubbing would otherwise flag these as unused.
     lenient().when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
     lenient()
         .when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
@@ -88,6 +93,9 @@ class QueryServiceTest {
     lenient()
         .when(permissionHistoryService.readableLibraryIdsAsOf(eq(currentUserId), any(), any()))
         .thenReturn(Set.of(readableLibraryId));
+    // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
+    // the query ephemerally, exactly as before persisted chats existed.
+    lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
   }
 
   @Test
@@ -120,11 +128,11 @@ class QueryServiceTest {
     assertThat(response.getSources().getFirst().getMatchCount()).isEqualTo(1);
     assertThat(response.getMetadata().getModel()).isEqualTo("gpt-4o");
     assertThat(response.getMetadata().getTokenCount()).isEqualTo(300);
-    assertThat(response.getConversationId()).isNotNull().isNotBlank();
+    assertThat(response.getChatId()).isNotNull();
   }
 
   @Test
-  void queryGeneratesConversationIdWhenNull() {
+  void queryGeneratesChatIdWhenNoneGiven() {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
@@ -133,22 +141,121 @@ class QueryServiceTest {
 
     QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
-    assertThat(response.getConversationId()).isNotNull().isNotBlank();
+    assertThat(response.getChatId()).isNotNull();
   }
 
   @Test
-  void queryUsesProvidedConversationId() {
-    when(chatMemory.get("existing-conv-id")).thenReturn(List.of());
+  void queryScopesAndPersistsWhenChatIdBelongsToTheCaller() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(chatId.toString())).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), eq("existing-conv-id")))
+    when(answerGenerationService.generateAnswer(any(), any(), eq(chatId.toString())))
         .thenReturn(chatResponse);
 
-    QueryResponse response =
-        queryService.query("Question", "existing-conv-id", currentUserId, true, List.of());
+    QueryResponse response = queryService.query("Question", chatId, currentUserId, true, List.of());
 
-    assertThat(response.getConversationId()).isEqualTo("existing-conv-id");
+    assertThat(response.getChatId()).isEqualTo(chatId);
+    verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
+  }
+
+  @Test
+  void queryUsesTheChatsRestrictedScopeWhenUseKnowledgeIsOff() {
+    UUID otherReadableLibraryId = UUID.randomUUID();
+    lenient()
+        .when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
+        .thenReturn(Set.of(readableLibraryId, otherReadableLibraryId));
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(),
+            currentUserId,
+            organizationId,
+            null,
+            false,
+            Set.of(readableLibraryId));
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(chatId.toString())).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    // Only the sticky reference, not the second library the caller can also read - the scope
+    // that the chat's own useKnowledge=false restricts to (epic #523), regardless of the
+    // request-level useKnowledge/libraryIds passed below.
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId, otherReadableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Question", chatId, currentUserId, true, List.of());
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    String filter = captor.getValue().getFilterExpression().toString();
+    assertThat(filter).contains(readableLibraryId.toString());
+    assertThat(filter).doesNotContain(otherReadableLibraryId.toString());
+  }
+
+  @Test
+  void queryRunsEphemerallyWhenChatIdDoesNotBelongToTheCaller() {
+    // Pre-#525 behaviour, preserved for callers that have not moved to persisted chats yet (see
+    // #527): a chatId that does not resolve to an owned chat is treated as a plain, non-persisted
+    // conversation-cache key rather than being rejected - and it is echoed back unchanged, so a
+    // client round-tripping it still gets multi-turn continuity without anything being persisted.
+    UUID foreignChatId = UUID.randomUUID();
+    when(chatService.findOwnedChat(foreignChatId, currentUserId)).thenReturn(Optional.empty());
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response =
+        queryService.query("Question", foreignChatId, currentUserId, true, List.of());
+
+    assertThat(response.getChatId()).isEqualTo(foreignChatId);
+    verify(chatService, never()).appendTurn(any(), any(), any(), any());
+  }
+
+  /**
+   * #525 acceptance criterion: "Folgefragen im selben Chat nutzen den persistierten Verlauf als
+   * Kontext". Simulates a cold in-memory cache (the very first {@code chatMemory.get} call in this
+   * test returns empty, as it would after a restart or eviction) with history nonetheless available
+   * from the persisted store - and asserts the search query is enriched from that persisted
+   * history, not left as the plain question.
+   */
+  @Test
+  void queryEnrichesSearchFromPersistedHistoryOnAColdConversationCache() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+
+    List<Message> persistedHistory =
+        List.of(
+            new UserMessage("Was sind meine Ausgaben bei Apple?"),
+            new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."));
+    // First call (the seeding check) sees a cold cache; the second call (inside
+    // buildSearchQuery) sees it warmed by the seeding this test asserts happened.
+    when(chatMemory.get(chatId.toString())).thenReturn(List.of(), persistedHistory);
+    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(persistedHistory);
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query(
+        "Mach daraus eine tabellarische Auflistung", chatId, currentUserId, true, List.of());
+
+    verify(chatMemory).add(chatId.toString(), persistedHistory);
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    assertThat(captor.getValue().getQuery())
+        .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
   }
 
   @Test
@@ -444,7 +551,8 @@ class QueryServiceTest {
 
   @Test
   void queryEnrichesSearchWithConversationHistory() {
-    when(chatMemory.get("conv-enrich"))
+    UUID chatId = UUID.randomUUID();
+    when(chatMemory.get(chatId.toString()))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -455,7 +563,7 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
     queryService.query(
-        "Mach daraus eine tabellarische Auflistung", "conv-enrich", currentUserId, true, List.of());
+        "Mach daraus eine tabellarische Auflistung", chatId, currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -465,7 +573,8 @@ class QueryServiceTest {
 
   @Test
   void queryEnrichesThirdMessageWithFirstUserQuestion() {
-    when(chatMemory.get("conv-third"))
+    UUID chatId = UUID.randomUUID();
+    when(chatMemory.get(chatId.toString()))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -477,7 +586,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Sortiere nach Datum", "conv-third", currentUserId, true, List.of());
+    queryService.query("Sortiere nach Datum", chatId, currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -504,45 +613,11 @@ class QueryServiceTest {
   void queryMethodIsAnnotatedWithTransactionalReadOnly() throws NoSuchMethodException {
     Method queryMethod =
         QueryService.class.getMethod(
-            "query", String.class, String.class, UUID.class, boolean.class, List.class);
+            "query", String.class, UUID.class, UUID.class, boolean.class, List.class);
     Transactional transactional = queryMethod.getAnnotation(Transactional.class);
 
     assertThat(transactional).isNotNull();
     assertThat(transactional.readOnly()).isTrue();
-  }
-
-  @Test
-  void validateConversationIdRejectsToolLongId() {
-    String tooLong = "a".repeat(51);
-    assertThatThrownBy(() -> queryService.validateConversationId(tooLong))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Ungültiges Format der conversationId");
-  }
-
-  @Test
-  void validateConversationIdRejectsSpecialCharacters() {
-    assertThatThrownBy(() -> queryService.validateConversationId("id with spaces"))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> queryService.validateConversationId("id;DROP TABLE"))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> queryService.validateConversationId("<script>alert(1)</script>"))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> queryService.validateConversationId("id/path/../traversal"))
-        .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void validateConversationIdAcceptsValidFormats() {
-    assertThat(queryService.validateConversationId("abc-123")).isEqualTo("abc-123");
-    assertThat(queryService.validateConversationId("A")).isEqualTo("A");
-    assertThat(queryService.validateConversationId("a".repeat(50))).hasSize(50);
-  }
-
-  @Test
-  void validateConversationIdGeneratesUuidForNullOrBlank() {
-    assertThat(queryService.validateConversationId(null)).isNotBlank();
-    assertThat(queryService.validateConversationId("")).isNotBlank();
-    assertThat(queryService.validateConversationId("   ")).isNotBlank();
   }
 
   @Nested

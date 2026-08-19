@@ -3,6 +3,7 @@ package io.opaa.query;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
+import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -84,6 +85,7 @@ public class QueryConfiguration {
       UserRepository userRepository,
       LibraryAccessService libraryAccessService,
       PermissionHistoryService permissionHistoryService,
+      ChatService chatService,
       QueryMetrics queryMetrics,
       QueryProperties queryProperties) {
     return new QueryService(
@@ -95,6 +97,7 @@ public class QueryConfiguration {
         userRepository,
         libraryAccessService,
         permissionHistoryService,
+        chatService,
         queryMetrics,
         queryProperties);
   }

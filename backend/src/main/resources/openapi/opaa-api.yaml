@@ -643,6 +643,112 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/spaces/{spaceId}/chats:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceChats
+      tags: [chat]
+      summary: List the current user's own chats in this space (#525 - a chat is visible only to its author)
+      responses:
+        "200":
+          description: List of the caller's chats in this space
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createChat
+      tags: [chat]
+      summary: Create a new chat in this space (requires space membership)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCreateRequest"
+      responses:
+        "201":
+          description: Chat created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/chats/{chatId}:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getChat
+      tags: [chat]
+      summary: Get a chat with its messages - only the author may retrieve it, not even a space or system admin (#525)
+      responses:
+        "200":
+          description: Chat with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      operationId: updateChat
+      tags: [chat]
+      summary: Update a chat's title, useKnowledge switch or sticky library references - author only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatUpdateRequest"
+      responses:
+        "200":
+          description: Chat updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteChat
+      tags: [chat]
+      summary: Delete a chat - author only
+      responses:
+        "204":
+          description: Chat deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries:
     get:
       operationId: listLibraries
@@ -1382,32 +1488,44 @@ components:
           maxLength: 2000
           pattern: ".*\\S.*"
           example: What is the project architecture?
-        conversationId:
+        chatId:
           type: string
-          pattern: "^[a-zA-Z0-9-]{1,50}$"
-          example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
+          format: uuid
+          nullable: true
+          description: >
+            The persisted chat (#525) this question and its answer belong to - the question,
+            answer and sources are appended to it as ChatMessages, and the search scope for this
+            query is taken from the chat's useKnowledge/referencedLibraryIds settings rather than
+            useKnowledge/libraryIds below. Must be a chat the caller authored (see POST
+            /api/v1/spaces/{spaceId}/chats) or the request runs ephemerally instead of being
+            rejected, exactly as if chatId had been omitted (see useKnowledge below) - not
+            persisted, and remembered only for the lifetime of the in-memory conversation cache
+            keyed by the returned chatId.
         useKnowledge:
           type: boolean
           nullable: true
           default: true
           description: >
-            Whether the query searches the knowledge base at all. When true (the default), the
-            search scope is every knowledge library the caller may read; libraryIds is ignored in
-            this mode. When false, the search scope is libraryIds narrowed to the libraries the
-            caller may read - never widened beyond it - and an empty (or entirely unreadable)
-            libraryIds performs no retrieval at all, see QueryMetadata.answeredWithoutKnowledge.
+            Ignored when chatId names a chat the caller authored - that chat's own useKnowledge
+            setting applies instead (#525). Otherwise (#526): whether the query searches the
+            knowledge base at all. When true (the default), the search scope is every knowledge
+            library the caller may read; libraryIds is ignored in this mode. When false, the
+            search scope is libraryIds narrowed to the libraries the caller may read - never
+            widened beyond it - and an empty (or entirely unreadable) libraryIds performs no
+            retrieval at all, see QueryMetadata.answeredWithoutKnowledge.
         libraryIds:
           type: array
           items:
             type: string
             format: uuid
           description: >
-            Knowledge libraries explicitly referenced for the query. Only consulted when
-            useKnowledge is false (#526).
+            Ignored when chatId names a chat the caller authored - that chat's own sticky
+            @-references apply instead (#525). Otherwise (#526): knowledge libraries explicitly
+            referenced for the query. Only consulted when useKnowledge is false.
 
     QueryResponse:
       type: object
-      required: [answer, sources, metadata, conversationId]
+      required: [answer, sources, metadata, chatId]
       properties:
         answer:
           type: string
@@ -1418,9 +1536,13 @@ components:
             $ref: "#/components/schemas/SourceReference"
         metadata:
           $ref: "#/components/schemas/QueryMetadata"
-        conversationId:
+        chatId:
           type: string
-          example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
+          format: uuid
+          description: >
+            The chat this turn was appended to, or - for an ephemeral query that supplied no
+            chatId - a freshly generated id identifying only the in-memory conversation cache
+            entry, not a persisted chat.
 
     SourceReference:
       type: object
@@ -1675,6 +1797,159 @@ components:
         userId:
           type: string
           format: uuid
+
+    ChatStatus:
+      type: string
+      description: >
+        Single-value for now (#525) - the SHARED/WITHDRAWN axis from the specification's sharing
+        model belongs to #205 and is deliberately not built here; the column exists so it can be
+        added without a further migration.
+      enum: [PRIVATE]
+      example: PRIVATE
+
+    ChatRole:
+      type: string
+      enum: [USER, ASSISTANT]
+      example: USER
+
+    ChatSummary:
+      type: object
+      description: A chat as listed in its space - without its messages, see ChatDetail for those.
+      required: [id, spaceId, authorId, useKnowledge, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+          description: Falls back to a title derived from the first question if never set explicitly.
+          example: Rückstellung für Altlastensanierung
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: >
+            Sticky @-references (epic #523). Used as the search scope when useKnowledge is false;
+            ignored when it is true.
+        status:
+          $ref: "#/components/schemas/ChatStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ChatDetail:
+      type: object
+      description: A chat with its full message history, in chronological order.
+      required: [id, spaceId, authorId, useKnowledge, status, messages, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+          example: Rückstellung für Altlastensanierung
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          $ref: "#/components/schemas/ChatStatus"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ChatMessageResponse:
+      type: object
+      required: [id, chatId, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        chatId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ChatRole"
+        content:
+          type: string
+        sources:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceReference"
+          description: Present on ASSISTANT messages that used document context; absent otherwise.
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          nullable: true
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+
+    ChatUpdateRequest:
+      type: object
+      description: >
+        Every field is optional and only overwrites the chat when present - omitting a field
+        leaves it unchanged, matching PATCH semantics rather than PUT's full replacement.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          nullable: true
+        useKnowledge:
+          type: boolean
+          nullable: true
+        referencedLibraryIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
 
     GroupKind:
       type: string

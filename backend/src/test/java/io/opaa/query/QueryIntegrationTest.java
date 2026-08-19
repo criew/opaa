@@ -1,7 +1,6 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -398,19 +397,5 @@ class QueryIntegrationTest {
     } finally {
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
-  }
-
-  @Test
-  void queryRejectsInvalidConversationId() {
-    assertThatThrownBy(
-            () ->
-                queryService.query(
-                    "Test question",
-                    "<script>alert(1)</script>",
-                    userId,
-                    true,
-                    java.util.List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Ungültiges Format der conversationId");
   }
 }

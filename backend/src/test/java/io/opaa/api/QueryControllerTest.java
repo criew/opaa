@@ -63,12 +63,13 @@ class QueryControllerTest {
 
   @Test
   void queryReturnsAnswerWithSources() throws Exception {
+    UUID chatId = UUID.randomUUID();
     var response =
         new QueryResponse(
             "The answer",
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryMetadata("gpt-4o", 500, 1200L),
-            "conv-123");
+            chatId);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -87,14 +88,14 @@ class QueryControllerTest {
         .andExpect(jsonPath("$.metadata.model").value("gpt-4o"))
         .andExpect(jsonPath("$.metadata.tokenCount").value(500))
         .andExpect(jsonPath("$.metadata.durationMs").value(1200))
-        .andExpect(jsonPath("$.conversationId").value("conv-123"));
+        .andExpect(jsonPath("$.chatId").value(chatId.toString()));
   }
 
   @Test
-  void queryWithConversationIdPassesItThrough() throws Exception {
+  void queryWithChatIdPassesItThrough() throws Exception {
+    UUID chatId = UUID.randomUUID();
     var response =
-        new QueryResponse(
-            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "existing-conv");
+        new QueryResponse("Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), chatId);
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -102,15 +103,16 @@ class QueryControllerTest {
             post("/api/v1/query")
                 .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"question\": \"Follow-up?\", \"conversationId\": \"existing-conv\"}"))
+                .content("{\"question\": \"Follow-up?\", \"chatId\": \"" + chatId + "\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.conversationId").value("existing-conv"));
+        .andExpect(jsonPath("$.chatId").value(chatId.toString()));
   }
 
   @Test
   void queryWithoutUseKnowledgeInBodyDefaultsToTrue() throws Exception {
     var response =
-        new QueryResponse("Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "conv-1");
+        new QueryResponse(
+            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), UUID.randomUUID());
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
@@ -132,7 +134,8 @@ class QueryControllerTest {
     UUID libraryId1 = UUID.randomUUID();
     UUID libraryId2 = UUID.randomUUID();
     var response =
-        new QueryResponse("Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "conv-1");
+        new QueryResponse(
+            "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), UUID.randomUUID());
     when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
