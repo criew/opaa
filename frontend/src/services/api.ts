@@ -7,6 +7,7 @@ import type {
   GroupResponse,
   HealthResponse,
   IndexingStatusResponse,
+  LibraryDocumentPageResponse,
   LibraryDocumentResponse,
   LibraryListResponse,
   LibraryRequest,
@@ -369,10 +370,24 @@ export async function deleteLibrary(libraryId: string): Promise<void> {
   }
 }
 
-export async function getLibraryDocuments(libraryId: string): Promise<LibraryDocumentResponse[]> {
+export async function getLibraryDocuments(
+  libraryId: string,
+  options?: { page?: number; size?: number; q?: string },
+): Promise<LibraryDocumentPageResponse> {
   try {
-    const { data } = await client.get<LibraryDocumentResponse[]>(
+    const { data } = await client.get<LibraryDocumentPageResponse>(
       `/v1/libraries/${libraryId}/documents`,
+      {
+        params: {
+          page: options?.page,
+          size: options?.size,
+          // undefined/"" are both dropped by axios's default paramsSerializer, so an empty search
+          // field never sends q= at all - the backend's own "blank q means unfiltered" branch
+          // (KnowledgeLibraryService#listDocuments) would treat it identically either way, but
+          // omitting it keeps the request itself a plain, unfiltered "list this page" call.
+          q: options?.q || undefined,
+        },
+      },
     )
     return data
   } catch (err) {

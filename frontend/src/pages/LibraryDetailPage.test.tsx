@@ -9,11 +9,19 @@ import { useDocumentStore } from '../stores/documentStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import type {
   IndexingStatusResponse,
+  LibraryDocumentPageResponse,
   LibraryDocumentResponse,
   LibraryListResponse,
   LibraryResponse,
   LibraryUpdateRequest,
 } from '../types/api'
+
+function pageOf(
+  items: LibraryDocumentResponse[],
+  overrides: Partial<LibraryDocumentPageResponse> = {},
+): LibraryDocumentPageResponse {
+  return { items, page: 0, size: 20, totalElements: items.length, ...overrides }
+}
 
 let currentLibraryId = 'library-team'
 
@@ -39,7 +47,7 @@ const {
   mockGetLibrary: vi.fn(async (id: string) => useLibraryStore.getState().libraryDetails[id]),
   mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
   mockDeleteLibrary: vi.fn(async () => undefined),
-  mockGetLibraryDocuments: vi.fn(async () => [] as LibraryDocumentResponse[]),
+  mockGetLibraryDocuments: vi.fn(async () => pageOf([])),
   mockUploadDocument: vi.fn(),
   mockDeleteLibraryDocument: vi.fn(async () => undefined),
   mockTriggerIndexing: vi.fn(
@@ -308,19 +316,21 @@ describe('LibraryDetailPage', () => {
   })
 
   it('shows the upload zone and document list for an UPLOAD library', async () => {
-    mockGetLibraryDocuments.mockResolvedValueOnce([
-      {
-        id: 'doc-1',
-        fileName: 'dienstanweisung.pdf',
-        contentType: 'application/pdf',
-        fileSize: 1024,
-        status: 'INDEXED',
-        sourceType: 'UPLOAD',
-        chunkCount: 3,
-        indexedAt: '2026-03-01T10:00:00Z',
-        uploadedByUserId: 'u1',
-      },
-    ])
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'doc-1',
+          fileName: 'dienstanweisung.pdf',
+          contentType: 'application/pdf',
+          fileSize: 1024,
+          status: 'INDEXED',
+          sourceType: 'UPLOAD',
+          chunkCount: 3,
+          indexedAt: '2026-03-01T10:00:00Z',
+          uploadedByUserId: 'u1',
+        },
+      ]),
+    )
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
@@ -332,8 +342,10 @@ describe('LibraryDetailPage', () => {
   it('uploads a file and shows it in the list afterwards', async () => {
     // #506 review, finding 5: durchstich test for upload on the new page, mirroring the
     // equivalent test in the deleted DocumentsPage.test.tsx.
+    // #517 code review, finding 2: uploadNewDocument no longer prepends the response locally - it
+    // reloads the current page from the server, hence the second mockGetLibraryDocuments answer.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
-    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     mockUploadDocument.mockResolvedValueOnce({
       id: 'document-new',
       fileName: 'neues-dokument.pdf',
@@ -345,6 +357,21 @@ describe('LibraryDetailPage', () => {
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
     })
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'document-new',
+          fileName: 'neues-dokument.pdf',
+          contentType: 'application/pdf',
+          fileSize: 1000,
+          status: 'PENDING',
+          sourceType: 'UPLOAD',
+          chunkCount: 0,
+          indexedAt: null,
+          uploadedByUserId: 'mock-user-id',
+        },
+      ]),
+    )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
@@ -360,19 +387,21 @@ describe('LibraryDetailPage', () => {
     // #506 review, finding 5: durchstich test for deletion with the confirmation dialog on the
     // new page, mirroring the equivalent test in the deleted DocumentsPage.test.tsx.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
-    mockGetLibraryDocuments.mockResolvedValueOnce([
-      {
-        id: 'document-1',
-        fileName: 'dienstanweisung-2024.pdf',
-        contentType: 'application/pdf',
-        fileSize: 1000,
-        status: 'INDEXED',
-        sourceType: 'UPLOAD',
-        chunkCount: 12,
-        indexedAt: '2026-03-01T10:00:00Z',
-        uploadedByUserId: 'mock-user-id',
-      },
-    ])
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'document-1',
+          fileName: 'dienstanweisung-2024.pdf',
+          contentType: 'application/pdf',
+          fileSize: 1000,
+          status: 'INDEXED',
+          sourceType: 'UPLOAD',
+          chunkCount: 12,
+          indexedAt: '2026-03-01T10:00:00Z',
+          uploadedByUserId: 'mock-user-id',
+        },
+      ]),
+    )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -467,7 +496,7 @@ describe('LibraryDetailPage', () => {
     // library - without a reset on mount/switch, an error from library A would keep showing on
     // library B's section.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
-    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
@@ -479,7 +508,7 @@ describe('LibraryDetailPage', () => {
     unmount()
 
     setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await screen.findByText(/dateien hierher ziehen/i)
@@ -513,5 +542,109 @@ describe('LibraryDetailPage', () => {
 
     expect(await screen.findByText(/quellkonfiguration/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /jetzt indizieren/i })).not.toBeInTheDocument()
+  })
+
+  // #517 code review, nit 4: a VIEWER on a connector library must see both hints - "nur
+  // Leserechte" was previously scoped to isUploadLibrary and silently dropped for this case.
+  it('shows the read-only hint for a VIEWER on a connector library, alongside the connector hint', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    // Exact match, not a substring: LibraryIndexingSection shows its own, differently worded
+    // "nur Leserechte und können keine Indizierung anstoßen." hint on the same connector-library
+    // page, so a loose regex would find two elements and fail as ambiguous.
+    expect(
+      await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
+  })
+
+  // #517: the document list previously only rendered for UPLOAD libraries - a connector library's
+  // indexed bestand was invisible even though the API always served it.
+  it('shows the document list for a FILESYSTEM library, without upload or delete controls', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'doc-1',
+          fileName: 'rundschreiben.pdf',
+          contentType: 'application/pdf',
+          fileSize: 2048,
+          status: 'INDEXED',
+          sourceType: 'FILESYSTEM',
+          chunkCount: 5,
+          indexedAt: '2026-03-01T10:00:00Z',
+          uploadedByUserId: null,
+        },
+      ]),
+    )
+    setLibraryState(
+      { ...managerLibrary, myRole: 'OWNER' },
+      detailsOf(
+        { ...managerLibrary, myRole: 'OWNER' },
+        { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' },
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText('rundschreiben.pdf')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /dokument rundschreiben\.pdf löschen/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
+  })
+
+  it('searches documents server-side, debounced, resetting to the first page', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await screen.findByText(/es sind noch keine dokumente vorhanden/i)
+    mockGetLibraryDocuments.mockClear()
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+
+    const searchField = screen.getByLabelText(/dokumente durchsuchen/i)
+    await user.type(searchField, 'sozial')
+
+    await waitFor(
+      () => {
+        expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-team', {
+          page: 0,
+          size: 20,
+          q: 'sozial',
+        })
+      },
+      { timeout: 2000 },
+    )
+  })
+
+  it('shows pagination controls once more than one page of documents exists', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf(
+        [
+          {
+            id: 'doc-1',
+            fileName: 'a.pdf',
+            contentType: 'application/pdf',
+            fileSize: 100,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: 'u1',
+          },
+        ],
+        { page: 0, size: 1, totalElements: 3 },
+      ),
+    )
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await screen.findByText('a.pdf')
+    expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument()
   })
 })

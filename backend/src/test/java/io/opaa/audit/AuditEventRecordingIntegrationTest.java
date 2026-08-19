@@ -59,6 +59,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -752,7 +753,7 @@ class AuditEventRecordingIntegrationTest {
 
     libraryService.listLibraries(owner, false);
     libraryService.getLibrary(libraryId, owner, false);
-    libraryService.listDocuments(libraryId, owner, false);
+    libraryService.listDocuments(libraryId, owner, false, null, PageRequest.of(0, 20));
     grantService.listGrants(libraryId, owner, false);
 
     long after = auditLogRepository.count();

@@ -52,6 +52,7 @@ export type LibraryResponse = components['schemas']['LibraryResponse']
 export type DocumentStatus = components['schemas']['DocumentStatus']
 export type DocumentSourceType = components['schemas']['DocumentSourceType']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
+export type LibraryDocumentPageResponse = components['schemas']['LibraryDocumentPageResponse']
 
 export type PermissionSubjectType = components['schemas']['PermissionSubjectType']
 export type AssetGrantRequest = components['schemas']['AssetGrantRequest']

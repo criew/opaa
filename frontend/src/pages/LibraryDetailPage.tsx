@@ -14,6 +14,7 @@ import InputLabel from '@mui/material/InputLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
+import Pagination from '@mui/material/Pagination'
 import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
@@ -23,10 +24,15 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
-import type { AssetRole, LibraryDocumentResponse, LibraryVisibility } from '../types/api'
+import type {
+  AssetRole,
+  DocumentSourceType,
+  LibraryDocumentResponse,
+  LibraryVisibility,
+} from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
-import { useDocumentStore } from '../stores/documentStore'
+import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import {
   assetRoleLabel,
@@ -347,21 +353,27 @@ export default function LibraryDetailPage() {
         </Stack>
       </Paper>
 
-      {details?.sourceType === 'UPLOAD' && (
-        <LibraryDocumentsSection
-          libraryId={libraryId}
-          canManage={canManageDocuments(library.myRole) || isSystemAdmin}
-          // #506 review, finding 7: the document count in the header comes from the library
-          // itself, not from documentStore - without this it stays on whatever value was loaded
-          // on mount even after an upload or delete changes it.
-          onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
-        />
-      )}
       {details && details.sourceType !== 'UPLOAD' && (
         <LibraryIndexingSection
           libraryId={libraryId}
           library={details}
           canTrigger={canManageDocuments(library.myRole) || isSystemAdmin}
+        />
+      )}
+      {details && (
+        <LibraryDocumentsSection
+          // Forces a remount on library change (rather than resetting local state like
+          // searchInput from within an effect, which react-hooks/set-state-in-effect flags as a
+          // cascading-render risk): a fresh component instance starts every piece of local state
+          // at its initial value for free.
+          key={libraryId}
+          libraryId={libraryId}
+          sourceType={details.sourceType}
+          canManage={canManageDocuments(library.myRole) || isSystemAdmin}
+          // #506 review, finding 7: the document count in the header comes from the library
+          // itself, not from documentStore - without this it stays on whatever value was loaded
+          // on mount even after an upload or delete changes it.
+          onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
         />
       )}
 
@@ -378,16 +390,19 @@ export default function LibraryDetailPage() {
 
 interface LibraryDocumentsSectionProps {
   libraryId: string
+  sourceType: DocumentSourceType
   canManage: boolean
   onDocumentsChanged: () => void
 }
 
 function LibraryDocumentsSection({
   libraryId,
+  sourceType,
   canManage,
   onDocumentsChanged,
 }: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
+  const pageStateByLibrary = useDocumentStore((s) => s.pageStateByLibrary)
   const isLoading = useDocumentStore((s) => s.isLoading)
   const error = useDocumentStore((s) => s.error)
   const uploadErrors = useDocumentStore((s) => s.uploadErrors)
@@ -402,18 +417,41 @@ function LibraryDocumentsSection({
   const reset = useDocumentStore((s) => s.reset)
 
   const [isDragActive, setIsDragActive] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const isUploadLibrary = sourceType === 'UPLOAD'
+  // ADR-0018/#443: a FILESYSTEM or HTTP_DIRECTORY document only ever leaves the index because its
+  // source file did too - deleting the row here does not touch that file, so the next indexing run
+  // finds it still present and re-adds it right back, with no visible error to explain why. Rather
+  // than offer a delete that silently undoes itself, the action is hidden entirely for connector
+  // libraries; removing content stays possible at the source location (or, for the whole library
+  // at once, from the source itself via re-run or via deleting the library, ADR-0018 Entscheidung
+  // 5). Scoped to canDelete rather than reusing canManage as-is, so the upload/manage affordances
+  // for UPLOAD libraries are unaffected.
+  const canDelete = isUploadLibrary && canManage
 
   useEffect(() => {
     // #506 review, finding 2: uploadErrors/deleteError/error are not keyed by library - without
     // this reset, an upload or delete failure left over from a previously viewed library would
     // keep showing on a different library's section after switching.
     reset()
-    void loadDocuments(libraryId)
-    return () => stopPolling(libraryId)
+    void loadDocuments(libraryId, { page: 0, size: DEFAULT_PAGE_SIZE, q: '' })
+    return () => {
+      stopPolling(libraryId)
+      // #517 code review, nit 1: without this, typing into the search field and switching
+      // libraries within the 300ms debounce window (the section remounts via key={libraryId}, see
+      // LibraryDetailPage) still fires the old instance's timer, which calls loadDocuments for the
+      // *previous* libraryId - isLoading/error are global on documentStore, so that would flash an
+      // unrelated loading/error state into the newly mounted section.
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
   }, [libraryId, loadDocuments, stopPolling, reset])
 
   const documents = documentsByLibrary[libraryId] ?? []
+  const pageState = pageStateByLibrary[libraryId]
+  const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
   async function handleFiles(files: FileList | File[]) {
     if (!canManage) return
@@ -454,19 +492,41 @@ function LibraryDocumentsSection({
     }
   }
 
+  function handleSearchChange(value: string) {
+    setSearchInput(value)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      void loadDocuments(libraryId, { page: 0, q: value })
+    }, 300)
+  }
+
+  function handlePageChange(_event: unknown, newPage: number) {
+    void loadDocuments(libraryId, { page: newPage - 1 })
+  }
+
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
       <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
         Dokumente
       </Typography>
 
+      {/* #517 code review, nit 4: scoped to !canManage alone (not additionally isUploadLibrary,
+          as an earlier version had it) - a VIEWER on a connector library lost this hint entirely
+          otherwise, even though it is just as true there as for a read-only UPLOAD library. */}
       {!canManage && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Sie haben in dieser Bibliothek nur Leserechte.
         </Alert>
       )}
+      {!isUploadLibrary && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Diese Liste zeigt den zuletzt indizierten Bestand dieser Konnektorbibliothek. Einzelne
+          Dokumente lassen sich hier nicht löschen — ein gelöschtes Dokument käme mit dem nächsten
+          Indizierungslauf zurück, solange seine Quelle unverändert ist.
+        </Alert>
+      )}
 
-      {canManage && (
+      {isUploadLibrary && canManage && (
         <Stack spacing={1.5} sx={{ mb: 3 }}>
           <Box
             role="button"
@@ -549,10 +609,24 @@ function LibraryDocumentsSection({
         </Alert>
       )}
 
+      <TextField
+        label="Dokumente durchsuchen"
+        size="small"
+        fullWidth
+        sx={{ mb: 2 }}
+        value={searchInput}
+        onChange={(e) => handleSearchChange(e.target.value)}
+        placeholder="Dateiname enthält …"
+      />
+
       {isLoading ? (
         <Typography color="text.secondary">Dokumente werden geladen …</Typography>
       ) : documents.length === 0 ? (
-        <Typography color="text.secondary">Es sind noch keine Dokumente vorhanden.</Typography>
+        <Typography color="text.secondary">
+          {searchInput
+            ? 'Kein Dokument entspricht dieser Suche.'
+            : 'Es sind noch keine Dokumente vorhanden.'}
+        </Typography>
       ) : (
         <Stack spacing={1}>
           {documents.map((document) => (
@@ -586,7 +660,7 @@ function LibraryDocumentsSection({
                   color={statusChipColor(document.status)}
                   variant="outlined"
                 />
-                {canManage && (
+                {canDelete && (
                   <IconButton
                     aria-label={`Dokument ${document.fileName} löschen`}
                     size="small"
@@ -598,6 +672,16 @@ function LibraryDocumentsSection({
               </Stack>
             </Box>
           ))}
+        </Stack>
+      )}
+
+      {pageCount > 1 && (
+        <Stack direction="row" sx={{ mt: 2, justifyContent: 'center' }}>
+          <Pagination
+            count={pageCount}
+            page={(pageState?.page ?? 0) + 1}
+            onChange={handlePageChange}
+          />
         </Stack>
       )}
     </Paper>
