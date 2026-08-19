@@ -22,6 +22,7 @@ import { getMyGroups } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import {
   allDocumentSourceTypes,
+  documentSourceTypeConfigKind,
   documentSourceTypeDescription,
   documentSourceTypeLabel,
 } from '../utils/labels'
@@ -31,8 +32,6 @@ interface CreateLibraryDialogProps {
   onClose: () => void
   onCreated: (libraryId: string) => void
 }
-
-const urlBasedSourceTypes: DocumentSourceType[] = ['HTTP_DIRECTORY', 'RSS_FEED']
 
 function initialSourceType(): DocumentSourceType {
   // UPLOAD ist der einfachste und bislang einzig verfuegbare Weg gewesen, bevor Konnektortypen
@@ -117,25 +116,22 @@ export default function CreateLibraryDialog({
       setError('Bitte eine Gruppe auswählen')
       return
     }
+    const configKind = documentSourceTypeConfigKind[sourceType]
     const trimmedPath = sourcePath.trim()
-    if (sourceType === 'FILESYSTEM' && !trimmedPath) {
+    if (configKind === 'path' && !trimmedPath) {
       setError('Verzeichnispfad ist erforderlich')
       return
     }
-    if (sourceType === 'FILESYSTEM' && !trimmedPath.startsWith('/')) {
+    if (configKind === 'path' && !trimmedPath.startsWith('/')) {
       setError('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
       return
     }
     const trimmedUrl = sourceUrl.trim()
-    if (urlBasedSourceTypes.includes(sourceType) && !trimmedUrl) {
+    if (configKind === 'url' && !trimmedUrl) {
       setError('Adresse (URL) ist erforderlich')
       return
     }
-    if (
-      urlBasedSourceTypes.includes(sourceType) &&
-      trimmedUrl &&
-      !/^https?:\/\//i.test(trimmedUrl)
-    ) {
+    if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
       setError('Adresse (URL) muss mit http:// oder https:// beginnen')
       return
     }
@@ -151,17 +147,12 @@ export default function CreateLibraryDialog({
         // erfolgt oben als Vorlagenwahl. Nur der zum Typ passende Teil der Konfigurationsfelder
         // wird gesendet - das Backend lehnt jede Kombination ab, die dem Typ widerspricht.
         sourceType,
-        sourcePath: sourceType === 'FILESYSTEM' ? trimmedPath : undefined,
-        sourceUrl: urlBasedSourceTypes.includes(sourceType) ? trimmedUrl : undefined,
-        sourceProxy:
-          urlBasedSourceTypes.includes(sourceType) && sourceProxy.trim()
-            ? sourceProxy.trim()
-            : undefined,
+        sourcePath: configKind === 'path' ? trimmedPath : undefined,
+        sourceUrl: configKind === 'url' ? trimmedUrl : undefined,
+        sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
         sourceCredentials:
-          urlBasedSourceTypes.includes(sourceType) && sourceCredentials.trim()
-            ? sourceCredentials.trim()
-            : undefined,
-        sourceInsecureSsl: urlBasedSourceTypes.includes(sourceType) ? sourceInsecureSsl : false,
+          configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
+        sourceInsecureSsl: configKind === 'url' ? sourceInsecureSsl : false,
       })
       resetForm()
       onCreated(libraryId)
@@ -188,11 +179,11 @@ export default function CreateLibraryDialog({
             value={sourceType}
             onChange={(e) => setSourceType(e.target.value as DocumentSourceType)}
           >
-            {allDocumentSourceTypes.map((type) => (
+            {allDocumentSourceTypes.map((type, index) => (
               <FormControlLabel
                 key={type}
                 value={type}
-                control={<Radio />}
+                control={<Radio autoFocus={index === 0} />}
                 label={
                   <Box sx={{ py: 0.5 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -211,7 +202,6 @@ export default function CreateLibraryDialog({
         <Divider sx={{ my: 2 }} />
 
         <TextField
-          autoFocus
           label="Name"
           fullWidth
           required
@@ -230,7 +220,7 @@ export default function CreateLibraryDialog({
           sx={{ mt: 2 }}
         />
 
-        {sourceType === 'FILESYSTEM' && (
+        {documentSourceTypeConfigKind[sourceType] === 'path' && (
           <TextField
             label="Verzeichnispfad"
             fullWidth
@@ -239,11 +229,12 @@ export default function CreateLibraryDialog({
             onChange={(e) => setSourcePath(e.target.value)}
             placeholder="/data/dokumente"
             helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
+            slotProps={{ htmlInput: { maxLength: 2000 } }}
             sx={{ mt: 2 }}
           />
         )}
 
-        {urlBasedSourceTypes.includes(sourceType) && (
+        {documentSourceTypeConfigKind[sourceType] === 'url' && (
           <Stack spacing={2} sx={{ mt: 2 }}>
             {sourceType === 'RSS_FEED' && (
               <Alert severity="info">
@@ -259,6 +250,7 @@ export default function CreateLibraryDialog({
               onChange={(e) => setSourceUrl(e.target.value)}
               placeholder="https://files.example.com/dokumente/"
               helperText="http oder https."
+              slotProps={{ htmlInput: { maxLength: 2000 } }}
             />
             <TextField
               label="Proxy"
@@ -267,6 +259,11 @@ export default function CreateLibraryDialog({
               onChange={(e) => setSourceProxy(e.target.value)}
               placeholder="proxy.example.com:8080"
               helperText="Optional."
+              // Chrome/Safari can pair a plain text field right above a password field into the
+              // same credential group and offer to save it as the "username" - autoComplete="off"
+              // keeps the proxy address (a server, not a login) out of that pairing.
+              autoComplete="off"
+              slotProps={{ htmlInput: { maxLength: 255 } }}
             />
             <TextField
               label="Anmeldedaten"
@@ -276,6 +273,12 @@ export default function CreateLibraryDialog({
               onChange={(e) => setSourceCredentials(e.target.value)}
               placeholder="benutzer:passwort"
               helperText="Optional. Wird nie in einer API-Antwort ausgegeben."
+              // "new-password" statt "current-password": dieses Feld gehoert zur Quellkonfiguration
+              // der Bibliothek (eine fremde Basic-Auth), nicht zum OPAA-Konto der Nutzerin - der
+              // Browser-Passwortmanager soll es weder mit dem OPAA-Kennwort befuellen noch die hier
+              // eingegebene fremde Quell-Zugangsdaten unter dem OPAA-Login speichern.
+              autoComplete="new-password"
+              slotProps={{ htmlInput: { maxLength: 500 } }}
             />
             <FormControlLabel
               control={

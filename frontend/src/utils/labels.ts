@@ -140,6 +140,25 @@ export function documentSourceTypeDescription(
 // to "the template list follows the spec automatically" without a build-time codegen step.
 export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
 
+/**
+ * Which configuration fields CreateLibraryDialog renders and validates for each source type,
+ * mirroring KnowledgeLibraryService#validateConfigurationForType (ADR-0018):
+ * - 'none': no source configuration fields are shown/sent (UPLOAD).
+ * - 'path': a required, server-absolute directory path (FILESYSTEM).
+ * - 'url': a required http(s) URL plus optional proxy/credentials/insecure-SSL (HTTP_DIRECTORY,
+ *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
+ *
+ * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
+ * a future enum value forces a compile error here instead of silently rendering as a template with
+ * no configuration fields at all.
+ */
+export const documentSourceTypeConfigKind: Record<DocumentSourceType, 'none' | 'path' | 'url'> = {
+  UPLOAD: 'none',
+  FILESYSTEM: 'path',
+  HTTP_DIRECTORY: 'url',
+  RSS_FEED: 'url',
+}
+
 /** Formats a byte count as a German-locale size string (e.g. "1,2 MB"), or an em dash if unknown. */
 export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null) return '—'

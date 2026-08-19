@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import CreateLibraryDialog from './CreateLibraryDialog'
 import { useLibraryStore } from '../stores/libraryStore'
+import { allDocumentSourceTypes, documentSourceTypeConfigKind } from '../utils/labels'
 import type { GroupListResponse, LibraryRequest, LibraryResponse } from '../types/api'
 
 const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
@@ -169,6 +170,27 @@ describe('CreateLibraryDialog', () => {
     expect(
       await screen.findByText(/ruft neben dem feed auch die von ihm verlinkten detailseiten ab/i),
     ).toBeInTheDocument()
+  })
+
+  it('maps every known source type to a config kind, so a future type cannot silently render no fields', () => {
+    for (const type of allDocumentSourceTypes) {
+      expect(['none', 'path', 'url']).toContain(documentSourceTypeConfigKind[type])
+    }
+    // UPLOAD stays field-less by design, and both URL-based types share the identical shape.
+    expect(documentSourceTypeConfigKind.UPLOAD).toBe('none')
+    expect(documentSourceTypeConfigKind.FILESYSTEM).toBe('path')
+    expect(documentSourceTypeConfigKind.HTTP_DIRECTORY).toBe('url')
+    expect(documentSourceTypeConfigKind.RSS_FEED).toBe('url')
+  })
+
+  it('keeps the credentials and proxy fields out of the browser password manager', async () => {
+    renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
+
+    expect(screen.getByLabelText(/anmeldedaten/i)).toHaveAttribute('autocomplete', 'new-password')
+    expect(screen.getByLabelText(/^proxy/i)).toHaveAttribute('autocomplete', 'off')
   })
 
   it('shows a German backend validation error without losing the entered data', async () => {

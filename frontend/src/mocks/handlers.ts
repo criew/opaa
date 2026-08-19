@@ -468,6 +468,20 @@ export const handlers = [
     }
     // Mirrors KnowledgeLibraryService#validateConfigurationForType (ADR-0018): only the fields
     // matching sourceType may be set, and the run-based types require their address field.
+    if (body.sourceType === 'UPLOAD') {
+      if (
+        body.sourcePath ||
+        body.sourceUrl ||
+        body.sourceProxy ||
+        body.sourceCredentials ||
+        body.sourceInsecureSsl
+      ) {
+        return HttpResponse.json(
+          { error: 'sourceType UPLOAD erlaubt keine Quellkonfiguration' },
+          { status: 400 },
+        )
+      }
+    }
     if (body.sourceType === 'FILESYSTEM') {
       if (!body.sourcePath) {
         return HttpResponse.json(
@@ -481,11 +495,33 @@ export const handlers = [
           { status: 400 },
         )
       }
+      if (body.sourceUrl || body.sourceProxy || body.sourceCredentials) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht' +
+              ' zulaessig',
+          },
+          { status: 400 },
+        )
+      }
+      if (body.sourceInsecureSsl) {
+        return HttpResponse.json(
+          { error: 'sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig' },
+          { status: 400 },
+        )
+      }
     }
     if (body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED') {
       if (!body.sourceUrl) {
         return HttpResponse.json(
           { error: `sourceUrl ist erforderlich, wenn sourceType ${body.sourceType} ist` },
+          { status: 400 },
+        )
+      }
+      if (body.sourcePath) {
+        return HttpResponse.json(
+          { error: `sourcePath ist fuer sourceType ${body.sourceType} nicht zulaessig` },
           { status: 400 },
         )
       }
