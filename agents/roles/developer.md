@@ -45,7 +45,7 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 
 ## Pre-Push-Checkliste
 
-Alle Prüfungen müssen bestehen; nur bei reinen Dokumentationsänderungen überspringen.
+Vor dem ersten Push eines PRs müssen alle Prüfungen bestehen; nur bei reinen Dokumentationsänderungen überspringen.
 
 ```text
 # backend/  (Git Bash: ./gradlew, PowerShell: .\gradlew.bat)
@@ -54,6 +54,14 @@ Alle Prüfungen müssen bestehen; nur bei reinen Dokumentationsänderungen über
 # frontend/
 npm run format && npm run lint && npm run test && npm run build
 ```
+
+**Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden): verkürzte
+Prüfung — Formatierung, Kompilieren und die berührten Testklassen (`./gradlew test --tests <Klasse>`).
+Den vollen Durchlauf übernimmt die CI des PRs; deren Ergebnis nach dem Push prüfen und im Bericht nennen.
+
+**Builds und Tests im Vordergrund ausführen** und aktiv abwarten (ausreichendes Timeout setzen, ein
+voller Backend-Build braucht ~6 Minuten). Keinen eigenen Hintergrundlauf starten, um auf dessen
+Benachrichtigung zu warten — die Ausführung endet sonst, ohne dass das Ergebnis verarbeitet wird.
 
 Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohne Docker still übersprungen. Den Bericht auf übersprungene Tests prüfen. Wenn eine Änderung Persistenz-, Indizierungs-, Abfrage- oder Workspace-Code betrifft und Integrationstests übersprungen wurden, dies explizit im PR angeben. Bereits vorhandene, nicht verwandte Fehler dokumentieren statt zu beheben; durch die Änderung verursachte Fehler müssen grün sein.
 
@@ -66,4 +74,4 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 - **Jackson:** Immer `tools.jackson.*` importieren. Jackson 2 liegt unvermeidbar transitiv mit auf dem Classpath (über `spring-ai-openai` → `openai-java-core`, `spring-ai-tika-document-reader` → Tika und `jjwt-jackson`); ein versehentlicher `com.fasterxml.jackson.databind.ObjectMapper`-Import kompiliert, findet zur Laufzeit aber keine Bean. Ausnahme: Die Annotationen bleiben `com.fasterxml.jackson.annotation.*` — die nutzt Jackson 3 weiterhin.
 - **Frontend-Tests** verwenden `frontend/src/test/test-utils.tsx`-Helfer wie `renderWithProviders` und `setMockAuthState`.
 - **Lokaler Betrieb:** Backend mit `./gradlew bootRun` (standardmäßig Mock-Auth; PostgreSQL über `docker-compose up postgres`); Frontend mit `npm run dev` oder Backend-los mit `VITE_ENABLE_MOCKS=true`.
-- **Frischer Worktree:** `npm ci` in `frontend/` einmal vor Frontend-Arbeit ausführen; Abhängigkeiten werden nicht in einen frischen Worktree übertragen.
+- **Frischer Worktree:** `npm ci --prefer-offline` in `frontend/` einmal vor Frontend-Arbeit ausführen; Abhängigkeiten werden nicht in einen frischen Worktree übertragen, der npm-Cache der Maschine enthält sie aber in aller Regel schon — `--prefer-offline` spart die Registry-Abfragen.

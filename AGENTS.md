@@ -151,13 +151,23 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 
 ### Pre-Push-Checkliste
 
-Bei reinen Dokumentationsänderungen überspringen. Vor jedem Push müssen alle folgenden Punkte lokal bestehen:
+Bei reinen Dokumentationsänderungen überspringen. Vor dem **ersten Push eines PRs** müssen alle folgenden Punkte lokal bestehen:
 
 - Backend-Formatierung
 - Backend-Build + Test
 - Frontend-Formatierung
 - Frontend-Lint
 - Frontend-Build + Test
+
+**Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden) verwenden die
+verkürzte Prüfung: Formatierung, Kompilieren und die von der Änderung berührten Testklassen. Den vollen
+Durchlauf übernimmt die CI des PRs — sie führt ohnehin dieselben Prüfungen aus, und ein roter CI-Lauf
+kostet nicht mehr Zeit als der eingesparte lokale Volllauf. Wer die verkürzte Prüfung nutzt, prüft das
+CI-Ergebnis des Folge-Pushes, bevor der PR als bereit gilt.
+
+**Builds und Tests im Vordergrund ausführen** und aktiv abwarten (mit ausreichendem Timeout), statt einen
+eigenen Hintergrundlauf zu starten und auf dessen Benachrichtigung zu warten — das hat sich als
+wiederkehrende Quelle verlorener Wartezeit erwiesen.
 
 ## Wichtige Pfade
 
