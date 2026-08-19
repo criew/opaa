@@ -55,8 +55,23 @@ export default function ChatPage() {
 
   // The first message on a not-yet-persisted chat creates it implicitly (chatStore#sendMessage) -
   // once that happened, the URL is replaced to point at the real chat id so a reload restores it.
+  //
+  // previousStoreChatIdRef guards against a real bug found via CI (#548 follow-up): on the very
+  // render where routeChatId just changed to "new", this effect's dependencies (isNewChat) changed
+  // too, so it runs in the *same* effect flush as the routing effect above - but storeChatId here
+  // still holds whatever chat was active *before* this navigation (the routing effect's
+  // startNewChat() call only takes effect on a later render, since it goes through Zustand's own
+  // subscription, not a synchronous update of this closure). Without the ref check below, this
+  // effect would see a stale-but-truthy storeChatId, immediately navigate right back to that old
+  // chat's URL, and defeat "start a new chat" entirely - the old chat's history (and any source
+  // card in it) would still be exactly what the user sees. The ref makes this only fire on the
+  // actual null -> id transition, i.e. once a chat has genuinely just been created in *this* new-
+  // chat session, not merely "some chat id happens to be sitting in the store".
+  const previousStoreChatIdRef = useRef(storeChatId)
   useEffect(() => {
-    if (isNewChat && storeChatId && storeSpaceId) {
+    const previousStoreChatId = previousStoreChatIdRef.current
+    previousStoreChatIdRef.current = storeChatId
+    if (isNewChat && storeChatId && storeSpaceId && previousStoreChatId !== storeChatId) {
       navigate(`/spaces/${storeSpaceId}/chats/${storeChatId}`, { replace: true })
     }
   }, [isNewChat, storeChatId, storeSpaceId, navigate])

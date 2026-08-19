@@ -58,10 +58,17 @@ async function startFreshChat(page: Page) {
   await page.goto('/chat')
   await page.getByRole('button', { name: 'Neuer Chat' }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
+  // The route change can briefly leave ChatPage showing its loading spinner instead of the input -
+  // a stale loadChat for the previously active chat racing the reset to "new", or simply the
+  // moment before the freshly emptied chat has rendered. Waiting here explicitly, instead of
+  // trusting the URL alone, is what askQuestion below actually needs (CI fix following PR #548's
+  // review, nit 3).
+  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
 }
 
 async function askQuestion(page: Page, question: string) {
   const input = page.getByPlaceholder('Stellen Sie eine Frage …')
+  await expect(input).toBeVisible()
   await input.fill(question)
   await page.getByRole('button', { name: 'Nachricht senden' }).click()
 }
