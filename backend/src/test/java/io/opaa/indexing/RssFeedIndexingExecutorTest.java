@@ -84,7 +84,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
-    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss);
+    IndexingProperties properties = new IndexingProperties(null, 0, 0, 0, 0, null, rss, null);
     return new RssFeedIndexingExecutor(
         new RssFeedParser(),
         fileProcessingService,

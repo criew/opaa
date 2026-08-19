@@ -69,6 +69,10 @@ class LibraryIndexingAuthorizationIntegrationTest {
     // production default (opaa.rate-limit.indexing, 1 request per 60s) would otherwise turn every
     // second trigger in this class into an unrelated 429.
     registry.add("opaa.rate-limit.enabled", () -> false);
+    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
+    // inside the allowlist.
+    registry.add(
+        "opaa.indexing.filesystem-allowlist", () -> documentDir.toAbsolutePath().toString());
   }
 
   @Autowired private MockMvc mockMvc;

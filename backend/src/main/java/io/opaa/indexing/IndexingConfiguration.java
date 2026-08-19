@@ -67,11 +67,18 @@ public class IndexingConfiguration {
   // UrlIndexingExecutor directly; every consumer (IndexingSourceExecutorRegistry) depends on
   // SourceIndexingExecutor already.
   @Bean
+  FilesystemPathAllowlist filesystemPathAllowlist(IndexingProperties properties) {
+    return new FilesystemPathAllowlist(properties);
+  }
+
+  @Bean
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService) {
-    return new AsyncIndexingExecutor(documentService, fileProcessingService, indexingJobService);
+      IndexingJobService indexingJobService,
+      FilesystemPathAllowlist filesystemPathAllowlist) {
+    return new AsyncIndexingExecutor(
+        documentService, fileProcessingService, indexingJobService, filesystemPathAllowlist);
   }
 
   @Bean

@@ -1788,7 +1788,12 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          description: Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute path.
+          description: >
+            Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
+            path, and must resolve underneath one of the operator-configured allowlist base
+            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
+            entirely.
           example: /data/documents/rechtsquellen
         sourceUrl:
           type: string
@@ -1861,7 +1866,12 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          description: Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute path.
+          description: >
+            Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
+            path, and must resolve underneath one of the operator-configured allowlist base
+            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
+            entirely.
           example: /data/documents/rechtsquellen
         sourceUrl:
           type: string

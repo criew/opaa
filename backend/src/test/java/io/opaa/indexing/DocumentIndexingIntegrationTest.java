@@ -67,6 +67,10 @@ class DocumentIndexingIntegrationTest {
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("opaa.indexing.document-path", () -> sharedTempDir.toAbsolutePath().toString());
+    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir (which is
+    // neither, on most platforms/CI runners) stays inside the allowlist.
+    registry.add(
+        "opaa.indexing.filesystem-allowlist", () -> sharedTempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 100);
     // The application default overlap (100) is not smaller than the chunk size this test pins, and
     // IndexingProperties rejects that combination outright instead of clamping it silently.
@@ -498,6 +502,53 @@ class DocumentIndexingIntegrationTest {
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(doc.getChecksum()).isNotNull();
     assertThat(doc.getChecksum()).hasSize(64);
+  }
+
+  @Test
+  void triggerIndexingFailsTheJobWhenSourcePathIsOutsideTheConfiguredAllowlist() {
+    // #484/ADR-0018 Entscheidung 6: the allowlist is enforced again at run time
+    // (AsyncIndexingExecutor),
+    // not only at library creation/update time - a Bestandsbibliothek whose sourcePath the
+    // operator's
+    // allowlist no longer covers must not silently succeed. This library is created directly
+    // against
+    // the repository (bypassing KnowledgeLibraryService's own creation-time check) with a
+    // sourcePath
+    // outside this suite's configured allowlist (sharedTempDir), mirroring how such a library could
+    // exist if the allowlist were narrowed after it was created.
+    KnowledgeLibrary outsideAllowlistLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Ausserhalb der Allowlist",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                sharedTempDir
+                    .resolveSibling("opaa-484-outside-allowlist")
+                    .toAbsolutePath()
+                    .toString(),
+                null,
+                null,
+                null,
+                false));
+    grantOwner(outsideAllowlistLibrary.getId(), userId);
+
+    IndexingJob job =
+        documentIndexingService.triggerIndexing(outsideAllowlistLibrary.getId(), userId, true);
+    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
+
+    awaitJobCompletion(job);
+
+    var failedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
+    assertThat(failedJob.getStatus()).isEqualTo(JobStatus.FAILED);
+    assertThat(failedJob.getErrorMessage()).contains("ausserhalb");
+    assertThat(documentRepository.findByLibraryId(outsideAllowlistLibrary.getId())).isEmpty();
+
+    libraryRepository.deleteById(outsideAllowlistLibrary.getId());
   }
 
   private void awaitJobCompletion(IndexingJob job) {
