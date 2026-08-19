@@ -44,7 +44,7 @@ Alles davon ist Teil **einer** Version. Eine Änderung an irgendeinem Bestandtei
 
 ### Der Agent führt sein Wissen selbst mit
 
-Welche Wissensbibliotheken ein Agent nutzt, ist Teil **seiner** Beschreibung und nicht des Raums, in dem er läuft. Der Space verengt einen Chat ohne gebundenen Agenten, er verengt aber **nicht** den Agenten (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
+Welche Wissensbibliotheken ein Agent nutzt, ist Teil **seiner** Beschreibung und nicht des Raums, in dem er läuft. Bei eingeschaltetem Schalter „Wissen nutzen" verengt der Space einen Chat ohne gebundenen Agenten; er verengt aber **nicht** den Agenten (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)).
 
 Diese Asymmetrie ist der Kern der Prüfbarkeit. Würde der Space zusätzlich verengen, antwortete dieselbe freigegebene Fassung je nach Aufrufort anders — ein Prüfbericht sagte dann nichts über den nächsten Aufruf aus, und die Freigabe wäre nicht mehr als ein Datum. Umgekehrt gilt: Weil die Bindung mitreist, bringt ein geteilter Agent sein Wissen mit, statt beim Empfänger neu zusammengesetzt zu werden.
 

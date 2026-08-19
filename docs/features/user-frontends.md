@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
-| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | teilweise — heute nur die Eingrenzung auf Arbeitsräume, ohne Wirkung im Backend; Zielbild siehe unten |
+| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | nein — Zielbild; die heute gebaute Eingrenzung auf Arbeitsräume ist ohne Wirkung im Backend und entfällt (siehe unten) |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -183,7 +183,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; optional auf ausgewählte Arbeitsräume eingegrenzt | `POST /api/v1/query` | ja |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | teilweise — Frage, Antwort und Fundstellen sind gebaut; die heutige, wirkungslose Eingrenzung auf Arbeitsräume entfällt, Schalter und @-Referenzen sind Zielbild |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
