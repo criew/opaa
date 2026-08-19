@@ -16,14 +16,12 @@ interface SpaceState {
   spaces: SpaceListResponse[]
   selectedSpaceId: string | null
   selectedSpace: SpaceResponse | null
-  chatFilterSpaceIds: string[]
   isLoadingList: boolean
   isLoadingDetails: boolean
   error: string | null
   reset: () => void
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
-  setChatFilterSpaceIds: (spaceIds: string[]) => void
   addMember: (spaceId: string, userId: string, role?: SpaceRole) => Promise<void>
   updateMemberRole: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>
   removeMember: (spaceId: string, userId: string) => Promise<void>
@@ -45,7 +43,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   spaces: [],
   selectedSpaceId: null,
   selectedSpace: null,
-  chatFilterSpaceIds: [],
   isLoadingList: false,
   isLoadingDetails: false,
   error: null,
@@ -55,7 +52,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       spaces: [],
       selectedSpaceId: null,
       selectedSpace: null,
-      chatFilterSpaceIds: [],
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
@@ -99,8 +95,6 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       })
     }
   },
-
-  setChatFilterSpaceIds: (spaceIds: string[]) => set({ chatFilterSpaceIds: spaceIds }),
 
   addMember: async (spaceId, userId, role) => {
     await addSpaceMember(spaceId, userId, role)

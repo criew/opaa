@@ -97,6 +97,34 @@ describe('MessageBubble', () => {
     expect(screen.queryByText('other.pdf')).not.toBeVisible()
   })
 
+  it('shows a hint when the answer was generated without knowledge', () => {
+    const msg: ChatMessage = {
+      id: '8',
+      role: 'assistant',
+      content: 'Answer',
+      sources: [],
+      answeredWithoutKnowledge: true,
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.getByText('Diese Antwort wurde ohne Wissensbasis erstellt.')).toBeInTheDocument()
+  })
+
+  it('does not show the hint when the answer used the knowledge base', () => {
+    const msg: ChatMessage = {
+      id: '9',
+      role: 'assistant',
+      content: 'Answer',
+      sources: [citedSource],
+      answeredWithoutKnowledge: false,
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(
+      screen.queryByText('Diese Antwort wurde ohne Wissensbasis erstellt.'),
+    ).not.toBeInTheDocument()
+  })
+
   it('expands uncited sources on click', async () => {
     const user = userEvent.setup()
     const msg: ChatMessage = {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Alert from '@mui/material/Alert'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Collapse from '@mui/material/Collapse'
@@ -67,6 +68,12 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               <MarkdownRenderer content={message.content} />
             )}
           </Paper>
+
+          {!isUser && message.answeredWithoutKnowledge && (
+            <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
+              Diese Antwort wurde ohne Wissensbasis erstellt.
+            </Alert>
+          )}
 
           {!isUser && citedSources.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ mt: 1, overflowX: 'auto', pb: 0.5 }}>

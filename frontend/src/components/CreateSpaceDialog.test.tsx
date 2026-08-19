@@ -34,7 +34,6 @@ describe('CreateSpaceDialog', () => {
       spaces: [],
       selectedSpaceId: null,
       selectedSpace: null,
-      chatFilterSpaceIds: [],
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
