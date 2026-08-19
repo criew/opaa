@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -52,6 +53,7 @@ class KnowledgeLibraryServiceTest {
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
+    VectorStore vectorStore = mock(VectorStore.class);
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     libraryService =
@@ -65,6 +67,7 @@ class KnowledgeLibraryServiceTest {
             accessService,
             permissionHistoryService,
             auditEventRecorder,
+            vectorStore,
             transactionManager);
   }
 

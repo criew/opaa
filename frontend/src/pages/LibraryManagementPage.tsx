@@ -283,11 +283,15 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
                   variant="outlined"
                   size="small"
                   onClick={async () => {
-                    if (
-                      !window.confirm(
-                        `Bibliothek "${library.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
-                      )
-                    ) {
+                    // ADR-0018, Entscheidung 5: deleting a connector library (details already
+                    // loaded whenever the card is expanded, see the effect above) removes its
+                    // whole indexed bestand along with it - a stronger action than deleting a
+                    // UPLOAD library, whose delete is blocked while it still holds documents.
+                    const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
+                    const confirmMessage = isConnectorLibrary
+                      ? `Bibliothek "${library.name}" löschen? Das entfernt auch alle indizierten Dokumente dieser Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.`
+                      : `Bibliothek "${library.name}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+                    if (!window.confirm(confirmMessage)) {
                       return
                     }
                     setLocalError(null)

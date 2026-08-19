@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -410,6 +411,84 @@ class LibraryDocumentServiceIntegrationTest {
     } finally {
       executor.shutdownNow();
     }
+  }
+
+  @Test
+  void uploadingIntoAConnectorLibraryIsRejectedWithConflict() {
+    // #479, ADR-0018 Entscheidung 1: only a UPLOAD library accepts manually uploaded files.
+    var connectorLibraryRequest =
+        new io.opaa.api.dto.LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents");
+    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+    try {
+      assertThatThrownBy(
+              () ->
+                  documentService.uploadDocument(
+                      connectorLibrary.getId(),
+                      textFile("x.txt", "content"),
+                      editor.getId(),
+                      false))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex ->
+                  assertThat(((ResponseStatusException) ex).getStatusCode())
+                      .isEqualTo(HttpStatus.CONFLICT));
+      assertThat(documentRepository.findByLibraryId(connectorLibrary.getId())).isEmpty();
+    } finally {
+      libraryRepository.deleteById(connectorLibrary.getId());
+    }
+  }
+
+  @Test
+  void deletingAConnectorLibraryRemovesItsDocumentsAndVectorStoreChunks() {
+    // #479, ADR-0018 Entscheidung 5: a lauf-basierte (connector) library's delete takes its whole
+    // bestand with it - document rows and vector store chunks - rather than being blocked, unlike
+    // UPLOAD (see cannotDeleteALibraryThatStillContainsDocuments's UPLOAD-only counterpart in
+    // KnowledgeLibraryServiceIntegrationTest).
+    var connectorLibraryRequest =
+        new io.opaa.api.dto.LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+            .sourcePath("/data/documents");
+    var connectorLibrary = libraryService.createLibrary(connectorLibraryRequest, editor.getId());
+
+    Document crawlDoc =
+        new Document(
+            "dienstanweisung.txt",
+            "/data/documents/dienstanweisung.txt",
+            "text/plain",
+            10L,
+            DocumentSourceType.FILESYSTEM);
+    crawlDoc.setLibraryId(connectorLibrary.getId());
+    crawlDoc.setOrganizationId(organizationId);
+    crawlDoc = documentRepository.save(crawlDoc);
+
+    vectorStore.add(
+        List.of(
+            new org.springframework.ai.document.Document(
+                "Diese Dienstanweisung regelt den Publikumsverkehr.",
+                Map.of(
+                    "document_id", crawlDoc.getId().toString(),
+                    "chunk_index", 0,
+                    "file_name", crawlDoc.getFileName(),
+                    "library_id", connectorLibrary.getId().toString(),
+                    "organization_id", organizationId.toString()))));
+
+    Long chunksBefore =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+            Long.class,
+            connectorLibrary.getId().toString());
+    assertThat(chunksBefore).isEqualTo(1);
+
+    libraryService.deleteLibrary(connectorLibrary.getId(), editor.getId(), false);
+
+    assertThat(libraryRepository.findById(connectorLibrary.getId())).isEmpty();
+    assertThat(documentRepository.findById(crawlDoc.getId())).isEmpty();
+    Long chunksAfter =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM vector_store WHERE metadata->>'library_id' = ?",
+            Long.class,
+            connectorLibrary.getId().toString());
+    assertThat(chunksAfter).isZero();
   }
 
   @Test

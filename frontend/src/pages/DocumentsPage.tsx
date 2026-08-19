@@ -53,6 +53,8 @@ export default function DocumentsPage() {
   const libraries = useLibraryStore((s) => s.libraries)
   const librariesLoading = useLibraryStore((s) => s.isLoading)
   const loadLibraries = useLibraryStore((s) => s.loadLibraries)
+  const libraryDetails = useLibraryStore((s) => s.libraryDetails)
+  const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
@@ -92,6 +94,15 @@ export default function DocumentsPage() {
     return () => stopPolling(selectedLibraryId)
   }, [selectedLibraryId, loadDocuments, stopPolling])
 
+  // sourceType is only carried on LibraryResponse (details), not on the list entry - see the note
+  // in LibraryManagementPage. Loaded once per selected library so the upload area can be hidden
+  // for a connector library (#479) instead of only failing with a 409 after the fact.
+  useEffect(() => {
+    if (!selectedLibraryId) return
+    if (libraryDetails[selectedLibraryId]) return
+    void loadLibraryDetails(selectedLibraryId)
+  }, [selectedLibraryId, libraryDetails, loadLibraryDetails])
+
   // Stops every still-running poll interval on unmount, not just the one for the currently
   // displayed library - an upload can still be PENDING for a library that was briefly selected
   // and then left again, and its interval must not keep firing after this page is gone.
@@ -100,6 +111,14 @@ export default function DocumentsPage() {
   const selectedLibrary = libraries.find((l) => l.id === selectedLibraryId)
   const canManageSelected = canManageDocuments(selectedLibrary?.myRole) || isSystemAdmin
   const documents = (selectedLibraryId && documentsByLibrary[selectedLibraryId]) || []
+  const selectedLibraryDetails = selectedLibraryId ? libraryDetails[selectedLibraryId] : undefined
+  // Upload is only accepted into a library with sourceType UPLOAD (#479, ADR-0018) - the backend
+  // rejects anything else with 409. Until details have loaded, canUploadIntoSelected defaults to
+  // true rather than briefly hiding the upload area for every library (most libraries today are
+  // UPLOAD); the 409 handling below still covers the narrow window where a stale/false positive
+  // slips through.
+  const canUploadIntoSelected =
+    !selectedLibraryDetails || selectedLibraryDetails.sourceType === 'UPLOAD'
 
   async function handleFiles(files: FileList | File[]) {
     if (!selectedLibraryId || !canManageSelected) return
@@ -175,7 +194,15 @@ export default function DocumentsPage() {
         </Alert>
       )}
 
-      {canManageSelected && (
+      {selectedLibrary && canManageSelected && !canUploadIntoSelected && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Diese Bibliothek bezieht ihren Bestand aus einer Quelle (
+          {documentSourceTypeLabel(selectedLibraryDetails!.sourceType)}) und akzeptiert keine
+          manuellen Uploads.
+        </Alert>
+      )}
+
+      {canManageSelected && canUploadIntoSelected && (
         <Stack spacing={1.5} sx={{ mb: 3 }}>
           <Box
             role="button"

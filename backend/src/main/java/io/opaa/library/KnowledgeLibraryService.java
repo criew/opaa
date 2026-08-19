@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -86,6 +87,7 @@ public class KnowledgeLibraryService {
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
+  private final VectorStore vectorStore;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   public KnowledgeLibraryService(
@@ -98,6 +100,7 @@ public class KnowledgeLibraryService {
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
+      VectorStore vectorStore,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -108,6 +111,7 @@ public class KnowledgeLibraryService {
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
+    this.vectorStore = vectorStore;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -488,13 +492,27 @@ public class KnowledgeLibraryService {
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
     // still contains documents would otherwise surface as an unhandled
-    // DataIntegrityViolationException
-    // -> HTTP 500 with no indication of the actual cause. Checking first turns that into a clean,
-    // actionable 409.
-    if (documentRepository.countByLibraryId(libraryId) > 0) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Die Bibliothek enthaelt noch Dokumente und kann nicht geloescht werden");
+    // DataIntegrityViolationException -> HTTP 500 with no indication of the actual cause.
+    // ADR-0018, Entscheidung 5: the "blocked while non-empty" guard stays in force only for
+    // UPLOAD, where documents are individually curated and a single deletion is meaningful. For a
+    // lauf-basierte (connector) library, that same single deletion is *wirkungslos* - the next run
+    // just re-adds the document, since the exclusion mechanism knowledge-sources.md describes does
+    // not exist yet - so blocking the library delete on non-empty would make connector libraries
+    // practically undeletable instead. Their deletion takes the whole bestand with it (documents
+    // and vector store chunks) rather than being blocked.
+    long documentCount = documentRepository.countByLibraryId(libraryId);
+    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
+      if (documentCount > 0) {
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Die Bibliothek enthaelt noch Dokumente und kann nicht geloescht werden");
+      }
+    } else if (documentCount > 0) {
+      // Bulk deletion via the library_id filter, not per document (#479): a connector library can
+      // hold many documents, and this is the same axis the permission-aware vector search already
+      // filters on (see KnowledgeLibraryService's own class Javadoc and QueryService).
+      vectorStore.delete("library_id == '" + libraryId + "'");
+      documentRepository.deleteByLibraryId(libraryId);
     }
 
     // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables
@@ -508,7 +526,15 @@ public class KnowledgeLibraryService {
     }
     permissionHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
 
-    // #392: recorded before the row is gone, same reasoning as the history calls above.
+    // #392: recorded before the row is gone, same reasoning as the history calls above. For a
+    // connector library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the
+    // removed document count rides along in this same entry rather than a separate event -
+    // AuditEventType has no dedicated "bestand removed" event, and this deletion is one atomic
+    // administrative action, not two.
+    Map<String, Object> deletionPayload = libraryAuditPayload(library);
+    if (documentCount > 0) {
+      deletionPayload.put("documentsRemoved", documentCount);
+    }
     auditEventRecorder.recordUserAction(
         library.getOrganizationId(),
         currentUserId,
@@ -516,7 +542,7 @@ public class KnowledgeLibraryService {
         AuditObjectType.KNOWLEDGE_LIBRARY,
         library.getId(),
         library.getName(),
-        libraryAuditPayload(library),
+        deletionPayload,
         null,
         AuditOutcome.SUCCESS,
         null);

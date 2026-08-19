@@ -27,6 +27,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
+   * Backs {@code KnowledgeLibraryService#deleteLibrary}'s connector-library path (#479, ADR-0018
+   * Entscheidung 5): deleting a lauf-basierte (connector) library takes its whole document bestand
+   * with it, unlike {@code UPLOAD}, which keeps the pre-existing "blocked while non-empty" guard.
+   * Derived delete query - Spring Data JPA executes it as a bulk {@code DELETE}, returning the
+   * number of rows removed.
+   */
+  long deleteByLibraryId(UUID libraryId);
+
+  /**
    * Backs the upload endpoint's per-library deduplication (#420): the same checksum is rejected a
    * second time within the same library, but is deliberately allowed in a different one - see the
    * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}.

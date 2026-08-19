@@ -6,7 +6,7 @@ import DocumentsPage from './DocumentsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
-import type { LibraryDocumentResponse, LibraryListResponse } from '../types/api'
+import type { LibraryDocumentResponse, LibraryListResponse, LibraryResponse } from '../types/api'
 
 const { mockGetLibraryDocuments, mockUploadDocument, mockDeleteLibraryDocument } = vi.hoisted(
   () => ({
@@ -95,8 +95,11 @@ const failedDocument: LibraryDocumentResponse = {
   uploadedByUserId: 'mock-user-id',
 }
 
-function setLibraries(libraries: LibraryListResponse[]) {
-  useLibraryStore.setState({ libraries, libraryDetails: {}, isLoading: false, error: null })
+function setLibraries(
+  libraries: LibraryListResponse[],
+  libraryDetails: Record<string, LibraryResponse> = {},
+) {
+  useLibraryStore.setState({ libraries, libraryDetails, isLoading: false, error: null })
 }
 
 function setDocuments(documentsByLibrary: Record<string, LibraryDocumentResponse[]>) {
@@ -277,6 +280,39 @@ describe('DocumentsPage', () => {
     expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /dokument .* löschen/i })).not.toBeInTheDocument()
     expect(screen.getByText(/nur leserechte/i)).toBeInTheDocument()
+  })
+
+  it('hides the upload area for a connector library and explains why', async () => {
+    // #479, ADR-0018 Entscheidung 1: a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED library never accepts
+    // manual uploads - the backend rejects the attempt with 409, this hides the affordance
+    // instead of letting a user hit that error.
+    const connectorLibrary: LibraryListResponse = {
+      ...editorLibrary,
+      id: 'library-connector',
+      name: 'Verzeichnis',
+    }
+    setLibraries([personalLibrary, connectorLibrary], {
+      'library-connector': {
+        ...connectorLibrary,
+        ownerId: null,
+        documentCount: 1,
+        sourceType: 'FILESYSTEM',
+      },
+    })
+    setDocuments({
+      'library-personal': [indexedDocument],
+      'library-connector': [indexedDocument],
+    })
+    renderWithProviders(<DocumentsPage />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('button', { name: /dateien hochladen/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /^bibliothek$/i }))
+    await user.click(await screen.findByRole('option', { name: /verzeichnis/i }))
+
+    expect(await screen.findByText(/keine manuellen uploads/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
   })
 
   it('deletes a document after confirmation and removes it from the list', async () => {
