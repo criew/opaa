@@ -4,25 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 021 in isolation against a database built from the real, versioned
@@ -40,33 +29,20 @@ import org.testcontainers.utility.DockerImageName;
  * scope_start <= scope_end}, both closed value lists, and the {@code RESTRICT} foreign key on
  * {@code subject_user_id}.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration021AuditIncidentScopeGrantsTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration021AuditIncidentScopeGrantsTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-020.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-020.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    connection = connect();
     connection.setAutoCommit(true);
 
     applyChangelog021();
@@ -74,16 +50,6 @@ class Migration021AuditIncidentScopeGrantsTest {
 
   @AfterEach
   void tearDown() throws SQLException {
-    connection.setAutoCommit(true);
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
-      // A freshly initdb'd database's public schema carries an implicit "USAGE granted to
-      // PUBLIC" default that only initdb itself applies - a manually recreated schema does not
-      // get it back automatically (same fix Migration017AuditLogTest's tearDown already applies
-      // for the same reason).
-      statement.execute("GRANT USAGE ON SCHEMA public TO PUBLIC");
-    }
     connection.close();
   }
 
@@ -201,13 +167,7 @@ class Migration021AuditIncidentScopeGrantsTest {
   }
 
   private void applyChangelog021() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/021-audit-incident-scope-grants.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    connection.setAutoCommit(true);
+    applyChangelog(connection, "db/changelog/changes/021-audit-incident-scope-grants.yaml");
   }
 
   private UUID insertUser() throws SQLException {

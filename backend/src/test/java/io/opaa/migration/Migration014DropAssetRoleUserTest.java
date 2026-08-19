@@ -4,24 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 014 in isolation against a database built from the real, versioned
@@ -37,43 +26,25 @@ import org.testcontainers.utility.DockerImageName;
  * fail on any database that already holds a USER grant, which is precisely the case the migration
  * exists for.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration014DropAssetRoleUserTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration014DropAssetRoleUserTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-013.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-013.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    connection = connect();
     connection.setAutoCommit(true);
   }
 
   @AfterEach
   void tearDown() throws SQLException {
-    connection.setAutoCommit(true);
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
-    }
     connection.close();
   }
 
@@ -141,13 +112,7 @@ class Migration014DropAssetRoleUserTest {
   }
 
   private void applyChangelog014() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/014-drop-asset-role-user.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    connection.setAutoCommit(true);
+    applyChangelog(connection, "db/changelog/changes/014-drop-asset-role-user.yaml");
   }
 
   private UUID insertUser(UUID id) throws SQLException {
