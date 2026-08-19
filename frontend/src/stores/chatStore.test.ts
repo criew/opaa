@@ -9,7 +9,7 @@ describe('chatStore', () => {
       messages: [],
       isLoading: false,
       error: null,
-      conversationId: null,
+      chatId: null,
       useKnowledge: true,
       referencedLibraryIds: [],
     })
@@ -20,10 +20,10 @@ describe('chatStore', () => {
     expect(state.messages).toHaveLength(0)
     expect(state.isLoading).toBe(false)
     expect(state.error).toBeNull()
-    expect(state.conversationId).toBeNull()
+    expect(state.chatId).toBeNull()
   })
 
-  it('sends a message and receives a response with conversationId', async () => {
+  it('sends a message and receives a response with chatId', async () => {
     await useChatStore.getState().sendMessage('What is the architecture?')
 
     const state = useChatStore.getState()
@@ -33,19 +33,19 @@ describe('chatStore', () => {
     expect(state.messages[1].role).toBe('assistant')
     expect(state.messages[1].sources!.length).toBeGreaterThanOrEqual(1)
     expect(state.isLoading).toBe(false)
-    expect(state.conversationId).toBeTruthy()
+    expect(state.chatId).toBeTruthy()
   })
 
-  it('preserves conversationId across messages', async () => {
+  it('preserves chatId across messages', async () => {
     await useChatStore.getState().sendMessage('First question')
-    const firstConvId = useChatStore.getState().conversationId
+    const firstConvId = useChatStore.getState().chatId
 
     await useChatStore.getState().sendMessage('Follow-up question')
-    const secondConvId = useChatStore.getState().conversationId
+    const secondConvId = useChatStore.getState().chatId
 
     expect(firstConvId).toBeTruthy()
     expect(secondConvId).toBeTruthy()
-    // The mock echoes back the conversationId we send, so it should be the same
+    // The mock echoes back the chatId we send, so it should be the same
     expect(secondConvId).toBe(firstConvId)
   })
 
@@ -72,16 +72,16 @@ describe('chatStore', () => {
     expect(state.messages[0].role).toBe('user')
   })
 
-  it('clears messages and resets conversationId', async () => {
+  it('clears messages and resets chatId', async () => {
     await useChatStore.getState().sendMessage('Hello')
-    expect(useChatStore.getState().conversationId).toBeTruthy()
+    expect(useChatStore.getState().chatId).toBeTruthy()
 
     useChatStore.getState().clearMessages()
 
     const state = useChatStore.getState()
     expect(state.messages).toHaveLength(0)
     expect(state.error).toBeNull()
-    expect(state.conversationId).toBeNull()
+    expect(state.chatId).toBeNull()
   })
 
   it('clearMessages also resets the sticky knowledge-scope controls', () => {
@@ -120,7 +120,7 @@ describe('chatStore', () => {
             durationMs: 5,
             answeredWithoutKnowledge: false,
           },
-          conversationId: 'conv-1',
+          chatId: 'conv-1',
         })
       }),
     )
@@ -146,7 +146,7 @@ describe('chatStore', () => {
             durationMs: 5,
             answeredWithoutKnowledge: true,
           },
-          conversationId: 'conv-1',
+          chatId: 'conv-1',
         })
       }),
     )

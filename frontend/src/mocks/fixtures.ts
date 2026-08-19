@@ -82,7 +82,7 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 1523,
       answeredWithoutKnowledge: false,
     },
-    conversationId: 'mock-conv-1',
+    chatId: 'mock-conv-1',
   },
   {
     answer:
@@ -106,7 +106,7 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 890,
       answeredWithoutKnowledge: false,
     },
-    conversationId: 'mock-conv-2',
+    chatId: 'mock-conv-2',
   },
   {
     answer:
@@ -202,7 +202,7 @@ export const mockQueryResponses: QueryResponse[] = [
       durationMs: 2341,
       answeredWithoutKnowledge: false,
     },
-    conversationId: 'mock-conv-3',
+    chatId: 'mock-conv-3',
   },
 ]
 

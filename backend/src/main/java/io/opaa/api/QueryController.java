@@ -36,7 +36,7 @@ public class QueryController {
     boolean useKnowledge = request.getUseKnowledge() == null || request.getUseKnowledge();
     return queryService.query(
         request.getQuestion(),
-        request.getConversationId(),
+        request.getChatId(),
         currentUser.getId(),
         useKnowledge,
         request.getLibraryIds());

@@ -10,12 +10,15 @@ interface ChatState {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
-  conversationId: string | null
+  // #525: not a persisted chat id yet (that lands with the UI overhaul, #527) - just the
+  // in-memory conversation-cache key the query endpoint echoes back, round-tripped so follow-up
+  // questions keep their context. See QueryService#query's Javadoc for the backend side of this.
+  chatId: string | null
   /** Whether the search scope includes the knowledge base at all (#528, backend default: true). */
   useKnowledge: boolean
   // Sticky per-chat @-references (#523/#528). Kept as plain store state behind this same
-  // interface for now; #525/#527 will back it with PATCH /api/v1/chats/{chatId} once chat
-  // persistence lands, without callers of these actions needing to change.
+  // interface for now; #527 will back it with PATCH /api/v1/chats/{chatId} once the UI moves to
+  // persisted chats, without callers of these actions needing to change.
   referencedLibraryIds: string[]
   sendMessage: (question: string) => Promise<void>
   clearMessages: () => void
@@ -28,7 +31,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isLoading: false,
   error: null,
-  conversationId: null,
+  chatId: null,
   useKnowledge: true,
   referencedLibraryIds: [],
 
@@ -50,7 +53,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const { useKnowledge, referencedLibraryIds } = get()
       const response = await sendQuery(
         question,
-        get().conversationId ?? undefined,
+        get().chatId ?? undefined,
         useKnowledge,
         referencedLibraryIds,
       )
@@ -65,7 +68,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((state) => ({
         messages: [...state.messages, assistantMessage],
         isLoading: false,
-        conversationId: response.conversationId,
+        chatId: response.chatId,
       }))
     } catch (err) {
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
@@ -80,7 +83,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({
       messages: [],
       error: null,
-      conversationId: null,
+      chatId: null,
       useKnowledge: true,
       referencedLibraryIds: [],
     }),

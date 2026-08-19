@@ -60,6 +60,14 @@ export type PermissionSubjectType = components['schemas']['PermissionSubjectType
 export type AssetGrantRequest = components['schemas']['AssetGrantRequest']
 export type AssetGrantResponse = components['schemas']['AssetGrantResponse']
 
+export type ChatStatus = components['schemas']['ChatStatus']
+export type ChatRole = components['schemas']['ChatRole']
+export type ChatSummary = components['schemas']['ChatSummary']
+export type ChatDetail = components['schemas']['ChatDetail']
+export type ChatMessageResponse = components['schemas']['ChatMessageResponse']
+export type ChatCreateRequest = components['schemas']['ChatCreateRequest']
+export type ChatUpdateRequest = components['schemas']['ChatUpdateRequest']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&
