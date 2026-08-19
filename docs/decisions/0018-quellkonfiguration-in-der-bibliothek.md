@@ -75,6 +75,12 @@ Ausführungsseite des in Entscheidung 6 benannten Risikos — die Zielprüfung #
 Einschränkung #484 sind deshalb gemeinsam Blocker für den Mehrbenutzer-Produktivbetrieb, nicht nur
 für die Konfiguration.
 
+> **Nachtrag (2026-08-19, #484):** Die Anlage-Berechtigung bleibt dauerhaft offen für jeden
+> Berechtigten — kein Rollenkonstrukt tritt an ihre Stelle. Für `FILESYSTEM` sichert stattdessen die
+> Pfad-Allowlist (`opaa.indexing.filesystem-allowlist`) den Zugriff auf Serverpfade ab; als Blocker
+> für den Mehrbenutzer-Produktivbetrieb verbleibt allein #267 für die URL-basierten Quellentypen
+> (`HTTP_DIRECTORY`, `RSS_FEED`).
+
 **Das löst ADR-0017, Entscheidung 4 ab** — genau in der dort vorgesehenen Weise: „Sobald eine
 Quellen-Tabelle existiert, wandert dauerhafte Konfiguration dorthin, und der Anstoß-Request reduziert
 sich auf einen Verweis auf die gespeicherte Quelle." Mit ihr entfällt auch der rückwärtskompatible
@@ -133,6 +139,12 @@ Systemverwaltung auf alle Nutzer: Ein frei wählbarer Dateisystempfad macht jede
 indizierbar, und eine frei wählbare URL weitet die in #267 beschriebene SSRF-Lage aus. Beides ist als
 #484 (Pfad-Allowlist, Berechtigungsregel) erfasst und **vor einem Mehrbenutzer-Produktivbetrieb**
 nachzuholen; #267 bleibt davon unabhängig nötig.
+
+> **Nachtrag (2026-08-19, #484):** Umgesetzt wurde die Pfad-Allowlist, kein Berechtigungsregel- bzw.
+> Rollenkonstrukt — die Maintainer-Entscheidung ist, dass die Anlage-Berechtigung dauerhaft offen
+> bleibt. Für `FILESYSTEM` ist die Allowlist (`opaa.indexing.filesystem-allowlist`) damit die
+> alleinige Sicherung. Für die URL-basierten Quellentypen steht die entsprechende Absicherung noch
+> aus; dort bleibt #267 der offene Blocker.
 
 ## Ausdrücklich offen
 

@@ -786,7 +786,8 @@ public class KnowledgeLibraryService {
         if (!filesystemAllowlist.isAllowed(sourcePath)) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
-              "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse");
+              "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
+                  + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
         }
       }
       case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
