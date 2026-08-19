@@ -21,61 +21,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-  /api/v1/indexing/trigger:
-    post:
-      operationId: triggerIndexing
-      tags: [indexing]
-      summary: Trigger document indexing
-      description: |
-        Triggers document indexing into a chosen target library. sourceType picks the run's
-        executor explicitly; when it is omitted, the backward-compatible fallback applies -
-        a url in the request body means an HTTP directory listing crawl, otherwise the
-        configured local filesystem path is indexed. libraryId is always required: a
-        directory-wide indexing run must never silently default to a library the caller did
-        not choose.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/IndexingTriggerRequest"
-      responses:
-        "202":
-          description: Indexing triggered successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/IndexingStatusResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          description: Indexing already running
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/IndexingStatusResponse"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/v1/indexing/status:
-    get:
-      operationId: getIndexingStatus
-      tags: [indexing]
-      summary: Get current indexing status
-      responses:
-        "200":
-          description: Current indexing status
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/IndexingStatusResponse"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /api/v1/query:
     post:
       operationId: submitQuery
@@ -977,6 +922,71 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/indexing:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: triggerLibraryIndexing
+      tags: [library, indexing]
+      summary: Trigger an indexing run for a library, using its own stored quellkonfiguration
+      description: >
+        ADR-0018: a library carries at most one quellentyp and quellkonfiguration, so the
+        trigger no longer takes any request body - it reads sourceType/sourcePath/sourceUrl/
+        sourceProxy/sourceCredentials/sourceInsecureSsl from the library itself and resolves
+        the matching executor through the registry (ADR-0017, decision 3). EDITOR role or
+        above on the library is required (the former SYSTEM_ADMIN requirement is gone -
+        ADR-0018, Entscheidung 2). A library whose sourceType is UPLOAD has no run at all
+        and is rejected with 409, as is a second trigger while a run for this same library is
+        still in progress - concurrency is per library, not global (#478).
+      responses:
+        "202":
+          description: Indexing triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/libraries/{libraryId}/indexing/status:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryIndexingStatus
+      tags: [library, indexing]
+      summary: Get the current or most recently completed indexing status for a library
+      responses:
+        "200":
+          description: Current indexing status for this library, or IDLE if it never ran
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # #393: exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
@@ -1373,51 +1383,6 @@ components:
           type: integer
           format: int64
           example: 1523
-
-    IndexingTriggerRequest:
-      type: object
-      description: >
-        Request body to trigger an indexing run. libraryId is required (#419): a
-        directory-wide or URL-wide indexing run must never silently default to a library
-        the caller did not choose, and the API answers 400 rather than picking one.
-        sourceType is optional (ADR-0017): it picks the run's executor explicitly. When it
-        is omitted, the backward-compatible fallback applies - url set means
-        HTTP_DIRECTORY, otherwise FILESYSTEM. RSS_FEED has no such fallback and must always
-        be stated explicitly. A sourceType that contradicts the other fields (e.g.
-        HTTP_DIRECTORY or RSS_FEED without a url, or FILESYSTEM with one) is rejected with a
-        400.
-      required: [libraryId]
-      properties:
-        libraryId:
-          type: string
-          format: uuid
-          description: >
-            The knowledge library every document and chunk from this run is written into.
-            The caller must hold at least EDITOR on it (see AssetRole); the /trigger
-            endpoint's system-admin requirement applies alongside this check, not instead
-            of it.
-        sourceType:
-          $ref: "#/components/schemas/IndexingSourceType"
-        url:
-          type: string
-          format: uri
-          description: >
-            URL of an Apache mod_autoindex directory listing to crawl (HTTP_DIRECTORY) or
-            of an RSS 2.0 feed to resolve (RSS_FEED) - the same field serves both source
-            types (ADR-0017, decision 2).
-          example: https://files.example.com/documents/
-        proxy:
-          type: string
-          description: Proxy server in host:port format
-          example: proxy.example.com:8080
-        credentials:
-          type: string
-          description: Basic auth credentials in user:password format
-          example: admin:secret
-        insecureSsl:
-          type: boolean
-          description: Skip SSL certificate verification
-          default: false
 
     ErrorResponse:
       type: object
@@ -2060,15 +2025,6 @@ components:
     DocumentSourceType:
       type: string
       enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED]
-      example: FILESYSTEM
-
-    IndexingSourceType:
-      type: string
-      description: >
-        A run-based source type - narrower than DocumentSourceType (ADR-0017): it lists
-        only the types an indexing run can execute, so UPLOAD (a document's origin, not a
-        run type) can never be requested via /api/v1/indexing/trigger.
-      enum: [FILESYSTEM, HTTP_DIRECTORY, RSS_FEED]
       example: FILESYSTEM
 
     LibraryDocumentResponse:

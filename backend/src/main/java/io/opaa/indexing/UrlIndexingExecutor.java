@@ -1,6 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -49,9 +48,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   @Override
   @Async("indexingTaskExecutor")
-  public void execute(
-      UUID jobId, IndexingTriggerRequest triggerRequest, KnowledgeLibrary targetLibrary) {
-    UrlIndexingRequest request = toUrlIndexingRequest(triggerRequest);
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
+    UrlIndexingRequest request = toUrlIndexingRequest(targetLibrary);
     var progress = new IndexingRunProgress(indexingJobService, jobId);
 
     try {
@@ -218,16 +216,15 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Extracts this executor's own fields ({@code url}/{@code proxy}/{@code credentials}/{@code
-   * insecureSsl}) from the generic {@link IndexingTriggerRequest} the registry hands every executor
-   * - the rest of the request (e.g. {@code sourceType}, {@code libraryId}) is not this executor's
-   * concern.
+   * Extracts this executor's own configuration ({@code sourceUrl}/{@code sourceProxy}/{@code
+   * sourceCredentials}/{@code sourceInsecureSsl}) from {@code targetLibrary} (ADR-0018, #478) - the
+   * library's persisted quellkonfiguration, not a per-request field any more.
    */
-  private static UrlIndexingRequest toUrlIndexingRequest(IndexingTriggerRequest request) {
+  private static UrlIndexingRequest toUrlIndexingRequest(KnowledgeLibrary targetLibrary) {
     return new UrlIndexingRequest(
-        request.getUrl() != null ? request.getUrl().toString() : null,
-        request.getProxy(),
-        request.getCredentials(),
-        Boolean.TRUE.equals(request.getInsecureSsl()));
+        targetLibrary.getSourceUrl(),
+        targetLibrary.getSourceProxy(),
+        targetLibrary.getSourceCredentials(),
+        targetLibrary.isSourceInsecureSsl());
   }
 }

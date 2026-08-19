@@ -71,8 +71,8 @@ Der Dokumentenbestand der Instanz liegt **nicht** im Repository, sondern in eine
    > **Bewusst ohne konkrete Angaben:** `criew/opaa` ist ein öffentliches Repository. Host, Benutzername und der Pfad des Dokumentenverzeichnisses auf dem Server stehen deshalb nicht hier, sondern in der Betriebsdokumentation des Maintainers. Wer den Rollout ausführen soll, bekommt sie von ihm. Beschrieben ist hier das Verfahren, nicht die Belegung.
 
 2. Ein Neustart des Backends ist nicht nötig: Das Verzeichnis ist ein Bind-Mount, neue Dateien sind sofort im Container sichtbar.
-3. Die Indizierung löst der Inhaber der Rolle `SYSTEM_ADMIN` über den **Admin-Bereich der Oberfläche** aus. Das Feld „URL" bleibt dabei **leer** — nur dann indiziert OPAA das gemountete Verzeichnis. Ein ausgefülltes URL-Feld schaltet stattdessen auf das Crawlen einer entfernten Verzeichnisauflistung um.
-4. Der Fortschritt ist im Admin-Bereich sichtbar (dahinter `GET /api/v1/indexing/status`).
+3. Die Indizierung löst aus, wer mindestens `EDITOR` auf der Zielbibliothek hält (ADR-0018; `SYSTEM_ADMIN` ist dafür seit #478 nicht mehr erforderlich), über den **Admin-Bereich der Oberfläche**. Ausgelöst wird eine Bibliothek vom Typ `FILESYSTEM`, deren `sourcePath` auf das gemountete Verzeichnis zeigt — der Quellentyp und die Adresse sind seit #478 an der Bibliothek gespeichert, nicht mehr Teil des Anstoß-Requests.
+4. Der Fortschritt ist im Admin-Bereich sichtbar (dahinter `GET /api/v1/libraries/{libraryId}/indexing/status`).
 
 Unveränderte Dateien werden anhand ihrer SHA-256-Prüfsumme übersprungen; ein erneuter Lauf über denselben Bestand ist deshalb billig und gefahrlos.
 
@@ -127,25 +127,25 @@ Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` f
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt Dateien, deren SHA-256-Prüfsumme unverändert ist **und** deren Datensatz in der Tabelle `documents` den Status `INDEXED` trägt. Wird die Vektortabelle geleert, ohne auch `documents` zu bereinigen, meldet ein neuer Lauf lauter übersprungene Dateien und der Index bleibt leer. Beide Tabellen liegen in derselben Datenbank — wer den Index verwirft, muss `documents` mitverwerfen.
 
-### Sicherheitshinweis: `POST /api/v1/indexing/trigger` ist von außen erreichbar
+### Sicherheitshinweis: `POST /api/v1/libraries/{libraryId}/indexing` ist von außen erreichbar
 
 Der Endpunkt ist auf der Testinstanz aus dem Internet erreichbar. Dass alle Container-Ports nur auf `127.0.0.1` binden, ändert daran nichts — der nach außen gerichtete nginx reicht die API-Pfade durch, und der Indizierungspfad ist davon nicht ausgenommen. Die Bindung auf `127.0.0.1` verhindert lediglich, dass jemand die Container unter Umgehung des nginx direkt anspricht.
 
-Er ist durch Keycloak authentifiziert und zusätzlich auf die Rolle `SYSTEM_ADMIN` beschränkt (`@PreAuthorize("hasRole('SYSTEM_ADMIN')")` in `IndexingController`); zusätzlich greift das Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`, standardmäßig eine Anfrage pro IP und Minute).
+Er ist durch Keycloak authentifiziert und verlangt mindestens die Rolle `EDITOR` auf der Zielbibliothek (`DocumentIndexingService#requireEditableLibrary`); die frühere, zusätzliche `SYSTEM_ADMIN`-Schranke des alten `/api/v1/indexing/trigger`-Endpunkts ist mit #478/ADR-0018 bewusst entfallen — ein Anstoß-Knopf, den nur die Systemverwaltung drücken darf, wäre für jeden anderen Bibliothekseigentümer tot. Zusätzlich greift das Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`, standardmäßig eine Anfrage pro IP und Minute).
 
-Wer den Endpunkt aufrufen darf, kann im Feld `url` eine beliebige Adresse angeben, die der Server dann abruft und crawlt. Das schließt Ziele ein, die nur aus dem Netz des VPS erreichbar sind und nicht aus dem Internet. Fachlich ist das serverseitige Anfragefälschung (Server-Side Request Forgery, SSRF) — hier allerdings als **Eigenschaft der Funktion**, nicht als Fehler: Der Endpunkt existiert genau dafür, entfernte Dokumentenquellen zu erschließen, und er verlangt Anmeldung plus Adminrolle.
+Wer eine Bibliothek vom Typ `HTTP_DIRECTORY` oder `RSS_FEED` anlegt, bestimmt bei der Anlage deren `sourceUrl` — eine beliebige Adresse, die der Server bei jedem Lauf abruft und crawlt. Das schließt Ziele ein, die nur aus dem Netz des VPS erreichbar sind und nicht aus dem Internet. Fachlich ist das serverseitige Anfragefälschung (Server-Side Request Forgery, SSRF) — hier allerdings als **Eigenschaft der Funktion**, nicht als Fehler: Der Endpunkt existiert genau dafür, entfernte Dokumentenquellen zu erschließen, und er verlangt Anmeldung plus mindestens Bearbeitungsrecht auf der Bibliothek.
 
-**Ist-Zustand der Einschränkungen** (Stand dieser Datei, geprüft an `IndexingController`, `UrlIndexingExecutor` und `AutoindexCrawlerService`):
+**Ist-Zustand der Einschränkungen** (Stand dieser Datei, geprüft an `KnowledgeLibraryService`, `UrlIndexingExecutor` und `AutoindexCrawlerService`):
 
 - Das Schema ist faktisch auf `http` und `https` begrenzt, weil der verwendete `java.net.http.HttpClient` andere Schemata ablehnt. Eine eigene Schema-Prüfung im OPAA-Code gibt es **nicht**.
 - Eine **Blockliste privater oder lokaler Adressbereiche existiert nicht**. `localhost`, `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16` und Link-Local-Adressen wie `169.254.169.254` werden nicht gesondert behandelt.
 - Weiterleitungen werden gefolgt (`HttpClient.Redirect.NORMAL`).
-- Mit `insecureSsl: true` lässt sich die Zertifikatsprüfung für den Aufruf abschalten.
-- Fehlermeldungen des Crawls landen im Jobstatus und sind über `GET /api/v1/indexing/status` lesbar; sie unterscheiden erreichbare von nicht erreichbaren Zielen.
+- Mit `sourceInsecureSsl: true` lässt sich die Zertifikatsprüfung für den Aufruf abschalten.
+- Fehlermeldungen des Crawls landen im Jobstatus und sind über `GET /api/v1/libraries/{libraryId}/indexing/status` lesbar; sie unterscheiden erreichbare von nicht erreichbaren Zielen.
 
-**Risikoeinordnung.** Heute klein: Nur der Maintainer besitzt die Rolle `SYSTEM_ADMIN`, und er ist zugleich Betreiber des VPS — er kann über SSH ohnehin alles, was der Endpunkt ermöglicht. Größer wird das Risiko, sobald **weitere Konten die Rolle `SYSTEM_ADMIN` erhalten**, insbesondere Konten von Personen, die keinen Zugriff auf den Server selbst haben sollen. Ein anonymer Zugang oder Gastzugang würde das Risiko deutlich vergrößern, ist für diese Instanz aber ausdrücklich ausgeschlossen (siehe `docs/features/search-quality-evaluation.md`, Abschnitt „Zugangsmodell").
+**Risikoeinordnung.** ADR-0018, Entscheidung 6 hat die Anlage von `HTTP_DIRECTORY`/`RSS_FEED`-Bibliotheken bewusst und befristet für jeden Berechtigten geöffnet (nicht mehr nur `SYSTEM_ADMIN`); die dadurch weitere SSRF-Angriffsfläche ist als #267/#484 benannter Blocker vor einem Mehrbenutzer-Produktivbetrieb geführt, nicht stillschweigend akzeptiert. Auf dieser Testinstanz heute klein: Nur der Maintainer legt Bibliotheken an, und er ist zugleich Betreiber des VPS — er kann über SSH ohnehin alles, was der Endpunkt ermöglicht. Größer wird das Risiko, sobald **weitere Konten Bibliotheken mit lauf-basiertem Quellentyp anlegen dürfen**, insbesondere Konten von Personen, die keinen Zugriff auf den Server selbst haben sollen. Ein anonymer Zugang oder Gastzugang würde das Risiko deutlich vergrößern, ist für diese Instanz aber ausdrücklich ausgeschlossen (siehe `docs/features/search-quality-evaluation.md`, Abschnitt „Zugangsmodell").
 
-**Konsequenz für den Betrieb:** Die Rolle `SYSTEM_ADMIN` ist auf der Testinstanz wie ein Serverzugang zu behandeln und entsprechend sparsam zu vergeben. Eine Zielprüfung im Code (Blockliste privater Adressbereiche) wird als Härtung für den Fall weiterer Adminkonten in #267 geführt.
+**Konsequenz für den Betrieb:** Wer auf der Testinstanz Bibliotheken anlegen darf, ist wie ein Serverzugang zu behandeln und entsprechend sparsam zu vergeben, solange #267/#484 offen sind. Eine Zielprüfung im Code (Blockliste privater Adressbereiche) wird als Härtung dort geführt.
 
 ## Vor der Inbetriebnahme: mandantenfähiger Betrieb
 

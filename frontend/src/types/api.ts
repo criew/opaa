@@ -28,11 +28,6 @@ export type QueryResponse = Omit<GeneratedQueryResponse, 'sources'> & {
   sources: SourceReference[]
 }
 
-type GeneratedIndexingTriggerRequest = components['schemas']['IndexingTriggerRequest']
-export type IndexingTriggerRequest = Omit<GeneratedIndexingTriggerRequest, 'insecureSsl'> & {
-  insecureSsl?: boolean
-}
-
 export type UserInfoResponse = components['schemas']['UserInfoResponse']
 export type UserInfo = UserInfoResponse
 export type RoleChangeRequest = components['schemas']['RoleChangeRequest']

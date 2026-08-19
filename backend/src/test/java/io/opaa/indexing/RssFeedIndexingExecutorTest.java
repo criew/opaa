@@ -13,12 +13,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +45,10 @@ class RssFeedIndexingExecutorTest {
   private RssFeedStateRepository feedStateRepository;
   private RssFeedIndexingExecutor executor;
 
+  // #478: sourceUrl is mutated in place per test via execute(String) below
+  // (updateSourceConfiguration)
+  // rather than replacing the reference, so every eq(library) verification below - written against
+  // this one field - still matches after the URL changes.
   private final KnowledgeLibrary library =
       KnowledgeLibrary.ownedByUser(
           UUID.randomUUID(),
@@ -55,6 +57,12 @@ class RssFeedIndexingExecutorTest {
           UUID.randomUUID(),
           LibraryVisibility.PRIVATE,
           false,
+          false,
+          DocumentSourceType.RSS_FEED,
+          null,
+          "https://example.com/feed.xml",
+          null,
+          null,
           false);
 
   @BeforeEach
@@ -133,8 +141,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   private void execute(String feedUrl) {
-    var request = new IndexingTriggerRequest().libraryId(library.getId()).url(URI.create(feedUrl));
-    executor.execute(UUID.randomUUID(), request, library);
+    library.updateSourceConfiguration(null, feedUrl, null, null, false);
+    executor.execute(UUID.randomUUID(), library);
   }
 
   @Test

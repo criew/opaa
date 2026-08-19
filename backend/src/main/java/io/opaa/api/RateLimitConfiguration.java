@@ -21,22 +21,31 @@ public class RateLimitConfiguration {
   @Bean
   FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
       RateLimitProperties properties, JsonMapper jsonMapper) {
+    // #478: the per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries
+    // a variable path segment, so its rule is a regex rather than a plain prefix - see
+    // RateLimitFilter's constructor Javadoc. The trailing $ deliberately excludes the sibling
+    // status endpoint (GET .../indexing/status), which - like the old GET /api/v1/indexing/status -
+    // was never rate-limited. The capture group around the library id lets RateLimitFilter key the
+    // per-IP limiter by library, so triggering indexing for one library doesn't block a different
+    // library from the same client.
+    String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
+
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
-        "/api/v1/query",
+        "^/api/v1/query",
         new RateLimitService(properties.query().maxRequests(), properties.query().windowSeconds()));
     perIpLimiters.put(
-        "/api/v1/indexing/trigger",
+        indexingTriggerPattern,
         new RateLimitService(
             properties.indexing().maxRequests(), properties.indexing().windowSeconds()));
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put(
-        "/api/v1/query",
+        "^/api/v1/query",
         new RateLimitService(
             properties.query().globalMaxRequests(), properties.query().windowSeconds()));
     globalLimiters.put(
-        "/api/v1/indexing/trigger",
+        indexingTriggerPattern,
         new RateLimitService(
             properties.indexing().globalMaxRequests(), properties.indexing().windowSeconds()));
 

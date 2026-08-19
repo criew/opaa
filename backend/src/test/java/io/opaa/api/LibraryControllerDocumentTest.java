@@ -14,6 +14,7 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.library.AssetGrantService;
@@ -52,6 +53,7 @@ class LibraryControllerDocumentTest {
   @MockitoBean private KnowledgeLibraryService libraryService;
   @MockitoBean private AssetGrantService grantService;
   @MockitoBean private LibraryDocumentService documentService;
+  @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
 
   private final UUID currentUserId = UUID.randomUUID();

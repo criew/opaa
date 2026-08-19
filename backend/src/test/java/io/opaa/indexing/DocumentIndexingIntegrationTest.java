@@ -146,6 +146,12 @@ class DocumentIndexingIntegrationTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                sharedTempDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
@@ -323,6 +329,9 @@ class DocumentIndexingIntegrationTest {
     // matches every chunk of the old document in real pgvector. This indexes the same file twice,
     // once per library, against a real Postgres/pgvector schema and asserts by direct SQL that no
     // row in vector_store still carries the old library_id afterwards.
+    // Same sourcePath as targetLibraryId's FILESYSTEM configuration (setUp) - both libraries watch
+    // the same directory, so re-triggering into otherLibraryId picks up the same file that was
+    // first indexed into targetLibraryId, exercising the library-move assertions below.
     KnowledgeLibrary otherLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
@@ -332,6 +341,12 @@ class DocumentIndexingIntegrationTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                sharedTempDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
                 false));
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);

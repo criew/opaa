@@ -7,7 +7,6 @@ import type {
   GroupResponse,
   HealthResponse,
   IndexingStatusResponse,
-  IndexingTriggerRequest,
   LibraryDocumentResponse,
   LibraryListResponse,
   LibraryRequest,
@@ -181,20 +180,25 @@ export async function deleteSpace(spaceId: string): Promise<void> {
   }
 }
 
-export async function triggerIndexing(
-  request: IndexingTriggerRequest,
-): Promise<IndexingStatusResponse> {
+// #478: the trigger reduces to "index this library" - sourceType and every typed configuration
+// field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
+// longer sent from the frontend.
+export async function triggerIndexing(libraryId: string): Promise<IndexingStatusResponse> {
   try {
-    const { data } = await client.post<IndexingStatusResponse>('/v1/indexing/trigger', request)
+    const { data } = await client.post<IndexingStatusResponse>(
+      `/v1/libraries/${libraryId}/indexing`,
+    )
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function getIndexingStatus(): Promise<IndexingStatusResponse> {
+export async function getIndexingStatus(libraryId: string): Promise<IndexingStatusResponse> {
   try {
-    const { data } = await client.get<IndexingStatusResponse>('/v1/indexing/status')
+    const { data } = await client.get<IndexingStatusResponse>(
+      `/v1/libraries/${libraryId}/indexing/status`,
+    )
     return data
   } catch (err) {
     normalizeError(err)

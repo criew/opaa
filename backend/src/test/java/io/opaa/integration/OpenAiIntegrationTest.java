@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.indexing.*;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryService;
 import java.io.IOException;
@@ -54,31 +56,38 @@ class OpenAiIntegrationTest {
     registry.add("opaa.indexing.retry-attempts", () -> 1);
   }
 
-  // The real seeded ids (Organization.DEFAULT_ID, KnowledgeLibrary.SYSTEM_LIBRARY_ID), not
-  // locally duplicated string literals - both are UUID, and both are bound as JDBC parameters
-  // against uuid-typed columns (asset_grants.library_id, users.organization_id) via a plain
-  // PreparedStatement, which does not auto-cast a text/varchar parameter to uuid the way an
-  // inline SQL literal would. A local String constant here surfaced as a BadSqlGrammarException
-  // ("operator does not exist: uuid = text") the moment this test actually executed (#309 code
-  // review round 4: it never had, because this whole class is gated behind OPAA_OPENAI_API_KEY
-  // and was never run after being adapted to the asset-grants model in #305/#309).
+  // The real seeded organization id (Organization.DEFAULT_ID), not a locally duplicated string
+  // literal - it is bound as a JDBC parameter against a uuid-typed column (users.organization_id)
+  // via a plain PreparedStatement, which does not auto-cast a text/varchar parameter to uuid the
+  // way an inline SQL literal would. A local String constant here surfaced as a
+  // BadSqlGrammarException ("operator does not exist: uuid = text") the moment this test actually
+  // executed (#309 code review round 4: it never had, because this whole class is gated behind
+  // OPAA_OPENAI_API_KEY and was never run after being adapted to the asset-grants model in
+  // #305/#309).
   private static final UUID SEEDED_ORGANIZATION_ID = Organization.DEFAULT_ID;
-  private static final UUID SYSTEM_LIBRARY_ID = KnowledgeLibrary.SYSTEM_LIBRARY_ID;
 
   @Autowired private DocumentIndexingService documentIndexingService;
   @Autowired private QueryService queryService;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID userId;
+  private UUID targetLibraryId;
 
   @BeforeEach
   void setUp() throws IOException {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", SYSTEM_LIBRARY_ID);
+    // #478: the trigger endpoint/service reads type and configuration off the library itself, and
+    // the seeded system library is DocumentSourceType.UPLOAD, which triggerIndexing now rejects
+    // with 409 (no run type). This test needs a document to actually be found and indexed, so it
+    // creates its own FILESYSTEM library pointed at tempDir instead of reusing the system library.
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'openai-it@example.com')");
     jdbcTemplate.update("DELETE FROM users WHERE email = 'openai-it@example.com'");
     userId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -88,18 +97,32 @@ class OpenAiIntegrationTest {
         userId,
         "openai-it-" + userId,
         SEEDED_ORGANIZATION_ID);
-    // #419: an indexing run now always targets a caller-chosen library. This test's user is a
-    // SYSTEM_ADMIN, which bypasses the EDITOR check (LibraryAccessService#canEdit) the same way
-    // every other library operation already bypasses for a system admin, so indexing into the
-    // (still seeded, still grant-less) system library needs no explicit grant to trigger the run.
-    // Reading it back via query still needs one, exactly like every other reader (#202: search
-    // never bypasses grants, not even for a system admin).
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                SEEDED_ORGANIZATION_ID,
+                "OpenAI-IT-Bibliothek",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                tempDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    targetLibraryId = library.getId();
+    // #419: an indexing run needs a caller who holds at least EDITOR on the target library.
+    // Reading it back via query still needs a grant too, exactly like every other reader (#202:
+    // search never bypasses grants, not even for a system admin).
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
             + " 'OWNER', now(), now())",
         UUID.randomUUID(),
-        SYSTEM_LIBRARY_ID,
+        targetLibraryId,
         SEEDED_ORGANIZATION_ID,
         userId);
     if (Files.exists(tempDir)) {
@@ -131,7 +154,7 @@ class OpenAiIntegrationTest {
         The frontend uses React and Material UI.
         """);
 
-    IndexingJob job = documentIndexingService.triggerIndexing(SYSTEM_LIBRARY_ID, userId, true);
+    IndexingJob job = documentIndexingService.triggerIndexing(targetLibraryId, userId, true);
     assumeTrue(
         job.getDocumentsProcessed() > 0,
         "Skipping: OpenAI API returned an error (quota exceeded or rate limited)."

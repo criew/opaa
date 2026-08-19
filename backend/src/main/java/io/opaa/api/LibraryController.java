@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.dto.IndexingStatus;
+import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -10,10 +12,14 @@ import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -42,16 +48,19 @@ public class LibraryController {
   private final KnowledgeLibraryService libraryService;
   private final AssetGrantService grantService;
   private final LibraryDocumentService documentService;
+  private final DocumentIndexingService indexingService;
   private final UserService userService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
       AssetGrantService grantService,
       LibraryDocumentService documentService,
+      DocumentIndexingService indexingService,
       UserService userService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
+    this.indexingService = indexingService;
     this.userService = userService;
   }
 
@@ -168,6 +177,63 @@ public class LibraryController {
         currentUser.getId(),
         currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
     return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{libraryId}/indexing")
+  public ResponseEntity<IndexingStatusResponse> triggerIndexing(
+      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    IndexingJob job =
+        indexingService.triggerIndexing(
+            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return ResponseEntity.status(HttpStatus.ACCEPTED).body(toIndexingStatusResponse(job));
+  }
+
+  @GetMapping("/{libraryId}/indexing/status")
+  public IndexingStatusResponse getIndexingStatus(
+      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return indexingService
+        .getStatus(
+            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN)
+        .map(this::toIndexingStatusResponse)
+        .orElse(
+            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, Instant.now())
+                .message("Kein Indizierungslauf gefunden")
+                .libraryId(libraryId));
+  }
+
+  private IndexingStatusResponse toIndexingStatusResponse(IndexingJob job) {
+    IndexingStatus status = mapIndexingStatus(job.getStatus());
+    String message =
+        switch (job.getStatus()) {
+          case RUNNING -> "Indizierung läuft";
+          case COMPLETED ->
+              "Indizierung abgeschlossen: "
+                  + job.getDocumentsProcessed()
+                  + " verarbeitet, "
+                  + job.getDocumentsSkipped()
+                  + " übersprungen, "
+                  + job.getDocumentsFailed()
+                  + " fehlgeschlagen";
+          case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
+        };
+    return new IndexingStatusResponse(
+            status,
+            job.getDocumentsProcessed(),
+            job.getDocumentsTotal(),
+            job.getDocumentsSkipped(),
+            job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
+        .message(message)
+        .libraryId(job.getLibraryId());
+  }
+
+  private IndexingStatus mapIndexingStatus(JobStatus jobStatus) {
+    return switch (jobStatus) {
+      case RUNNING -> IndexingStatus.RUNNING;
+      case COMPLETED -> IndexingStatus.COMPLETED;
+      case FAILED -> IndexingStatus.FAILED;
+    };
   }
 
   private User currentUser(Jwt jwt) {

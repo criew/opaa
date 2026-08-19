@@ -26,7 +26,6 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
-  IndexingTriggerRequest,
   LibraryOwnerType,
   LibraryVisibility,
   QueryRequest,
@@ -97,6 +96,12 @@ export function resetIndexingState() {
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
 
+// Mirrors DocumentIndexingService#toIndexingSourceType's exact German 409 text for an UPLOAD
+// library (no run type at all). Duplicated as a literal - rather than imported from
+// stores/indexingStore.ts, which defines the same constant for triggerIndexing's own message
+// handling - to keep this mock module independent of application/store code.
+const UPLOAD_LIBRARY_INDEXING_ERROR = 'Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
+
 function recalculateRoleCounts(spaceId: string) {
   const space = mockSpaceDetails[spaceId]
   if (!space) return
@@ -125,13 +130,31 @@ export const handlers = [
     return HttpResponse.json(mockHealthResponse)
   }),
 
-  http.post('/api/v1/indexing/trigger', async ({ request }) => {
-    // #419: libraryId is required - a missing one mirrors the backend's 400.
-    const body = (await request.json().catch(() => null)) as IndexingTriggerRequest | null
-    if (!body?.libraryId) {
+  // #478: the trigger reduces to "index this library" - libraryId is a path variable, not a
+  // request body field, and sourceType/configuration come from the library itself (ADR-0018).
+  http.post('/api/v1/libraries/:libraryId/indexing', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
       return HttpResponse.json(
-        { error: 'libraryId ist erforderlich', status: 400, timestamp: new Date().toISOString() },
-        { status: 400 },
+        {
+          error: 'Bibliothek nicht gefunden',
+          status: 404,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 },
+      )
+    }
+    // Mirrors DocumentIndexingService#toIndexingSourceType (#500 review, finding 5): UPLOAD has no
+    // run type at all - the library is a valid indexing target, it simply has nothing to run.
+    if (library.sourceType === 'UPLOAD') {
+      return HttpResponse.json(
+        {
+          error: UPLOAD_LIBRARY_INDEXING_ERROR,
+          status: 409,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 409 },
       )
     }
 
@@ -145,24 +168,26 @@ export const handlers = [
         documentsSkipped: 0,
         message: 'Indizierung gestartet',
         timestamp: new Date().toISOString(),
+        libraryId,
       } satisfies IndexingStatusResponse,
       { status: 202 },
     )
   }),
 
-  http.get('/api/v1/indexing/status', () => {
+  http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {
+    const libraryId = params.libraryId as string
     if (!indexingActive) {
-      return HttpResponse.json(mockIndexingIdle)
+      return HttpResponse.json({ ...mockIndexingIdle, libraryId })
     }
 
     indexingPollCount++
 
     if (indexingPollCount >= INDEXING_POLL_STEPS) {
       indexingActive = false
-      return HttpResponse.json(mockIndexingCompleted)
+      return HttpResponse.json({ ...mockIndexingCompleted, libraryId })
     }
 
-    return HttpResponse.json(getRunningStatus(indexingPollCount))
+    return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
   }),
 
   http.post('/api/v1/query', async ({ request }) => {

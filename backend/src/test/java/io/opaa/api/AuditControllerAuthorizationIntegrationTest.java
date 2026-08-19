@@ -32,11 +32,11 @@ import org.testcontainers.utility.DockerImageName;
  * than proving the real authorization decision - correct for that slice's purpose (see its own
  * Javadoc), but it means no test exercises the real {@code AuditQueryService#requireAuditor} check
  * through the actual HTTP endpoint. This class closes that gap the same way {@link
- * IndexingControllerAuthorizationIntegrationTest} already does for {@code
- * /api/v1/indexing/trigger}: full Spring context, the real {@code dev} security chain ({@link
- * DevAuthFilter}, {@code UserProvisioningFilter}, and - since #394 - the real role check inside
- * {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real Postgres, so
- * both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
+ * LibraryIndexingAuthorizationIntegrationTest} already does for {@code POST
+ * /api/v1/libraries/{libraryId}/indexing}: full Spring context, the real {@code dev} security chain
+ * ({@link DevAuthFilter}, {@code UserProvisioningFilter}, and - since #394 - the real role check
+ * inside {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real
+ * Postgres, so both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

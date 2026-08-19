@@ -12,12 +12,12 @@ describe('MSW Handlers', () => {
     })
   })
 
-  describe('POST /api/v1/indexing/trigger', () => {
+  describe('POST /api/v1/libraries/:libraryId/indexing', () => {
+    // 'library-personal' is UPLOAD, which has no run type at all (see the 409 test below) -
+    // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
     it('returns RUNNING status', async () => {
-      const response = await fetch('/api/v1/indexing/trigger', {
+      const response = await fetch('/api/v1/libraries/library-referat-50/indexing', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ libraryId: 'library-1' }),
       })
       const data = await response.json()
 
@@ -26,23 +26,34 @@ describe('MSW Handlers', () => {
       expect(data.documentCount).toBe(0)
     })
 
-    it('returns 400 without a libraryId', async () => {
-      // #419 acceptance criteria: no libraryId -> 400.
-      const response = await fetch('/api/v1/indexing/trigger', {
+    it('returns 404 for an unknown library', async () => {
+      // #478: the trigger reduces to "index this library" - libraryId is a path variable, so a
+      // library that does not exist in the mock fixtures mirrors the backend's 404.
+      const response = await fetch('/api/v1/libraries/unknown-library/indexing', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
       })
       const data = await response.json()
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('libraryId ist erforderlich')
+      expect(response.status).toBe(404)
+      expect(data.error).toBe('Bibliothek nicht gefunden')
+    })
+
+    it('returns 409 for an UPLOAD library', async () => {
+      // #500 review, finding 5: mirrors DocumentIndexingService#toIndexingSourceType - UPLOAD has
+      // no run type, the library is a valid target, it simply has nothing to run.
+      const response = await fetch('/api/v1/libraries/library-personal/indexing', {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(409)
+      expect(data.error).toBe('Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
     })
   })
 
-  describe('GET /api/v1/indexing/status', () => {
+  describe('GET /api/v1/libraries/:libraryId/indexing/status', () => {
     it('returns IDLE when no indexing has been triggered', async () => {
-      const response = await fetch('/api/v1/indexing/status')
+      const response = await fetch('/api/v1/libraries/library-referat-50/indexing/status')
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -50,15 +61,11 @@ describe('MSW Handlers', () => {
     })
 
     it('progresses to COMPLETED after trigger and multiple polls', async () => {
-      await fetch('/api/v1/indexing/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ libraryId: 'library-1' }),
-      })
+      await fetch('/api/v1/libraries/library-referat-50/indexing', { method: 'POST' })
 
       let data
       for (let i = 0; i < 5; i++) {
-        const response = await fetch('/api/v1/indexing/status')
+        const response = await fetch('/api/v1/libraries/library-referat-50/indexing/status')
         data = await response.json()
       }
 
