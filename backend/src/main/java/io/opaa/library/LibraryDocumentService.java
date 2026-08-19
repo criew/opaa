@@ -259,9 +259,7 @@ public class LibraryDocumentService {
     if (library.getSourceType() != DocumentSourceType.UPLOAD) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Diese Bibliothek ist eine Konnektorbibliothek (Quellentyp "
-              + library.getSourceType()
-              + ") und akzeptiert keine manuellen Uploads");
+          "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
     }
   }
 

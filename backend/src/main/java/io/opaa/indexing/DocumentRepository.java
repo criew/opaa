@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,10 +31,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Backs {@code KnowledgeLibraryService#deleteLibrary}'s connector-library path (#479, ADR-0018
    * Entscheidung 5): deleting a lauf-basierte (connector) library takes its whole document bestand
    * with it, unlike {@code UPLOAD}, which keeps the pre-existing "blocked while non-empty" guard.
-   * Derived delete query - Spring Data JPA executes it as a bulk {@code DELETE}, returning the
+   * Explicit {@code @Modifying} bulk {@code DELETE}, not a derived {@code deleteBy...} method -
+   * Spring Data JPA executes those by loading every matching entity and removing it one by one,
+   * which would cost one round trip per document instead of one for the whole bestand. Returns the
    * number of rows removed.
    */
-  long deleteByLibraryId(UUID libraryId);
+  @Modifying
+  @Query("delete from Document d where d.libraryId = :libraryId")
+  long deleteByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
    * Backs the upload endpoint's per-library deduplication (#420): the same checksum is rejected a

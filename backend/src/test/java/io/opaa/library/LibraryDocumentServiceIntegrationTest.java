@@ -489,6 +489,16 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             connectorLibrary.getId().toString());
     assertThat(chunksAfter).isZero();
+
+    // #479 review nit: documentsRemoved in the LIBRARY_DELETED audit entry must come from
+    // DocumentRepository#deleteByLibraryId's own bulk-delete row count, not from a count taken
+    // before the delete - see KnowledgeLibraryService#deleteLibrary.
+    String deletionPayload =
+        jdbcTemplate.queryForObject(
+            "SELECT before FROM audit_log WHERE object_id = ? AND event_type = 'LIBRARY_DELETED'",
+            String.class,
+            connectorLibrary.getId().toString());
+    assertThat(deletionPayload).contains("\"documentsRemoved\":1");
   }
 
   @Test

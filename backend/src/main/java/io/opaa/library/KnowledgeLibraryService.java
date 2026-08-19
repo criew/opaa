@@ -501,6 +501,7 @@ public class KnowledgeLibraryService {
     // practically undeletable instead. Their deletion takes the whole bestand with it (documents
     // and vector store chunks) rather than being blocked.
     long documentCount = documentRepository.countByLibraryId(libraryId);
+    long documentsRemoved = 0;
     if (library.getSourceType() == DocumentSourceType.UPLOAD) {
       if (documentCount > 0) {
         throw new ResponseStatusException(
@@ -512,7 +513,7 @@ public class KnowledgeLibraryService {
       // hold many documents, and this is the same axis the permission-aware vector search already
       // filters on (see KnowledgeLibraryService's own class Javadoc and QueryService).
       vectorStore.delete("library_id == '" + libraryId + "'");
-      documentRepository.deleteByLibraryId(libraryId);
+      documentsRemoved = documentRepository.deleteByLibraryId(libraryId);
     }
 
     // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables
@@ -532,8 +533,8 @@ public class KnowledgeLibraryService {
     // AuditEventType has no dedicated "bestand removed" event, and this deletion is one atomic
     // administrative action, not two.
     Map<String, Object> deletionPayload = libraryAuditPayload(library);
-    if (documentCount > 0) {
-      deletionPayload.put("documentsRemoved", documentCount);
+    if (documentsRemoved > 0) {
+      deletionPayload.put("documentsRemoved", documentsRemoved);
     }
     auditEventRecorder.recordUserAction(
         library.getOrganizationId(),

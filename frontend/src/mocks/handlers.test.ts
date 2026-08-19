@@ -181,6 +181,22 @@ describe('MSW Handlers', () => {
       const data = await response.json()
       expect(data.error).toMatch(/kein zugriff/i)
     })
+
+    // Mirrors LibraryDocumentService#requireUploadLibrary (#479): editableLibraryId's fixture is a
+    // FILESYSTEM (connector) library, so even a MANAGER upload is rejected - the check runs before
+    // request.formData(), so it hits the handler directly like the VIEWER 403 test above.
+    it('returns 409 when uploading into a connector library', async () => {
+      const formData = new FormData()
+      formData.append('file', new File(['Inhalt'], 'sollte-abgelehnt-werden.md'))
+
+      const response = await fetch(`/api/v1/libraries/${editableLibraryId}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      expect(response.status).toBe(409)
+      const data = await response.json()
+      expect(data.error).toMatch(/konnektorbibliothek/i)
+    })
   })
 
   describe('/api/v1/libraries/:libraryId/grants', () => {
