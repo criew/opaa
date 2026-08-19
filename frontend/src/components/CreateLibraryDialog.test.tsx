@@ -22,7 +22,6 @@ const { mockCreateLibrary, mockGetMyGroups, mockTestLibrarySource } = vi.hoisted
       ownerId: 'mock-user-id',
       visibility: request.visibility ?? 'PRIVATE',
       listed: request.listed ?? false,
-      personal: false,
       myRole: 'OWNER',
       documentCount: 0,
       sourceType: request.sourceType,

@@ -13,10 +13,10 @@ public interface AuditActorPseudonymRepository extends JpaRepository<AuditActorP
 
   /**
    * Inserts a pseudonym row for {@code userId} unless one already exists, in a single round trip
-   * keyed off {@code uk_audit_actor_pseudonyms_user} (migration 017) - mirrors {@code
-   * AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent}'s {@code ON CONFLICT ... DO
-   * NOTHING} race handling, so two concurrent first-audit-event calls for the same user race safely
-   * instead of one failing with a unique-constraint violation. Used only by {@link
+   * keyed off {@code uk_audit_actor_pseudonyms_user} (migration 017) - the same {@code ON CONFLICT
+   * ... DO NOTHING} race-handling pattern used elsewhere in this codebase for a first-of-its-kind
+   * per-user row, so two concurrent first-audit-event calls for the same user race safely instead
+   * of one failing with a unique-constraint violation. Used only by {@link
    * AuditActorPseudonymService#pseudonymFor}, which always re-reads via {@link #findByUserId}
    * afterwards to return whichever row actually won the race.
    */

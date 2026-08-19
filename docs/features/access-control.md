@@ -76,7 +76,7 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 - **Konnektoren (System-Admin):** System-Admins konfigurieren Konnektoren und legen fest, welche Quelle in
   welche Wissensbibliothek indiziert. Der primäre Weg für automatisierte Massenaufnahme.
 - **Manuelle Uploads:** Wer an einer Wissensbibliothek mindestens `EDITOR` ist, kann Dokumente hochladen —
-  in seine persönliche Bibliothek oder in jede andere, an der er dieses Recht hat.
+  in eine eigene Bibliothek oder in jede andere, an der er dieses Recht hat.
 
 Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
@@ -169,8 +169,9 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 
 1. **Anlage.** Ein Konto entsteht durch die Bereitstellung aus dem Verzeichnis, nicht durch eine
    Einladung im Produkt. Wer im Verzeichnis nicht existiert, hat in OPAA nichts.
-2. **Erste Anmeldung.** Persönlicher Space und persönliche Wissensbibliothek entstehen dabei; ein
-   Anlaufbestand an Assets ergibt sich aus den Gruppen der Person.
+2. **Erste Anmeldung.** Der persönliche Space entsteht dabei; eine Wissensbibliothek legt die Person
+   bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
+   Assets ergibt sich aus den Gruppen der Person.
 3. **Änderung.** Wechselt jemand das Referat, ändern sich seine Gruppenmitgliedschaften — und damit
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).

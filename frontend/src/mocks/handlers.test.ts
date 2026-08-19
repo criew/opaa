@@ -13,7 +13,7 @@ describe('MSW Handlers', () => {
   })
 
   describe('POST /api/v1/libraries/:libraryId/indexing', () => {
-    // 'library-personal' is UPLOAD, which has no run type at all (see the 409 test below) -
+    // 'library-mine' is UPLOAD, which has no run type at all (see the 409 test below) -
     // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
     it('returns RUNNING status', async () => {
       const response = await fetch('/api/v1/libraries/library-referat-50/indexing', {
@@ -41,7 +41,7 @@ describe('MSW Handlers', () => {
     it('returns 409 for an UPLOAD library', async () => {
       // #500 review, finding 5: mirrors DocumentIndexingService#toIndexingSourceType - UPLOAD has
       // no run type, the library is a valid target, it simply has nothing to run.
-      const response = await fetch('/api/v1/libraries/library-personal/indexing', {
+      const response = await fetch('/api/v1/libraries/library-mine/indexing', {
         method: 'POST',
       })
       const data = await response.json()
@@ -235,9 +235,6 @@ describe('MSW Handlers', () => {
     const managerLibraryId = 'library-referat-50'
     // VIEWER on this fixture - below the MANAGER threshold the grants endpoints require.
     const viewerLibraryId = 'library-dienstanweisungen'
-    // OWNER but personal=true - AssetGrantService#upsertGrant rejects new/updated grants on the
-    // personal library unconditionally.
-    const personalLibraryId = 'library-personal'
 
     it('lists the grants of a library the caller manages', async () => {
       const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
@@ -288,17 +285,6 @@ describe('MSW Handlers', () => {
       const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
       const list = (await listResponse.json()) as { id: string; subjectId: string }[]
       expect(list.filter((grant) => grant.subjectId === 'owner-2')).toHaveLength(1)
-    })
-
-    it('rejects a grant on the personal library', async () => {
-      const response = await fetch(`/api/v1/libraries/${personalLibraryId}/grants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectType: 'USER', subjectId: 'owner-1', role: 'VIEWER' }),
-      })
-      expect(response.status).toBe(400)
-      const data = await response.json()
-      expect(data.error).toMatch(/persoenliche bibliothek/i)
     })
 
     it('rejects granting a role higher than the caller holds', async () => {
@@ -372,9 +358,8 @@ describe('MSW Handlers', () => {
       expect(response.status).toBe(403)
     })
 
-    // OWNER but not personal (fixtures.ts) - carries the library's only active OWNER grant, the
-    // scenario library-personal cannot exercise since grants there are rejected outright before
-    // this guard would even run.
+    // OWNER on this fixture (fixtures.ts), carrying the library's only active OWNER grant - the
+    // scenario this guard exercises.
     const soloOwnerLibraryId = 'library-solo-owner'
 
     it("rejects downgrading the library's last active OWNER grant", async () => {

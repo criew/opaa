@@ -1,3 +1,13 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 032 - i.e. the schema exactly as it existed immediately before migration 033.
+#
+# Used by:
+# - Migration033DropKnowledgeLibrariesPersonalFlagTest, to build a realistic pre-migration database
+#   (via the real, versioned changelog files, not a hand-rolled schema) and then apply 033 in
+#   isolation. That migration touches only knowledge_libraries, unaffected by 032-create-chats.yaml
+#   (included here purely to keep the fixture chain contiguous, not because 033 depends on it).
+#
+# See test-master-through-030.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -63,5 +73,3 @@ databaseChangeLog:
       file: db/changelog/changes/031-delete-system-library.yaml
   - include:
       file: db/changelog/changes/032-create-chats.yaml
-  - include:
-      file: db/changelog/changes/033-drop-knowledge-libraries-personal-flag.yaml

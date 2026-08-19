@@ -135,7 +135,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 ownerId,
                 LibraryVisibility.PRIVATE,
                 false,
-                false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
@@ -236,7 +235,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 null,
                 devAdmin.getId(),
                 LibraryVisibility.PRIVATE,
-                false,
                 false));
     grantRepository.save(
         AssetGrant.forUser(
@@ -307,7 +305,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
             null,
             foreignOwnerId,
             LibraryVisibility.PRIVATE,
-            false,
             false,
             DocumentSourceType.FILESYSTEM,
             documentDir.toAbsolutePath().toString(),

@@ -12,7 +12,7 @@
 > - Ein einzelnes Dokument soll weitergegeben werden → es wird in eine Bibliothek verschoben,
 >   deren Leserkreis passt.
 > - Teilen zwischen persönlichen Ablagen — im alten Modell strukturell unmöglich — funktioniert
->   jetzt über einen direkten Grant auf die persönliche Bibliothek.
+>   jetzt über einen direkten Grant auf die eigene Bibliothek.
 >
 > Damit entfällt auch die hier dokumentierte Sicherheitslücke: Es gibt keinen Vorgang mehr, bei dem
 > ein Editor Inhalte in einen Kontext mit niedrigerer Vertraulichkeitsstufe schiebt. Die Reichweite

@@ -57,7 +57,6 @@ class RssFeedIndexingExecutorTest {
           UUID.randomUUID(),
           LibraryVisibility.PRIVATE,
           false,
-          false,
           DocumentSourceType.RSS_FEED,
           null,
           "https://example.com/feed.xml",

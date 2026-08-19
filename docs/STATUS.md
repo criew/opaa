@@ -234,8 +234,8 @@ nicht vertreten.
 - **Historisierung von Rechten und Gruppenmitgliedschaften** (#238): Grants, Gruppenmitgliedschaften
   und die Reichweitenfelder einer Bibliothek (`visibility`, `listed`) sind als Intervalle mit
   auslösendem Vorgang historisiert (`PermissionHistoryService`, Migration `018-permission-history.yaml`,
-  inklusive Backfill des Altbestands) — auch Änderungen aus einem Verzeichnislauf und aus der
-  automatischen persönlichen Bibliothek. Die vollständige Rechtemenge einer Person ist zu einem
+  inklusive Backfill des Altbestands) — auch Änderungen aus einem Verzeichnislauf. Die vollständige
+  Rechtemenge einer Person ist zu einem
   beliebigen Stichtag rekonstruierbar, die Negativfrage damit belegbar beantwortbar; die Historie
   überlebt die Löschung von Bibliothek oder Gruppe (ADR-0016). Noch offen: Aufbewahrungshöchstdauer
   und Pseudonymisierung der Historie selbst, sowie die Zuordnung eines historisierten

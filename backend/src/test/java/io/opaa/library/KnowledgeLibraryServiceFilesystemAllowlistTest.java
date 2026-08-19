@@ -22,8 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -54,8 +52,6 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorStore vectorStore = mock(VectorStore.class);
-    PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
-    when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
 
     libraryService =
@@ -70,7 +66,6 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             permissionHistoryService,
             auditEventRecorder,
             vectorStore,
-            transactionManager,
             filesystemAllowlist);
 
     ownerId = UUID.randomUUID();

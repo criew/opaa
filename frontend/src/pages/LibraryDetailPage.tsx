@@ -50,7 +50,6 @@ import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 const ACCEPTED_FILE_EXTENSIONS = '.doc,.docx,.md,.pdf,.pptx,.txt'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
-const personalLibraryVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED']
 
 function canEditLibrary(role: AssetRole | undefined): boolean {
   return role === 'MANAGER' || role === 'OWNER'
@@ -119,10 +118,8 @@ export default function LibraryDetailPage() {
   const roleGrantsEdit = canEditLibrary(library?.myRole)
   const roleGrantsDelete = canDeleteLibrary(library?.myRole)
   const canEdit = roleGrantsEdit || isSystemAdmin
-  const canDelete = (roleGrantsDelete || isSystemAdmin) && !library?.personal
-  const canManageGrants = canEdit && !library?.personal
+  const canDelete = roleGrantsDelete || isSystemAdmin
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
-  const editableVisibilities = library?.personal ? personalLibraryVisibilities : allVisibilities
 
   const name = draft ? draft.name : (library?.name ?? '')
   const description = draft ? draft.description : (library?.description ?? '')
@@ -299,18 +296,13 @@ export default function LibraryDetailPage() {
                 })
               }
             >
-              {editableVisibilities.map((option) => (
+              {allVisibilities.map((option) => (
                 <MenuItem key={option} value={option}>
                   {libraryVisibilityLabel(option)}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          {library.personal && (
-            <Typography variant="caption" color="text.secondary">
-              Die persönliche Bibliothek kann nicht organisationsweit sichtbar sein.
-            </Typography>
-          )}
           <FormControlLabel
             control={
               <Checkbox
@@ -334,11 +326,9 @@ export default function LibraryDetailPage() {
               >
                 {saving ? 'Wird gespeichert …' : 'Speichern'}
               </Button>
-              {canManageGrants && (
-                <Button variant="outlined" size="small" onClick={() => setGrantsDialogOpen(true)}>
-                  Rechte verwalten
-                </Button>
-              )}
+              <Button variant="outlined" size="small" onClick={() => setGrantsDialogOpen(true)}>
+                Rechte verwalten
+              </Button>
               {canDelete && (
                 <Button
                   color="error"
@@ -382,7 +372,7 @@ export default function LibraryDetailPage() {
         />
       )}
 
-      {canManageGrants && (
+      {canEdit && (
         <LibraryGrantsDialog
           open={grantsDialogOpen}
           library={{ id: libraryId, name: library.name }}

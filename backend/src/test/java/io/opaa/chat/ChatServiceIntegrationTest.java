@@ -103,8 +103,8 @@ class ChatServiceIntegrationTest {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, personal, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Testbibliothek', 'USER', ?, 'PRIVATE', false, false, 'UPLOAD',"
+            + " visibility, listed, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'Testbibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
             + " now(), now())",
         id,
         organizationA,

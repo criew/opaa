@@ -109,7 +109,6 @@ class OpenAiIntegrationTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
-                false,
                 DocumentSourceType.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),
                 null,

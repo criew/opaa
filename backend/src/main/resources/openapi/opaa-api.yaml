@@ -888,7 +888,7 @@ paths:
       operationId: deleteLibrary
       tags: [library]
       summary: >
-        Delete a library (owner only; the personal library cannot be deleted). A non-empty UPLOAD
+        Delete a library (owner only). A non-empty UPLOAD
         library is rejected with 409 (documents must be removed individually first). A non-empty
         connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) is deleted together with its
         documents and vector store chunks - deleting individual connector documents would be
@@ -2393,7 +2393,6 @@ components:
           ownerType,
           visibility,
           listed,
-          personal,
           myRole,
           sourceType,
           documentCount,
@@ -2415,8 +2414,6 @@ components:
         visibility:
           $ref: "#/components/schemas/LibraryVisibility"
         listed:
-          type: boolean
-        personal:
           type: boolean
         myRole:
           description: >
@@ -2456,7 +2453,6 @@ components:
         - ownerId
         - visibility
         - listed
-        - personal
         - myRole
         - sourceType
         - createdAt
@@ -2480,8 +2476,6 @@ components:
         visibility:
           $ref: "#/components/schemas/LibraryVisibility"
         listed:
-          type: boolean
-        personal:
           type: boolean
         myRole:
           description: >

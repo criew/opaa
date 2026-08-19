@@ -14,7 +14,6 @@ import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from 
 import CreateLibraryDialog from '../components/CreateLibraryDialog'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
-  if (library.personal) return 'persönlich'
   if (library.ownerType === 'GROUP') return 'Gruppen-Bibliothek'
   return 'eigene'
 }

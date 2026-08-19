@@ -70,7 +70,6 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false,
-            false,
             DocumentSourceType.FILESYSTEM,
             "/data/docs",
             null,
@@ -110,7 +109,6 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false);
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(foreignLibrary.getId()))
@@ -208,7 +206,6 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false);
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
@@ -232,7 +229,6 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -262,7 +258,6 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false,
             DocumentSourceType.RSS_FEED,
             null,
@@ -337,7 +332,6 @@ class DocumentIndexingServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false);
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(foreignLibrary.getId()))

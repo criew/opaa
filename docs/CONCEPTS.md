@@ -257,8 +257,8 @@ eine Beschränkung an den **Daten** hängt und nicht am Arbeitsraum: Eine Biblio
 lokale Modelle" selbst mit sich, und ein Wechsel des Space umgeht sie nicht.
 
 **Persönliche Ablage:**
-- Jede Person hat einen persönlichen Space und darin eine persönliche Wissensbibliothek „Meine Dokumente"
-- Automatisch angelegt, eine je Person, nicht löschbar (beim Ausscheiden deaktiviert)
+- Jede Person hat einen persönlichen Space; eine eigene Wissensbibliothek legt sie bei Bedarf selbst
+  an — es gibt keine automatisch angelegte, nicht löschbare Vorgabebibliothek mehr
 - Geteilt wird über die Bibliothek, nicht über den Raum: Eine direkte Berechtigung für eine andere Person
   genügt, der persönliche Space bleibt privat
 
@@ -619,7 +619,8 @@ Dokumente über einen Konnektor aus einer Quelle abholt.
 **Unterschiede zur Aufnahme über Konnektoren:**
 - Der Anstoß kommt von einer Person, nicht vom System
 - Er erfolgt bei Bedarf, nicht nach Zeitplan oder Ereignis
-- Das Dokument landet ohne andere Angabe in der persönlichen Wissensbibliothek
+- Das Dokument landet in der Bibliothek, die beim Hochladen geöffnet ist — es gibt keine
+  Vorauswahl, die Person wählt die Bibliothek selbst
 - Die Originaldatei bleibt im Speicher-Backend erhalten
 
 Siehe [Daten-Indizierung & RAG](./features/data-indexing-rag.md).

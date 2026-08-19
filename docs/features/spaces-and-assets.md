@@ -902,7 +902,7 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 
 | Bestand | Behandlung |
 |---|---|
-| Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`); zusätzlich entsteht je Nutzer eine persönliche Wissensbibliothek „Meine Dokumente", die dort assoziiert wird |
+| Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`). Bis #522 entstand zusätzlich je Nutzer automatisch eine persönliche Wissensbibliothek „Meine Dokumente" — diese Automatik entfiel ersatzlos; wer eine Bibliothek möchte, legt sie seither selbst an. Vor #522 automatisch angelegte Bibliotheken bestehen unverändert als gewöhnliche nutzereigene Bibliotheken fort |
 | Gemeinsame Workspaces | werden gewöhnliche Spaces mit `memberSource = MANUAL` |
 | Mitgliedschaften | `VIEWER→MEMBER`, `EDITOR→CURATOR`, `ADMIN→ADMIN`, `OWNER→ADMIN`; die Verantwortlichkeit steckt bereits im `ownerId`-Attribut |
 | Bestehende Dokumente | hatten zuvor **keine** Workspace-Zuordnung. Sie wurden einer eigens angelegten System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** war — eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar gewesen. #521 hat diese System-Bibliothek samt Inhalt ersatzlos gelöscht |
