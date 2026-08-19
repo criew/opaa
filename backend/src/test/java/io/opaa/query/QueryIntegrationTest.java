@@ -1,7 +1,6 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +13,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
@@ -80,6 +81,7 @@ class QueryIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private QueryService queryService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ChatMemory chatMemory;
 
   private UUID userId;
   private UUID libraryId;
@@ -123,6 +125,11 @@ class QueryIntegrationTest {
   void tearDown() {
     jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    // #525: chats/spaces the persisted-chat tests below create for userId - fk_chats_author and
+    // fk_spaces_owner are ON DELETE RESTRICT, so these must go before the user itself.
+    jdbcTemplate.update("DELETE FROM chats WHERE author_id = ?", userId);
+    jdbcTemplate.update("DELETE FROM space_memberships WHERE user_id = ?", userId);
+    jdbcTemplate.update("DELETE FROM spaces WHERE owner_id = ?", userId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
   }
 
@@ -400,17 +407,218 @@ class QueryIntegrationTest {
     }
   }
 
+  /**
+   * #525 review, finding 1 (critical) and finding 2: {@code QueryService#query} runs inside a
+   * class-level {@code @Transactional(readOnly = true)} transaction; {@code ChatService#appendTurn}
+   * must open its own writable transaction ({@code REQUIRES_NEW}) or Hibernate silently drops the
+   * persisted turn - a chat-mocking unit test can never catch this, only a real transaction against
+   * a real database can. Reproduction (fix temporarily reverted to plain {@code @Transactional}):
+   * this test failed with {@code expected: 2 but was: 0} - zero rows in {@code chat_messages} after
+   * a successful {@code queryService.query(...)} call, exactly the silent data loss the finding
+   * describes. With the {@code REQUIRES_NEW} fix in place, it passes.
+   */
   @Test
-  void queryRejectsInvalidConversationId() {
-    assertThatThrownBy(
-            () ->
-                queryService.query(
-                    "Test question",
-                    "<script>alert(1)</script>",
-                    userId,
-                    true,
-                    java.util.List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Ungültiges Format der conversationId");
+  void queryPersistsTheTurnForARealChat() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    queryService.query("Erste Frage", chatId, userId, true, List.of());
+
+    Integer messageCount =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId);
+    assertThat(messageCount).isEqualTo(2);
+  }
+
+  /**
+   * #525 review, finding 2 (rehydration): with the in-memory conversation cache cold - simulating a
+   * restart or eviction - a follow-up question in the same persisted chat must still be enriched
+   * from the first turn, because {@code QueryService} reloads it from {@code chat_messages}, not
+   * from the (now empty) cache.
+   */
+  @Test
+  void queryRehydratesConversationHistoryFromPersistedMessagesOnAColdCache() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    var firstResponse =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Erste Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(firstResponse);
+    queryService.query("Was sind meine Ausgaben bei Apple?", chatId, userId, true, List.of());
+
+    // Simulate a cold cache (restart/eviction) - see QueryService#query's Javadoc for the exact
+    // conversation-cache key format this reconstructs.
+    chatMemory.clear(userId + ":" + chatId);
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    var secondResponse =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Zweite Antwort"))));
+    when(chatModel.call(promptCaptor.capture())).thenReturn(secondResponse);
+
+    queryService.query("Mach daraus eine Tabelle", chatId, userId, true, List.of());
+
+    boolean firstQuestionInPrompt =
+        promptCaptor.getValue().getInstructions().stream()
+            .anyMatch(m -> m.getText() != null && m.getText().contains("Ausgaben bei Apple"));
+    assertThat(firstQuestionInPrompt)
+        .as("the second prompt must include the first question, rehydrated from chat_messages")
+        .isTrue();
+  }
+
+  /**
+   * #525 review, finding 3 (critical - conversation-history leak) and finding 4 (membership): a
+   * chatId belonging to another user must neither read that user's history nor write anything into
+   * their chat - it is treated as an ephemeral, unpersisted conversation instead (see
+   * QueryService#query's Javadoc).
+   */
+  @Test
+  void queryWithAForeignChatIdWritesNothingAndReadsNothing() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    UUID strangerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        strangerId,
+        "query-it-stranger-" + strangerId,
+        "test-issuer",
+        "stranger@example.com",
+        "Stranger",
+        DEFAULT_ORGANIZATION_ID);
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+    try {
+      QueryResponse response =
+          queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+
+      // Falls back to an ephemeral conversation, not the owner's chat - the returned id is the
+      // supplied chatId (echoed back, exactly as an unresolvable id always is), but nothing was
+      // written to it.
+      assertThat(response.getChatId()).isEqualTo(chatId);
+      Integer messageCount =
+          jdbcTemplate.queryForObject(
+              "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId);
+      assertThat(messageCount).isZero();
+    } finally {
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  /**
+   * #525 review round 2, finding B: the previous version of this test (see git history) never
+   * actually proved the cache-key qualification, because it never populated the owner's cache entry
+   * and never inspected what a stranger's prompt actually contained - it would have stayed green
+   * even with the bug the userId-qualified cache key (see {@code QueryService#query}'s Javadoc)
+   * fixes. This version forces the owner's history into the in-memory cache first, then proves the
+   * stranger's prompt does not contain it.
+   *
+   * <p>Reproduction (fix temporarily reverted to a bare, unqualified {@code chatId.toString()}
+   * cache key): {@code ownerQuestionLeakedIntoStrangersPrompt} was {@code true} - the owner's
+   * question appeared verbatim in the stranger's {@link Prompt}. With the {@code userId}-qualified
+   * key restored, it is {@code false} - see the PR description for the exact captured failure.
+   */
+  @Test
+  void queryWithAForeignChatIdNeverLeaksTheOwnersCachedHistoryIntoTheStrangersPrompt() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    // Owner asks a question first - this both persists it to chat_messages and, critically for
+    // this test, warms the in-memory conversation cache under the owner-scoped key.
+    var ownerAnswer =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Besitzer"))));
+    when(chatModel.call(any(Prompt.class))).thenReturn(ownerAnswer);
+    queryService.query(
+        "Geheime Eigentümerfrage über Gehaltsdaten", chatId, userId, true, List.of());
+
+    UUID strangerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        strangerId,
+        "query-it-stranger-" + strangerId,
+        "test-issuer",
+        "stranger@example.com",
+        "Stranger",
+        DEFAULT_ORGANIZATION_ID);
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    var strangerAnswer =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Fremden"))));
+    when(chatModel.call(promptCaptor.capture())).thenReturn(strangerAnswer);
+
+    try {
+      // Stranger queries with the owner's real chatId - not an unresolvable random one.
+      queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+
+      boolean ownerQuestionLeakedIntoStrangersPrompt =
+          promptCaptor.getValue().getInstructions().stream()
+              .anyMatch(
+                  m -> m.getText() != null && m.getText().contains("Geheime Eigentümerfrage"));
+      assertThat(ownerQuestionLeakedIntoStrangersPrompt)
+          .as("the owner's cached question must never appear in a stranger's prompt")
+          .isFalse();
+    } finally {
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
+    }
+  }
+
+  /**
+   * #525 review, finding 4: an author removed from the chat's space must not be able to keep
+   * querying through it, even though the chat itself (and its history) remains theirs to read via
+   * GET /api/v1/chats/{chatId} - see ChatService#requireStillSpaceMember's Javadoc.
+   */
+  @Test
+  void queryRejectsAnAuthorNoLongerAMemberOfTheChatsSpace() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    jdbcTemplate.update(
+        "DELETE FROM space_memberships WHERE space_id = ? AND user_id = ?", spaceId, userId);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> queryService.query("Frage nach Austritt", chatId, userId, true, List.of()))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(
+                        ((org.springframework.web.server.ResponseStatusException) ex)
+                            .getStatusCode())
+                    .isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN));
+  }
+
+  private UUID insertSpaceWithMembership(UUID memberId) {
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, is_default, visibility, owner_id, organization_id,"
+            + " created_at, updated_at) VALUES (?, 'Fachbereich', false, 'PRIVATE', ?, ?, now(),"
+            + " now())",
+        spaceId,
+        memberId,
+        DEFAULT_ORGANIZATION_ID);
+    jdbcTemplate.update(
+        "INSERT INTO space_memberships (id, user_id, space_id, role, organization_id, created_at)"
+            + " VALUES (?, ?, ?, 'ADMIN', ?, now())",
+        UUID.randomUUID(),
+        memberId,
+        spaceId,
+        DEFAULT_ORGANIZATION_ID);
+    return spaceId;
+  }
+
+  private UUID insertChat(UUID spaceId, UUID authorId) {
+    UUID chatId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE', now(), now())",
+        chatId,
+        spaceId,
+        authorId,
+        DEFAULT_ORGANIZATION_ID);
+    return chatId;
   }
 }

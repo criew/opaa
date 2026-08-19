@@ -8,7 +8,7 @@ import { useSpaceStore } from '../stores/spaceStore'
 
 describe('Sidebar', () => {
   beforeEach(() => {
-    useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
+    useChatStore.setState({ messages: [], isLoading: false, error: null, chatId: null })
     useSpaceStore.setState({
       spaces: [
         {
@@ -49,7 +49,7 @@ describe('Sidebar', () => {
   it('clears messages when New Chat button is clicked', async () => {
     useChatStore.setState({
       messages: [{ id: '1', role: 'user', content: 'Hello', timestamp: new Date() }],
-      conversationId: 'conv-123',
+      chatId: 'conv-123',
     })
 
     renderWithProviders(<Sidebar />, { withRouter: true })
@@ -58,6 +58,6 @@ describe('Sidebar', () => {
 
     const state = useChatStore.getState()
     expect(state.messages).toHaveLength(0)
-    expect(state.conversationId).toBeNull()
+    expect(state.chatId).toBeNull()
   })
 })

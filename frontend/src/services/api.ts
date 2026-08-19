@@ -85,16 +85,20 @@ export async function getHealth(): Promise<HealthResponse> {
 
 export async function sendQuery(
   question: string,
-  conversationId?: string,
+  chatId?: string,
   useKnowledge = true,
   libraryIds?: string[],
 ): Promise<QueryResponse> {
   try {
     // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
     // ignores it otherwise (#526), so omitting it keeps the request honest about what it does.
+    // chatId (#525) is the persisted-chat/in-memory-cache key; when it names a chat the caller
+    // authored, useKnowledge/libraryIds below are ignored server-side in favour of the chat's own
+    // settings (#525) - the UI itself does not create persisted chats yet, that lands with the UI
+    // overhaul, #527.
     const request: QueryRequest = {
       question,
-      conversationId,
+      chatId,
       useKnowledge,
       ...(useKnowledge ? {} : { libraryIds }),
     }
