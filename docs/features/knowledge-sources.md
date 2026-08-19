@@ -37,15 +37,24 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 ## Überblick
 
 1. **Zwei Wege führen Wissen in OPAA:** der **Upload** durch Menschen und der **Konnektor**, der aus
-   einem Quellsystem zieht. Die Indizierung aus einer erreichbaren Verzeichnisliste im Netz ist eine
-   **Sonderform des Konnektors** und zusammen mit der Indizierung eines Verzeichnisses im Dateisystem
-   heute der gebaute Stand; der Upload gehört zum Zielbild.
+   einem Quellsystem zieht. Beide Wege sind heute gebaut. Eine Wissensbibliothek trägt dabei **genau
+   einen Quellentyp** — `UPLOAD`, ein Verzeichnis im Dateisystem, eine erreichbare Verzeichnisliste im
+   Netz oder ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
+   unveränderlich (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)).
+   Die Bibliothek **ist** die Quelle; es gibt keine davon getrennte Konnektor- oder Quellen-Tabelle.
 2. **Konnektorbestände aktualisieren sich selbst**, Uploads bleiben statisch. Das ist der wesentliche
    Unterschied und bestimmt, welcher Weg sich für welchen Zweck eignet.
-3. **Eine Konnektorquelle speist genau eine Wissensbibliothek.** Kein Bestand wird vervielfacht;
-   Mehrfachverwendung geschieht über die Bereitstellung derselben Bibliothek.
-4. **Die Systemverwaltung entscheidet, wohin indiziert wird; der Eigentümer der Bibliothek entscheidet,
-   wer es sieht** — begrenzt durch eine Obergrenze der Freigabe.
+3. **Eine Bibliothek hat höchstens einen Zufluss.** Gemischt gespeiste Bibliotheken — Upload und
+   Konnektor oder mehrere Quellen in derselben Bibliothek — gibt es nicht (**gebaut**, ADR-0018).
+   Mehrfachverwendung eines Bestands geschieht über die Freigabe derselben Bibliothek, nicht über
+   mehrere Zuflüsse in einen Topf.
+4. **Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst; der Eigentümer der Bibliothek
+   entscheidet, wer sie liest** — bei lauf-basierten Bibliotheken begrenzt durch eine Obergrenze der
+   Freigabe. Dass die Anlage nicht auf die Systemverwaltung beschränkt ist, bleibt eine **dauerhafte**
+   Entscheidung — kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6). Für `FILESYSTEM`
+   sichert stattdessen die Pfad-Allowlist den Zugriff ab (**gebaut**, #484); für die URL-basierten
+   Quellentypen (`HTTP_DIRECTORY`, `RSS_FEED`) bleibt die entsprechende Zielprüfung offen und ist der
+   verbleibende Blocker vor einem Mehrbenutzer-Produktivbetrieb (**Issue #267**).
 5. **Lesen ist der Normalfall, Schreiben die Ausnahme.** Schreibende Integrationen werden je Integration
    eigens freigeschaltet, laufen über einen menschlichen Freigabeschritt und werden vollständig
    protokolliert.
@@ -65,9 +74,9 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 | Richtung | Mensch übergibt an OPAA | OPAA zieht aus dem Quellsystem |
 | Auslöser | Handlung einer Person | Zeitplan, Ereignis oder ausdrücklicher Anstoß |
 | Aktualität | statisch — die Fassung bleibt, wie sie übergeben wurde | selbst aktualisierend bei Änderung in der Quelle |
-| Ziel | persönliche Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | genau eine Bibliothek, festgelegt von der Systemverwaltung |
+| Ziel | persönliche Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | die eigene Bibliothek — sie **ist** die Quelle, Typ aus einem Template bei der Anlage gewählt |
 | Ablage des Originals | im Dokumentenspeicher von OPAA | im Quellsystem; OPAA hält Extrakt und Verweis |
-| Einrichtung | keine | Zugangsdaten, Zuordnung, Zeitplan |
+| Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy — an der Bibliothek hinterlegt; Zeitplan noch offen (#485) |
 | Typischer Zweck | einzelner Vorgang, Anlage zu einer Frage, kurzlebiges Material | dauerhaft gepflegte Bestände, Rechtsquellen, Dienstanweisungen |
 
 Die beiden Wege stehen nicht in Konkurrenz. Der Fehler wäre, Dauerbestände über Uploads zu führen: Dann
@@ -93,9 +102,9 @@ Ablauf beim Hochladen:
 5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
    Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
    eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad. Es gibt
-   dazu genau eine Bibliotheksauswahl auf der Dokumentenseite, die zugleich Anzeige- und Upload-Ziel
-   ist: Der Ablagebereich erscheint nur, solange die dort gewählte Bibliothek mindestens `EDITOR`
-   gewährt, sodass sich beide Zwecke nie widersprechen können.
+   dazu genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek (`LibraryDetailPage.tsx`),
+   die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint nur, solange die dort geöffnete
+   Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke nie widersprechen können.
 
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
@@ -128,44 +137,67 @@ führt jedes hochgeladene Dokument seinen Übergabezeitpunkt sichtbar mit, und d
 
 ### Konnektor
 
-Ein **Konnektor** beschreibt das Quellsystem und die gemeinsame Konfiguration: Adresse, Zugangsdaten,
-Zeitplan, Netzwegangaben. Ein Konnektor hat eine oder mehrere **Quellen** — die konkret abzuholenden
-Ausschnitte, etwa ein Verzeichnispfad, ein Wiki-Bereich, ein Postfachordner oder ein Vorgangsbereich.
+Ein **Konnektor** ist der Sammelbegriff für die lauf-basierten Quellentypen: OPAA zieht selbst aus
+einem Quellsystem, statt dass jemand eine Datei übergibt. Anders als eine frühere Fassung dieses
+Dokuments vorsah, ist ein Konnektor **kein eigenes Verwaltungsobjekt** mit mehreren Quellen, die auf
+Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**,
+[ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
+**Quellentyp** — Dateisystem-Verzeichnis, Verzeichnisliste im Netz, RSS-Feed — und, für diesen
+Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
+Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
+verlangt eine neue Bibliothek.
 
-```
-Konnektor  "Netzlaufwerk Kämmerei"
-  Zugang:    Dienstkonto, nur lesend
-  Zeitplan:  werktäglich 03:00
-  Quellen:
-    //fileserver/kaemmerei/haushalt      → Bibliothek "Haushalt"
-    //fileserver/kaemmerei/dienstanw     → Bibliothek "Dienstanweisungen Kämmerei"
-
-Konnektor  "Intranet-Wiki"
-  Zugang:    Dienstkonto, nur lesend
-  Zeitplan:  stündlich
-  Quellen:
-    Bereich "Organisation"               → Bibliothek "Hausweite Regelungen"
-    Bereich "Personalrecht"              → Bibliothek "Personalrecht"
-```
+Eine eigene Konnektor-Tabelle mit mehreren Quellen je Konnektor — das frühere Zielbild dieses
+Abschnitts, mit Konnektoren wie „Netzlaufwerk Kämmerei" oder „Intranet-Wiki", die mehrere Pfade auf
+mehrere Bibliotheken abbilden — wurde geprüft und **verworfen**: Jede real existierende Quelle hat
+heute genau eine Bibliothek, jede Bibliothek höchstens eine Quelle, sodass die Indirektion reine
+Vorratshaltung wäre. Näheres unter [ADR-0018, Verworfene
+Alternativen](../decisions/0018-quellkonfiguration-in-der-bibliothek.md#verworfene-alternativen).
+Sollte sich echter Bedarf für mehrere Quellen je Bibliothek zeigen, bleibt eine spätere Quellen-Tabelle
+möglich — der ADR nennt das ausdrücklich als offene Erweiterung, mit dem Preis, dass die
+Abwesenheitsprüfung dann nicht mehr je Bibliothek laufen dürfte.
 
 **Quellklassen der ersten Ausbaustufe:** Dateiablagen und Netzlaufwerke über die gängigen
 Netzdateiprotokolle, Wiki- und Intranetsysteme über deren Schnittstelle, Postfächer und E-Mail-Archive,
 Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Verzeichnislisten und
-RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut, siehe
+RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier gebaute Quellentypen insgesamt:
+`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`), siehe
 [Erreichbare Verzeichnislisten im Netz](#erreichbare-verzeichnislisten-im-netz-gebaut) und
-[Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu; die
-Anbindung an Dokumentenmanagement und elektronische Akte gehört in den Ausblick der Produktvision.
+[Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
+gehört in den Ausblick der Produktvision.
 
 Diese Spezifikation nennt bewusst **Systemklassen und Protokolle statt Produkte**. Welche
 Einzelprodukte eine Installation anbindet, ist eine Frage der Umsetzung und keine Produktzusage.
 
-Jede Quelle kann **Einschluss- und Ausschlussmuster** tragen — Pfadmuster, Dateitypen, Änderungsalter.
-Sie sind das wirksamste Mittel gegen den häufigsten Fehler bei der Erschließung von Netzlaufwerken:
-zehntausend Dateien einzulesen, von denen dreihundert gemeint waren.
+Eine Bibliothek kann **Einschluss- und Ausschlussmuster** tragen — Pfadmuster, Dateitypen,
+Änderungsalter (**Zielbild**, noch nicht gebaut). Sie sind das wirksamste Mittel gegen den häufigsten
+Fehler bei der Erschließung von Netzlaufwerken: zehntausend Dateien einzulesen, von denen dreihundert
+gemeint waren.
 
 Wie ein Quellentyp beschrieben, ausgewählt und erweitert wird — einschließlich der typabhängigen
 Behandlung verschwundener Dokumente —, ist in
-[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md) festgehalten.
+[ADR-0017](../decisions/0017-quellentypmodell-indizierung.md) festgehalten; wo seine dauerhafte
+Konfiguration lebt, in [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
+
+### Verzeichnis im Dateisystem (gebaut)
+
+Eine Bibliothek vom Typ `FILESYSTEM` liest ein Verzeichnis, das der Betrieb dem OPAA-Server zugänglich
+gemacht hat — ein lokaler Pfad oder ein eingehängtes Netzlaufwerk, siehe [Deployment und
+Infrastruktur](./deployment-infrastructure.md#speicher-backends). Der Pfad wird bei der Anlage
+angegeben und ist Teil der Bibliothekskonfiguration; ein bibliotheksweiter Fallback auf einen einzigen,
+global konfigurierten Pfad (wie er vor ADR-0018 bestand) entfällt.
+
+**Sicherung des Pfads.** Ein frei wählbarer Dateisystempfad macht grundsätzlich jeden für den
+OPAA-Server lesbaren Pfad indizierbar. Deshalb prüft OPAA jeden angegebenen Pfad gegen die vom Betrieb
+konfigurierte **Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) — bei Anlage, bei Änderung und bei
+jedem Lauf; ein Pfad außerhalb der Allowlist wird abgelehnt. **Ist die Allowlist leer, ist der
+Quellentyp `FILESYSTEM` vollständig deaktiviert** — die sichere Voreinstellung, kein Übergangszustand
+(siehe [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 6-Nachtrag,
+und die Javadoc von `FilesystemPathAllowlist`). Ablauf eines Laufs entspricht der [Verzeichnisliste im
+Netz](#erreichbare-verzeichnislisten-im-netz-gebaut): vollständige Auflistung bei jedem Lauf; die
+**Löschung durch Abwesenheit ist für diesen Typ entschieden, aber noch nicht gebaut** (ADR-0017,
+Entscheidung 5, siehe [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
 
 ### Erreichbare Verzeichnislisten im Netz (gebaut)
 
@@ -199,25 +231,29 @@ Zugriff über einen Netzvermittler (Proxy), auf Wunsch das Aussetzen der Zertifi
 Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die verbreiteten
 Verzeichnislistenformate der gängigen Webserver verträgt.
 
-**Auslösung.** Der Lauf wird von der **Systemverwaltung** angestoßen — über die Verwaltungsoberfläche
-oder über die Schnittstelle unter `/api/v1/indexing`. Der Anstoß ist der Rolle der Systemverwaltung
-vorbehalten und trägt ein eigenes, enges Kontingent gegen Überlastung. Der Fortschritt eines Laufs ist
-abrufbar. Wird keine Adresse angegeben, läuft stattdessen die Indizierung des im Dateisystem
-konfigurierten Verzeichnisses.
+**Auslösung.** Der Lauf wird **an der Bibliothek** angestoßen — über `POST
+/api/v1/libraries/{libraryId}/indexing` oder die Detailseite der Bibliothek. Auslösen darf, wer an der
+Bibliothek mindestens `EDITOR` ist; die frühere Beschränkung auf die Systemverwaltung ist mit ADR-0018
+(Entscheidung 2) bewusst gefallen — ein Knopf, den nur die Systemverwaltung drücken darf, wäre für
+jeden anderen Eigentümer einer Bibliothek tot. Adresse, Zugangsdaten, Proxy und SSL-Schalter sind Teil
+der Bibliothekskonfiguration und werden nicht mehr je Lauf übergeben; ein Anstoß ohne Adresse wie beim
+früheren globalen Dateisystem-Fallback gibt es nicht mehr. Ein eigenes, enges Rate-Limit schützt den
+Anstoß-Endpunkt gegen Überlastung — je aufrufender Netzadresse **und** je Bibliothek —, und es läuft
+höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
+`GET /api/v1/libraries/{libraryId}/indexing/status` abrufbar.
 
 **Was noch fehlt** — und zwar so, dass es benannt gehört:
 
 - **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
   Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
-  Weiterleitungen werden gefolgt. Solange nur die Systemverwaltung anstoßen darf, ist die Lage
-  beherrschbar; sobald mehrere Personen diese Rolle halten, fällt sie mit der Fähigkeit zusammen, aus
-  dem Serverkontext beliebige interne Adressen abzurufen. Die Härtung ist als **Issue #267** erfasst.
-- **Zuordnung zu einer Wissensbibliothek über die Bibliothek hinaus.** Ziel ist die beim Anstoß
-  angegebene Bibliothek (seit #419 ein Pflichtfeld des Anstoßes); eine darüber hinausgehende, dauerhaft
-  hinterlegte Zuordnung existiert nicht. Die in diesem Dokument beschriebene Regel *eine Quelle, eine
-  Bibliothek* ist für ihn insoweit Zielbild.
+  Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
+  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
+  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
+  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
+  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267**.
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
-  nächsten Kapitels ist damit noch nicht erreicht.
+  nächsten Kapitels ist damit noch nicht erreicht. Mit der Konfiguration an der Bibliothek hat ein
+  Zeitplan erstmals einen natürlichen Ort; entschieden wird das in **Issue #485**.
 
 ### Feeds als Quelle (gebaut)
 
@@ -300,19 +336,15 @@ kann weiterhin gültig sein und ist nur aus dem geführten Fenster gerutscht. F�
 durch](#selbst-aktualisierende-wissensblöcke) unten und
 [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
 
-**Auslösung.** Wie bei der Verzeichnisliste stößt die **Systemverwaltung** den Lauf über die
-Schnittstelle unter `/api/v1/indexing` an, mit `sourceType: RSS_FEED` und der Feed-Adresse im Feld `url`
-([ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
+**Auslösung.** Wie bei der Verzeichnisliste wird der Lauf **an der Bibliothek** angestoßen — über `POST
+/api/v1/libraries/{libraryId}/indexing`. Die Bibliothek trägt den Typ `RSS_FEED` und die Feed-Adresse als
+gespeicherte Konfiguration (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md));
+Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lauf-basierten Typ.
 
 **Was noch fehlt** — und zwar so, dass es benannt gehört:
 
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant, wie bei der Verzeichnisliste. Erfasst als
   **Issue #485**.
-- **Zuordnung zu einer Wissensbibliothek über die Bibliothek hinaus.** Ziel ist die beim Anstoß
-  angegebene Bibliothek; eine je Lauf wählbare Zuordnung existiert nicht. Epic **#486** verlagert die
-  Quellkonfiguration insgesamt in die Bibliothek —
-  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) liegt dazu als Vorschlag vor,
-  noch nicht entschieden; Näheres wird dort entschieden, nicht hier.
 - **Herkunftsanzeige.** Eine Anlage führt intern fest, zu welchem Eintrag sie gehört
   (`source_entry_url`), aber weder die Schnittstelle noch die Oberfläche zeigen das an. Erfasst als
   **Issue #493**.
@@ -362,11 +394,15 @@ Ein System, das sich allein auf Ereignisse verlässt, driftet unbemerkt.
 
 ## Eine Quelle, eine Wissensbibliothek
 
-**Jede Konnektorquelle wird genau einer Wissensbibliothek zugeordnet.** Mehrfachzuordnungen werden
-abgelehnt. Diese Festlegung ist bereits als **Issue #207** erfasst und hier nur beschrieben, nicht neu
-entschieden.
+**Die 1:1-Zuordnung von Quelle und Wissensbibliothek ist strukturell erzwungen** (**gebaut**,
+[ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)): Es gibt keine von der
+Bibliothek getrennte Quellzuordnung mehr, die auf mehr als ein Ziel zeigen könnte — die Bibliothek
+**ist** die Quelle. Eine frühere Fassung dieses Abschnitts beschrieb dieselbe Regel noch als
+Policy-Entscheidung mit offener Mehrfachzuordnung; das ist mit ADR-0018 gegenstandslos geworden, siehe
+[Issue #207](https://github.com/criew/opaa/issues/207).
 
-Der Grund ist doppelt:
+Der Grund bleibt derselbe wie zuvor, ist jetzt aber durch das Datenmodell erzwungen statt nur
+empfohlen:
 
 - **Technisch:** Eine Quelle, die in mehrere Ziele indiziert, vervielfacht jeden Chunk. Derselbe Absatz
   läge mehrfach im Index, würde mehrfach als Treffer erscheinen und müsste bei jeder Änderung an
@@ -375,37 +411,44 @@ Der Grund ist doppelt:
   derselbe Bestand an mehreren Stellen gebraucht, wird **dieselbe Bibliothek** in weiteren Spaces
   bereitgestellt oder weiteren Gruppen freigegeben — eine Fassung, eine Pflegestelle.
 
-Umgekehrt ist es zulässig, dass **mehrere Quellen in dieselbe Bibliothek** indizieren: ein
-Netzlaufwerkpfad und ein Wiki-Bereich können gemeinsam den Bestand „Personalrecht" bilden. Auch Upload
-und Konnektor können in derselben Bibliothek zusammentreffen.
+**Gemischt gespeiste Bibliotheken gibt es nicht mehr.** Eine frühere Fassung dieses Abschnitts erlaubte
+ausdrücklich, dass mehrere Quellen — oder Upload und Konnektor — in dieselbe Bibliothek zusammentreffen.
+Das ist zurückgenommen: Die Ein-Typ-Regel (ADR-0018, Entscheidung 1) schließt genau diese Mischung aus,
+weil sie die Abwesenheitsprüfung aus [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md) —
+„je Quelle, niemals bibliotheksweit" — am ehesten unterlaufen hätte: Ein Lauf, der versehentlich
+bibliotheksweit statt je Quelle vergleicht, hätte Upload-Dokumente gelöscht, die er nie geliefert hat.
+Weil jede Bibliothek höchstens eine Quelle hat, fällt „je Quelle" mit „je Bibliothek" zusammen, und
+dieser Fehler ist strukturell ausgeschlossen.
 
 ### Zuständigkeit und Obergrenze der Freigabe
 
-Die Trennung ist ausdrücklich:
+Die frühere Trennung „die Systemverwaltung entscheidet, wohin indiziert wird" gilt in dieser Form
+**nicht mehr**: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst — eine dauerhafte
+Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6, siehe
+[Überblick](#überblick)). Was bleibt:
 
 | Wer | Entscheidet |
 |---|---|
-| Systemverwaltung | ob ein Konnektor besteht, mit welchem Zugang er liest, welche Quelle in welche Bibliothek indiziert — und die **Obergrenze der Freigabe** dieser Bibliothek |
-| Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zu dieser Obergrenze |
+| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` bleibt die Zielprüfung offen (#267) |
+| Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
 
-Ohne die Obergrenze könnte ein Bibliothekseigentümer einen Bestand organisationsweit öffnen, den die
-Systemverwaltung aus einem Fachverfahren eingespeist hat. Sie ist die einzige technische Sicherung
-zwischen „aus dem Fachverfahren übernommen" und „hausweit lesbar" und deshalb kein Randthema. Ihre
-genaue Definition — was sie begrenzt, was beim nachträglichen Absenken mit bereits erteilten
-Freigaben geschieht und wie sie bei gemischt gespeisten Bibliotheken wirkt — ist Gegenstand von
-**Issue #207** und wird dort entschieden.
+Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit
+öffnen. Sie ist die einzige technische Sicherung zwischen „von einem Konnektor eingespeist" und
+„hausweit lesbar" und deshalb kein Randthema. Ihre genaue Definition — was sie begrenzt und was beim
+nachträglichen Absenken mit bereits erteilten Freigaben geschieht — ist Gegenstand von **Issue #207**
+und wird dort entschieden; die Grundannahme, auf der sie beruhte — „die Systemverwaltung speist ein,
+der Eigentümer gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt, was die
+Entscheidung dort **dringlicher** macht, nicht überflüssig. Die frühere Frage nach der Obergrenze bei
+gemischt gespeisten Bibliotheken entfällt dagegen ersatzlos — diese Bibliotheken gibt es nicht mehr
+(siehe [Geklärte Fragen](#geklärte-fragen)).
 
-### Wenn die Zielbibliothek fehlt
-
-Wird eine Bibliothek gelöscht, in die eine Quelle indiziert, zeigt deren Zuordnung ins Leere. Der Lauf
-**bricht deshalb nicht ab**: Er protokolliert eine Warnung und **überspringt die betroffene Quelle**,
-bis die Zuordnung korrigiert ist. Die übrigen Quellen desselben Konnektors laufen normal weiter.
-
-Ein Abbruch des ganzen Laufs wäre der schlechtere Fehler — eine einzelne gelöschte Bibliothek würde die
-Aktualisierung aller anderen Bestände stilllegen. Ein stillschweigendes Anlegen einer Ersatzbibliothek
-scheidet ebenfalls aus: Wer sie sehen darf, ist eine fachliche Entscheidung und keine, die ein
-Indizierungslauf treffen kann. Der Vorgang erscheint mit Frist auf der Arbeitsliste der
-Systemverwaltung.
+Der frühere Abschnitt „Wenn die Zielbibliothek fehlt" ist mit ADR-0018 **gegenstandslos**: Er
+beschrieb, was geschieht, wenn eine separat zugeordnete Zielbibliothek unter einer laufenden
+Konnektorquelle gelöscht wird. Diese Situation kann nicht mehr eintreten, weil die Quelle die
+Bibliothek selbst ist — wird sie gelöscht, gibt es keinen Lauf mehr, der ins Leere zeigen könnte. Was
+das Löschen einer lauf-basierten Bibliothek stattdessen bedeutet, steht unter [Lebenszyklus der
+Dokumente](#lebenszyklus-der-dokumente) und in
+[ADR-0018, Entscheidung 5](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
 
 ---
 
@@ -474,9 +517,9 @@ können den Leserkreis der Bibliothek verengen, nie erweitern. Option 3 wird ver
 rechtebewusste Suche in der Vektorsuche selbst durchgesetzt wird.
 
 Verbindlich gilt in jedem Fall: **Die Zielbibliothek ist der Rechteanker.** Was in sie hineinindiziert
-wird, ist für ihren Leserkreis sichtbar. Diese Aussage muss der Systemverwaltung bei der Einrichtung
-einer Quelle **an Ort und Stelle angezeigt** werden, samt der Frage, ob der Zuschnitt der Quelle dazu
-passt. Ein Konnektor, der ohne diese Bestätigung eingerichtet wird, ist die wahrscheinlichste
+wird, ist für ihren Leserkreis sichtbar. Diese Aussage muss der Person, die eine lauf-basierte
+Bibliothek anlegt, **an Ort und Stelle angezeigt** werden, samt der Frage, ob der Zuschnitt der Quelle
+dazu passt. Ein Konnektor, der ohne diese Bestätigung eingerichtet wird, ist die wahrscheinlichste
 Fehlerquelle des ganzen Systems.
 
 Wo die Spiegelung nicht möglich ist, wird das **benannt**: Die Bibliothek weist aus, dass ihre Rechte
@@ -502,13 +545,20 @@ Personalvorgang. Der Ausschluss wirkt an genau einer Stelle, überdauert jeden w
 nicht durch die nächste Aktualisierung stillschweigend aufgehoben. Er ist jederzeit einsehbar und
 rücknehmbar.
 
-**Löschung** unterscheidet zwei Fälle, die nicht vermischt werden dürfen:
+**Löschung** unterscheidet Fälle, die nicht vermischt werden dürfen:
 
 - **Aus der Quelle verschwunden** — OPAA nimmt das Dokument aus dem Index. Das Protokoll behält den
   Vorgang; der Inhalt ist weg.
 - **Löschverlangen nach Datenschutzrecht** — greift auf alle Ableitungen durch: Chunks, Einbettungen,
   zwischengespeicherte Extrakte und Vorschauen. Verfahren und Fristen stehen in
   [Zugangskontrolle](./access-control.md#datenlöschung-dsgvo).
+- **Löschung der ganzen Bibliothek (gebaut, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 5).**
+  Sie ist typabhängig geregelt, weil eine Einzellöschung bei lauf-basierten Bibliotheken wirkungslos
+  wäre — der nächste Lauf nähme das Dokument wieder auf, solange es dessen vollständige Quelle bleibt.
+  `UPLOAD`-Bibliotheken behalten deshalb die Löschsperre, solange sie Dokumente enthalten (Dokumente
+  sind einzeln löschbar). Das Löschen einer **lauf-basierten** Bibliothek nimmt dagegen ihren
+  gesamten Bestand mit — Dokumentzeilen und Chunks im Vektorspeicher —, nach ausdrücklicher Bestätigung
+  und mit Protokolleintrag.
 
 ### Duplikate erkennen
 
@@ -535,9 +585,9 @@ Eine **automatische** Entfernung erkannter Duplikate findet nicht statt. Welche 
 gilt, ist eine fachliche Entscheidung, und ein Indizierungslauf kann sie nicht treffen.
 
 **Neuindizierung** wird ausgelöst, wenn sich die Verarbeitung geändert hat — anderes Einbettungsmodell,
-andere Zerlegungsstrategie, korrigierte Formaterkennung. Sie ist je Bibliothek und je Quelle auslösbar
-und läuft mit niedrigerem Vorrang als die laufende Aktualisierung, damit ein großer Nachlauf den Betrieb
-nicht anhält.
+andere Zerlegungsstrategie, korrigierte Formaterkennung. Sie ist je Bibliothek auslösbar und läuft mit
+niedrigerem Vorrang als die laufende Aktualisierung, damit ein großer Nachlauf den Betrieb nicht
+anhält.
 
 ---
 
@@ -545,9 +595,10 @@ nicht anhält.
 
 ### Auslöser
 
-Ein Lauf beginnt auf vier Wegen: nach **Zeitplan** je Konnektor oder je Quelle, durch eine **Meldung des
-Quellsystems**, durch **ausdrücklichen Anstoß** aus der Systemverwaltung oder — beim Upload —
-**unmittelbar** mit der Übergabe.
+Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (Zielbild, **Issue #485** — heute wird
+angestoßen, nicht geplant), durch eine **Meldung des Quellsystems** (Zielbild), durch **ausdrücklichen
+Anstoß** — `POST /api/v1/libraries/{libraryId}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
+ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 
 ### Vorrang
 
@@ -561,9 +612,9 @@ Dienstanweisungen wartet. Drei Stufen ordnen das:
 | **regulär** | geplante Aktualisierung eines gepflegten Bestands | Regelbetrieb |
 | **nachrangig** | Erstlauf, vollständige Neuindizierung | läuft in den Lücken, wird bei Bedarf ausgesetzt |
 
-Zusätzlich begrenzt ein **Schonzeitraum je Konnektor** die Last auf das Quellsystem. Ein Fachverfahren,
-das tagsüber im Wirkbetrieb steht, wird nicht in der Kernzeit vollständig gelesen — die Einführung von
-OPAA darf kein Fachverfahren ausbremsen.
+Zusätzlich soll ein **Schonzeitraum je Bibliothek** (Zielbild, mit dem Zeitplan aus #485) die Last auf
+das Quellsystem begrenzen. Ein Fachverfahren, das tagsüber im Wirkbetrieb steht, soll nicht in der
+Kernzeit vollständig gelesen werden — die Einführung von OPAA darf kein Fachverfahren ausbremsen.
 
 ### Fehlerbehandlung
 
@@ -578,10 +629,10 @@ OPAA darf kein Fachverfahren ausbremsen.
 
 ### Sicht der Systemverwaltung
 
-Einsehbar ist je Quelle: letzter und nächster Lauf, Dauer, Zahl aufgenommener, geänderter, entfernter
-und übersprungener Dokumente, Fehlerliste, Zielbibliothek und deren Obergrenze der Freigabe. Gemeldet
-wird bei nicht erreichbarer Quelle, auffällig hoher Fehlerquote, ungewöhnlich langem Lauf und knappem
-Speicher.
+Einsehbar ist je Bibliothek: letzter und nächster Lauf, Dauer, Zahl aufgenommener, geänderter,
+entfernter und übersprungener Dokumente, Fehlerliste und — bei lauf-basierten Bibliotheken — deren
+Obergrenze der Freigabe. Gemeldet wird bei nicht erreichbarer Quelle, auffällig hoher Fehlerquote,
+ungewöhnlich langem Lauf und knappem Speicher.
 
 Diese Auswertungen sind **bestands-, nicht personenbezogen**. Sie zählen Dokumente und Läufe, nicht
 Menschen.
@@ -622,11 +673,26 @@ Idee wieder aufgemacht werden.
   Antwort auf die Fassung verweisen kann, mit der sie erzeugt wurde. Sie gehört fachlich mit der
   Duplikatanzeige zusammen: Beides beantwortet die Frage, welche von mehreren Fassungen gilt — die eine
   über die Zeit, die andere über den Bestand.
-- **Eine Konnektorquelle speist genau eine Wissensbibliothek.** Mehrfachzuordnungen werden abgelehnt;
-  Mehrfachverwendung geschieht über die Bereitstellung derselben Bibliothek. Erfasst als
-  **Issue #207**.
+- **Die 1:1-Zuordnung von Quelle und Wissensbibliothek ist strukturell erzwungen.** Eine Bibliothek trägt
+  höchstens eine Quelle, eine Quelle speist höchstens eine Bibliothek; Mehrfachverwendung geschieht über
+  die Bereitstellung derselben Bibliothek, nicht über mehrere Zuflüsse. Mit ADR-0018 ist das kein
+  Policy-Beschluss mehr, sondern eine Eigenschaft des Datenmodells; offen bleibt in **Issue #207**
+  ausschließlich die Obergrenze der Freigabe.
 - **Lesen ist der Normalfall, Schreiben die Ausnahme** mit ausdrücklicher Freischaltung je Integration
   und menschlichem Freigabeschritt im Einzelfall.
+- **Eine Bibliothek trägt genau einen Quellentyp und höchstens eine Quellkonfiguration — gewählt bei der
+  Anlage aus einem Template, danach unveränderlich.** Gemischt gespeiste Bibliotheken (mehrere Quellen,
+  oder Upload und Konnektor zusammen) entfallen ersatzlos. Erfasst und entschieden mit
+  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
+- **Die Konfiguration einer erreichbaren Verzeichnisliste im Netz (und jedes anderen lauf-basierten
+  Typs) lebt an der Bibliothek, nicht im einzelnen Anstoß-Request.** Verzeichnispfad bzw. Adresse,
+  Zugangsdaten, Proxy und das Aussetzen der Zertifikatsprüfung sind Teil der Bibliothekskonfiguration
+  und überleben den einzelnen Lauf. Damit ist auch geklärt, dass diese Felder **nicht** in ein
+  gesondertes Konnektor-Objekt gehören, sondern an das Objekt, das ohnehin schon existiert — die
+  Bibliothek. Entschieden mit ADR-0018.
+- **Die Obergrenze der Freigabe bei gemischt gespeisten Bibliotheken stellt sich nicht mehr.** Da es
+  keine gemischt gespeisten Bibliotheken mehr gibt, entfällt die frühere Frage, ob eine Obergrenze für
+  den gesamten Inhalt oder nur den konnektorgespeisten Teil gilt.
 
 ---
 
@@ -634,11 +700,14 @@ Idee wieder aufgemacht werden.
 
 - Wie wird die Obergrenze der Freigabe genau definiert, und was geschieht mit bereits erteilten,
   weiter reichenden Freigaben, wenn sie nachträglich abgesenkt wird? Für eine Prüfstelle ist das der
-  Unterschied zwischen „behoben" und „nicht behoben". Entschieden wird das in **Issue #207**.
-- Trägt eine Bibliothek, die aus einem Konnektor **und** aus Uploads gespeist wird, die Obergrenze für
-  ihren gesamten Inhalt oder nur für den konnektorgespeisten Teil?
+  Unterschied zwischen „behoben" und „nicht behoben". Mit der zunächst freien Anlageberechtigung
+  (ADR-0018, Entscheidung 6) ist diese Frage dringlicher geworden, nicht weniger relevant. Entschieden
+  wird das in **Issue #207**.
 - Welche Quellsysteme geben Rechte belastbar genug heraus, dass Option 2 der Spiegelung sich lohnt?
-- Wie werden Zugangsdaten für Quellsysteme verwahrt und gewechselt, ohne dass ein Lauf ausfällt?
+- Wie werden Zugangsdaten für Quellsysteme **gewechselt**, ohne dass ein Lauf ausfällt? Die Verwahrung
+  selbst ist geklärt — verschlüsselt, write-only, keine Rückgabe in keiner API-Antwort
+  ([ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 4) —, der
+  Wechselweg (Rotation eines kompromittierten oder ablaufenden Zugangs) bleibt offen.
 - Soll ein Konnektor Dokumente aus dem Quellsystem **zwischenspeichern** dürfen, damit Belegsprünge auch
   bei nicht erreichbarem Quellsystem funktionieren? Das erhöht den Nutzen und zugleich die
   Datenhaltung.
@@ -648,18 +717,12 @@ Idee wieder aufgemacht werden.
   ungepflegte Bestände in den persönlichen Bereich spült?
 - Wie werden sehr große Erstläufe abgeschätzt und angekündigt, damit Betrieb und Fachbereich vorher
   wissen, womit sie rechnen?
-- Soll die Indizierung aus einer Verzeichnisliste im Netz auf das volle Konnektormodell gehoben werden
-  — Zeitplan, Zuordnung zu einer Wissensbibliothek, Einschluss- und Ausschlussmuster —, oder bleibt sie
-  ein angestoßener Sonderweg? Mit dem **Feed** ist inzwischen ein zweiter, ebenso angestoßener Netzweg
-  hinzugekommen, der dieselbe Frage aufwirft. Die Zielprüfung aus **Issue #267** ist von dieser Frage
-  unabhängig und in jedem Fall nötig, für beide Wege. Die dauerhafte Quellkonfiguration selbst wandert
-  mit Epic **#486** in die Wissensbibliothek —
-  [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) liegt dazu als Vorschlag vor,
-  noch nicht entschieden; was das für die einzelnen Netzwege konkret bedeutet, wird dort entschieden,
-  nicht hier.
-- Bleiben die Felder für Netzvermittler, Anmeldung und das Aussetzen der Zertifikatsprüfung in ihrer
-  heutigen Form, oder gehören diese Angaben in die Konnektorkonfiguration statt in den Anstoß eines
-  einzelnen Laufs?
+- Soll eine Bibliothek mehrere Quellen desselben Typs tragen dürfen — etwa zwei Verzeichnispfade? Der
+  heutige Schnitt „eine Bibliothek, eine Quelle" ist bewusst streng (ADR-0018); sollte sich echter
+  Bedarf zeigen, wäre eine Quellen-Tabelle n:1 zur Bibliothek die Erweiterung, mit dem Preis, dass die
+  Abwesenheitsprüfung dann nicht mehr je Bibliothek laufen dürfte, sondern je einzelne Quelle.
+- Sollen Einschluss- und Ausschlussmuster (Pfadmuster, Dateitypen, Änderungsalter) Teil der
+  Bibliothekskonfiguration werden? Noch nicht gebaut, siehe [Konnektor](#konnektor).
 
 ---
 
