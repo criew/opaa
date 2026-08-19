@@ -43,6 +43,7 @@ import {
   libraryVisibilityLabel,
 } from '../utils/labels'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
+import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
@@ -140,8 +141,9 @@ export default function LibraryDetailPage() {
         listed,
         // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
         // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
-        // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Eine
-        // Oberfläche zum Bearbeiten der Quellkonfiguration ist nicht Teil dieses Tickets.
+        // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
+        // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
+        // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.
         sourceInsecureSsl: null,
       })
       setDraft(null)
@@ -358,6 +360,9 @@ export default function LibraryDetailPage() {
           libraryId={libraryId}
           library={details}
           canTrigger={canManageDocuments(library.myRole) || isSystemAdmin}
+          // Same threshold as the Stammdaten edit above (#516) - editing the source configuration
+          // is a MANAGER/OWNER-level change, not merely triggering an already-configured run.
+          canEditSource={canEdit}
         />
       )}
       {details && (
@@ -691,16 +696,28 @@ function LibraryDocumentsSection({
 interface LibraryIndexingSectionProps {
   libraryId: string
   library: {
+    name: string
+    description?: string | null
+    visibility: LibraryVisibility
+    listed: boolean
     sourceType: 'FILESYSTEM' | 'HTTP_DIRECTORY' | 'RSS_FEED' | 'UPLOAD'
     sourcePath?: string | null
     sourceUrl?: string | null
     sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
+    sourceCredentialsSet?: boolean | null
   }
   canTrigger: boolean
+  canEditSource: boolean
 }
 
-function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndexingSectionProps) {
+function LibraryIndexingSection({
+  libraryId,
+  library,
+  canTrigger,
+  canEditSource,
+}: LibraryIndexingSectionProps) {
+  const [editSourceOpen, setEditSourceOpen] = useState(false)
   const run = useIndexingStore((s) => s.runsByLibrary[libraryId] ?? IDLE_RUN_STATE)
   const {
     status,
@@ -733,9 +750,21 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-        Quellkonfiguration
-      </Typography>
+      <Stack
+        direction="row"
+        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+      >
+        <Typography variant="subtitle1">Quellkonfiguration</Typography>
+        {canEditSource && (
+          <Button
+            size="small"
+            onClick={() => setEditSourceOpen(true)}
+            aria-label="Quellkonfiguration bearbeiten"
+          >
+            Bearbeiten
+          </Button>
+        )}
+      </Stack>
 
       <Stack spacing={0.75} sx={{ mb: 2 }}>
         {configKind === 'path' && (
@@ -766,6 +795,20 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
           </Typography>
         )}
       </Stack>
+
+      {canEditSource && (
+        <EditLibrarySourceDialog
+          // Forces a remount every time the dialog opens, so its internal field state always
+          // starts fresh from the current library configuration without an effect calling
+          // setState on open (react-hooks/set-state-in-effect) - mirrors LibraryDocumentsSection's
+          // key={libraryId} above.
+          key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
+          open={editSourceOpen}
+          onClose={() => setEditSourceOpen(false)}
+          libraryId={libraryId}
+          library={library}
+        />
+      )}
 
       <Divider sx={{ mb: 2 }} />
 

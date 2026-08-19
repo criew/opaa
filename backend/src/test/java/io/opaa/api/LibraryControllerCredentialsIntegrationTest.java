@@ -99,7 +99,11 @@ class LibraryControllerCredentialsIntegrationTest {
 
     String rawResponseBody = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(rawResponseBody).doesNotContain(SECRET);
-    assertThat(rawResponseBody).doesNotContain("sourceCredentials");
+    // The exact JSON key, not a bare substring match: PR #542 added the sibling field
+    // sourceCredentialsSet (a non-secret yes/no, never the credential itself, issue #516/#542
+    // review nit 3), which legitimately contains "sourceCredentials" as a prefix.
+    assertThat(rawResponseBody).doesNotContain("\"sourceCredentials\":");
+    assertThat(rawResponseBody).contains("\"sourceCredentialsSet\":true");
   }
 
   @Test

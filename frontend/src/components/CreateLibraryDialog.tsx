@@ -31,6 +31,10 @@ import {
   documentSourceTypeDescription,
   documentSourceTypeLabel,
 } from '../utils/labels'
+import {
+  deriveLibrarySourceConfigPayload,
+  validateLibrarySourceFields,
+} from '../utils/librarySourceConfig'
 
 interface CreateLibraryDialogProps {
   open: boolean
@@ -131,38 +135,6 @@ export default function CreateLibraryDialog({
     setTestErrorMessage((prev) => (prev === null ? prev : null))
   }
 
-  /**
-   * The client-side checks shared by handleCreate and handleTest (#514) - a stricter server-side
-   * check always runs afterwards regardless (KnowledgeLibraryService#validateConfigurationForType
-   * for creation, SourceConnectionTestService for the test), this is only the fast, obvious-typo
-   * rejection both entry points want before making a network call at all.
-   */
-  function validateSourceConfiguration(): { sourcePath?: string; sourceUrl?: string } | null {
-    const configKind = documentSourceTypeConfigKind[sourceType]
-    const trimmedPath = sourcePath.trim()
-    if (configKind === 'path' && !trimmedPath) {
-      setError('Verzeichnispfad ist erforderlich')
-      return null
-    }
-    if (configKind === 'path' && !trimmedPath.startsWith('/')) {
-      setError('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
-      return null
-    }
-    const trimmedUrl = sourceUrl.trim()
-    if (configKind === 'url' && !trimmedUrl) {
-      setError('Adresse (URL) ist erforderlich')
-      return null
-    }
-    if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
-      setError('Adresse (URL) muss mit http:// oder https:// beginnen')
-      return null
-    }
-    return {
-      sourcePath: configKind === 'path' ? trimmedPath : undefined,
-      sourceUrl: configKind === 'url' ? trimmedUrl : undefined,
-    }
-  }
-
   async function handleCreate() {
     const trimmedName = name.trim()
     if (!trimmedName) {
@@ -173,9 +145,11 @@ export default function CreateLibraryDialog({
       setError('Bitte eine Gruppe auswählen')
       return
     }
-    const configKind = documentSourceTypeConfigKind[sourceType]
-    const configuration = validateSourceConfiguration()
-    if (!configuration) return
+    const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
@@ -188,12 +162,13 @@ export default function CreateLibraryDialog({
         // erfolgt oben als Vorlagenwahl. Nur der zum Typ passende Teil der Konfigurationsfelder
         // wird gesendet - das Backend lehnt jede Kombination ab, die dem Typ widerspricht.
         sourceType,
-        sourcePath: configuration.sourcePath,
-        sourceUrl: configuration.sourceUrl,
-        sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
-        sourceCredentials:
-          configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
-        sourceInsecureSsl: configKind === 'url' ? sourceInsecureSsl : false,
+        ...deriveLibrarySourceConfigPayload(sourceType, {
+          sourcePath,
+          sourceUrl,
+          sourceProxy,
+          sourceCredentials,
+          sourceInsecureSsl,
+        }),
       })
       resetForm()
       onCreated(libraryId)
@@ -205,9 +180,11 @@ export default function CreateLibraryDialog({
   }
 
   async function handleTest() {
-    const configKind = documentSourceTypeConfigKind[sourceType]
-    const configuration = validateSourceConfiguration()
-    if (!configuration) return
+    const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+    if (validationError) {
+      setError(validationError)
+      return
+    }
     setError(null)
     setTestResult(null)
     setTestErrorMessage(null)
@@ -215,12 +192,13 @@ export default function CreateLibraryDialog({
     try {
       const result = await testLibrarySource({
         sourceType,
-        sourcePath: configuration.sourcePath,
-        sourceUrl: configuration.sourceUrl,
-        sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
-        sourceCredentials:
-          configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
-        sourceInsecureSsl: configKind === 'url' ? sourceInsecureSsl : false,
+        ...deriveLibrarySourceConfigPayload(sourceType, {
+          sourcePath,
+          sourceUrl,
+          sourceProxy,
+          sourceCredentials,
+          sourceInsecureSsl,
+        }),
       })
       setTestResult(result)
     } catch (err) {
