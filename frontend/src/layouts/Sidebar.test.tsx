@@ -1,14 +1,34 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import Sidebar from './Sidebar'
 import { useChatStore } from '../stores/chatStore'
+import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
+
+const mockNavigate = vi.fn()
+
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router')
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
 
 describe('Sidebar', () => {
   beforeEach(() => {
-    useChatStore.setState({ messages: [], isLoading: false, error: null, chatId: null })
+    mockNavigate.mockReset()
+    useChatStore.setState({
+      spaceId: null,
+      chatId: null,
+      messages: [],
+      isLoading: false,
+      isLoadingChat: false,
+      error: null,
+    })
+    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
     useSpaceStore.setState({
       spaces: [
         {
@@ -41,23 +61,29 @@ describe('Sidebar', () => {
     expect(screen.getByText('KI-Projektassistent')).toBeInTheDocument()
   })
 
-  it('renders New Chat button', () => {
+  it('renders New Chat button for the default space', async () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
-    expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
+    })
   })
 
-  it('clears messages when New Chat button is clicked', async () => {
-    useChatStore.setState({
-      messages: [{ id: '1', role: 'user', content: 'Hello', timestamp: new Date() }],
-      chatId: 'conv-123',
-    })
-
+  it('creates a new chat in the default space and navigates to it when clicked', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<Sidebar />, { withRouter: true })
 
-    await userEvent.click(screen.getByRole('button', { name: /neuer chat/i }))
+    await user.click(await screen.findByRole('button', { name: /neuer chat/i }))
 
-    const state = useChatStore.getState()
-    expect(state.messages).toHaveLength(0)
-    expect(state.chatId).toBeNull()
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/spaces\/space-personal\/chats\/.+$/),
+      )
+    })
+  })
+
+  it('lists the active space chats loaded from the API', async () => {
+    renderWithProviders(<Sidebar />, { withRouter: true })
+    expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
+    expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
   })
 })

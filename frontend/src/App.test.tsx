@@ -23,10 +23,10 @@ describe('App', () => {
     })
   })
 
-  it('redirects to chat page by default', async () => {
+  it('redirects to the default space and its most recently used chat by default', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeInTheDocument()
     })
   })
 

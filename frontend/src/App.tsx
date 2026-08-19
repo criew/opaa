@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'
 import AppShell from './layouts/AppShell'
 import ChatPage from './pages/ChatPage'
+import ChatRedirect from './pages/ChatRedirect'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -45,7 +46,8 @@ export default function App() {
               }
             >
               <Route index element={<Navigate to="/chat" replace />} />
-              <Route path="chat" element={<ChatPage />} />
+              <Route path="chat" element={<ChatRedirect />} />
+              <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
               <Route path="spaces" element={<SpacePage />} />
