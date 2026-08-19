@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -64,7 +65,7 @@ class QueryControllerTest {
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryMetadata("gpt-4o", 500, 1200L),
             "conv-123");
-    when(queryService.query(anyString(), any(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
         .perform(
@@ -90,7 +91,7 @@ class QueryControllerTest {
     var response =
         new QueryResponse(
             "Answer", List.of(), new QueryMetadata("gpt-4o", 100, 500L), "existing-conv");
-    when(queryService.query(anyString(), any(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
 
     mockMvc
         .perform(
@@ -130,7 +131,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
-    when(queryService.query(anyString(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -146,7 +147,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
-    when(queryService.query(anyString(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc

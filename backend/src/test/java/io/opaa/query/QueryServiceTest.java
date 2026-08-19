@@ -110,7 +110,7 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(eq("What?"), any(), any()))
         .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("What?", null, currentUserId);
+    QueryResponse response = queryService.query("What?", null, currentUserId, true, List.of());
 
     assertThat(response.getAnswer()).contains("【source:");
     assertThat(response.getSources()).hasSize(1);
@@ -131,7 +131,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getConversationId()).isNotNull().isNotBlank();
   }
@@ -145,7 +145,8 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(any(), any(), eq("existing-conv-id")))
         .thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", "existing-conv-id", currentUserId);
+    QueryResponse response =
+        queryService.query("Question", "existing-conv-id", currentUserId, true, List.of());
 
     assertThat(response.getConversationId()).isEqualTo("existing-conv-id");
   }
@@ -173,7 +174,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getCited()).isTrue();
@@ -208,7 +209,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(2);
     assertThat(response.getSources().get(0).getFileName()).isEqualTo("report.pdf");
@@ -233,7 +234,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getAnswer()).isEqualTo(answer);
   }
@@ -260,7 +261,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getRelevanceScore()).isEqualTo(0.9);
@@ -275,7 +276,7 @@ class QueryServiceTest {
         new ChatResponse(List.of(new Generation(new AssistantMessage("No results"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Test query", null, currentUserId);
+    queryService.query("Test query", null, currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -292,7 +293,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Test query", null, currentUserId);
+    queryService.query("Test query", null, currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -309,10 +310,69 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).isEmpty();
     org.mockito.Mockito.verifyNoInteractions(vectorStore);
+  }
+
+  @Test
+  void queryWithUseKnowledgeFalseAndOneReferencedLibraryOnlySearchesThatLibrary() {
+    UUID otherReadableLibraryId = UUID.randomUUID();
+    when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
+        .thenReturn(Set.of(readableLibraryId, otherReadableLibraryId));
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    queryService.query("Question", null, currentUserId, false, List.of(readableLibraryId));
+
+    ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+    verify(vectorStore).similaritySearch(captor.capture());
+    String filterExpression = captor.getValue().getFilterExpression().toString();
+    assertThat(filterExpression).contains(readableLibraryId.toString());
+    assertThat(filterExpression).doesNotContain(otherReadableLibraryId.toString());
+  }
+
+  @Test
+  void queryWithUseKnowledgeFalseAndUnreadableLibrarySkipsVectorStoreAndReturnsEmptySources() {
+    UUID unreadableLibraryId = UUID.randomUUID();
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response =
+        queryService.query("Question", null, currentUserId, false, List.of(unreadableLibraryId));
+
+    assertThat(response.getSources()).isEmpty();
+    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+  }
+
+  @Test
+  void queryWithUseKnowledgeFalseAndNoReferencesSkipsVectorStoreAndMarksAnsweredWithoutKnowledge() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, false, List.of());
+
+    assertThat(response.getSources()).isEmpty();
+    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
+    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+  }
+
+  @Test
+  void queryWithUseKnowledgeTrueDoesNotMarkAnsweredWithoutKnowledge() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isFalse();
   }
 
   @Test
@@ -338,7 +398,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Question", null, currentUserId);
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
 
     assertThat(response.getSources()).hasSize(1);
     assertThat(response.getSources().getFirst().getCited()).isTrue();
@@ -357,7 +417,8 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Mach daraus eine tabellarische Auflistung", "conv-enrich", currentUserId);
+    queryService.query(
+        "Mach daraus eine tabellarische Auflistung", "conv-enrich", currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -379,7 +440,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("Sortiere nach Datum", "conv-third", currentUserId);
+    queryService.query("Sortiere nach Datum", "conv-third", currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -395,7 +456,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
-    queryService.query("First question", null, currentUserId);
+    queryService.query("First question", null, currentUserId, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorStore).similaritySearch(captor.capture());
@@ -405,7 +466,8 @@ class QueryServiceTest {
   @Test
   void queryMethodIsAnnotatedWithTransactionalReadOnly() throws NoSuchMethodException {
     Method queryMethod =
-        QueryService.class.getMethod("query", String.class, String.class, UUID.class);
+        QueryService.class.getMethod(
+            "query", String.class, String.class, UUID.class, boolean.class, List.class);
     Transactional transactional = queryMethod.getAnnotation(Transactional.class);
 
     assertThat(transactional).isNotNull();

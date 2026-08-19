@@ -91,18 +91,34 @@ public class QueryService {
    * matching content takes, so the resulting message cannot be used to distinguish "no permission
    * on anything" from "nothing matched" (#202 acceptance criteria).
    *
-   * <p><b>#238's regression check:</b> the applied search scope ({@code readableLibraryIds} below)
-   * is compared against {@link PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction
-   * for the same instant, logging a warning if the live computation reaches a library the history
-   * would not - a beweisbarer Durchsetzungsfehler per
+   * <p><b>#238's regression check:</b> the readable set ({@code readableLibraryIds} below, distinct
+   * from the narrower {@code searchScope} #526 may derive from it) is compared against {@link
+   * PermissionHistoryService#readableLibraryIdsAsOf}'s reconstruction for the same instant, logging
+   * a warning if the live computation reaches a library the history would not - a beweisbarer
+   * Durchsetzungsfehler per
    * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten.
    * Deliberately not a per-query log line of the full permission set itself: the feature spec
    * rejects that as an unnecessary expansion of personal data (see the same section), so only a
    * detected mismatch - not every query - is written to the application log, and even then only the
    * offending library id, not the caller's whole readable set.
+   *
+   * <p><b>#526's search-scope controls</b>, {@code useKnowledge} and {@code requestedLibraryIds}:
+   * {@code useKnowledge = true} preserves the behaviour above exactly - every library {@code
+   * currentUserId} may read, {@code requestedLibraryIds} ignored. {@code useKnowledge = false}
+   * narrows the scope to {@code requestedLibraryIds} intersected with the readable set - never
+   * widened beyond it, matching #526's acceptance criteria that a referenced but unreadable library
+   * yields no hits rather than being silently granted. An empty intersection in that mode also
+   * takes the empty-scope short-circuit above and additionally marks {@link
+   * QueryMetadata#getAnsweredWithoutKnowledge()} so the caller can distinguish "no knowledge base
+   * searched" from "searched but found nothing".
    */
   @Transactional(readOnly = true)
-  public QueryResponse query(String question, String conversationId, UUID currentUserId) {
+  public QueryResponse query(
+      String question,
+      String conversationId,
+      UUID currentUserId,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds) {
     return metrics
         .queryTimer()
         .record(
@@ -132,15 +148,21 @@ public class QueryService {
                     currentUser.getOrganizationId(),
                     scopeComputedAt);
 
+                Set<UUID> searchScope =
+                    useKnowledge
+                        ? readableLibraryIds
+                        : intersectWithReadable(requestedLibraryIds, readableLibraryIds);
+                boolean answeredWithoutKnowledge = !useKnowledge && searchScope.isEmpty();
+
                 List<Document> relevantChunks =
-                    readableLibraryIds.isEmpty()
+                    searchScope.isEmpty()
                         ? List.of()
                         : vectorStore.similaritySearch(
                             SearchRequest.builder()
                                 .query(searchQuery)
                                 .topK(queryProperties.topK())
                                 .similarityThreshold(queryProperties.similarityThreshold())
-                                .filterExpression(libraryFilter(readableLibraryIds))
+                                .filterExpression(libraryFilter(searchScope))
                                 .build());
 
                 log.debug("Found {} relevant chunks for query", relevantChunks.size());
@@ -167,16 +189,30 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
-                return new QueryResponse(
-                    answer,
-                    sources,
-                    new QueryMetadata(model, tokenCount, durationMs),
-                    effectiveConversationId);
+                QueryMetadata metadata =
+                    new QueryMetadata(model, tokenCount, durationMs)
+                        .answeredWithoutKnowledge(answeredWithoutKnowledge);
+                return new QueryResponse(answer, sources, metadata, effectiveConversationId);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;
               }
             });
+  }
+
+  /**
+   * {@code requestedLibraryIds ∩ readableLibraryIds} - the #526 search scope for {@code
+   * useKnowledge = false}. Deliberately never adds anything beyond {@code readableLibraryIds}: a
+   * reference to a library the caller cannot read is silently dropped, not honoured.
+   */
+  private Set<UUID> intersectWithReadable(
+      List<UUID> requestedLibraryIds, Set<UUID> readableLibraryIds) {
+    if (requestedLibraryIds == null || requestedLibraryIds.isEmpty()) {
+      return Set.of();
+    }
+    Set<UUID> scope = new HashSet<>(requestedLibraryIds);
+    scope.retainAll(readableLibraryIds);
+    return scope;
   }
 
   /**

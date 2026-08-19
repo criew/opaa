@@ -199,19 +199,8 @@ export const handlers = [
       )
     }
     const mockResponse = getRandomMockResponse()
-    const requestedSpaceIds = body.spaceIds ?? []
-    const filteredSources =
-      requestedSpaceIds.length > 0
-        ? mockResponse.sources.filter((source) =>
-            requestedSpaceIds.some((spaceId) => {
-              const space = mockSpaces.find((item) => item.id === spaceId)
-              return space?.name === source.spaceName
-            }),
-          )
-        : mockResponse.sources
     return HttpResponse.json({
       ...mockResponse,
-      sources: filteredSources,
       conversationId: body.conversationId ?? crypto.randomUUID(),
     })
   }),

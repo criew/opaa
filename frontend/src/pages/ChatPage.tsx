@@ -31,7 +31,7 @@ export default function ChatPage() {
       )}
       <MessageList messages={messages} isLoading={isLoading} />
       <ChatInput
-        onSend={(message) => sendMessage(message, chatFilterSpaceIds)}
+        onSend={(message) => sendMessage(message)}
         disabled={isLoading}
         spaces={spaces}
         selectedSpaceIds={chatFilterSpaceIds}

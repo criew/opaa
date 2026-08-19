@@ -1326,12 +1326,24 @@ components:
           type: string
           pattern: "^[a-zA-Z0-9-]{1,50}$"
           example: c5aaec8d-307f-4f2f-b43e-f7ea600435eb
-        spaceIds:
+        useKnowledge:
+          type: boolean
+          nullable: true
+          default: true
+          description: >
+            Whether the query searches the knowledge base at all. When true (the default), the
+            search scope is every knowledge library the caller may read; libraryIds is ignored in
+            this mode. When false, the search scope is libraryIds narrowed to the libraries the
+            caller may read - never widened beyond it - and an empty (or entirely unreadable)
+            libraryIds performs no retrieval at all, see QueryMetadata.answeredWithoutKnowledge.
+        libraryIds:
           type: array
           items:
             type: string
             format: uuid
-          description: Optional list of space IDs to restrict the query to
+          description: >
+            Knowledge libraries explicitly referenced for the query. Only consulted when
+            useKnowledge is false (#526).
 
     QueryResponse:
       type: object
@@ -1392,6 +1404,16 @@ components:
           type: integer
           format: int64
           example: 1523
+        answeredWithoutKnowledge:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when useKnowledge was false and libraryIds resolved to no readable library, so no
+            vector search ran and the answer was generated without any document context (#526). The
+            frontend uses this to show the corresponding hint instead of inferring it from an empty
+            sources list, which alone cannot distinguish "no knowledge searched" from "searched but
+            found nothing".
 
     ErrorResponse:
       type: object
