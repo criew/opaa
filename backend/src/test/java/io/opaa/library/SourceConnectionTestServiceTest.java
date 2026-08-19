@@ -149,6 +149,41 @@ class SourceConnectionTestServiceTest {
                     .isEqualTo(HttpStatus.BAD_REQUEST));
   }
 
+  @Test
+  void filesystemRejectsAnAccompanyingSourceUrlWith400() {
+    // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateConfigurationForType's
+    // FILESYSTEM branch - without this, a client could see a green test for a combination
+    // createLibrary itself rejects with 400 right afterwards.
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourcePath("/data/documents")
+                        .sourceUrl(URI.create("https://files.example.com"))))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void filesystemRejectsSourceInsecureSslWith400() {
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourcePath("/data/documents")
+                        .sourceInsecureSsl(true)))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
   // --- HTTP_DIRECTORY ------------------------------------------------------
 
   @Test
@@ -179,6 +214,125 @@ class SourceConnectionTestServiceTest {
     assertThat(response.getReachable()).isTrue();
     // 2 linked documents - the subdir entry is a directory, not a linked document.
     assertThat(response.getDocumentCount()).isEqualTo(2L);
+  }
+
+  @Test
+  void httpDirectoryCountsOnlySupportedFormats() throws IOException {
+    // PR #537 review, nit 4: a .zip is a linked entry the crawler sees, but not a document the
+    // real UrlIndexingExecutor run would ever index - the count here must agree with the run's
+    // own SupportedDocumentFormats filter, not with "every non-directory entry".
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td><td><a href="a.txt">a.txt</a></td><td>2025-01-01</td><td>10</td></tr>
+        <tr><td><img alt="[ZIP]"></td><td><a href="b.zip">b.zip</a></td><td>2025-01-01</td><td>20</td></tr>
+        </table>
+        """;
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.getMessage()).contains("oberster Ebene");
+  }
+
+  @Test
+  void httpDirectoryDoesNotAppendATrailingSlashForAFileLikeUrl() throws IOException {
+    // PR #537 review, nit 5: mirrors UrlIndexingExecutor#execute's own normalisation
+    // (hasFileExtension) - without it, "/dir/index.html" would be requested as
+    // "/dir/index.html/" and 404, a false negative for a URL the later real run fetches
+    // unchanged and successfully.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td><td><a href="a.txt">a.txt</a></td><td>2025-01-01</td><td>10</td></tr>
+        </table>
+        """;
+    server.createContext(
+        "/dir/index.html",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/index.html")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(1L);
+  }
+
+  @Test
+  void httpDirectoryRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
+    // PR #537 review, finding 2: an unbounded read would let a single request against an
+    // endless/huge response crash the whole backend - bounded exactly like
+    // RssFeedIndexingExecutor#readBounded/UrlFileDownloader#readBounded.
+    SourceConnectionTestService tightService =
+        new SourceConnectionTestService(
+            new DocumentService(),
+            new AutoindexCrawlerService(),
+            new RssFeedParser(),
+            filesystemAllowlist,
+            new IndexingProperties(
+                null,
+                1000,
+                0,
+                50,
+                3,
+                null,
+                new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                null));
+    String html = "<table>" + "x".repeat(100) + "</table>";
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        tightService.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/")));
+
+    assertThat(response.getReachable()).isFalse();
+    assertThat(response.getMessage()).contains("Groesse");
+  }
+
+  @Test
+  void httpDirectoryRejectsASourcePathWith400() {
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceUrl(URI.create(baseUrl + "/dir/"))
+                        .sourcePath("/data/documents")))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
   }
 
   @Test
@@ -260,6 +414,111 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.getReachable()).isTrue();
     assertThat(response.getDocumentCount()).isEqualTo(2L);
+  }
+
+  @Test
+  void rssFeedCapsTheReportedCountAtMaxEntries() throws IOException {
+    // PR #537 review ("zwei weitere Kleinigkeiten"): mirrors
+    // RssFeedIndexingExecutor#execute's own truncation - a feed carrying more entries than a
+    // run ever processes must not be reported with a count the run itself never reaches.
+    SourceConnectionTestService cappedService =
+        new SourceConnectionTestService(
+            new DocumentService(),
+            new AutoindexCrawlerService(),
+            new RssFeedParser(),
+            filesystemAllowlist,
+            new IndexingProperties(
+                null,
+                1000,
+                0,
+                50,
+                3,
+                null,
+                new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
+                null));
+    String rss =
+        """
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel>
+        <title>Testfeed</title>
+        <item><title>Eins</title><link>https://example.com/1</link></item>
+        <item><title>Zwei</title><link>https://example.com/2</link></item>
+        </channel></rss>
+        """;
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          byte[] body = rss.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        cappedService.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(1L);
+    assertThat(response.getMessage()).contains("insgesamt 2");
+  }
+
+  @Test
+  void rssFeedRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
+    SourceConnectionTestService tightService =
+        new SourceConnectionTestService(
+            new DocumentService(),
+            new AutoindexCrawlerService(),
+            new RssFeedParser(),
+            filesystemAllowlist,
+            new IndexingProperties(
+                null,
+                1000,
+                0,
+                50,
+                3,
+                null,
+                new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                null));
+    String rss =
+        "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
+            + "x".repeat(50)
+            + "</channel></rss>";
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          byte[] body = rss.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        tightService.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceUrl(URI.create(baseUrl + "/feed.xml")));
+
+    assertThat(response.getReachable()).isFalse();
+    assertThat(response.getMessage()).contains("Groesse");
+  }
+
+  @Test
+  void rssFeedRejectsASourcePathWith400() {
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.RSS_FEED)
+                        .sourceUrl(URI.create(baseUrl + "/feed.xml"))
+                        .sourcePath("/data/documents")))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
   }
 
   @Test

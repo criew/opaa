@@ -10,8 +10,11 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.RssFeedEntry;
 import io.opaa.indexing.RssFeedParseException;
 import io.opaa.indexing.RssFeedParser;
+import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.UrlIndexingExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -20,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -41,30 +45,48 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * AutoindexCrawlerService#buildHttpClient} and {@link AutoindexCrawlerService#buildAuthHeader} are
- * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, so this
- * test checks what a run will actually do - not a simplified stand-in that could pass while the
- * real run fails (or the reverse). Unlike {@code RssFeedIndexingExecutor} (#505: it does not yet
- * apply proxy/credentials to its feed fetch at all), this test applies them for RSS_FEED too - the
- * target behaviour, not the RSS executor's current gap.
+ * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, and the
+ * response body is bounded exactly the way {@code RssFeedIndexingExecutor#readBounded} and {@code
+ * UrlFileDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
+ * for the HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
+ * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
+ * whole backend with a single request against an endless or multi-gigabyte response). Unlike {@code
+ * RssFeedIndexingExecutor} (#505: it does not yet apply proxy/credentials to its feed fetch at
+ * all), this test applies them for RSS_FEED too - the target behaviour, not the RSS executor's
+ * current gap.
  *
- * <p><b>Security (#514 acceptance criteria).</b> This endpoint lets any caller with the right to
- * create a library probe arbitrary server-local paths (FILESYSTEM) and arbitrary URLs
- * (HTTP_DIRECTORY/RSS_FEED) - the same path-enumeration/SSRF surface {@code
- * validateConfigurationForType} already reasons about for creation itself. FILESYSTEM is therefore
- * gated by the identical {@link FilesystemPathAllowlist} check creation applies, before anything on
- * disk is touched, and no response ever reveals more about a directory's contents than a count -
- * never a file name, a listing, or an exception's raw text.
+ * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3).</b> This endpoint lets any
+ * caller with the right to create a library probe arbitrary server-local paths (FILESYSTEM) and
+ * arbitrary URLs (HTTP_DIRECTORY/RSS_FEED) - the same path-enumeration/SSRF surface {@code
+ * validateConfigurationForType} already reasons about for creation itself, made cheaper to exploit
+ * by being a single synchronous request instead of "create library, trigger indexing, read job
+ * status". FILESYSTEM is therefore gated by the identical {@link FilesystemPathAllowlist} check
+ * creation applies, before anything on disk is touched; every per-request HTTP timeout here is kept
+ * well under {@code buildHttpClient}'s 30s connect timeout so a single caller cannot tie up
+ * Tomcat's worker pool for long by requesting many tests against a filtered address at once -
+ * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
+ * it already does for the indexing trigger. No response ever reveals more about a directory's
+ * contents than a count - never a file name, a listing, or an exception's raw text. Target
+ * validation for HTTP_DIRECTORY/RSS_FEED addresses themselves (blocking internal/private ranges)
+ * remains #267's responsibility, same as for the indexing run this tests - see
+ * docs/features/knowledge-sources.md.
  */
 @Service
 public class SourceConnectionTestService {
 
   private static final Logger log = LoggerFactory.getLogger(SourceConnectionTestService.class);
 
+  /** Well under buildHttpClient's 30s connect timeout (PR #537 review, finding 3). */
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+
   private final DocumentService documentService;
   private final AutoindexCrawlerService crawlerService;
   private final RssFeedParser rssFeedParser;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final String rssUserAgent;
+  private final long maxPageSizeBytes;
+  private final long maxFeedSizeBytes;
+  private final int maxFeedEntries;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -77,6 +99,9 @@ public class SourceConnectionTestService {
     this.rssFeedParser = rssFeedParser;
     this.filesystemAllowlist = filesystemAllowlist;
     this.rssUserAgent = properties.rss().userAgent();
+    this.maxPageSizeBytes = properties.rss().maxPageSizeBytes();
+    this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
+    this.maxFeedEntries = properties.rss().maxEntries();
   }
 
   public SourceConnectionTestResponse test(SourceConnectionTestRequest request) {
@@ -99,6 +124,24 @@ public class SourceConnectionTestService {
     if (sourcePath == null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
+    }
+    // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateConfigurationForType's
+    // FILESYSTEM branch - without this, a client could get a green test for a combination the
+    // subsequent createLibrary call rejects outright with 400.
+    String sourceUrl =
+        blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
+    String sourceProxy = blankToNull(request.getSourceProxy());
+    String sourceCredentials = blankToNull(request.getSourceCredentials());
+    if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht"
+              + " zulaessig");
+    }
+    if (Boolean.TRUE.equals(request.getSourceInsecureSsl())) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
     }
     // Path.of(...).isAbsolute() rather than a literal startsWith("/") (unlike
     // KnowledgeLibraryService's identical-looking check): this method actually touches the
@@ -150,7 +193,11 @@ public class SourceConnectionTestService {
 
   private SourceConnectionTestResponse testHttpDirectory(SourceConnectionTestRequest request) {
     String url = requireHttpUrl(request);
-    if (!url.endsWith("/")) {
+    // PR #537 review, nit 5: mirrors UrlIndexingExecutor#execute exactly - a trailing slash is
+    // only appended when the URL does not already look like a file (e.g. ".../index.html"),
+    // otherwise the test appends one, turns a working address into ".../index.html/", and reports
+    // a false-negative 404 for a URL the later real run would have fetched successfully unchanged.
+    if (!url.endsWith("/") && !UrlIndexingExecutor.hasFileExtension(url)) {
       url = url + "/";
     }
     ProxyAndCredentials config = ProxyAndCredentials.from(request);
@@ -163,36 +210,62 @@ public class SourceConnectionTestService {
         AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
     HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder().uri(URI.create(url)).timeout(Duration.ofSeconds(30)).GET();
+        HttpRequest.newBuilder().uri(URI.create(url)).timeout(REQUEST_TIMEOUT).GET();
     if (authHeader != null) {
       reqBuilder.header("Authorization", authHeader);
     }
 
     try {
-      HttpResponse<String> response =
-          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() == 401) {
-        return unreachable("Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");
+      HttpResponse<InputStream> response =
+          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+      try (InputStream body = response.body()) {
+        if (response.statusCode() == 401) {
+          return unreachable(
+              "Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");
+        }
+        if (response.statusCode() == 403) {
+          return unreachable("Der Zugriff wurde vom Server verweigert (HTTP 403 Forbidden).");
+        }
+        if (response.statusCode() == 404) {
+          return unreachable("Die Adresse wurde auf dem Server nicht gefunden (HTTP 404).");
+        }
+        if (response.statusCode() != 200) {
+          return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
+        }
+        byte[] bytes;
+        try {
+          bytes = readBounded(body, maxPageSizeBytes);
+        } catch (ResponseTooLargeException e) {
+          return unreachable(
+              "Die Verzeichnisseite ueberschreitet die zulaessige Groesse von "
+                  + maxPageSizeBytes
+                  + " Byte.");
+        }
+        String html = new String(bytes, StandardCharsets.UTF_8);
+        List<AutoindexCrawlerService.CrawledFileEntry> entries =
+            crawlerService.parseTopLevelEntries(html, url);
+        // PR #537 review, nit 4: filtered by SupportedDocumentFormats, exactly like
+        // UrlIndexingExecutor#isSupportedFormat, so "Dokumente" here means what it means for
+        // FILESYSTEM - a document the run would actually index, not just any linked entry (a
+        // directory of 30 .zip files would otherwise be reported as "30 documents found" while the
+        // real run indexes zero and skips all 30). Still only the top level, unlike the run's
+        // recursive crawl - a synchronous, rate-limited probe deliberately does not recurse an
+        // arbitrary external directory tree (see this class's own Javadoc on why timeouts here are
+        // kept short); documented as "oberste Ebene" in both the response wording and the OpenAPI
+        // schema description rather than silently under-reporting subdirectory content.
+        long linkedDocuments =
+            entries.stream()
+                .filter(e -> !e.isDirectory())
+                .filter(e -> SupportedDocumentFormats.isSupported(e.name()))
+                .count();
+        return reachable(
+            "Webverzeichnis erreichbar, "
+                + linkedDocuments
+                + " unterstuetzte "
+                + documentWord(linkedDocuments)
+                + " auf oberster Ebene gefunden.",
+            linkedDocuments);
       }
-      if (response.statusCode() == 403) {
-        return unreachable("Der Zugriff wurde vom Server verweigert (HTTP 403 Forbidden).");
-      }
-      if (response.statusCode() == 404) {
-        return unreachable("Die Adresse wurde auf dem Server nicht gefunden (HTTP 404).");
-      }
-      if (response.statusCode() != 200) {
-        return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
-      }
-      List<AutoindexCrawlerService.CrawledFileEntry> entries =
-          crawlerService.parseTopLevelEntries(response.body(), url);
-      long linkedDocuments = entries.stream().filter(e -> !e.isDirectory()).count();
-      return reachable(
-          "Webverzeichnis erreichbar, "
-              + linkedDocuments
-              + " verlinkte "
-              + documentWord(linkedDocuments)
-              + " gefunden.",
-          linkedDocuments);
     } catch (IOException e) {
       log.warn("HTTP_DIRECTORY source test failed for {}: {}", url, e.getMessage());
       return unreachable(translateConnectionError(e));
@@ -216,7 +289,7 @@ public class SourceConnectionTestService {
     HttpRequest.Builder reqBuilder =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
-            .timeout(Duration.ofSeconds(30))
+            .timeout(REQUEST_TIMEOUT)
             .header("User-Agent", rssUserAgent)
             .GET();
     if (authHeader != null) {
@@ -224,28 +297,54 @@ public class SourceConnectionTestService {
     }
 
     try {
-      HttpResponse<byte[]> response =
-          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
-      if (response.statusCode() == 401) {
-        return unreachable("Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");
+      HttpResponse<InputStream> response =
+          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+      try (InputStream body = response.body()) {
+        if (response.statusCode() == 401) {
+          return unreachable(
+              "Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");
+        }
+        if (response.statusCode() != 200) {
+          return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
+        }
+        byte[] bytes;
+        try {
+          bytes = readBounded(body, maxFeedSizeBytes);
+        } catch (ResponseTooLargeException e) {
+          return unreachable(
+              "Der RSS-Feed ueberschreitet die zulaessige Groesse von "
+                  + maxFeedSizeBytes
+                  + " Byte.");
+        }
+        List<RssFeedEntry> entries;
+        try {
+          entries = rssFeedParser.parse(new ByteArrayInputStream(bytes));
+        } catch (RssFeedParseException e) {
+          // Already German and user-facing (see that class's Javadoc) - passed through as-is.
+          return unreachable(e.getMessage());
+        }
+        // PR #537 review ("zwei weitere Kleinigkeiten"): capped at opaa.indexing.rss.max-entries,
+        // mirroring RssFeedIndexingExecutor#execute's own truncation - a feed carrying more entries
+        // than a run ever processes must not be reported with a count the run itself never reaches.
+        int totalEntries = entries.size();
+        int countedEntries = Math.min(totalEntries, maxFeedEntries);
+        String message =
+            "RSS-Feed erreichbar, "
+                + countedEntries
+                + " "
+                + (countedEntries == 1 ? "Eintrag" : "Eintraege")
+                + " gefunden.";
+        if (totalEntries > countedEntries) {
+          message +=
+              " Der Feed enthaelt insgesamt "
+                  + totalEntries
+                  + " Eintraege; ein Lauf verarbeitet"
+                  + " davon hoechstens "
+                  + maxFeedEntries
+                  + ".";
+        }
+        return reachable(message, countedEntries);
       }
-      if (response.statusCode() != 200) {
-        return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
-      }
-      List<RssFeedEntry> entries;
-      try {
-        entries = rssFeedParser.parse(new ByteArrayInputStream(response.body()));
-      } catch (RssFeedParseException e) {
-        // Already German and user-facing (see that class's Javadoc) - passed through as-is.
-        return unreachable(e.getMessage());
-      }
-      return reachable(
-          "RSS-Feed erreichbar, "
-              + entries.size()
-              + " "
-              + (entries.size() == 1 ? "Eintrag" : "Eintraege")
-              + " gefunden.",
-          (long) entries.size());
     } catch (IOException e) {
       log.warn("RSS_FEED source test failed for {}: {}", url, e.getMessage());
       return unreachable(translateConnectionError(e));
@@ -260,6 +359,15 @@ public class SourceConnectionTestService {
         blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     if (sourceUrl == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist erforderlich");
+    }
+    // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateUrlBasedConfiguration - a
+    // sourcePath alongside a URL-based sourceType is rejected at creation time, so accepting it
+    // silently here would again let a client see a green test for a combination createLibrary
+    // itself refuses.
+    if (blankToNull(request.getSourcePath()) != null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "sourcePath ist fuer sourceType " + request.getSourceType() + " nicht zulaessig");
     }
     URI uri;
     try {
@@ -312,6 +420,23 @@ public class SourceConnectionTestService {
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value.trim();
   }
+
+  /**
+   * Reads at most {@code maxBytes} from {@code in}, throwing {@link ResponseTooLargeException} the
+   * moment a further byte would exceed the limit - enforced while streaming, mirroring {@code
+   * RssFeedIndexingExecutor#readBounded}/{@code UrlFileDownloader#readBounded} (PR #537 review,
+   * finding 2).
+   */
+  private static byte[] readBounded(InputStream in, long maxBytes) throws IOException {
+    byte[] probe = in.readNBytes(Math.toIntExact(Math.min(maxBytes + 1, Integer.MAX_VALUE)));
+    if (probe.length > maxBytes) {
+      throw new ResponseTooLargeException();
+    }
+    return probe;
+  }
+
+  /** Thrown by {@link #readBounded} when the configured byte limit is exceeded while streaming. */
+  private static final class ResponseTooLargeException extends RuntimeException {}
 
   /**
    * Parses {@code sourceProxy} (host:port) and {@code sourceCredentials} (user:password) the same

@@ -298,7 +298,7 @@ describe('CreateLibraryDialog', () => {
       renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
       const user = userEvent.setup()
 
-      await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
+      await user.click(screen.getByRole('radio', { name: /webverzeichnis/i }))
       await user.type(
         screen.getByLabelText(/adresse \(url\)/i),
         'https://files.example.com/dokumente/',
@@ -332,7 +332,7 @@ describe('CreateLibraryDialog', () => {
         await screen.findByText('Verzeichnis erreichbar, 3 Dokumente gefunden.'),
       ).toBeInTheDocument()
 
-      await user.click(screen.getByRole('radio', { name: /verzeichnisliste/i }))
+      await user.click(screen.getByRole('radio', { name: /webverzeichnis/i }))
 
       expect(
         screen.queryByText('Verzeichnis erreichbar, 3 Dokumente gefunden.'),

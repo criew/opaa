@@ -8,9 +8,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param enabled whether rate limiting is active (default true)
  * @param query per-endpoint limits for the query endpoint
  * @param indexing per-endpoint limits for the indexing trigger endpoint
+ * @param sourceTest per-endpoint limits for the source connection test endpoint (#514, PR #537
+ *     review finding 3) - a synchronous probe with its own outbound connections and timeouts, the
+ *     same reason the indexing trigger above is limited.
  */
 @ConfigurationProperties(prefix = "opaa.rate-limit")
-public record RateLimitProperties(boolean enabled, EndpointLimit query, EndpointLimit indexing) {
+public record RateLimitProperties(
+    boolean enabled, EndpointLimit query, EndpointLimit indexing, EndpointLimit sourceTest) {
 
   /**
    * Rate limit settings for a single endpoint.

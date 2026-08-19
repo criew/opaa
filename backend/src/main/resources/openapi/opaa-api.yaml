@@ -700,7 +700,15 @@ paths:
         before anything on disk is touched, exactly like creation. sourceType UPLOAD has
         nothing to test and is rejected with 400. The response never reveals more about a
         FILESYSTEM directory than a count, and every failure message is German and intended
-        to be shown to the caller as-is.
+        to be shown to the caller as-is. HTTP_DIRECTORY/RSS_FEED response bodies are bounded
+        the same way the RSS indexing run bounds them (opaa.indexing.rss.max-page-size-bytes/
+        max-feed-size-bytes) - an unbounded read here would let a caller crash the server with
+        a single oversized or endless response. This endpoint is rate-limited per IP and
+        globally (opaa.rate-limit.source-test), same as the indexing trigger - it is a
+        synchronous probe with its own outbound connections and short timeouts, not a
+        replacement for #267's still-outstanding target validation (blocking internal/private
+        address ranges) for HTTP_DIRECTORY/RSS_FEED, which this endpoint makes cheaper to
+        reach than the indexing run it mirrors (see docs/features/knowledge-sources.md).
       requestBody:
         required: true
         content:
@@ -1959,7 +1967,12 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          description: Only for sourceType FILESYSTEM. Must be an absolute path.
+          description: >
+            Only for sourceType FILESYSTEM. Must be an absolute path, and must resolve
+            underneath one of the operator-configured allowlist base directories
+            (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
+            rejected with 400, without touching the filesystem at all. An empty allowlist
+            disables sourceType FILESYSTEM entirely, identical to LibraryRequest.sourcePath.
           example: /data/documents/rechtsquellen
         sourceUrl:
           type: string
@@ -2005,9 +2018,11 @@ components:
           format: int64
           nullable: true
           description: >
-            Number of supported documents (FILESYSTEM), linked documents (HTTP_DIRECTORY) or
-            feed entries (RSS_FEED) found - null when reachable is false, since nothing could
-            be counted.
+            Number of supported documents found (FILESYSTEM: recursively, matching the run's
+            own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
+            filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
+            capped at opaa.indexing.rss.max-entries like the run itself) - null when reachable
+            is false, since nothing could be counted.
         message:
           type: string
           description: German, user-facing summary of the result.
