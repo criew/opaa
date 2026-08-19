@@ -676,6 +676,11 @@ function LibraryDocumentsSection({
             count={pageCount}
             page={(pageState?.page ?? 0) + 1}
             onChange={handlePageChange}
+            // The app shell's own persistent navigation is also exposed as a <nav> element (role
+            // "navigation") - without a distinguishing name, a test scoping to "the" navigation
+            // region would ambiguously match both. German per AGENTS.md (every user-facing/
+            // aria-label string is German).
+            aria-label="Dokumentenliste blättern"
           />
         </Stack>
       )}

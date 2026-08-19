@@ -204,6 +204,32 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   die Spec-Datei für die Begründung (der KI-Stub liefert für jede Anfrage denselben Embedding-
   Vektor, siehe "KI-Stub statt echtem Modell" oben).
 
+- `tests/knowledge-library-nacharbeiten.spec.ts` (#547) — vier zuvor nicht abgedeckte
+  Verhaltensweisen aus der Nacharbeiten-Serie #514/#516/#517/#519, jede in eigener,
+  wegwerfbarer Bibliothek. Dateiname bewusst Singular ("library", nicht "libraries") und damit
+  alphabetisch *nach* `knowledge-libraries.spec.ts` sortiert - siehe die Spec-Datei für die
+  Begründung (Reihenfolge schützt #424s Szenario 2 vor einem durch diese Datei aufgeblähten,
+  admin-lesbaren Bestand mit identischem ai-stub-Embedding-Vektor):
+  - Ein ~2-MB-PDF (zur Laufzeit mit `pdf-lib` erzeugt, nicht eingecheckt) wird durch den echten,
+    containerisierten nginx hochgeladen und erfolgreich indiziert - Regressionsschutz für
+    `client_max_body_size` in `frontend/nginx.conf` (#519).
+  - "Verbindung testen" im Erstellungsdialog: eine erreichbare `HTTP_DIRECTORY`-Quelle
+    (`http://rss-feed/webverzeichnis/`, ein eigens für diesen Test angelegtes, statisches
+    Apache-FancyIndexing-HTMLTable-Fixture im selben `rss-feed`-Dienst wie #471 - siehe
+    `e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html`) zeigt einen Zählwert; eine
+    Verbindung, die von einem intern auflösbaren Host (`ai-stub`) auf einem geschlossenen Port
+    sofort abgelehnt wird, zeigt die deutsche Fehlermeldung, und Anlegen bleibt trotzdem möglich
+    (#514).
+  - Die Dokumentliste einer Bibliothek mit mehr als einer Seite Dokumenten (Filler-Dokumente per
+    API angelegt) lässt sich blättern und durchsuchen; dieselbe Liste erscheint auch für eine
+    Nicht-Upload-(Konnektor-)Bibliothek, nur ohne Upload-Zone (#517).
+  - Das Ändern der Quell-URL einer Konnektorbibliothek zeigt den Hinweis "wirkt erst mit dem
+    nächsten Indizierungslauf"; ein leer gelassenes Zugangsdaten-Feld lässt bereits hinterlegte
+    Zugangsdaten unverändert, solange die neue Adresse denselben Origin trägt (#516).
+
+  Bewusst nicht abgedeckt (siehe Issue #547): der Negativtest zur Erstanmeldung (#522) und die
+  RSS-Lauf-Abschlussmeldung (#518, bräuchte einen eigenen Feed-Fixture-Container).
+
 ## CI
 
 `.github/workflows/e2e.yml` führt die Suite aus bei:
