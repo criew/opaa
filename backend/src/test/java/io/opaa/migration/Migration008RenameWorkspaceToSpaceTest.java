@@ -3,24 +3,13 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 008 in isolation against a database pre-populated with legacy
@@ -40,42 +29,21 @@ import org.testcontainers.utility.DockerImageName;
  * representative legacy rows directly through JDBC, apply only the new changelog file, and then
  * assert on row counts and value mapping.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration008RenameWorkspaceToSpaceTest {
-
-  // Uses the pgvector image (not plain postgres) because changelog 001, which this test also
-  // exercises as part of building the pre-008 schema, enables the pgvector extension - a binary
-  // that plain postgres images do not ship. This is unrelated to the bug this test guards
-  // against, which is a pure constraint-ordering issue reproducible on any Postgres.
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration008RenameWorkspaceToSpaceTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-007.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    // Apply everything up to (and including) changeSet 007 - the schema exactly as it existed
-    // immediately before this migration - via the real, versioned changelog files.
-    // Deliberately not try-with-resources: Liquibase.close() also closes the underlying
-    // Database/Connection, which this test still needs afterwards to seed data and to apply
-    // changelog 008.
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-007.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    connection = connect();
+    connection.setAutoCommit(true);
   }
 
   @AfterEach
@@ -111,12 +79,7 @@ class Migration008RenameWorkspaceToSpaceTest {
     // Blocker 1 (reported against PR #254) failed exactly here with
     // "violates check constraint chk_workspace_memberships_role" whenever a VIEWER or EDITOR
     // row existed, because the old constraint was still active during the role UPDATE.
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/008-rename-workspace-to-space.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    applyChangelog(connection, "db/changelog/changes/008-rename-workspace-to-space.yaml");
 
     assertThat(countRows("organizations")).isEqualTo(1);
     assertThat(countRows("spaces")).isEqualTo(2);

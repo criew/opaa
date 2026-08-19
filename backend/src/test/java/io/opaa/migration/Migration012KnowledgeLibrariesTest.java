@@ -4,33 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 012 in isolation against a database built from the real, versioned
  * changelog through changeSet 011 - the same pattern as {@code Migration011DirectorySyncTest}, with
- * {@code test-master-through-011.yaml} as the pre-migration fixture. {@code
- * connection.setAutoCommit(true)} is called after every {@code liquibase.update(...)} call, and the
- * public schema is dropped and recreated between test methods, exactly as {@code
- * Migration010SpaceUniquenessTest} established for multi-method migration tests in this package
- * (see the package Javadoc, which names #201 explicitly).
+ * {@code test-master-through-011.yaml} as the pre-migration fixture, now built once per class into
+ * a template database and cloned per test method ({@link AbstractMigrationTest}).
  *
  * <p>The two mechanisms this test class exercises against each other, not just individually: {@link
  * #backfillOnlyTouchesRowsStillMissingALibraryAcrossASecondUpdateCall()} combines a second, real
@@ -40,44 +26,26 @@ import org.testcontainers.utility.DockerImageName;
  * composite foreign key with a cross-organization library to prove the constraint - not just
  * application code - is what stops the leak.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration012KnowledgeLibrariesTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration012KnowledgeLibrariesTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
   private static final String SYSTEM_LIBRARY_ID = "00000000-0000-0000-0000-000000000002";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-011.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-011.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    connection = connect();
     connection.setAutoCommit(true);
   }
 
   @AfterEach
   void tearDown() throws SQLException {
-    connection.setAutoCommit(true);
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
-    }
     connection.close();
   }
 
@@ -297,13 +265,7 @@ class Migration012KnowledgeLibrariesTest {
   }
 
   private void applyChangelog012() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/012-knowledge-libraries.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    connection.setAutoCommit(true);
+    applyChangelog(connection, "db/changelog/changes/012-knowledge-libraries.yaml");
   }
 
   /**
@@ -312,20 +274,15 @@ class Migration012KnowledgeLibrariesTest {
    * context labels documented at the top of 012-knowledge-libraries.yaml.
    */
   private void applySchemaOnlyChangelog012() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/012-knowledge-libraries.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts("lib-schema"));
-    connection.setAutoCommit(true);
+    applyChangelog(connection, "db/changelog/changes/012-knowledge-libraries.yaml", "lib-schema");
   }
 
   /**
-   * Applies every changeSet not yet recorded in DATABASECHANGELOG - an empty {@link Contexts}
-   * matches all changeSets regardless of their {@code context} attribute, so this resumes exactly
-   * where {@link #applySchemaOnlyChangelog012()} left off (the schema changeSets are skipped as
-   * already-applied; only the backfill and enforcement changeSets actually run).
+   * Applies every changeSet not yet recorded in DATABASECHANGELOG - an empty {@link
+   * liquibase.Contexts} matches all changeSets regardless of their {@code context} attribute, so
+   * this resumes exactly where {@link #applySchemaOnlyChangelog012()} left off (the schema
+   * changeSets are skipped as already-applied; only the backfill and enforcement changeSets
+   * actually run).
    */
   private void resumeChangelog012() throws Exception {
     applyChangelog012();

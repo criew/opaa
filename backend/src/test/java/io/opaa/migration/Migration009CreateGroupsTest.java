@@ -4,24 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 009 in isolation against a database built from the real, versioned
@@ -38,60 +27,32 @@ import org.testcontainers.utility.DockerImageName;
  * with {@code spring.liquibase.enabled=false} and a Hibernate-generated schema that never executes
  * this changeSet.
  *
- * <p>The container is shared across both test methods (declared {@code static}), so each test drops
- * and recreates the {@code public} schema in {@link #tearDown()} - without that, the second test
- * would run against a database that already has changelog 009 applied and Liquibase would skip it
- * as already-run, silently passing even if the changeSet were broken.
+ * <p>Each {@code @Test} method gets its own database, freshly cloned from the class's {@code
+ * test-master-through-008.yaml} template ({@link AbstractMigrationTest}) - so there is nothing left
+ * for changelog 009 to have already applied when a later test method runs.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration009CreateGroupsTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration009CreateGroupsTest extends AbstractMigrationTest {
 
   private static final String ORGANIZATION_A = "00000000-0000-0000-0000-000000000001";
   private static final String ORGANIZATION_B = "00000000-0000-0000-0000-000000000002";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-008.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    // Apply everything up to (and including) changeSet 008 - the schema exactly as it existed
-    // immediately before this migration - via the real, versioned changelog files.
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-008.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-
+    connection = connect();
+    connection.setAutoCommit(true);
     insertOrganization(ORGANIZATION_A);
   }
 
   @AfterEach
   void tearDown() throws SQLException {
     if (connection != null && !connection.isClosed()) {
-      // Reset for the next test method: this container is shared (static) across both tests in
-      // this class, and Liquibase would otherwise see changeSet 009 as already applied (recorded
-      // in DATABASECHANGELOG) and silently skip it on the second run.
-      // Liquibase's JdbcConnection disables autocommit, so a test that triggers a constraint
-      // violation (see rejectsAMembershipRowWhoseGroupBelongsToAnotherOrganization) leaves the
-      // connection's transaction aborted; rollback() is always safe to call, even with nothing
-      // pending, and clears that state before the DROP SCHEMA below.
-      connection.rollback();
-      try (Statement statement = connection.createStatement()) {
-        statement.execute("DROP SCHEMA public CASCADE");
-        statement.execute("CREATE SCHEMA public");
-      }
       connection.close();
     }
   }
@@ -141,12 +102,7 @@ class Migration009CreateGroupsTest {
   }
 
   private void applyChangelog009() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/009-create-groups.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
+    applyChangelog(connection, "db/changelog/changes/009-create-groups.yaml");
   }
 
   private void insertOrganization(String id) throws SQLException {

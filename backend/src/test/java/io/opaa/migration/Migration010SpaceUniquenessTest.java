@@ -4,25 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Applies Liquibase changelog 010 in isolation against a database pre-populated with legacy space
@@ -32,78 +21,32 @@ import org.testcontainers.utility.DockerImageName;
  * rows directly through JDBC, apply only the new changelog file, and assert on the resulting schema
  * and data.
  *
- * <p>Unlike {@code Migration008RenameWorkspaceToSpaceTest}, this class has more than one test
- * method. The shared static container is not reset between test methods by Testcontainers, and
- * Liquibase records every changeSet it applies in DATABASECHANGELOG - so a second {@code
- * liquibase.update(...)} call in a later test method would silently skip changelog 010 as "already
- * applied" against data seeded by an earlier method, instead of running against that method's own
- * fixture. {@link #resetSchema()} drops and recreates the public schema after every test so each
- * method starts from a schema-less database and reapplies changelog 010 against only its own seed
- * data. This is the gap flagged against {@code Migration008RenameWorkspaceToSpaceTest} for future
- * data-migration tests (see #237, #238) - this class is the first to close it.
+ * <p>Each {@code @Test} method gets its own database, freshly cloned from the class's {@code
+ * test-master-through-008.yaml} template ({@link AbstractMigrationTest}) - so, unlike the original
+ * shared-container version of this class, there is no risk of a later test method seeing changelog
+ * 010 as "already applied" against an earlier method's seed data.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class Migration010SpaceUniquenessTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
+class Migration010SpaceUniquenessTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
-  private Database database;
+
+  @Override
+  protected String baseFixtureChangelogPath() {
+    return "db/changelog/test-master-through-008.yaml";
+  }
 
   @BeforeEach
   void setUp() throws Exception {
-    connection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-    database =
-        DatabaseFactory.getInstance()
-            .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-
-    // Apply everything up to (and including) changeSet 008 - the schema exactly as it existed
-    // immediately before this migration - via the real, versioned changelog files.
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/test-master-through-008.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-
-    // Liquibase leaves auto-commit disabled on the connection after update(). Re-enable it so
-    // that every raw JDBC statement below (seeding, applying changelog 010, assertions) commits
-    // independently, matching how the application actually uses the database - one failing
-    // statement, such as the deliberate constraint violation asserted below, must not abort every
-    // later statement in the same test method.
+    connection = connect();
     connection.setAutoCommit(true);
   }
 
   @AfterEach
   void tearDown() throws SQLException {
-    resetSchema();
     if (connection != null && !connection.isClosed()) {
       connection.close();
-    }
-  }
-
-  /**
-   * Drops and recreates the public schema so the next test method's {@link #setUp()} starts from a
-   * schema-less database, including an empty DATABASECHANGELOG - without this, Liquibase would
-   * treat changelog 010 as already applied in every test after the first.
-   *
-   * <p>Liquibase leaves the connection's auto-commit disabled after {@code update()} - without
-   * explicitly re-enabling it first, the DROP/CREATE below would run inside an uncommitted
-   * transaction that gets silently rolled back when the connection closes in {@link #tearDown()},
-   * leaving the previous test method's schema (including its unique index) in place for the next
-   * one.
-   */
-  private void resetSchema() throws SQLException {
-    connection.setAutoCommit(true);
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DROP SCHEMA public CASCADE");
-      statement.execute("CREATE SCHEMA public");
     }
   }
 
@@ -163,14 +106,8 @@ class Migration010SpaceUniquenessTest {
   }
 
   private void applyChangelog010() throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            "db/changelog/changes/010-space-uniqueness-and-membership-index.yaml",
-            new ClassLoaderResourceAccessor(),
-            database);
-    liquibase.update(new Contexts());
-    // See the comment in setUp() - Liquibase disables auto-commit again on every update() call.
-    connection.setAutoCommit(true);
+    applyChangelog(
+        connection, "db/changelog/changes/010-space-uniqueness-and-membership-index.yaml");
   }
 
   private void insertUser(UUID id) throws SQLException {
