@@ -489,8 +489,8 @@ heute läuft, und dem, was zum Zielbild gehört.
 | Bild oder gescannte Seite | — | Rasterbilder (`.png`, `.jpg`, `.tiff`), Bild-PDF über Texterkennung |
 
 Die Liste gilt für **beide dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im
-Dateisystem und den Weg über eine Verzeichnisliste im Netz (siehe
-[Wissensquellen und Konnektoren](./knowledge-sources.md#erreichbare-verzeichnislisten-im-netz-gebaut)).
+Dateisystem und den Weg über ein Webverzeichnis (siehe
+[Wissensquellen und Konnektoren](./knowledge-sources.md#webverzeichnis-gebaut)).
 Sie ist an genau einer Stelle im Code geführt; dieselbe Datei wird deshalb unabhängig davon, wie sie
 hereinkommt, gleich behandelt.
 

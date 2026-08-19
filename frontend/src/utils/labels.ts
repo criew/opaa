@@ -105,7 +105,7 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
 const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
   UPLOAD: 'Hochgeladen',
   FILESYSTEM: 'Dateisystem',
-  HTTP_DIRECTORY: 'Verzeichnisliste',
+  HTTP_DIRECTORY: 'Webverzeichnis',
   RSS_FEED: 'RSS-Feed',
 }
 
@@ -120,7 +120,8 @@ export function documentSourceTypeLabel(
 const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
   UPLOAD: 'Dokumente werden manuell hochgeladen und einzeln verwaltet.',
   FILESYSTEM: 'Ein Verzeichnis auf dem Server wird regelmäßig eingelesen.',
-  HTTP_DIRECTORY: 'Eine im Web erreichbare Verzeichnisliste wird abgerufen.',
+  HTTP_DIRECTORY:
+    'Eine über das Web (http/https) erreichbare Verzeichnisseite wird abgerufen, kein lokaler Ordner.',
   RSS_FEED: 'Ein RSS-Feed und die verlinkten Detailseiten werden abgerufen.',
 }
 
