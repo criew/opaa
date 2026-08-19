@@ -279,7 +279,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
         processAttachments(
-            httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred);
+            httpClient,
+            detailPage.attachments(),
+            entryUrl,
+            targetLibrary,
+            anyEntryDeferred,
+            progress);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -343,7 +348,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     processAttachments(
-        httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred);
+        httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred, progress);
   }
 
   /**
@@ -366,7 +371,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       List<AttachmentCandidate> candidates,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
-      AtomicBoolean anyEntryDeferred) {
+      AtomicBoolean anyEntryDeferred,
+      IndexingRunProgress progress) {
     int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
     if (candidates.size() > limit) {
       log.info(
@@ -379,7 +385,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
       delayBeforeRequest();
-      processAttachment(httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred);
+      processAttachment(httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred, progress);
     }
   }
 
@@ -395,7 +401,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       AttachmentCandidate candidate,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
-      AtomicBoolean anyEntryDeferred) {
+      AtomicBoolean anyEntryDeferred,
+      IndexingRunProgress progress) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -447,15 +454,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
 
       long size = Files.size(indexedFile);
-      fileProcessingService.processUrlFile(
-          indexedFile,
-          fileName,
-          candidate.url(),
-          null,
-          size,
-          targetLibrary,
-          DocumentSourceType.RSS_FEED,
-          entryUrl);
+      FileProcessingResult result =
+          fileProcessingService.processUrlFile(
+              indexedFile,
+              fileName,
+              candidate.url(),
+              null,
+              size,
+              targetLibrary,
+              DocumentSourceType.RSS_FEED,
+              entryUrl);
+      // #518: an unchanged attachment (same checksum as an already-indexed document) is
+      // deduplicated by processUrlFile itself and returns SKIPPED - it must not inflate the
+      // document count a second time for a document already counted on a previous run.
+      if (result == FileProcessingResult.PROCESSED) {
+        progress.recordDocumentIndexed();
+      }
       log.info("Indexed RSS attachment: {} (from entry {})", candidate.url(), entryUrl);
     } catch (UrlFileDownloader.AttachmentTooLargeException e) {
       log.warn(

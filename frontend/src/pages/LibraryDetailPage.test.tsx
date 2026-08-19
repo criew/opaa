@@ -49,6 +49,8 @@ const {
         documentCount: 0,
         totalDocuments: 0,
         documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 0,
         message: null,
         timestamp: '2026-03-01T10:00:00Z',
       }) as IndexingStatusResponse,
@@ -60,6 +62,8 @@ const {
         documentCount: 0,
         totalDocuments: 0,
         documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 0,
         message: null,
         timestamp: '2026-03-01T10:00:00Z',
       }) as IndexingStatusResponse,
@@ -403,6 +407,59 @@ describe('LibraryDetailPage', () => {
     await waitFor(() => {
       expect(mockTriggerIndexing).toHaveBeenCalledWith('library-team')
     })
+  })
+
+  it('shows the plain document wording for a completed FILESYSTEM run', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 10,
+      totalDocuments: 12,
+      documentsSkipped: 2,
+      documentsFailed: 0,
+      documentsIndexedTotal: 10,
+      message: null,
+      timestamp: '2026-03-01T10:00:00Z',
+    } as IndexingStatusResponse)
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(/dokumente: 10 verarbeitet \(2 übersprungen\)/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the feed-entries-plus-document-total wording for a completed RSS_FEED run', async () => {
+    // #518 review, finding 1: the wording is decided by sourceType (RSS_FEED here), not by
+    // comparing documentCount/documentsIndexedTotal - both are deliberately equal below to prove
+    // the switch does not derive from that comparison.
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'RSS_FEED',
+        sourceUrl: 'https://example.gov/feed.xml',
+      }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 13,
+      totalDocuments: 18,
+      documentsSkipped: 5,
+      documentsFailed: 0,
+      documentsIndexedTotal: 13,
+      message: null,
+      timestamp: '2026-03-01T10:00:00Z',
+    } as IndexingStatusResponse)
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(
+        /18 feed-einträge, 5 übersprungen, 13 indiziert \(13 dokumente insgesamt\)/i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('clears a stale upload error from a previously viewed library after switching', async () => {

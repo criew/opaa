@@ -619,15 +619,29 @@ interface LibraryIndexingSectionProps {
 
 function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndexingSectionProps) {
   const run = useIndexingStore((s) => s.runsByLibrary[libraryId] ?? IDLE_RUN_STATE)
-  const { status, documentCount, totalDocuments, documentsSkipped, timestamp } = run
+  const {
+    status,
+    documentCount,
+    totalDocuments,
+    documentsSkipped,
+    documentsFailed,
+    documentsIndexedTotal,
+    timestamp,
+  } = run
+  // #518 review, finding 1: which wording a run uses (feed entries vs. plain document count) is
+  // decided by the library's own, unchanging sourceType - never by comparing documentCount and
+  // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
+  // attachments and would otherwise make the same library's label flicker from run to run.
+  const isRssFeed = library.sourceType === 'RSS_FEED'
+  const failedSuffix = documentsFailed > 0 ? `, davon ${documentsFailed} fehlgeschlagen` : ''
   const trigger = useIndexingStore((s) => s.triggerIndexing)
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
 
   useEffect(() => {
-    void loadStatus(libraryId)
+    void loadStatus(libraryId, library.sourceType)
     return () => stopPolling(libraryId)
-  }, [libraryId, loadStatus, stopPolling])
+  }, [libraryId, library.sourceType, loadStatus, stopPolling])
 
   const isRunning = status === 'RUNNING'
   const progressPercent =
@@ -677,7 +691,7 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
           <Button
             variant="contained"
             startIcon={<PlayArrowIcon />}
-            onClick={() => void trigger(libraryId)}
+            onClick={() => void trigger(libraryId, library.sourceType)}
             disabled={isRunning}
             sx={{ mb: 2 }}
           >
@@ -693,8 +707,12 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
               />
               <Typography variant="body2" color="text.secondary">
                 {totalDocuments > 0
-                  ? `${documentCount + documentsSkipped} von ${totalDocuments} Dokumenten verarbeitet`
-                  : 'Dokumente werden ermittelt …'}
+                  ? isRssFeed
+                    ? `${documentCount + documentsSkipped} von ${totalDocuments} Feed-Einträgen verarbeitet (${documentsIndexedTotal} Dokumente indiziert)`
+                    : `${documentCount + documentsSkipped} von ${totalDocuments} Dokumenten verarbeitet`
+                  : isRssFeed
+                    ? 'Feed-Einträge werden ermittelt …'
+                    : 'Dokumente werden ermittelt …'}
               </Typography>
             </Box>
           )}
@@ -705,8 +723,9 @@ function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndex
                 Letzter Lauf: {status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Dokumente: {documentCount} verarbeitet
-                {documentsSkipped > 0 && ` (${documentsSkipped} übersprungen)`}
+                {isRssFeed
+                  ? `${totalDocuments} Feed-Einträge, ${documentsSkipped} übersprungen, ${documentCount} indiziert (${documentsIndexedTotal} Dokumente insgesamt)${failedSuffix}`
+                  : `Dokumente: ${documentCount} verarbeitet${documentsSkipped > 0 ? ` (${documentsSkipped} übersprungen)` : ''}${failedSuffix}`}
               </Typography>
               {timestamp && (
                 <Typography variant="caption" color="text.secondary">

@@ -23,6 +23,8 @@ export const mockIndexingIdle: IndexingStatusResponse = {
   documentCount: 0,
   totalDocuments: 0,
   documentsSkipped: 0,
+  documentsFailed: 0,
+  documentsIndexedTotal: 0,
   message: null,
   timestamp: '2025-01-15T10:00:00Z',
 }
@@ -32,6 +34,8 @@ export const mockIndexingCompleted: IndexingStatusResponse = {
   documentCount: 37,
   totalDocuments: 42,
   documentsSkipped: 5,
+  documentsFailed: 0,
+  documentsIndexedTotal: 37,
   message: 'Indizierung abgeschlossen: 37 verarbeitet, 5 übersprungen, 0 fehlgeschlagen',
   timestamp: '2025-01-15T10:30:00Z',
 }

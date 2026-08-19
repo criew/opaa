@@ -1277,12 +1277,26 @@ components:
 
     IndexingStatusResponse:
       type: object
-      required: [status, documentCount, totalDocuments, documentsSkipped, timestamp]
+      required:
+        [
+          status,
+          documentCount,
+          totalDocuments,
+          documentsSkipped,
+          documentsFailed,
+          documentsIndexedTotal,
+          timestamp,
+        ]
       properties:
         status:
           $ref: "#/components/schemas/IndexingStatus"
         documentCount:
           type: integer
+          description: >
+            The number of source items this run has processed. On an RSS_FEED run this counts feed
+            entries, not indexed documents - an entry's detail page can carry additional attachment
+            documents (#468) that are not counted here. See documentsIndexedTotal for the true
+            document count.
           example: 42
         totalDocuments:
           type: integer
@@ -1290,6 +1304,21 @@ components:
         documentsSkipped:
           type: integer
           example: 0
+        documentsFailed:
+          type: integer
+          description: >
+            The number of source items this run failed to process (#518 review, finding 3) -
+            previously only visible inside the free-text message field, not as its own value the
+            UI could name explicitly.
+          example: 0
+        documentsIndexedTotal:
+          type: integer
+          description: >
+            The true count of documents this run has indexed (#518) - includes every attachment
+            document indexed for an RSS_FEED entry (#468), including one backfilled for an
+            otherwise-unchanged entry. Equals documentCount for FILESYSTEM/HTTP_DIRECTORY runs,
+            where one processed file is exactly one document.
+          example: 42
         message:
           type: string
           nullable: true

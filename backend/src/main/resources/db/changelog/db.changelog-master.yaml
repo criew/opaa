@@ -57,3 +57,5 @@ databaseChangeLog:
       file: db/changelog/changes/028-unique-running-indexing-job-per-library.yaml
   - include:
       file: db/changelog/changes/029-widen-knowledge-libraries-source-credentials.yaml
+  - include:
+      file: db/changelog/changes/030-add-documents-indexed-total-to-indexing-jobs.yaml

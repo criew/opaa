@@ -115,12 +115,15 @@ function recalculateRoleCounts(spaceId: string) {
 
 function getRunningStatus(step: number): IndexingStatusResponse {
   const progress = Math.min(step / INDEXING_POLL_STEPS, 1)
+  const documentCount = Math.round(TOTAL_DOCUMENTS * progress)
   return {
     status: 'RUNNING',
-    documentCount: Math.round(TOTAL_DOCUMENTS * progress),
+    documentCount,
     totalDocuments: TOTAL_DOCUMENTS,
     documentsSkipped: 0,
-    message: `Indexing in progress... ${Math.round(TOTAL_DOCUMENTS * progress)} documents processed`,
+    documentsFailed: 0,
+    documentsIndexedTotal: documentCount,
+    message: `Indexing in progress... ${documentCount} documents processed`,
     timestamp: new Date().toISOString(),
   }
 }
@@ -166,6 +169,8 @@ export const handlers = [
         documentCount: 0,
         totalDocuments: 0,
         documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 0,
         message: 'Indizierung gestartet',
         timestamp: new Date().toISOString(),
         libraryId,
