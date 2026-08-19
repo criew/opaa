@@ -162,9 +162,38 @@ describe('ChatInput', () => {
 
     await user.type(input, '@')
     await screen.findByText('Rechtsquellen Soziales')
-    await user.keyboard('{ArrowDown}{Enter}')
+    // library order is [rechtsquellen, dienstanweisungen] - two ArrowDown presses land on the
+    // second option.
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-dienstanweisungen'])
+  })
+
+  it('selects the hovered suggestion on click without prior keyboard navigation', async () => {
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+
+    await user.type(input, '@')
+    const option = await screen.findByText('Dienstanweisungen')
+    await user.hover(option)
+    await user.click(option)
+
+    expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-dienstanweisungen'])
+  })
+
+  it('does not select a suggestion on a plain Enter without prior highlight - it sends normally', async () => {
+    const onSend = vi.fn()
+    const user = userEvent.setup()
+    render(<ChatInput onSend={onSend} />)
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+
+    await user.type(input, 'Bitte @Rechts')
+    await screen.findByText('Rechtsquellen Soziales')
+    await user.keyboard('{Enter}')
+
+    expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    expect(onSend).toHaveBeenCalledWith('Bitte @Rechts')
   })
 
   it('closes the suggestion list on Escape without sending', async () => {
@@ -181,14 +210,61 @@ describe('ChatInput', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
-  it('renders referenced libraries as removable chips', async () => {
+  it('does not reopen the suggestion list while typing further inside a dismissed mention', async () => {
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+
+    await user.type(input, '@Rechts')
+    await screen.findByText('Rechtsquellen Soziales')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+
+    // Still typing inside the same '@'-fragment must not reopen the list.
+    await user.type(input, 'quellen')
+    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+
+    // Leaving the fragment (space) and starting a new one reopens suggestions again.
+    await user.type(input, ' @Dienst')
+    expect(await screen.findByText('Dienstanweisungen')).toBeInTheDocument()
+  })
+
+  it('closes the suggestion list on a click outside the input and popup', async () => {
+    const user = userEvent.setup()
+    render(
+      <div>
+        <ChatInput onSend={vi.fn()} />
+        <button type="button">Außerhalb</button>
+      </div>,
+    )
+    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+
+    await user.type(input, '@Rechts')
+    await screen.findByText('Rechtsquellen Soziales')
+
+    await user.click(screen.getByRole('button', { name: 'Außerhalb' }))
+
+    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+  })
+
+  it('renders referenced libraries as chips with an accessible name, removable via keyboard', async () => {
     const user = userEvent.setup()
     useChatStore.setState({ referencedLibraryIds: ['library-referat-50'] })
     render(<ChatInput onSend={vi.fn()} />)
 
     expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
+    // The default delete icon MUI renders carries aria-hidden, so the accessible name has to sit
+    // on the chip itself (review finding #539) - getByLabelText would find the hidden icon's own
+    // (unset) label and miss a regression there, so this specifically asserts the *chip*, exposed
+    // via its role="button", carries the name. Deletion itself is exercised the way MUI's Chip
+    // actually wires it for a focused, labelled chip: Backspace/Delete while focused, not a click
+    // on the (visually present but accessibly hidden) icon.
+    const chip = screen.getByRole('button', {
+      name: 'Bibliotheksreferenz Rechtsquellen Soziales entfernen',
+    })
 
-    await user.click(screen.getByLabelText('Bibliotheksreferenz Rechtsquellen Soziales entfernen'))
+    chip.focus()
+    await user.keyboard('{Backspace}')
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual([])
   })

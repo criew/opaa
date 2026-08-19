@@ -7,13 +7,13 @@ import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
+import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CancelIcon from '@mui/icons-material/Cancel'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
@@ -50,7 +50,14 @@ function findActiveMention(text: string, cursor: number): ActiveMention | null {
 export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [mention, setMention] = useState<ActiveMention | null>(null)
-  const [highlightedIndex, setHighlightedIndex] = useState(0)
+  // -1 means "nothing explicitly highlighted yet" - Enter only selects once ArrowDown/ArrowUp/
+  // hover has set an index, so a bare '@' at the end of the text does not select the first
+  // suggestion out from under the user on a plain Enter.
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  // Start index of a mention dismissed via Escape - suppresses reopening the list while the
+  // cursor stays inside that same '@'-fragment, until the fragment is left (space, deletion past
+  // '@', or a new '@' elsewhere).
+  const [dismissedMentionStart, setDismissedMentionStart] = useState<number | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
@@ -92,9 +99,10 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       .slice(0, 8)
   }, [libraries, mention, referencedLibraryIds])
 
+  /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
   const closeMention = () => {
     setMention(null)
-    setHighlightedIndex(0)
+    setHighlightedIndex(-1)
   }
 
   const selectSuggestion = (libraryId: string) => {
@@ -105,6 +113,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     const nextValue = `${before}${after}`
     setValue(nextValue)
     addReferencedLibrary(libraryId)
+    setDismissedMentionStart(null)
     closeMention()
     requestAnimationFrame(() => {
       inputRef.current?.focus()
@@ -116,9 +125,21 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     const nextValue = e.target.value
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
-    const nextMention = findActiveMention(nextValue, cursor)
-    setMention(nextMention)
-    setHighlightedIndex(0)
+    const detected = findActiveMention(nextValue, cursor)
+    if (detected === null) {
+      // Left the fragment entirely (space, deleted past '@', ...) - any earlier dismissal no
+      // longer applies.
+      setMention(null)
+      setDismissedMentionStart(null)
+    } else if (detected.start === dismissedMentionStart) {
+      // Still inside the '@'-fragment the user dismissed via Escape - keep it closed instead of
+      // reopening on the very next keystroke.
+      setMention(null)
+    } else {
+      setMention(detected)
+      setHighlightedIndex(-1)
+      setDismissedMentionStart(null)
+    }
   }
 
   const handleSend = () => {
@@ -126,6 +147,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     if (!trimmed) return
     onSend(trimmed)
     setValue('')
+    setDismissedMentionStart(null)
     closeMention()
   }
 
@@ -133,21 +155,22 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     if (mention !== null) {
       if (e.key === 'Escape') {
         e.preventDefault()
+        setDismissedMentionStart(mention.start)
         closeMention()
         return
       }
       if (suggestions.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault()
-          setHighlightedIndex((i) => (i + 1) % suggestions.length)
+          setHighlightedIndex((i) => (i + 1 >= suggestions.length ? 0 : i + 1))
           return
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault()
-          setHighlightedIndex((i) => (i - 1 + suggestions.length) % suggestions.length)
+          setHighlightedIndex((i) => (i - 1 < 0 ? suggestions.length - 1 : i - 1))
           return
         }
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && highlightedIndex >= 0) {
           e.preventDefault()
           selectSuggestion(suggestions[highlightedIndex].id)
           return
@@ -161,8 +184,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }
   }
 
+  // Drives the Popper itself - it opens for both the suggestion list and the "no match" message.
   const mentionOpen = mention !== null
-  const highlightedOptionId = `${mentionListboxId}-option-${highlightedIndex}`
+  // aria-expanded/aria-controls must only claim an open *listbox* while that listbox is actually
+  // rendered - suggestions.length === 0 renders a plain "no match" message instead, with no
+  // element carrying mentionListboxId (review finding #539).
+  const mentionListOpen = mentionOpen && suggestions.length > 0
+  const highlightedOptionId =
+    highlightedIndex >= 0 ? `${mentionListboxId}-option-${highlightedIndex}` : undefined
 
   return (
     <Box sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}>
@@ -192,9 +221,9 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 variant={useKnowledge ? 'outlined' : 'filled'}
                 color={useKnowledge ? 'default' : 'primary'}
                 onDelete={disabled ? undefined : () => removeReferencedLibrary(library.id)}
-                deleteIcon={
-                  <CancelIcon aria-label={`Bibliotheksreferenz ${library.name} entfernen`} />
-                }
+                // The default delete icon carries aria-hidden from MUI, so the accessible name
+                // has to sit on the chip itself rather than on that icon (review finding #539).
+                aria-label={`Bibliotheksreferenz ${library.name} entfernen`}
               />
             ))}
           </Box>
@@ -230,12 +259,11 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           slotProps={{
             htmlInput: {
               role: 'combobox',
-              'aria-expanded': mentionOpen,
+              'aria-expanded': mentionListOpen,
               'aria-haspopup': 'listbox',
-              'aria-controls': mentionListboxId,
+              'aria-controls': mentionListOpen ? mentionListboxId : undefined,
               'aria-autocomplete': 'list',
-              'aria-activedescendant':
-                mentionOpen && suggestions.length > 0 ? highlightedOptionId : undefined,
+              'aria-activedescendant': mentionListOpen ? highlightedOptionId : undefined,
             },
           }}
           sx={{
@@ -277,32 +305,35 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         style={{ zIndex: 1300, width: inputBoxEl?.offsetWidth }}
         modifiers={[{ name: 'offset', options: { offset: [0, 8] } }]}
       >
-        <Paper elevation={4} sx={{ maxHeight: 240, overflowY: 'auto' }}>
-          {suggestions.length > 0 ? (
-            <List id={mentionListboxId} role="listbox" aria-label="Wissensbibliotheken" dense>
-              {suggestions.map((library, index) => (
-                <ListItemButton
-                  key={library.id}
-                  id={`${mentionListboxId}-option-${index}`}
-                  role="option"
-                  aria-selected={index === highlightedIndex}
-                  selected={index === highlightedIndex}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectSuggestion(library.id)}
-                >
-                  <ListItemText
-                    primary={library.name}
-                    secondary={library.description ?? undefined}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
-              Keine passende Bibliothek gefunden
-            </Typography>
-          )}
-        </Paper>
+        <ClickAwayListener onClickAway={closeMention}>
+          <Paper elevation={4} sx={{ maxHeight: 240, overflowY: 'auto' }}>
+            {suggestions.length > 0 ? (
+              <List id={mentionListboxId} role="listbox" aria-label="Wissensbibliotheken" dense>
+                {suggestions.map((library, index) => (
+                  <ListItemButton
+                    key={library.id}
+                    id={`${mentionListboxId}-option-${index}`}
+                    role="option"
+                    aria-selected={index === highlightedIndex}
+                    selected={index === highlightedIndex}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    onClick={() => selectSuggestion(library.id)}
+                  >
+                    <ListItemText
+                      primary={library.name}
+                      secondary={library.description ?? undefined}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
+                Keine passende Bibliothek gefunden
+              </Typography>
+            )}
+          </Paper>
+        </ClickAwayListener>
       </Popper>
 
       <Box

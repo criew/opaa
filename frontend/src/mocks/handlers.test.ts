@@ -116,6 +116,37 @@ describe('MSW Handlers', () => {
       expect(data.error).toBeDefined()
       expect(data.status).toBe(400)
     })
+
+    // #528 review, finding 6: without this branch, mock/dev mode could never show the "answered
+    // without knowledge" hint the chat UI added for useKnowledge=false with no references.
+    it('answers without knowledge when useKnowledge is false and no libraryIds are given', async () => {
+      const response = await fetch('/api/v1/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: 'Was ist die Architektur?', useKnowledge: false }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.sources).toEqual([])
+      expect(data.metadata.answeredWithoutKnowledge).toBe(true)
+    })
+
+    it('still searches when useKnowledge is false but libraryIds are given', async () => {
+      const response = await fetch('/api/v1/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: 'Was ist die Architektur?',
+          useKnowledge: false,
+          libraryIds: ['library-referat-50'],
+        }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.metadata.answeredWithoutKnowledge).toBeFalsy()
+    })
   })
 
   // Upload/format/size/dedup handling of the POST handler is exercised end-to-end through
