@@ -666,10 +666,11 @@ Der Gedanke, alles einheitlich als Asset zu modellieren, ist naheliegend, trägt
 
 **Umsetzungsstand:** Die Wissensbibliothek als Container ist mit #201 umgesetzt (Migration 012 in
 [docs/migrations/012-knowledge-library.md](../migrations/012-knowledge-library.md)) — Eigentümerschaft
-(Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag und die Zuweisung jedes
-bestehenden Dokuments an eine System-Bibliothek. Die abgestuften Asset-Rollen weiter unten
+(Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag und, bis #521, die
+Zuweisung jedes bestehenden Dokuments an eine eigens dafür angelegte System-Bibliothek (#521 hat sie
+samt Inhalt gelöscht, siehe oben). Die abgestuften Asset-Rollen weiter unten
 (`VIEWER`/`EDITOR`/`MANAGER`/`OWNER`) und die rechtebewusste Vektorsuche folgen mit #202 — bis
-dahin gilt eine grobe Zugriffslogik (Eigentümer, Gruppenmitglied, `ORGANIZATION`-Sichtbarkeit,
+dahin galt eine grobe Zugriffslogik (Eigentümer, Gruppenmitglied, `ORGANIZATION`-Sichtbarkeit,
 System-Admin), dokumentiert auf `KnowledgeLibraryService`.
 
 Der Dokumentencontainer ist die Wissensbibliothek, nicht der Space. Jedes Dokument gehört zu genau einer Bibliothek; jeder Chunk trägt die Bibliotheks-Kennung als Filterachse.
@@ -904,7 +905,7 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`); zusätzlich entsteht je Nutzer eine persönliche Wissensbibliothek „Meine Dokumente", die dort assoziiert wird |
 | Gemeinsame Workspaces | werden gewöhnliche Spaces mit `memberSource = MANUAL` |
 | Mitgliedschaften | `VIEWER→MEMBER`, `EDITOR→CURATOR`, `ADMIN→ADMIN`, `OWNER→ADMIN`; die Verantwortlichkeit steckt bereits im `ownerId`-Attribut |
-| Bestehende Dokumente | haben heute **keine** Workspace-Zuordnung. Sie werden einer System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** ist. Eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar |
+| Bestehende Dokumente | hatten zuvor **keine** Workspace-Zuordnung. Sie wurden einer eigens angelegten System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** war — eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar gewesen. #521 hat diese System-Bibliothek samt Inhalt ersatzlos gelöscht |
 | Global eindeutige Namen | entfallen |
 | Endpunkt für Workspace-Dokumente | war nie implementiert und entfällt ersatzlos; Nachfolger ist der Bibliotheks-Endpunkt |
 

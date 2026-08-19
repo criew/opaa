@@ -25,9 +25,10 @@ import java.util.UUID;
  * migration 012), which a single polymorphic column could not. The check constraint {@code
  * chk_knowledge_libraries_owner} enforces that exactly the column matching {@link #ownerType} is
  * non-null: {@code USER} carries {@code ownerUserId} only, {@code GROUP} carries {@code
- * ownerGroupId} only, {@code SYSTEM} carries neither. {@link #getOwnerId()} exposes whichever one
- * is set as a single id, for callers (the API response, access checks) that only care "who owns
- * this", not which column backs it.
+ * ownerGroupId} only. {@link #getOwnerId()} exposes whichever one is set as a single id, for
+ * callers (the API response, access checks) that only care "who owns this", not which column backs
+ * it. A third kind, {@code SYSTEM}, carrying neither column, existed from #201 until #521 (see
+ * {@link LibraryOwnerType}'s own Javadoc) - every library now has a real owner.
  *
  * <p><b>Since ADR-0018, a library also carries the single quellentyp and quellkonfiguration its
  * content comes from</b> ({@link #sourceType} and its associated columns) - it <em>is</em> the

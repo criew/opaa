@@ -1,0 +1,237 @@
+databaseChangeLog:
+  # #521: the single, well-known system library (seeded by 012-seed-system-library) and every row
+  # dependent on it are deleted outright - a maintainer decision, not a data migration: the
+  # dependent content (pre-#201 documents, indexed chunks) had already been reachable only to a
+  # system administrator since it was seeded, and nothing else in the product still writes into it
+  # (#419 gave every indexing run its own caller-chosen target library). Deletion order follows the
+  # foreign keys migrations 012/013/019 established:
+  #   1. vector_store chunks    - not under Liquibase control (see 016's own precondition), joined
+  #                                back to documents by metadata->>'document_id'; must run first,
+  #                                while documents.library_id below still names the library. Also
+  #                                matches metadata->>'library_id' directly, for a chunk whose
+  #                                document row is already gone (see that changeSet's own comment).
+  #   2. indexing_jobs          - fk_indexing_jobs_library is ON DELETE SET NULL (migration 019), so
+  #                                these rows would merely be orphaned, not removed, if left to the
+  #                                library delete alone; #521 wants them gone, not orphaned.
+  #   3. documents               - fk_documents_library_organization is ON DELETE RESTRICT
+  #                                (migration 012), so these rows must be deleted before the library
+  #                                itself, not left to a cascade.
+  #   4. asset_grants            - fk_asset_grants_library_organization is ON DELETE CASCADE
+  #                                (migration 013) and would remove these automatically once the
+  #                                library row goes, but an explicit delete keeps this changeSet's
+  #                                own comment (and any row count it reports) honest about what it
+  #                                actually removes, rather than leaning on a side effect.
+  #   5. knowledge_libraries      - the library row(s) themselves.
+  #   6/7. CHECK constraints      - chk_knowledge_libraries_owner_type and
+  #                                chk_knowledge_libraries_owner (migration 012) still allow
+  #                                'SYSTEM' at the database level after step 5 - narrowed to
+  #                                'USER'/'GROUP' only here, so a stray or future SYSTEM row is
+  #                                rejected by the database, not merely by application code (see
+  #                                each changeSet's own comment for why this matters).
+  #
+  # Every DELETE below matches a library both by the well-known id
+  # (00000000-0000-0000-0000-000000000002) and by owner_type = 'SYSTEM', not the id alone: #201
+  # never gave SYSTEM a uniqueness constraint of its own (chk_knowledge_libraries_owner permits any
+  # number of SYSTEM-owned rows), so matching only the fixed id would silently leave behind a
+  # SYSTEM row created by some other means - one that would then crash Hibernate's LibraryOwnerType
+  # enum mapping the moment the Java enum constant SYSTEM disappears (this PR does exactly that).
+  #
+  # Deliberately not touched: asset_grant_history/library_visibility_history (permission_history,
+  # migration 018). Both carry library_id as a plain value column with no foreign key, by design
+  # (see that migration's "Deletion survival" comment and
+  # docs/decisions/0016-loeschschicksal-rechtehistorie.md) - deleting the library must never lose or
+  # corrupt the record of rights it once carried, so those rows survive exactly as they do for any
+  # other deleted library. audit_log likewise carries no foreign key to knowledge_libraries.
+  #
+  # Rollback: the five DELETE changeSets are a deliberate no-op, the same reasoning
+  # 012-backfill-document-library-id and 013-backfill-owner-grants already document - a bulk delete
+  # cannot distinguish the rows it removed from rows an unrelated write created afterwards, so
+  # reconstructing them would be fabrication, not rollback. The two CHECK-constraint changeSets
+  # roll back exactly (restoring the 'SYSTEM'-permitting constraint), since those are pure schema
+  # changes with nothing to lose.
+  #
+  # Operational note (first data-destroying migration in this project): back up the database before
+  # applying this changelog in an existing installation. Files a FILESYSTEM/UPLOAD document once
+  # wrote under opaa.upload.storage-path are not touched by this migration - only the database rows
+  # are removed - so orphaned files may remain on disk and should be cleaned up separately if
+  # reclaiming that storage matters.
+
+  - changeSet:
+      id: 031-delete-system-library-vector-store-chunks
+      author: opaa
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: vector_store
+      comment: >
+        Deletes every vector_store chunk belonging to a document in a SYSTEM-owned library, joined
+        via metadata->>'document_id' - the same join 016-backfill-vector-store-library-metadata
+        uses. Also matches metadata->>'library_id' directly against the well-known id, covering a
+        chunk whose document row is already gone (e.g. deleted by some other means before this
+        migration ran) and would otherwise survive as an orphan with no library left to reconcile
+        it against. The precondition mirrors 016's own: vector_store is created by Spring AI at
+        startup (PgVectorStore#initializeSchema), not by Liquibase, so it may not exist yet on a
+        fresh installation - MARK_RAN is correct there, since a fresh installation has no system
+        library content to remove either.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM vector_store v
+              WHERE EXISTS (
+                      SELECT 1 FROM documents d, knowledge_libraries kl
+                      WHERE d.id::text = v.metadata->>'document_id'
+                        AND d.library_id = kl.id
+                        AND (kl.owner_type = 'SYSTEM'
+                             OR kl.id = '00000000-0000-0000-0000-000000000002')
+                    )
+                 OR v.metadata->>'library_id' = '00000000-0000-0000-0000-000000000002';
+      rollback:
+        - sql:
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 031-delete-system-library-indexing-jobs
+      author: opaa
+      comment: >
+        Deletes every indexing_jobs row that targeted a SYSTEM-owned library - see this file's
+        top-level comment for why this is explicit rather than left to fk_indexing_jobs_library's
+        ON DELETE SET NULL, and for why the match is on owner_type = 'SYSTEM' as well as the
+        well-known id.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM indexing_jobs
+              WHERE library_id IN (
+                      SELECT id FROM knowledge_libraries
+                      WHERE owner_type = 'SYSTEM'
+                         OR id = '00000000-0000-0000-0000-000000000002'
+                    );
+      rollback:
+        - sql:
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 031-delete-system-library-documents
+      author: opaa
+      comment: >
+        Deletes every document in a SYSTEM-owned library - required before the library row itself
+        can be removed, since fk_documents_library_organization (migration 012) is
+        ON DELETE RESTRICT. See this file's top-level comment for why the match is on
+        owner_type = 'SYSTEM' as well as the well-known id.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM documents
+              WHERE library_id IN (
+                      SELECT id FROM knowledge_libraries
+                      WHERE owner_type = 'SYSTEM'
+                         OR id = '00000000-0000-0000-0000-000000000002'
+                    );
+      rollback:
+        - sql:
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 031-delete-system-library-asset-grants
+      author: opaa
+      comment: >
+        Deletes every asset_grants row on a SYSTEM-owned library - by design there are none (the
+        well-known library is seeded with no grants at all, migration 012), but this keeps the
+        deletion explicit rather than relying on fk_asset_grants_library_organization's
+        ON DELETE CASCADE, and covers any SYSTEM-owned library that might exist outside that seed.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM asset_grants
+              WHERE library_id IN (
+                      SELECT id FROM knowledge_libraries
+                      WHERE owner_type = 'SYSTEM'
+                         OR id = '00000000-0000-0000-0000-000000000002'
+                    );
+      rollback:
+        - sql:
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 031-delete-system-library
+      author: opaa
+      comment: >
+        Deletes every SYSTEM-owned knowledge_libraries row (#521), matched by owner_type = 'SYSTEM'
+        as well as the well-known id - see this file's top-level comment for why both. The two
+        changeSets below then narrow the CHECK constraints that still permit 'SYSTEM' at the
+        database level, so this is not merely an application-code convention afterwards.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM knowledge_libraries
+              WHERE owner_type = 'SYSTEM'
+                 OR id = '00000000-0000-0000-0000-000000000002';
+      rollback:
+        - sql:
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 031-narrow-knowledge-libraries-owner-type-check
+      author: opaa
+      comment: >
+        chk_knowledge_libraries_owner_type (migration 012) permitted 'USER', 'GROUP' and 'SYSTEM'.
+        LibraryOwnerType.SYSTEM no longer exists in application code (#521) - after the DELETE
+        above removes every SYSTEM-owned row, this narrows the constraint to 'USER'/'GROUP' only,
+        so the database itself rejects a future SYSTEM row rather than relying solely on
+        KnowledgeLibraryService/the OpenAPI spec to never produce one.
+      changes:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT chk_knowledge_libraries_owner_type;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner_type
+              CHECK (owner_type IN ('USER', 'GROUP'));
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_owner_type;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner_type
+              CHECK (owner_type IN ('USER', 'GROUP', 'SYSTEM'));
+
+  - changeSet:
+      id: 031-narrow-knowledge-libraries-owner-check
+      author: opaa
+      comment: >
+        chk_knowledge_libraries_owner (migration 012) had a third, now-dead branch permitting
+        owner_type = 'SYSTEM' with both owner columns NULL. Narrowed to the two branches that
+        remain reachable now that LibraryOwnerType.SYSTEM is gone (#521) - every row must be
+        USER-owned with owner_user_id set, or GROUP-owned with owner_group_id set.
+      changes:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT chk_knowledge_libraries_owner;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner
+              CHECK (
+                (owner_type = 'USER' AND owner_user_id IS NOT NULL AND owner_group_id IS NULL)
+                OR (owner_type = 'GROUP' AND owner_group_id IS NOT NULL AND owner_user_id IS NULL)
+              );
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_owner;
+        - sql:
+            sql: >
+              ALTER TABLE knowledge_libraries
+              ADD CONSTRAINT chk_knowledge_libraries_owner
+              CHECK (
+                (owner_type = 'USER' AND owner_user_id IS NOT NULL AND owner_group_id IS NULL)
+                OR (owner_type = 'GROUP' AND owner_group_id IS NOT NULL AND owner_user_id IS NULL)
+                OR (owner_type = 'SYSTEM' AND owner_user_id IS NULL AND owner_group_id IS NULL)
+              );

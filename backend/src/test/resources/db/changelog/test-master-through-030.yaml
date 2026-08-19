@@ -1,9 +1,9 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 029 - i.e. the schema exactly as it existed immediately before migration 030.
+# changeSet 030 - i.e. the schema exactly as it existed immediately before migration 031.
 #
 # Used by:
-# - Migration030DeleteSystemLibraryTest, to build a realistic pre-migration database (via the real,
-#   versioned changelog files, not a hand-rolled schema) and then apply 030 in isolation.
+# - Migration031DeleteSystemLibraryTest, to build a realistic pre-migration database (via the real,
+#   versioned changelog files, not a hand-rolled schema) and then apply 031 in isolation.
 #
 # See test-master-through-016.yaml for the pattern this fixture follows.
 databaseChangeLog:
@@ -65,3 +65,5 @@ databaseChangeLog:
       file: db/changelog/changes/028-unique-running-indexing-job-per-library.yaml
   - include:
       file: db/changelog/changes/029-widen-knowledge-libraries-source-credentials.yaml
+  - include:
+      file: db/changelog/changes/030-add-documents-indexed-total-to-indexing-jobs.yaml

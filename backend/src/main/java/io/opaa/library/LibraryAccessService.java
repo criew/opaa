@@ -136,20 +136,14 @@ public class LibraryAccessService {
    * LibraryVisibility#ORGANIZATION}, kept unchanged here since #202's mandate is fixing the
    * group-ownership overreach, not narrowing this path.
    *
-   * <p>System libraries used to short-circuit here to "system admins only, regardless of any
-   * grant". That special case is gone (#406): it made this method disagree with {@link
-   * #readableLibraryIds}, which never had it, so the same library could be readable through the
-   * search and forbidden through the library API - two answers to one question. The formula in
-   * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten knows no such exception, and
-   * both paths now implement it alike.
-   *
-   * <p>The fail-closed guarantee #201 set for the migration target is unaffected, because it never
-   * depended on this branch: the system library is seeded {@code PRIVATE} with no grants
-   * (012-seed-system-library), so the formula excludes everyone by itself. What changes is that
-   * opening it is now a deliberate decision rather than an impossibility - and one only a system
-   * admin can take, since granting or changing visibility requires {@code MANAGER}, which on a
-   * library with no owner and no grants nobody else can hold. The specification asks for exactly
-   * that: no organization-wide default, not a bulk of documents no one can ever reach.
+   * <p>The well-known system library used to short-circuit here to "system admins only, regardless
+   * of any grant". That special case was removed in #406, before this method ever disagreed with
+   * {@link #readableLibraryIds} (which never had it) - the same library could otherwise be readable
+   * through the search and forbidden through the library API, two answers to one question. #521
+   * later deleted the system library itself outright, so there is nothing left this formula could
+   * special-case even if it wanted to: every library reaches this method through the same, single
+   * path the specification in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten
+   * describes, with no exception.
    */
   public AssetRole effectiveRole(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     if (systemAdmin) {
@@ -179,8 +173,8 @@ public class LibraryAccessService {
    * <p>That remaining asymmetry is intentional and points the safe way: an admin may administer
    * every library but retrieves only from those the formula grants them, so nothing an admin reads
    * in a chat can come from a library they were not granted. Which libraries the formula covers is
-   * decided identically in both methods since #406 - the system library no longer being an
-   * exception here or there.
+   * decided identically in both methods since #406, with no library-specific exception - see {@link
+   * #effectiveRole}'s own Javadoc for the history of the one exception that used to exist.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     Instant now = Instant.now();

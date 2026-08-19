@@ -14,7 +14,7 @@ package io.opaa.library;
  * <p>A third kind, {@code SYSTEM}, existed from #201 (the migration target for documents that
  * carried no container at all before that issue) until #521, which deleted the single {@code
  * SYSTEM}-owned library and its content outright - see migration {@code
- * 030-delete-system-library.yaml}. Every library now has a real owner.
+ * 031-delete-system-library.yaml}. Every library now has a real owner.
  */
 public enum LibraryOwnerType {
   USER,

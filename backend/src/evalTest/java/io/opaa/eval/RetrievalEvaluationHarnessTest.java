@@ -354,9 +354,10 @@ class RetrievalEvaluationHarnessTest {
     evalLibraryId = library.getId();
 
     // KnowledgeLibraryRepository#save alone does not grant an AssetGrant (only
-    // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService no longer
-    // bypasses the EDITOR check for a system admin on an ordinary library (PR #431 review, Befund
-    // 2), only on the system library. Grant OWNER explicitly, same as any real library creation.
+    // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService never bypasses
+    // the EDITOR check for a system admin (PR #431 review, Befund 2; the one exception that used to
+    // exist for the well-known system library is gone too, #521). Grant OWNER explicitly, same as
+    // any real library creation.
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"

@@ -59,7 +59,7 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
  * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
  * #521 deleted that library and its content outright (migration {@code
- * 030-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
+ * 031-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
  * the deleted {@code LibraryOwnerType.SYSTEM} for the history. Every library now has a real owner,
  * and {@link #createLibrary}/{@link #deleteLibrary} carry no owner-kind-specific exception.
  */

@@ -3,7 +3,6 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,7 +156,10 @@ class DocumentIndexingServiceTest {
   @Test
   void aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected() {
     // ADR-0018, Entscheidung 2: canEdit must be consulted with systemAdmin=false regardless of the
-    // caller's real role - a system admin without any grant must not silently gain EDITOR.
+    // caller's real role - a system admin without any grant must not silently gain EDITOR. #521
+    // removed the one carve-out that used to exist here (the well-known SYSTEM-owned library,
+    // seeded with no owner and no grants, which a system admin could target without a grant) - this
+    // also pins that canEdit is now consulted unconditionally, the same as for any other library.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(false);
@@ -167,27 +169,8 @@ class DocumentIndexingServiceTest {
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
     verify(indexingJobService, never()).startJob(any());
+    verify(libraryAccessService).canEdit(library, currentUser.getId(), false);
     verify(libraryAccessService, never()).canEdit(library, currentUser.getId(), true);
-  }
-
-  @Test
-  void aSystemAdminWithoutAGrantIsRejectedEvenWithNoOwnerColumnsSet() {
-    // #521 removed the one carve-out that used to exist here (the well-known SYSTEM-owned
-    // library, seeded with no owner and no grants, which a system admin could target without a
-    // grant) - this pins that canEdit is now consulted unconditionally, the same as for any other
-    // library, even one whose mock stubs nothing beyond organization membership.
-    KnowledgeLibrary otherLibrary = mock(KnowledgeLibrary.class);
-    UUID otherLibraryId = UUID.randomUUID();
-    when(otherLibrary.getOrganizationId()).thenReturn(organizationId);
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(otherLibraryId)).thenReturn(Optional.of(otherLibrary));
-    when(libraryAccessService.canEdit(otherLibrary, currentUser.getId(), false)).thenReturn(false);
-
-    assertThatThrownBy(() -> service.triggerIndexing(otherLibraryId, currentUser.getId(), true))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
-    verify(libraryAccessService).canEdit(otherLibrary, currentUser.getId(), false);
   }
 
   @Test
