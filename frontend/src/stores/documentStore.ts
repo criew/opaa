@@ -15,7 +15,7 @@ interface DocumentState {
   // A list rather than a single message: uploadNewDocument is called once per file from a
   // multi-file drop/selection, and a failure on one file must not erase - or be erased by - the
   // outcome of another file in the same batch. Cleared once, up front, by the caller starting a
-  // new batch (see DocumentsPage#handleFiles), not by uploadNewDocument itself.
+  // new batch (see LibraryDetailPage's handleFiles), not by uploadNewDocument itself.
   uploadErrors: string[]
   deleteError: string | null
   isUploading: boolean

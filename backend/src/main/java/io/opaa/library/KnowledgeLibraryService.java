@@ -872,6 +872,7 @@ public class KnowledgeLibraryService {
             library.isListed(),
             library.isPersonal(),
             myRole,
+            library.getSourceType(),
             documentCount,
             library.getCreatedAt(),
             library.getUpdatedAt())

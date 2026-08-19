@@ -53,26 +53,19 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
 | **Suchfilter** | die Abfrage auf ausgewählte Arbeitsräume eingrenzen | ja — Eingrenzung auf Arbeitsräume; weitere Filter siehe unten |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
-| **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | nein — die Rechte- und Bestandsverwaltung besteht in der Schnittstelle, die Dokumentenseite der Oberfläche ist ein Platzhalter |
+| **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
 | **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | teilweise — Bedienelement vorhanden, ohne Wirkung (siehe unten) |
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
 
-### Dokumentenübersicht, Gesprächsverwaltung und Suchfilter
+### Gesprächsverwaltung und Suchfilter
 
-Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
-tatsächlichen Stand abgeglichen sind. Dokumentenübersicht und Gesprächsverwaltung sind **Zielbild**
-und heute nicht gebaut; die Dokumentenseite der Oberfläche zeigt einen Platzhalter.
-
-**Dokumentenübersicht.** Wer eine Antwort prüft, will den Bestand dahinter sehen können: welche
-Dokumente einer Wissensbibliothek indiziert sind, wann zuletzt, mit welchem Ergebnis — ausstehend,
-indiziert, fehlgeschlagen — und mit der Möglichkeit, ein Dokument im Original zu öffnen. Ohne diese
-Sicht ist eine ausbleibende Antwort nicht von einem lückenhaften Bestand zu unterscheiden, und genau
-diese Verwechslung untergräbt das Vertrauen in das System schneller als eine falsche Antwort.
-
-Die zugrunde liegende Abfrage besteht bereits in der Schnittstelle (`GET
-/api/v1/libraries/{id}/documents`); was fehlt, ist die Darstellung.
+Zwei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
+tatsächlichen Stand abgeglichen sind. Gesprächsverwaltung ist **Zielbild** und heute nicht gebaut.
+Die Dokumentenübersicht ist inzwischen gebaut — die Bibliotheksdetailseite (`LibraryDetailPage.tsx`)
+zeigt den Bestand einer Wissensbibliothek mit Indizierungsstand je Dokument; das Öffnen eines
+Dokuments im Original bleibt Zielbild.
 
 **Gesprächsverwaltung.** Ein Gespräch überlebt heute das Neuladen der Seite nicht. Im Zielbild
 gehört ein Gespräch in einen Arbeitsraum: benannt, wiederauffindbar, für die Mitglieder des
@@ -186,7 +179,7 @@ Zweck, nicht nach Pfad.
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
 | Wissensbibliotheken anlegen, umbenennen, beschreiben, auflisten, löschen | `/api/v1/libraries` und `/api/v1/libraries/{id}` | ja |
-| Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja (ohne Oberfläche) |
+| Bestand einer Wissensbibliothek einsehen — welche Dokumente sind drin, in welchem Indizierungsstand | `GET /api/v1/libraries/{id}/documents` | ja |
 | Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/libraries/{id}/grants` | ja |
 | Indizierung auslösen, wahlweise für den konfigurierten Bestand oder für eine angegebene Adresse; der Systemverwaltung vorbehalten | `POST /api/v1/indexing/trigger` | ja |
 | Stand des letzten Indizierungslaufs abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/indexing/status` | ja |

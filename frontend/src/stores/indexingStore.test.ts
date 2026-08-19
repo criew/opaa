@@ -1,55 +1,46 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { useIndexingStore } from './indexingStore'
-import { server } from '../mocks/server'
-import { http, HttpResponse } from 'msw'
-import { mockLibraries } from '../mocks/fixtures'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from './indexingStore'
+import type { IndexingStatusResponse } from '../types/api'
+
+const { mockTriggerIndexing, mockGetIndexingStatus } = vi.hoisted(() => ({
+  mockTriggerIndexing: vi.fn(),
+  mockGetIndexingStatus: vi.fn(),
+}))
+
+vi.mock('../services/api', () => ({
+  triggerIndexing: mockTriggerIndexing,
+  getIndexingStatus: mockGetIndexingStatus,
+}))
+
+function runningStatus(overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse {
+  return {
+    status: 'RUNNING',
+    documentCount: 1,
+    totalDocuments: 5,
+    documentsSkipped: 0,
+    message: null,
+    timestamp: '2026-03-01T10:00:00Z',
+    ...overrides,
+  }
+}
 
 describe('indexingStore', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     useIndexingStore.setState({
-      status: 'IDLE',
-      documentCount: 0,
-      totalDocuments: 0,
-      documentsSkipped: 0,
-      message: null,
-      timestamp: null,
-      isPolling: false,
-      drawerOpen: false,
+      runsByLibrary: {},
       snackbar: { open: false, message: '', severity: 'success' },
-      libraries: [],
-      librariesLoading: false,
-      selectedLibraryId: null,
     })
   })
 
   afterEach(() => {
-    useIndexingStore.getState().stopPolling()
+    useIndexingStore.getState().stopPolling('library-a')
+    useIndexingStore.getState().stopPolling('library-b')
+    vi.useRealTimers()
   })
 
-  it('starts with idle state', () => {
-    const state = useIndexingStore.getState()
-    expect(state.status).toBe('IDLE')
-    expect(state.totalDocuments).toBe(0)
-    expect(state.documentsSkipped).toBe(0)
-    expect(state.isPolling).toBe(false)
-    expect(state.drawerOpen).toBe(false)
-    expect(state.selectedLibraryId).toBeNull()
-  })
-
-  it('toggles drawer', () => {
-    useIndexingStore.getState().toggleDrawer()
-    expect(useIndexingStore.getState().drawerOpen).toBe(true)
-
-    useIndexingStore.getState().toggleDrawer()
-    expect(useIndexingStore.getState().drawerOpen).toBe(false)
-  })
-
-  it('sets drawer open state', () => {
-    useIndexingStore.getState().setDrawerOpen(true)
-    expect(useIndexingStore.getState().drawerOpen).toBe(true)
-
-    useIndexingStore.getState().setDrawerOpen(false)
-    expect(useIndexingStore.getState().drawerOpen).toBe(false)
+  it('starts with idle state for a library with no run yet', () => {
+    expect(useIndexingStore.getState().runsByLibrary['library-a']).toBeUndefined()
   })
 
   it('closes snackbar', () => {
@@ -60,108 +51,86 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().snackbar.open).toBe(false)
   })
 
-  it('does not trigger indexing without a selected library and shows an error snackbar', async () => {
-    // #419 acceptance criteria: the UI never allows a run without a target library.
-    await useIndexingStore.getState().triggerIndexing()
-
-    const state = useIndexingStore.getState()
-    expect(state.status).toBe('IDLE')
-    expect(state.snackbar.open).toBe(true)
-    expect(state.snackbar.severity).toBe('error')
-    expect(state.snackbar.message).toBe('Bitte eine Zielbibliothek auswählen')
-  })
-
-  it('triggers indexing with the selected library and starts polling', async () => {
-    // 'library-personal' is UPLOAD and has no run type at all (see the dedicated 409 test below) -
-    // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
+  it('triggers indexing for the given library and starts polling', async () => {
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
 
-    await useIndexingStore.getState().triggerIndexing()
+    await useIndexingStore.getState().triggerIndexing('library-a')
 
-    const state = useIndexingStore.getState()
-    expect(state.status).toBe('RUNNING')
-    expect(state.isPolling).toBe(true)
-
-    useIndexingStore.getState().stopPolling()
-    vi.useRealTimers()
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status).toBe('RUNNING')
+    expect(run?.isPolling).toBe(true)
   })
 
   it('stops polling', async () => {
     vi.useFakeTimers()
-    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
 
-    await useIndexingStore.getState().triggerIndexing()
-    expect(useIndexingStore.getState().isPolling).toBe(true)
+    await useIndexingStore.getState().triggerIndexing('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
 
-    useIndexingStore.getState().stopPolling()
-    expect(useIndexingStore.getState().isPolling).toBe(false)
-
-    vi.useRealTimers()
+    useIndexingStore.getState().stopPolling('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(false)
   })
 
   it('shows a specific message and leaves status untouched when the target is an UPLOAD library', async () => {
     // #500 review, finding 5: an UPLOAD library has no run type at all (backend 409) - no run was
     // ever started, so overwriting status to FAILED would misleadingly suggest one broke.
-    useIndexingStore.getState().setSelectedLibraryId('library-personal')
+    mockTriggerIndexing.mockRejectedValueOnce(new Error(UPLOAD_LIBRARY_INDEXING_ERROR))
 
-    await useIndexingStore.getState().triggerIndexing()
+    await useIndexingStore.getState().triggerIndexing('library-a')
 
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status ?? 'IDLE').toBe('IDLE')
     const state = useIndexingStore.getState()
-    expect(state.status).toBe('IDLE')
     expect(state.snackbar.open).toBe(true)
     expect(state.snackbar.severity).toBe('error')
-    expect(state.snackbar.message).toBe('Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
+    expect(state.snackbar.message).toBe(UPLOAD_LIBRARY_INDEXING_ERROR)
   })
 
-  it('fetches libraries and offers only those with at least EDITOR', async () => {
-    await useIndexingStore.getState().fetchLibraries()
+  it('loads the current status for a library and starts polling if a run is already active', async () => {
+    vi.useFakeTimers()
+    mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
 
-    const state = useIndexingStore.getState()
-    expect(state.librariesLoading).toBe(false)
-    expect(state.libraries.map((l) => l.id)).toEqual([
-      'library-personal',
-      'library-referat-50',
-      'library-solo-owner',
-    ])
-    expect(state.libraries.every((l) => l.myRole !== 'VIEWER')).toBe(true)
+    await useIndexingStore.getState().loadStatus('library-a')
+
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status).toBe('RUNNING')
+    expect(run?.isPolling).toBe(true)
   })
 
-  it('clears libraries and the selection when the request fails', async () => {
-    // PR #431 review, nit 5: a selection that survives a failed load leaves the trigger enabled
-    // against a library the user can no longer see.
-    server.use(http.get('/api/v1/libraries', () => HttpResponse.error()))
+  it('resets to IDLE before reloading and does not leak another library run state on failure', async () => {
+    // #506 review, finding 1: a failed status fetch for library B after switching away from a
+    // RUNNING library A must not leave A's state visible for B, and must not silently reuse A's
+    // stale data for B either.
+    mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().loadStatus('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.status).toBe('RUNNING')
 
-    useIndexingStore.setState({ libraries: mockLibraries, selectedLibraryId: 'library-personal' })
-    await useIndexingStore.getState().fetchLibraries()
+    mockGetIndexingStatus.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+    await useIndexingStore.getState().loadStatus('library-b')
 
-    const state = useIndexingStore.getState()
-    expect(state.libraries).toEqual([])
-    expect(state.selectedLibraryId).toBeNull()
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.status).toBe('RUNNING')
+    expect(useIndexingStore.getState().runsByLibrary['library-b']).toEqual(IDLE_RUN_STATE)
   })
 
-  it('resets the selection when the previously selected library no longer appears in the list', async () => {
-    // PR #431 review, nit 5: e.g. a revoked grant, or the caller no longer holds EDITOR.
-    useIndexingStore.getState().setSelectedLibraryId('library-dienstanweisungen')
+  it('does not stop library A polling when loading the status of a different library B', async () => {
+    // #506 review, finding 1: startPolling used to short-circuit whenever any interval already
+    // existed, orphaning A's interval after a quick switch instead of scoping per library.
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
 
-    await useIndexingStore.getState().fetchLibraries()
+    mockGetIndexingStatus.mockResolvedValueOnce({ ...runningStatus(), status: 'RUNNING' })
+    await useIndexingStore.getState().loadStatus('library-b')
 
-    expect(useIndexingStore.getState().selectedLibraryId).toBeNull()
-  })
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
+    expect(useIndexingStore.getState().runsByLibrary['library-b']?.isPolling).toBe(true)
 
-  it('keeps the selection when the previously selected library is still in the list', async () => {
-    useIndexingStore.getState().setSelectedLibraryId('library-personal')
-
-    await useIndexingStore.getState().fetchLibraries()
-
-    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-personal')
-  })
-
-  it('sets the selected library id', () => {
-    useIndexingStore.getState().setSelectedLibraryId('library-referat-50')
-    expect(useIndexingStore.getState().selectedLibraryId).toBe('library-referat-50')
-
-    useIndexingStore.getState().setSelectedLibraryId(null)
-    expect(useIndexingStore.getState().selectedLibraryId).toBeNull()
+    mockGetIndexingStatus.mockResolvedValue(runningStatus())
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-a')
+    expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-b')
   })
 })

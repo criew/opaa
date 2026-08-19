@@ -1,9 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryManagementPage from './LibraryManagementPage'
-import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import type {
   GroupListResponse,
@@ -12,32 +11,39 @@ import type {
   LibraryResponse,
 } from '../types/api'
 
-const { mockCreateLibrary, mockUpdateLibrary, mockDeleteLibrary, mockGetMyGroups } = vi.hoisted(
-  () => ({
-    mockCreateLibrary: vi.fn(async (request: LibraryRequest) => {
-      const created: LibraryListResponse = {
-        id: `library-${request.name}`,
-        name: request.name,
-        description: request.description ?? null,
-        ownerType: request.ownerType ?? 'USER',
-        visibility: request.visibility ?? 'PRIVATE',
-        listed: request.listed ?? false,
-        personal: false,
-        myRole: 'OWNER',
-        documentCount: 0,
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
-      }
-      // Simulates the real backend response influencing the next getLibraries() call, so the AC
-      // "erscheint ohne Neuladen in der Liste" is actually exercised instead of assumed.
-      useLibraryStore.setState((state) => ({ libraries: [...state.libraries, created] }))
-      return { ...created, ownerId: null, documentCount: 0 } as LibraryResponse
-    }),
-    mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
-    mockDeleteLibrary: vi.fn(async () => undefined),
-    mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
+const mockNavigate = vi.fn()
+
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router')
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
+
+const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
+  mockCreateLibrary: vi.fn(async (request: LibraryRequest) => {
+    const created: LibraryListResponse = {
+      id: `library-${request.name}`,
+      name: request.name,
+      description: request.description ?? null,
+      ownerType: request.ownerType ?? 'USER',
+      visibility: request.visibility ?? 'PRIVATE',
+      listed: request.listed ?? false,
+      personal: false,
+      myRole: 'OWNER',
+      sourceType: request.sourceType,
+      documentCount: 0,
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    }
+    // Simulates the real backend response influencing the next getLibraries() call, so the AC
+    // "erscheint ohne Neuladen in der Liste" is actually exercised instead of assumed.
+    useLibraryStore.setState((state) => ({ libraries: [...state.libraries, created] }))
+    return { ...created, ownerId: null, documentCount: 0 } as LibraryResponse
   }),
-)
+  mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
+}))
 
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
@@ -45,12 +51,7 @@ vi.mock('../services/api', async () => {
     ...actual,
     getMyGroups: mockGetMyGroups,
     getLibraries: vi.fn(async () => useLibraryStore.getState().libraries),
-    getLibrary: vi.fn(
-      async (libraryId: string) => useLibraryStore.getState().libraryDetails[libraryId],
-    ),
     createLibrary: mockCreateLibrary,
-    updateLibrary: mockUpdateLibrary,
-    deleteLibrary: mockDeleteLibrary,
   }
 })
 
@@ -63,6 +64,7 @@ const personalLibrary: LibraryListResponse = {
   listed: false,
   personal: true,
   myRole: 'OWNER',
+  sourceType: 'UPLOAD',
   documentCount: 12,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
@@ -77,6 +79,7 @@ const managerLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'MANAGER',
+  sourceType: 'FILESYSTEM',
   documentCount: 431,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
@@ -91,72 +94,18 @@ const viewerLibrary: LibraryListResponse = {
   listed: true,
   personal: false,
   myRole: 'VIEWER',
+  sourceType: 'UPLOAD',
   documentCount: 87,
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
-const editorLibrary: LibraryListResponse = {
-  id: 'library-editor',
-  name: 'Vorlagen',
-  description: 'Dokumentvorlagen',
-  ownerType: 'GROUP',
-  visibility: 'SHARED',
-  listed: false,
-  personal: false,
-  myRole: 'EDITOR',
-  documentCount: 5,
-  createdAt: '2026-03-01T10:00:00Z',
-  updatedAt: '2026-03-01T10:00:00Z',
-}
-
-// Deliberately GROUP-owned, not SYSTEM-owned: KnowledgeLibraryService#deleteLibrary rejects the
-// SYSTEM library unconditionally, even for a system admin. This fixture is used for the "admin
-// bypass grants delete" test; viewerLibrary (SYSTEM-owned) is used for the opposite assertion.
-const orgWideGroupLibrary: LibraryListResponse = {
-  id: 'library-org-wide',
-  name: 'Dienstanweisungen (Referat)',
-  description: 'Organisationsweit freigegeben durch ein Referat',
-  ownerType: 'GROUP',
-  visibility: 'ORGANIZATION',
-  listed: true,
-  personal: false,
-  myRole: 'VIEWER',
-  documentCount: 87,
-  createdAt: '2026-03-01T10:00:00Z',
-  updatedAt: '2026-03-01T10:00:00Z',
-}
-
-function detailsOf(library: LibraryListResponse, documentCount: number): LibraryResponse {
-  return { ...library, ownerId: null, documentCount, sourceType: 'UPLOAD' }
-}
-
-function setLibraryState(
-  libraries: LibraryListResponse[],
-  details: Record<string, LibraryResponse> = {},
-) {
+function setLibraryState(libraries: LibraryListResponse[]) {
   useLibraryStore.setState({
     libraries,
-    libraryDetails: details,
+    libraryDetails: {},
     isLoading: false,
     error: null,
-  })
-}
-
-function setSystemAdmin() {
-  useAuthStore.setState({
-    mode: 'dev',
-    isAuthenticated: true,
-    isLoading: false,
-    user: {
-      id: 'admin-1',
-      email: 'admin@opaa.local',
-      displayName: 'Admin',
-      systemRole: 'SYSTEM_ADMIN',
-    },
-    token: null,
-    error: null,
-    userManager: null,
   })
 }
 
@@ -165,288 +114,46 @@ describe('LibraryManagementPage', () => {
     vi.clearAllMocks()
   })
 
-  afterEach(() => {
-    useAuthStore.setState({ user: null })
-  })
-
   it('lists libraries with the personal library first and marked as such', async () => {
     setLibraryState([managerLibrary, personalLibrary])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     const items = await screen.findAllByText(/persönlich|Rechtsquellen Soziales/)
     expect(items[0]).toHaveTextContent('persönlich')
     expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
   })
 
-  it('shows the document count per library in the collapsed overview, without expanding', async () => {
+  it('shows the document count and source type per library without a detail round trip', async () => {
     setLibraryState([managerLibrary, viewerLibrary])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/431 dokumente/i)).toBeInTheDocument()
     expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
+    expect(screen.getByText('Dateisystem')).toBeInTheDocument()
+    expect(screen.getByText('Hochgeladen')).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no libraries', async () => {
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/noch keine bibliotheken/i)).toBeInTheDocument()
   })
 
-  it('shows neither edit nor delete controls for a VIEWER', async () => {
-    setLibraryState([viewerLibrary], {
-      'library-readonly': detailsOf(viewerLibrary, 87),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
+  it('renders each library row as a real link to its detail page', async () => {
+    // #506 review, finding 6: a navigate()-triggering button offers none of a real link's
+    // affordances (open in new tab, middle-click, hover preview) - the row must carry a genuine
+    // href instead.
+    setLibraryState([managerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    await user.click(await screen.findByText('Dienstanweisungen'))
-
-    expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /speichern/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+    const link = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+    expect(link).toHaveAttribute('href', '/libraries/library-team')
   })
 
-  it('treats an EDITOR grant as read-only, same as VIEWER', async () => {
-    setLibraryState([editorLibrary], {
-      'library-editor': detailsOf(editorLibrary, 5),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Vorlagen'))
-
-    expect(await screen.findByText(/5 dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /speichern/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-  })
-
-  it('offers editing but not deleting for a MANAGER', async () => {
-    setLibraryState([managerLibrary], {
-      'library-team': detailsOf(managerLibrary, 431),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-  })
-
-  // #423 acceptance criterion: the grants view is only reachable from myRole MANAGER upward - the
-  // same threshold canEditLibrary already computes for the Speichern button above.
-  it('offers "Rechte verwalten" for a MANAGER', async () => {
-    setLibraryState([managerLibrary], {
-      'library-team': detailsOf(managerLibrary, 431),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
-  })
-
-  it('hides "Rechte verwalten" for a VIEWER', async () => {
-    setLibraryState([viewerLibrary], {
-      'library-readonly': detailsOf(viewerLibrary, 87),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Dienstanweisungen'))
-    expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('hides "Rechte verwalten" for an EDITOR', async () => {
-    setLibraryState([editorLibrary], {
-      'library-editor': detailsOf(editorLibrary, 5),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Vorlagen'))
-    expect(await screen.findByText(/5 dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('never offers deleting the personal library, even for its OWNER', async () => {
-    setLibraryState([personalLibrary], {
-      'library-personal': detailsOf(personalLibrary, 12),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Meine Dokumente'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-  })
-
-  // #423 code review, finding 2: AssetGrantService#upsertGrant rejects every grant on the personal
-  // library with a 400, so offering the entry point there is a guaranteed dead end - the same
-  // exception "never offers deleting the personal library" above already carries.
-  it('never offers "Rechte verwalten" for the personal library, even for its OWNER', async () => {
-    setLibraryState([personalLibrary], {
-      'library-personal': detailsOf(personalLibrary, 12),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Meine Dokumente'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('does not offer ORGANIZATION visibility for the personal library', async () => {
-    setLibraryState([personalLibrary], {
-      'library-personal': detailsOf(personalLibrary, 12),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Meine Dokumente'))
-    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
-
-    expect(screen.getByRole('option', { name: 'privat' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'geteilt' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'organisationsweit' })).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/persönliche bibliothek kann nicht organisationsweit sichtbar sein/i),
-    ).toBeInTheDocument()
-  })
-
-  it('offers all three visibility levels for a non-personal library', async () => {
-    setLibraryState([managerLibrary], {
-      'library-team': detailsOf(managerLibrary, 431),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
-
-    expect(screen.getByRole('option', { name: 'organisationsweit' })).toBeInTheDocument()
-  })
-
-  it('lets a system admin edit and delete a group-owned library without an own grant', async () => {
-    setSystemAdmin()
-    setLibraryState([orgWideGroupLibrary], {
-      'library-org-wide': detailsOf(orgWideGroupLibrary, 87),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Dienstanweisungen (Referat)'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
-    expect(screen.getByText('administrativ')).toBeInTheDocument()
-  })
-
-  it('still hides delete for a system admin on the personal library', async () => {
-    setSystemAdmin()
-    setLibraryState([personalLibrary], {
-      'library-personal': detailsOf(personalLibrary, 12),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Meine Dokumente'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-  })
-
-  it('never offers deleting the SYSTEM library, even for a system admin', async () => {
-    // #437 re-review, finding A: KnowledgeLibraryService#deleteLibrary rejects the SYSTEM
-    // library unconditionally (isSystemLibrary()), independent of the caller's admin status -
-    // unlike edit, which the admin bypass does grant.
-    setSystemAdmin()
-    setLibraryState([viewerLibrary], {
-      'library-readonly': detailsOf(viewerLibrary, 87),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Dienstanweisungen'))
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-  })
-
-  it('saves changed name, description and visibility together', async () => {
-    setLibraryState([managerLibrary], {
-      'library-team': detailsOf(managerLibrary, 431),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    const nameField = screen.getByLabelText(/name der bibliothek/i)
-    await user.clear(nameField)
-    await user.type(nameField, 'Rechtsquellen Soziales (neu)')
-    const descriptionField = screen.getByLabelText(/beschreibung/i)
-    await user.clear(descriptionField)
-    await user.type(descriptionField, 'Aktualisierte Beschreibung')
-    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
-    await user.click(await screen.findByRole('option', { name: 'privat' }))
-    await user.click(await screen.findByRole('checkbox', { name: /im katalog auffindbar/i }))
-    await user.click(screen.getByRole('button', { name: /speichern/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
-        name: 'Rechtsquellen Soziales (neu)',
-        description: 'Aktualisierte Beschreibung',
-        visibility: 'PRIVATE',
-        listed: false,
-        sourceInsecureSsl: null,
-      })
-    })
-  })
-
-  it('deletes a library with an OWNER role after confirmation', async () => {
-    const deletableLibrary: LibraryListResponse = { ...managerLibrary, myRole: 'OWNER' }
-    setLibraryState([deletableLibrary], {
-      'library-team': detailsOf(deletableLibrary, 431),
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
-
-    await waitFor(() => {
-      expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
-    })
-  })
-
-  it('warns that a connector library delete also removes its indexed documents', async () => {
-    // #479, ADR-0018 Entscheidung 5: deleting a connector library takes its bestand with it -
-    // the confirmation must say so, unlike the plain UPLOAD confirmation exercised above.
-    const deletableConnectorLibrary: LibraryListResponse = { ...managerLibrary, myRole: 'OWNER' }
-    setLibraryState([deletableConnectorLibrary], {
-      'library-team': { ...detailsOf(deletableConnectorLibrary, 431), sourceType: 'FILESYSTEM' },
-    })
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
-
-    await waitFor(() => {
-      expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
-    })
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/indizierten dokumente/i))
-  })
-
-  it('creates a new library owned by the caller and shows it without a reload', async () => {
+  it('creates a new library owned by the caller and navigates to its detail page', async () => {
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
@@ -463,7 +170,7 @@ describe('LibraryManagementPage', () => {
         sourceInsecureSsl: false,
       })
     })
-    expect(await screen.findByText('Frisch angelegte Bibliothek')).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith('/libraries/library-Frisch angelegte Bibliothek')
   })
 
   it('creates a group-owned library, offering only the groups returned for the user', async () => {
@@ -481,7 +188,7 @@ describe('LibraryManagementPage', () => {
       },
     ])
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
@@ -506,42 +213,12 @@ describe('LibraryManagementPage', () => {
   it('shows a visible hint instead of a silent empty list when the caller has no groups', async () => {
     mockGetMyGroups.mockResolvedValueOnce([])
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
     await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
 
     expect(await screen.findByText(/keiner gruppe mitglied/i)).toBeInTheDocument()
-  })
-
-  it('shows a visible error instead of silently swallowing a failed group lookup', async () => {
-    mockGetMyGroups.mockRejectedValueOnce(new Error('Gruppen konnten nicht geladen werden'))
-    setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
-    await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
-
-    const dialog = await screen.findByRole('dialog')
-    expect(
-      await within(dialog).findByText('Gruppen konnten nicht geladen werden'),
-    ).toBeInTheDocument()
-  })
-
-  it('shows an API error as a German message while keeping the page usable', async () => {
-    setLibraryState([managerLibrary], {
-      'library-team': detailsOf(managerLibrary, 431),
-    })
-    mockUpdateLibrary.mockRejectedValueOnce(new Error('Aktualisierung fehlgeschlagen'))
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-    await user.click(await screen.findByRole('button', { name: /speichern/i }))
-
-    expect(await screen.findByText('Aktualisierung fehlgeschlagen')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /speichern/i })).toBeInTheDocument()
   })
 })

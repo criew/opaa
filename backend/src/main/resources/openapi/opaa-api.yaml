@@ -1905,6 +1905,7 @@ components:
           listed,
           personal,
           myRole,
+          sourceType,
           documentCount,
           createdAt,
           updatedAt,
@@ -1939,6 +1940,13 @@ components:
             itself.
           allOf:
             - $ref: "#/components/schemas/AssetRole"
+        sourceType:
+          description: >
+            The library's quellentyp (ADR-0018), added here so the overview and the library
+            detail page (#481) can both show the type without a per-library detail round trip -
+            previously only the single-library response (LibraryResponse) carried this field.
+          allOf:
+            - $ref: "#/components/schemas/DocumentSourceType"
         documentCount:
           type: integer
           format: int64
