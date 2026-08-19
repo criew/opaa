@@ -183,7 +183,7 @@ Zweck, nicht nach Pfad.
 | Lesezugriff auf eine Wissensbibliothek erteilen, einsehen und entziehen — Rechte hängen an der Bibliothek, nicht am einzelnen Dokument | `/api/v1/libraries/{id}/grants` | ja |
 | Indizierung einer Bibliothek auslösen — aus ihrer eigenen, gespeicherten Quellkonfiguration; wer an der Bibliothek mindestens `EDITOR` ist, darf anstoßen | `POST /api/v1/libraries/{id}/indexing` | ja |
 | Stand des letzten Indizierungslaufs einer Bibliothek abfragen — verarbeitet, übersprungen, fehlgeschlagen, mit Fehlertext | `GET /api/v1/libraries/{id}/indexing/status` | ja |
-| Dokument hochladen und wieder entfernen | — | nein — Zielbild; Bestände kommen heute über Konnektoren und den Indizierungslauf |
+| Dokument hochladen und wieder entfernen | `POST`/`DELETE /api/v1/libraries/{libraryId}/documents` | ja (#420, #422) |
 
 **Arbeitsräume und Gruppen**
 

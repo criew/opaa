@@ -39,7 +39,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 1. **Zwei Wege führen Wissen in OPAA:** der **Upload** durch Menschen und der **Konnektor**, der aus
    einem Quellsystem zieht. Beide Wege sind heute gebaut. Eine Wissensbibliothek trägt dabei **genau
    einen Quellentyp** — `UPLOAD`, ein Verzeichnis im Dateisystem, eine erreichbare Verzeichnisliste im
-   Netz oder künftig ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
+   Netz oder ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
    unveränderlich (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)).
    Die Bibliothek **ist** die Quelle; es gibt keine davon getrennte Konnektor- oder Quellen-Tabelle.
 2. **Konnektorbestände aktualisieren sich selbst**, Uploads bleiben statisch. Das ist der wesentliche
@@ -50,9 +50,11 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    mehrere Zuflüsse in einen Topf.
 4. **Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst; der Eigentümer der Bibliothek
    entscheidet, wer sie liest** — bei lauf-basierten Bibliotheken begrenzt durch eine Obergrenze der
-   Freigabe. Dass die Anlage nicht auf die Systemverwaltung beschränkt ist, ist eine bewusste,
-   **befristete** Entscheidung (ADR-0018, Entscheidung 6); ihre Einschränkung ist als eigenes Ticket
-   (#484) vor einem Mehrbenutzer-Produktivbetrieb erfasst.
+   Freigabe. Dass die Anlage nicht auf die Systemverwaltung beschränkt ist, bleibt eine **dauerhafte**
+   Entscheidung — kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6). Für `FILESYSTEM`
+   sichert stattdessen die Pfad-Allowlist den Zugriff ab (**gebaut**, #484); für die URL-basierten
+   Quellentypen (`HTTP_DIRECTORY`, `RSS_FEED`) bleibt die entsprechende Zielprüfung offen und ist der
+   verbleibende Blocker vor einem Mehrbenutzer-Produktivbetrieb (**Issue #267**).
 5. **Lesen ist der Normalfall, Schreiben die Ausnahme.** Schreibende Integrationen werden je Integration
    eigens freigeschaltet, laufen über einen menschlichen Freigabeschritt und werden vollständig
    protokolliert.
@@ -100,9 +102,9 @@ Ablauf beim Hochladen:
 5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
    Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
    eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad. Es gibt
-   dazu genau eine Bibliotheksauswahl auf der Dokumentenseite, die zugleich Anzeige- und Upload-Ziel
-   ist: Der Ablagebereich erscheint nur, solange die dort gewählte Bibliothek mindestens `EDITOR`
-   gewährt, sodass sich beide Zwecke nie widersprechen können.
+   dazu genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek (`LibraryDetailPage.tsx`),
+   die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint nur, solange die dort geöffnete
+   Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke nie widersprechen können.
 
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
@@ -140,7 +142,7 @@ einem Quellsystem, statt dass jemand eine Datei übergibt. Anders als eine früh
 Dokuments vorsah, ist ein Konnektor **kein eigenes Verwaltungsobjekt** mit mehreren Quellen, die auf
 Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**,
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
-**Quellentyp** — Dateisystem-Verzeichnis, Verzeichnisliste im Netz, künftig RSS-Feed — und, für diesen
+**Quellentyp** — Dateisystem-Verzeichnis, Verzeichnisliste im Netz, RSS-Feed — und, für diesen
 Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
 Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
 verlangt eine neue Bibliothek.
@@ -158,7 +160,8 @@ Abwesenheitsprüfung dann nicht mehr je Bibliothek laufen dürfte.
 **Quellklassen der ersten Ausbaustufe:** Dateiablagen und Netzlaufwerke über die gängigen
 Netzdateiprotokolle, Wiki- und Intranetsysteme über deren Schnittstelle, Postfächer und E-Mail-Archive,
 Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Verzeichnislisten und
-RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut, siehe
+RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier gebaute Quellentypen insgesamt:
+`UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`), siehe
 [Erreichbare Verzeichnislisten im Netz](#erreichbare-verzeichnislisten-im-netz-gebaut) und
 [Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
@@ -186,13 +189,15 @@ angegeben und ist Teil der Bibliothekskonfiguration; ein bibliotheksweiter Fallb
 global konfigurierten Pfad (wie er vor ADR-0018 bestand) entfällt.
 
 **Sicherung des Pfads.** Ein frei wählbarer Dateisystempfad macht grundsätzlich jeden für den
-OPAA-Server lesbaren Pfad indizierbar. Deshalb prüft der Betrieb jeden angegebenen Pfad gegen eine
-**Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`); ein Pfad außerhalb der Allowlist wird bei Anlage
-und bei jedem Lauf abgelehnt. Ist die Allowlist leer, ist die Prüfung **deaktiviert** — das ist der
-Übergangszustand, den ADR-0018, Entscheidung 6 als befristet beschreibt, bis #484 die Anlageberechtigung
-selbst einschränkt. Ablauf und Löschsemantik eines Laufs entsprechen der [Verzeichnisliste im
-Netz](#erreichbare-verzeichnislisten-im-netz-gebaut): vollständige Auflistung bei jedem Lauf,
-Löschung durch Abwesenheit eingeschlossen (siehe [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
+OPAA-Server lesbaren Pfad indizierbar. Deshalb prüft OPAA jeden angegebenen Pfad gegen die vom Betrieb
+konfigurierte **Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) — bei Anlage, bei Änderung und bei
+jedem Lauf; ein Pfad außerhalb der Allowlist wird abgelehnt. **Ist die Allowlist leer, ist der
+Quellentyp `FILESYSTEM` vollständig deaktiviert** — die sichere Voreinstellung, kein Übergangszustand
+(siehe [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 6-Nachtrag,
+und die Javadoc von `FilesystemPathAllowlist`). Ablauf eines Laufs entspricht der [Verzeichnisliste im
+Netz](#erreichbare-verzeichnislisten-im-netz-gebaut): vollständige Auflistung bei jedem Lauf; die
+**Löschung durch Abwesenheit ist für diesen Typ entschieden, aber noch nicht gebaut** (ADR-0017,
+Entscheidung 5, siehe [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
 
 ### Erreichbare Verzeichnislisten im Netz (gebaut)
 
@@ -227,23 +232,25 @@ Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die verbreit
 Verzeichnislistenformate der gängigen Webserver verträgt.
 
 **Auslösung.** Der Lauf wird **an der Bibliothek** angestoßen — über `POST
-/api/v1/libraries/{id}/indexing` oder die Detailseite der Bibliothek. Auslösen darf, wer an der
+/api/v1/libraries/{libraryId}/indexing` oder die Detailseite der Bibliothek. Auslösen darf, wer an der
 Bibliothek mindestens `EDITOR` ist; die frühere Beschränkung auf die Systemverwaltung ist mit ADR-0018
 (Entscheidung 2) bewusst gefallen — ein Knopf, den nur die Systemverwaltung drücken darf, wäre für
 jeden anderen Eigentümer einer Bibliothek tot. Adresse, Zugangsdaten, Proxy und SSL-Schalter sind Teil
 der Bibliothekskonfiguration und werden nicht mehr je Lauf übergeben; ein Anstoß ohne Adresse wie beim
-früheren globalen Dateisystem-Fallback gibt es nicht mehr. Ein eigenes, je Bibliothek gesetztes
-Kontingent schützt gegen Überlastung, und es läuft höchstens ein Lauf gleichzeitig je Bibliothek. Der
-Fortschritt ist über `GET /api/v1/libraries/{id}/indexing/status` abrufbar.
+früheren globalen Dateisystem-Fallback gibt es nicht mehr. Ein eigenes, enges Rate-Limit schützt den
+Anstoß-Endpunkt gegen Überlastung — je aufrufender Netzadresse **und** je Bibliothek —, und es läuft
+höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
+`GET /api/v1/libraries/{libraryId}/indexing/status` abrufbar.
 
 **Was noch fehlt** — und zwar so, dass es benannt gehört:
 
 - **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
   Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
   Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
-  zunächst freien Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als zuvor
-  und gemeinsam mit der Einschränkung der Anlage (#484) Blocker für den Mehrbenutzer-Produktivbetrieb.
-  Erfasst als **Issue #267**.
+  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
+  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
+  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
+  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267**.
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
   nächsten Kapitels ist damit noch nicht erreicht. Mit der Konfiguration an der Bibliothek hat ein
   Zeitplan erstmals einen natürlichen Ort; entschieden wird das in **Issue #485**.
@@ -330,7 +337,7 @@ durch](#selbst-aktualisierende-wissensblöcke) unten und
 [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
 
 **Auslösung.** Wie bei der Verzeichnisliste wird der Lauf **an der Bibliothek** angestoßen — über `POST
-/api/v1/libraries/{id}/indexing`. Die Bibliothek trägt den Typ `RSS_FEED` und die Feed-Adresse als
+/api/v1/libraries/{libraryId}/indexing`. Die Bibliothek trägt den Typ `RSS_FEED` und die Feed-Adresse als
 gespeicherte Konfiguration (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md));
 Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lauf-basierten Typ.
 
@@ -416,12 +423,13 @@ dieser Fehler ist strukturell ausgeschlossen.
 ### Zuständigkeit und Obergrenze der Freigabe
 
 Die frühere Trennung „die Systemverwaltung entscheidet, wohin indiziert wird" gilt in dieser Form
-**nicht mehr**: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst (ADR-0018,
-Entscheidung 6 — eine bewusst befristete Öffnung, siehe [Überblick](#überblick)). Was bleibt:
+**nicht mehr**: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst — eine dauerhafte
+Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6, siehe
+[Überblick](#überblick)). Was bleibt:
 
 | Wer | Entscheidet |
 |---|---|
-| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — heute jeder mit Anlageberechtigung, eingeschränkt mit #484 |
+| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` bleibt die Zielprüfung offen (#267) |
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit
@@ -589,7 +597,7 @@ anhält.
 
 Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (Zielbild, **Issue #485** — heute wird
 angestoßen, nicht geplant), durch eine **Meldung des Quellsystems** (Zielbild), durch **ausdrücklichen
-Anstoß** — `POST /api/v1/libraries/{id}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
+Anstoß** — `POST /api/v1/libraries/{libraryId}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
 ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 
 ### Vorrang

@@ -54,8 +54,11 @@ nicht.
 **Bestätigt:**
 
 - Der HTTP-Verzeichnis-Konnektor existiert und ist einsatzfähig (`io.opaa.indexing`, Crawler +
-  Downloader + Job-Verwaltung, ausgelöst über `POST /api/v1/indexing/trigger` mit `url`). Für die
-  Demo-Ingestion ist **kein neuer Ingestion-Code** nötig.
+  Downloader + Job-Verwaltung). Der Anstoß läuft seit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)
+  über eine Bibliothek vom Typ `HTTP_DIRECTORY` (`sourceUrl` bei der Anlage gesetzt) und
+  `POST /api/v1/libraries/{libraryId}/indexing`, nicht mehr über den früheren
+  `/api/v1/indexing/trigger`-Endpunkt mit `url`-Body. Für die Demo-Ingestion ist **kein neuer
+  Ingestion-Code** nötig.
 - `.md` ist ein unterstütztes Format; `.csv` und `.json` sind es nicht. Die Leitentscheidung
   „ein Dokument pro Entität als Markdown" ist damit nicht nur fachlich richtig, sondern die
   einzige Variante, die ohne Code-Änderung überhaupt funktioniert.
@@ -386,7 +389,12 @@ eval/corpus/comic-characters/*.md
  Apache httpd Container (IndexOptions FancyIndexing HTMLTable)
         │  http://corpus/comic-characters/
         ▼
- POST /api/v1/indexing/trigger  { "url": "http://corpus/comic-characters/" }
+ POST /api/v1/libraries
+   { "name": "Comic-Helden", "sourceType": "HTTP_DIRECTORY",
+     "sourceUrl": "http://corpus/comic-characters/" }
+        │  (Bibliothek einmalig anlegen — seit ADR-0018 trägt sie Typ und Konfiguration selbst)
+        ▼
+ POST /api/v1/libraries/{libraryId}/indexing
         │
         ▼
  bestehender UrlIndexingExecutor → Tika → Chunking → pgvector

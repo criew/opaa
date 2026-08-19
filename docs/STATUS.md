@@ -89,7 +89,9 @@ Drei Zustände werden unterschieden:
   zählt im Indizierungsauftrag als übersprungen statt lautlos zu verschwinden (#375). Tabellen (XLSX)
   gehören nicht dazu — das stand hier bisher falsch
 - Wiedererkennung unveränderter Dateien über Prüfsummen (`ChecksumService`)
-- Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, `/api/v1/indexing`)
+- Auftragsverwaltung für Indizierungsläufe mit Status (`IndexingJobService`, seit ADR-0018 je
+  Bibliothek über `POST /api/v1/libraries/{libraryId}/indexing` und
+  `GET /api/v1/libraries/{libraryId}/indexing/status`)
 - **Upload durch Beschäftigte** (#420): `POST /api/v1/libraries/{libraryId}/documents`
   (`multipart/form-data`), mindestens `EDITOR` auf der Zielbibliothek erforderlich; dieselbe
   Formatprüfung, Prüfsumme und Indizierungspipeline wie die anderen Aufnahmewege
