@@ -769,11 +769,16 @@ paths:
       summary: >
         List documents contained in a library, paged and optionally filtered by a case-insensitive
         substring of the file name (#517). Available for every sourceType, not just UPLOAD - a
-        connector library's indexed bestand is just as visible here.
+        connector library's indexed bestand is just as visible here. Ordered by fileName ascending,
+        id ascending as a tiebreaker - a deterministic total order, not just "ascending fileName":
+        without it, LIMIT/OFFSET across two separate requests (e.g. two pages fetched moments
+        apart, or the same page re-polled while indexing concurrently updates a row) has no
+        guaranteed stable result in PostgreSQL and could return a document twice or skip it.
       parameters:
         - name: page
           in: query
           required: false
+          description: Rejected with 400 if negative.
           schema:
             type: integer
             minimum: 0
@@ -781,6 +786,7 @@ paths:
         - name: size
           in: query
           required: false
+          description: Rejected with 400 outside 1..100.
           schema:
             type: integer
             minimum: 1
@@ -799,6 +805,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LibraryDocumentPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":

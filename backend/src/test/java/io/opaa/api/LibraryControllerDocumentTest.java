@@ -3,7 +3,6 @@ package io.opaa.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -33,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -88,7 +88,7 @@ class LibraryControllerDocumentTest {
   }
 
   @Test
-  void listingDocumentsPassesPageSizeAndQToTheService() throws Exception {
+  void listingDocumentsPassesPageSizeAndQToTheServiceWithAStableSort() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var response = new LibraryDocumentPageResponse(List.of(), 1, 5, 12L);
     when(libraryService.listDocuments(
@@ -96,7 +96,14 @@ class LibraryControllerDocumentTest {
             eq(currentUserId),
             eq(false),
             eq("dienst"),
-            argThat((Pageable p) -> p.getPageNumber() == 1 && p.getPageSize() == 5)))
+            argThat(
+                (Pageable p) ->
+                    p.getPageNumber() == 1
+                        && p.getPageSize() == 5
+                        // #517 code review, finding 1: LIMIT/OFFSET without a stable ORDER BY has
+                        // no guaranteed row order across separate requests in PostgreSQL.
+                        && p.getSort()
+                            .equals(Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id"))))))
         .thenReturn(response);
 
     mockMvc
@@ -113,24 +120,36 @@ class LibraryControllerDocumentTest {
   }
 
   @Test
-  void listingDocumentsBoundsAnOutOfRangeSizeToTheSpecsAllowedMaximum() throws Exception {
-    // #517: the OpenAPI spec promises size <= 100 - @RequestParam alone does not enforce that, so
-    // the controller itself clamps it (see LibraryController#listDocuments).
+  void listingDocumentsRejectsAnOutOfRangeSizeWith400() throws Exception {
+    // #517 code review, finding 2: the spec promises size in 1..100 - silently clamping an
+    // out-of-range value would contradict that, so it is rejected instead (see
+    // LibraryController#listDocuments).
     UUID libraryId = UUID.randomUUID();
-    when(libraryService.listDocuments(
-            eq(libraryId),
-            eq(currentUserId),
-            eq(false),
-            isNull(),
-            argThat((Pageable p) -> p.getPageSize() == 100)))
-        .thenReturn(new LibraryDocumentPageResponse(List.of(), 0, 100, 0L));
 
     mockMvc
         .perform(
             get("/api/v1/libraries/" + libraryId + "/documents")
                 .param("size", "500")
                 .with(asTestUser()))
-        .andExpect(status().isOk());
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("size", "0")
+                .with(asTestUser()))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void listingDocumentsRejectsANegativePageWith400() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("page", "-1")
+                .with(asTestUser()))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

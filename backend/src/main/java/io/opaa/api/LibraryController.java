@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -120,11 +121,23 @@ public class LibraryController {
       @RequestParam(required = false) String q,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    // Mirrors the OpenAPI spec's 1..100 bound on size (#517) - the DTO layer never validates
-    // @RequestParam primitives, so an out-of-range value would otherwise reach the database as an
-    // oversized or zero-row page instead of being rejected the same way the spec promises.
-    int boundedSize = Math.max(1, Math.min(size, 100));
-    Pageable pageable = PageRequest.of(Math.max(page, 0), boundedSize);
+    // #517 code review, finding 2: the spec promises 1..100 - silently clamping an out-of-range
+    // value would contradict that promise (size=500 quietly answering 100, size=0 quietly
+    // answering 1), so both bounds and page<0 are rejected the same way bean validation would.
+    if (size < 1 || size > 100) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "size muss zwischen 1 und 100 liegen");
+    }
+    if (page < 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page darf nicht negativ sein");
+    }
+    // #517 code review, finding 1: LIMIT/OFFSET without ORDER BY has no stable row order across
+    // separate statements in PostgreSQL - two pages fetched moments apart (or the same page
+    // re-fetched by documentStore#startPolling's 3s poll while indexing concurrently updates a
+    // row) could otherwise return a document twice or skip it entirely. fileName first (the
+    // column users actually browse/search by), id as a tiebreaker for documents sharing a name.
+    Pageable pageable =
+        PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
     return libraryService.listDocuments(
         libraryId,
         currentUser.getId(),

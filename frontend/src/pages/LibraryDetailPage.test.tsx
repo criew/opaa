@@ -342,6 +342,8 @@ describe('LibraryDetailPage', () => {
   it('uploads a file and shows it in the list afterwards', async () => {
     // #506 review, finding 5: durchstich test for upload on the new page, mirroring the
     // equivalent test in the deleted DocumentsPage.test.tsx.
+    // #517 code review, finding 2: uploadNewDocument no longer prepends the response locally - it
+    // reloads the current page from the server, hence the second mockGetLibraryDocuments answer.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     mockUploadDocument.mockResolvedValueOnce({
@@ -355,6 +357,21 @@ describe('LibraryDetailPage', () => {
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
     })
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'document-new',
+          fileName: 'neues-dokument.pdf',
+          contentType: 'application/pdf',
+          fileSize: 1000,
+          status: 'PENDING',
+          sourceType: 'UPLOAD',
+          chunkCount: 0,
+          indexedAt: null,
+          uploadedByUserId: 'mock-user-id',
+        },
+      ]),
+    )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
@@ -525,6 +542,24 @@ describe('LibraryDetailPage', () => {
 
     expect(await screen.findByText(/quellkonfiguration/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /jetzt indizieren/i })).not.toBeInTheDocument()
+  })
+
+  // #517 code review, nit 4: a VIEWER on a connector library must see both hints - "nur
+  // Leserechte" was previously scoped to isUploadLibrary and silently dropped for this case.
+  it('shows the read-only hint for a VIEWER on a connector library, alongside the connector hint', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    // Exact match, not a substring: LibraryIndexingSection shows its own, differently worded
+    // "nur Leserechte und können keine Indizierung anstoßen." hint on the same connector-library
+    // page, so a loose regex would find two elements and fail as ambiguous.
+    expect(
+      await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
   // #517: the document list previously only rendered for UPLOAD libraries - a connector library's

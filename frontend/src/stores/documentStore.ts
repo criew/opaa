@@ -116,18 +116,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   uploadNewDocument: async (libraryId: string, file: File) => {
     set({ isUploading: true })
     try {
-      const document = await uploadDocumentRequest(libraryId, file)
-      const existing = get().documentsByLibrary[libraryId] ?? []
-      set({
-        documentsByLibrary: {
-          ...get().documentsByLibrary,
-          [libraryId]: [document, ...existing],
-        },
-        isUploading: false,
-      })
-      if (document.status === 'PENDING') {
-        startPolling(libraryId, set, get)
-      }
+      await uploadDocumentRequest(libraryId, file)
+      set({ isUploading: false })
     } catch (err) {
       const rawMessage =
         err instanceof Error ? err.message : 'Datei konnte nicht hochgeladen werden'
@@ -137,6 +127,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({ uploadErrors: [...get().uploadErrors, message], isUploading: false })
       throw err
     }
+    // #517 code review, finding 2 (Szenario C): the uploaded file was only ever prepended to the
+    // locally cached page before, regardless of whether it actually belongs on the page the user
+    // is looking at (an active search term it does not match, or a page that was already full) -
+    // totalElements never moved either. Reloading the current page from the server is the only way
+    // to know whether/where the new document actually landed.
+    await reloadCurrentPage(libraryId, get)
   },
 
   removeDocument: async (libraryId: string, documentId: string) => {
@@ -147,14 +143,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({ deleteError: message })
       throw err
     }
-    const existing = get().documentsByLibrary[libraryId] ?? []
-    set({
-      documentsByLibrary: {
-        ...get().documentsByLibrary,
-        [libraryId]: existing.filter((doc) => doc.id !== documentId),
-      },
-      deleteError: null,
-    })
+    set({ deleteError: null })
+    // #517 code review, finding 2 (Szenario A/B): filtering the row out of the locally cached page
+    // alone leaves totalElements and the neighbouring pages stale - a full page loses its would-be
+    // last entry, and deleting a page's only document empties it without ever dropping back to a
+    // page that still has content. Reloading from the server, then stepping back a page if this
+    // one is now empty, keeps both in sync with what the backend actually holds.
+    await reloadCurrentPage(libraryId, get)
+    const pageState = get().pageStateByLibrary[libraryId]
+    const stillEmpty = (get().documentsByLibrary[libraryId] ?? []).length === 0
+    if (stillEmpty && pageState && pageState.page > 0) {
+      await get().loadDocuments(libraryId, { page: pageState.page - 1 })
+    }
   },
 
   clearUploadErrors: () => set({ uploadErrors: [] }),
@@ -168,6 +168,19 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 }))
+
+// Re-fetches the page/search a library's document list is currently showing (#517 code review,
+// finding 2) - shared by uploadNewDocument/removeDocument so a mutation is always followed by
+// server truth instead of a local array splice/unshift that can drift from totalElements or the
+// active search filter.
+async function reloadCurrentPage(libraryId: string, get: () => DocumentState) {
+  const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
+  await get().loadDocuments(libraryId, {
+    page: pageState.page,
+    size: pageState.size,
+    q: pageState.q,
+  })
+}
 
 function startPolling(
   libraryId: string,

@@ -439,7 +439,15 @@ function LibraryDocumentsSection({
     // keep showing on a different library's section after switching.
     reset()
     void loadDocuments(libraryId, { page: 0, size: DEFAULT_PAGE_SIZE, q: '' })
-    return () => stopPolling(libraryId)
+    return () => {
+      stopPolling(libraryId)
+      // #517 code review, nit 1: without this, typing into the search field and switching
+      // libraries within the 300ms debounce window (the section remounts via key={libraryId}, see
+      // LibraryDetailPage) still fires the old instance's timer, which calls loadDocuments for the
+      // *previous* libraryId - isLoading/error are global on documentStore, so that would flash an
+      // unrelated loading/error state into the newly mounted section.
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
   }, [libraryId, loadDocuments, stopPolling, reset])
 
   const documents = documentsByLibrary[libraryId] ?? []
@@ -503,7 +511,10 @@ function LibraryDocumentsSection({
         Dokumente
       </Typography>
 
-      {!canManage && isUploadLibrary && (
+      {/* #517 code review, nit 4: scoped to !canManage alone (not additionally isUploadLibrary,
+          as an earlier version had it) - a VIEWER on a connector library lost this hint entirely
+          otherwise, even though it is just as true there as for a read-only UPLOAD library. */}
+      {!canManage && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Sie haben in dieser Bibliothek nur Leserechte.
         </Alert>

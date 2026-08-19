@@ -41,6 +41,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
@@ -531,6 +533,14 @@ class LibraryDocumentServiceIntegrationTest {
     return documentRepository.save(document);
   }
 
+  // #517 code review, finding 1: mirrors LibraryController#listDocuments' stable ORDER BY - a
+  // plain PageRequest.of(page, size) has no guaranteed row order across two separate SELECT ...
+  // LIMIT/OFFSET statements in PostgreSQL, which is exactly what made the disjointedness
+  // assertion below unreliable before that sort existed.
+  private Pageable stableOrder(int page, int size) {
+    return PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
+  }
+
   @Test
   void listDocumentsReturnsAPageWithTheTotalElementCountAcrossAllPages() {
     for (int i = 0; i < 5; i++) {
@@ -538,20 +548,20 @@ class LibraryDocumentServiceIntegrationTest {
     }
 
     var firstPage =
-        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(0, 2));
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, stableOrder(0, 2));
     assertThat(firstPage.getItems()).hasSize(2);
     assertThat(firstPage.getPage()).isZero();
     assertThat(firstPage.getSize()).isEqualTo(2);
     assertThat(firstPage.getTotalElements()).isEqualTo(5);
 
     var secondPage =
-        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(1, 2));
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, stableOrder(1, 2));
     assertThat(secondPage.getItems()).hasSize(2);
     assertThat(secondPage.getPage()).isEqualTo(1);
     assertThat(secondPage.getTotalElements()).isEqualTo(5);
 
     var lastPage =
-        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(2, 2));
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, stableOrder(2, 2));
     assertThat(lastPage.getItems()).hasSize(1);
 
     assertThat(
@@ -559,6 +569,14 @@ class LibraryDocumentServiceIntegrationTest {
                 .noneMatch(
                     id -> secondPage.getItems().stream().anyMatch(d -> d.getId().equals(id))))
         .isTrue();
+
+    // The order itself must be deterministic (fileName ascending), not merely disjoint pages.
+    assertThat(firstPage.getItems())
+        .extracting(LibraryDocumentResponse::getFileName)
+        .containsExactly("dokument-0.txt", "dokument-1.txt");
+    assertThat(secondPage.getItems())
+        .extracting(LibraryDocumentResponse::getFileName)
+        .containsExactly("dokument-2.txt", "dokument-3.txt");
   }
 
   @Test
@@ -569,12 +587,38 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, editor.getId(), false, "dienst", PageRequest.of(0, 20));
+            libraryId, editor.getId(), false, "dienst", stableOrder(0, 20));
 
     assertThat(result.getTotalElements()).isEqualTo(2);
     assertThat(result.getItems())
         .extracting(LibraryDocumentResponse::getFileName)
         .allMatch(name -> name.toLowerCase().contains("dienst"));
+  }
+
+  @Test
+  void listDocumentsTreatsPercentAndUnderscoreInQAsLiteralCharactersNotSqlWildcards() {
+    // #517 code review, nit 3: Spring Data JPA's *Containing* finder escapes LIKE metacharacters
+    // in the parameter by default (EscapeCharacter.DEFAULT) - this pins that behaviour down so a
+    // future switch to a hand-written @Query cannot silently regress it. Without escaping, "%"
+    // alone would match every row (LIKE '%%%' = "any content"), and "_" would match any single
+    // character instead of a literal underscore.
+    seedDocument("100%-Regel.pdf");
+    seedDocument("normale-akte.pdf");
+    seedDocument("akte_alt.pdf");
+    seedDocument("aktexalt.pdf");
+
+    var percentResult =
+        libraryService.listDocuments(libraryId, editor.getId(), false, "100%", stableOrder(0, 20));
+    assertThat(percentResult.getItems())
+        .extracting(LibraryDocumentResponse::getFileName)
+        .containsExactly("100%-Regel.pdf");
+
+    var underscoreResult =
+        libraryService.listDocuments(
+            libraryId, editor.getId(), false, "akte_alt", stableOrder(0, 20));
+    assertThat(underscoreResult.getItems())
+        .extracting(LibraryDocumentResponse::getFileName)
+        .containsExactly("akte_alt.pdf");
   }
 
   @Test
