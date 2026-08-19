@@ -1,0 +1,6 @@
+Merkblatt zu den Öffnungszeiten der Bürgerauskunft (Beispielbehörde)
+
+Dies ist eine erfundene, kleine Anlage für die OPAA-E2E-Suite (test(e2e) #471) - keine reale
+Behörde, keine realen Öffnungszeiten. Sie wird von der RSS-Detailseite
+seiten/oeffnungszeiten.html verlinkt, damit der Test auch eine Anlage als eigenes Dokument
+prüfen kann.

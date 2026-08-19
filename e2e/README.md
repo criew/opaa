@@ -186,6 +186,24 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   sie wieder grün. Details und die konkrete Fehlermeldung des roten Laufs stehen im PR, der dieses
   Szenario eingeführt hat.
 
+- `tests/rss-feed-library.spec.ts` (#471) — die RSS-Feed-Quelle über den vollen Stack: eine
+  Bibliothek wird über das RSS-Feed-Template angelegt (Anlage #480, Detailseite #481, ADR-0018)
+  und gegen einen erfundenen, generischen RSS-2.0-Feed einer fiktiven "Beispielbehörde" indiziert -
+  ausgeliefert vom eigenen `rss-feed`-Service in `docker-compose.e2e.yml`
+  (`e2e/fixtures/rss-feed/htdocs/`, dasselbe "statischer Inhalt im Compose-Stack"-Muster wie #229's
+  Demo-Korpus). Ein Eintrag verweist auf eine nicht existierende Detailseite (404, Negativpfad) -
+  der Lauf bricht deswegen nicht ab und weist den Eintrag als übersprungen aus. Ein zweiter Lauf
+  über den unveränderten Feed erzeugt keine neuen Dokumente (bedingter Feed-Abruf, ADR-0017).
+  Positiv- und Fehlerfall laufen bewusst als zwei getrennte Feeds/Bibliotheken (siehe der Spec-Datei
+  eigener Kommentar) - sonst würde ein im ersten Lauf zurückgestellter Eintrag verhindern, dass der
+  zweite Lauf des unveränderten Feeds den bedingten Feed-Abruf (ETag/If-Modified-Since) überhaupt
+  nutzt.
+
+  Anders als #424 prüft dieses Szenario den Indizierungserfolg nicht über eine Quellenangabe im
+  Chat, sondern über die Dokumentzahlen der Indizierungsantwort und der Bibliothek selbst - siehe
+  die Spec-Datei für die Begründung (der KI-Stub liefert für jede Anfrage denselben Embedding-
+  Vektor, siehe "KI-Stub statt echtem Modell" oben).
+
 ## CI
 
 `.github/workflows/e2e.yml` führt die Suite aus bei:
