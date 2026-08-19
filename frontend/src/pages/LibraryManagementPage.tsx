@@ -16,7 +16,6 @@ import CreateLibraryDialog from '../components/CreateLibraryDialog'
 function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.personal) return 'persönlich'
   if (library.ownerType === 'GROUP') return 'Gruppen-Bibliothek'
-  if (library.ownerType === 'SYSTEM') return 'systemweit bereitgestellt'
   return 'eigene'
 }
 

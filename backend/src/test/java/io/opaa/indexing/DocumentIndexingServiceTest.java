@@ -171,40 +171,23 @@ class DocumentIndexingServiceTest {
   }
 
   @Test
-  void aSystemAdminMayTargetTheSystemLibraryWithoutAnExplicitGrant() {
-    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
-    UUID systemLibraryId = UUID.randomUUID();
-    when(systemLibrary.getId()).thenReturn(systemLibraryId);
-    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
-    when(systemLibrary.isSystemLibrary()).thenReturn(true);
-    when(systemLibrary.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
+  void aSystemAdminWithoutAGrantIsRejectedEvenWithNoOwnerColumnsSet() {
+    // #521 removed the one carve-out that used to exist here (the well-known SYSTEM-owned
+    // library, seeded with no owner and no grants, which a system admin could target without a
+    // grant) - this pins that canEdit is now consulted unconditionally, the same as for any other
+    // library, even one whose mock stubs nothing beyond organization membership.
+    KnowledgeLibrary otherLibrary = mock(KnowledgeLibrary.class);
+    UUID otherLibraryId = UUID.randomUUID();
+    when(otherLibrary.getOrganizationId()).thenReturn(organizationId);
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(systemLibraryId)).thenReturn(job);
+    when(libraryRepository.findById(otherLibraryId)).thenReturn(Optional.of(otherLibrary));
+    when(libraryAccessService.canEdit(otherLibrary, currentUser.getId(), false)).thenReturn(false);
 
-    IndexingJob result = service.triggerIndexing(systemLibraryId, currentUser.getId(), true);
-
-    assertThat(result).isEqualTo(job);
-    verify(libraryAccessService, never())
-        .canEdit(any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
-  }
-
-  @Test
-  void aNonSystemAdminMayNotTargetTheSystemLibraryWithoutAGrant() {
-    KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
-    UUID systemLibraryId = UUID.randomUUID();
-    when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
-    // systemAdmin=false short-circuits "systemAdmin && library.isSystemLibrary()" before
-    // isSystemLibrary() is ever called, so it is deliberately left unstubbed.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
-    when(libraryAccessService.canEdit(systemLibrary, currentUser.getId(), false)).thenReturn(false);
-
-    assertThatThrownBy(() -> service.triggerIndexing(systemLibraryId, currentUser.getId(), false))
+    assertThatThrownBy(() -> service.triggerIndexing(otherLibraryId, currentUser.getId(), true))
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+    verify(libraryAccessService).canEdit(otherLibrary, currentUser.getId(), false);
   }
 
   @Test

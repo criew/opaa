@@ -100,13 +100,14 @@ Drei Zustände werden unterschieden:
   Vektorspeicher und die abgelegte Datei wieder. Schadsoftwareprüfung ist bewusst ausgeklammert und
   muss vor einem Produktivbetrieb nachgezogen werden.
 - **Ziel-Wissensbibliothek je Lauf.** `libraryId` ist beim Anstoß Pflicht; die Aufnahme schreibt
-  nicht mehr fest in die System-Bibliothek (#419). Die auslösende Person braucht mindestens
+  nicht mehr fest in eine feste Bibliothek (#419). Die auslösende Person braucht mindestens
   `EDITOR` auf der Zielbibliothek — echt geprüft, ohne pauschalen Bypass für System-Admins: Der
   Endpunkt selbst verlangt `SYSTEM_ADMIN`, aber ein System-Admin ohne eigenen Grant auf einer
-  fremden Bibliothek bekommt trotzdem `403`. Einzige Ausnahme ist die System-Bibliothek selbst
-  (seit jeher ohne Eigentümer und ohne Grants) — dort dürfen System-Admins weiterhin schreiben,
-  sonst wäre sie für niemanden mehr erreichbar. Bestandsdokumente, die vor #419 in der
-  System-Bibliothek landeten, bleiben dort — das nachträgliche Umhängen ist nicht Teil davon.
+  fremden Bibliothek bekommt trotzdem `403`, ausnahmslos für jede Bibliothek. Bis
+  [#521](https://github.com/criew/opaa/issues/521) galt eine einzige Ausnahme — die
+  System-Bibliothek, seit jeher ohne Eigentümer und ohne Grants, blieb für System-Admins
+  beschreibbar, sonst wäre sie für niemanden mehr erreichbar gewesen; #521 hat sie samt Inhalt
+  gelöscht, damit ist auch diese Ausnahme entfallen.
   Der Indizierungsauftrag führt seine Zielbibliothek (`IndexingStatusResponse.libraryId`) — das
   ist ein Verlaufsprotokoll vergangener Läufe, keine Rechtehistorie: Wird die Bibliothek später
   gelöscht, wird das Feld `NULL` (`ON DELETE SET NULL`) statt die Löschung zu blockieren, anders

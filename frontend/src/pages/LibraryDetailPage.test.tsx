@@ -104,7 +104,7 @@ const viewerLibrary: LibraryListResponse = {
   id: 'library-readonly',
   name: 'Dienstanweisungen',
   description: 'Organisationsweit',
-  ownerType: 'SYSTEM',
+  ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
   personal: false,
@@ -134,7 +134,7 @@ function detailsOf(
   library: LibraryListResponse,
   overrides: Partial<LibraryResponse> = {},
 ): LibraryResponse {
-  return { ...library, ownerId: null, ...overrides }
+  return { ...library, ownerId: 'mock-owner-id', ...overrides }
 }
 
 function setLibraryState(library: LibraryListResponse, details: LibraryResponse) {

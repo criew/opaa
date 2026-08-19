@@ -320,11 +320,11 @@ class RetrievalEvaluationHarnessTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
-  // set up once per run, not pinned to KnowledgeLibrary.SYSTEM_LIBRARY_ID, since that constant
-  // is no longer what production indexing targets by default. The measurements themselves are
-  // unaffected: this harness reads via vectorStore.similaritySearch (see the class Javadoc), not
-  // through the permission-aware query path, so which library the corpus lands in does not change
-  // what is measured.
+  // set up once per run, not pinned to a well-known system library id, since #419 already stopped
+  // production indexing from targeting one by default and #521 later deleted it outright. The
+  // measurements themselves are unaffected: this harness reads via vectorStore.similaritySearch
+  // (see the class Javadoc), not through the permission-aware query path, so which library the
+  // corpus lands in does not change what is measured.
   private UUID evalUserId;
   private UUID evalLibraryId;
 

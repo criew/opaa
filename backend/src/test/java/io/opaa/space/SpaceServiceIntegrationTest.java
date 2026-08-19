@@ -70,10 +70,8 @@ class SpaceServiceIntegrationTest {
     // #201: fk_knowledge_libraries_owner_user also references users now, not just fk_spaces_owner
     // - a leftover personal library from another test class sharing this context (e.g.
     // UserServicePersonalSpaceIntegrationTest, which has no @AfterEach) would otherwise block
-    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user. Never
-    // touches the one seeded SYSTEM library.
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    // userRepository.deleteAll() below with a RESTRICT violation on that unrelated user.
+    libraryRepository.deleteAll();
     // #238 code review, finding 2+4: the same leftover-history risk as the library cleanup above -
     // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment).
@@ -94,8 +92,7 @@ class SpaceServiceIntegrationTest {
     // sharing this context.
     membershipRepository.deleteAll();
     spaceRepository.deleteAll();
-    libraryRepository.deleteAll(
-        libraryRepository.findAll().stream().filter(l -> !l.isSystemLibrary()).toList());
+    libraryRepository.deleteAll();
     grantHistoryRepository.deleteAll();
     membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();

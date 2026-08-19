@@ -100,12 +100,14 @@ lesbare_Bibliotheken(u) =
 
 **Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
 
-**Der Ausdruck kennt keine Ausnahme — auch nicht für die System-Bibliothek.** Sie ist beim Anlegen
-`PRIVATE` und ohne Grants, fällt also von sich aus aus jeder lesbaren Menge heraus; sie ist aber
-keine Bibliothek mit eigenen Regeln. Beide Wege, auf denen Rechte geprüft werden — die Anzeige einer
-einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das nicht
-taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
-([#406](https://github.com/criew/opaa/issues/406)).
+**Der Ausdruck kennt keine Ausnahme.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige
+einer einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das
+nicht taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
+([#406](https://github.com/criew/opaa/issues/406)). Bis [#521](https://github.com/criew/opaa/issues/521)
+bewährte sich das an einer System-Bibliothek ohne Eigentümer (`PRIVATE`, ohne Grants seit ihrer
+Migration-Saat, #201) — die keine Bibliothek mit eigenen Regeln war, sondern von sich aus aus jeder
+lesbaren Menge herausfiel. #521 hat sie samt Inhalt gelöscht; jede verbleibende Bibliothek hat einen
+echten Eigentümer.
 
 ### Gruppen als Rechtesubjekt
 

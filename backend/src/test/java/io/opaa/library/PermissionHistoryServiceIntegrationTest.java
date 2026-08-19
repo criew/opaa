@@ -127,9 +127,8 @@ class PermissionHistoryServiceIntegrationTest {
         libraryRepository.findAll().stream()
             .filter(
                 l ->
-                    !l.isSystemLibrary()
-                        && (createdUserIds.contains(l.getOwnerUserId())
-                            || createdGroupIds.contains(l.getOwnerGroupId())))
+                    createdUserIds.contains(l.getOwnerUserId())
+                        || createdGroupIds.contains(l.getOwnerGroupId()))
             .toList();
     libraryRepository.deleteAll(ownLibraries);
     // #238 code review, finding 3+4: subject_user_id/user_id are ON DELETE RESTRICT - see

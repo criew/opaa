@@ -1780,11 +1780,8 @@ components:
 
     LibraryOwnerType:
       type: string
-      description: >
-        Who owns a library. USER and GROUP are the only values a client may submit; SYSTEM (the
-        migration target for pre-#201 documents, readable by system admins only) is never
-        creatable through this API - see #201.
-      enum: [USER, GROUP, SYSTEM]
+      description: Who owns a library - a single person or a group.
+      enum: [USER, GROUP]
       example: USER
 
     LibraryVisibility:
@@ -2024,6 +2021,7 @@ components:
         - id
         - name
         - ownerType
+        - ownerId
         - visibility
         - listed
         - personal
@@ -2046,8 +2044,7 @@ components:
         ownerId:
           type: string
           format: uuid
-          nullable: true
-          description: Null only for the SYSTEM-owned library
+          description: The owning user or group, whichever ownerType names.
         visibility:
           $ref: "#/components/schemas/LibraryVisibility"
         listed:

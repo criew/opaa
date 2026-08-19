@@ -117,16 +117,14 @@ public class DocumentIndexingService {
    *
    * <p><b>Deliberately no blanket system-admin bypass here</b>, mirroring the endpoint this
    * replaces: {@code canEdit} is always called with {@code systemAdmin = false}, so the real
-   * grant/visibility formula decides - the one exception is {@link
-   * KnowledgeLibrary#isSystemLibrary() the system library} itself, seeded with no owner and no
-   * grants (migration 012), which only a system admin may target without an explicit grant.
+   * grant/visibility formula decides. Until #521, the one exception was the well-known system
+   * library, seeded with no owner and no grants (migration 012) - #521 deleted that library
+   * outright, so no exception remains.
    */
   private KnowledgeLibrary requireEditableLibrary(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    boolean systemAdminOnSystemLibrary = systemAdmin && library.isSystemLibrary();
-    if (!systemAdminOnSystemLibrary
-        && !libraryAccessService.canEdit(library, currentUserId, false)) {
+    if (!libraryAccessService.canEdit(library, currentUserId, false)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return library;

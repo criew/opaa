@@ -39,16 +39,6 @@ import java.util.UUID;
 @Table(name = "knowledge_libraries")
 public class KnowledgeLibrary {
 
-  /**
-   * The single, well-known system library that existing documents were migrated into (#201) - they
-   * carried no container of any kind before this issue. Seeded by migration 012 alongside {@link
-   * io.opaa.organization.Organization#DEFAULT_ID}; referenced directly by id rather than looked up,
-   * the same pattern {@code Organization.DEFAULT_ID} already uses, because this stage of the
-   * product has exactly one organization and therefore exactly one system library.
-   */
-  public static final UUID SYSTEM_LIBRARY_ID =
-      UUID.fromString("00000000-0000-0000-0000-000000000002");
-
   @Id private UUID id;
 
   @Column(name = "organization_id", nullable = false)
@@ -341,19 +331,11 @@ public class KnowledgeLibrary {
     return ownerType == LibraryOwnerType.GROUP && ownerGroupId.equals(groupId);
   }
 
-  public boolean isSystemLibrary() {
-    return ownerType == LibraryOwnerType.SYSTEM;
-  }
-
-  /**
-   * The owning user or group id, whichever {@link #ownerType} points at; {@code null} for {@link
-   * LibraryOwnerType#SYSTEM}.
-   */
+  /** The owning user or group id, whichever {@link #ownerType} points at. */
   public UUID getOwnerId() {
     return switch (ownerType) {
       case USER -> ownerUserId;
       case GROUP -> ownerGroupId;
-      case SYSTEM -> null;
     };
   }
 

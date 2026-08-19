@@ -166,7 +166,7 @@ class AuditEventRecordingIntegrationTest {
             .toList());
     List<UUID> ownLibraryIds =
         libraryRepository.findAll().stream()
-            .filter(l -> l.getOrganizationId().equals(organizationId) && !l.isSystemLibrary())
+            .filter(l -> l.getOrganizationId().equals(organizationId))
             .map(l -> l.getId())
             .toList();
     grantRepository.deleteAll(
@@ -180,7 +180,7 @@ class AuditEventRecordingIntegrationTest {
             .toList());
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream()
-            .filter(l -> l.getOrganizationId().equals(organizationId) && !l.isSystemLibrary())
+            .filter(l -> l.getOrganizationId().equals(organizationId))
             .toList());
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     // Covers both groups created through GroupService (tracked in createdGroupIds) and ORG_UNIT

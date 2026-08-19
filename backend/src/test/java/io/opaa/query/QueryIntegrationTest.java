@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
-import io.opaa.library.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -255,12 +254,34 @@ class QueryIntegrationTest {
   }
 
   @Test
-  void indexedContentInTheSystemLibraryIsReachableOnceItIsOpened() {
-    // The case that made a fully indexed corpus useless on the test instance (#406): everything the
-    // indexing pipeline writes lands in the system library (FileProcessingService), and nothing
-    // could ever open it. This test walks the whole query chain for that library - closed first,
-    // then opened - because neither half alone would have caught it: the closed state was correct
-    // and stayed correct, and no test ever asked what happens after.
+  void indexedContentBecomesReachableOnceItsLibraryIsOpenedToTheOrganization() {
+    // #406: widening a library's visibility must actually widen the search, not just the library
+    // API - the case that made a fully indexed corpus useless on the test instance before #406,
+    // then demonstrated on the well-known system library that existed until #521 (see that issue).
+    // This test walks the whole query chain for an ordinary library the querying user has no grant
+    // on - closed first, then opened - because neither half alone would have caught the original
+    // defect: the closed state was correct and stayed correct, and no test ever asked what happens
+    // after.
+    UUID otherOwnerId = UUID.randomUUID();
+    UUID closedLibraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        otherOwnerId,
+        "query-it-other-" + otherOwnerId,
+        "test-issuer",
+        "other@example.com",
+        "Other Owner",
+        DEFAULT_ORGANIZATION_ID);
+    jdbcTemplate.update(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, listed, personal, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'Verschlossene Bibliothek', 'USER', ?, 'PRIVATE', false, false,"
+            + " 'UPLOAD', now(), now())",
+        closedLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        otherOwnerId);
+
     var doc =
         new Document(
             "Batman ist 188 cm gross.",
@@ -272,7 +293,7 @@ class QueryIntegrationTest {
                 "chunk_index",
                 0,
                 "library_id",
-                KnowledgeLibrary.SYSTEM_LIBRARY_ID.toString()));
+                closedLibraryId.toString()));
     vectorStore.add(List.of(doc));
 
     var assistantMessage =
@@ -280,14 +301,15 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(assistantMessage))));
 
-    QueryResponse closed =
-        queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
-    assertThat(closed.getSources()).isEmpty();
-
-    jdbcTemplate.update(
-        "UPDATE knowledge_libraries SET visibility = 'ORGANIZATION' WHERE id = ?",
-        KnowledgeLibrary.SYSTEM_LIBRARY_ID);
     try {
+      QueryResponse closed =
+          queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
+      assertThat(closed.getSources()).isEmpty();
+
+      jdbcTemplate.update(
+          "UPDATE knowledge_libraries SET visibility = 'ORGANIZATION' WHERE id = ?",
+          closedLibraryId);
+
       var answer =
           new AssistantMessage("Batman ist 188 cm gross. 【source: doc-batman#0 | batman.md】");
       when(chatModel.call(any(Prompt.class)))
@@ -299,9 +321,8 @@ class QueryIntegrationTest {
       assertThat(opened.getSources()).hasSize(1);
       assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
     } finally {
-      jdbcTemplate.update(
-          "UPDATE knowledge_libraries SET visibility = 'PRIVATE' WHERE id = ?",
-          KnowledgeLibrary.SYSTEM_LIBRARY_ID);
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", closedLibraryId);
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", otherOwnerId);
     }
   }
 

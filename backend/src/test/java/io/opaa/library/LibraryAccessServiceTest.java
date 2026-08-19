@@ -51,14 +51,15 @@ class LibraryAccessServiceTest {
   }
 
   /**
-   * The system library has no factory on purpose - only the migration creates one - so it is mocked
-   * here rather than built. Only what {@code effectiveRole} reads is stubbed.
+   * A library owned by someone other than {@link #userId}, with an explicit visibility - used to
+   * exercise the fail-closed/opened-by-visibility/opened-by-grant formula independent of ownership
+   * (#406, formerly exercised via the now-removed {@code SYSTEM} owner kind - see #521).
    */
-  private KnowledgeLibrary systemLibrary(UUID libraryId, LibraryVisibility visibility) {
-    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
-    when(library.getId()).thenReturn(libraryId);
-    when(library.getVisibility()).thenReturn(visibility);
-    when(library.isSystemLibrary()).thenReturn(true);
+  private KnowledgeLibrary libraryWithVisibility(UUID libraryId, LibraryVisibility visibility) {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId, "Bibliothek", null, UUID.randomUUID(), visibility, false, false);
+    setId(library, libraryId);
     return library;
   }
 
@@ -77,41 +78,35 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void theSeededSystemLibraryIsClosedToOrdinaryUsers() {
+  void aPrivateLibraryWithNoGrantsIsClosedToOrdinaryUsersButOpenToASystemAdmin() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.PRIVATE);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.PRIVATE);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
 
-    // The fail-closed default #201 asks for. Since #406 it follows from the library's state -
-    // PRIVATE, no grants - instead of a special case, which is why the grant list is consulted now
-    // where the old short-circuit skipped it.
-    assertThat(accessService.canRead(systemLibrary, userId, false)).isFalse();
-    assertThat(accessService.canRead(systemLibrary, userId, true)).isTrue();
+    // The fail-closed default #201 originally asked for the now-removed SYSTEM owner kind (#521);
+    // an ordinary PRIVATE, ungranted library follows the same formula (#406) without any special
+    // case.
+    assertThat(accessService.canRead(library, userId, false)).isFalse();
+    assertThat(accessService.canRead(library, userId, true)).isTrue();
   }
 
   @Test
-  void anOpenedSystemLibraryIsReadableLikeAnyOther() {
+  void anOrganizationVisibleLibraryIsReadableByAnyoneInTheOrganization() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.ORGANIZATION);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.ORGANIZATION);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
 
-    // Before #406 this returned false while readableLibraryIds - which never knew the special
-    // case - already included the library: the search retrieved from it and the library API denied
-    // it. One formula, one answer.
-    assertThat(accessService.canRead(systemLibrary, userId, false)).isTrue();
+    assertThat(accessService.canRead(library, userId, false)).isTrue();
   }
 
   @Test
-  void aGrantOnTheSystemLibraryCounts() {
+  void aGrantOnAPrivateLibraryCounts() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary systemLibrary = systemLibrary(libraryId, LibraryVisibility.PRIVATE);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.PRIVATE);
     when(grantRepository.findByLibraryId(libraryId))
         .thenReturn(List.of(userGrant(libraryId, userId, AssetRole.VIEWER)));
 
-    // Grants used to be ignored outright on a system library. They are the narrower way to open the
-    // migrated stock - one person rather than the whole organization - and silently dropping them
-    // left only the wider one.
-    assertThat(accessService.canRead(systemLibrary, userId, false)).isTrue();
+    assertThat(accessService.canRead(library, userId, false)).isTrue();
   }
 
   @Test
