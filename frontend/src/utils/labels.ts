@@ -121,7 +121,7 @@ const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
   UPLOAD: 'Dokumente werden manuell hochgeladen und einzeln verwaltet.',
   FILESYSTEM: 'Ein Verzeichnis auf dem Server wird regelmäßig eingelesen.',
   HTTP_DIRECTORY:
-    'Eine über HTTP erreichbare Verzeichnisseite wird abgerufen, kein lokaler Ordner.',
+    'Eine über das Web (http/https) erreichbare Verzeichnisseite wird abgerufen, kein lokaler Ordner.',
   RSS_FEED: 'Ein RSS-Feed und die verlinkten Detailseiten werden abgerufen.',
 }
 

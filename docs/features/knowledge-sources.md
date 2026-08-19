@@ -38,8 +38,8 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 
 1. **Zwei Wege führen Wissen in OPAA:** der **Upload** durch Menschen und der **Konnektor**, der aus
    einem Quellsystem zieht. Beide Wege sind heute gebaut. Eine Wissensbibliothek trägt dabei **genau
-   einen Quellentyp** — `UPLOAD`, ein Verzeichnis im Dateisystem, eine erreichbare Verzeichnisliste im
-   Netz oder ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
+   einen Quellentyp** — `UPLOAD`, ein Verzeichnis im Dateisystem, ein erreichbares Webverzeichnis oder
+   ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
    unveränderlich (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)).
    Die Bibliothek **ist** die Quelle; es gibt keine davon getrennte Konnektor- oder Quellen-Tabelle.
 2. **Konnektorbestände aktualisieren sich selbst**, Uploads bleiben statisch. Das ist der wesentliche
@@ -142,7 +142,7 @@ einem Quellsystem, statt dass jemand eine Datei übergibt. Anders als eine früh
 Dokuments vorsah, ist ein Konnektor **kein eigenes Verwaltungsobjekt** mit mehreren Quellen, die auf
 Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**,
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
-**Quellentyp** — Dateisystem-Verzeichnis, Verzeichnisliste im Netz, RSS-Feed — und, für diesen
+**Quellentyp** — Dateisystem-Verzeichnis, Webverzeichnis, RSS-Feed — und, für diesen
 Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
 Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
 verlangt eine neue Bibliothek.
@@ -162,7 +162,7 @@ Netzdateiprotokolle, Wiki- und Intranetsysteme über deren Schnittstelle, Postf�
 Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Verzeichnislisten und
 RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier gebaute Quellentypen insgesamt:
 `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`), siehe
-[Erreichbare Verzeichnislisten im Netz](#erreichbare-verzeichnislisten-im-netz-gebaut) und
+[Webverzeichnis](#webverzeichnis-gebaut) und
 [Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
@@ -194,12 +194,12 @@ konfigurierte **Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) — bei Anlag
 jedem Lauf; ein Pfad außerhalb der Allowlist wird abgelehnt. **Ist die Allowlist leer, ist der
 Quellentyp `FILESYSTEM` vollständig deaktiviert** — die sichere Voreinstellung, kein Übergangszustand
 (siehe [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 6-Nachtrag,
-und die Javadoc von `FilesystemPathAllowlist`). Ablauf eines Laufs entspricht der [Verzeichnisliste im
-Netz](#erreichbare-verzeichnislisten-im-netz-gebaut): vollständige Auflistung bei jedem Lauf; die
+und die Javadoc von `FilesystemPathAllowlist`). Ablauf eines Laufs entspricht dem
+[Webverzeichnis](#webverzeichnis-gebaut): vollständige Auflistung bei jedem Lauf; die
 **Löschung durch Abwesenheit ist für diesen Typ entschieden, aber noch nicht gebaut** (ADR-0017,
 Entscheidung 5, siehe [ADR-0017](../decisions/0017-quellentypmodell-indizierung.md)).
 
-### Erreichbare Verzeichnislisten im Netz (gebaut)
+### Webverzeichnis (gebaut)
 
 Viele Häuser stellen Dokumentbestände schlicht über einen Webserver bereit, der ein Verzeichnis als
 HTML-Liste ausgibt. Für diese Bestände gibt es kein Quellsystem mit Schnittstelle — die Liste selbst
@@ -368,7 +368,7 @@ Damit das trägt, gelten drei Regeln:
 2. **Löschen in der Quelle wirkt durch — für vollständig auflistende Quellentypen.** Ein in der Quelle
    entferntes Dokument wird aus dem Index genommen. Andernfalls bliebe eine zurückgezogene Weisung
    antwortfähig — der gefährlichste Fall überhaupt. Diese Regel gilt uneingeschränkt für
-   **vollständig auflistende** Quellentypen (Verzeichnis im Dateisystem, Verzeichnisliste im Netz), die
+   **vollständig auflistende** Quellentypen (Verzeichnis im Dateisystem, Webverzeichnis), die
    bei jedem Lauf den **gesamten** Bestand liefern: Fehlt ein zuvor indiziertes Dokument im aktuellen
    Lauf, ist das eine verlässliche Aussage über sein Verschwinden. Der **Feed** ist demgegenüber ein
    **ergänzender** Quellentyp — er liefert bei jedem Abruf nur einen Ausschnitt, üblicherweise die
@@ -684,7 +684,7 @@ Idee wieder aufgemacht werden.
   Anlage aus einem Template, danach unveränderlich.** Gemischt gespeiste Bibliotheken (mehrere Quellen,
   oder Upload und Konnektor zusammen) entfallen ersatzlos. Erfasst und entschieden mit
   [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
-- **Die Konfiguration einer erreichbaren Verzeichnisliste im Netz (und jedes anderen lauf-basierten
+- **Die Konfiguration eines erreichbaren Webverzeichnisses (und jedes anderen lauf-basierten
   Typs) lebt an der Bibliothek, nicht im einzelnen Anstoß-Request.** Verzeichnispfad bzw. Adresse,
   Zugangsdaten, Proxy und das Aussetzen der Zertifikatsprüfung sind Teil der Bibliothekskonfiguration
   und überleben den einzelnen Lauf. Damit ist auch geklärt, dass diese Felder **nicht** in ein
