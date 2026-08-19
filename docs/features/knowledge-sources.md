@@ -80,7 +80,7 @@ Ablauf beim Hochladen:
 
 1. Auswahl der Dateien über die Web-Oberfläche, als Anhang im Chat oder über die Schnittstelle.
    **Gebaut (#420, #422):** `POST /api/v1/libraries/{libraryId}/documents` als `multipart/form-data`-
-   Schnittstelle sowie die Web-Oberfläche dazu (`DocumentsPage.tsx`) — Auswahl per Dateidialog und
+   Schnittstelle sowie die Web-Oberfläche dazu (`LibraryDetailPage.tsx`) — Auswahl per Dateidialog und
    Drag-and-drop. Ein Anhang im Chat ist ein eigener, noch offener Vorgang.
 2. Prüfung: Format, Größe, Schadsoftware. Abgelehnte Dateien werden mit Grund gemeldet.
    **Format und Größe sind gebaut** (#420) — dieselbe Formatliste (`SupportedDocumentFormats`) wie

@@ -27,7 +27,7 @@ import type { AssetRole, LibraryDocumentResponse, LibraryVisibility } from '../t
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
-import { useIndexingStore } from '../stores/indexingStore'
+import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import {
   assetRoleLabel,
   documentSourceTypeConfigKind,
@@ -224,6 +224,15 @@ export default function LibraryDetailPage() {
           {localError}
         </Alert>
       )}
+      {/* #506 review, finding 3: without this, a failed GET /libraries/{id} while the list entry
+          is already cached silently drops both typed sections below with no explanation - details
+          stays undefined, so neither the UPLOAD nor the connector section's sourceType check
+          matches. */}
+      {!details && storeError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {storeError}
+        </Alert>
+      )}
       {!canEdit && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Sie können diese Bibliothek einsehen, aber nicht bearbeiten.
@@ -247,11 +256,15 @@ export default function LibraryDetailPage() {
               geändert werden.
             </Typography>
           )}
+          {/* #506 review, finding 7: disabled removes a read-only viewer's fields from the tab
+              order and screen readers entirely; readOnly keeps them focusable and readable while
+              still blocking edits. Select supports the same prop directly - Checkbox does not (no
+              native HTML readonly for checkboxes), so it stays on disabled. */}
           <TextField
             label="Name der Bibliothek"
             value={name}
             onChange={(e) => setDraft({ name: e.target.value, description, visibility, listed })}
-            disabled={!canEdit}
+            slotProps={{ input: { readOnly: !canEdit } }}
             size="small"
           />
           <TextField
@@ -260,15 +273,16 @@ export default function LibraryDetailPage() {
             onChange={(e) => setDraft({ name, description: e.target.value, visibility, listed })}
             multiline
             minRows={2}
-            disabled={!canEdit}
+            slotProps={{ input: { readOnly: !canEdit } }}
             size="small"
           />
-          <FormControl size="small" disabled={!canEdit}>
+          <FormControl size="small">
             <InputLabel id="library-detail-visibility-label">Sichtbarkeit</InputLabel>
             <Select
               labelId="library-detail-visibility-label"
               label="Sichtbarkeit"
               value={visibility}
+              readOnly={!canEdit}
               onChange={(e) =>
                 setDraft({
                   name,
@@ -338,6 +352,10 @@ export default function LibraryDetailPage() {
         <LibraryDocumentsSection
           libraryId={libraryId}
           canManage={canManageDocuments(library.myRole) || isSystemAdmin}
+          // #506 review, finding 7: the document count in the header comes from the library
+          // itself, not from documentStore - without this it stays on whatever value was loaded
+          // on mount even after an upload or delete changes it.
+          onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
         />
       )}
       {details && details.sourceType !== 'UPLOAD' && (
@@ -362,9 +380,14 @@ export default function LibraryDetailPage() {
 interface LibraryDocumentsSectionProps {
   libraryId: string
   canManage: boolean
+  onDocumentsChanged: () => void
 }
 
-function LibraryDocumentsSection({ libraryId, canManage }: LibraryDocumentsSectionProps) {
+function LibraryDocumentsSection({
+  libraryId,
+  canManage,
+  onDocumentsChanged,
+}: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const isLoading = useDocumentStore((s) => s.isLoading)
   const error = useDocumentStore((s) => s.error)
@@ -377,14 +400,19 @@ function LibraryDocumentsSection({ libraryId, canManage }: LibraryDocumentsSecti
   const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
   const clearDeleteError = useDocumentStore((s) => s.clearDeleteError)
   const stopPolling = useDocumentStore((s) => s.stopPolling)
+  const reset = useDocumentStore((s) => s.reset)
 
   const [isDragActive, setIsDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // #506 review, finding 2: uploadErrors/deleteError/error are not keyed by library - without
+    // this reset, an upload or delete failure left over from a previously viewed library would
+    // keep showing on a different library's section after switching.
+    reset()
     void loadDocuments(libraryId)
     return () => stopPolling(libraryId)
-  }, [libraryId, loadDocuments, stopPolling])
+  }, [libraryId, loadDocuments, stopPolling, reset])
 
   const documents = documentsByLibrary[libraryId] ?? []
 
@@ -394,6 +422,7 @@ function LibraryDocumentsSection({ libraryId, canManage }: LibraryDocumentsSecti
     for (const file of Array.from(files)) {
       try {
         await uploadNewDocument(libraryId, file)
+        onDocumentsChanged()
       } catch {
         // Der Fehler landet bereits gesammelt in documentStore.uploadErrors und wird unten
         // angezeigt; die Schleife läuft weiter, damit ein Fehler bei einer Datei nicht die
@@ -420,6 +449,7 @@ function LibraryDocumentsSection({ libraryId, canManage }: LibraryDocumentsSecti
     }
     try {
       await removeDocument(libraryId, document.id)
+      onDocumentsChanged()
     } catch {
       // Fehlermeldung wird bereits über documentStore.deleteError angezeigt.
     }
@@ -588,20 +618,16 @@ interface LibraryIndexingSectionProps {
 }
 
 function LibraryIndexingSection({ libraryId, library, canTrigger }: LibraryIndexingSectionProps) {
-  const status = useIndexingStore((s) => s.status)
-  const documentCount = useIndexingStore((s) => s.documentCount)
-  const totalDocuments = useIndexingStore((s) => s.totalDocuments)
-  const documentsSkipped = useIndexingStore((s) => s.documentsSkipped)
-  const timestamp = useIndexingStore((s) => s.timestamp)
+  const run = useIndexingStore((s) => s.runsByLibrary[libraryId] ?? IDLE_RUN_STATE)
+  const { status, documentCount, totalDocuments, documentsSkipped, timestamp } = run
   const trigger = useIndexingStore((s) => s.triggerIndexing)
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
 
   useEffect(() => {
     void loadStatus(libraryId)
-    return () => stopPolling()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [libraryId])
+    return () => stopPolling(libraryId)
+  }, [libraryId, loadStatus, stopPolling])
 
   const isRunning = status === 'RUNNING'
   const progressPercent =

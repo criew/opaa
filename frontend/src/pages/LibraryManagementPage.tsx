@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link as RouterLink, useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -25,11 +25,13 @@ function documentCountSummary(documentCount: number): string {
 }
 
 function LibraryListItem({ library }: { library: LibraryListResponse }) {
-  const navigate = useNavigate()
-
   return (
+    // #506 review, finding 6: a real link (right-click "open in new tab", middle-click, browser
+    // history) instead of a navigate()-triggering button - RouterLink gives ButtonBase an actual
+    // href while keeping the button's focus/hover/ripple behaviour.
     <ButtonBase
-      onClick={() => navigate(`/libraries/${library.id}`)}
+      component={RouterLink}
+      to={`/libraries/${library.id}`}
       sx={{
         display: 'block',
         width: '100%',

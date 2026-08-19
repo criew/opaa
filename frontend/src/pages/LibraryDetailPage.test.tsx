@@ -31,6 +31,8 @@ const {
   mockUpdateLibrary,
   mockDeleteLibrary,
   mockGetLibraryDocuments,
+  mockUploadDocument,
+  mockDeleteLibraryDocument,
   mockTriggerIndexing,
   mockGetIndexingStatus,
 } = vi.hoisted(() => ({
@@ -38,6 +40,8 @@ const {
   mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
   mockDeleteLibrary: vi.fn(async () => undefined),
   mockGetLibraryDocuments: vi.fn(async () => [] as LibraryDocumentResponse[]),
+  mockUploadDocument: vi.fn(),
+  mockDeleteLibraryDocument: vi.fn(async () => undefined),
   mockTriggerIndexing: vi.fn(
     async () =>
       ({
@@ -70,6 +74,8 @@ vi.mock('../services/api', async () => {
     updateLibrary: mockUpdateLibrary,
     deleteLibrary: mockDeleteLibrary,
     getLibraryDocuments: mockGetLibraryDocuments,
+    uploadDocument: mockUploadDocument,
+    deleteLibraryDocument: mockDeleteLibraryDocument,
     triggerIndexing: mockTriggerIndexing,
     getIndexingStatus: mockGetIndexingStatus,
   }
@@ -158,12 +164,16 @@ describe('LibraryDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useDocumentStore.getState().reset()
-    useIndexingStore.getState().stopPolling()
+    useIndexingStore.getState().stopPolling('library-team')
+    useIndexingStore.getState().stopPolling('library-readonly')
+    useIndexingStore.getState().stopPolling('library-personal')
   })
 
   afterEach(() => {
     useAuthStore.setState({ user: null })
-    useIndexingStore.getState().stopPolling()
+    useIndexingStore.getState().stopPolling('library-team')
+    useIndexingStore.getState().stopPolling('library-readonly')
+    useIndexingStore.getState().stopPolling('library-personal')
   })
 
   it('shows neither edit nor delete controls for a VIEWER', async () => {
@@ -315,6 +325,65 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/quellkonfiguration/i)).not.toBeInTheDocument()
   })
 
+  it('uploads a file and shows it in the list afterwards', async () => {
+    // #506 review, finding 5: durchstich test for upload on the new page, mirroring the
+    // equivalent test in the deleted DocumentsPage.test.tsx.
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    mockUploadDocument.mockResolvedValueOnce({
+      id: 'document-new',
+      fileName: 'neues-dokument.pdf',
+      contentType: 'application/pdf',
+      fileSize: 1000,
+      status: 'PENDING',
+      sourceType: 'UPLOAD',
+      chunkCount: 0,
+      indexedAt: null,
+      uploadedByUserId: 'mock-user-id',
+    })
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const file = new File(['Inhalt'], 'neues-dokument.pdf', { type: 'application/pdf' })
+    const input = await screen.findByLabelText(/dateien auswählen/i, { selector: 'input' })
+    await user.upload(input, file)
+
+    expect(await screen.findByText('neues-dokument.pdf')).toBeInTheDocument()
+    expect(mockUploadDocument).toHaveBeenCalledWith('library-team', file)
+  })
+
+  it('deletes a document after confirmation and removes it from the list', async () => {
+    // #506 review, finding 5: durchstich test for deletion with the confirmation dialog on the
+    // new page, mirroring the equivalent test in the deleted DocumentsPage.test.tsx.
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    mockGetLibraryDocuments.mockResolvedValueOnce([
+      {
+        id: 'document-1',
+        fileName: 'dienstanweisung-2024.pdf',
+        contentType: 'application/pdf',
+        fileSize: 1000,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 12,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: 'mock-user-id',
+      },
+    ])
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await screen.findByText('dienstanweisung-2024.pdf')
+    await user.click(
+      screen.getByRole('button', { name: /dokument dienstanweisung-2024\.pdf löschen/i }),
+    )
+
+    await waitFor(() => {
+      expect(mockDeleteLibraryDocument).toHaveBeenCalledWith('library-team', 'document-1')
+    })
+    expect(screen.queryByText('dienstanweisung-2024.pdf')).not.toBeInTheDocument()
+  })
+
   it('shows the configuration and an indexing trigger for a connector library', async () => {
     setLibraryState(
       managerLibrary,
@@ -334,6 +403,48 @@ describe('LibraryDetailPage', () => {
     await waitFor(() => {
       expect(mockTriggerIndexing).toHaveBeenCalledWith('library-team')
     })
+  })
+
+  it('clears a stale upload error from a previously viewed library after switching', async () => {
+    // #506 review, finding 2: uploadErrors/deleteError/error in documentStore are not keyed by
+    // library - without a reset on mount/switch, an error from library A would keep showing on
+    // library B's section.
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const file = new File(['Inhalt'], 'dublette.pdf', { type: 'application/pdf' })
+    const input = await screen.findByLabelText(/dateien auswählen/i, { selector: 'input' })
+    await user.upload(input, file)
+    expect(await screen.findByText(/bereits vorhanden.*dublette\.pdf/is)).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(personalLibrary, detailsOf(personalLibrary))
+    mockGetLibraryDocuments.mockResolvedValueOnce([])
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await screen.findByText(/dateien hierher ziehen/i)
+    expect(screen.queryByText(/bereits vorhanden/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the library store error alongside the loaded library when reloading its details fails', async () => {
+    // #506 review, finding 3: without this, a failed GET /libraries/{id} while the list entry is
+    // already cached silently drops both typed sections with no explanation.
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    useLibraryStore.setState((state) => ({
+      libraryDetails: {},
+      error: 'Bibliotheksdetails konnten nicht geladen werden',
+      libraries: state.libraries,
+      isLoading: false,
+    }))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(/bibliotheksdetails konnten nicht geladen werden/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
   })
 
   it('hides the indexing trigger for a VIEWER on a connector library', async () => {

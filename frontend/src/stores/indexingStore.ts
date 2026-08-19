@@ -19,12 +19,14 @@ interface Snackbar {
   severity: SnackbarSeverity
 }
 
-// #481: this store used to back the admin drawer's cross-library target picker; the drawer is
-// gone and every caller now already knows which library it cares about (the library detail page).
-// The store keeps tracking a single "active" library's run - fine, since only one library detail
-// page is ever mounted at a time - but every entry point takes libraryId explicitly instead of
-// reading a selection out of drawer-only state.
-interface IndexingState {
+// #506 review, finding 1: a single global run status used to be shared across every library, so a
+// stale response for library A could overwrite the state currently shown for library B after a
+// quick switch, and an already-running interval for A silently kept polling while B never updated.
+// Keyed state (the same runsByLibrary pattern as documentStore.documentsByLibrary) makes every
+// response, and every poll interval, inherently scoped to the library it belongs to - a library
+// that never successfully loaded a status simply falls back to the IDLE default below rather than
+// showing another library's leftover state.
+interface IndexingRunState {
   status: IndexingStatus
   documentCount: number
   totalDocuments: number
@@ -32,18 +34,9 @@ interface IndexingState {
   message: string | null
   timestamp: string | null
   isPolling: boolean
-  snackbar: Snackbar
-
-  triggerIndexing: (libraryId: string) => Promise<void>
-  loadStatus: (libraryId: string) => Promise<void>
-  stopPolling: () => void
-  closeSnackbar: () => void
 }
 
-let pollIntervalId: ReturnType<typeof setInterval> | null = null
-let pollingLibraryId: string | null = null
-
-export const useIndexingStore = create<IndexingState>((set, get) => ({
+export const IDLE_RUN_STATE: IndexingRunState = {
   status: 'IDLE',
   documentCount: 0,
   totalDocuments: 0,
@@ -51,6 +44,34 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   message: null,
   timestamp: null,
   isPolling: false,
+}
+
+interface IndexingState {
+  runsByLibrary: Record<string, IndexingRunState>
+  snackbar: Snackbar
+
+  triggerIndexing: (libraryId: string) => Promise<void>
+  loadStatus: (libraryId: string) => Promise<void>
+  stopPolling: (libraryId: string) => void
+  closeSnackbar: () => void
+}
+
+const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
+
+function setRun(
+  libraryId: string,
+  patch: Partial<IndexingRunState>,
+  set: (partial: Partial<IndexingState>) => void,
+  get: () => IndexingState,
+) {
+  const current = get().runsByLibrary[libraryId] ?? IDLE_RUN_STATE
+  set({
+    runsByLibrary: { ...get().runsByLibrary, [libraryId]: { ...current, ...patch } },
+  })
+}
+
+export const useIndexingStore = create<IndexingState>((set, get) => ({
+  runsByLibrary: {},
   snackbar: { open: false, message: '', severity: 'success' },
 
   triggerIndexing: async (libraryId: string) => {
@@ -58,16 +79,20 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // #478: sourceType and every typed configuration field come from the library itself
       // (ADR-0018) - the trigger only ever names the library.
       const response = await triggerIndexing(libraryId)
-      set({
-        status: response.status,
-        documentCount: response.documentCount,
-        totalDocuments: response.totalDocuments,
-        documentsSkipped: response.documentsSkipped,
-        message: response.message,
-        timestamp: response.timestamp,
-      })
-      get().stopPolling()
-      pollingLibraryId = libraryId
+      setRun(
+        libraryId,
+        {
+          status: response.status,
+          documentCount: response.documentCount,
+          totalDocuments: response.totalDocuments,
+          documentsSkipped: response.documentsSkipped,
+          message: response.message,
+          timestamp: response.timestamp,
+        },
+        set,
+        get,
+      )
+      get().stopPolling(libraryId)
       startPolling(libraryId, set, get)
     } catch (err) {
       const message =
@@ -75,26 +100,34 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // An UPLOAD library never had a run to fail - overwriting status to FAILED would misleadingly
       // suggest one started and broke, so only the snackbar reports it, and status is left as-is.
       const isUploadLibrary = message === UPLOAD_LIBRARY_INDEXING_ERROR
-      set({
-        ...(isUploadLibrary ? {} : { status: 'FAILED' as const, message }),
-        snackbar: { open: true, message, severity: 'error' },
-      })
+      if (!isUploadLibrary) {
+        setRun(libraryId, { status: 'FAILED', message }, set, get)
+      }
+      set({ snackbar: { open: true, message, severity: 'error' } })
     }
   },
 
   loadStatus: async (libraryId: string) => {
+    // Reset to IDLE up front: if this library never had a status loaded before, or the fetch
+    // below fails, the section must show this library's own default rather than whatever another
+    // library left behind in a shared field.
+    setRun(libraryId, IDLE_RUN_STATE, set, get)
     try {
       const response = await getIndexingStatus(libraryId)
-      set({
-        status: response.status,
-        documentCount: response.documentCount,
-        totalDocuments: response.totalDocuments,
-        documentsSkipped: response.documentsSkipped,
-        message: response.message,
-        timestamp: response.timestamp,
-      })
+      setRun(
+        libraryId,
+        {
+          status: response.status,
+          documentCount: response.documentCount,
+          totalDocuments: response.totalDocuments,
+          documentsSkipped: response.documentsSkipped,
+          message: response.message,
+          timestamp: response.timestamp,
+        },
+        set,
+        get,
+      )
       if (response.status === 'RUNNING') {
-        pollingLibraryId = libraryId
         startPolling(libraryId, set, get)
       }
     } catch {
@@ -103,13 +136,13 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     }
   },
 
-  stopPolling: () => {
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId)
-      pollIntervalId = null
+  stopPolling: (libraryId: string) => {
+    const intervalId = pollIntervalIds[libraryId]
+    if (intervalId) {
+      clearInterval(intervalId)
+      delete pollIntervalIds[libraryId]
     }
-    pollingLibraryId = null
-    set({ isPolling: false })
+    setRun(libraryId, { isPolling: false }, set, get)
   },
 
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
@@ -120,26 +153,28 @@ function startPolling(
   set: (partial: Partial<IndexingState>) => void,
   get: () => IndexingState,
 ) {
-  if (pollIntervalId) return
-  set({ isPolling: true })
+  if (pollIntervalIds[libraryId]) return
+  setRun(libraryId, { isPolling: true }, set, get)
 
-  pollIntervalId = setInterval(async () => {
+  pollIntervalIds[libraryId] = setInterval(async () => {
     try {
       const response = await getIndexingStatus(libraryId)
-      // The caller may have navigated to a different library while this request was in flight - a
-      // stale response must not overwrite the state of the library now being polled (or none).
-      if (pollingLibraryId !== libraryId) return
-      set({
-        status: response.status,
-        documentCount: response.documentCount,
-        totalDocuments: response.totalDocuments,
-        documentsSkipped: response.documentsSkipped,
-        message: response.message,
-        timestamp: response.timestamp,
-      })
+      setRun(
+        libraryId,
+        {
+          status: response.status,
+          documentCount: response.documentCount,
+          totalDocuments: response.totalDocuments,
+          documentsSkipped: response.documentsSkipped,
+          message: response.message,
+          timestamp: response.timestamp,
+        },
+        set,
+        get,
+      )
 
       if (response.status === 'COMPLETED' || response.status === 'FAILED') {
-        get().stopPolling()
+        get().stopPolling(libraryId)
         set({
           snackbar: {
             open: true,
@@ -152,10 +187,14 @@ function startPolling(
         })
       }
     } catch {
-      get().stopPolling()
+      get().stopPolling(libraryId)
+      setRun(
+        libraryId,
+        { status: 'FAILED', message: 'Indizierungsstatus konnte nicht abgerufen werden' },
+        set,
+        get,
+      )
       set({
-        status: 'FAILED',
-        message: 'Indizierungsstatus konnte nicht abgerufen werden',
         snackbar: {
           open: true,
           message: 'Indizierungsstatus konnte nicht abgerufen werden',

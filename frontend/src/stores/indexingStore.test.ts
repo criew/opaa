@@ -1,30 +1,46 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { useIndexingStore } from './indexingStore'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from './indexingStore'
+import type { IndexingStatusResponse } from '../types/api'
+
+const { mockTriggerIndexing, mockGetIndexingStatus } = vi.hoisted(() => ({
+  mockTriggerIndexing: vi.fn(),
+  mockGetIndexingStatus: vi.fn(),
+}))
+
+vi.mock('../services/api', () => ({
+  triggerIndexing: mockTriggerIndexing,
+  getIndexingStatus: mockGetIndexingStatus,
+}))
+
+function runningStatus(overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse {
+  return {
+    status: 'RUNNING',
+    documentCount: 1,
+    totalDocuments: 5,
+    documentsSkipped: 0,
+    message: null,
+    timestamp: '2026-03-01T10:00:00Z',
+    ...overrides,
+  }
+}
 
 describe('indexingStore', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     useIndexingStore.setState({
-      status: 'IDLE',
-      documentCount: 0,
-      totalDocuments: 0,
-      documentsSkipped: 0,
-      message: null,
-      timestamp: null,
-      isPolling: false,
+      runsByLibrary: {},
       snackbar: { open: false, message: '', severity: 'success' },
     })
   })
 
   afterEach(() => {
-    useIndexingStore.getState().stopPolling()
+    useIndexingStore.getState().stopPolling('library-a')
+    useIndexingStore.getState().stopPolling('library-b')
+    vi.useRealTimers()
   })
 
-  it('starts with idle state', () => {
-    const state = useIndexingStore.getState()
-    expect(state.status).toBe('IDLE')
-    expect(state.totalDocuments).toBe(0)
-    expect(state.documentsSkipped).toBe(0)
-    expect(state.isPolling).toBe(false)
+  it('starts with idle state for a library with no run yet', () => {
+    expect(useIndexingStore.getState().runsByLibrary['library-a']).toBeUndefined()
   })
 
   it('closes snackbar', () => {
@@ -36,56 +52,85 @@ describe('indexingStore', () => {
   })
 
   it('triggers indexing for the given library and starts polling', async () => {
-    // 'library-personal' is UPLOAD and has no run type at all (see the dedicated 409 test below) -
-    // 'library-referat-50' (FILESYSTEM) is the fixture with an actual indexing run.
     vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
 
-    await useIndexingStore.getState().triggerIndexing('library-referat-50')
+    await useIndexingStore.getState().triggerIndexing('library-a')
 
-    const state = useIndexingStore.getState()
-    expect(state.status).toBe('RUNNING')
-    expect(state.isPolling).toBe(true)
-
-    useIndexingStore.getState().stopPolling()
-    vi.useRealTimers()
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status).toBe('RUNNING')
+    expect(run?.isPolling).toBe(true)
   })
 
   it('stops polling', async () => {
     vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
 
-    await useIndexingStore.getState().triggerIndexing('library-referat-50')
-    expect(useIndexingStore.getState().isPolling).toBe(true)
+    await useIndexingStore.getState().triggerIndexing('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
 
-    useIndexingStore.getState().stopPolling()
-    expect(useIndexingStore.getState().isPolling).toBe(false)
-
-    vi.useRealTimers()
+    useIndexingStore.getState().stopPolling('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(false)
   })
 
   it('shows a specific message and leaves status untouched when the target is an UPLOAD library', async () => {
     // #500 review, finding 5: an UPLOAD library has no run type at all (backend 409) - no run was
     // ever started, so overwriting status to FAILED would misleadingly suggest one broke.
-    await useIndexingStore.getState().triggerIndexing('library-personal')
+    mockTriggerIndexing.mockRejectedValueOnce(new Error(UPLOAD_LIBRARY_INDEXING_ERROR))
 
+    await useIndexingStore.getState().triggerIndexing('library-a')
+
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status ?? 'IDLE').toBe('IDLE')
     const state = useIndexingStore.getState()
-    expect(state.status).toBe('IDLE')
     expect(state.snackbar.open).toBe(true)
     expect(state.snackbar.severity).toBe('error')
-    expect(state.snackbar.message).toBe('Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
+    expect(state.snackbar.message).toBe(UPLOAD_LIBRARY_INDEXING_ERROR)
   })
 
   it('loads the current status for a library and starts polling if a run is already active', async () => {
     vi.useFakeTimers()
-    await useIndexingStore.getState().triggerIndexing('library-referat-50')
-    useIndexingStore.getState().stopPolling()
-    useIndexingStore.setState({ status: 'IDLE' })
+    mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
 
-    await useIndexingStore.getState().loadStatus('library-referat-50')
+    await useIndexingStore.getState().loadStatus('library-a')
 
-    expect(useIndexingStore.getState().status).toBe('RUNNING')
-    expect(useIndexingStore.getState().isPolling).toBe(true)
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status).toBe('RUNNING')
+    expect(run?.isPolling).toBe(true)
+  })
 
-    useIndexingStore.getState().stopPolling()
-    vi.useRealTimers()
+  it('resets to IDLE before reloading and does not leak another library run state on failure', async () => {
+    // #506 review, finding 1: a failed status fetch for library B after switching away from a
+    // RUNNING library A must not leave A's state visible for B, and must not silently reuse A's
+    // stale data for B either.
+    mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().loadStatus('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.status).toBe('RUNNING')
+
+    mockGetIndexingStatus.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+    await useIndexingStore.getState().loadStatus('library-b')
+
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.status).toBe('RUNNING')
+    expect(useIndexingStore.getState().runsByLibrary['library-b']).toEqual(IDLE_RUN_STATE)
+  })
+
+  it('does not stop library A polling when loading the status of a different library B', async () => {
+    // #506 review, finding 1: startPolling used to short-circuit whenever any interval already
+    // existed, orphaning A's interval after a quick switch instead of scoping per library.
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
+
+    mockGetIndexingStatus.mockResolvedValueOnce({ ...runningStatus(), status: 'RUNNING' })
+    await useIndexingStore.getState().loadStatus('library-b')
+
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
+    expect(useIndexingStore.getState().runsByLibrary['library-b']?.isPolling).toBe(true)
+
+    mockGetIndexingStatus.mockResolvedValue(runningStatus())
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-a')
+    expect(mockGetIndexingStatus).toHaveBeenCalledWith('library-b')
   })
 })

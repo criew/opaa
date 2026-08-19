@@ -116,7 +116,7 @@ describe('LibraryManagementPage', () => {
 
   it('lists libraries with the personal library first and marked as such', async () => {
     setLibraryState([managerLibrary, personalLibrary])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     const items = await screen.findAllByText(/persönlich|Rechtsquellen Soziales/)
     expect(items[0]).toHaveTextContent('persönlich')
@@ -125,7 +125,7 @@ describe('LibraryManagementPage', () => {
 
   it('shows the document count and source type per library without a detail round trip', async () => {
     setLibraryState([managerLibrary, viewerLibrary])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/431 dokumente/i)).toBeInTheDocument()
     expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
@@ -135,24 +135,25 @@ describe('LibraryManagementPage', () => {
 
   it('shows an empty state when there are no libraries', async () => {
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/noch keine bibliotheken/i)).toBeInTheDocument()
   })
 
-  it('navigates to the library detail page when a row is clicked', async () => {
+  it('renders each library row as a real link to its detail page', async () => {
+    // #506 review, finding 6: a navigate()-triggering button offers none of a real link's
+    // affordances (open in new tab, middle-click, hover preview) - the row must carry a genuine
+    // href instead.
     setLibraryState([managerLibrary])
-    renderWithProviders(<LibraryManagementPage />)
-    const user = userEvent.setup()
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
-
-    expect(mockNavigate).toHaveBeenCalledWith('/libraries/library-team')
+    const link = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
+    expect(link).toHaveAttribute('href', '/libraries/library-team')
   })
 
   it('creates a new library owned by the caller and navigates to its detail page', async () => {
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
@@ -187,7 +188,7 @@ describe('LibraryManagementPage', () => {
       },
     ])
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
@@ -212,7 +213,7 @@ describe('LibraryManagementPage', () => {
   it('shows a visible hint instead of a silent empty list when the caller has no groups', async () => {
     mockGetMyGroups.mockResolvedValueOnce([])
     setLibraryState([])
-    renderWithProviders(<LibraryManagementPage />)
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /neue bibliothek/i }))
