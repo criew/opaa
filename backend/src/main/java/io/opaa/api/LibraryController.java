@@ -10,6 +10,8 @@ import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.SourceConnectionTestRequest;
+import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -19,6 +21,7 @@ import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.SourceConnectionTestService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
@@ -54,18 +57,21 @@ public class LibraryController {
   private final LibraryDocumentService documentService;
   private final DocumentIndexingService indexingService;
   private final UserService userService;
+  private final SourceConnectionTestService sourceConnectionTestService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
       AssetGrantService grantService,
       LibraryDocumentService documentService,
       DocumentIndexingService indexingService,
-      UserService userService) {
+      UserService userService,
+      SourceConnectionTestService sourceConnectionTestService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
     this.indexingService = indexingService;
     this.userService = userService;
+    this.sourceConnectionTestService = sourceConnectionTestService;
   }
 
   @PostMapping
@@ -74,6 +80,16 @@ public class LibraryController {
     User currentUser = currentUser(jwt);
     LibraryResponse response = libraryService.createLibrary(request, currentUser.getId());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  // #514: same permission bar as createLibrary above - any authenticated, known user. There is no
+  // library yet at this point for a role to be checked against, and creating one carries no
+  // higher bar than being an organization member (see KnowledgeLibraryService#createLibrary).
+  @PostMapping("/source-test")
+  public SourceConnectionTestResponse testLibrarySource(
+      @Valid @RequestBody SourceConnectionTestRequest request, @AuthenticationPrincipal Jwt jwt) {
+    currentUser(jwt);
+    return sourceConnectionTestService.test(request);
   }
 
   @GetMapping

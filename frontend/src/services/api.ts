@@ -15,6 +15,8 @@ import type {
   LibraryUpdateRequest,
   QueryRequest,
   QueryResponse,
+  SourceConnectionTestRequest,
+  SourceConnectionTestResponse,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRole,
@@ -344,6 +346,20 @@ export async function getLibrary(libraryId: string): Promise<LibraryResponse> {
 export async function createLibrary(request: LibraryRequest): Promise<LibraryResponse> {
   try {
     const { data } = await client.post<LibraryResponse>('/v1/libraries', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testLibrarySource(
+  request: SourceConnectionTestRequest,
+): Promise<SourceConnectionTestResponse> {
+  try {
+    const { data } = await client.post<SourceConnectionTestResponse>(
+      '/v1/libraries/source-test',
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)

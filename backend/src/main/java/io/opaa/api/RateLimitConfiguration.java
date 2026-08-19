@@ -29,6 +29,10 @@ public class RateLimitConfiguration {
     // per-IP limiter by library, so triggering indexing for one library doesn't block a different
     // library from the same client.
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
+    // #514/PR #537 review, finding 3: a plain literal, not a regex capture group like the
+    // indexing trigger above - source-test carries no library (there is none yet), so there is
+    // nothing to key a per-library limiter by.
+    String sourceTestPattern = "^/api/v1/libraries/source-test$";
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
@@ -38,6 +42,10 @@ public class RateLimitConfiguration {
         indexingTriggerPattern,
         new RateLimitService(
             properties.indexing().maxRequests(), properties.indexing().windowSeconds()));
+    perIpLimiters.put(
+        sourceTestPattern,
+        new RateLimitService(
+            properties.sourceTest().maxRequests(), properties.sourceTest().windowSeconds()));
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put(
@@ -48,6 +56,10 @@ public class RateLimitConfiguration {
         indexingTriggerPattern,
         new RateLimitService(
             properties.indexing().globalMaxRequests(), properties.indexing().windowSeconds()));
+    globalLimiters.put(
+        sourceTestPattern,
+        new RateLimitService(
+            properties.sourceTest().globalMaxRequests(), properties.sourceTest().windowSeconds()));
 
     var registration =
         new FilterRegistrationBean<>(

@@ -17,8 +17,13 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { DocumentSourceType, GroupListResponse, LibraryOwnerType } from '../types/api'
-import { getMyGroups } from '../services/api'
+import type {
+  DocumentSourceType,
+  GroupListResponse,
+  LibraryOwnerType,
+  SourceConnectionTestResponse,
+} from '../types/api'
+import { getMyGroups, testLibrarySource } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import {
   allDocumentSourceTypes,
@@ -60,6 +65,13 @@ export default function CreateLibraryDialog({
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // #514: the connection test result belongs to the currently entered configuration only - any
+  // edit to a field the test itself depends on (sourceType, path, url, proxy, credentials, SSL
+  // switch) invalidates a previous result rather than leaving a stale "erreichbar" on screen for
+  // a since-changed address.
+  const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
+  const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
 
   useEffect(() => {
@@ -98,12 +110,57 @@ export default function CreateLibraryDialog({
     setSourceCredentials('')
     setSourceInsecureSsl(false)
     setError(null)
+    setTestResult(null)
+    setTestErrorMessage(null)
   }
 
   function handleClose() {
     if (submitting) return
     resetForm()
     onClose()
+  }
+
+  // #514: an edit to any field the connection test depends on invalidates a previous result -
+  // shared by every onChange handler below via clearTestResult() so a stale "erreichbar" can
+  // never survive a since-changed address. The functional updater form bails out of re-rendering
+  // (returns the same null reference) on every keystroke before a test has ever run - by far the
+  // common case - rather than triggering an extra state update no one can see, on every character
+  // of every field.
+  function clearTestResult() {
+    setTestResult((prev) => (prev === null ? prev : null))
+    setTestErrorMessage((prev) => (prev === null ? prev : null))
+  }
+
+  /**
+   * The client-side checks shared by handleCreate and handleTest (#514) - a stricter server-side
+   * check always runs afterwards regardless (KnowledgeLibraryService#validateConfigurationForType
+   * for creation, SourceConnectionTestService for the test), this is only the fast, obvious-typo
+   * rejection both entry points want before making a network call at all.
+   */
+  function validateSourceConfiguration(): { sourcePath?: string; sourceUrl?: string } | null {
+    const configKind = documentSourceTypeConfigKind[sourceType]
+    const trimmedPath = sourcePath.trim()
+    if (configKind === 'path' && !trimmedPath) {
+      setError('Verzeichnispfad ist erforderlich')
+      return null
+    }
+    if (configKind === 'path' && !trimmedPath.startsWith('/')) {
+      setError('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
+      return null
+    }
+    const trimmedUrl = sourceUrl.trim()
+    if (configKind === 'url' && !trimmedUrl) {
+      setError('Adresse (URL) ist erforderlich')
+      return null
+    }
+    if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      setError('Adresse (URL) muss mit http:// oder https:// beginnen')
+      return null
+    }
+    return {
+      sourcePath: configKind === 'path' ? trimmedPath : undefined,
+      sourceUrl: configKind === 'url' ? trimmedUrl : undefined,
+    }
   }
 
   async function handleCreate() {
@@ -117,24 +174,8 @@ export default function CreateLibraryDialog({
       return
     }
     const configKind = documentSourceTypeConfigKind[sourceType]
-    const trimmedPath = sourcePath.trim()
-    if (configKind === 'path' && !trimmedPath) {
-      setError('Verzeichnispfad ist erforderlich')
-      return
-    }
-    if (configKind === 'path' && !trimmedPath.startsWith('/')) {
-      setError('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
-      return
-    }
-    const trimmedUrl = sourceUrl.trim()
-    if (configKind === 'url' && !trimmedUrl) {
-      setError('Adresse (URL) ist erforderlich')
-      return
-    }
-    if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
-      setError('Adresse (URL) muss mit http:// oder https:// beginnen')
-      return
-    }
+    const configuration = validateSourceConfiguration()
+    if (!configuration) return
     setError(null)
     setSubmitting(true)
     try {
@@ -147,8 +188,8 @@ export default function CreateLibraryDialog({
         // erfolgt oben als Vorlagenwahl. Nur der zum Typ passende Teil der Konfigurationsfelder
         // wird gesendet - das Backend lehnt jede Kombination ab, die dem Typ widerspricht.
         sourceType,
-        sourcePath: configKind === 'path' ? trimmedPath : undefined,
-        sourceUrl: configKind === 'url' ? trimmedUrl : undefined,
+        sourcePath: configuration.sourcePath,
+        sourceUrl: configuration.sourceUrl,
         sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
         sourceCredentials:
           configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
@@ -160,6 +201,34 @@ export default function CreateLibraryDialog({
       setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleTest() {
+    const configKind = documentSourceTypeConfigKind[sourceType]
+    const configuration = validateSourceConfiguration()
+    if (!configuration) return
+    setError(null)
+    setTestResult(null)
+    setTestErrorMessage(null)
+    setTesting(true)
+    try {
+      const result = await testLibrarySource({
+        sourceType,
+        sourcePath: configuration.sourcePath,
+        sourceUrl: configuration.sourceUrl,
+        sourceProxy: configKind === 'url' && sourceProxy.trim() ? sourceProxy.trim() : undefined,
+        sourceCredentials:
+          configKind === 'url' && sourceCredentials.trim() ? sourceCredentials.trim() : undefined,
+        sourceInsecureSsl: configKind === 'url' ? sourceInsecureSsl : false,
+      })
+      setTestResult(result)
+    } catch (err) {
+      setTestErrorMessage(
+        err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
+      )
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -177,7 +246,10 @@ export default function CreateLibraryDialog({
           <RadioGroup
             aria-labelledby="library-source-type-label"
             value={sourceType}
-            onChange={(e) => setSourceType(e.target.value as DocumentSourceType)}
+            onChange={(e) => {
+              setSourceType(e.target.value as DocumentSourceType)
+              clearTestResult()
+            }}
           >
             {allDocumentSourceTypes.map((type, index) => (
               <FormControlLabel
@@ -226,7 +298,10 @@ export default function CreateLibraryDialog({
             fullWidth
             required
             value={sourcePath}
-            onChange={(e) => setSourcePath(e.target.value)}
+            onChange={(e) => {
+              setSourcePath(e.target.value)
+              clearTestResult()
+            }}
             placeholder="/data/dokumente"
             helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
             slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -247,7 +322,10 @@ export default function CreateLibraryDialog({
               fullWidth
               required
               value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
+              onChange={(e) => {
+                setSourceUrl(e.target.value)
+                clearTestResult()
+              }}
               placeholder="https://files.example.com/dokumente/"
               helperText="http oder https."
               slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -256,7 +334,10 @@ export default function CreateLibraryDialog({
               label="Proxy"
               fullWidth
               value={sourceProxy}
-              onChange={(e) => setSourceProxy(e.target.value)}
+              onChange={(e) => {
+                setSourceProxy(e.target.value)
+                clearTestResult()
+              }}
               placeholder="proxy.example.com:8080"
               helperText="Optional."
               // Chrome/Safari can pair a plain text field right above a password field into the
@@ -270,7 +351,10 @@ export default function CreateLibraryDialog({
               type="password"
               fullWidth
               value={sourceCredentials}
-              onChange={(e) => setSourceCredentials(e.target.value)}
+              onChange={(e) => {
+                setSourceCredentials(e.target.value)
+                clearTestResult()
+              }}
               placeholder="benutzer:passwort"
               helperText="Optional. Wird nie in einer API-Antwort ausgegeben."
               // "new-password" statt "current-password": dieses Feld gehoert zur Quellkonfiguration
@@ -284,12 +368,33 @@ export default function CreateLibraryDialog({
               control={
                 <Switch
                   checked={sourceInsecureSsl}
-                  onChange={(e) => setSourceInsecureSsl(e.target.checked)}
+                  onChange={(e) => {
+                    setSourceInsecureSsl(e.target.checked)
+                    clearTestResult()
+                  }}
                 />
               }
               label="Zertifikatsprüfung aussetzen"
             />
           </Stack>
+        )}
+
+        {documentSourceTypeConfigKind[sourceType] !== 'none' && (
+          <Box sx={{ mt: 2 }}>
+            <Button onClick={handleTest} disabled={testing} variant="outlined" size="small">
+              {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
+            </Button>
+            {testErrorMessage && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {testErrorMessage}
+              </Alert>
+            )}
+            {testResult && (
+              <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
+                {testResult.message}
+              </Alert>
+            )}
+          </Box>
         )}
 
         <FormControl sx={{ mt: 2 }}>

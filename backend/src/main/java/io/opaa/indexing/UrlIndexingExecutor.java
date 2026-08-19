@@ -186,8 +186,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * Returns true if the URL's last path segment contains a dot (i.e. looks like a file with an
    * extension). Query strings and fragments are stripped before checking. Avoids regex to prevent
    * StackOverflowError on long URLs.
+   *
+   * <p>{@code public}, not package-private (PR #537 review, nit 5): {@code
+   * SourceConnectionTestService} reuses this exact check so a URL like {@code
+   * https://host/dateien/index.html} is normalised identically for the test and for the run it is
+   * testing - a mismatch here previously produced a false negative (the test appended a trailing
+   * slash unconditionally, turning a working address into a 404).
    */
-  static boolean hasFileExtension(String url) {
+  public static boolean hasFileExtension(String url) {
     int queryStart = url.indexOf('?');
     String path = queryStart >= 0 ? url.substring(0, queryStart) : url;
     int fragmentStart = path.indexOf('#');

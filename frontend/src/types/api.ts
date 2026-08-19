@@ -48,6 +48,8 @@ export type LibraryRequest = components['schemas']['LibraryRequest']
 export type LibraryUpdateRequest = components['schemas']['LibraryUpdateRequest']
 export type LibraryListResponse = components['schemas']['LibraryListResponse']
 export type LibraryResponse = components['schemas']['LibraryResponse']
+export type SourceConnectionTestRequest = components['schemas']['SourceConnectionTestRequest']
+export type SourceConnectionTestResponse = components['schemas']['SourceConnectionTestResponse']
 
 export type DocumentStatus = components['schemas']['DocumentStatus']
 export type DocumentSourceType = components['schemas']['DocumentSourceType']

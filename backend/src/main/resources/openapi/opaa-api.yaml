@@ -684,6 +684,51 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/source-test:
+    post:
+      operationId: testLibrarySource
+      tags: [library]
+      summary: >
+        Test a quellkonfiguration before a library is created (#514) - same permission bar as
+        createLibrary (any authenticated user; there is no library yet to hold a role on).
+      description: >
+        Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
+        sourceInsecureSsl combination the way the corresponding indexing run later would,
+        using the same HTTP client building blocks (AutoindexCrawlerService.buildHttpClient)
+        and, for FILESYSTEM, the same operator-configured allowlist (FilesystemPathAllowlist)
+        createLibrary itself enforces - a path outside the allowlist is rejected with 400
+        before anything on disk is touched, exactly like creation. sourceType UPLOAD has
+        nothing to test and is rejected with 400. The response never reveals more about a
+        FILESYSTEM directory than a count, and every failure message is German and intended
+        to be shown to the caller as-is. HTTP_DIRECTORY/RSS_FEED response bodies are bounded
+        the same way the RSS indexing run bounds them (opaa.indexing.rss.max-page-size-bytes/
+        max-feed-size-bytes) - an unbounded read here would let a caller crash the server with
+        a single oversized or endless response. This endpoint is rate-limited per IP and
+        globally (opaa.rate-limit.source-test), same as the indexing trigger - it is a
+        synchronous probe with its own outbound connections and short timeouts, not a
+        replacement for #267's still-outstanding target validation (blocking internal/private
+        address ranges) for HTTP_DIRECTORY/RSS_FEED, which this endpoint makes cheaper to
+        reach than the indexing run it mirrors (see docs/features/knowledge-sources.md).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SourceConnectionTestRequest"
+      responses:
+        "200":
+          description: >
+            The test ran to completion - reachable distinguishes success from a diagnosed
+            failure (see message); this is not itself an error response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceConnectionTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/libraries/{libraryId}:
     parameters:
       - name: libraryId
@@ -1904,6 +1949,84 @@ components:
           description: >
             Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
           default: false
+
+    SourceConnectionTestRequest:
+      type: object
+      required: [sourceType]
+      description: >
+        Carries the same typed configuration fields as LibraryRequest (#514) - deliberately a
+        separate schema rather than reusing LibraryRequest itself, since name/ownerType/
+        visibility/... have no meaning before a library exists and would only invite a client
+        to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
+        sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
+        (there is nothing to test).
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
+        sourcePath:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: >
+            Only for sourceType FILESYSTEM. Must be an absolute path, and must resolve
+            underneath one of the operator-configured allowlist base directories
+            (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
+            rejected with 400, without touching the filesystem at all. An empty allowlist
+            disables sourceType FILESYSTEM entirely, identical to LibraryRequest.sourcePath.
+          example: /data/documents/rechtsquellen
+        sourceUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: Only for sourceType HTTP_DIRECTORY or RSS_FEED. http/https only.
+          example: https://files.example.com/documents/
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+          example: proxy.example.com:8080
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: >
+            Basic auth credentials in user:password format - only for sourceType
+            HTTP_DIRECTORY or RSS_FEED. Used for this one request only, never persisted or
+            echoed back.
+          example: admin:secret
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          description: Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+          default: false
+
+    SourceConnectionTestResponse:
+      type: object
+      required: [reachable, message]
+      description: >
+        Structured result of a source connection test (#514). message is always German and
+        always safe to show to the caller verbatim - both on success ("Verzeichnis erreichbar,
+        42 Dokumente gefunden") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
+        gueltiges XML."); no exception text or stack trace ever reaches it.
+      properties:
+        reachable:
+          type: boolean
+          description: Whether the configured source could be reached and read.
+        documentCount:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            Number of supported documents found (FILESYSTEM: recursively, matching the run's
+            own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
+            filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
+            capped at opaa.indexing.rss.max-entries like the run itself) - null when reachable
+            is false, since nothing could be counted.
+        message:
+          type: string
+          description: German, user-facing summary of the result.
+          example: Verzeichnis erreichbar, 42 Dokumente gefunden
 
     LibraryUpdateRequest:
       type: object
