@@ -80,13 +80,10 @@ export async function getHealth(): Promise<HealthResponse> {
   }
 }
 
-export async function sendQuery(
-  question: string,
-  conversationId?: string,
-  spaceIds?: string[],
-): Promise<QueryResponse> {
+export async function sendQuery(question: string, conversationId?: string): Promise<QueryResponse> {
   try {
-    const request: QueryRequest = { question, conversationId, spaceIds }
+    // useKnowledge defaults to true server-side (#526); the @-reference UI toggling it is #528.
+    const request: QueryRequest = { question, conversationId, useKnowledge: true }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
   } catch (err) {

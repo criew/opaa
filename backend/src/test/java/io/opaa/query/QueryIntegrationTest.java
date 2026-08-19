@@ -180,7 +180,8 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     // Execute the query
-    QueryResponse response = queryService.query("What is OPAA?", null, userId);
+    QueryResponse response =
+        queryService.query("What is OPAA?", null, userId, true, java.util.List.of());
 
     // Verify the response
     assertThat(response.getAnswer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
@@ -199,7 +200,9 @@ class QueryIntegrationTest {
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)));
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
-    QueryResponse response = queryService.query("Something completely unrelated", null, userId);
+    QueryResponse response =
+        queryService.query(
+            "Something completely unrelated", null, userId, true, java.util.List.of());
 
     assertThat(response.getAnswer()).contains("don't have enough context");
     assertThat(response.getSources()).isEmpty();
@@ -241,7 +244,8 @@ class QueryIntegrationTest {
         "Stranger",
         DEFAULT_ORGANIZATION_ID);
     try {
-      QueryResponse response = queryService.query("What is the secret?", null, strangerId);
+      QueryResponse response =
+          queryService.query("What is the secret?", null, strangerId, true, java.util.List.of());
 
       assertThat(response.getAnswer()).contains("don't have enough context");
       assertThat(response.getSources()).isEmpty();
@@ -276,7 +280,8 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(new ChatResponse(List.of(new Generation(assistantMessage))));
 
-    QueryResponse closed = queryService.query("Wie gross ist Batman?", null, userId);
+    QueryResponse closed =
+        queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
     assertThat(closed.getSources()).isEmpty();
 
     jdbcTemplate.update(
@@ -288,7 +293,8 @@ class QueryIntegrationTest {
       when(chatModel.call(any(Prompt.class)))
           .thenReturn(new ChatResponse(List.of(new Generation(answer))));
 
-      QueryResponse opened = queryService.query("Wie gross ist Batman?", null, userId);
+      QueryResponse opened =
+          queryService.query("Wie gross ist Batman?", null, userId, true, java.util.List.of());
 
       assertThat(opened.getSources()).hasSize(1);
       assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
@@ -360,7 +366,8 @@ class QueryIntegrationTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     try {
-      QueryResponse response = queryService.query("Beliebige Frage", null, userId);
+      QueryResponse response =
+          queryService.query("Beliebige Frage", null, userId, true, java.util.List.of());
 
       // Exactly topK (5, application.yml default) results, every one of them from the granted
       // library - the count itself is the assertion that matters (see the comment above).
@@ -375,7 +382,13 @@ class QueryIntegrationTest {
   @Test
   void queryRejectsInvalidConversationId() {
     assertThatThrownBy(
-            () -> queryService.query("Test question", "<script>alert(1)</script>", userId))
+            () ->
+                queryService.query(
+                    "Test question",
+                    "<script>alert(1)</script>",
+                    userId,
+                    true,
+                    java.util.List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Ungültiges Format der conversationId");
   }

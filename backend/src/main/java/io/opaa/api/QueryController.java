@@ -33,8 +33,13 @@ public class QueryController {
   public QueryResponse query(
       @Valid @RequestBody QueryRequest request, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
+    boolean useKnowledge = request.getUseKnowledge() == null || request.getUseKnowledge();
     return queryService.query(
-        request.getQuestion(), request.getConversationId(), currentUser.getId());
+        request.getQuestion(),
+        request.getConversationId(),
+        currentUser.getId(),
+        useKnowledge,
+        request.getLibraryIds());
   }
 
   private User currentUser(Jwt jwt) {

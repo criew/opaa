@@ -434,7 +434,9 @@ class DocumentIndexingIntegrationTest {
         .isEqualTo(JobStatus.COMPLETED);
 
     // userId holds OWNER on targetLibraryId (granted in setUp) - the reader path.
-    QueryResponse withGrant = queryService.query("uniquely identifiable sentence", null, userId);
+    QueryResponse withGrant =
+        queryService.query(
+            "uniquely identifiable sentence", null, userId, true, java.util.List.of());
     assertThat(withGrant.getSources())
         .as("a user with a grant on the target library must find the indexed document")
         .anyMatch(source -> "findable.txt".equals(source.getFileName()));
@@ -467,7 +469,8 @@ class DocumentIndexingIntegrationTest {
     grantOwner(strangerLibrary.getId(), strangerId);
 
     QueryResponse withoutGrant =
-        queryService.query("uniquely identifiable sentence", null, strangerId);
+        queryService.query(
+            "uniquely identifiable sentence", null, strangerId, true, java.util.List.of());
     assertThat(withoutGrant.getSources())
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
