@@ -218,9 +218,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Extracts this executor's own configuration ({@code sourceUrl}/{@code sourceProxy}/{@code
    * sourceCredentials}/{@code sourceInsecureSsl}) from {@code targetLibrary} (ADR-0018, #478) - the
-   * library's persisted quellkonfiguration, not a per-request field any more.
+   * library's persisted quellkonfiguration, not a per-request field any more. {@code
+   * targetLibrary.getSourceCredentials()} is already plaintext at this point regardless of whether
+   * the underlying row is encrypted (#483) - {@code SourceCredentialsConverter} decrypts
+   * transparently when the entity is loaded, so this method needs no awareness of encryption at
+   * all.
+   *
+   * <p>Package-private (not {@code private}) solely so {@code UrlIndexingExecutorCredentialsTest}
+   * can assert on it directly with a library entity freshly reloaded from the database, the same
+   * decryption path a real run takes.
    */
-  private static UrlIndexingRequest toUrlIndexingRequest(KnowledgeLibrary targetLibrary) {
+  static UrlIndexingRequest toUrlIndexingRequest(KnowledgeLibrary targetLibrary) {
     return new UrlIndexingRequest(
         targetLibrary.getSourceUrl(),
         targetLibrary.getSourceProxy(),
