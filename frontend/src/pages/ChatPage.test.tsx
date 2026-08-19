@@ -6,7 +6,13 @@ import { useChatStore } from '../stores/chatStore'
 
 describe('ChatPage', () => {
   beforeEach(() => {
-    useChatStore.setState({ messages: [], isLoading: false, error: null })
+    useChatStore.setState({
+      messages: [],
+      isLoading: false,
+      error: null,
+      useKnowledge: true,
+      referencedLibraryIds: [],
+    })
   })
 
   it('renders empty state', () => {

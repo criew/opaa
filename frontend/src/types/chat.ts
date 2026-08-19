@@ -9,5 +9,7 @@ export interface ChatMessage {
   role: MessageRole
   content: string
   sources?: SourceReference[]
+  /** True when the backend answered without any document retrieval (QueryMetadata#526). */
+  answeredWithoutKnowledge?: boolean
   timestamp: Date
 }

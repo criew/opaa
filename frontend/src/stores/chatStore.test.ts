@@ -5,7 +5,14 @@ import { useChatStore } from './chatStore'
 
 describe('chatStore', () => {
   beforeEach(() => {
-    useChatStore.setState({ messages: [], isLoading: false, error: null, conversationId: null })
+    useChatStore.setState({
+      messages: [],
+      isLoading: false,
+      error: null,
+      conversationId: null,
+      useKnowledge: true,
+      referencedLibraryIds: [],
+    })
   })
 
   it('starts with empty state', () => {
@@ -75,5 +82,80 @@ describe('chatStore', () => {
     expect(state.messages).toHaveLength(0)
     expect(state.error).toBeNull()
     expect(state.conversationId).toBeNull()
+  })
+
+  it('clearMessages also resets the sticky knowledge-scope controls', () => {
+    useChatStore.setState({ useKnowledge: false, referencedLibraryIds: ['library-a'] })
+
+    useChatStore.getState().clearMessages()
+
+    const state = useChatStore.getState()
+    expect(state.useKnowledge).toBe(true)
+    expect(state.referencedLibraryIds).toEqual([])
+  })
+
+  it('adds and removes referenced libraries without duplicates', () => {
+    useChatStore.getState().addReferencedLibrary('library-a')
+    useChatStore.getState().addReferencedLibrary('library-b')
+    useChatStore.getState().addReferencedLibrary('library-a')
+
+    expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a', 'library-b'])
+
+    useChatStore.getState().removeReferencedLibrary('library-a')
+
+    expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-b'])
+  })
+
+  it('sends useKnowledge=true without libraryIds when the switch is on', async () => {
+    let capturedBody: Record<string, unknown> | undefined
+    server.use(
+      http.post('/api/v1/query', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          answer: 'Antwort',
+          sources: [],
+          metadata: {
+            model: 'gpt-4o',
+            tokenCount: 10,
+            durationMs: 5,
+            answeredWithoutKnowledge: false,
+          },
+          conversationId: 'conv-1',
+        })
+      }),
+    )
+    useChatStore.setState({ useKnowledge: true, referencedLibraryIds: ['library-a'] })
+
+    await useChatStore.getState().sendMessage('Frage')
+
+    expect(capturedBody?.useKnowledge).toBe(true)
+    expect(capturedBody?.libraryIds).toBeUndefined()
+  })
+
+  it('sends useKnowledge=false with the referenced libraryIds when the switch is off', async () => {
+    let capturedBody: Record<string, unknown> | undefined
+    server.use(
+      http.post('/api/v1/query', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          answer: 'Antwort',
+          sources: [],
+          metadata: {
+            model: 'gpt-4o',
+            tokenCount: 10,
+            durationMs: 5,
+            answeredWithoutKnowledge: true,
+          },
+          conversationId: 'conv-1',
+        })
+      }),
+    )
+    useChatStore.setState({ useKnowledge: false, referencedLibraryIds: ['library-a', 'library-b'] })
+
+    await useChatStore.getState().sendMessage('Frage')
+
+    expect(capturedBody?.useKnowledge).toBe(false)
+    expect(capturedBody?.libraryIds).toEqual(['library-a', 'library-b'])
+    expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
   })
 })

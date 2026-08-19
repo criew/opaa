@@ -203,6 +203,22 @@ export const handlers = [
         { status: 400 },
       )
     }
+    // Mirrors QueryService (#526): useKnowledge=false with no (or only unreadable) libraryIds
+    // performs no retrieval - without this branch, mock/dev mode could never show the "answered
+    // without knowledge" hint that #528 added to the chat UI.
+    if (body.useKnowledge === false && (!body.libraryIds || body.libraryIds.length === 0)) {
+      return HttpResponse.json({
+        answer: 'Dazu liegt mir kein Wissen aus den referenzierten Bibliotheken vor.',
+        sources: [],
+        metadata: {
+          model: 'gpt-4o',
+          tokenCount: 42,
+          durationMs: 120,
+          answeredWithoutKnowledge: true,
+        },
+        conversationId: body.conversationId ?? crypto.randomUUID(),
+      })
+    }
     const mockResponse = getRandomMockResponse()
     return HttpResponse.json({
       ...mockResponse,

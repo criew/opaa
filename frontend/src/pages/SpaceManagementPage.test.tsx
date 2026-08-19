@@ -85,7 +85,6 @@ function setSpaceState(space: SpaceResponse) {
     spaces: [],
     selectedSpaceId: space.id,
     selectedSpace: space,
-    chatFilterSpaceIds: [],
     isLoadingList: false,
     isLoadingDetails: false,
     error: null,

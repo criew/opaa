@@ -51,7 +51,6 @@ describe('spaceStore', () => {
       spaces: [],
       selectedSpaceId: null,
       selectedSpace: null,
-      chatFilterSpaceIds: [],
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
@@ -62,11 +61,6 @@ describe('spaceStore', () => {
     await useSpaceStore.getState().loadSpaces()
     const names = useSpaceStore.getState().spaces.map((space) => space.name)
     expect(names[0]).toBe('Meine Dokumente')
-  })
-
-  it('updates chat filter selection', () => {
-    useSpaceStore.getState().setChatFilterSpaceIds(['space-personal', 'space-project'])
-    expect(useSpaceStore.getState().chatFilterSpaceIds).toEqual(['space-personal', 'space-project'])
   })
 
   it('creates a new space and selects it', async () => {
