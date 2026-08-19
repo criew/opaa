@@ -4,6 +4,7 @@ import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
+import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -22,6 +23,8 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -110,11 +113,24 @@ public class LibraryController {
   }
 
   @GetMapping("/{libraryId}/documents")
-  public List<LibraryDocumentResponse> listDocuments(
-      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+  public LibraryDocumentPageResponse listDocuments(
+      @PathVariable UUID libraryId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(required = false) String q,
+      @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
+    // Mirrors the OpenAPI spec's 1..100 bound on size (#517) - the DTO layer never validates
+    // @RequestParam primitives, so an out-of-range value would otherwise reach the database as an
+    // oversized or zero-row page instead of being rejected the same way the spec promises.
+    int boundedSize = Math.max(1, Math.min(size, 100));
+    Pageable pageable = PageRequest.of(Math.max(page, 0), boundedSize);
     return libraryService.listDocuments(
-        libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+        libraryId,
+        currentUser.getId(),
+        currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN,
+        q,
+        pageable);
   }
 
   @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

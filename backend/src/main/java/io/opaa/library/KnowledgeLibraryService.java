@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -30,6 +31,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -554,16 +557,29 @@ public class KnowledgeLibraryService {
     libraryRepository.delete(library);
   }
 
-  public List<LibraryDocumentResponse> listDocuments(
-      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+  /**
+   * Lists a library's documents, paged and optionally filtered by a case-insensitive substring of
+   * the file name (#517) - available for every {@code sourceType}, not just {@code UPLOAD}, so a
+   * connector library's indexed bestand is visible the same way an upload library's is.
+   */
+  public LibraryDocumentPageResponse listDocuments(
+      UUID libraryId, UUID currentUserId, boolean systemAdmin, String q, Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
     if (!accessService.canRead(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
 
-    return documentRepository.findByLibraryId(libraryId).stream()
-        .map(this::toLibraryDocumentResponse)
-        .toList();
+    Page<Document> page =
+        (q == null || q.isBlank())
+            ? documentRepository.findByLibraryId(libraryId, pageable)
+            : documentRepository.findByLibraryIdAndFileNameContainingIgnoreCase(
+                libraryId, q, pageable);
+
+    return new LibraryDocumentPageResponse(
+        page.getContent().stream().map(this::toLibraryDocumentResponse).toList(),
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        page.getTotalElements());
   }
 
   /**

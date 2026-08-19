@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
-import type { LibraryDocumentResponse } from '../types/api'
+import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
 
 const { mockGetLibraryDocuments, mockUploadDocument, mockDeleteLibraryDocument } = vi.hoisted(
   () => ({
@@ -36,6 +36,13 @@ const pendingDocument: LibraryDocumentResponse = {
   indexedAt: null,
 }
 
+function page(
+  items: LibraryDocumentResponse[],
+  overrides?: Partial<LibraryDocumentPageResponse>,
+): LibraryDocumentPageResponse {
+  return { items, page: 0, size: 20, totalElements: items.length, ...overrides }
+}
+
 describe('documentStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,13 +55,39 @@ describe('documentStore', () => {
   })
 
   it('loads documents for a library', async () => {
-    mockGetLibraryDocuments.mockResolvedValueOnce([indexedDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
 
     await useDocumentStore.getState().loadDocuments('library-1')
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
+      page: 0,
+      size: 20,
+      q: '',
+      totalElements: 1,
+    })
     expect(useDocumentStore.getState().isLoading).toBe(false)
     expect(useDocumentStore.getState().error).toBeNull()
+  })
+
+  it('passes page/size/q through to the API and stores the response paging state', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      page([indexedDocument], { page: 2, size: 5, totalElements: 42 }),
+    )
+
+    await useDocumentStore.getState().loadDocuments('library-1', { page: 2, size: 5, q: 'dienst' })
+
+    expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
+      page: 2,
+      size: 5,
+      q: 'dienst',
+    })
+    expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
+      page: 2,
+      size: 5,
+      q: 'dienst',
+      totalElements: 42,
+    })
   })
 
   it('shows a German error message when loading fails', async () => {
@@ -168,12 +201,12 @@ describe('documentStore', () => {
 
   it('polls until no document is PENDING anymore, then stops', async () => {
     vi.useFakeTimers()
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
 
     await useDocumentStore.getState().loadDocuments('library-1')
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([pendingDocument])
 
-    mockGetLibraryDocuments.mockResolvedValueOnce([indexedDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
@@ -181,9 +214,9 @@ describe('documentStore', () => {
 
   it('stops every running poll interval on reset, not just the last-loaded library', async () => {
     vi.useFakeTimers()
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
     await useDocumentStore.getState().loadDocuments('library-1')
-    mockGetLibraryDocuments.mockResolvedValueOnce([pendingDocument])
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
     await useDocumentStore.getState().loadDocuments('library-2')
 
     useDocumentStore.getState().reset()

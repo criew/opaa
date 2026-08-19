@@ -766,16 +766,39 @@ paths:
     get:
       operationId: listLibraryDocuments
       tags: [library]
-      summary: List documents contained in a library
+      summary: >
+        List documents contained in a library, paged and optionally filtered by a case-insensitive
+        substring of the file name (#517). Available for every sourceType, not just UPLOAD - a
+        connector library's indexed bestand is just as visible here.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring match against the document's file name.
+          schema:
+            type: string
       responses:
         "200":
-          description: List of documents
+          description: Page of documents
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LibraryDocumentResponse"
+                $ref: "#/components/schemas/LibraryDocumentPageResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2115,6 +2138,25 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+
+    LibraryDocumentPageResponse:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryDocumentResponse"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of documents matching the (optional) q filter, across all pages.
 
     AssetRole:
       type: string

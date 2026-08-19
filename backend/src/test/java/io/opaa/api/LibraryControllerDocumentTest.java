@@ -1,14 +1,18 @@
 package io.opaa.api;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
@@ -20,6 +24,7 @@ import io.opaa.indexing.DocumentStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -79,6 +85,52 @@ class LibraryControllerDocumentTest {
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  @Test
+  void listingDocumentsPassesPageSizeAndQToTheService() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var response = new LibraryDocumentPageResponse(List.of(), 1, 5, 12L);
+    when(libraryService.listDocuments(
+            eq(libraryId),
+            eq(currentUserId),
+            eq(false),
+            eq("dienst"),
+            argThat((Pageable p) -> p.getPageNumber() == 1 && p.getPageSize() == 5)))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("page", "1")
+                .param("size", "5")
+                .param("q", "dienst")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.page").value(1))
+        .andExpect(jsonPath("$.size").value(5))
+        .andExpect(jsonPath("$.totalElements").value(12));
+  }
+
+  @Test
+  void listingDocumentsBoundsAnOutOfRangeSizeToTheSpecsAllowedMaximum() throws Exception {
+    // #517: the OpenAPI spec promises size <= 100 - @RequestParam alone does not enforce that, so
+    // the controller itself clamps it (see LibraryController#listDocuments).
+    UUID libraryId = UUID.randomUUID();
+    when(libraryService.listDocuments(
+            eq(libraryId),
+            eq(currentUserId),
+            eq(false),
+            isNull(),
+            argThat((Pageable p) -> p.getPageSize() == 100)))
+        .thenReturn(new LibraryDocumentPageResponse(List.of(), 0, 100, 0L));
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("size", "500")
+                .with(asTestUser()))
+        .andExpect(status().isOk());
   }
 
   @Test

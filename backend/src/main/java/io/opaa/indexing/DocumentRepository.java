@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -26,6 +28,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<Document> findByLibraryId(UUID libraryId);
 
   long countByLibraryId(UUID libraryId);
+
+  /**
+   * Backs {@code KnowledgeLibraryService#listDocuments}'s paging and optional stichwort search
+   * (#517): a page of a library's documents, plus the total across all pages the caller's paging
+   * controls need. {@code q} is matched as a case-insensitive substring of the file name when
+   * present, or ignored entirely (all of the library's documents) when {@code null} or blank -
+   * {@link #findByLibraryId(UUID, Pageable)} below backs that second case, so an empty search field
+   * never has to pass a "match everything" wildcard through to the database.
+   */
+  Page<Document> findByLibraryIdAndFileNameContainingIgnoreCase(
+      UUID libraryId, String fileNameQuery, Pageable pageable);
+
+  Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
   /**
    * Backs {@code KnowledgeLibraryService#deleteLibrary}'s connector-library path (#479, ADR-0018

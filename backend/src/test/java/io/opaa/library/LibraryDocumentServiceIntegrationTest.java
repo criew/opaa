@@ -40,6 +40,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
@@ -515,6 +516,89 @@ class LibraryDocumentServiceIntegrationTest {
     Path libraryDir = uploadStorageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedFile.startsWith(libraryDir)).isTrue();
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
+  }
+
+  // #517: page/size/q on GET /libraries/{id}/documents, backed by
+  // KnowledgeLibraryService#listDocuments / DocumentRepository's paged finder methods. Seeded
+  // directly via documentRepository rather than through uploadDocument/the indexing pipeline - the
+  // paging and search behaviour under test does not depend on how a row got there.
+  private Document seedDocument(String fileName) {
+    Document document =
+        new Document(fileName, "/seed/" + fileName, "text/plain", 10L, DocumentSourceType.UPLOAD);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(organizationId);
+    document.setStatus(DocumentStatus.INDEXED);
+    return documentRepository.save(document);
+  }
+
+  @Test
+  void listDocumentsReturnsAPageWithTheTotalElementCountAcrossAllPages() {
+    for (int i = 0; i < 5; i++) {
+      seedDocument("dokument-" + i + ".txt");
+    }
+
+    var firstPage =
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(0, 2));
+    assertThat(firstPage.getItems()).hasSize(2);
+    assertThat(firstPage.getPage()).isZero();
+    assertThat(firstPage.getSize()).isEqualTo(2);
+    assertThat(firstPage.getTotalElements()).isEqualTo(5);
+
+    var secondPage =
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(1, 2));
+    assertThat(secondPage.getItems()).hasSize(2);
+    assertThat(secondPage.getPage()).isEqualTo(1);
+    assertThat(secondPage.getTotalElements()).isEqualTo(5);
+
+    var lastPage =
+        libraryService.listDocuments(libraryId, editor.getId(), false, null, PageRequest.of(2, 2));
+    assertThat(lastPage.getItems()).hasSize(1);
+
+    assertThat(
+            firstPage.getItems().stream().map(LibraryDocumentResponse::getId).toList().stream()
+                .noneMatch(
+                    id -> secondPage.getItems().stream().anyMatch(d -> d.getId().equals(id))))
+        .isTrue();
+  }
+
+  @Test
+  void listDocumentsFiltersByFileNameCaseInsensitiveSubstring() {
+    seedDocument("Dienstanweisung-2024.pdf");
+    seedDocument("Rundschreiben.pdf");
+    seedDocument("dienstanweisung-alt.pdf");
+
+    var result =
+        libraryService.listDocuments(
+            libraryId, editor.getId(), false, "dienst", PageRequest.of(0, 20));
+
+    assertThat(result.getTotalElements()).isEqualTo(2);
+    assertThat(result.getItems())
+        .extracting(LibraryDocumentResponse::getFileName)
+        .allMatch(name -> name.toLowerCase().contains("dienst"));
+  }
+
+  @Test
+  void listDocumentsWithABlankQIgnoresTheFilter() {
+    seedDocument("a.pdf");
+    seedDocument("b.pdf");
+
+    var result =
+        libraryService.listDocuments(libraryId, editor.getId(), false, "  ", PageRequest.of(0, 20));
+
+    assertThat(result.getTotalElements()).isEqualTo(2);
+  }
+
+  @Test
+  void listDocumentsRefusesAViewerWithoutAccessOnAnotherOrganizationsLibrary() {
+    assertThatThrownBy(
+            () ->
+                libraryService.listDocuments(
+                    UUID.randomUUID(), editor.getId(), false, null, PageRequest.of(0, 20)))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   private void assertNoFilesStored() throws IOException {

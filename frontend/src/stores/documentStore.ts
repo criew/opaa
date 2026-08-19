@@ -7,9 +7,29 @@ import {
 } from '../services/api'
 
 const POLL_INTERVAL_MS = 3000
+export const DEFAULT_PAGE_SIZE = 20
+
+// The paging/search state a library's document list was last loaded with (#517) - kept alongside
+// the loaded page itself so a poll tick (see startPolling) and a post-upload/-delete refresh (see
+// LibraryDetailPage's onDocumentsChanged) both re-fetch the same page/query the user is currently
+// looking at, instead of silently resetting them to page 0 with no search term.
+interface DocumentPageState {
+  page: number
+  size: number
+  q: string
+  totalElements: number
+}
+
+const defaultPageState: DocumentPageState = {
+  page: 0,
+  size: DEFAULT_PAGE_SIZE,
+  q: '',
+  totalElements: 0,
+}
 
 interface DocumentState {
   documentsByLibrary: Record<string, LibraryDocumentResponse[]>
+  pageStateByLibrary: Record<string, DocumentPageState>
   isLoading: boolean
   error: string | null
   // A list rather than a single message: uploadNewDocument is called once per file from a
@@ -21,7 +41,10 @@ interface DocumentState {
   isUploading: boolean
 
   reset: () => void
-  loadDocuments: (libraryId: string) => Promise<void>
+  loadDocuments: (
+    libraryId: string,
+    options?: { page?: number; size?: number; q?: string },
+  ) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   clearUploadErrors: () => void
@@ -37,6 +60,7 @@ function hasPendingDocument(documents: LibraryDocumentResponse[] | undefined): b
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documentsByLibrary: {},
+  pageStateByLibrary: {},
   isLoading: false,
   error: null,
   uploadErrors: [],
@@ -47,6 +71,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
     set({
       documentsByLibrary: {},
+      pageStateByLibrary: {},
       isLoading: false,
       error: null,
       uploadErrors: [],
@@ -55,15 +80,29 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     })
   },
 
-  loadDocuments: async (libraryId: string) => {
+  loadDocuments: async (libraryId, options) => {
+    const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
+    const page = options?.page ?? previous.page
+    const size = options?.size ?? previous.size
+    const q = options?.q ?? previous.q
+
     set({ isLoading: true, error: null })
     try {
-      const documents = await getLibraryDocuments(libraryId)
+      const response = await getLibraryDocuments(libraryId, { page, size, q })
       set({
-        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: documents },
+        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
+        pageStateByLibrary: {
+          ...get().pageStateByLibrary,
+          [libraryId]: {
+            page: response.page,
+            size: response.size,
+            q,
+            totalElements: response.totalElements,
+          },
+        },
         isLoading: false,
       })
-      if (hasPendingDocument(documents)) {
+      if (hasPendingDocument(response.items)) {
         startPolling(libraryId, set, get)
       } else {
         get().stopPolling(libraryId)
@@ -139,9 +178,20 @@ function startPolling(
 
   pollIntervalIds[libraryId] = setInterval(async () => {
     try {
-      const documents = await getLibraryDocuments(libraryId)
-      set({ documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: documents } })
-      if (!hasPendingDocument(documents)) {
+      const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
+      const response = await getLibraryDocuments(libraryId, {
+        page: pageState.page,
+        size: pageState.size,
+        q: pageState.q,
+      })
+      set({
+        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
+        pageStateByLibrary: {
+          ...get().pageStateByLibrary,
+          [libraryId]: { ...pageState, totalElements: response.totalElements },
+        },
+      })
+      if (!hasPendingDocument(response.items)) {
         get().stopPolling(libraryId)
       }
     } catch {
