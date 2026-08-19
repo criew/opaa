@@ -567,6 +567,10 @@ Ein Chat ist ein **persistentes Objekt im Space**, kein flüchtiger Kontext. Ein
 
 Ein Chat entsteht als `PRIVATE` und ist ausschließlich für seinen Autor sichtbar. Erst wenn der Autor ihn in den Space teilt, sehen ihn alle Mitglieder. Damit existiert der Denkraum vor dem Teilen: die unfertige Einschätzung, die schwierige Personalsache, die dreimal gestellte Rückfrage, bei der man unsicher ist — all das findet statt, ohne dass jemand mitliest, und niemand muss dafür den Space wechseln oder auf E-Mail ausweichen.
 
+**Reihenfolge des Aufbaus.** Zuerst entsteht die Persistenz-Grundlage: Chat und Nachrichten leben in genau einem Space, in dem der Chat erstellt und gelistet wird, und sind zunächst ausschließlich `PRIVATE` — der Teilen-Mechanismus (`SHARED`, Provenienz-Hinweis, Widerruf, Benachrichtigung bei erweitertem Leserkreis) baut erst darauf auf. Die Status-Achse aus der Tabelle oben wird im Datenmodell von Anfang an offengehalten, auch bevor sie bedient wird. Ein Chat kann **nicht in einen anderen Space verschoben** werden.
+
+**@-Bibliotheksreferenzen sind ein Attribut des Chats**, nicht der einzelnen Anfrage. Beim Tippen von `@` im Eingabefeld werden die lesbaren Bibliotheken vorgeschlagen; referenzierbar sind **alle lesbaren Bibliotheken**, unabhängig vom Space. Eine gesetzte Referenz ist **sticky pro Chat**: Sie bleibt als entfernbarer Chip am Chat aktiv, bis sie explizit entfernt wird, und wird mit dem Chat persistiert. Wie Referenzen und der Schalter „Wissen nutzen" den Suchbereich einer Anfrage bestimmen, steht unter [Suchbereich je Chatart](#suchbereich-je-chatart).
+
 **Konsequenz für die Nutzerführung.** Verbindlich:
 
 - Der Chat zeigt dauerhaft seinen Status und, sobald geteilt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
@@ -577,7 +581,7 @@ Ein Chat entsteht als `PRIVATE` und ist ausschließlich für seinen Autor sichtb
 - Der Autor kann einen geteilten Chat **zurückziehen** (`WITHDRAWN`). Das entfernt ihn aus der Space-Ansicht, löscht ihn aber nicht; bereits erfolgte Einsichtnahmen macht es nicht rückgängig.
 - **Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm geteilten Inhalts wesentlich erweitert** — bei Aufnahme neuer Mitglieder, insbesondere externer Personen, bei Öffnung des Space und bei Zuwachs über einen Verzeichnislauf in einem gruppengebundenen Space. Ohne diese Nachricht wäre die Entscheidung zu teilen nachträglich eine andere geworden als die, die er getroffen hat: Er hat im Februar sieben Kolleginnen und den Referatsleiter zugestimmt, nicht der externen Beraterin, die im Juni dazukommt. Die Legitimation des ganzen Modells ruht darauf, dass der Ersteller weiß, was er tut; das Zurückziehen ist nur dann ein Werkzeug, wenn er von der Änderung erfährt.
 
-Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich; ist er es nicht, bestimmt ihn der Space.
+Ein Chat kann an einen Agenten gebunden sein. Ist er das, bestimmt der Agent den Suchbereich. Ist er es nicht, bestimmen ihn der Schalter „Wissen nutzen" und die @-Referenzen des Chats — nicht mehr eine Space-Auswahl im Suchfeld, die es nicht gibt (siehe [Suchbereich je Chatart](#suchbereich-je-chatart)).
 
 Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppenräume gebraucht werden (Teilnehmer mit Lese-/Schreibrolle, Antwort-Bezug für Threads, Erwähnungen), auch wenn diese Funktionen erst später gebaut werden.
 
@@ -676,18 +680,26 @@ Die Berechtigungsprüfung ist **Teil der Vektorsuche**, kein Nachfilter. Die Men
 
 ### Suchbereich je Chatart
 
+Der Suchbereich eines Chats wird **nicht über eine Space-Auswahl im Suchfeld gesteuert.** Eine solche Auswahl entfällt ersatzlos, sowohl im Frontend als auch in der API (das heutige `QueryRequest.spaceIds` wird ohnehin ignoriert und fällt mit weg). Stattdessen bestimmen ihn zwei am Chat verankerte Steuerungen:
+
+- der Schalter **„Wissen nutzen"** (Standard: an), und
+- die **@-Bibliotheksreferenzen** des Chats — sticky, als entfernbare Chips geführt, referenzierbar sind beim Tippen von `@` alle Bibliotheken, die der Nutzer lesen darf, unabhängig vom Space (siehe [Chats](#chats)).
+
+Ist der Chat an einen Agenten gebunden, treten beide Steuerungen zurück: Der Agent bestimmt den Suchbereich.
+
 | Chatart | Suchbereich |
 |---|---|
-| Chat ohne Agent in Space S | assoziierte Bibliotheken von S **geschnitten mit** den lesbaren Bibliotheken des Nutzers |
-| Chat mit Agent A | die vom Agenten gebundenen Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers |
+| Chat ohne Agent, „Wissen nutzen" **an** | **Zielbild:** die dem Space assoziierten Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. **Übergangsregel bis #203:** Ohne Space↔Bibliothek-Assoziation gilt ersatzweise **alle Bibliotheken, die der Nutzer lesen darf** |
+| Chat ohne Agent, „Wissen nutzen" **aus** | ausschließlich die per @ referenzierten Bibliotheken des Chats **geschnitten mit** den lesbaren Bibliotheken des Nutzers. **Ohne Referenz findet keine Dokumentensuche statt** — das Modell antwortet ohne Quellen, die Oberfläche weist darauf hin |
+| Chat mit Agent A | die vom Agenten gebundenen Bibliotheken **geschnitten mit** den lesbaren Bibliotheken des Nutzers. Schalter und @-Referenzen wirken hier nicht |
 
-In beiden Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers. Es gibt keinen zweiten.
+In allen Fällen ist der Rechtekontext derselbe — der des aufrufenden Nutzers. Es gibt keinen zweiten. @-Referenzen erweitern den Suchbereich nie über die lesbaren Bibliotheken hinaus.
 
-Der Space **verengt** den ungebundenen Chat, **verengt aber nicht den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos.
+Der Space **verengt** den ungebundenen Chat (im Zielbild über die Assoziation, bis #203 nur mittelbar über die Übergangsregel), **verengt aber nicht den Agenten**. Diese Asymmetrie ist beabsichtigt: Nur wenn die Wissensbindung eines Agenten unabhängig davon ist, wo er ausgeführt wird, bleibt ein Agenten-Release versionierbar und prüfbar. Würde der Space zusätzlich verengen, antwortete dieselbe geprüfte Fassung eines Agenten je nach Space anders — und ein Prüfbericht würde wertlos.
 
-**Ein Space ohne assoziierte Bibliotheken verengt nicht:** Dort ist der Suchbereich **alles, was der Nutzer lesen darf**. Das ersetzt die frühere Sonderregel für den persönlichen Space und kommt ohne Space-Art aus — in einem Raum, in dem nichts kuratiert wurde, gibt es nichts zu verengen. Damit steht ein Raum, in dem jemand allein arbeitet, fachlich nie schlechter da als ein gemeinsamer, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
+**Aktueller Stand, bis #203:** Es gibt noch keine Space↔Bibliothek-Assoziation. Bei „Wissen nutzen" an ist der Suchbereich eines ungebundenen Chats deshalb für jeden Space gleich — **alles, was der Nutzer lesen darf**. Das ersetzt die frühere Sonderregel für den persönlichen Space und kommt ohne Space-Art aus: In einem Raum, in dem noch nichts kuratiert werden kann, gibt es nichts zu verengen. Damit steht ein Raum, in dem jemand allein arbeitet, fachlich nie schlechter da als ein gemeinsamer, und die Möglichkeit, unbeobachtet zu arbeiten, ist keine bloß formale: Wer dorthin ausweicht, verliert keinen Zugang zu Wissen.
 
-Ein Space, in dem der Nutzer auf keine assoziierte Bibliothek Zugriff hat, ist ein **zulässiger Zustand, kein Fehler**: Der Suchbereich ist leer, und im Zitierzwang-Modus verweigert das System folgerichtig die Antwort. Die Meldung darf dabei **keine Anzahlen nennen**. Zulässig: „In diesem Space ist für dich derzeit kein Wissen verfügbar." Unzulässig: „3 von 4 Bibliotheken sind für dich gesperrt."
+**Mit #203** wird die Assoziation wirksam, und ein Space, in dem der Nutzer auf keine assoziierte Bibliothek Zugriff hat, wird zu einem **zulässigen Zustand, kein Fehler**: Bei „Wissen nutzen" an ist der Suchbereich dann leer, und im Zitierzwang-Modus verweigert das System folgerichtig die Antwort, sofern keine @-Referenz gesetzt ist. Die Meldung darf dabei **keine Anzahlen nennen**. Zulässig: „In diesem Space ist für dich derzeit kein Wissen verfügbar." Unzulässig: „3 von 4 Bibliotheken sind für dich gesperrt." Bei „Wissen nutzen" aus ohne @-Referenz gilt dieselbe Zurückhaltung unabhängig vom Space und unabhängig von #203, weil dann grundsätzlich keine Dokumentensuche stattfindet.
 
 ### Einen Agenten weitergeben: die Freigabekette
 
