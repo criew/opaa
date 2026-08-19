@@ -19,28 +19,37 @@ class RateLimitFilterTest {
   private RateLimitFilter filter;
   private RateLimitService queryLimiter;
   private RateLimitService indexingLimiter;
+  private RateLimitService sourceTestLimiter;
   private RateLimitService globalQueryLimiter;
   private RateLimitService globalIndexingLimiter;
+  private RateLimitService globalSourceTestLimiter;
   private JsonMapper jsonMapper;
 
   @BeforeEach
   void setUp() {
     queryLimiter = mock(RateLimitService.class);
     indexingLimiter = mock(RateLimitService.class);
+    sourceTestLimiter = mock(RateLimitService.class);
     globalQueryLimiter = mock(RateLimitService.class);
     globalIndexingLimiter = mock(RateLimitService.class);
+    globalSourceTestLimiter = mock(RateLimitService.class);
     jsonMapper = JsonMapper.builder().build();
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put("^/api/v1/query", queryLimiter);
     perIpLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", indexingLimiter);
+    // #514/PR #537 review, finding 3: mirrors RateLimitConfiguration's own registration of
+    // POST /api/v1/libraries/source-test.
+    perIpLimiters.put("^/api/v1/libraries/source-test$", sourceTestLimiter);
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put("^/api/v1/query", globalQueryLimiter);
     globalLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", globalIndexingLimiter);
+    globalLimiters.put("^/api/v1/libraries/source-test$", globalSourceTestLimiter);
 
     when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
     when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
+    when(globalSourceTestLimiter.isAllowed(anyString())).thenReturn(true);
 
     filter = new RateLimitFilter(perIpLimiters, globalLimiters, jsonMapper);
   }
@@ -89,6 +98,41 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+  }
+
+  @Test
+  void returns429WhenSourceTestLimitExceeded() throws Exception {
+    when(sourceTestLimiter.isAllowed(anyString())).thenReturn(false);
+
+    var request = new MockHttpServletRequest("POST", "/api/v1/libraries/source-test");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+
+    filter.doFilter(request, response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(429);
+    assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+    assertThat(chain.getRequest()).isNull();
+  }
+
+  @Test
+  void sourceTestLimitDoesNotApplyToTheIndexingTrigger() throws Exception {
+    // The literal source-test pattern must not accidentally also match
+    // /api/v1/libraries/{libraryId}/indexing - a regression here would either double-limit the
+    // indexing trigger or leave source-test unlimited, depending on map iteration order.
+    when(sourceTestLimiter.isAllowed(anyString())).thenReturn(false);
+    when(indexingLimiter.isAllowed(anyString())).thenReturn(true);
+
+    var request =
+        new MockHttpServletRequest(
+            "POST", "/api/v1/libraries/" + java.util.UUID.randomUUID() + "/indexing");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+
+    filter.doFilter(request, response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(chain.getRequest()).isNotNull();
   }
 
   @Test

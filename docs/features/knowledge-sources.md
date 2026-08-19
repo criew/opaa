@@ -147,6 +147,18 @@ Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, 
 Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
 verlangt eine neue Bibliothek.
 
+**Verbindungstest vor dem Anlegen (gebaut, #514).** Im Erstellungsdialog prüft ein „Verbindung
+testen"-Knopf die eingegebene Quellkonfiguration serverseitig, bevor die Bibliothek überhaupt
+angelegt wird — `FILESYSTEM` meldet die Anzahl gefundener, unterstützter Dokumente (unter derselben
+Pfad-Allowlist wie die Anlage selbst, siehe unten), `HTTP_DIRECTORY` die Anzahl verlinkter Dokumente
+auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge. Der Test ist optional und
+ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
+und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
+offenen Zielprüfung (#267)** — ein filternder Proxy oder eine Netzwerksegmentierung sind bis dahin die
+wirksame Absicherung, nicht dieser Endpoint. Er ist zusätzlich rate-limitiert
+(`opaa.rate-limit.source-test`), damit er nicht als schneller interner Portscanner missbraucht werden
+kann.
+
 Eine eigene Konnektor-Tabelle mit mehreren Quellen je Konnektor — das frühere Zielbild dieses
 Abschnitts, mit Konnektoren wie „Netzlaufwerk Kämmerei" oder „Intranet-Wiki", die mehrere Pfade auf
 mehrere Bibliotheken abbilden — wurde geprüft und **verworfen**: Jede real existierende Quelle hat
@@ -250,7 +262,9 @@ höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
   dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
   zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
   (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
-  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267**.
+  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267** — die
+  Lücke gilt seit #514 gleichermaßen für den Verbindungstest im Erstellungsdialog, der dieselben
+  ausgehenden Verbindungen aufbaut, nur synchron statt über einen Indizierungslauf.
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant. Die Selbstaktualisierung im Sinne des
   nächsten Kapitels ist damit noch nicht erreicht. Mit der Konfiguration an der Bibliothek hat ein
   Zeitplan erstmals einen natürlichen Ort; entschieden wird das in **Issue #485**.

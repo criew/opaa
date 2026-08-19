@@ -610,6 +610,49 @@ export const handlers = [
     return HttpResponse.json(detail, { status: 201 })
   }),
 
+  // #514: mirrors SourceConnectionTestService's per-type validation just enough that the mock
+  // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
+  // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
+  http.post('/api/v1/libraries/source-test', async ({ request }) => {
+    const body = (await request.json()) as {
+      sourceType: DocumentSourceType
+      sourcePath?: string | null
+      sourceUrl?: string | null
+    }
+    if (body.sourceType === 'UPLOAD') {
+      return HttpResponse.json(
+        { error: 'sourceType UPLOAD unterstuetzt keinen Verbindungstest' },
+        { status: 400 },
+      )
+    }
+    if (body.sourceType === 'FILESYSTEM') {
+      if (!body.sourcePath || !body.sourcePath.startsWith('/')) {
+        return HttpResponse.json(
+          { error: 'sourcePath muss ein absoluter Pfad sein' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        reachable: true,
+        documentCount: 3,
+        message: 'Verzeichnis erreichbar, 3 Dokumente gefunden.',
+      })
+    }
+    if (body.sourceType === 'HTTP_DIRECTORY') {
+      return HttpResponse.json({
+        reachable: true,
+        documentCount: 5,
+        message:
+          'Webverzeichnis erreichbar, 5 unterstuetzte Dokumente auf oberster Ebene gefunden.',
+      })
+    }
+    return HttpResponse.json({
+      reachable: true,
+      documentCount: 12,
+      message: 'RSS-Feed erreichbar, 12 Eintraege gefunden.',
+    })
+  }),
+
   http.get('/api/v1/libraries/:libraryId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]

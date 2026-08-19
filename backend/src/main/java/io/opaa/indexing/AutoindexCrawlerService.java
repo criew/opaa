@@ -106,6 +106,15 @@ public class AutoindexCrawlerService {
     return response.body();
   }
 
+  /**
+   * Parses only the top-level (non-recursive) entries of an Apache mod_autoindex HTML directory
+   * listing - used by the source connection test (#514), which counts linked documents without
+   * crawling the whole tree the way {@link #crawl} does.
+   */
+  public List<CrawledFileEntry> parseTopLevelEntries(String html, String baseUrl) {
+    return parseDirectory(html, baseUrl, 0);
+  }
+
   /** Parses an Apache mod_autoindex HTML directory listing using JSoup. */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     if (html == null) {
@@ -175,7 +184,7 @@ public class AutoindexCrawlerService {
     return baseUrl + relative;
   }
 
-  static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
+  public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
     HttpClient.Builder builder =
         HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -211,7 +220,7 @@ public class AutoindexCrawlerService {
     return builder.build();
   }
 
-  static String buildAuthHeader(String username, String password) {
+  public static String buildAuthHeader(String username, String password) {
     if (username != null && password != null) {
       String credentials = username + ":" + password;
       return "Basic "
