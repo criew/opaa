@@ -19,6 +19,7 @@ import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.library.SourceConnectionTestService;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,6 +57,7 @@ class LibraryIndexingControllerTest {
   @MockitoBean private LibraryDocumentService documentService;
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
+  @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
 
   private User currentUser;
 
