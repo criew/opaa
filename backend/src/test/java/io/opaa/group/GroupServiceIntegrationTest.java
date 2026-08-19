@@ -17,6 +17,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.library.PermissionHistoryService;
+import io.opaa.security.CredentialsEncryptionProperties;
+import io.opaa.security.CredentialsEncryptor;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -51,9 +54,22 @@ import org.testcontainers.utility.DockerImageName;
  * silently defeat the very assertions this class makes about cache invalidation timing. Cleanup
  * that a rolled-back transaction would otherwise have given us for free is done explicitly in
  * {@link #cleanUp()} instead.
+ *
+ * <p>{@link CredentialsEncryptionProperties}/{@link CredentialsEncryptor} are imported explicitly
+ * (PR #504 review, finding 3) because this slice's Hibernate entity metadata includes {@code
+ * KnowledgeLibrary}, whose {@code source_credentials} column needs a constructor-injected {@code
+ * SourceCredentialsConverter} bean to build the entity manager factory at all -
+ * {@code @DataJpaTest} does not pull in {@code OpaaApplication}'s
+ * {@code @EnableConfigurationProperties}.
  */
 @DataJpaTest
-@Import({GroupService.class, GroupMembershipResolver.class, PermissionHistoryService.class})
+@Import({
+  GroupService.class,
+  GroupMembershipResolver.class,
+  PermissionHistoryService.class,
+  CredentialsEncryptor.class
+})
+@EnableConfigurationProperties(CredentialsEncryptionProperties.class)
 @Testcontainers(disabledWithoutDocker = true)
 @TestPropertySource(
     properties = {"spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})

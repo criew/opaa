@@ -101,6 +101,30 @@ class CredentialsEncryptorTest {
   }
 
   @Test
+  void decryptingAValueWithAnUnknownVersionPrefixRaisesAClearExceptionInsteadOfPassingItThrough() {
+    // PR #504 review, finding 5: only the exact "enc:v1:" prefix is treated as encrypted-and-
+    // decryptable; anything else that still starts with "enc:" must never be returned as if it
+    // were cleartext, so future format/version changes cannot be silently misread.
+    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+
+    assertThatThrownBy(() -> encryptor.decrypt("enc:v2:whatever-a-future-format-looks-like"))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+  }
+
+  @Test
+  void
+      decryptingAMalformedBase64PayloadRaisesTheSameClearExceptionRatherThanAnUncaughtIllegalArgumentException() {
+    // PR #504 review, finding 2: Base64.getDecoder().decode(...) must be caught alongside the
+    // other decrypt failure modes, not left to escape as a bare IllegalArgumentException that
+    // would otherwise be misrouted to GlobalExceptionHandler's generic 400 handler with a raw JDK
+    // message.
+    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+
+    assertThatThrownBy(() -> encryptor.decrypt("enc:v1:not-valid-base64!!!"))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+  }
+
+  @Test
   void decryptingWithTheWrongKeyRaisesAClearExceptionInsteadOfSilentlyReturningGarbage() {
     CredentialsEncryptor writer = encryptorWithKey(validBase64Key());
     String encrypted = writer.encrypt("admin:secret");

@@ -1,8 +1,11 @@
 package io.opaa.library;
 
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JPA {@link AttributeConverter} for {@link KnowledgeLibrary#getSourceCredentials()} (#483,
@@ -16,28 +19,50 @@ import jakarta.persistence.Converter;
  * converter would silently also catch any future {@code String} field that happens to share the
  * {@code String}/{@code String} type pair.
  *
- * <p><b>Not a Spring bean, deliberately:</b> Hibernate instantiates an explicitly-named
- * {@code @Convert} converter itself, via its no-arg constructor, rather than asking Spring for the
- * bean this class's {@code @Convert(converter = ...)} names - this codebase's Hibernate/Spring Boot
- * combination does not wire {@code hibernate.resource.beans.container} to Spring's bean container,
- * so constructor injection here would never actually run (confirmed the hard way: every
- * {@code @DataJpaTest}-style slice that loads {@link KnowledgeLibrary}'s entity metadata still
- * needs a working converter instance, even one that {@code @Import}s nothing from {@code
- * io.opaa.security}). {@link #convertToDatabaseColumn}/{@link #convertToEntityAttribute} therefore
- * resolve the actual encryptor lazily, at call time, via {@link CredentialsEncryptor#current()} -
- * see that method's Javadoc for how it finds the real, Spring-configured instance in an actual
- * application context.
+ * <p><b>A plain Spring bean, constructor-injected:</b> Spring Boot's {@code
+ * HibernateJpaVendorAdapter} wires {@code hibernate.resource.beans.container} to Spring's own bean
+ * container, so Hibernate asks Spring for the {@code @Convert(converter = ...)}-named converter
+ * instance rather than instantiating it itself - normal constructor injection of {@link
+ * CredentialsEncryptor} here works.
+ *
+ * <p><b>Read failures fail soft, write failures fail hard (PR #504 review):</b> {@link
+ * #convertToEntityAttribute} runs on every hydration of a {@link KnowledgeLibrary} row, including
+ * every {@code GET /api/v1/libraries} list entry - a single row whose {@code sourceCredentials} can
+ * no longer be decrypted (key lost, key rotated without re-encrypting existing rows, corrupted
+ * value) must not take the whole read down with a {@code 503}, since that would also break the one
+ * repair path ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
+ * docs/deployment.md}, which loads the same row first. This converter therefore catches {@link
+ * CredentialsEncryptionKeyMissingException} on read and treats the field as absent (logs a warning
+ * with no library id - the converter is not given the owning entity's identity - and, deliberately,
+ * no part of the stored or decrypted value). {@link #convertToDatabaseColumn} keeps failing hard:
+ * silently dropping credentials on write would be far worse than a clear {@code 503}.
  */
 @Converter(autoApply = false)
 public class SourceCredentialsConverter implements AttributeConverter<String, String> {
 
+  private static final Logger log = LoggerFactory.getLogger(SourceCredentialsConverter.class);
+
+  private final CredentialsEncryptor credentialsEncryptor;
+
+  public SourceCredentialsConverter(CredentialsEncryptor credentialsEncryptor) {
+    this.credentialsEncryptor = credentialsEncryptor;
+  }
+
   @Override
   public String convertToDatabaseColumn(String attribute) {
-    return CredentialsEncryptor.current().encrypt(attribute);
+    return credentialsEncryptor.encrypt(attribute);
   }
 
   @Override
   public String convertToEntityAttribute(String dbData) {
-    return CredentialsEncryptor.current().decrypt(dbData);
+    try {
+      return credentialsEncryptor.decrypt(dbData);
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      log.warn(
+          "Zugangsdaten einer Wissensbibliothek konnten beim Lesen nicht entschluesselt werden -"
+              + " Feld wird als nicht gesetzt behandelt. Ursache: {}",
+          e.getMessage());
+      return null;
+    }
   }
 }

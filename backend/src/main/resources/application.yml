@@ -126,7 +126,7 @@ opaa:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
       # rest (#483). No default here on purpose - a real deployment must set one before storing any
-      # library's credentials; see docs/deployment.md. The local/dev profiles below set an
+      # library's credentials; see docs/deployment.md. The dev profile below (not local) sets an
       # explicitly-marked non-production default so bootRun and tests work without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
 

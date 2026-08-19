@@ -116,10 +116,12 @@ public class KnowledgeLibrary {
    * Never exposed by the API in any response (ADR-0018, Entscheidung 4) - {@code
    * KnowledgeLibraryService} must not read this field into any {@code LibraryResponse}/{@code
    * LibraryListResponse}. Encrypted at rest (#483) via {@link SourceCredentialsConverter} - this
-   * getter/field always sees the decrypted plaintext, the same as before #483; the column itself
-   * holds {@code enc:v1:<base64>} (or a legacy pre-#483 cleartext value, see that converter's
-   * Javadoc). Column width (3000, migration 029) accounts for the encrypted encoding of the
-   * 500-character plaintext {@code LibraryRequest.sourceCredentials} still allows.
+   * getter/field sees the decrypted plaintext, the same as before #483, unless the stored value can
+   * no longer be decrypted (key lost/rotated, corrupted value), in which case the converter logs a
+   * warning and this field reads as {@code null} rather than failing the whole load (PR #504
+   * review). The column itself holds {@code enc:v1:<base64>} (or a legacy pre-#483 cleartext value,
+   * see that converter's Javadoc). Column width (3000, migration 029) accounts for the encrypted
+   * encoding of the 500-character plaintext {@code LibraryRequest.sourceCredentials} still allows.
    */
   @Convert(converter = SourceCredentialsConverter.class)
   @Column(name = "source_credentials", length = 3000)

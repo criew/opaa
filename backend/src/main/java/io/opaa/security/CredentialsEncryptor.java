@@ -1,12 +1,10 @@
 package io.opaa.security;
 
-import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -22,73 +20,36 @@ import org.springframework.util.StringUtils;
  * 16-byte authentication tag to the ciphertext itself ({@link Cipher#doFinal}), so the stored blob
  * needs no separate tag field. The {@code "enc:v1:"} prefix distinguishes a value this class wrote
  * from a pre-#483 cleartext value already sitting in the column (see {@link #decrypt}) and gives
- * later format changes a version to branch on.
+ * later format changes a version to branch on. Deliberately no AAD and no key id in the format -
+ * the protection goal is confidentiality at rest for a single key per deployment, not authenticated
+ * association with other data or in-place key rotation; a future key rotation is expected to bump
+ * this to a {@code "enc:v2:"} format instead.
  *
  * <p><b>Legacy cleartext:</b> Every {@code sourceCredentials} value written before this issue is
  * plain {@code user:password} text with no such prefix - migrating it in place is not possible
  * (Liquibase runs before the application, and only the application holds the key). {@link #decrypt}
- * therefore treats any value without the prefix as legacy cleartext and returns it unchanged; the
- * next {@link #encrypt} call on that same row (any credential rotation via the existing update API)
- * encrypts it, requiring no separate migration step or downtime.
+ * therefore treats any value without an {@code "enc:"} prefix at all as legacy cleartext and
+ * returns it unchanged; the next {@link #encrypt} call on that same row (any credential rotation
+ * via the existing update API) encrypts it, requiring no separate migration step or downtime. A
+ * value that *does* start with {@code "enc:"} but not the current {@code "enc:v1:"} version is
+ * never treated as cleartext - see {@link #decrypt}.
  */
 @Component
 public class CredentialsEncryptor {
 
   static final String PREFIX = "enc:v1:";
+  private static final String ENCRYPTED_MARKER = "enc:";
   private static final String CIPHER_TRANSFORMATION = "AES/GCM/NoPadding";
   private static final String KEY_ALGORITHM = "AES";
   private static final int GCM_IV_LENGTH_BYTES = 12;
   private static final int GCM_TAG_LENGTH_BITS = 128;
   private static final int REQUIRED_KEY_LENGTH_BYTES = 32; // AES-256
 
-  /**
-   * Publishes the Spring-managed singleton (real, environment/{@code application.yml}-backed
-   * properties) for {@code io.opaa.library.SourceCredentialsConverter} to find - Hibernate
-   * instantiates {@code AttributeConverter}s itself via their no-arg constructor rather than asking
-   * Spring for the bean {@code @Convert} names (this codebase's Hibernate/Spring Boot combination
-   * does not wire {@code hibernate.resource.beans.container} to Spring's bean container), so
-   * constructor injection into that converter cannot work. This static, "publish once Spring's
-   * container has actually finished creating me" bridge (see {@link #publish}) is the workaround:
-   * since {@link CredentialsEncryptor} is itself a singleton {@link Component}, Spring creates
-   * exactly one during context refresh, well before any real request can reach {@code
-   * SourceCredentialsConverter}. Deliberately populated from {@link #publish} (a {@link
-   * PostConstruct} method, which only Spring's bean lifecycle ever calls), not from the constructor
-   * itself - {@code CredentialsEncryptorTest} constructs many plain, non-Spring instances directly
-   * (with intentionally missing/invalid keys, to test {@link #requireKey()}'s failure modes), and
-   * registering unconditionally from the constructor would let the last one of those silently
-   * overwrite whatever a real application context had published.
-   */
-  private static final AtomicReference<CredentialsEncryptor> SPRING_MANAGED_INSTANCE =
-      new AtomicReference<>();
-
   private final CredentialsEncryptionProperties properties;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public CredentialsEncryptor(CredentialsEncryptionProperties properties) {
     this.properties = properties;
-  }
-
-  @PostConstruct
-  void publish() {
-    SPRING_MANAGED_INSTANCE.set(this);
-  }
-
-  /**
-   * Returns the Spring-managed singleton if one has already been published (true for every real
-   * application context, see {@link #SPRING_MANAGED_INSTANCE}'s Javadoc), otherwise a bare instance
-   * reading {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} directly from the process environment - the
-   * fallback used by {@code SourceCredentialsConverter}'s no-arg constructor when no Spring context
-   * exists at all (or has not finished creating this bean yet, e.g. a {@code @DataJpaTest}-style
-   * slice that never imports anything from {@code io.opaa.security}, so the bean never gets created
-   * at all).
-   */
-  public static CredentialsEncryptor current() {
-    CredentialsEncryptor springManaged = SPRING_MANAGED_INSTANCE.get();
-    if (springManaged != null) {
-      return springManaged;
-    }
-    return new CredentialsEncryptor(
-        new CredentialsEncryptionProperties(System.getenv("OPAA_CREDENTIALS_ENCRYPTION_KEY")));
   }
 
   /**
@@ -123,29 +84,45 @@ public class CredentialsEncryptor {
 
   /**
    * Decrypts a value previously produced by {@link #encrypt}, or returns it unchanged if it carries
-   * no {@link #PREFIX} - see class Javadoc "Legacy cleartext". Blank input is returned unchanged,
-   * the mirror of {@link #encrypt}'s own blank handling.
+   * no {@code "enc:"} prefix at all - see class Javadoc "Legacy cleartext". Blank input is returned
+   * unchanged, the mirror of {@link #encrypt}'s own blank handling.
+   *
+   * <p>Throws {@link CredentialsEncryptionKeyMissingException} - never returns a plaintext-looking
+   * garbage string - for every way a value that does carry the marker can fail to come back: an
+   * unknown format version (anything starting with {@code "enc:"} other than the current {@link
+   * #PREFIX}), a corrupted/non-Base64 blob, or a wrong/missing key. Callers that read a persisted
+   * {@code sourceCredentials} value (namely {@code io.opaa.library.SourceCredentialsConverter}) are
+   * expected to catch this and fail soft (log and treat the field as absent) rather than let one
+   * undecryptable row block every other row in the same read; callers that write (this class's own
+   * {@link #encrypt}) are expected to fail hard.
    */
   public String decrypt(String stored) {
-    if (!StringUtils.hasText(stored) || !stored.startsWith(PREFIX)) {
+    if (!StringUtils.hasText(stored)) {
       return stored;
     }
-    SecretKeySpec key = requireKey();
-    byte[] combined = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
-    if (combined.length <= GCM_IV_LENGTH_BYTES) {
-      throw new CredentialsEncryptionKeyMissingException(
-          "Gespeicherter Zugangsdaten-Wert ist beschaedigt");
+    if (!stored.startsWith(ENCRYPTED_MARKER)) {
+      return stored;
     }
-    byte[] iv = Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH_BYTES);
-    byte[] ciphertext = Arrays.copyOfRange(combined, GCM_IV_LENGTH_BYTES, combined.length);
+    if (!stored.startsWith(PREFIX)) {
+      throw new CredentialsEncryptionKeyMissingException(
+          "Gespeicherter Zugangsdaten-Wert hat ein unbekanntes Verschluesselungsformat");
+    }
+    SecretKeySpec key = requireKey();
     try {
+      byte[] combined = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
+      if (combined.length <= GCM_IV_LENGTH_BYTES) {
+        throw new CredentialsEncryptionKeyMissingException(
+            "Gespeicherter Zugangsdaten-Wert ist beschaedigt");
+      }
+      byte[] iv = Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH_BYTES);
+      byte[] ciphertext = Arrays.copyOfRange(combined, GCM_IV_LENGTH_BYTES, combined.length);
       Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
       cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
       return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
-    } catch (GeneralSecurityException e) {
+    } catch (IllegalArgumentException | GeneralSecurityException e) {
       throw new CredentialsEncryptionKeyMissingException(
           "Zugangsdaten konnten nicht entschluesselt werden - falscher oder fehlender"
-              + " Verschluesselungsschluessel",
+              + " Verschluesselungsschluessel oder beschaedigter Wert",
           e);
     }
   }

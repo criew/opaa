@@ -297,7 +297,7 @@ Chat und Einbettung laufen damit über Ollama (`OPAA_OLLAMA_BASE_URL` ist im Pro
 | `OPAA_AUTH_DEV_ISSUER` | `opaa-dev` | Issuer-Claim der synthetischen Tokens |
 | `OPAA_AUTH_DEV_DEFAULT_USER` | `dev-admin` | Nutzer, als der ohne `X-OPAA-Dev-User`-Header authentifiziert wird |
 | **Zugangsdaten-Verschlüsselung** | | |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb der Profile `local`/`dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** — siehe [Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung-483) |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | — (leer) | Base64-kodierter AES-256-Schlüssel (32 rohe Byte) zur Verschlüsselung von `knowledge_libraries.source_credentials` ruhend in der Datenbank. **Ohne Voreinstellung außerhalb des Profils `dev`; erforderlich, sobald eine Bibliothek mit Zugangsdaten gespeichert wird** — siehe [Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung-483) |
 | **OIDC** | | |
 | `OPAA_OIDC_JWK_SET_URI` | `http://localhost:8180/...` | JWK-Set-URI für Token-Verifizierung |
 | `OPAA_OIDC_ISSUER_URI` | `http://localhost:8180/realms/opaa` | OIDC-Issuer-URI für Token-Validierung |
@@ -388,24 +388,37 @@ Umgebungsvariablen behandeln (Passwort-Tresor, Secret-Manager der Zielumgebung o
 Bibliotheken (`UPLOAD`, `FILESYSTEM`, oder ein `HTTP_DIRECTORY`/`RSS_FEED` ohne Zugangsdaten)
 brauchen keinen. Erst der Versuch, eine Bibliothek **mit** Zugangsdaten anzulegen oder zu ändern,
 schlägt ohne gültigen Schlüssel mit `503` fehl (`io.opaa.security.CredentialsEncryptor`) — eine klare
-Fehlermeldung statt eines unspezifischen `500`. Für lokale Entwicklung und Tests (Profile `local`,
-`dev`) ist ein fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Schlüssel voreingestellt
-(`backend/src/main/resources/application.yml`), damit `bootRun` und die Testsuite ohne
-Betreiber-Eingriff laufen.
+Fehlermeldung statt eines unspezifischen `500`. Für lokale Entwicklung und Tests (nur Profil `dev`,
+das jede Testsuite und `bootRun` aktivieren — nicht `local`) ist ein fest hinterlegter, **ausdrücklich
+nicht produktionstauglicher** Schlüssel voreingestellt (`backend/src/main/resources/application.yml`),
+damit beide ohne Betreiber-Eingriff laufen.
+
+**Lesen scheitert weich, Schreiben hart:** Ein Wert, der mit dem aktuellen Schlüssel nicht mehr
+entschlüsselt werden kann (Schlüssel verloren, rotiert, oder ein beschädigter Datenbankwert), lässt
+das **Lesen** dieser einen Bibliothek nicht scheitern — `SourceCredentialsConverter` protokolliert
+eine Warnung (ohne den Wert, ohne die Bibliotheks-ID) und behandelt `sourceCredentials` für diese
+Bibliothek als nicht gesetzt; `GET /api/v1/libraries` liefert die übrige Liste normal, auch wenn eine
+einzelne Bibliothek betroffen ist. Ein **Schreibvorgang** (Anlegen oder Ändern von Zugangsdaten)
+scheitert dagegen weiterhin hart mit `503`, statt Zugangsdaten stillschweigend zu verlieren.
 
 **Bei Schlüsselverlust:** Bereits verschlüsselte `sourceCredentials`-Werte sind ohne den
 ursprünglichen Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des
 Schlüssels selbst. Betroffen sind ausschließlich die Zugangsdaten selbst, nicht die übrige
 Bibliothekskonfiguration oder der bereits indizierte Bestand. Abhilfe: Zugangsdaten über die
 bestehende Bibliotheks-API (`PATCH /api/v1/libraries/{id}`) neu setzen — derselbe Weg, über den
-Zugangsdaten ohnehin rotiert werden, ohne dass ein laufender oder künftiger Indizierungslauf dafür
-unterbrochen werden muss.
+Zugangsdaten ohnehin rotiert werden. Dank des weichen Lesefehlers oben funktioniert dieser
+Reparaturweg tatsächlich: das vorausgehende Laden der Bibliothek scheitert nicht mehr an genau dem
+Wert, der repariert werden soll. Bis zur Reparatur läuft ein laufender oder künftiger
+Indizierungslauf für diese Bibliothek ohne Anmeldung und kann entsprechend scheitern, wenn die
+Quelle Zugangsdaten verlangt.
 
 **Altbestand vor #483:** Werte, die vor Einführung dieser Verschlüsselung im Klartext geschrieben
-wurden, erkennt `CredentialsEncryptor` beim Lesen an einem fehlenden Format-Präfix und behandelt sie
+wurden, erkennt `CredentialsEncryptor` beim Lesen an einem fehlenden `enc:`-Präfix und behandelt sie
 weiterhin als Klartext — eine Liquibase-Migration kann sie nicht verschlüsseln, da der Schlüssel nur
 der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (z. B. eine
-Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert.
+Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Ein Wert mit `enc:`-
+Präfix, aber unbekannter Version (nicht `enc:v1:`), wird dagegen nie als Klartext behandelt — Lesen
+scheitert weich (siehe oben), Schreiben hart.
 
 ## Authentifizierung
 

@@ -499,6 +499,49 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void
+      aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt() {
+    // PR #504 review, finding 1: a lost/rotated key (or a corrupted stored value) must not turn
+    // GET /api/v1/libraries into a 503 for every library that shares this key - only the affected
+    // library's sourceCredentials reads as null. The documented repair path (docs/deployment.md,
+    // "Bei Schluesselverlust") - setting new credentials via the update API - depends on that same
+    // load succeeding first.
+    UUID owner = createUser(organizationA);
+    LibraryRequest request =
+        new LibraryRequest(
+                "Zugangsdaten mit verlorenem Schluessel", DocumentSourceType.HTTP_DIRECTORY)
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:super-secret-password");
+    LibraryResponse response = libraryService.createLibrary(request, owner);
+
+    // Simulate a lost/rotated encryption key (or a corrupted column value) by writing a value
+    // directly that carries the "enc:v1:" marker but no key can ever turn back into plaintext.
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
+        "enc:v1:not-decryptable-with-any-key",
+        response.getId());
+
+    // The list read must not fail for the whole set just because one library's credentials are
+    // undecryptable.
+    assertThat(libraryService.listLibraries(owner, false))
+        .anySatisfy(listed -> assertThat(listed.getId()).isEqualTo(response.getId()));
+
+    KnowledgeLibrary reloaded = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(reloaded.getSourceCredentials()).isNull();
+
+    // The repair: rotating the credentials via the existing update API works, precisely because
+    // the load that precedes the update no longer fails on the old, undecryptable value.
+    LibraryUpdateRequest repair =
+        new LibraryUpdateRequest("Zugangsdaten mit verlorenem Schluessel")
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:repaired-password");
+    libraryService.updateLibrary(response.getId(), repair, owner, false);
+
+    KnowledgeLibrary repaired = libraryRepository.findById(response.getId()).orElseThrow();
+    assertThat(repaired.getSourceCredentials()).isEqualTo("admin:repaired-password");
+  }
+
+  @Test
   void updateLibraryRejectsAChangeOfSourceType() {
     UUID owner = createUser(organizationA);
     LibraryResponse library =
