@@ -3,20 +3,17 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryVisibility;
-import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,11 +26,11 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * #419: triggering an indexing run always requires a caller-chosen, authorized target library -
- * this pins the resolution/authorization logic in {@link DocumentIndexingService}. ADR-0017:
- * additionally pins source-type resolution (explicit field vs. backward-compatible fallback), the
- * contradiction check, and delegation through {@link IndexingSourceExecutorRegistry} - the
- * controller and both executors delegate to this service entirely.
+ * #478/ADR-0018: triggering an indexing run reduces to "index this library" - type and
+ * configuration are read from the library itself, and concurrency is tracked per library instead of
+ * globally. Supersedes the pre-#478 {@code DocumentIndexingServiceTest}, which pinned the old
+ * {@code IndexingTriggerRequest}-based entry point and its ADR-0017 fallback/contradiction checks -
+ * both gone with this issue (ADR-0018, Entscheidung 2).
  */
 @ExtendWith(MockitoExtension.class)
 class DocumentIndexingServiceTest {
@@ -74,26 +71,23 @@ class DocumentIndexingServiceTest {
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
             false,
+            false,
+            DocumentSourceType.FILESYSTEM,
+            "/data/docs",
+            null,
+            null,
+            null,
             false);
   }
 
-  @Test
-  void triggerIndexingWithoutLibraryIdFailsWithBadRequestAndDoesNotStartAJob() {
-    // #419 acceptance criteria: no libraryId -> 400, German message, no run started.
-    assertThatThrownBy(() -> service.triggerIndexing((UUID) null, currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> {
-              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
-              assertThat(ex.getReason()).isEqualTo("libraryId ist erforderlich");
-            });
-    verify(indexingJobService, never()).startJob(any());
-    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
+  private void stubEditableLibrary() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
   }
 
   @Test
   void triggerIndexingWithAViewerOnlyGrantFailsWithForbiddenAndDoesNotStartAJob() {
-    // #419 acceptance criteria: caller with only VIEWER on the target library -> 403, no run.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(false);
@@ -103,13 +97,13 @@ class DocumentIndexingServiceTest {
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
     verify(indexingJobService, never()).startJob(any());
-    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
+    verify(asyncIndexingExecutor, never()).execute(any(), any());
   }
 
   @Test
   void triggerIndexingWithALibraryFromAnotherOrganizationFailsWithNotFound() {
-    // #419 acceptance criteria: a library belonging to a foreign organization must not be
-    // distinguishable from one that does not exist at all.
+    // A library belonging to a foreign organization must not be distinguishable from one that
+    // does not exist at all.
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
@@ -147,27 +141,23 @@ class DocumentIndexingServiceTest {
   }
 
   @Test
-  void triggerIndexingWithAnEditorGrantStartsTheJobAgainstTheChosenLibrary() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
+  void triggerIndexingWithAnEditorGrantStartsTheJobAgainstTheLibrarysOwnConfiguration() {
+    stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(library.getId())).thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
 
     assertThat(result).isEqualTo(job);
-    verify(asyncIndexingExecutor)
-        .execute(eq(job.getId()), any(IndexingTriggerRequest.class), eq(library));
+    verify(asyncIndexingExecutor).execute(job.getId(), library);
+    verify(urlIndexingExecutor, never()).execute(any(), any());
+    verify(rssFeedIndexingExecutor, never()).execute(any(), any());
   }
 
   @Test
   void aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected() {
-    // PR #431 review, Befund 2: POST /api/v1/indexing/trigger already requires SYSTEM_ADMIN, so
-    // every caller reaching this method has systemAdmin=true - bypassing the EDITOR check for
-    // that flag too would make the 403 branch unreachable in practice, letting any system admin
-    // write into a library (e.g. another person's private "Meine Dokumente") they were never
-    // granted. canEdit must be consulted with systemAdmin=false, not the caller's real value.
+    // ADR-0018, Entscheidung 2: canEdit must be consulted with systemAdmin=false regardless of the
+    // caller's real role - a system admin without any grant must not silently gain EDITOR.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(false);
@@ -182,15 +172,12 @@ class DocumentIndexingServiceTest {
 
   @Test
   void aSystemAdminMayTargetTheSystemLibraryWithoutAnExplicitGrant() {
-    // The system library is seeded with no owner and no grants (migration 012) - under the
-    // ordinary EDITOR formula nobody, not even a system admin, could ever target it, which would
-    // silently strand the one path that still writes there today. This is the one deliberate
-    // carve-out from the rule above.
     KnowledgeLibrary systemLibrary = mock(KnowledgeLibrary.class);
     UUID systemLibraryId = UUID.randomUUID();
     when(systemLibrary.getId()).thenReturn(systemLibraryId);
     when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
     when(systemLibrary.isSystemLibrary()).thenReturn(true);
+    when(systemLibrary.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -209,8 +196,7 @@ class DocumentIndexingServiceTest {
     UUID systemLibraryId = UUID.randomUUID();
     when(systemLibrary.getOrganizationId()).thenReturn(organizationId);
     // systemAdmin=false short-circuits "systemAdmin && library.isSystemLibrary()" before
-    // isSystemLibrary() is ever called, so it is deliberately left unstubbed (Mockito's
-    // UnnecessaryStubbingException would otherwise fail this test).
+    // isSystemLibrary() is ever called, so it is deliberately left unstubbed.
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(systemLibraryId)).thenReturn(Optional.of(systemLibrary));
     when(libraryAccessService.canEdit(systemLibrary, currentUser.getId(), false)).thenReturn(false);
@@ -222,138 +208,118 @@ class DocumentIndexingServiceTest {
   }
 
   @Test
-  void triggerIndexingThrowsWhenAJobIsAlreadyRunningBeforeCheckingTheLibrary() {
-    when(indexingJobService.isJobRunning()).thenReturn(true);
+  void triggerIndexingThrowsConflictWhenAJobIsAlreadyRunningForThisLibrary() {
+    stubEditableLibrary();
+    when(indexingJobService.isJobRunning(library.getId())).thenReturn(true);
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
-        .isInstanceOf(IndexingAlreadyRunningException.class);
-    verify(userRepository, never()).findById(any());
-  }
-
-  // --- ADR-0017: explicit sourceType, fallback derivation and contradiction checks ---
-  //
-  // The old triggerUrlIndexing(UrlIndexingRequest, ...) convenience method was removed - it had
-  // no production caller left once IndexingController started calling the unified
-  // triggerIndexing(IndexingTriggerRequest, ...) directly. Its scenarios (no libraryId, a
-  // successful URL run, a blank URL) live on below, expressed through that unified method.
-
-  @Test
-  void triggerIndexingWithAnHttpDirectoryRequestWithoutLibraryIdFailsWithBadRequest() {
-    var request =
-        new IndexingTriggerRequest()
-            .sourceType(IndexingSourceType.HTTP_DIRECTORY)
-            .url(URI.create("https://example.com/files/"));
-
-    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
-            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400)));
-    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
-  }
-
-  @Test
-  void triggerIndexingWithAnExplicitSourceTypeSkipsTheFallbackDerivation() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .sourceType(IndexingSourceType.FILESYSTEM);
-
-    IndexingJob result = service.triggerIndexing(request, currentUser.getId(), false);
-
-    assertThat(result).isEqualTo(job);
-    verify(asyncIndexingExecutor).execute(job.getId(), request, library);
-    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
-  }
-
-  @Test
-  void triggerIndexingWithoutSourceTypeButWithAUrlFallsBackToHttpDirectory() {
-    // ADR-0017, decision 1: the backward-compatible fallback still applies when sourceType is
-    // absent - url present means HTTP_DIRECTORY, exactly as before this ADR.
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .url(URI.create("https://example.com/files/"));
-
-    IndexingJob result = service.triggerIndexing(request, currentUser.getId(), false);
-
-    assertThat(result).isEqualTo(job);
-    verify(urlIndexingExecutor).execute(job.getId(), request, library);
-    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
-  }
-
-  @Test
-  void triggerIndexingWithoutSourceTypeAndWithoutAUrlFallsBackToFilesystem() {
-    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    var request = new IndexingTriggerRequest().libraryId(library.getId());
-
-    IndexingJob result = service.triggerIndexing(request, currentUser.getId(), false);
-
-    assertThat(result).isEqualTo(job);
-    verify(asyncIndexingExecutor).execute(job.getId(), request, library);
-    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
-  }
-
-  @Test
-  void anHttpDirectoryRequestWithoutAUrlIsRejectedWithAGermanMessage() {
-    // ADR-0017 acceptance criteria: a source type that needs an address but got none is rejected
-    // before a job is started - a run that would find nothing must never start.
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .sourceType(IndexingSourceType.HTTP_DIRECTORY);
-
-    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> {
-              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
-              assertThat(ex.getReason())
-                  .isEqualTo("Der Quellentyp HTTP_DIRECTORY erfordert eine URL");
-            });
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
     verify(indexingJobService, never()).startJob(any());
   }
 
   @Test
-  void aFilesystemRequestWithAUrlIsRejectedWithAGermanMessage() {
-    // ADR-0017 acceptance criteria: the reverse contradiction is rejected too - a field the
-    // caller set would silently be ignored otherwise.
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .sourceType(IndexingSourceType.FILESYSTEM)
-            .url(URI.create("https://example.com/files/"));
+  void triggerIndexingOfADifferentLibraryIsNotBlockedByAnUnrelatedRunningJob() {
+    // #478 acceptance criteria: concurrency is per library - isJobRunning is only ever asked about
+    // *this* library's id, never a global flag.
+    stubEditableLibrary();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    when(indexingJobService.isJobRunning(library.getId())).thenReturn(false);
 
-    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
+    IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
+
+    assertThat(result).isEqualTo(job);
+  }
+
+  @Test
+  void anUploadLibraryIsRejectedWithConflictAndNoJobStarts() {
+    KnowledgeLibrary uploadLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Upload-Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            false);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
+    when(libraryAccessService.canEdit(uploadLibrary, currentUser.getId(), false)).thenReturn(true);
+
+    assertThatThrownBy(
+            () -> service.triggerIndexing(uploadLibrary.getId(), currentUser.getId(), false))
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
-            ex -> {
-              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
-              assertThat(ex.getReason())
-                  .isEqualTo("Der Quellentyp FILESYSTEM darf keine URL enthalten");
-            });
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
     verify(indexingJobService, never()).startJob(any());
+    verify(asyncIndexingExecutor, never()).execute(any(), any());
+  }
+
+  @Test
+  void anHttpDirectoryLibraryStartsTheJobAgainstTheUrlIndexingExecutor() {
+    KnowledgeLibrary httpLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "HTTP-Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            "https://example.com/files/",
+            null,
+            null,
+            false);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(httpLibrary.getId())).thenReturn(Optional.of(httpLibrary));
+    when(libraryAccessService.canEdit(httpLibrary, currentUser.getId(), false)).thenReturn(true);
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(httpLibrary.getId())).thenReturn(job);
+
+    IndexingJob result = service.triggerIndexing(httpLibrary.getId(), currentUser.getId(), false);
+
+    assertThat(result).isEqualTo(job);
+    verify(urlIndexingExecutor).execute(job.getId(), httpLibrary);
+    verify(asyncIndexingExecutor, never()).execute(any(), any());
+  }
+
+  @Test
+  void anRssFeedLibraryStartsTheJobAgainstTheRssFeedExecutor() {
+    KnowledgeLibrary rssLibrary =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "RSS-Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            false,
+            DocumentSourceType.RSS_FEED,
+            null,
+            "https://example.com/feed.xml",
+            null,
+            null,
+            false);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(rssLibrary.getId())).thenReturn(Optional.of(rssLibrary));
+    when(libraryAccessService.canEdit(rssLibrary, currentUser.getId(), false)).thenReturn(true);
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(rssLibrary.getId())).thenReturn(job);
+
+    IndexingJob result = service.triggerIndexing(rssLibrary.getId(), currentUser.getId(), false);
+
+    assertThat(result).isEqualTo(job);
+    verify(rssFeedIndexingExecutor).execute(job.getId(), rssLibrary);
+    verify(asyncIndexingExecutor, never()).execute(any(), any());
+    verify(urlIndexingExecutor, never()).execute(any(), any());
   }
 
   @Test
   void aSourceTypeWithoutARegisteredExecutorFailsAtStartupWithAClearErrorInsteadOfAnNpeAtRuntime() {
-    // ADR-0017 acceptance criteria: a source type without a matching executor is a clear
-    // rejection, not a NullPointerException reached through some later HTTP request - the
-    // registry now checks completeness in its constructor, so the failure happens at application
-    // startup instead.
     assertThatThrownBy(() -> new IndexingSourceExecutorRegistry(List.of()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("FILESYSTEM")
@@ -361,44 +327,59 @@ class DocumentIndexingServiceTest {
         .hasMessageContaining("RSS_FEED");
   }
 
-  // --- #467: RSS_FEED source type ---
+  // --- getStatus ---
 
   @Test
-  void anRssFeedRequestWithoutAUrlIsRejectedWithAGermanMessage() {
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .sourceType(IndexingSourceType.RSS_FEED);
+  void getStatusReturnsEmptyForALibraryThatNeverRan() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canRead(library, currentUser.getId(), false)).thenReturn(true);
+    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.triggerIndexing(request, currentUser.getId(), false))
-        .isInstanceOfSatisfying(
-            ResponseStatusException.class,
-            ex -> {
-              assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
-              assertThat(ex.getReason()).isEqualTo("Der Quellentyp RSS_FEED erfordert eine URL");
-            });
-    verify(indexingJobService, never()).startJob(any());
-    verify(rssFeedIndexingExecutor, never()).execute(any(), any(), any());
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false)).isEmpty();
   }
 
   @Test
-  void anRssFeedRequestWithAUrlStartsTheJobAgainstTheRssFeedExecutor() {
+  void getStatusReturnsTheLibrarysLatestJob() {
     when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(libraryAccessService.canEdit(library, currentUser.getId(), false)).thenReturn(true);
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    var request =
-        new IndexingTriggerRequest()
-            .libraryId(library.getId())
-            .sourceType(IndexingSourceType.RSS_FEED)
-            .url(URI.create("https://example.com/feed.xml"));
+    when(libraryAccessService.canRead(library, currentUser.getId(), false)).thenReturn(true);
+    var job = new IndexingJob(JobStatus.COMPLETED);
+    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.of(job));
 
-    IndexingJob result = service.triggerIndexing(request, currentUser.getId(), false);
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false)).contains(job);
+  }
 
-    assertThat(result).isEqualTo(job);
-    verify(rssFeedIndexingExecutor).execute(job.getId(), request, library);
-    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
-    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
+  @Test
+  void getStatusWithoutReadAccessFailsWithForbidden() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canRead(library, currentUser.getId(), false)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.getStatus(library.getId(), currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+  }
+
+  @Test
+  void getStatusForAForeignLibraryFailsWithNotFound() {
+    KnowledgeLibrary foreignLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Fremde Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            false);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(foreignLibrary.getId()))
+        .thenReturn(Optional.of(foreignLibrary));
+
+    assertThatThrownBy(() -> service.getStatus(foreignLibrary.getId(), currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
   }
 }

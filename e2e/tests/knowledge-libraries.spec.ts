@@ -112,7 +112,8 @@ async function gotoLibraries(page: Page) {
  * one created). Scenarios 1-3 and 6 share the one library/document created in scenario 1, kept to
  * a single upload there for runtime (not to stay under a rate limit: document upload goes through
  * POST /api/v1/libraries/{libraryId}/documents, which io.opaa.ratelimit.RateLimitConfiguration
- * never guards - only POST /api/v1/indexing/trigger is, which this suite never calls). Scenarios 4
+ * never guards - only POST /api/v1/libraries/{libraryId}/indexing is, which this suite never
+ * calls). Scenarios 4
  * and 5 each add one more upload of their own, into the acting user's own personal library - see
  * OWN_DOCUMENT_PATH's comment for why.
  *

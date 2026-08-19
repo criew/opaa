@@ -32,12 +32,12 @@ class RateLimitFilterTest {
     jsonMapper = JsonMapper.builder().build();
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
-    perIpLimiters.put("/api/v1/query", queryLimiter);
-    perIpLimiters.put("/api/v1/indexing/trigger", indexingLimiter);
+    perIpLimiters.put("^/api/v1/query", queryLimiter);
+    perIpLimiters.put("^/api/v1/libraries/[^/]+/indexing$", indexingLimiter);
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
-    globalLimiters.put("/api/v1/query", globalQueryLimiter);
-    globalLimiters.put("/api/v1/indexing/trigger", globalIndexingLimiter);
+    globalLimiters.put("^/api/v1/query", globalQueryLimiter);
+    globalLimiters.put("^/api/v1/libraries/[^/]+/indexing$", globalIndexingLimiter);
 
     when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
     when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
@@ -79,7 +79,9 @@ class RateLimitFilterTest {
   void returns429WhenIndexingLimitExceeded() throws Exception {
     when(indexingLimiter.isAllowed(anyString())).thenReturn(false);
 
-    var request = new MockHttpServletRequest("POST", "/api/v1/indexing/trigger");
+    var request =
+        new MockHttpServletRequest(
+            "POST", "/api/v1/libraries/" + java.util.UUID.randomUUID() + "/indexing");
     var response = new MockHttpServletResponse();
     var chain = new MockFilterChain();
 
@@ -87,6 +89,22 @@ class RateLimitFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentAsString()).contains("Rate limit exceeded");
+  }
+
+  @Test
+  void indexingStatusEndpointIsNotRateLimited() throws Exception {
+    // The trailing $ in the indexing rule deliberately excludes the sibling status endpoint
+    // (GET .../indexing/status) - mirrors the old /trigger vs /status split.
+    var request =
+        new MockHttpServletRequest(
+            "GET", "/api/v1/libraries/" + java.util.UUID.randomUUID() + "/indexing/status");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+
+    filter.doFilter(request, response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(200);
+    assertThat(chain.getRequest()).isNotNull();
   }
 
   @Test

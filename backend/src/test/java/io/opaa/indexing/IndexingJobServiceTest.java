@@ -114,17 +114,40 @@ class IndexingJobServiceTest {
   }
 
   @Test
-  void getLatestJobReturnsEmptyWhenNoJobs() {
-    when(indexingJobRepository.findTopByOrderByStartedAtDesc()).thenReturn(Optional.empty());
+  void getLatestJobReturnsEmptyWhenTheLibraryNeverRan() {
+    UUID libraryId = UUID.randomUUID();
+    when(indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId))
+        .thenReturn(Optional.empty());
 
-    assertThat(service.getLatestJob()).isEmpty();
+    assertThat(service.getLatestJob(libraryId)).isEmpty();
   }
 
   @Test
-  void getLatestJobReturnsJob() {
+  void getLatestJobReturnsTheLibrarysMostRecentJob() {
+    UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.COMPLETED);
-    when(indexingJobRepository.findTopByOrderByStartedAtDesc()).thenReturn(Optional.of(job));
+    when(indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId))
+        .thenReturn(Optional.of(job));
 
-    assertThat(service.getLatestJob()).contains(job);
+    assertThat(service.getLatestJob(libraryId)).contains(job);
+  }
+
+  @Test
+  void isJobRunningReflectsOnlyTheGivenLibrary() {
+    // #478: concurrency is per library - this must never ask about the whole indexing_jobs table.
+    UUID libraryId = UUID.randomUUID();
+    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId))
+        .thenReturn(true);
+
+    assertThat(service.isJobRunning(libraryId)).isTrue();
+  }
+
+  @Test
+  void isJobRunningReturnsFalseWhenTheLibraryHasNoRunningJob() {
+    UUID libraryId = UUID.randomUUID();
+    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId))
+        .thenReturn(false);
+
+    assertThat(service.isJobRunning(libraryId)).isFalse();
   }
 }

@@ -1,6 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -10,7 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
-/** Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). */
+/**
+ * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). Since ADR-0018
+ * (#478), the directory to crawl is the library's own {@link KnowledgeLibrary#getSourcePath()} -
+ * not a single, application-wide {@code IndexingProperties#documentPath()} any more, so different
+ * FILESYSTEM libraries can watch different directories.
+ */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(AsyncIndexingExecutor.class);
@@ -18,17 +22,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentService documentService;
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
-  private final IndexingProperties properties;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
-      IndexingProperties properties) {
+      IndexingJobService indexingJobService) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
-    this.properties = properties;
   }
 
   @Override
@@ -36,17 +37,13 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     return IndexingSourceType.FILESYSTEM;
   }
 
-  /**
-   * {@code request} is ignored here: a filesystem run always reads from the configured {@code
-   * IndexingProperties#documentPath()}, never from a request field.
-   */
   @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, IndexingTriggerRequest request, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
 
     try {
-      Path documentDir = Path.of(properties.documentPath());
+      Path documentDir = Path.of(targetLibrary.getSourcePath());
       DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(documentDir);
       List<Path> files = discovered.supported();
       log.info(

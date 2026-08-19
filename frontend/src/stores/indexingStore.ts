@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { IndexingStatus, IndexingTriggerRequest, LibraryListResponse } from '../types/api'
+import type { IndexingStatus, LibraryListResponse } from '../types/api'
 import { triggerIndexing, getIndexingStatus, getLibraries } from '../services/api'
 
 const POLL_INTERVAL_MS = 2000
@@ -24,7 +24,6 @@ interface IndexingState {
   isPolling: boolean
   drawerOpen: boolean
   snackbar: Snackbar
-  urlConfig: Pick<IndexingTriggerRequest, 'url' | 'proxy' | 'credentials' | 'insecureSsl'> | null
   libraries: LibraryListResponse[]
   librariesLoading: boolean
   selectedLibraryId: string | null
@@ -35,9 +34,6 @@ interface IndexingState {
   toggleDrawer: () => void
   setDrawerOpen: (open: boolean) => void
   closeSnackbar: () => void
-  setUrlConfig: (
-    config: Pick<IndexingTriggerRequest, 'url' | 'proxy' | 'credentials' | 'insecureSsl'> | null,
-  ) => void
   fetchLibraries: () => Promise<void>
   setSelectedLibraryId: (libraryId: string | null) => void
 }
@@ -54,7 +50,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   isPolling: false,
   drawerOpen: false,
   snackbar: { open: false, message: '', severity: 'success' },
-  urlConfig: null,
   libraries: [],
   librariesLoading: false,
   selectedLibraryId: null,
@@ -73,9 +68,9 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     }
 
     try {
-      const urlConfig = get().urlConfig
-      const request: IndexingTriggerRequest = { libraryId, ...(urlConfig?.url ? urlConfig : {}) }
-      const response = await triggerIndexing(request)
+      // #478: sourceType and every typed configuration field come from the library itself
+      // (ADR-0018) - the trigger only ever names the library.
+      const response = await triggerIndexing(libraryId)
       set({
         status: response.status,
         documentCount: response.documentCount,
@@ -101,11 +96,14 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   pollStatus: () => {
     if (get().isPolling) return
 
+    const libraryId = get().selectedLibraryId
+    if (!libraryId) return
+
     set({ isPolling: true })
 
     pollIntervalId = setInterval(async () => {
       try {
-        const response = await getIndexingStatus()
+        const response = await getIndexingStatus(libraryId)
         set({
           status: response.status,
           documentCount: response.documentCount,
@@ -154,7 +152,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   toggleDrawer: () => set((s) => ({ drawerOpen: !s.drawerOpen })),
   setDrawerOpen: (open) => set({ drawerOpen: open }),
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
-  setUrlConfig: (config) => set({ urlConfig: config }),
 
   fetchLibraries: async () => {
     set({ librariesLoading: true })

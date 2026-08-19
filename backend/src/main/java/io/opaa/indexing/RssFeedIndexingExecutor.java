@@ -1,6 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -109,10 +108,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   @Override
   @Async("indexingTaskExecutor")
-  public void execute(
-      UUID jobId, IndexingTriggerRequest triggerRequest, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
-    String feedUrl = triggerRequest.getUrl() != null ? triggerRequest.getUrl().toString() : null;
+    // ADR-0018 (#478): the feed's address is the library's own sourceUrl, not a per-request field.
+    String feedUrl = targetLibrary.getSourceUrl();
 
     try {
       HttpClient httpClient = AutoindexCrawlerService.buildHttpClient(null, -1, false);

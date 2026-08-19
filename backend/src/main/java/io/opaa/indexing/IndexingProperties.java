@@ -5,7 +5,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Configuration properties for the document indexing pipeline.
  *
- * @param documentPath filesystem path where source documents are stored
+ * @param documentPath filesystem path where source documents are stored. Unused by production code
+ *     since ADR-0018/#478: a FILESYSTEM library now reads its own {@code sourcePath} instead of
+ *     this single, application-wide value. Kept as a configuration property rather than removed
+ *     outright, since deleting it would ripple through the many tests that still set {@code
+ *     opaa.indexing.document-path} for unrelated reasons; a follow-up cleanup can remove it once
+ *     those are untangled.
  * @param chunkSize target token count per chunk. Default 1000: standard for token-based chunking —
  *     balances sufficient context per chunk against retrieval granularity. Valid range: 1–10 000.
  * @param chunkOverlap number of tokens each chunk repeats from the end of its predecessor, so that

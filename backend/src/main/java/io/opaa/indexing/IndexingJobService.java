@@ -71,13 +71,22 @@ public class IndexingJobService {
     indexingJobRepository.save(job);
   }
 
+  /**
+   * The most recent run for {@code libraryId}, or empty if it never ran. Used both to answer the
+   * per-library status endpoint and, indirectly, by {@link #isJobRunning(UUID)} (#478).
+   */
   @Transactional(readOnly = true)
-  public Optional<IndexingJob> getLatestJob() {
-    return indexingJobRepository.findTopByOrderByStartedAtDesc();
+  public Optional<IndexingJob> getLatestJob(UUID libraryId) {
+    return indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId);
   }
 
+  /**
+   * Whether a run for {@code libraryId} is currently in progress (#478: one running job per
+   * library, not one running job for the whole application - runs of different libraries no longer
+   * block each other).
+   */
   @Transactional(readOnly = true)
-  public boolean isJobRunning() {
-    return indexingJobRepository.existsByStatus(JobStatus.RUNNING);
+  public boolean isJobRunning(UUID libraryId) {
+    return indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId);
   }
 }

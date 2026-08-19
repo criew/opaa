@@ -26,7 +26,6 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
-  IndexingTriggerRequest,
   LibraryOwnerType,
   LibraryVisibility,
   QueryRequest,
@@ -125,13 +124,18 @@ export const handlers = [
     return HttpResponse.json(mockHealthResponse)
   }),
 
-  http.post('/api/v1/indexing/trigger', async ({ request }) => {
-    // #419: libraryId is required - a missing one mirrors the backend's 400.
-    const body = (await request.json().catch(() => null)) as IndexingTriggerRequest | null
-    if (!body?.libraryId) {
+  // #478: the trigger reduces to "index this library" - libraryId is a path variable, not a
+  // request body field, and sourceType/configuration come from the library itself (ADR-0018).
+  http.post('/api/v1/libraries/:libraryId/indexing', ({ params }) => {
+    const libraryId = params.libraryId as string
+    if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json(
-        { error: 'libraryId ist erforderlich', status: 400, timestamp: new Date().toISOString() },
-        { status: 400 },
+        {
+          error: 'Bibliothek nicht gefunden',
+          status: 404,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 404 },
       )
     }
 
@@ -145,24 +149,26 @@ export const handlers = [
         documentsSkipped: 0,
         message: 'Indizierung gestartet',
         timestamp: new Date().toISOString(),
+        libraryId,
       } satisfies IndexingStatusResponse,
       { status: 202 },
     )
   }),
 
-  http.get('/api/v1/indexing/status', () => {
+  http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {
+    const libraryId = params.libraryId as string
     if (!indexingActive) {
-      return HttpResponse.json(mockIndexingIdle)
+      return HttpResponse.json({ ...mockIndexingIdle, libraryId })
     }
 
     indexingPollCount++
 
     if (indexingPollCount >= INDEXING_POLL_STEPS) {
       indexingActive = false
-      return HttpResponse.json(mockIndexingCompleted)
+      return HttpResponse.json({ ...mockIndexingCompleted, libraryId })
     }
 
-    return HttpResponse.json(getRunningStatus(indexingPollCount))
+    return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
   }),
 
   http.post('/api/v1/query', async ({ request }) => {

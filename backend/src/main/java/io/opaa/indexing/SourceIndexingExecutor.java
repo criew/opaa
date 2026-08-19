@@ -1,6 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.UUID;
 
@@ -10,6 +9,15 @@ import java.util.UUID;
  * IndexingSourceExecutorRegistry} as a Spring bean - a new source type is added by implementing
  * this interface and wiring one more bean in {@code IndexingConfiguration}, never by editing an
  * existing implementation or the registry itself.
+ *
+ * <p><b>Since ADR-0018 (#478), {@code targetLibrary} is the only source of configuration.</b> A run
+ * no longer receives a per-request {@code IndexingTriggerRequest}: {@code sourcePath}, {@code
+ * sourceUrl}, {@code sourceProxy}, {@code sourceCredentials} and {@code sourceInsecureSsl} all live
+ * on the library itself (ADR-0018, Entscheidung 1) and every executor reads whichever of them its
+ * own type carries - an executor that needs none of them (e.g. {@link
+ * IndexingSourceType#FILESYSTEM} before this issue relied on a global {@code
+ * IndexingProperties#documentPath()}; it now reads {@link KnowledgeLibrary#getSourcePath()}
+ * instead) simply ignores the rest.
  */
 public interface SourceIndexingExecutor {
 
@@ -18,11 +26,8 @@ public interface SourceIndexingExecutor {
 
   /**
    * Runs asynchronously and reports progress/completion through {@code IndexingJobService}, the
-   * same way every executor has always done. {@code request} carries whatever type-specific fields
-   * this executor needs (e.g. {@code url}/{@code proxy}/{@code credentials} for {@link
-   * IndexingSourceType#HTTP_DIRECTORY}); an executor that needs none of them (e.g. {@link
-   * IndexingSourceType#FILESYSTEM}, which reads {@code IndexingProperties} instead) simply ignores
-   * them.
+   * same way every executor has always done. {@code targetLibrary} carries both the destination for
+   * every document/chunk this run writes and, since ADR-0018, the run's own quellkonfiguration.
    */
-  void execute(UUID jobId, IndexingTriggerRequest request, KnowledgeLibrary targetLibrary);
+  void execute(UUID jobId, KnowledgeLibrary targetLibrary);
 }

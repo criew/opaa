@@ -70,10 +70,8 @@ public class IndexingConfiguration {
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
-      IndexingProperties properties) {
-    return new AsyncIndexingExecutor(
-        documentService, fileProcessingService, indexingJobService, properties);
+      IndexingJobService indexingJobService) {
+    return new AsyncIndexingExecutor(documentService, fileProcessingService, indexingJobService);
   }
 
   @Bean

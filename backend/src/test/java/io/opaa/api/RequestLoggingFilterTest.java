@@ -38,7 +38,7 @@ class RequestLoggingFilterTest {
 
   @Test
   void logsApiRequests() throws ServletException, IOException {
-    var request = new MockHttpServletRequest("GET", "/api/v1/indexing/status");
+    var request = new MockHttpServletRequest("GET", "/api/v1/libraries");
     var response = new MockHttpServletResponse();
     response.setStatus(200);
 
@@ -47,7 +47,7 @@ class RequestLoggingFilterTest {
     assertThat(logAppender.list).hasSize(1);
     ILoggingEvent event = logAppender.list.get(0);
     assertThat(event.getLevel()).isEqualTo(Level.INFO);
-    assertThat(event.getFormattedMessage()).startsWith("GET /api/v1/indexing/status 200");
+    assertThat(event.getFormattedMessage()).startsWith("GET /api/v1/libraries 200");
     assertThat(event.getFormattedMessage()).endsWith("ms");
   }
 

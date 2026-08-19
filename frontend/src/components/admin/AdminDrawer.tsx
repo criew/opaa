@@ -1,20 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
-import Accordion from '@mui/material/Accordion'
-import AccordionDetails from '@mui/material/AccordionDetails'
-import AccordionSummary from '@mui/material/AccordionSummary'
+import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Drawer from '@mui/material/Drawer'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import MenuItem from '@mui/material/MenuItem'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { useIndexingStore } from '../../stores/indexingStore'
 
@@ -29,17 +23,11 @@ export default function AdminDrawer() {
   const documentsSkipped = useIndexingStore((s) => s.documentsSkipped)
   const timestamp = useIndexingStore((s) => s.timestamp)
   const trigger = useIndexingStore((s) => s.triggerIndexing)
-  const setUrlConfig = useIndexingStore((s) => s.setUrlConfig)
   const libraries = useIndexingStore((s) => s.libraries)
   const librariesLoading = useIndexingStore((s) => s.librariesLoading)
   const fetchLibraries = useIndexingStore((s) => s.fetchLibraries)
   const selectedLibraryId = useIndexingStore((s) => s.selectedLibraryId)
   const setSelectedLibraryId = useIndexingStore((s) => s.setSelectedLibraryId)
-
-  const [url, setUrl] = useState('')
-  const [proxy, setProxy] = useState('')
-  const [credentials, setCredentials] = useState('')
-  const [insecureSsl, setInsecureSsl] = useState(false)
 
   useEffect(() => {
     if (drawerOpen) {
@@ -50,20 +38,6 @@ export default function AdminDrawer() {
   const isRunning = status === 'RUNNING'
   const progressPercent =
     totalDocuments > 0 ? Math.round(((documentCount + documentsSkipped) / totalDocuments) * 100) : 0
-
-  const handleTrigger = useCallback(() => {
-    if (url.trim()) {
-      setUrlConfig({
-        url: url.trim(),
-        proxy: proxy.trim() || undefined,
-        credentials: credentials.trim() || undefined,
-        insecureSsl: insecureSsl || undefined,
-      })
-    } else {
-      setUrlConfig(null)
-    }
-    trigger()
-  }, [url, proxy, credentials, insecureSsl, setUrlConfig, trigger])
 
   return (
     <Drawer
@@ -96,6 +70,13 @@ export default function AdminDrawer() {
             Dokumentenindizierung
           </Typography>
 
+          {/*
+            #478: Adresse, Proxy, Anmeldedaten und die SSL-Option sind keine Felder dieses Anstoßes
+            mehr - sie stammen jetzt aus der gespeicherten Quellkonfiguration der Bibliothek
+            (ADR-0018). Wer diese Konfiguration einsehen oder ändern will, tut das künftig auf der
+            Bibliotheksdetailseite (#481); hier bleibt nur die Auswahl der Zielbibliothek und der
+            Anstoß-Knopf.
+          */}
           <TextField
             select
             label="Zielbibliothek"
@@ -121,74 +102,10 @@ export default function AdminDrawer() {
             ))}
           </TextField>
 
-          <Accordion
-            disableGutters
-            elevation={0}
-            sx={{
-              mt: 1.5,
-              mb: 1,
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: 1,
-              '&::before': { display: 'none' },
-            }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="body2">URL-Quelle (optional)</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ pt: 0 }}>
-              <TextField
-                label="URL"
-                placeholder="https://example.com/files/"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                size="small"
-                fullWidth
-                sx={{ mb: 1.5 }}
-                slotProps={{ htmlInput: { 'aria-label': 'URL' } }}
-              />
-              <TextField
-                label="Proxy (host:port)"
-                placeholder="proxy.example.com:8080"
-                value={proxy}
-                onChange={(e) => setProxy(e.target.value)}
-                size="small"
-                fullWidth
-                sx={{ mb: 1.5 }}
-                slotProps={{ htmlInput: { 'aria-label': 'Proxy' } }}
-              />
-              <TextField
-                label="Anmeldedaten (Benutzer:Passwort)"
-                type="password"
-                value={credentials}
-                onChange={(e) => setCredentials(e.target.value)}
-                size="small"
-                fullWidth
-                sx={{ mb: 1 }}
-                slotProps={{ htmlInput: { 'aria-label': 'Anmeldedaten' } }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={insecureSsl}
-                    onChange={(e) => setInsecureSsl(e.target.checked)}
-                    size="small"
-                    slotProps={{ input: { 'aria-label': 'SSL-Prüfung überspringen' } }}
-                  />
-                }
-                label={
-                  <Typography variant="body2" color="text.secondary">
-                    SSL-Prüfung überspringen
-                  </Typography>
-                }
-              />
-            </AccordionDetails>
-          </Accordion>
-
           <Button
             variant="contained"
             startIcon={<PlayArrowIcon />}
-            onClick={handleTrigger}
+            onClick={trigger}
             disabled={isRunning || !selectedLibraryId}
             fullWidth
             sx={{ mt: 1, mb: 2 }}

@@ -1,28 +1,32 @@
 package io.opaa.indexing;
 
-import io.opaa.api.dto.IndexingTriggerRequest;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Orchestrates triggering an indexing run - directory or URL - into a caller-chosen target library
- * (#419). {@code libraryId} is deliberately mandatory on every trigger: a directory-wide or
- * URL-wide run that silently defaulted to some library (the caller's personal one, or worse, the
- * unreachable {@link KnowledgeLibrary#SYSTEM_LIBRARY_ID}) would file a whole batch of documents
- * somewhere nobody chose, exactly the defect this issue closes (see the class-level rationale that
- * used to live on {@code FileProcessingService} before #419).
+ * Orchestrates triggering an indexing run for a single knowledge library, reading its own stored
+ * quellentyp and quellkonfiguration (ADR-0018, #478). The trigger reduces to "index this library":
+ * there is no longer a separate, caller-chosen target and no per-request configuration - a library
+ * carries at most one quelle, so the run always writes into the library it reads its configuration
+ * from.
  *
- * <p>ADR-0017 moved the choice of <em>which</em> run type executes from an implicit guess (was
- * {@code url} set?) to an explicit {@link IndexingSourceType}, resolved through {@link
- * IndexingSourceExecutorRegistry}. {@link #triggerIndexing(IndexingTriggerRequest, UUID, boolean)}
- * is the single place that still falls back to the old guess when the caller does not state a
- * {@code sourceType} - every other method here states its type explicitly and never guesses.
+ * <p><b>Superseded by ADR-0018.</b> Before this issue, {@code IndexingTriggerRequest} carried
+ * {@code libraryId} plus every type-specific field (ADR-0017, Entscheidung 4) and the endpoint
+ * required {@code SYSTEM_ADMIN} in addition to an {@code EDITOR} grant on the target library.
+ * ADR-0018, Entscheidung 2 drops both: the endpoint now only needs {@code EDITOR} on the library
+ * being indexed (see {@link #requireEditableLibrary}), and every field the old request carried now
+ * lives on {@link KnowledgeLibrary} itself.
+ *
+ * <p><b>Concurrency is per library, not global (#478).</b> {@link
+ * IndexingJobService#isJobRunning(UUID)} only ever asks about the one library this call targets, so
+ * runs of different libraries execute in parallel instead of queuing behind a single global lock.
  */
 public class DocumentIndexingService {
 
@@ -45,110 +49,88 @@ public class DocumentIndexingService {
     this.libraryAccessService = libraryAccessService;
   }
 
-  /** Triggers a {@link IndexingSourceType#FILESYSTEM} run - the type is never guessed here. */
-  public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    return trigger(
-        IndexingSourceType.FILESYSTEM,
-        new IndexingTriggerRequest().libraryId(libraryId),
-        currentUserId,
-        systemAdmin);
-  }
-
   /**
-   * Single entry point used by {@code IndexingController}. Resolves the effective {@link
-   * IndexingSourceType} - {@code request.getSourceType()} if the caller stated one, otherwise the
-   * backward-compatible fallback derived from whether {@code url} is populated (ADR-0017, decision
-   * 1) - checks it against the request's other fields, and delegates to the executor the registry
-   * returns for it. This is the only remaining place in the application that infers a source type
-   * from field presence rather than being told one explicitly.
+   * Triggers a run for {@code libraryId}. Resolves and authorizes the library first (404/403, see
+   * {@link #requireEditableLibrary}), then rejects a library whose {@code sourceType} has no
+   * executor ({@code UPLOAD} - 409, see {@link #toIndexingSourceType}), then rejects a second
+   * trigger while a run for this same library is still in progress (409). Only once all three pass
+   * does a job actually start.
    */
-  public IndexingJob triggerIndexing(
-      IndexingTriggerRequest request, UUID currentUserId, boolean systemAdmin) {
-    return trigger(resolveSourceType(request), request, currentUserId, systemAdmin);
-  }
-
-  private IndexingSourceType resolveSourceType(IndexingTriggerRequest request) {
-    if (request.getSourceType() != null) {
-      return request.getSourceType();
+  public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+    KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId, systemAdmin);
+    IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
+    if (indexingJobService.isJobRunning(targetLibrary.getId())) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Fuer diese Bibliothek laeuft bereits ein Indizierungslauf");
     }
-    return hasUrl(request) ? IndexingSourceType.HTTP_DIRECTORY : IndexingSourceType.FILESYSTEM;
-  }
-
-  private boolean hasUrl(IndexingTriggerRequest request) {
-    return request.getUrl() != null && !request.getUrl().toString().isBlank();
-  }
-
-  private IndexingJob trigger(
-      IndexingSourceType sourceType,
-      IndexingTriggerRequest request,
-      UUID currentUserId,
-      boolean systemAdmin) {
-    if (indexingJobService.isJobRunning()) {
-      throw new IndexingAlreadyRunningException("An indexing job is already running");
-    }
-    requireConsistentSourceType(sourceType, request);
-    KnowledgeLibrary targetLibrary =
-        requireEditableLibrary(request.getLibraryId(), currentUserId, systemAdmin);
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
     var job = indexingJobService.startJob(targetLibrary.getId());
-    executor.execute(job.getId(), request, targetLibrary);
+    executor.execute(job.getId(), targetLibrary);
     return job;
   }
 
   /**
-   * Rejects a request whose {@code sourceType} contradicts {@code url} (ADR-0017): a run that needs
-   * an address but got none, or one that must not have one but got one anyway, never starts a job
-   * that would find nothing. Only {@code url} is checked - the other type-specific fields ({@code
-   * proxy}, {@code credentials}, {@code insecureSsl}) are not validated against {@code sourceType}
-   * here, matching the check this replaces. {@code RSS_FEED} (#467) needs a {@code url} exactly
-   * like {@code HTTP_DIRECTORY} - both address a source over the same field (ADR-0017, decision 2).
+   * The current or most recently completed run for {@code libraryId}, for whoever can at least read
+   * the library (a narrower bar than {@link #requireEditableLibrary}'s {@code EDITOR} - seeing the
+   * last run's outcome is not the same right as starting a new one).
    */
-  private void requireConsistentSourceType(
-      IndexingSourceType sourceType, IndexingTriggerRequest request) {
-    boolean hasUrl = hasUrl(request);
-    if (sourceType == IndexingSourceType.HTTP_DIRECTORY && !hasUrl) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Quellentyp HTTP_DIRECTORY erfordert eine URL");
+  public Optional<IndexingJob> getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+    if (!libraryAccessService.canRead(library, currentUserId, systemAdmin)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
-    if (sourceType == IndexingSourceType.RSS_FEED && !hasUrl) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Quellentyp RSS_FEED erfordert eine URL");
-    }
-    if (sourceType == IndexingSourceType.FILESYSTEM && hasUrl) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Der Quellentyp FILESYSTEM darf keine URL enthalten");
-    }
+    return indexingJobService.getLatestJob(libraryId);
   }
 
   /**
-   * Resolves and authorizes the indexing run's target library: {@code libraryId} must be present
-   * (400, German message - #419 deliberately has no default), must resolve to a library in the
+   * Maps a library's {@link DocumentSourceType} onto the narrower {@link IndexingSourceType} the
+   * registry is keyed on (ADR-0017, decision 1/ADR-0018): every lauf-basierte type maps 1:1, {@code
+   * UPLOAD} has no run at all and is rejected with a German 409 - not a 400, since the library
+   * itself is a perfectly valid target, it simply has nothing to run (ADR-0018's own acceptance
+   * criterion, "UPLOAD-Bibliothek -> 409").
+   */
+  private IndexingSourceType toIndexingSourceType(DocumentSourceType sourceType) {
+    return switch (sourceType) {
+      case FILESYSTEM -> IndexingSourceType.FILESYSTEM;
+      case HTTP_DIRECTORY -> IndexingSourceType.HTTP_DIRECTORY;
+      case RSS_FEED -> IndexingSourceType.RSS_FEED;
+      case UPLOAD ->
+          throw new ResponseStatusException(
+              HttpStatus.CONFLICT, "Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
+    };
+  }
+
+  /**
+   * Resolves and authorizes the indexing run's target library: it must resolve to a library in the
    * caller's own organization (otherwise 404, indistinguishable from a library that does not exist
    * at all - the organization boundary must not leak even that much), and the caller must hold at
-   * least {@link io.opaa.library.AssetRole#EDITOR} on it (otherwise 403).
+   * least {@link io.opaa.library.AssetRole#EDITOR} on it (otherwise 403). ADR-0018, Entscheidung 2:
+   * unlike the endpoint this replaces, there is no additional {@code SYSTEM_ADMIN} requirement - an
+   * "Anstoss-Knopf" only the systemwide administration could ever press would be dead for every
+   * other library owner.
    *
-   * <p><b>Deliberately no blanket system-admin bypass here</b> - unlike most other library
-   * operations. {@code POST /api/v1/indexing/trigger} already requires {@code SYSTEM_ADMIN} via
-   * {@code @PreAuthorize}, so every caller who reaches this method already has that role: bypassing
-   * {@link LibraryAccessService#canEdit} for it as well (i.e. calling it with {@code systemAdmin =
-   * true}, which resolves to {@code AssetRole#OWNER} unconditionally) would make the check
-   * unreachable in practice, not merely lenient - the 403 branch could never fire, and a system
-   * admin without any grant could write a whole directory's worth of documents into a library they
-   * do not own, including another person's private "Meine Dokumente" (PR #431 review, Befund 2).
-   * {@code canEdit} is therefore always called with {@code systemAdmin = false} here, so the real
+   * <p><b>Deliberately no blanket system-admin bypass here</b>, mirroring the endpoint this
+   * replaces: {@code canEdit} is always called with {@code systemAdmin = false}, so the real
    * grant/visibility formula decides - the one exception is {@link
-   * KnowledgeLibrary#isSystemLibrary() the system library} itself: it is seeded with no owner and
-   * no grants (migration 012), so under the ordinary formula literally nobody - not even a system
-   * admin - could ever target it, which would silently strand the one path that still writes there
-   * today (see {@code FileProcessingService}'s Javadoc). A system admin may therefore target the
-   * system library without an explicit grant; every other library needs a real {@code EDITOR} grant
-   * or organization-wide visibility, admin status notwithstanding.
+   * KnowledgeLibrary#isSystemLibrary() the system library} itself, seeded with no owner and no
+   * grants (migration 012), which only a system admin may target without an explicit grant.
    */
   private KnowledgeLibrary requireEditableLibrary(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
-    if (libraryId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "libraryId ist erforderlich");
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+    boolean systemAdminOnSystemLibrary = systemAdmin && library.isSystemLibrary();
+    if (!systemAdminOnSystemLibrary
+        && !libraryAccessService.canEdit(library, currentUserId, false)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
+    return library;
+  }
+
+  /**
+   * Loads a library and enforces the organization boundary, treating a library from another
+   * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}.
+   */
+  private KnowledgeLibrary loadLibraryInOrganization(UUID libraryId, UUID currentUserId) {
     User currentUser =
         userRepository
             .findById(currentUserId)
@@ -156,18 +138,10 @@ public class DocumentIndexingService {
                 () ->
                     new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
-    boolean systemAdminOnSystemLibrary = systemAdmin && library.isSystemLibrary();
-    if (!systemAdminOnSystemLibrary
-        && !libraryAccessService.canEdit(library, currentUserId, false)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
-    return library;
+    return libraryRepository
+        .findById(libraryId)
+        .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
   }
 }
