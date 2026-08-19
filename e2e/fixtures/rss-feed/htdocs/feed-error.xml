@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Zweiter, erfundener Feed derselben fiktiven "Beispielbehörde" (test(e2e) #471): ein Eintrag ist
+  gültig, der zweite verweist absichtlich auf eine nicht existierende Detailseite (404) - der
+  Negativpfad. Bewusst als eigener Feed/eigene Bibliothek statt als drittem Eintrag in
+  feed-ok.xml: so lässt sich der bedingte Feed-Abruf (ETag/If-Modified-Since) am unveränderten
+  feed-ok.xml sauber prüfen, ohne dass der fehlerhafte Eintrag dessen Feed-State-Speicherung
+  beeinflusst (siehe RssFeedIndexingExecutor, "anyEntryDeferred").
+-->
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde – Mitteilungen (Fehlerfall)</title>
+    <link>http://rss-feed/</link>
+    <description>Erfundener Beispiel-Feed mit einem absichtlich fehlerhaften Eintrag, nur für die OPAA-E2E-Suite.</description>
+    <item>
+      <title>Sitzungstermine des Ausschusses</title>
+      <link>http://rss-feed/seiten/sitzungstermine.html</link>
+      <description>Die kommenden Sitzungstermine des Ausschusses der Beispielbehörde.</description>
+      <pubDate>Mon, 05 Jan 2026 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Veraltete Mitteilung ohne Detailseite</title>
+      <link>http://rss-feed/seiten/nicht-vorhanden.html</link>
+      <description>Dieser Eintrag verweist absichtlich auf eine nicht existierende Detailseite (404) für den Negativpfad.</description>
+      <pubDate>Tue, 06 Jan 2026 09:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

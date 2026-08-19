@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Erfundener RSS-2.0-Feed einer fiktiven "Beispielbehörde", ausschließlich als statisches
+  Testfixture für die OPAA-E2E-Suite (test(e2e) #471). Keine reale Stelle, keine reale Domain.
+  Beide Einträge verweisen auf existierende Detailseiten in diesem Verzeichnis (Positivpfad) -
+  das Gegenstück mit einem absichtlich fehlenden Eintrag ist feed-error.xml.
+-->
+<rss version="2.0">
+  <channel>
+    <title>Beispielbehörde – Mitteilungen</title>
+    <link>http://rss-feed/</link>
+    <description>Erfundener Beispiel-Feed einer fiktiven Behörde, nur für die OPAA-E2E-Suite.</description>
+    <item>
+      <title>Öffnungszeiten der Bürgerauskunft angepasst</title>
+      <link>http://rss-feed/seiten/oeffnungszeiten.html</link>
+      <description>Die Bürgerauskunft der Beispielbehörde hat ihre Öffnungszeiten angepasst.</description>
+      <pubDate>Mon, 05 Jan 2026 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Neuigkeiten aus dem Amt für Statistik</title>
+      <link>http://rss-feed/seiten/statistik.html</link>
+      <description>Das Amt für Statistik der Beispielbehörde veröffentlicht einen neuen Bericht.</description>
+      <pubDate>Tue, 06 Jan 2026 09:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
