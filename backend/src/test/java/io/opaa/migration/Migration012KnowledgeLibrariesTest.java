@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 012 in isolation against a database built from the real, versioned
@@ -27,7 +26,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * composite foreign key with a cross-organization library to prove the constraint - not just
  * application code - is what stops the leak.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration012KnowledgeLibrariesTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

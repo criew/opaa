@@ -12,7 +12,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 021 in isolation against a database built from the real, versioned
@@ -30,7 +29,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * scope_start <= scope_end}, both closed value lists, and the {@code RESTRICT} foreign key on
  * {@code subject_user_id}.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration021AuditIncidentScopeGrantsTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

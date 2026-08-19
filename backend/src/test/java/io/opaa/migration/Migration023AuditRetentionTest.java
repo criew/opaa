@@ -12,7 +12,6 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 023 in isolation, on top of 017 - the same restricted-role pattern
@@ -32,7 +31,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * within the same month, which must not be able to walk the cutoff forward faster than real time
  * actually passing would.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration023AuditRetentionTest extends AbstractMigrationTest {
 
   private static final String AUDIT_APP_ROLE = "audit_app_role";

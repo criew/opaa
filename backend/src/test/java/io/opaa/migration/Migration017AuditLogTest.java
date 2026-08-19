@@ -20,7 +20,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 017 in isolation against a database built from the real, versioned
@@ -48,7 +47,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * of the schema's setup (extension creation, ownership of every other table), which is why it is
  * intentionally out of scope here.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration017AuditLogTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

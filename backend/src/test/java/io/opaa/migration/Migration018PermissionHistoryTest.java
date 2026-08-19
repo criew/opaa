@@ -12,7 +12,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 018 in isolation against a database built from the real, versioned
@@ -29,7 +28,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * calls {@link #applyChangelog018()} itself, at the point in its own body where the migration is
  * meant to run.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration018PermissionHistoryTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

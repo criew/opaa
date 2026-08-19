@@ -12,7 +12,6 @@ import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 019 in isolation against a database built from the real, versioned
@@ -26,7 +25,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * runs, not a live reference whose target must always exist (see {@link
  * io.opaa.indexing.IndexingJob#getLibraryId()}'s Javadoc) - and the rollback block.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration019IndexingJobLibraryTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

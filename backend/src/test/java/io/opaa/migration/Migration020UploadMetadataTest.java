@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 020 in isolation against a database built from the real, versioned
@@ -37,7 +36,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code FileProcessingService#processFile}) must keep coexisting, exactly as the index's own
  * {@code source_type = 'UPLOAD'} condition intends.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration020UploadMetadataTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

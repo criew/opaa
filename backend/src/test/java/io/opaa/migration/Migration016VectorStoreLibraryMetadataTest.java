@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 016 in isolation against a database built from the real, versioned
@@ -32,7 +31,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * and one of them deliberately omits it to cover the fresh-installation case the changeSet's
  * precondition exists for.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration016VectorStoreLibraryMetadataTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

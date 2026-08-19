@@ -12,7 +12,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 010 in isolation against a database pre-populated with legacy space
@@ -27,7 +26,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * shared-container version of this class, there is no risk of a later test method seeing changelog
  * 010 as "already applied" against an earlier method's seed data.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration010SpaceUniquenessTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

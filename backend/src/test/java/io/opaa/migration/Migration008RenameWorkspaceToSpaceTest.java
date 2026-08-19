@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 008 in isolation against a database pre-populated with legacy
@@ -30,7 +29,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * representative legacy rows directly through JDBC, apply only the new changelog file, and then
  * assert on row counts and value mapping.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration008RenameWorkspaceToSpaceTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

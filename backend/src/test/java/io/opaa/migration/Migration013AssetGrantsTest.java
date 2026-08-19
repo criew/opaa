@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 013 in isolation against a database built from the real, versioned
@@ -29,7 +28,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * exact defect (unbounded, non-downgradable management rights via mere membership) #202 exists to
  * fix, one level up (see 013-backfill-owner-grants's comment for the full reasoning).
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration013AssetGrantsTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

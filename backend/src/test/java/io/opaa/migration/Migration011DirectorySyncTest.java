@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 011 in isolation against a database built from the real, versioned
@@ -19,7 +18,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * with {@code test-master-through-010.yaml} as the pre-migration fixture, now built once per class
  * into a template database and cloned per test method ({@link AbstractMigrationTest}).
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration011DirectorySyncTest extends AbstractMigrationTest {
 
   private static final String ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

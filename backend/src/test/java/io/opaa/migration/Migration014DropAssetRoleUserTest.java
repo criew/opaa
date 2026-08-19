@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 014 in isolation against a database built from the real, versioned
@@ -27,7 +26,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * fail on any database that already holds a USER grant, which is precisely the case the migration
  * exists for.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration014DropAssetRoleUserTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

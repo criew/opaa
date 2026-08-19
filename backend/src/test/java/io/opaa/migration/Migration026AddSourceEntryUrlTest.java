@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 026 in isolation against a database built from the real, versioned
@@ -25,7 +24,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * assumed from the entity mapping (see AGENTS.md's reproduction-proof guidance on schema parity
  * between test and production).
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration026AddSourceEntryUrlTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

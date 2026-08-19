@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 009 in isolation against a database built from the real, versioned
@@ -32,7 +31,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * test-master-through-008.yaml} template ({@link AbstractMigrationTest}) - so there is nothing left
  * for changelog 009 to have already applied when a later test method runs.
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration009CreateGroupsTest extends AbstractMigrationTest {
 
   private static final String ORGANIZATION_A = "00000000-0000-0000-0000-000000000001";

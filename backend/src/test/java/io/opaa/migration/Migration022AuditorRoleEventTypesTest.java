@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 022 in isolation, on top of 017 - the same restricted-role pattern
@@ -26,7 +25,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * AUDITOR_ROLE_GRANTED}/{@code AUDITOR_ROLE_REVOKED} after 022 runs, and that every value accepted
  * before 022 is still accepted afterwards (a widen must never accidentally narrow).
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration022AuditorRoleEventTypesTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

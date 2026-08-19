@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Applies Liquibase changelog 024 in isolation against a database built from the real, versioned
@@ -35,7 +34,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * carries {@code chk_documents_source_type} at all (see AGENTS.md's reproduction-proof guidance on
  * schema parity between test and production).
  */
-@Testcontainers(disabledWithoutDocker = true)
 class Migration024AllowRssFeedSourceTypeTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";

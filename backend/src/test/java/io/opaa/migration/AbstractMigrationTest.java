@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -26,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
  * or more real, versioned Liquibase changelogs in isolation, against a freshly built schema - never
  * against Hibernate-generated DDL, never against an empty-but-shared context.
  *
- * <p><b>What this base class provides (issue #497, Massnahme 1+2):</b>
+ * <p><b>What this base class provides (issue #497, measures 1+2):</b>
  *
  * <ul>
  *   <li>A single, manually started {@link PostgreSQLContainer} shared by every subclass in the same
@@ -54,15 +55,28 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
  * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (see {@code Migration017AuditLogTest},
- * {@code Migration021AuditIncidentScopeGrantsTest}, {@code Migration023AuditRetentionTest}) act on
- * the whole Postgres cluster, not on one database - they survive a {@code DROP DATABASE} exactly as
+ * {@code Migration022AuditorRoleEventTypesTest}, {@code Migration023AuditRetentionTest}) act on the
+ * whole Postgres cluster, not on one database - they survive a {@code DROP DATABASE} exactly as
  * they survived the old {@code DROP SCHEMA CASCADE}. Subclasses that create such roles must keep
  * creating and dropping them per test method, and must never bake them into the template database:
  * a role dropped by one test would otherwise be missing for the next test cloned from the same
- * template. Ownership *inside* a cloned database (e.g. a table {@code ALTER ... OWNER TO
- * opaa_audit_owner}) is copied correctly by {@code CREATE DATABASE ... TEMPLATE ...} as long as the
- * role itself still exists cluster-wide at clone time - which it does here, since role creation
- * happens after cloning, in each test's own {@code @BeforeEach}, exactly as before.
+ * template.
+ *
+ * <p><b>Important asymmetry a subclass must get right:</b> a role can only be dropped per test
+ * method if the class's own fixture chain does not itself create that role at template-build time.
+ * {@code Migration017AuditLogTest}/{@code Migration022AuditorRoleEventTypesTest}/{@code
+ * Migration023AuditRetentionTest} all use {@code test-master-through-016.yaml} - which stops before
+ * changelog 017, the one that creates {@code opaa_audit_owner} - so for them, role creation only
+ * ever happens per test method, after cloning, and per-test {@code DROP ROLE} is safe. A class
+ * whose fixture chain runs *past* changelog 017 (e.g. {@code test-master-through-020.yaml}, used by
+ * {@code Migration021AuditIncidentScopeGrantsTest}/{@code
+ * Migration024AllowRssFeedSourceTypeTest}/{@code Migration026AddSourceEntryUrlTest}) gets {@code
+ * opaa_audit_owner} created once, at template-build time, as part of applying 017 into the template
+ * database - and every per-test clone then owns objects (the {@code audit_log} table and its
+ * partitions) under that role. Such a class must <b>not</b> attempt to {@code DROP ROLE
+ * opaa_audit_owner} per test method: the role still owns objects in the template database itself
+ * (which outlives every per-test clone), so the drop fails. Only a class whose own fixture chain
+ * never applies the changelog that creates a given role may drop that role per test method.
  *
  * <p><b>Why cloning needs an admin connection to a third, untouched database:</b> {@code CREATE
  * DATABASE ... TEMPLATE ...} fails if any connection is still open against the template database
@@ -74,8 +88,14 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Uses {@link TestInstance.Lifecycle#PER_CLASS} so that {@link #buildTemplateDatabaseOnce()} and
  * {@link #dropTemplateDatabase()} can be ordinary (non-static) instance methods while still running
  * exactly once per class - the template database name is per-class state, not per-container state.
+ *
+ * <p>{@code @Testcontainers(disabledWithoutDocker = true)} lives here, not on each subclass: the
+ * annotation is {@code @Inherited} and does not depend on a {@code @Container}-annotated field, so
+ * declaring it once here means a future subclass cannot forget it and accidentally fail hard
+ * instead of skipping cleanly when Docker is unavailable.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Testcontainers(disabledWithoutDocker = true)
 abstract class AbstractMigrationTest {
 
   /**
@@ -172,11 +192,6 @@ abstract class AbstractMigrationTest {
     return DriverManager.getConnection(jdbcUrlFor(currentDatabaseName), user, password);
   }
 
-  /** The JDBC URL of this test's freshly cloned database, e.g. for a second role to connect to. */
-  protected String currentDatabaseJdbcUrl() {
-    return jdbcUrlFor(currentDatabaseName);
-  }
-
   protected Database liquibaseDatabase(Connection connection) throws DatabaseException {
     return DatabaseFactory.getInstance()
         .findCorrectDatabaseImplementation(new JdbcConnection(connection));
@@ -213,15 +228,40 @@ abstract class AbstractMigrationTest {
    * class (e.g. {@code audit_app_role}/{@code opaa_audit_owner}, used identically by {@code
    * Migration017AuditLogTest}, {@code Migration022AuditorRoleEventTypesTest} and {@code
    * Migration023AuditRetentionTest}) must never be assumed absent just because this test's own
-   * previous {@code @AfterEach} dropped it - only a role a role itself created gets the automatic
-   * {@code ADMIN OPTION} a later {@code CREATE ROLE ... IF NOT EXISTS}-style changeSet step relies
-   * on, so even a role that still exists but was created by a different session breaks that step
-   * with "permission denied to grant role".
+   * previous {@code @AfterEach} dropped it - only a role that role itself created gets the
+   * automatic {@code ADMIN OPTION} a later {@code CREATE ROLE ... IF NOT EXISTS}-style changeSet
+   * step relies on, so even a role that still exists but was created by a different session breaks
+   * that step with "permission denied to grant role".
+   *
+   * <p>Only call this from a class whose own fixture chain does not itself create {@code roleNames}
+   * at template-build time (see this class's Javadoc, "Important asymmetry a subclass must get
+   * right"). Calling it from a class whose fixture chain does create the role fails with Postgres'
+   * own "cannot be dropped because some objects depend on it" - that role still owns objects in the
+   * template database, which outlives every per-test clone. This method turns that failure into a
+   * message that names the actual cause instead of leaving callers to rediscover it.
    */
   protected void dropRolesIfExist(Connection admin, String... roleNames) throws SQLException {
     try (Statement statement = admin.createStatement()) {
       for (String roleName : roleNames) {
-        statement.execute("DROP ROLE IF EXISTS " + roleName);
+        try {
+          statement.execute("DROP ROLE IF EXISTS " + roleName);
+        } catch (SQLException cannotDrop) {
+          if (cannotDrop.getMessage() != null
+              && cannotDrop.getMessage().contains("cannot be dropped because")) {
+            throw new SQLException(
+                "Cannot defensively drop role '"
+                    + roleName
+                    + "': it still owns objects, most likely in this class's own template database"
+                    + " (template_"
+                    + getClass().getSimpleName().toLowerCase(Locale.ROOT)
+                    + "). This means the class's fixture chain (see baseFixtureChangelogPath())"
+                    + " itself creates this role at template-build time - such a class must not"
+                    + " drop this role per test method (see AbstractMigrationTest's Javadoc,"
+                    + " \"Important asymmetry a subclass must get right\").",
+                cannotDrop);
+          }
+          throw cannotDrop;
+        }
       }
     }
   }
