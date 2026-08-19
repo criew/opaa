@@ -75,9 +75,32 @@ jobs:
         working-directory: e2e
         run: npm run typecheck
 
+      # The browser download and especially the apt-get run behind
+      # --with-deps have repeatedly hung on slow runner mirrors and eaten
+      # the whole job budget (#508). The cache makes the install a no-op on
+      # most runs; the step timeout makes a hanging mirror fail fast with a
+      # clear cause instead of surfacing as a cancelled job.
+      - name: Resolve Playwright version
+        id: playwright-version
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browsers
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 6
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run E2E suite
         working-directory: e2e
