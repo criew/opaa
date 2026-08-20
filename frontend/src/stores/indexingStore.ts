@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { DocumentSourceType, IndexingStatus } from '../types/api'
-import { triggerIndexing, getIndexingStatus } from '../services/api'
+import type { DocumentSourceType, IndexingRunResponse, IndexingStatus } from '../types/api'
+import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -61,12 +61,18 @@ export const IDLE_RUN_STATE: IndexingRunState = {
 
 interface IndexingState {
   runsByLibrary: Record<string, IndexingRunState>
+  // #513: the last 10 runs for a library, each with its own protocol - distinct from
+  // runsByLibrary above, which only ever tracks the single current/most recent run for the
+  // polling-driven "Quellkonfiguration" section.
+  runHistoryByLibrary: Record<string, IndexingRunResponse[]>
   snackbar: Snackbar
 
   triggerIndexing: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
   loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
+  loadRunHistory: (libraryId: string) => Promise<void>
   stopPolling: (libraryId: string) => void
   closeSnackbar: () => void
+  reset: () => void
 }
 
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
@@ -116,7 +122,20 @@ function setRun(
 
 export const useIndexingStore = create<IndexingState>((set, get) => ({
   runsByLibrary: {},
+  runHistoryByLibrary: {},
   snackbar: { open: false, message: '', severity: 'success' },
+
+  loadRunHistory: async (libraryId: string) => {
+    try {
+      const response = await getIndexingRuns(libraryId)
+      set({
+        runHistoryByLibrary: { ...get().runHistoryByLibrary, [libraryId]: response.runs },
+      })
+    } catch {
+      // Die Bibliotheks-Detailseite zeigt weiterhin den aktuellen Status (runsByLibrary) an, auch
+      // wenn das Protokoll früherer Läufe nicht geladen werden konnte.
+    }
+  },
 
   triggerIndexing: async (libraryId: string, sourceType: DocumentSourceType) => {
     try {
@@ -185,6 +204,9 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // Leaves the page on its IDLE default for this library rather than surfacing an error for a
       // status check the caller did not explicitly request.
     }
+    // #604 review, nit (c): LibraryIndexingHistorySection's own mount effect already loads the
+    // run history - a second call here duplicated that request on every mount without ever
+    // being the one either component actually depended on.
   },
 
   stopPolling: (libraryId: string) => {
@@ -197,6 +219,14 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   },
 
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
+
+  reset: () => {
+    Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
+    set({
+      runsByLibrary: {},
+      snackbar: { open: false, message: '', severity: 'success' },
+    })
+  },
 }))
 
 function startPolling(
@@ -231,6 +261,7 @@ function startPolling(
 
       if (response.status === 'COMPLETED' || response.status === 'FAILED') {
         get().stopPolling(libraryId)
+        void get().loadRunHistory(libraryId)
         set({
           snackbar: {
             open: true,

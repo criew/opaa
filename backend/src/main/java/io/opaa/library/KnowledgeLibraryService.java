@@ -20,9 +20,13 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.JobStatus;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,11 +87,13 @@ public class KnowledgeLibraryService {
   private final GroupMembershipResolver membershipResolver;
   private final DocumentRepository documentRepository;
   private final AssetGrantRepository grantRepository;
+  private final AssetGrantService grantService;
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final VectorStore vectorStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
+  private final IndexingJobRepository indexingJobRepository;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -96,22 +102,26 @@ public class KnowledgeLibraryService {
       GroupMembershipResolver membershipResolver,
       DocumentRepository documentRepository,
       AssetGrantRepository grantRepository,
+      AssetGrantService grantService,
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorStore vectorStore,
-      FilesystemPathAllowlist filesystemAllowlist) {
+      FilesystemPathAllowlist filesystemAllowlist,
+      IndexingJobRepository indexingJobRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.membershipResolver = membershipResolver;
     this.documentRepository = documentRepository;
     this.grantRepository = grantRepository;
+    this.grantService = grantService;
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.vectorStore = vectorStore;
     this.filesystemAllowlist = filesystemAllowlist;
+    this.indexingJobRepository = indexingJobRepository;
   }
 
   @Transactional
@@ -142,6 +152,11 @@ public class KnowledgeLibraryService {
             HttpStatus.FORBIDDEN,
             "Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen");
       }
+      // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
+      // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
+      // than duplicated so the two grant-writing paths can never disagree on which groups are
+      // grantable.
+      grantService.requireGrantableGroup(ownerGroup.getId(), currentUser.getOrganizationId());
       library =
           KnowledgeLibrary.ownedByGroup(
               currentUser.getOrganizationId(),
@@ -325,6 +340,7 @@ public class KnowledgeLibraryService {
                 Collectors.toMap(
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
+    Map<UUID, String> ownerNames = resolveOwnerNames(libraries);
 
     return libraries.stream()
         .map(
@@ -332,26 +348,58 @@ public class KnowledgeLibraryService {
                 toLibraryListResponse(
                     library,
                     roles.get(library.getId()),
-                    documentCounts.getOrDefault(library.getId(), 0L)))
+                    documentCounts.getOrDefault(library.getId(), 0L),
+                    ownerNames.get(library.getOwnerId())))
         .toList();
+  }
+
+  /**
+   * Resolves each library's owner display name in two batched queries (one per owner kind) instead
+   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
+   * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
+   * ownerName} {@code null} on the response, matching {@code LibraryListResponse}'s optional field.
+   *
+   * <p>Unlike {@link AssetGrantService#toResponses}, a {@code USER} owner with no {@code
+   * displayName} resolves to {@code null} here rather than falling back to their email address (PR
+   * #601 review, finding 1): that method's audience is limited to a library's own {@code MANAGER}s,
+   * but this list reaches every reader of an organization-wide or shared library - potentially the
+   * whole organization - so leaking an email address here has a materially larger blast radius. The
+   * frontend already falls back to a generic label when {@code ownerName} is absent.
+   */
+  private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
+    Set<UUID> userOwnerIds = new HashSet<>();
+    Set<UUID> groupOwnerIds = new HashSet<>();
+    for (KnowledgeLibrary library : libraries) {
+      if (library.getOwnerType() == LibraryOwnerType.USER) {
+        userOwnerIds.add(library.getOwnerId());
+      } else {
+        groupOwnerIds.add(library.getOwnerId());
+      }
+    }
+    Map<UUID, String> ownerNames = new HashMap<>();
+    for (User user : userRepository.findAllById(userOwnerIds)) {
+      if (user.getDisplayName() != null) {
+        ownerNames.put(user.getId(), user.getDisplayName());
+      }
+    }
+    for (Group group : groupRepository.findAllById(groupOwnerIds)) {
+      ownerNames.put(group.getId(), group.getName());
+    }
+    return ownerNames;
   }
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
-    return toLibraryResponse(
-        library, accessService.effectiveRole(library, currentUserId, systemAdmin));
+    AssetRole role =
+        accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+    return toLibraryResponse(library, role);
   }
 
   @Transactional
   public LibraryResponse updateLibrary(
       UUID libraryId, LibraryUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
     // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.getSourceType() is
@@ -380,6 +428,11 @@ public class KnowledgeLibraryService {
     String previousDescription = library.getDescription();
     LibraryVisibility previousVisibility = library.getVisibility();
     boolean previousListed = library.isListed();
+    String previousSourcePath = library.getSourcePath();
+    String previousSourceUrl = library.getSourceUrl();
+    String previousSourceProxy = library.getSourceProxy();
+    String previousSourceCredentials = library.getSourceCredentials();
+    boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
     if (replacesSourceConfiguration) {
@@ -441,6 +494,44 @@ public class KnowledgeLibraryService {
           AuditOutcome.SUCCESS,
           null);
     }
+    // #545: a pure source-configuration change (e.g. rotating sourceCredentials or moving a
+    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
+    // LIBRARY_CHANGED (name/description) nor ASSET_VISIBILITY_CHANGED (visibility/listed) fires
+    // for it, since the edit dialog (#516) resends name/description/visibility/listed unchanged.
+    // Only the set of changed fields is recorded, never their values - sourceCredentials in
+    // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
+    // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
+    if (replacesSourceConfiguration) {
+      List<String> changedSourceFields = new ArrayList<>();
+      if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
+        changedSourceFields.add("sourcePath");
+      }
+      if (!Objects.equals(previousSourceUrl, updated.getSourceUrl())) {
+        changedSourceFields.add("sourceUrl");
+      }
+      if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
+        changedSourceFields.add("sourceProxy");
+      }
+      if (!Objects.equals(previousSourceCredentials, updated.getSourceCredentials())) {
+        changedSourceFields.add("sourceCredentials");
+      }
+      if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
+        changedSourceFields.add("sourceInsecureSsl");
+      }
+      if (!changedSourceFields.isEmpty()) {
+        auditEventRecorder.recordUserAction(
+            updated.getOrganizationId(),
+            currentUserId,
+            AuditEventType.LIBRARY_SOURCE_UPDATED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            updated.getId(),
+            updated.getName(),
+            Map.of("changedFields", changedSourceFields),
+            Map.of("changedFields", changedSourceFields),
+            AuditOutcome.SUCCESS,
+            null);
+      }
+    }
     return toLibraryResponse(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
   }
@@ -455,8 +546,23 @@ public class KnowledgeLibraryService {
     // creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the round-1/round-2
     // escalation guards entirely instead of being blocked by them. See
     // LibraryAccessService#canDelete.
-    if (!accessService.canDelete(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
+    // #433: deleting a library while an indexing run for it is RUNNING would let the run's
+    // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
+    // library is gone - previously surfacing per document as a failed
+    // DataIntegrityViolationException
+    // instead of a clean outcome. Rather than have the run cope with a vanished target mid-flight,
+    // the maintainer decided (issue comment, 2026-08-20) to prevent the situation at the root:
+    // block
+    // the delete outright while a run is RUNNING. #501 (stuck RUNNING jobs) is a related but
+    // separate
+    // concern - this guard becomes more useful once that is fixed, since a stuck RUNNING job could
+    // otherwise block deletion indefinitely.
+    if (indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId)) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs geloescht"
+              + " werden");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
     // still contains documents would otherwise surface as an unhandled
@@ -526,9 +632,7 @@ public class KnowledgeLibraryService {
   public LibraryDocumentPageResponse listDocuments(
       UUID libraryId, UUID currentUserId, boolean systemAdmin, String q, Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
     Page<Document> page =
         (q == null || q.isBlank())
@@ -841,7 +945,7 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryListResponse toLibraryListResponse(
-      KnowledgeLibrary library, AssetRole myRole, long documentCount) {
+      KnowledgeLibrary library, AssetRole myRole, long documentCount, String ownerName) {
     return new LibraryListResponse(
             library.getId(),
             library.getName(),
@@ -853,7 +957,8 @@ public class KnowledgeLibraryService {
             documentCount,
             library.getCreatedAt(),
             library.getUpdatedAt())
-        .description(library.getDescription());
+        .description(library.getDescription())
+        .ownerName(ownerName);
   }
 
   private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {

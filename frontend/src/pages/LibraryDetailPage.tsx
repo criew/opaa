@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
+import Accordion from '@mui/material/Accordion'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,11 +25,13 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type {
   AssetRole,
   DocumentSourceType,
+  IndexingRunResponse,
   LibraryDocumentResponse,
   LibraryVisibility,
 } from '../types/api'
@@ -40,6 +45,7 @@ import {
   documentSourceTypeLabel,
   documentStatusLabel,
   formatFileSize,
+  indexingRunEventCategoryLabel,
   libraryVisibilityLabel,
 } from '../utils/labels'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
@@ -354,6 +360,15 @@ export default function LibraryDetailPage() {
           // is a MANAGER/OWNER-level change, not merely triggering an already-configured run.
           canEditSource={canEdit}
         />
+      )}
+      {/* #604 review, finding 1: the backend gates GET .../indexing/runs at MANAGER (canManage),
+          not the narrower canRead a VIEWER already has - an IndexingRunEvent's reference
+          routinely carries the library's own sourcePath/sourceUrl, the exact internal-path leak
+          #507 exists to close for the source configuration display itself. canEdit here mirrors
+          that same MANAGER/OWNER threshold (see canEditSource above), so the section is never
+          rendered - and its GET never even fired - for a caller who could not read it anyway. */}
+      {details && details.sourceType !== 'UPLOAD' && canEdit && (
+        <LibraryIndexingHistorySection libraryId={libraryId} />
       )}
       {details && (
         <LibraryDocumentsSection
@@ -860,6 +875,144 @@ function LibraryIndexingSection({
         <Alert severity="info">
           Sie haben in dieser Bibliothek nur Leserechte und können keine Indizierung anstoßen.
         </Alert>
+      )}
+    </Paper>
+  )
+}
+
+function formatRunTimestamp(value: string | null | undefined): string {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function runStatusChipColor(
+  status: IndexingRunResponse['status'],
+): 'success' | 'warning' | 'error' | 'default' {
+  if (status === 'COMPLETED') return 'success'
+  if (status === 'FAILED') return 'error'
+  if (status === 'RUNNING') return 'warning'
+  return 'default'
+}
+
+function runStatusLabel(status: IndexingRunResponse['status']): string {
+  if (status === 'COMPLETED') return 'Abgeschlossen'
+  if (status === 'FAILED') return 'Fehlgeschlagen'
+  if (status === 'RUNNING') return 'Läuft'
+  return 'Nie ausgeführt'
+}
+
+interface LibraryIndexingHistorySectionProps {
+  libraryId: string
+}
+
+// A stable module-level reference (not a fresh `[]` literal per render) - a Zustand selector must
+// never return a new array/object identity for an unchanged state slice, or useSyncExternalStore
+// treats every render as a change and re-renders in an infinite loop ("getSnapshot should be
+// cached" warning). Mirrors IDLE_RUN_STATE's own role for runsByLibrary above.
+const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
+
+// #513: einklappbares Protokoll der letzten Läufe einer Bibliothek - Kopfdaten immer sichtbar,
+// die Ereignisliste (Kategorie/Meldung/Referenz je übersprungenem oder fehlgeschlagenem Element)
+// nur nach dem Aufklappen. Getrennt von LibraryIndexingSection oben, deren runsByLibrary nur den
+// aktuellen/letzten Lauf für die Fortschrittsanzeige trägt.
+function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySectionProps) {
+  const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
+  const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
+
+  useEffect(() => {
+    void loadRunHistory(libraryId)
+  }, [libraryId, loadRunHistory])
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
+        Letzte Indizierungsläufe
+      </Typography>
+
+      {runs.length === 0 ? (
+        <Typography color="text.secondary">Es liegen noch keine Läufe vor.</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {runs.map((run) => (
+            <Accordion key={run.id} disableGutters variant="outlined">
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
+                >
+                  <Chip
+                    label={runStatusLabel(run.status)}
+                    size="small"
+                    color={runStatusChipColor(run.status)}
+                    variant="outlined"
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    {formatRunTimestamp(run.startedAt)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {run.documentCount} verarbeitet
+                    {run.documentsSkipped > 0 ? `, ${run.documentsSkipped} übersprungen` : ''}
+                    {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
+                  </Typography>
+                  {run.events.length > 0 && (
+                    <Chip
+                      label={`${run.events.length} Ereignis${run.events.length === 1 ? '' : 'se'}`}
+                      size="small"
+                    />
+                  )}
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                {run.message && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    {run.message}
+                  </Typography>
+                )}
+                {run.events.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Dieser Lauf hat keine übersprungenen oder fehlgeschlagenen Elemente
+                    protokolliert.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {run.events.map((event, index) => (
+                      // #513 acceptance criteria: message/reference are already German and
+                      // scrubbed of raw challenge-/redirect-URLs by the backend
+                      // (IndexingRunEvent's Javadoc) - this list renders them as-is. Events carry
+                      // no id of their own, so the key combines the run and the position within
+                      // its (stable, backend-ordered) event list.
+                      <Box key={`${run.id}-${index}`}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+                          <Chip
+                            label={indexingRunEventCategoryLabel(event.category)}
+                            size="small"
+                            variant="outlined"
+                          />
+                          <Typography variant="body2">{event.message}</Typography>
+                        </Stack>
+                        {event.reference && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block', wordBreak: 'break-word' }}
+                          >
+                            {event.reference}
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                    {run.eventsTruncatedCount > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        … und {run.eventsTruncatedCount} weitere
+                      </Typography>
+                    )}
+                  </Stack>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </Stack>
       )}
     </Paper>
   )

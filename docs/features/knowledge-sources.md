@@ -93,9 +93,14 @@ Ablauf beim Hochladen:
    Drag-and-drop. Ein Anhang im Chat ist ein eigener, noch offener Vorgang.
 2. Prüfung: Format, Größe, Schadsoftware. Abgelehnte Dateien werden mit Grund gemeldet.
    **Format und Größe sind gebaut** (#420) — dieselbe Formatliste (`SupportedDocumentFormats`) wie
-   Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Die Schadsoftwareprüfung
-   fehlt noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist
-   als eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
+   Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Seit #435 prüft der
+   Upload zusätzlich den tatsächlichen Dateiinhalt** per Tika-Erkennung anhand der Magic Bytes gegen
+   die behauptete Dateiendung — eine Binärdatei als `.pdf` oder eine Office-Datei als `.txt` wird
+   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Diese
+   Inhaltsprüfung gilt nur für den Upload-Pfad; Verzeichnis- und URL-Aufnahme bleiben bei der reinen
+   Endungsentscheidung (Begründung in `SupportedDocumentFormats`). **Die Schadsoftwareprüfung fehlt
+   noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
+   eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
    dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
@@ -664,6 +669,27 @@ ungewöhnlich langem Lauf und knappem Speicher.
 
 Diese Auswertungen sind **bestands-, nicht personenbezogen**. Sie zählen Dokumente und Läufe, nicht
 Menschen.
+
+**Protokoll je Indizierungslauf (#513, für alle lauf-basierten Quellentypen — FILESYSTEM,
+HTTP_DIRECTORY, RSS_FEED):** Neben den Kopfdaten (Start, Ende, Status, Zähler) führt jeder Lauf eine
+Ereignisliste mit einer kategorisierten, deutschen Begründung je übersprungenem oder fehlgeschlagenem
+Element:
+
+- **abgewiesen** — die Quelle selbst hat das Element zurückgewiesen (z. B. Bot-Schutz, Weiterleitung
+  auf einen fremden Host, HTTP 403/429).
+- **nicht erreichbar** — das Element war über das Netz nicht erreichbar (Verbindungsfehler, Zeitüberschreitung).
+- **Format nicht unterstützt** — Datei- oder Inhaltstyp wird nicht indiziert.
+- **Allowlist** — die Quellkonfiguration selbst liegt außerhalb der vom Betrieb freigegebenen Pfade.
+- **Fehler** — die Verarbeitung wurde begonnen, ist aber unerwartet gescheitert.
+
+Ein Ereignis nennt nie eine rohe Challenge- oder Weiterleitungs-URL, sondern nur das betroffene
+Dokument bzw. die betroffene Quell-URL. Die Ereignisliste eines Laufs ist auf 500 Einträge gekappt;
+darüber hinausgehende Ereignisse werden nur noch gezählt ("… und N weitere"), statt den Lauf selbst zu
+verlangsamen. Je Bibliothek bleiben die letzten **10** Läufe samt Protokoll erhalten; ältere Läufe
+werden beim Start eines neuen Laufs automatisch aufgeräumt. Da die Ereignisreferenzen häufig den
+internen Quellpfad bzw. die Quell-URL der Bibliothek selbst tragen (derselbe interne Pfad, den #507
+für die Quellkonfigurationsanzeige verbirgt), ist das Protokoll — anders als der reine Laufstatus —
+Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht jeder Leseberechtigung.
 
 ---
 

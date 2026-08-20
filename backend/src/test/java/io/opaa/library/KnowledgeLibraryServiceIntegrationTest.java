@@ -24,6 +24,9 @@ import io.opaa.group.PermissionSubjectType;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
+import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.JobStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceRepository;
@@ -50,6 +53,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -92,6 +96,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
+  @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
@@ -729,6 +734,128 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void updateLibraryRecordsALibrarySourceUpdatedAuditEntryForAPureSourceConfigurationChange() {
+    // #545: a pure source-configuration change (credential rotation here) previously left no
+    // audit trace at all - neither LIBRARY_CHANGED (name/description) nor
+    // ASSET_VISIBILITY_CHANGED (visibility/listed) fires for it, since this request resends
+    // name/description/visibility/listed unchanged and only touches sourceCredentials.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+    // The creation event itself must not satisfy the assertion below.
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://files.example.com/documents/"))
+            .sourceCredentials("admin:new-secret");
+
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    List<String> afterPayloads =
+        jdbcTemplate.queryForList(
+            "SELECT after FROM audit_log WHERE object_id = ? AND event_type = ?",
+            String.class,
+            library.getId().toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(afterPayloads).hasSize(1);
+    assertThat(afterPayloads.get(0))
+        .contains("sourceCredentials")
+        .doesNotContain("old-secret")
+        .doesNotContain("new-secret");
+  }
+
+  @Test
+  void updateLibraryWritesNoLibrarySourceUpdatedEntryWhenOnlyTheNameChanges() {
+    // The counterpart of the test above: a rename-only request must not fire
+    // LIBRARY_SOURCE_UPDATED - only LIBRARY_CHANGED, exactly as before #545.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents"),
+            owner);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    libraryService.updateLibrary(
+        library.getId(), new LibraryUpdateRequest("Verzeichnis umbenannt"), owner, false);
+
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type = ?",
+            Integer.class,
+            library.getId().toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(count).isZero();
+  }
+
+  @Test
+  void
+      updateLibraryWritesNoLibrarySourceUpdatedEntryWhenTheDialogResendsTheSourceFieldsUnchanged() {
+    // Code review finding 2 (PR #578): the real EditLibrarySourceDialog case - it resends
+    // sourceUrl unchanged and leaves sourceCredentials blank (relying on the same-origin
+    // fallback in validateSourceConfigurationForUpdate). This walks the new #545 block all the
+    // way to the empty-changedSourceFields guard, unlike the rename-only test above, which never
+    // enters replacesSourceConfiguration at all.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://files.example.com/documents/"));
+
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type = ?",
+            Integer.class,
+            library.getId().toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(count).isZero();
+  }
+
+  @Test
+  void updateLibraryRecordsBothLibraryChangedAndLibrarySourceUpdatedWhenNameAndSourceBothChange() {
+    // Code review finding 3 (PR #578): a rename combined with a source configuration change
+    // must write both events, not just one - pinning the same "independent events" guarantee
+    // #392's ASSET_VISIBILITY_CHANGED/LIBRARY_CHANGED pairing already has, now for
+    // LIBRARY_CHANGED/LIBRARY_SOURCE_UPDATED.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://old.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis umbenannt")
+            .sourceUrl(URI.create("https://new.example.com/documents/"))
+            .sourceCredentials("admin:new-secret");
+
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    List<String> eventTypes =
+        jdbcTemplate.queryForList(
+            "SELECT event_type FROM audit_log WHERE object_id = ?",
+            String.class,
+            library.getId().toString());
+    assertThat(eventTypes).containsExactlyInAnyOrder("LIBRARY_CHANGED", "LIBRARY_SOURCE_UPDATED");
+  }
+
+  @Test
   void updateLibraryLeavesTheSourceConfigurationUntouchedWhenTheRequestCarriesNoConfigField() {
     // A request that only renames the library - every caller today, e.g.
     // LibraryManagementPage's rename/visibility form - must not null out an existing
@@ -799,6 +926,31 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void createGroupOwnedLibraryRejectsADissolvedGroupAsOwner() {
+    // #441: createLibrary used to write the group's MANAGER grant directly, bypassing
+    // AssetGrantService#requireGrantableGroup's dissolved-group check that upsertGrant already
+    // enforces for every other grant - see that method's Javadoc.
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+    group.dissolve(Instant.now());
+    groupRepository.save(group);
+
+    LibraryRequest request =
+        new LibraryRequest("Aufgeloeste Gruppe", DocumentSourceType.UPLOAD)
+            .ownerType(LibraryOwnerType.GROUP)
+            .ownerId(group.getId());
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, member))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    assertThat(libraryRepository.findAll())
+        .noneMatch(l -> "Aufgeloeste Gruppe".equals(l.getName()));
+  }
+
+  @Test
   void getLibraryTreatsALibraryFromAnotherOrganizationAsNotFoundEvenForASystemAdmin() {
     UUID ownerInA = createUser(organizationA);
     UUID adminInB = createUser(organizationB);
@@ -842,6 +994,96 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
+    // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
+    // #420 introduced for the two upload endpoints, unified across the rest of the library API -
+    // getLibrary, listDocuments, updateLibrary, deleteLibrary and AssetGrantService#listGrants must
+    // all agree, so a caller cannot infer a library's existence from whichever endpoint still
+    // answered 403 before this fix.
+    UUID owner = createUser(organizationA);
+    UUID viewer = createUser(organizationA);
+    UUID stranger = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales", DocumentSourceType.UPLOAD), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        owner,
+        false);
+
+    // stranger holds no grant at all on this (default PRIVATE) library - every endpoint answers
+    // 404, not 403.
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(
+            () ->
+                libraryService.listDocuments(
+                    library.getId(), stranger, false, null, PageRequest.of(0, 10)))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(() -> grantService.listGrants(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+
+    // viewer holds VIEWER - enough to read, not enough to manage or delete - every
+    // insufficient-access endpoint answers 403, not 404.
+    assertThat(libraryService.getLibrary(library.getId(), viewer, false).getId())
+        .isEqualTo(library.getId());
+    assertThat(
+            libraryService
+                .listDocuments(library.getId(), viewer, false, null, PageRequest.of(0, 10))
+                .getPage())
+        .isZero();
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThatThrownBy(() -> grantService.listGrants(library.getId(), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
   void cannotDeleteALibraryThatStillContainsDocuments() {
     // #201/#305 code review: fk_documents_library_organization is RESTRICT, so deleting a library
     // that still contains documents must be blocked with a clean 409, not surface an unhandled
@@ -868,6 +1110,40 @@ class KnowledgeLibraryServiceIntegrationTest {
     documentRepository.delete(document);
     libraryService.deleteLibrary(library.getId(), owner, false);
     assertThat(libraryRepository.findById(library.getId())).isEmpty();
+  }
+
+  @Test
+  void cannotDeleteALibraryWhileAnIndexingRunIsRunningButCanOnceItFinishes() {
+    // #433: deleting the library a RUNNING indexing run targets used to let that run's
+    // documentRepository.save fail against fk_documents_library_organization once the library was
+    // gone, surfacing per document as a failed DataIntegrityViolationException instead of a clean
+    // outcome. The maintainer decided to block the delete itself with a 409 instead.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Laufende Indizierung", DocumentSourceType.UPLOAD), owner);
+    IndexingJob job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(library.getId());
+    indexingJobRepository.save(job);
+
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              assertThat(responseStatusException.getReason()).contains("indiziert");
+            });
+    assertThat(libraryRepository.findById(library.getId())).isPresent();
+
+    // Once the run leaves RUNNING, deletion succeeds - the check is a live guard against the
+    // current job state, not a one-time flag on the library.
+    job.setStatus(JobStatus.COMPLETED);
+    indexingJobRepository.save(job);
+    libraryService.deleteLibrary(library.getId(), owner, false);
+    assertThat(libraryRepository.findById(library.getId())).isEmpty();
+
+    indexingJobRepository.delete(job);
   }
 
   @Test
@@ -918,13 +1194,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     libraryService.updateLibrary(
         library.getId(), new LibraryUpdateRequest("Umbenannt von otherMember"), otherMember, false);
 
-    // An outsider - not a member of this group - has no access at all.
+    // An outsider - not a member of this group - has no access at all, so getLibrary answers 404
+    // (#436), the same "does not exist" a caller with no relationship to the library at all sees.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), outsider, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
 
     // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
     // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
@@ -1019,12 +1296,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     // populated) or fail where it should not.
     groupService.removeMember(group.getId(), member, owner);
 
+    // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this
+    // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), member, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -1049,12 +1328,14 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     grantService.revokeGrant(library.getId(), grant.getId(), owner, false);
 
+    // The revoked grant was the viewer's only access to this (default-PRIVATE) library, so this
+    // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), viewer, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -1329,12 +1610,13 @@ class KnowledgeLibraryServiceIntegrationTest {
         spaceService.createSpace(new SpaceRequest("Team Leistungsgewaehrung"), spaceAdmin, false);
     createdSpaceIds.add(space.getId());
 
+    // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), spaceAdmin, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -1556,7 +1838,11 @@ class KnowledgeLibraryServiceIntegrationTest {
     // countByLibraryId once per row - they only check the resulting numbers, not the query
     // shape. Prove the query count stays flat instead: Hibernate's own prepared-statement
     // counter for the same call must not grow when a third library (apple, with its own
-    // document) is added to the page.
+    // document) is added to the page. PR #601 review, finding 2: apple is owned by a *different*
+    // user than zebra/mango - the same user for all three would let the first-level persistence
+    // context cache a single owner lookup and mask a regression to one owner-name query per row
+    // (#438's own batching, resolveOwnerNames).
+    UUID appleOwner = createUser(organizationA);
     Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
     statistics.setStatisticsEnabled(true);
@@ -1567,7 +1853,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
       LibraryResponse apple =
           libraryService.createLibrary(
-              new LibraryRequest("Apple", DocumentSourceType.UPLOAD), owner);
+              new LibraryRequest("Apple", DocumentSourceType.UPLOAD)
+                  .visibility(LibraryVisibility.ORGANIZATION),
+              appleOwner);
       Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
       third.setLibraryId(apple.getId());
       third.setOrganizationId(organizationA);
@@ -1606,6 +1894,57 @@ class KnowledgeLibraryServiceIntegrationTest {
         .filteredOn(entry -> entry.getId().equals(filesystem.getId()))
         .extracting(LibraryListResponse::getSourceType)
         .containsExactly(DocumentSourceType.FILESYSTEM);
+  }
+
+  @Test
+  void listLibrariesReportsOwnerNamePerLibraryForUserAndGroupOwners() {
+    // #438: the overview shows a resolved owner name instead of a generic "Gruppen-Bibliothek"
+    // label - a group-owned library resolves to the group's name, a user-owned library to the
+    // owner's display name, batched (not one lookup per row, mirroring the documentCount
+    // coverage above).
+    UUID owner = createUser(organizationA, "Erika Musterfrau");
+    Group group = createGroup(organizationA, owner);
+    LibraryResponse userOwned =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+    LibraryResponse groupOwned =
+        libraryService.createLibrary(
+            new LibraryRequest("Mango", DocumentSourceType.UPLOAD)
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId()),
+            owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(userOwned.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsExactly("Erika Musterfrau");
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(groupOwned.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsExactly(group.getName());
+  }
+
+  @Test
+  void listLibrariesNeverFallsBackToTheOwnersEmailAddress() {
+    // PR #601 review, finding 1: unlike AssetGrantService#toResponses (audience limited to a
+    // library's MANAGERs), this list reaches every reader of an organization-wide or shared
+    // library - potentially the whole organization - so a USER owner with no displayName must
+    // resolve to null here, not fall back to their email address the way #446 does elsewhere.
+    User ownerWithoutDisplayName =
+        new User(UUID.randomUUID().toString(), "test-issuer", "owner@example.com", null);
+    ownerWithoutDisplayName.setOrganizationId(organizationA);
+    UUID owner = userRepository.save(ownerWithoutDisplayName).getId();
+    createdUserIds.add(owner);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(library.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsOnlyNulls();
   }
 
   @Test

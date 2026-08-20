@@ -2,9 +2,11 @@ package io.opaa.indexing;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -35,18 +37,21 @@ public class DocumentIndexingService {
   private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService libraryAccessService) {
+      LibraryAccessService libraryAccessService,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
     this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   /**
@@ -78,14 +83,45 @@ public class DocumentIndexingService {
   /**
    * The current or most recently completed run for {@code libraryId}, for whoever can at least read
    * the library (a narrower bar than {@link #requireEditableLibrary}'s {@code EDITOR} - seeing the
-   * last run's outcome is not the same right as starting a new one).
+   * last run's outcome is not the same right as starting a new one). Uses {@link
+   * LibraryAccessService#requireRole} (#436) rather than a plain {@code canRead}/403 check, so a
+   * caller with no grant at all on the library gets the same 404 {@code GET /libraries/{id}}
+   * already answers, instead of a 403 that gives away the library's existence one endpoint over.
    */
   public Optional<IndexingJob> getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canRead(library, currentUserId, systemAdmin)) {
+    libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+    return indexingJobService.getLatestJob(libraryId);
+  }
+
+  /**
+   * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
+   * newest first, each with its own protocol (#513) - unlike {@link #getStatus}, this requires
+   * {@link io.opaa.library.AssetRole#MANAGER}, not just {@code canRead}.
+   *
+   * <p><b>PR #604 review, finding 1.</b> An {@link IndexingRunEvent#getReference()} routinely
+   * carries the library's own {@code sourcePath}/{@code sourceUrl} (a rejected file's absolute
+   * server path, a skipped entry's source URL) - exactly the internal-path leak #507 exists to
+   * close for the source configuration display itself. Gating this at {@code canRead} (the same bar
+   * as the harmless counters {@link #getStatus} exposes) would reopen that leak through a different
+   * endpoint: a {@code VIEWER} on an organization-wide connector library would see the server's
+   * internal filesystem layout or upstream URLs it was never granted access to. {@code canManage}
+   * mirrors {@code KnowledgeLibraryService#updateLibrary}'s own bar for touching the source
+   * configuration - one level above {@link #requireEditableLibrary}'s {@code EDITOR}, deliberately:
+   * triggering a run is not the same right as reading where it reads from.
+   */
+  public List<IndexingRunDetail> getRecentRuns(
+      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+    if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
-    return indexingJobService.getLatestJob(libraryId);
+    return indexingJobService.getRecentJobs(libraryId).stream()
+        .map(
+            job ->
+                new IndexingRunDetail(
+                    job, indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId())))
+        .toList();
   }
 
   /**
@@ -115,18 +151,20 @@ public class DocumentIndexingService {
    * "Anstoss-Knopf" only the systemwide administration could ever press would be dead for every
    * other library owner.
    *
-   * <p><b>No blanket system-admin bypass here</b>, mirroring the endpoint this replaces: {@code
-   * canEdit} is always called with {@code systemAdmin = false}, so the real grant/visibility
-   * formula decides, unconditionally. Until #521, this method took a {@code systemAdmin} parameter
-   * for one exception - the well-known system library, seeded with no owner and no grants
-   * (migration 012) - that a system admin could target without a grant; #521 deleted that library
-   * outright, so the parameter had nothing left to do and is gone too.
+   * <p><b>No blanket system-admin bypass here</b>, mirroring the endpoint this replaces: {@link
+   * LibraryAccessService#requireRole} is always called with {@code systemAdmin = false}, so the
+   * real grant/visibility formula decides, unconditionally. Until #521, this method took a {@code
+   * systemAdmin} parameter for one exception - the well-known system library, seeded with no owner
+   * and no grants (migration 012) - that a system admin could target without a grant; #521 deleted
+   * that library outright, so the parameter had nothing left to do and is gone too.
+   *
+   * <p>Uses {@link LibraryAccessService#requireRole} (#436) instead of a plain {@code canEdit}/403
+   * check for the same reason {@link #getStatus} does: "no access at all" must answer 404, not a
+   * 403 that confirms the library exists.
    */
   private KnowledgeLibrary requireEditableLibrary(UUID libraryId, UUID currentUserId) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canEdit(library, currentUserId, false)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.EDITOR);
     return library;
   }
 

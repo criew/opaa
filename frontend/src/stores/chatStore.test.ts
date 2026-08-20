@@ -1042,5 +1042,115 @@ describe('chatStore', () => {
         events.indexOf('query-start'),
       )
     })
+
+    // #440 review, point 3: settingsUpdateChains and confirmedSettingsByChatId are module-level
+    // maps keyed by chatId, not scoped to any particular user - a stale entry left over from the
+    // previous user's session would otherwise survive a logout and leak into whichever session
+    // reuses the same chat id next (e.g. a deep link into a chat the new user also happens to be
+    // able to open).
+    it('reset() clears the per-chat settings PATCH queue so a later action for the same chatId does not queue behind a stale, still-pending PATCH', async () => {
+      const events: string[] = []
+      let resolveFirstPatch: (() => void) | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
+          const chatId = String(params.chatId)
+          const body = (await request.json()) as Record<string, unknown>
+          const isFirstCall = !events.some((e) => e.startsWith('patch-start'))
+          events.push(`patch-start:${chatId}`)
+          if (isFirstCall) {
+            // Deliberately held open - reset() must drop this chat's queue entry regardless of
+            // whether the PATCH it belongs to has settled yet.
+            await new Promise<void>((resolve) => {
+              resolveFirstPatch = resolve
+            })
+          }
+          events.push(`patch-end:${chatId}`)
+          return HttpResponse.json({
+            id: chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      useChatStore.getState().clearScope() // PATCH #1 fires and stays open
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(events).toEqual([`patch-start:${EXISTING_CHAT_ID}`])
+
+      useChatStore.getState().reset()
+
+      // A later session reusing the same chat id (e.g. the next user's tab still has a deep link
+      // to it) without ever going through loadChat again - if reset() had not cleared
+      // settingsUpdateChains, this action would silently queue behind PATCH #1, which is still
+      // deliberately held open, instead of firing immediately.
+      useChatStore.setState({ chatId: EXISTING_CHAT_ID, scope: 'all', referencedLibraryIds: [] })
+      useChatStore.getState().addReferencedLibrary('library-fresh')
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The second call's own handler run completes immediately (it is not held open) - this
+      // proves it started (and finished) without ever awaiting PATCH #1, which is still pending.
+      expect(events).toEqual([
+        `patch-start:${EXISTING_CHAT_ID}`,
+        `patch-start:${EXISTING_CHAT_ID}`,
+        `patch-end:${EXISTING_CHAT_ID}`,
+      ])
+
+      resolveFirstPatch?.()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    it('reset() clears the per-chat confirmed-settings PATCH-rollback baseline', async () => {
+      let callIndex = 0
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
+          callIndex++
+          if (callIndex === 1) {
+            // clearScope's own PATCH below - succeeds, so confirmedSettingsByChatId records
+            // 'none' as this chat's last-confirmed settings.
+            const body = (await request.json()) as Record<string, unknown>
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: body.useKnowledge,
+              referencedLibraryIds: body.referencedLibraryIds ?? [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }
+          // Every later PATCH for this chat fails, forcing applyScopeChange's rollback path.
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // confirmed baseline: 'all'
+      useChatStore.getState().clearScope() // scope -> 'none', succeeds, confirmed baseline: 'none'
+      await useChatStore.getState().pendingSettingsUpdate
+      expect(useChatStore.getState().scope).toBe('none')
+
+      useChatStore.getState().reset()
+
+      // A later session reusing the same chat id without going through loadChat again - if
+      // reset() had not cleared confirmedSettingsByChatId, the failing PATCH below would roll
+      // back to the previous session's last-confirmed 'none' instead of applyScopeChange's safe
+      // default.
+      useChatStore.setState({ chatId: EXISTING_CHAT_ID, scope: 'all', referencedLibraryIds: [] })
+      useChatStore.getState().addReferencedLibrary('library-x') // optimistic -> 'libraries', fails
+      await useChatStore.getState().pendingSettingsUpdate
+
+      expect(useChatStore.getState().scope).toBe('all')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
   })
 })

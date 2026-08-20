@@ -43,6 +43,7 @@ class RssFeedIndexingExecutorTest {
   private IndexingJobService indexingJobService;
   private DocumentRepository documentRepository;
   private RssFeedStateRepository feedStateRepository;
+  private IndexingRunEventRepository indexingRunEventRepository;
   private RssFeedIndexingExecutor executor;
 
   // #478: sourceUrl is mutated in place per test via execute(String) below
@@ -75,6 +76,7 @@ class RssFeedIndexingExecutorTest {
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
     when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
+    indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     executor =
         newExecutor(
@@ -91,7 +93,8 @@ class RssFeedIndexingExecutorTest {
         documentRepository,
         feedStateRepository,
         new UrlFileDownloader(),
-        properties);
+        properties,
+        indexingRunEventRepository);
   }
 
   @AfterEach
@@ -428,6 +431,35 @@ class RssFeedIndexingExecutorTest {
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    // #513 (motivating BMF case, PR #604 review nit d): a bot-protection rejection is not just
+    // counted as skipped - it becomes its own REJECTED IndexingRunEvent, without which nobody can
+    // tell 19 skipped-because-rejected entries apart from any other reason for a lower count than
+    // the feed offered.
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/forbidden.html").equals(event.getReference())
+                        // Must never leak the raw HTTP status/exception text alone - a German,
+                        // human-readable reason instead (#513 acceptance criteria).
+                        && event.getMessage() != null
+                        && event.getMessage().contains("abgewiesen")));
+  }
+
+  @Test
+  void aFailedEventWriteNeverPreventsTheRunFromCompleting() {
+    // #513, PR #604 review finding 2: a DB hiccup while writing the protocol must never leave the
+    // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently
+    // block every future run of this library. IndexingRunEventRecorder must swallow this itself.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/forbidden.html"));
+    serve("/forbidden.html", 403, "text/html", "denied");
+    when(indexingRunEventRepository.save(any()))
+        .thenThrow(new RuntimeException("simulated DB hiccup"));
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
   }
 
   @Test

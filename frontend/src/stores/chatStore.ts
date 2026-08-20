@@ -143,6 +143,9 @@ interface ChatState {
   /** Removes the @Alles-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
    * setScopeAll. Every chip - including @Alles-Wissen - is removable (#560). */
   clearScope: () => void
+  /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
+   * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
+  reset: () => void
 }
 
 /** Maps the backend's useKnowledge/referencedLibraryIds pair onto the chip bar's scope. */
@@ -368,6 +371,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Already empty - same reasoning as setScopeAll's short-circuit above.
     if (get().scope === 'none') return
     applyScopeChange(get, set, 'none', [])
+  },
+
+  reset: () => {
+    // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
+    // response arriving after reset() could resurrect the previous user's chat.
+    chatLoadSequence++
+    // #440 review, point 3: both module-level maps are keyed by chatId, not scoped to any
+    // particular user - a stale entry for a chat the previous user had open would otherwise
+    // survive into the next user's session in the same tab, e.g. letting a late PATCH failure
+    // for that old chat roll back to settings the new user never saw (#565's rollback base).
+    settingsUpdateChains.clear()
+    confirmedSettingsByChatId.clear()
+    set({
+      spaceId: null,
+      chatId: null,
+      title: null,
+      messages: [],
+      isLoading: false,
+      isLoadingChat: false,
+      error: null,
+      scope: 'all',
+      referencedLibraryIds: [],
+      pendingSettingsUpdate: null,
+    })
   },
 }))
 

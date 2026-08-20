@@ -276,7 +276,7 @@ test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
     const result = dialog.getByRole('alert').filter({ hasText: 'Webverzeichnis erreichbar' })
     await expect(result).toBeVisible({ timeout: 15_000 })
     await expect(result).toContainText(
-      'Webverzeichnis erreichbar, 1 unterstuetzte Dokument auf oberster Ebene gefunden.',
+      'Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.',
     )
     // Deliberately never clicked "Erstellen" - this scenario only exercises the test call itself,
     // no library was created and there is nothing for cleanupLibraries to remove.

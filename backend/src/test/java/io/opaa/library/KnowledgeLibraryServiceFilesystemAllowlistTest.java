@@ -16,6 +16,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.IndexingJobRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,11 +49,13 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
     when(grantRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    AssetGrantService grantService = mock(AssetGrantService.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorStore vectorStore = mock(VectorStore.class);
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
+    IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -62,11 +65,13 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             membershipResolver,
             documentRepository,
             grantRepository,
+            grantService,
             accessService,
             permissionHistoryService,
             auditEventRecorder,
             vectorStore,
-            filesystemAllowlist);
+            filesystemAllowlist,
+            indexingJobRepository);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

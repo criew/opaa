@@ -2,6 +2,10 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.dto.IndexingRunEvent;
+import io.opaa.api.dto.IndexingRunEventCategory;
+import io.opaa.api.dto.IndexingRunListResponse;
+import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
@@ -16,7 +20,9 @@ import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingRunDetail;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
@@ -246,6 +252,62 @@ public class LibraryController {
             new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now())
                 .message("Kein Indizierungslauf gefunden")
                 .libraryId(libraryId));
+  }
+
+  @GetMapping("/{libraryId}/indexing/runs")
+  public IndexingRunListResponse listIndexingRuns(
+      @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    var runs =
+        indexingService.getRecentRuns(
+            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return new IndexingRunListResponse(runs.stream().map(this::toIndexingRunResponse).toList());
+  }
+
+  private IndexingRunResponse toIndexingRunResponse(IndexingRunDetail detail) {
+    IndexingJob job = detail.job();
+    IndexingStatus status = mapIndexingStatus(job.getStatus());
+    String message =
+        switch (job.getStatus()) {
+          case RUNNING -> "Indizierung läuft";
+          case COMPLETED ->
+              "Indizierung abgeschlossen: "
+                  + job.getDocumentsProcessed()
+                  + " verarbeitet, "
+                  + job.getDocumentsSkipped()
+                  + " übersprungen, "
+                  + job.getDocumentsFailed()
+                  + " fehlgeschlagen";
+          case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
+        };
+    return new IndexingRunResponse(
+            job.getId(),
+            status,
+            job.getDocumentsProcessed(),
+            job.getDocumentsTotal(),
+            job.getDocumentsSkipped(),
+            job.getDocumentsFailed(),
+            job.getDocumentsIndexedTotal(),
+            job.getStartedAt(),
+            detail.events().stream().map(this::toIndexingRunEventResponse).toList(),
+            job.getEventsTruncatedCount())
+        .message(message)
+        .completedAt(job.getCompletedAt());
+  }
+
+  private IndexingRunEvent toIndexingRunEventResponse(io.opaa.indexing.IndexingRunEvent event) {
+    return new IndexingRunEvent(mapIndexingEventCategory(event.getCategory()), event.getMessage())
+        .reference(event.getReference());
+  }
+
+  private IndexingRunEventCategory mapIndexingEventCategory(IndexingEventCategory category) {
+    return switch (category) {
+      case REJECTED -> IndexingRunEventCategory.REJECTED;
+      case UNREACHABLE -> IndexingRunEventCategory.UNREACHABLE;
+      case UNSUPPORTED_FORMAT -> IndexingRunEventCategory.UNSUPPORTED_FORMAT;
+      case ALLOWLIST -> IndexingRunEventCategory.ALLOWLIST;
+      case ERROR -> IndexingRunEventCategory.ERROR;
+    };
   }
 
   private IndexingStatusResponse toIndexingStatusResponse(IndexingJob job) {

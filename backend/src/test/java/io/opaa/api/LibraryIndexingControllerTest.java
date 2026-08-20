@@ -14,13 +14,17 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingRunDetail;
+import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.SourceConnectionTestService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -202,6 +206,50 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.documentsIndexedTotal").value(23))
         .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")))
         .andExpect(jsonPath("$.message").value(containsString("1 fehlgeschlagen")));
+  }
+
+  @Test
+  void listIndexingRunsReturnsRunsWithTheirProtocol() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    job.setDocumentsProcessed(1);
+    job.setDocumentsSkipped(1);
+    job.setDocumentsTotal(2);
+    job.setEventsTruncatedCount(3);
+    var event =
+        new IndexingRunEvent(
+            job.getId(),
+            IndexingEventCategory.UNSUPPORTED_FORMAT,
+            "Dateiformat wird nicht unterstuetzt",
+            "bad.csv");
+    when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
+        .thenReturn(List.of(new IndexingRunDetail(job, List.of(event))));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.runs[0].id").value(job.getId().toString()))
+        .andExpect(jsonPath("$.runs[0].status").value("COMPLETED"))
+        .andExpect(jsonPath("$.runs[0].eventsTruncatedCount").value(3))
+        .andExpect(jsonPath("$.runs[0].events[0].category").value("UNSUPPORTED_FORMAT"))
+        .andExpect(
+            jsonPath("$.runs[0].events[0].message").value("Dateiformat wird nicht unterstuetzt"))
+        .andExpect(jsonPath("$.runs[0].events[0].reference").value("bad.csv"));
+  }
+
+  @Test
+  void listIndexingRunsWithInsufficientAccessReturnsForbidden() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
+        .thenThrow(
+            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error").value("Kein Zugriff auf diese Bibliothek"));
   }
 
   @Test

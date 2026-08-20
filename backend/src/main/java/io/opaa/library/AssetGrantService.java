@@ -464,9 +464,9 @@ public class AssetGrantService {
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
     }
-    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    // #436: no access at all (no grant, no organization-wide visibility) also answers 404, not just
+    // the organization-boundary case above - see LibraryAccessService#requireRole.
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     return library;
   }
 
@@ -489,8 +489,12 @@ public class AssetGrantService {
    * target - see the class Javadoc for why: existing grants to a dissolved group keep working (see
    * {@link LibraryAccessService#effectiveRole}, which does not check {@link Group#isDissolved()}
    * either), but no new or updated grant may target it.
+   *
+   * <p>Package-private (not {@code private}) so {@link KnowledgeLibraryService#createLibrary} can
+   * reuse the same check for the initial owner-group grant of a group-owned library, instead of
+   * duplicating the {@link Group#isDissolved()} check outside this service (#441).
    */
-  private void requireGrantableGroup(UUID groupId, UUID organizationId) {
+  void requireGrantableGroup(UUID groupId, UUID organizationId) {
     Group group =
         groupRepository
             .findById(groupId)

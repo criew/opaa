@@ -85,6 +85,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final RssFeedStateRepository feedStateRepository;
   private final UrlFileDownloader attachmentDownloader;
   private final IndexingProperties.Rss properties;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
@@ -93,7 +94,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
       UrlFileDownloader attachmentDownloader,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.feedParser = feedParser;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -101,6 +103,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.feedStateRepository = feedStateRepository;
     this.attachmentDownloader = attachmentDownloader;
     this.properties = properties.rss();
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   @Override
@@ -112,6 +115,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
+    var events =
+        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
     // ADR-0018 (#478): the feed's address is the library's own sourceUrl, not a per-request field.
     String feedUrl = targetLibrary.getSourceUrl();
 
@@ -172,7 +177,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
-        processEntry(httpClient, entry, targetLibrary, progress, anyEntryDeferred);
+        processEntry(httpClient, entry, targetLibrary, progress, events, anyEntryDeferred);
         progress.report();
       }
 
@@ -189,15 +194,18 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                 + " entry, so a future 304 must not suppress it",
             feedUrl);
       }
+      events.finalizeRun();
       progress.complete();
     } catch (IOException | InterruptedException e) {
       log.error("RSS feed indexing failed: {}", feedUrl, e);
+      events.finalizeRun();
       progress.fail(e.getMessage());
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
     } catch (Exception e) {
       log.error("RSS feed indexing failed unexpectedly: {}", feedUrl, e);
+      events.finalizeRun();
       progress.fail(e.getMessage());
     }
   }
@@ -207,12 +215,17 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       RssFeedEntry entry,
       KnowledgeLibrary targetLibrary,
       IndexingRunProgress progress,
+      IndexingRunEventRecorder events,
       AtomicBoolean anyEntryDeferred) {
     String entryUrl = entry.link();
 
     if (!isHttpOrHttps(entryUrl)) {
       log.warn(
           "Skipping RSS entry with a non-http(s) link (rejected by scheme check): {}", entryUrl);
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Verknuepfung mit nicht unterstuetztem Schema abgelehnt",
+          entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
@@ -220,7 +233,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
-      processUnchangedEntry(httpClient, entryUrl, progress, anyEntryDeferred, targetLibrary);
+      processUnchangedEntry(
+          httpClient, entryUrl, progress, events, anyEntryDeferred, targetLibrary);
       return;
     }
 
@@ -233,9 +247,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
       // OPAA's own processing - both still count as "skipped" (the job status has no separate
-      // bucket), but with a log message that says which of the two happened.
+      // bucket), but with a log message that says which of the two happened. #513: the German
+      // event message never repeats e.getMessage() verbatim - it can carry the raw redirect
+      // target URI (see isForeignHostRedirect), which must never reach the UI.
       log.warn(
           "RSS detail page rejected by remote host, skipping: {} ({})", entryUrl, e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Vom Quellserver abgewiesen (z. B. Bot-Schutz oder Weiterleitung auf einen fremden Host)",
+          entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
@@ -247,11 +267,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           "Skipping RSS detail page with an unsupported content type, skipping: {} ({})",
           entryUrl,
           e.getMessage());
+      events.record(
+          IndexingEventCategory.UNSUPPORTED_FORMAT,
+          "Inhaltstyp der Detailseite wird nicht unterstuetzt",
+          entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
     } catch (IOException | InterruptedException e) {
       log.warn("RSS detail page unreachable, skipping: {} ({})", entryUrl, e.getMessage());
+      events.record(IndexingEventCategory.UNREACHABLE, "Detailseite nicht erreichbar", entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       if (e instanceof InterruptedException) {
@@ -262,6 +287,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
+      events.record(IndexingEventCategory.UNSUPPORTED_FORMAT, "Kein Inhalt extrahierbar", entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
       return;
@@ -286,13 +312,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             entryUrl,
             targetLibrary,
             anyEntryDeferred,
-            progress);
+            progress,
+            events);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
+      events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
       progress.recordFailed();
     } catch (Error e) {
       log.error("Fatal error while processing RSS entry: {}", entryUrl, e);
+      events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
       progress.recordFailed();
     }
   }
@@ -313,6 +342,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       HttpClient httpClient,
       String entryUrl,
       IndexingRunProgress progress,
+      IndexingRunEventRecorder events,
       AtomicBoolean anyEntryDeferred,
       KnowledgeLibrary targetLibrary) {
     progress.recordSkipped();
@@ -329,12 +359,30 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     DetailPage detailPage;
     try {
       detailPage = fetchDetailPage(httpClient, entryUrl);
-    } catch (RejectedByRemoteException | UnsupportedContentTypeException e) {
+    } catch (RejectedByRemoteException e) {
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
               + " {} ({})",
           entryUrl,
           e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Vom Quellserver abgewiesen beim Nachladen von Anlagen (z. B. Bot-Schutz oder"
+              + " Weiterleitung auf einen fremden Host)",
+          entryUrl);
+      anyEntryDeferred.set(true);
+      return;
+    } catch (UnsupportedContentTypeException e) {
+      log.warn(
+          "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
+              + " {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.UNSUPPORTED_FORMAT,
+          "Inhaltstyp der Detailseite wird nicht unterstuetzt (Anlagen konnten nicht nachgeladen"
+              + " werden)",
+          entryUrl);
       anyEntryDeferred.set(true);
       return;
     } catch (IOException | InterruptedException e) {
@@ -343,6 +391,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               + " {} ({})",
           entryUrl,
           e.getMessage());
+      events.record(
+          IndexingEventCategory.UNREACHABLE,
+          "Detailseite beim Nachladen von Anlagen nicht erreichbar",
+          entryUrl);
       anyEntryDeferred.set(true);
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -350,7 +402,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     processAttachments(
-        httpClient, detailPage.attachments(), entryUrl, targetLibrary, anyEntryDeferred, progress);
+        httpClient,
+        detailPage.attachments(),
+        entryUrl,
+        targetLibrary,
+        anyEntryDeferred,
+        progress,
+        events);
   }
 
   /**
@@ -374,7 +432,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String entryUrl,
       KnowledgeLibrary targetLibrary,
       AtomicBoolean anyEntryDeferred,
-      IndexingRunProgress progress) {
+      IndexingRunProgress progress,
+      IndexingRunEventRecorder events) {
     int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
     if (candidates.size() > limit) {
       log.info(
@@ -387,7 +446,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
       delayBeforeRequest();
-      processAttachment(httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred, progress);
+      processAttachment(
+          httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred, progress, events);
     }
   }
 
@@ -404,7 +464,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String entryUrl,
       KnowledgeLibrary targetLibrary,
       AtomicBoolean anyEntryDeferred,
-      IndexingRunProgress progress) {
+      IndexingRunProgress progress,
+      IndexingRunEventRecorder events) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -427,6 +488,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                 + " bot-protection or error page): {} (from entry {})",
             candidate.url(),
             entryUrl);
+        events.record(
+            IndexingEventCategory.REJECTED,
+            "Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)",
+            candidate.url());
         anyEntryDeferred.set(true);
         return;
       }
@@ -442,6 +507,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             candidate.url(),
             entryUrl,
             contentType);
+        events.record(
+            IndexingEventCategory.UNSUPPORTED_FORMAT,
+            "Anlagenformat wird nicht unterstuetzt",
+            candidate.url());
         anyEntryDeferred.set(true);
         return;
       }
@@ -479,6 +548,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           properties.maxAttachmentSizeBytes(),
           candidate.url(),
           entryUrl);
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Anlage ueberschreitet die zulaessige Groesse",
+          candidate.url());
       anyEntryDeferred.set(true);
     } catch (UrlFileDownloader.ForeignHostRedirectException e) {
       log.warn(
@@ -486,6 +559,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           candidate.url(),
           entryUrl,
           e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Anlage auf einen fremden Host umgeleitet (vermutlich Bot-Schutz)",
+          candidate.url());
       anyEntryDeferred.set(true);
     } catch (IOException | InterruptedException e) {
       log.warn(
@@ -493,6 +570,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           candidate.url(),
           entryUrl,
           e.getMessage());
+      events.record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", candidate.url());
       anyEntryDeferred.set(true);
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -500,6 +578,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     } catch (Exception e) {
       log.error(
           "Failed to process RSS attachment: {} (from entry {})", candidate.url(), entryUrl, e);
+      events.record(
+          IndexingEventCategory.ERROR, "Verarbeitung der Anlage fehlgeschlagen", candidate.url());
       anyEntryDeferred.set(true);
     } finally {
       if (downloaded != null) {

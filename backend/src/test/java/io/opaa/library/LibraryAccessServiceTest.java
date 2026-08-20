@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -15,6 +16,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 class LibraryAccessServiceTest {
 
@@ -115,6 +118,64 @@ class LibraryAccessServiceTest {
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
 
     assertThat(accessService.canManage(library, userId, true)).isTrue();
+  }
+
+  @Test
+  void requireRoleAnswers404ForACallerWithNoAccessAtAll() {
+    // #436: no grant, no organization-wide floor - the caller cannot even tell the library exists.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
+
+    assertThatThrownBy(() -> accessService.requireRole(library, userId, false, AssetRole.VIEWER))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void requireRoleAnswers403ForACallerWithSomeButInsufficientAccess() {
+    // #436: a real VIEWER grant exists, but MANAGER is required - the library's existence is
+    // already established, so this is the ordinary "not enough" case.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.VIEWER, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThatThrownBy(() -> accessService.requireRole(library, userId, false, AssetRole.MANAGER))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void requireRoleReturnsTheResolvedRoleWhenSufficient() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    AssetGrant grant =
+        AssetGrant.forUser(libraryId, organizationId, userId, AssetRole.MANAGER, null, userId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+
+    assertThat(accessService.requireRole(library, userId, false, AssetRole.VIEWER))
+        .isEqualTo(AssetRole.MANAGER);
+  }
+
+  @Test
+  void requireRoleBypassesToOwnerForASystemAdminEvenWithNoGrantAtAll() {
+    // #436: requireRole must fail-open a system admin exactly like effectiveRole already does
+    // (see systemAdminBypassesGrantsOnAnOrdinaryLibrary above) - the caller has no grant on this
+    // library whatsoever, yet requireRole must neither answer 404 nor 403 for a system admin.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
+    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
+
+    assertThat(accessService.requireRole(library, userId, true, AssetRole.OWNER))
+        .isEqualTo(AssetRole.OWNER);
   }
 
   @Test

@@ -3,6 +3,7 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   GroupKind,
+  IndexingRunEventCategory,
   LibraryVisibility,
   PermissionSubjectType,
   SpaceRole,
@@ -158,6 +159,23 @@ export const documentSourceTypeConfigKind: Record<DocumentSourceType, 'none' | '
   FILESYSTEM: 'path',
   HTTP_DIRECTORY: 'url',
   RSS_FEED: 'url',
+}
+
+// #513: German, understandable categories for a skipped/rejected item or error in a run's
+// protocol - matches io.opaa.indexing.IndexingEventCategory's own Javadoc one-to-one.
+const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> = {
+  REJECTED: 'Abgewiesen',
+  UNREACHABLE: 'Nicht erreichbar',
+  UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
+  ALLOWLIST: 'Allowlist',
+  ERROR: 'Fehler',
+}
+
+export function indexingRunEventCategoryLabel(
+  category: IndexingRunEventCategory | string | undefined,
+): string {
+  if (!category) return ''
+  return indexingRunEventCategoryLabels[category as IndexingRunEventCategory] ?? category
 }
 
 /** Formats a byte count as a German-locale size string (e.g. "1,2 MB"), or an em dash if unknown. */

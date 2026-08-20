@@ -145,16 +145,18 @@ class LibraryIndexingAuthorizationIntegrationTest {
   }
 
   @Test
-  void systemAdminWithoutAGrantOnAForeignLibraryGetsForbidden() throws Exception {
+  void systemAdminWithoutAGrantOnAForeignLibraryGetsNotFound() throws Exception {
     // ADR-0018, Entscheidung 2: EDITOR is required regardless of system-admin status - a system
     // admin without any grant must not be able to trigger a run into a library they do not own or
-    // manage.
+    // manage. #436: "no grant at all" answers 404, not 403 - a system admin's own lack of a grant
+    // must not be distinguishable from the library not existing, matching what GET
+    // /libraries/{id} already answers the same caller for the same library.
     UUID foreignLibraryId = createForeignLibraryWithNoGrantForDevAdmin().getId();
 
     mockMvc
         .perform(post("/api/v1/libraries/" + foreignLibraryId + "/indexing").with(devUser(null)))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.error").value("Kein Zugriff auf diese Bibliothek"));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
   }
 
   @Test

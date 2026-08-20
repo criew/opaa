@@ -80,7 +80,9 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsACallerWithoutManagerRole() {
-    when(accessService.canManage(any(), any(), anyBoolean())).thenReturn(false);
+    when(accessService.requireRole(any(), any(), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenThrow(
+            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
     AssetGrantRequest request =
         new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
 
@@ -95,7 +97,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantCreatesADirectUserGrantAndInvalidatesTheLibraryCache() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID subjectId = UUID.randomUUID();
@@ -121,7 +124,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsASubjectUserFromAnotherOrganizationAsNotFound() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID foreignUserId = UUID.randomUUID();
@@ -142,7 +146,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsASubjectGroupFromAnotherOrganizationAsNotFound() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
@@ -162,7 +167,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantUpdatesAnExistingGrantsRoleInsteadOfCreatingADuplicate() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID subjectId = UUID.randomUUID();
@@ -187,7 +193,8 @@ class AssetGrantServiceTest {
 
   @Test
   void revokeGrantRemovesTheGrantAndInvalidatesTheLibraryCache() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
@@ -204,7 +211,8 @@ class AssetGrantServiceTest {
 
   @Test
   void revokeGrantTreatsAGrantFromAnotherLibraryAsNotFound() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
@@ -232,7 +240,8 @@ class AssetGrantServiceTest {
     // #202 code review (blocker 3): being a MANAGER is enough to grant *some* role, not enough to
     // grant OWNER - only an OWNER may hand out OWNER, or a MANAGER could grant itself OWNER and
     // then delete the library or transfer ownership, rights the spec reserves for OWNER alone.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
     // #392 code review, finding 2: the subject must resolve (existence + organization boundary)
@@ -265,7 +274,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantAllowsGrantingExactlyTheCallersOwnRole() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
     UUID subjectId = UUID.randomUUID();
@@ -284,7 +294,8 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsTargetingADissolvedGroup() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     Group dissolvedGroup =
@@ -316,7 +327,8 @@ class AssetGrantServiceTest {
     // #202 code review (blocker 3, extended to the update path): downgrading the sole active
     // OWNER grant is exactly as dangerous as revoking it outright - both leave nobody able to
     // manage the library.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID subjectId = UUID.randomUUID();
@@ -352,7 +364,8 @@ class AssetGrantServiceTest {
 
   @Test
   void revokeGrantRejectsRemovingTheLastActiveOwnerGrant() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
@@ -380,7 +393,8 @@ class AssetGrantServiceTest {
 
   @Test
   void revokeGrantAllowsRemovingAnOwnerGrantWhenAnotherActiveOwnerGrantRemains() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
@@ -407,7 +421,8 @@ class AssetGrantServiceTest {
     // only holds MANAGER may still never remove a grant that already carries OWNER. Previously
     // revokeGrant never called effectiveRole at all, so this scenario passed with a 200 instead of
     // this 403.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
     UUID grantId = UUID.randomUUID();
@@ -447,7 +462,8 @@ class AssetGrantServiceTest {
     // The update-path counterpart of the revoke test above: a MANAGER downgrading an existing
     // OWNER grant to something lower is exactly as much an escalation as revoking it outright, and
     // must be rejected the same way, independent of the last-active-OWNER guard.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
     UUID subjectId = UUID.randomUUID();
@@ -484,7 +500,8 @@ class AssetGrantServiceTest {
     // OWNER renewing their own sole grant with role = OWNER but expiresAt in the past expires it
     // immediately, leaving the library without any active OWNER. The count the guard protects must
     // be taken after the intended change, including the new expiresAt, not just the new role.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     AssetGrant onlyOwnerGrant =
@@ -513,7 +530,8 @@ class AssetGrantServiceTest {
   void upsertGrantAllowsRenewingTheLastActiveOwnerGrantWithAFutureOrNoExpiry() {
     // The positive counterpart of the test above: role = OWNER with either no expiry or a
     // still-future one genuinely keeps the grant active, so the guard must not fire.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     AssetGrant onlyOwnerGrant =
@@ -539,7 +557,8 @@ class AssetGrantServiceTest {
   // deliberately do the same: resolution must not depend on that flag.
   @Test
   void listGrantsResolvesUserSubjectAndGranterDisplayNames() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subjekt Person");
     subjectUser.setOrganizationId(organizationId);
     User granter = new User("granter", "issuer", "granter@example.com", "Erteilende Person");
@@ -566,7 +585,8 @@ class AssetGrantServiceTest {
 
   @Test
   void listGrantsResolvesGroupSubjectDisplayName() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat 50", null, null, null);
     AssetGrant grant =
         AssetGrant.forGroup(
@@ -587,7 +607,8 @@ class AssetGrantServiceTest {
     // claim is non-null). Falling back to the raw subject id there would reopen the same
     // "MANAGER sees a UUID" gap this whole resolution mechanism exists to close - email is
     // required and always present, so it is the fallback instead.
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     User subjectUser = new User("subject", "issuer", "subject@example.com", null);
     subjectUser.setOrganizationId(organizationId);
     AssetGrant grant =
@@ -604,7 +625,8 @@ class AssetGrantServiceTest {
 
   @Test
   void listGrantsLeavesDisplayNameNullWhenTheSubjectNoLongerExists() {
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
     AssetGrant grant =
         AssetGrant.forUser(
             libraryId, organizationId, UUID.randomUUID(), AssetRole.VIEWER, null, null);
