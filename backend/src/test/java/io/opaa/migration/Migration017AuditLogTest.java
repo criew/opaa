@@ -565,17 +565,19 @@ class Migration017AuditLogTest extends AbstractMigrationTest {
   @Test
   void theEventTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
     // #393 code review, finding 1: migration 022 widens this same constraint to also accept
-    // AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED, and #545's migration 035 further widens it to
-    // accept LIBRARY_SOURCE_UPDATED - this test applies 017 alone (on top of
-    // test-master-through-016), so it must compare against 017's own, narrower value set, not the
-    // full live enum, which now includes those later-added values. See
-    // Migration022AuditorRoleEventTypesTest/Migration035LibrarySourceUpdatedEventTypeTest for the
-    // equivalent proof once 022/035 have run.
+    // AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED, #545's migration 035 further widens it to accept
+    // LIBRARY_SOURCE_UPDATED, and #543's migration 040 further widens it to accept SPACE_ARCHIVED
+    // - this test applies 017 alone (on top of test-master-through-016), so it must compare
+    // against 017's own, narrower value set, not the full live enum, which now includes those
+    // later-added values. See Migration022AuditorRoleEventTypesTest/
+    // Migration035LibrarySourceUpdatedEventTypeTest/Migration040SpaceArchivedEventTypeTest for the
+    // equivalent proof once 022/035/040 have run.
     Set<String> valuesAddedAfterMigration017 =
         Set.of(
             AuditEventType.AUDITOR_ROLE_GRANTED.name(),
             AuditEventType.AUDITOR_ROLE_REVOKED.name(),
-            AuditEventType.LIBRARY_SOURCE_UPDATED.name());
+            AuditEventType.LIBRARY_SOURCE_UPDATED.name(),
+            AuditEventType.SPACE_ARCHIVED.name());
     Set<String> expected = new HashSet<>(enumNames(AuditEventType.values()));
     expected.removeAll(valuesAddedAfterMigration017);
 
