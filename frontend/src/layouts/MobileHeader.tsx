@@ -16,6 +16,7 @@ export default function MobileHeader() {
       sx={{
         display: { xs: 'flex', md: 'none' },
         bgcolor: 'background.paper',
+        color: 'text.primary',
         borderBottom: 1,
         borderColor: 'divider',
       }}
