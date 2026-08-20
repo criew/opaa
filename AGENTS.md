@@ -43,6 +43,8 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 # Backend (aus backend/)
 ./gradlew build
 ./gradlew test
+./gradlew openAiIntegrationTest   # OpenAI-E2E-Tests (io.opaa.integration.*); braucht
+                                  # OPAA_OPENAI_API_KEY und Docker, nicht Teil von build/test
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 
@@ -115,8 +117,9 @@ KI-Agenten müssen einen `Co-Authored-By`-Trailer in Commits einfügen.
 Wenn mehrere Agent-Sessions gleichzeitig in diesem Verzeichnis arbeiten (z. B. mehrere Features parallel), für jede neue Aufgabe einen eigenen Git Worktree nutzen, statt im Hauptverzeichnis zu branchen. So blockieren sich parallele Sessions nicht gegenseitig durch Branch-Wechsel im selben Arbeitsverzeichnis.
 
 - Neue Aufgabe → eigenen Worktree anlegen (eigener Branch, eigenes Arbeitsverzeichnis)
-- Aufgabe fertig & gemerged → Worktree entfernen
+- Aufgabe fertig & gemerged → Worktree **sofort entfernen**. Ein bebauter Worktree belegt durch `backend/build`, `.gradle` und `frontend/node_modules` schnell ~15 GB — liegengebliebene Worktrees füllen die Platte.
 - Aufgabe unterbrochen, später weiterführen → Worktree behalten
+- `npm ci` in einem Worktree erst ausführen, wenn tatsächlich am Frontend gearbeitet wird
 
 ### Branch-Benennung
 
@@ -145,6 +148,7 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
 - Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
 - Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass ein Maintainer des Projekts den PR merged, sobald CI grün ist
+- **Auto-Merge nutzen:** `gh pr merge --auto --squash` merged den PR automatisch, sobald die Required Checks grün sind. Ein PR muss dafür nicht up to date mit `main` sein (nur konfliktfrei) — manuelles „Branch aktualisieren und CI abwarten" entfällt. Der Push auf `main` lässt die CI anschließend den kombinierten Stand prüfen
 - Kein Agent merged jemals einen PR
 - Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
 - PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))

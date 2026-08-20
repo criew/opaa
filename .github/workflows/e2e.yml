@@ -19,6 +19,13 @@ on:
     # regressions from base image updates etc. even without a new PR.
     - cron: '17 3 * * *'
 
+# A new push to a PR branch makes the previous run's result irrelevant —
+# cancel it instead of blocking a runner (issue #644). Runs on main and the
+# nightly schedule are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   COMPOSE_PROJECT_NAME: opaa-e2e
 
