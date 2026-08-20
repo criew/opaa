@@ -28,10 +28,19 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * KnowledgeLibraryRepository} - the same path {@code SourceIndexingRunService} uses before calling
  * {@link UrlIndexingExecutor#execute} - rather than asserting against the in-memory object this
  * test itself constructed.
+ *
+ * <p>Deliberately carries the same {@code @SpringBootTest}/{@code @Import}/{@code @ActiveProfiles}
+ * signature (issue #497, measure 5) as the shared-context integration test group (e.g. {@code
+ * SpaceServiceIntegrationTest}) instead of the {@code webEnvironment = MOCK}
+ * default/{@code @ActiveProfiles("dev")} pair this test used to declare: this class never uses
+ * MockMvc or any web layer, so {@code webEnvironment} is a free choice here, and matching the
+ * shared group's signature lets Spring's context cache reuse that context instead of building a
+ * second, otherwise redundant one (and its own Testcontainers Postgres instance) just for this
+ * class.
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
-@ActiveProfiles("dev")
+@ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
 class UrlIndexingExecutorCredentialsTest {
 

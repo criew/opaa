@@ -5,22 +5,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * PR #489 review, Befund 6a: {@code sourceCredentials} must appear in no API response - not the
@@ -47,25 +44,32 @@ import org.testcontainers.utility.DockerImageName;
  * added it (a coordinator-reported CI failure, main itself green throughout). Moving those tests
  * here instead - onto the container and context this class needs regardless - removes that second
  * context entirely rather than trying to make two different classes share one.
+ *
+ * <p><b>Issue #497, measure 5:</b> replaced the class's own
+ * {@code @Container}/{@code @DynamicPropertySource} pair with the shared {@link
+ * TestcontainersConfiguration} for exactly the reason just described - this class, {@code
+ * BrandingControllerIntegrationTest} and {@code AuditControllerAuthorizationIntegrationTest} now
+ * carry the identical
+ * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
+ * signature and share one cached context and one container.
+ *
+ * <p><b>Caveat that comes with sharing that context:</b> the {@code RateLimitService} instances
+ * behind {@code RateLimitFilter} are singleton beans, so their in-memory request counters are
+ * <em>not</em> reset between test classes (or even between test methods) in this group - only a
+ * fresh {@code ApplicationContext} would reset them, and this group deliberately avoids building
+ * one per class. A future test added to this class, {@code BrandingControllerIntegrationTest} or
+ * {@code AuditControllerAuthorizationIntegrationTest} that calls a rate-limited endpoint enough
+ * times across the whole group's combined test run can observe an unexpected 429 that a standalone
+ * run of that one class would not have shown.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class LibraryControllerCredentialsIntegrationTest {
 
   private static final String SECRET = "admin:super-secret-password";
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
 
   @Autowired private MockMvc mockMvc;
 

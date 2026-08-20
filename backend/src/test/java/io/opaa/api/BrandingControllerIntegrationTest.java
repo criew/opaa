@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingLogoValidator;
@@ -23,51 +24,45 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * #582's acceptance criteria at the HTTP boundary, against the real {@code dev} security chain
  * ({@link DevAuthFilter}, {@code UserProvisioningFilter}, the real {@code @PreAuthorize} on {@code
  * SystemBrandingController}) and a real Postgres - the same shape {@link
  * AuditControllerAuthorizationIntegrationTest} and {@link
- * LibraryIndexingAuthorizationIntegrationTest} already use, and for the same reason: a
+ * LibraryControllerCredentialsIntegrationTest} already use, and for the same reason: a
  * {@code @WebMvcTest} slice would have to stub the very authorization decision the criterion is
  * about ("PUT verweigert Nicht-Administratoren (403)").
  *
  * <p>Deliberately one class for every HTTP-level concern of this feature rather than one per
- * endpoint: each {@code @SpringBootTest} declaring its own {@code @DynamicPropertySource} gets its
- * own ApplicationContext and its own Postgres container, and that accumulation is what {@code
- * build.gradle.kts}'s heap-ceiling comment describes. Everything that does not need MockMvc lives
- * in {@code BrandingSettingsServiceIntegrationTest}, which shares an already-cached context.
+ * endpoint. Uses the shared {@link TestcontainersConfiguration} rather than declaring its own
+ * {@code @Container}/{@code @DynamicPropertySource} (issue #497, measure 5): a per-class
+ * {@code @DynamicPropertySource} customizer keeps Spring's context cache from recognizing two
+ * otherwise identical {@code @SpringBootTest} classes as the same context, so every such class used
+ * to get its own ApplicationContext and its own Postgres container - the accumulation {@code
+ * build.gradle.kts}'s heap-ceiling comment describes. This class, {@link
+ * AuditControllerAuthorizationIntegrationTest} and {@link
+ * LibraryControllerCredentialsIntegrationTest} now carry the identical
+ * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
+ * signature and therefore share one cached context and one container. Everything that does not need
+ * MockMvc lives in {@code BrandingSettingsServiceIntegrationTest}, which shares the other, {@code
+ * {"local", "dev"}}-profiled context group instead.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class BrandingControllerIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
