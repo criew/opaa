@@ -636,6 +636,20 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       indexedAt: '2026-03-01T12:00:00Z',
       uploadedByUserId: null,
     },
+    // #493: eine RSS-Anlage (#468) mit gesetztem sourceEntryUrl - der Fixture, der die
+    // Herkunftsanzeige in LibraryDetailPage.test.tsx belegt.
+    {
+      id: 'document-anlage-gsb',
+      fileName: 'dienstanweisung-anlage.pdf',
+      contentType: 'application/pdf',
+      fileSize: 84213,
+      status: 'INDEXED',
+      sourceType: 'RSS_FEED',
+      chunkCount: 8,
+      indexedAt: '2026-03-01T12:05:00Z',
+      uploadedByUserId: null,
+      sourceEntryUrl: 'https://example.gov/aktuelles/dienstanweisung-2024',
+    },
   ],
   'library-dienstanweisungen': [],
 }

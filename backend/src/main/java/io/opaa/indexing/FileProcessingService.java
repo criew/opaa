@@ -418,6 +418,16 @@ public class FileProcessingService {
     // model (see docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Both are the
     // library and organization chosen for this indexing run (#419) - see
     // DocumentIndexingService#requireEditableLibrary for where that choice is validated.
+    //
+    // #493 decision: Document#getSourceEntryUrl is deliberately NOT duplicated into chunk
+    // metadata here. document_id already rides on every chunk and is used exactly this way in
+    // QueryService#lookupIndexedAt - resolving indexedAt via a DocumentRepository lookup by that
+    // id rather than carrying it on each chunk. sourceEntryUrl only needs the document_id filter
+    // axis (library_id/organization_id) for permission enforcement, not for its own value, so it
+    // follows the same lookup-by-document_id pattern instead of a second copy per chunk that
+    // would (a) need a re-index to backfill onto chunks written before this decision and (b)
+    // could drift from the document row if either copy is ever updated independently.
+
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
             .map(

@@ -778,6 +778,56 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
+  // #493: eine RSS-Anlage (#468) trägt ihren Herkunfts-Eintrag über sourceEntryUrl - die
+  // Detailseite muss ihn sichtbar machen, statt ihn nur zu speichern.
+  it('shows the source entry URL for an RSS attachment, but not for a document without one', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'doc-1',
+          fileName: 'rundschreiben.pdf',
+          contentType: 'application/pdf',
+          fileSize: 2048,
+          status: 'INDEXED',
+          sourceType: 'FILESYSTEM',
+          chunkCount: 5,
+          indexedAt: '2026-03-01T10:00:00Z',
+          uploadedByUserId: null,
+        },
+        {
+          id: 'doc-2',
+          fileName: 'dienstanweisung-anlage.pdf',
+          contentType: 'application/pdf',
+          fileSize: 4096,
+          status: 'INDEXED',
+          sourceType: 'RSS_FEED',
+          chunkCount: 8,
+          indexedAt: '2026-03-01T10:05:00Z',
+          uploadedByUserId: null,
+          sourceEntryUrl: 'https://example.gov/aktuelles/dienstanweisung-2024',
+        },
+      ]),
+    )
+    setLibraryState(
+      { ...managerLibrary, myRole: 'OWNER' },
+      detailsOf(
+        { ...managerLibrary, myRole: 'OWNER' },
+        { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' },
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText('dienstanweisung-anlage.pdf')).toBeInTheDocument()
+    const link = screen.getByRole('link', {
+      name: 'https://example.gov/aktuelles/dienstanweisung-2024',
+    })
+    expect(link).toHaveAttribute('href', 'https://example.gov/aktuelles/dienstanweisung-2024')
+
+    // Nur die Anlage trägt sourceEntryUrl - kein zweiter "Herkunft:"-Hinweis für das
+    // FILESYSTEM-Dokument ohne diesen Wert.
+    expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
+  })
+
   it('searches documents server-side, debounced, resetting to the first page', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     setLibraryState(managerLibrary, detailsOf(managerLibrary))

@@ -2966,6 +2966,14 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+        sourceEntryUrl:
+          type: string
+          nullable: true
+          description: >
+            For an attachment discovered on an RSS entry's detail page (#468), the URL of the entry
+            it was found on - lets a citation trace an attachment back to the feed entry it belongs
+            to. Null for every other document.
+          example: https://example.gov/aktuelles/dienstanweisung-2024
         errorMessage:
           type: string
           nullable: true
