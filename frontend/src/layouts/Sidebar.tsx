@@ -138,6 +138,7 @@ export default function Sidebar() {
                       secondary={`${space.memberCount} ${space.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
                       slotProps={{ primary: { noWrap: true } }}
                     />
+                    {space.archived && <Chip label="Archiviert" size="small" sx={{ mr: 0.5 }} />}
                     <Chip label={spaceRoleLabel(space.userRole)} size="small" variant="outlined" />
                   </ListItemButton>
                 )

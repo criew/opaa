@@ -84,6 +84,7 @@ describe('authStore', () => {
           name: 'Test',
           description: '',
           isDefault: true,
+          archived: false,
           visibility: 'PRIVATE',
           memberCount: 1,
           userRole: 'ADMIN',

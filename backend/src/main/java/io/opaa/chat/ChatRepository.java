@@ -31,6 +31,15 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
   boolean existsBySpaceId(UUID spaceId);
 
   /**
+   * Used by {@code SpaceService#listSpaces} (#543): an archived space is left out of the list for
+   * members without a chat of their own in it, but a member who authored at least one chat there -
+   * including one nobody but they can ever remove, the exact situation archiving exists for - must
+   * keep seeing the space, or their own chat would become unreachable through the normal listing
+   * path.
+   */
+  boolean existsBySpaceIdAndAuthorId(UUID spaceId, UUID authorId);
+
+  /**
    * #561 review, finding 2: an atomic, DB-decided {@code UPDATE} instead of the load-mutate-{@code
    * save()} cycle {@code ChatService#appendTurn} used before - that {@link Chat} instance was
    * loaded by {@code QueryService#query} before retrieval and LLM answer generation (which can take

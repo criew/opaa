@@ -50,6 +50,7 @@ describe('ChatRedirect', () => {
           name: 'Phoenix',
           description: 'Projektdokumente',
           isDefault: true,
+          archived: false,
           visibility: 'PRIVATE',
           memberCount: 2,
           userRole: 'CURATOR',

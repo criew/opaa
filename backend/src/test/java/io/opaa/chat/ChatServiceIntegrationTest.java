@@ -188,6 +188,68 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
+  void creatingAChatInAnArchivedSpaceIsRejected() {
+    // #543: an archived space accepts no new content - docs/features/spaces-and-assets.md#einen-
+    // space-stilllegen-archivieren-statt-löschen.
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Space space = spaceRepository.findById(spaceId).orElseThrow();
+    space.archive();
+    spaceRepository.save(space);
+
+    assertThatThrownBy(() -> chatService.createChat(spaceId, author, new ChatCreateRequest()))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+  }
+
+  @Test
+  void updatingAChatInAnArchivedSpaceIsRejected() {
+    // #613 review, finding 2: an archived space accepts no new content - not only no new chats,
+    // but also no changes to an existing one.
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    ChatDetail created =
+        chatService.createChat(spaceId, author, new ChatCreateRequest().title("Vor Archivierung"));
+    Space space = spaceRepository.findById(spaceId).orElseThrow();
+    space.archive();
+    spaceRepository.save(space);
+
+    assertThatThrownBy(
+            () ->
+                chatService.updateChat(
+                    created.getId(), author, new ChatUpdateRequest().title("Neuer Titel")))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+  }
+
+  @Test
+  void appendingATurnInAnArchivedSpaceIsRejected() {
+    // #613 review, finding 2: "kein neuer Inhalt" also means no new message in an existing chat -
+    // otherwise an archived space could never actually empty out into a state deleteSpace accepts.
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    Space space = spaceRepository.findById(spaceId).orElseThrow();
+    space.archive();
+    spaceRepository.save(space);
+
+    assertThatThrownBy(() -> chatService.appendTurn(chat, "Frage?", "Antwort.", List.of()))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    // The rejected turn must not have been persisted.
+    assertThat(chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId())).isEmpty();
+  }
+
+  @Test
   void creatingAChatInANonExistentSpaceReturnsNotFound() {
     UUID author = createUser();
 

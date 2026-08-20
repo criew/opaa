@@ -38,6 +38,7 @@ export default function SpaceManagementPage() {
   const transferOwnership = useSpaceStore((s) => s.transferOwnership)
   const updateDetails = useSpaceStore((s) => s.updateDetails)
   const deleteSelectedSpace = useSpaceStore((s) => s.deleteSelectedSpace)
+  const archiveSelectedSpace = useSpaceStore((s) => s.archiveSelectedSpace)
   const [draft, setDraft] = useState<{
     spaceId: string | null
     name: string
@@ -50,6 +51,10 @@ export default function SpaceManagementPage() {
   const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
   const [localError, setLocalError] = useState<string | null>(null)
+  // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
+  // stattdessen." - is the one failure this page offers a direct way out of, instead of just
+  // showing the message.
+  const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
 
@@ -88,7 +93,30 @@ export default function SpaceManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
       {(error || localError) && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            deleteBlockedByChats ? (
+              <Button
+                color="inherit"
+                size="small"
+                onClick={async () => {
+                  try {
+                    await archiveSelectedSpace(spaceId)
+                    setDeleteBlockedByChats(false)
+                    setLocalError(null)
+                    setSuccessMessage('Space archiviert')
+                  } catch (err) {
+                    setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
+                  }
+                }}
+              >
+                Space archivieren
+              </Button>
+            ) : undefined
+          }
+        >
           {localError ?? error}
         </Alert>
       )}
@@ -100,9 +128,16 @@ export default function SpaceManagementPage() {
 
       <Stack spacing={2.5}>
         <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="h6" gutterBottom>
-            Space-Einstellungen
-          </Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+            <Typography variant="h6">Space-Einstellungen</Typography>
+            {space.archived && <Chip label="Archiviert" size="small" color="default" />}
+          </Stack>
+          {space.archived && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Dieser Space ist archiviert und nimmt keinen neuen Inhalt mehr an. Private Chats
+              bleiben für ihre Autoren weiterhin lesbar.
+            </Alert>
+          )}
           <Divider sx={{ mb: 2 }} />
           <Stack spacing={1.5}>
             <TextField
@@ -149,6 +184,31 @@ export default function SpaceManagementPage() {
                 Einstellungen speichern
               </Button>
             )}
+            {isOwner && !space.isDefault && !space.archived && (
+              <Button
+                variant="outlined"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      'Diesen Space archivieren? Er nimmt danach keinen neuen Inhalt mehr an ' +
+                        'und wird aus den regulären Listen ausgeblendet.',
+                    )
+                  ) {
+                    return
+                  }
+                  setLocalError(null)
+                  setDeleteBlockedByChats(false)
+                  try {
+                    await archiveSelectedSpace(spaceId)
+                    setSuccessMessage('Space archiviert')
+                  } catch (err) {
+                    setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
+                  }
+                }}
+              >
+                Space archivieren
+              </Button>
+            )}
             {isOwner && !space.isDefault && (
               <Button
                 color="error"
@@ -162,11 +222,16 @@ export default function SpaceManagementPage() {
                     return
                   }
                   setLocalError(null)
+                  setDeleteBlockedByChats(false)
                   try {
                     await deleteSelectedSpace(spaceId)
                     navigate('/spaces')
                   } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+                    const message = err instanceof Error ? err.message : 'Löschen fehlgeschlagen'
+                    setLocalError(message)
+                    // #543: deleteSpace's own 409 message names archiving as the way out - offer
+                    // it directly instead of leaving the user to figure out the next step.
+                    setDeleteBlockedByChats(message.includes('Archivieren'))
                   }
                 }}
               >
