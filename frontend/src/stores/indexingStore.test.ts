@@ -212,6 +212,26 @@ describe('indexingStore', () => {
     )
   })
 
+  it('reset() stops every library poll interval so no further tick fires (#440)', async () => {
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+    await useIndexingStore.getState().loadStatus('library-b', 'FILESYSTEM')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
+    expect(useIndexingStore.getState().runsByLibrary['library-b']?.isPolling).toBe(true)
+
+    mockGetIndexingStatus.mockClear()
+    useIndexingStore.getState().reset()
+    expect(useIndexingStore.getState().runsByLibrary).toEqual({})
+
+    // Both intervals must actually be torn down, not just the cached run state cleared - a
+    // lingering interval would still poll (and, if a different user's session started meanwhile,
+    // write into runsByLibrary again) even though the store looks reset.
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(mockGetIndexingStatus).not.toHaveBeenCalled()
+  })
+
   it('names the failed count in the completion message only when it occurred', async () => {
     // #518 review, finding 3: documentsFailed used to be invisible in the client-built completion
     // message even though the backend already tracked it - named explicitly here, but only when
