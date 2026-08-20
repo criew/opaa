@@ -485,6 +485,39 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void anEntryWithASyntacticallyInvalidLinkIsSkippedAndTheRunContinues() {
+    // #651: isHttpOrHttps only checks the scheme prefix - an http(s)-prefixed link with an
+    // embedded space is still syntactically invalid and makes URI.create(entryUrl), called deep
+    // inside fetchDetailPage, throw IllegalArgumentException. Before this fix, that exception was
+    // caught by none of processEntry's catch clauses and propagated out to execute()'s outer catch
+    // (Exception e), ending the *entire* run - even though a second, perfectly valid entry
+    // (/ok.html
+    // here) was still waiting to be processed.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/a b.html", baseUrl + "/ok.html"));
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    // 1 processed (/ok.html), 1 skipped (the invalid link), 0 failed, 2 total.
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/a b.html").equals(event.getReference())));
+  }
+
+  @Test
   void feedExceedingTheSizeLimitFailsTheJobInstead() {
     executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, null, 0, 0));
     serve(

@@ -282,6 +282,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
+    // #651: an http(s)-prefixed link can still be syntactically invalid (e.g. an embedded space
+    // or an illegal host character) - URI.create(entryUrl) deep inside fetchDetailPage would then
+    // throw IllegalArgumentException, uncaught by any of the catch clauses below, and propagate all
+    // the way out to execute()'s outer catch (Exception e), ending the *entire* run instead of just
+    // this one malformed entry - exactly like the scheme check above, but for a validity problem
+    // isHttpOrHttps's plain prefix check cannot detect.
+    if (!isValidUri(entryUrl)) {
+      log.warn("Skipping RSS entry with a syntactically invalid link: {}", entryUrl);
+      events.record(
+          IndexingEventCategory.REJECTED, "Verknüpfung mit ungültiger URL abgelehnt", entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
+    }
+
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
@@ -928,13 +943,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
    * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
    * downgrade specifically before ever reaching this check.
+   *
+   * <p><b>An unparsable host on either side is foreign, not "not foreign" (#651).</b> Delegates the
+   * comparison entirely to {@link AutoindexCrawlerService#sameOrigin}, which already treats a
+   * {@code null} host on either side (a hostname {@code URI} cannot parse, e.g. one containing an
+   * underscore) as never matching - previously this method special-cased {@code getHost() == null}
+   * itself and returned {@code false} ("not foreign") whenever a host could not be parsed, the
+   * exact opposite of {@code sameOrigin}'s reasoning (#615 review, finding 1): a redirect target
+   * OPAA cannot even identify the host of must never be trusted with the feed's own credentials.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return originalUri.getHost() != null
-          && finalUri.getHost() != null
-          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return false;
     }
@@ -983,6 +1004,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     String lowerCased = url.strip().toLowerCase(Locale.ROOT);
     return lowerCased.startsWith("http://") || lowerCased.startsWith("https://");
+  }
+
+  /**
+   * Whether {@code url} is a syntactically valid {@link URI} (#651) - {@code isHttpOrHttps} only
+   * checks the scheme prefix, so an http(s)-prefixed link with e.g. an embedded space or an illegal
+   * host character still passes it, but would make {@code URI.create(url)} throw {@link
+   * IllegalArgumentException} the moment {@link #fetchDetailPage} (or {@link
+   * #processUnchangedEntry}'s own detail-page fetch) is reached.
+   */
+  private static boolean isValidUri(String url) {
+    try {
+      URI.create(url);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /**

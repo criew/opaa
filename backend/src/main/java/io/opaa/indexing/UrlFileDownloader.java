@@ -169,13 +169,17 @@ public class UrlFileDownloader {
    * port gap a host-only comparison originally left open) - mirrors {@code
    * RssFeedIndexingExecutor#isForeignHostRedirect}'s treatment of detail-page redirects (PR #492
    * review, finding 4).
+   *
+   * <p><b>An unparsable host on either side is foreign, not "not foreign" (#651).</b> Delegates the
+   * comparison entirely to {@link AutoindexCrawlerService#sameOrigin} instead of special-casing
+   * {@code getHost() == null} to {@code false} ("not foreign") - see {@code
+   * RssFeedIndexingExecutor#isForeignHostRedirect}'s Javadoc for why that inverted {@code
+   * sameOrigin}'s own reasoning (#615 review, finding 1).
    */
   private static boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return originalUri.getHost() != null
-          && finalUri.getHost() != null
-          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return false;
     }
