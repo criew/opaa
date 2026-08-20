@@ -82,9 +82,7 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
       if (parsed.isEmpty()) {
         log.warn("No content extracted from: {}", file);
-        doc.setStatus(DocumentStatus.FAILED);
-        documentRepository.save(doc);
-        return FileProcessingResult.PROCESSED;
+        return markConnectorFailed(doc.getId());
       }
 
       // Chunk the parsed content
@@ -95,14 +93,13 @@ public class FileProcessingService {
       // Enrich chunks with metadata and store via VectorStore
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -195,9 +192,7 @@ public class FileProcessingService {
           documentService.parseDocument(localFile);
       if (parsed.isEmpty()) {
         log.warn("No content extracted from URL document: {}", remoteUrl);
-        doc.setStatus(DocumentStatus.FAILED);
-        documentRepository.save(doc);
-        return FileProcessingResult.PROCESSED;
+        return markConnectorFailed(doc.getId());
       }
 
       List<org.springframework.ai.document.Document> chunks =
@@ -206,15 +201,13 @@ public class FileProcessingService {
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setLastModifiedRemote(lastModified);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -281,15 +274,13 @@ public class FileProcessingService {
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setLastModifiedRemote(publishedAt);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -391,6 +382,95 @@ public class FileProcessingService {
     int updated = documentRepository.markFailed(documentId, errorMessage);
     if (updated == 0) {
       log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
+    }
+  }
+
+  /**
+   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
+   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry} (#632,
+   * generalizing PR #589's upload-path pattern). Uses {@link
+   * DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a plain
+   * {@code documentRepository.save}, because the row can be deleted (e.g. by a concurrent {@code
+   * LibraryDocumentService#deleteDocument} or a connector library delete) between this method's
+   * caller creating/re-reading the row and {@link #storeChunks} finishing. A plain {@code save}
+   * would not notice: {@link Document} assigns its own id and carries no {@code @Version}, so
+   * Hibernate would silently re-{@code INSERT} it as a zombie row.
+   *
+   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
+   *     {@link #storeChunks}, are removed again here and nothing is marked failed - the document
+   *     was deliberately deleted, not a processing failure - {@link IndexingMetrics#recordSkipped}
+   *     accounts for it the same way an unchanged-content skip is), otherwise {@link
+   *     FileProcessingResult#PROCESSED}
+   */
+  private FileProcessingResult markConnectorIndexed(
+      UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
+    int updated =
+        documentRepository.markIndexedFromSource(
+            documentId, chunkCount, Instant.now(), checksum, lastModifiedRemote);
+    if (updated == 0) {
+      log.warn(
+          "Document {} was deleted while its chunks were being written; removing them again",
+          documentId);
+      vectorStore.delete("document_id == '" + documentId + "'");
+      metrics.recordSkipped();
+      return FileProcessingResult.SKIPPED;
+    }
+    return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The connector counterpart to {@link #markUploadFailed}, backing the {@code FAILED} transition
+   * in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry} when no content could
+   * be extracted (#632). Called before {@link #storeChunks} ever runs on this code path, so unlike
+   * {@link #markConnectorIndexed} there are no chunks to clean up on a zero-rows result - the row
+   * was simply deleted concurrently, and this quietly reports {@link FileProcessingResult#SKIPPED}
+   * (counted via {@link IndexingMetrics#recordSkipped}) instead of the usual {@link
+   * FileProcessingResult#PROCESSED}.
+   */
+  private FileProcessingResult markConnectorFailed(UUID documentId) {
+    int updated = documentRepository.markFailed(documentId, null);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked FAILED", documentId);
+      metrics.recordSkipped();
+      return FileProcessingResult.SKIPPED;
+    }
+    return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The catch-block counterpart to {@link #markConnectorFailed}, used when parsing, chunking or
+   * embedding throws instead of returning empty (#636 review, item 2). Unlike {@link
+   * #markConnectorFailed}, {@link #storeChunks} may already have written chunks for {@code
+   * documentId} into the vector store by the time this runs - {@code processFile}/{@code
+   * processUrlFile}/{@code processRssEntry} each throw from inside the same {@code try} block
+   * {@link #storeChunks} is called in, so anything after it (chunking succeeding but the final
+   * {@code markConnectorIndexed} update itself throwing, for instance) can leave written chunks
+   * behind a row that ends up {@code FAILED}. Deletes unconditionally, the same way {@link
+   * #processUploadedFileAsync}'s own catch block does (its Javadoc has the fuller reasoning) -
+   * cheaper than tracking whether {@link #storeChunks} was actually reached on this particular
+   * call, and a no-op if it was not.
+   *
+   * <p>The chunk delete is wrapped in its own {@code try/catch} (#636 review round 2, item 1): this
+   * runs from inside the outer {@code catch (Exception e)} block of {@code processFile}/{@code
+   * processUrlFile}/{@code processRssEntry}, which rethrows the <em>original</em> failure once this
+   * method returns. A pgvector outage on this cleanup delete must not swallow that original cause,
+   * nor skip {@link DocumentRepository#markFailed} below it - a caller that never learns the row is
+   * {@code FAILED} (still {@code PENDING}, no {@link IndexingMetrics#recordFailed} either) would be
+   * strictly worse than the orphaned chunks this is trying to avoid.
+   */
+  private void markConnectorFailedAfterException(UUID documentId) {
+    try {
+      vectorStore.delete("document_id == '" + documentId + "'");
+    } catch (RuntimeException e) {
+      log.error(
+          "Failed to remove vector store chunks for document {} after a processing error -"
+              + " orphaned chunks may remain",
+          documentId,
+          e);
+    }
+    int updated = documentRepository.markFailed(documentId, null);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked FAILED", documentId);
     }
   }
 

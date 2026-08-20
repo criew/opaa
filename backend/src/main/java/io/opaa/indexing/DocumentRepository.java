@@ -146,4 +146,32 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
           + " :threshold")
   int failStalePending(
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
+
+  /**
+   * The connector counterpart to {@link #markIndexed(UUID, int, Instant)} (#632, generalizing the
+   * PR #589 pattern from the upload path to {@code FileProcessingService#processFile}/{@code
+   * #processUrlFile}/{@code #processRssEntry}). Those three paths only learn the checksum - and for
+   * URL/RSS sources, the remote's own {@code last_modified}/publish marker - once chunking and
+   * embedding have already succeeded, unlike the upload path, which persists its checksum on the
+   * {@code PENDING} row before this transition ever runs (so plain {@link #markIndexed(UUID, int,
+   * Instant)} is enough there). {@code lastModifiedRemote} is {@code null} for {@code
+   * processFile}'s filesystem documents, which never carry one.
+   *
+   * <p>Same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}: a
+   * concurrent {@code KnowledgeLibraryService#deleteLibrary}/document delete between the
+   * connector's own {@code findByFilePath} and this call leaves nothing to update, and the caller
+   * must remove any chunks it already wrote instead of treating the row as re-appearable.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.indexing.DocumentStatus.INDEXED, d.chunkCount ="
+          + " :chunkCount, d.indexedAt = :indexedAt, d.checksum = :checksum, d.lastModifiedRemote ="
+          + " :lastModifiedRemote, d.errorMessage = null where d.id = :id")
+  int markIndexedFromSource(
+      @Param("id") UUID id,
+      @Param("chunkCount") int chunkCount,
+      @Param("indexedAt") Instant indexedAt,
+      @Param("checksum") String checksum,
+      @Param("lastModifiedRemote") String lastModifiedRemote);
 }

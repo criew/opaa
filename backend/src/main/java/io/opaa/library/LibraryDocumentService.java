@@ -276,12 +276,29 @@ public class LibraryDocumentService {
    * a {@code PENDING} row with a dead {@code file_path} behind (#589 review, item 4) - the
    * counterpart, once the row exists, to the pre-commit paths above that simply delete the file and
    * rethrow. Returns the response the caller hands back to the client, same as the success path.
+   *
+   * <p>Uses {@link DocumentRepository#markFailed} - a conditional {@code UPDATE} - rather than a
+   * plain {@code documentRepository.save} (#636 review, item 3): the row committed by {@link
+   * #uploadDocument} just above is visible to every other request from that moment on, so a
+   * concurrent {@link #deleteDocument} could remove it in the narrow window between that commit and
+   * this call (e.g. while {@link FileProcessingService#processUploadedFileAsync} is being handed
+   * off and throws synchronously). A plain {@code save} on the caller's now-stale in-memory {@code
+   * document} would not notice and silently re-{@code INSERT} it as a zombie - the same failure
+   * mode {@link DocumentRepository#markIndexed}/{@code #markFailed}'s own Javadoc describes for the
+   * asynchronous path. The response returned here still reflects the caller's own upload attempt
+   * either way - {@code document} is only ever used to build it, never persisted directly again.
    */
   private LibraryDocumentResponse failAlreadyPersistedUpload(
       Document document, Path storedFile, String errorMessage) {
+    int updated = documentRepository.markFailed(document.getId(), errorMessage);
+    if (updated == 0) {
+      log.warn(
+          "Document {} was deleted before it could be marked FAILED after an upload processing"
+              + " error",
+          document.getId());
+    }
     document.setStatus(DocumentStatus.FAILED);
     document.setErrorMessage(errorMessage);
-    document = documentRepository.save(document);
     deleteQuietly(storedFile);
     return LibraryDocumentResponses.from(document);
   }

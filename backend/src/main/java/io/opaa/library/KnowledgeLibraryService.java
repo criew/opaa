@@ -34,12 +34,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -77,6 +81,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional(readOnly = true)
 public class KnowledgeLibraryService {
+
+  private static final Logger log = LoggerFactory.getLogger(KnowledgeLibraryService.class);
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
@@ -586,8 +592,45 @@ public class KnowledgeLibraryService {
       // Bulk deletion via the library_id filter, not per document (#479): a connector library can
       // hold many documents, and this is the same axis the permission-aware vector search already
       // filters on (see KnowledgeLibraryService's own class Javadoc and QueryService).
-      vectorStore.delete("library_id == '" + libraryId + "'");
+      //
+      // Rows deleted first, chunks second - deferred to after commit (#636, the deleteLibrary
+      // counterpart to #631's deleteDocument fix). The reverse order (chunks deleted eagerly,
+      // before the row) left a window: the bulk vectorStore.delete only removes chunks that already
+      // exist when it runs. If a concurrently RUNNING indexing job for this same library writes new
+      // chunks (FileProcessingService#storeChunks) and its conditional status-transition UPDATE
+      // (DocumentRepository#markIndexedFromSource, #632) still finds the row - because this method
+      // had not deleted it yet - after this deletion finally removes the row, those freshly-written
+      // chunks are never caught by the already-run bulk chunk delete and survive as orphans, still
+      // returned by /api/v1/query. Deleting the rows first closes that window: the same document
+      // row is now either already gone (the conditional UPDATE sees zero rows and self-cleans its
+      // own chunks, exactly the case #632 added) or still locked by this still-open transaction
+      // (the UPDATE blocks until this transaction commits, then re-evaluates against the
+      // now-deleted
+      // row and sees zero rows too) - either way, no UPDATE can succeed against a row this method
+      // is
+      // in the middle of removing.
+      //
+      // The chunk delete itself is deferred to after commit, not run eagerly here (#636 review
+      // round 2, item 3, mirroring LibraryDocumentService#deleteDocument's own after-commit chunk
+      // delete): if the transaction rolled back after an eager vectorStore.delete but before commit
+      // - a later step in this method throwing, for instance - the document rows would still be
+      // here (rolled back too), but their chunks would already be gone for good, leaving INDEXED
+      // rows with no chunks that the next indexing run's checksum-based dedup would then skip as
+      // unchanged, permanently unfindable. Running only after a successful commit guarantees the
+      // rows are actually gone by the time their chunks are removed too.
       documentsRemoved = documentRepository.deleteByLibraryId(libraryId);
+      deleteAfterCommit(
+          () -> {
+            try {
+              vectorStore.delete("library_id == '" + libraryId + "'");
+            } catch (RuntimeException e) {
+              log.error(
+                  "Failed to remove vector store chunks for deleted library {} - orphaned chunks"
+                      + " may remain",
+                  libraryId,
+                  e);
+            }
+          });
     }
 
     // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables
@@ -622,6 +665,28 @@ public class KnowledgeLibraryService {
         AuditOutcome.SUCCESS,
         null);
     libraryRepository.delete(library);
+  }
+
+  /**
+   * Registers {@code cleanup} to run only once the enclosing transaction has committed - mirrors
+   * {@code LibraryDocumentService#deleteAfterCommit}'s reasoning (#636 review round 2, item 3):
+   * removing a connector library's vector store chunks before {@link #deleteLibrary}'s own
+   * transaction commits would destroy data a later rollback still considers live, leaving {@code
+   * INDEXED} document rows with no backing chunks. Falls back to running immediately when no
+   * transaction is active.
+   */
+  private void deleteAfterCommit(Runnable cleanup) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      cleanup.run();
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            cleanup.run();
+          }
+        });
   }
 
   /**
