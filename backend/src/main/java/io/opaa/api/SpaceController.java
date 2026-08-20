@@ -89,8 +89,7 @@ public class SpaceController {
   }
 
   @PostMapping("/{spaceId}/archive")
-  public SpaceResponse archiveSpace(
-      @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
+  public SpaceResponse archiveSpace(@PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
     return spaceService.archiveSpace(
         spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);

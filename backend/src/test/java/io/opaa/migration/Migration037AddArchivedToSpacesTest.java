@@ -100,8 +100,7 @@ class Migration037AddArchivedToSpacesTest extends AbstractMigrationTest {
   private boolean archived(UUID spaceId) throws SQLException {
     try (Statement statement = connection.createStatement();
         ResultSet result =
-            statement.executeQuery(
-                "SELECT archived FROM spaces WHERE id = '" + spaceId + "'")) {
+            statement.executeQuery("SELECT archived FROM spaces WHERE id = '" + spaceId + "'")) {
       result.next();
       return result.getBoolean(1);
     }

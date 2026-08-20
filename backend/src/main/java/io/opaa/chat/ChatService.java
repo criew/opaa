@@ -109,8 +109,7 @@ public class ChatService {
     // docs/features/spaces-and-assets.md#archivieren-statt-löschen.
     if (space.isArchived()) {
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
+          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }
     Boolean useKnowledge = request == null ? null : request.getUseKnowledge();
     String title = request == null ? null : request.getTitle();

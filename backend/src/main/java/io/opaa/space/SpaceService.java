@@ -415,10 +415,10 @@ public class SpaceService {
    * migration 032) makes permanently undeletable because it still contains a chat authored by
    * someone other than the space owner, who cannot even see - let alone delete - that chat
    * themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s behaviour: a
-   * real delete remains possible once every chat is actually gone. What it does instead is stop
-   * the space from accepting new content ({@code ChatService#createChat} rejects with 409) and
-   * hide it from {@link #listSpaces} for members without a chat of their own in it, while every
-   * chat - including ones the owner cannot see - stays fully readable for its author.
+   * real delete remains possible once every chat is actually gone. What it does instead is stop the
+   * space from accepting new content ({@code ChatService#createChat} rejects with 409) and hide it
+   * from {@link #listSpaces} for members without a chat of their own in it, while every chat -
+   * including ones the owner cannot see - stays fully readable for its author.
    *
    * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
    * cannot be archived either, for the same reason it cannot be deleted (#333 - it is not this

@@ -106,8 +106,8 @@ public class Space {
   }
 
   /**
-   * Marks the space archived (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen)
-   * - idempotent, since re-archiving an already archived space is not an error.
+   * Marks the space archived (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen) -
+   * idempotent, since re-archiving an already archived space is not an error.
    */
   public void archive() {
     this.archived = true;
