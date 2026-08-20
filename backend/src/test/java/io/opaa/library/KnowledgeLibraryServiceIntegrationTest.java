@@ -53,6 +53,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -993,6 +994,96 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
+    // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
+    // #420 introduced for the two upload endpoints, unified across the rest of the library API -
+    // getLibrary, listDocuments, updateLibrary, deleteLibrary and AssetGrantService#listGrants must
+    // all agree, so a caller cannot infer a library's existence from whichever endpoint still
+    // answered 403 before this fix.
+    UUID owner = createUser(organizationA);
+    UUID viewer = createUser(organizationA);
+    UUID stranger = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Rechtsquellen Soziales", DocumentSourceType.UPLOAD), owner);
+    grantService.upsertGrant(
+        library.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        owner,
+        false);
+
+    // stranger holds no grant at all on this (default PRIVATE) library - every endpoint answers
+    // 404, not 403.
+    assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(
+            () ->
+                libraryService.listDocuments(
+                    library.getId(), stranger, false, null, PageRequest.of(0, 10)))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+    assertThatThrownBy(() -> grantService.listGrants(library.getId(), stranger, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+
+    // viewer holds VIEWER - enough to read, not enough to manage or delete - every
+    // insufficient-access endpoint answers 403, not 404.
+    assertThat(libraryService.getLibrary(library.getId(), viewer, false).getId())
+        .isEqualTo(library.getId());
+    assertThat(
+            libraryService
+                .listDocuments(library.getId(), viewer, false, null, PageRequest.of(0, 10))
+                .getPage())
+        .isZero();
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    library.getId(), new LibraryUpdateRequest("Umbenannt"), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+    assertThatThrownBy(() -> grantService.listGrants(library.getId(), viewer, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
   void cannotDeleteALibraryThatStillContainsDocuments() {
     // #201/#305 code review: fk_documents_library_organization is RESTRICT, so deleting a library
     // that still contains documents must be blocked with a clean 409, not surface an unhandled
@@ -1103,13 +1194,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     libraryService.updateLibrary(
         library.getId(), new LibraryUpdateRequest("Umbenannt von otherMember"), otherMember, false);
 
-    // An outsider - not a member of this group - has no access at all.
+    // An outsider - not a member of this group - has no access at all, so getLibrary answers 404
+    // (#436), the same "does not exist" a caller with no relationship to the library at all sees.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), outsider, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
 
     // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
     // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
@@ -1204,12 +1296,14 @@ class KnowledgeLibraryServiceIntegrationTest {
     // populated) or fail where it should not.
     groupService.removeMember(group.getId(), member, owner);
 
+    // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this
+    // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), member, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -1234,12 +1328,14 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     grantService.revokeGrant(library.getId(), grant.getId(), owner, false);
 
+    // The revoked grant was the viewer's only access to this (default-PRIVATE) library, so this
+    // answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), viewer, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test
@@ -1514,12 +1610,13 @@ class KnowledgeLibraryServiceIntegrationTest {
         spaceService.createSpace(new SpaceRequest("Team Leistungsgewaehrung"), spaceAdmin, false);
     createdSpaceIds.add(space.getId());
 
+    // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
     assertThatThrownBy(() -> libraryService.getLibrary(library.getId(), spaceAdmin, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+                    .isEqualTo(HttpStatus.NOT_FOUND));
   }
 
   @Test

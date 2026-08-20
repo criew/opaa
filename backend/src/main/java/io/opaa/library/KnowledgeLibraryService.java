@@ -390,20 +390,16 @@ public class KnowledgeLibraryService {
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
-    return toLibraryResponse(
-        library, accessService.effectiveRole(library, currentUserId, systemAdmin));
+    AssetRole role =
+        accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
+    return toLibraryResponse(library, role);
   }
 
   @Transactional
   public LibraryResponse updateLibrary(
       UUID libraryId, LibraryUpdateRequest request, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
     // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.getSourceType() is
@@ -550,9 +546,7 @@ public class KnowledgeLibraryService {
     // creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the round-1/round-2
     // escalation guards entirely instead of being blocked by them. See
     // LibraryAccessService#canDelete.
-    if (!accessService.canDelete(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
     // #433: deleting a library while an indexing run for it is RUNNING would let the run's
     // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
     // library is gone - previously surfacing per document as a failed
@@ -638,9 +632,7 @@ public class KnowledgeLibraryService {
   public LibraryDocumentPageResponse listDocuments(
       UUID libraryId, UUID currentUserId, boolean systemAdmin, String q, Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (!accessService.canRead(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
 
     Page<Document> page =
         (q == null || q.isBlank())

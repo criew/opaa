@@ -96,7 +96,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             null,
             false);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
-    when(accessService.canDelete(library, ownerId, false)).thenReturn(true);
+    when(accessService.requireRole(library, ownerId, false, AssetRole.OWNER))
+        .thenReturn(AssetRole.OWNER);
     when(documentRepository.countByLibraryId(library.getId())).thenReturn(0L);
   }
 

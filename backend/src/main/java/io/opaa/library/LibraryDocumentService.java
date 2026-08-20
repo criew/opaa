@@ -274,24 +274,14 @@ public class LibraryDocumentService {
 
   /**
    * Whether the caller may add or remove documents in {@code library} - requires {@link
-   * AssetRole#EDITOR}. Deliberately distinguishes "no access at all" ({@code 404}, per this issue's
-   * acceptance criterion "Ein Nutzer ohne jeden Zugriff erfährt nichts über die Existenz der
-   * Bibliothek") from "some access, but not enough" ({@code 403}) - a finer distinction than {@code
-   * KnowledgeLibraryService#getLibrary}'s {@code canRead} check draws, which answers {@code 403} to
-   * any same-organization caller regardless of whether they hold any role at all (#420 code review,
-   * nit 9). That existing behaviour is deliberately not changed here; this method only governs the
-   * two endpoints this issue adds - unifying it across the rest of the library API (so existence
-   * cannot still be inferred one endpoint over, e.g. via {@code listDocuments}) is tracked
-   * separately as #436.
+   * AssetRole#EDITOR}. Introduced here in #420 with its own "no access at all" ({@code 404}) vs.
+   * "some access, but not enough" ({@code 403}) distinction; #436 later generalised that same check
+   * into {@link LibraryAccessService#requireRole} and moved every other library-scoped endpoint
+   * onto it, so this method now only supplies the {@code EDITOR} threshold these two upload
+   * endpoints require.
    */
   private void requireEditable(KnowledgeLibrary library, UUID currentUserId, boolean systemAdmin) {
-    AssetRole role = accessService.effectiveRole(library, currentUserId, systemAdmin);
-    if (role == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
-    }
-    if (!role.atLeast(AssetRole.EDITOR)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.EDITOR);
   }
 
   /**
