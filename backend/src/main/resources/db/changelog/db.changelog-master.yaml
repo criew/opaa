@@ -65,3 +65,5 @@ databaseChangeLog:
       file: db/changelog/changes/032-create-chats.yaml
   - include:
       file: db/changelog/changes/033-drop-knowledge-libraries-personal-flag.yaml
+  - include:
+      file: db/changelog/changes/034-add-chat-title-source.yaml

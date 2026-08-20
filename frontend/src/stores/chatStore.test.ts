@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
 import { useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
@@ -306,6 +306,133 @@ describe('chatStore', () => {
 
       const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
       expect(chats?.[0].id).toBe(EMPTY_CHAT_ID)
+    })
+  })
+
+  // #557: the chat's title after an answer arrives - the immediate fallback QueryResponse#chatTitle
+  // carries, and the delayed reload that picks up the LLM-derived title generated asynchronously
+  // on the backend after a chat's very first turn.
+  describe('chat title (#557)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("applies the response's chatTitle to the store and chatListStore immediately", async () => {
+      useChatListStore.setState({
+        chatsBySpaceId: {
+          'space-engineering': [
+            {
+              id: EMPTY_CHAT_ID,
+              spaceId: 'space-engineering',
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              createdAt: '2020-01-01T00:00:00Z',
+              updatedAt: '2020-01-01T00:00:00Z',
+            },
+          ],
+        },
+      })
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      await useChatStore.getState().sendMessage('Erste Frage zum Budget')
+
+      expect(useChatStore.getState().title).toBe('Erste Frage zum Budget')
+      const chats = useChatListStore.getState().chatsBySpaceId['space-engineering']
+      expect(chats?.find((chat) => chat.id === EMPTY_CHAT_ID)?.title).toBe('Erste Frage zum Budget')
+    })
+
+    it('reloads the chat after the first turn and picks up the LLM-derived title once ready', async () => {
+      vi.useFakeTimers()
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) => {
+          if (params.chatId !== EMPTY_CHAT_ID) {
+            return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+          }
+          return HttpResponse.json({
+            id: EMPTY_CHAT_ID,
+            spaceId: 'space-engineering',
+            authorId: 'mock-user-id',
+            title: 'LLM-generierter Titel',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      useChatStore.setState({ chatId: EMPTY_CHAT_ID, spaceId: 'space-engineering', messages: [] })
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+      expect(useChatStore.getState().title).not.toBe('LLM-generierter Titel')
+
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(useChatStore.getState().title).toBe('LLM-generierter Titel')
+    })
+
+    it('does not schedule a reload for a follow-up turn', async () => {
+      vi.useFakeTimers()
+      let getChatCallCount = 0
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) => {
+          getChatCallCount++
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: 'space-engineering',
+            authorId: 'mock-user-id',
+            title: 'Titel',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      useChatStore.setState({ chatId: EMPTY_CHAT_ID, spaceId: 'space-engineering', messages: [] })
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+      await useChatStore.getState().sendMessage('Zweite Frage')
+      await vi.advanceTimersByTimeAsync(3000)
+
+      // Exactly one reload - from the first turn only, never the follow-up.
+      expect(getChatCallCount).toBe(1)
+    })
+
+    it('does not apply a delayed reload once the user has navigated to a different chat', async () => {
+      vi.useFakeTimers()
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) => {
+          if (params.chatId !== EMPTY_CHAT_ID) {
+            return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+          }
+          return HttpResponse.json({
+            id: EMPTY_CHAT_ID,
+            spaceId: 'space-engineering',
+            authorId: 'mock-user-id',
+            title: 'LLM-generierter Titel',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      useChatStore.setState({ chatId: EMPTY_CHAT_ID, spaceId: 'space-engineering', messages: [] })
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+      useChatStore.getState().startNewChat(SPACE_ID)
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(useChatStore.getState().title).not.toBe('LLM-generierter Titel')
     })
   })
 

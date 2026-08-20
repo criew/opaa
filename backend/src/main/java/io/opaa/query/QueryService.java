@@ -260,11 +260,18 @@ public class QueryService {
                 metrics.recordSuccess(tokenCount);
 
                 chat.ifPresent(c -> chatService.appendTurn(c, question, answer, sources));
+                // #557: appendTurn mutates the same Chat instance in place (deriveTitleFrom-
+                // FirstQuestionIfAbsent/applyGeneratedTitle), so chat.getTitle() here already
+                // reflects the fallback title just committed - never the LLM-derived title, which
+                // (deliberately, see ChatTitleGenerationService's Javadoc) generates asynchronously
+                // after this response is built.
+                String chatTitle = chat.map(Chat::getTitle).orElse(null);
 
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge);
-                return new QueryResponse(answer, sources, metadata, effectiveChatId);
+                return new QueryResponse(answer, sources, metadata, effectiveChatId)
+                    .chatTitle(chatTitle);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;

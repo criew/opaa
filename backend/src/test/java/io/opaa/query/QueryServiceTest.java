@@ -3,6 +3,7 @@ package io.opaa.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -164,6 +165,52 @@ class QueryServiceTest {
 
     assertThat(response.getChatId()).isEqualTo(chatId);
     verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
+  }
+
+  /**
+   * #557: QueryResponse#chatTitle mirrors the persisted chat's title right after appendTurn - here
+   * simulated via a {@code doAnswer} that mutates the same {@link Chat} instance the way the real
+   * {@code ChatService#appendTurn} does (see that method's Javadoc), since {@code chatService} is
+   * fully mocked in this class.
+   */
+  @Test
+  void queryIncludesTheChatsCurrentTitleInTheResponse() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(conversationKey)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey)))
+        .thenReturn(chatResponse);
+    doAnswer(
+            invocation -> {
+              chat.deriveTitleFromFirstQuestionIfAbsent("Frage zur Frist");
+              return null;
+            })
+        .when(chatService)
+        .appendTurn(eq(chat), any(), any(), any());
+
+    QueryResponse response =
+        queryService.query("Frage zur Frist", chatId, currentUserId, true, List.of());
+
+    assertThat(response.getChatTitle()).isEqualTo("Frage zur Frist");
+  }
+
+  @Test
+  void queryLeavesChatTitleNullForAnEphemeralQuery() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getChatTitle()).isNull();
   }
 
   @Test

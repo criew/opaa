@@ -21,6 +21,10 @@ interface ChatListState {
   /** Bumps an existing entry's updatedAt and re-sorts, so a chat moves to the top of its list
    * after every turn - a no-op if the chat isn't in the (possibly not yet loaded) list. */
   touchChat: (spaceId: string, chatId: string, updatedAt: string) => void
+  /** Applies a title change - either the immediate fallback QueryResponse#chatTitle carries, or
+   * the LLM-derived title chatStore's delayed reload picks up (#557) - to a chat already in the
+   * list. A no-op if the chat isn't in the (possibly not yet loaded) list. */
+  updateChatTitle: (spaceId: string, chatId: string, title: string | null) => void
   reset: () => void
 }
 
@@ -144,5 +148,13 @@ export const useChatListStore = create<ChatListState>((set) => ({
       if (!existing || !existing.some((chat) => chat.id === chatId)) return state
       const next = existing.map((chat) => (chat.id === chatId ? { ...chat, updatedAt } : chat))
       return { chatsBySpaceId: { ...state.chatsBySpaceId, [spaceId]: sortByLastUse(next) } }
+    }),
+
+  updateChatTitle: (spaceId: string, chatId: string, title: string | null) =>
+    set((state) => {
+      const existing = state.chatsBySpaceId[spaceId]
+      if (!existing || !existing.some((chat) => chat.id === chatId)) return state
+      const next = existing.map((chat) => (chat.id === chatId ? { ...chat, title } : chat))
+      return { chatsBySpaceId: { ...state.chatsBySpaceId, [spaceId]: next } }
     }),
 }))

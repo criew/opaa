@@ -1,0 +1,48 @@
+databaseChangeLog:
+  # #557: distinguishes an LLM-derived chat title from one the user set explicitly (at creation or
+  # via PATCH), so ChatTitleGenerationService's post-answer title generation never overwrites a
+  # title the user chose - not even one set in the narrow window between a question being asked and
+  # its answer/title generation completing (see ChatService#appendTurn and
+  # ChatTitleGenerationService's Javadoc). GENERATED is the default: a brand-new chat and the
+  # prefix-derived fallback (Chat#deriveTitleFromFirstQuestionIfAbsent) are both GENERATED until
+  # something more authoritative supersedes them - the LLM-derived title (still GENERATED, since it
+  # remains a system-derived title, not a user choice) or an explicit user title (CUSTOM, set by
+  # Chat#applyUpdate whenever a PATCH supplies a title, and by the constructor whenever
+  # ChatCreateRequest supplies one, including an explicit blank string).
+  #
+  # Existing rows all default to GENERATED: this migration cannot reconstruct whether a pre-#557
+  # title was supplied explicitly at creation or derived from the first question - there is no data
+  # for that distinction before this column existed. This is a one-time, forward-looking limitation;
+  # every title set from this migration onward is classified correctly by the application.
+
+  - changeSet:
+      id: 034-add-chat-title-source
+      author: opaa
+      comment: >
+        Adds chats.title_source (#557) - GENERATED (default) or CUSTOM. See this file's top-level
+        comment for the full rationale and the historical-data caveat.
+      changes:
+        - addColumn:
+            tableName: chats
+            columns:
+              - column:
+                  name: title_source
+                  type: varchar(20)
+                  defaultValue: "GENERATED"
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: "Add check constraint for chat title_source values"
+            sql: >
+              ALTER TABLE chats
+              ADD CONSTRAINT chk_chats_title_source
+              CHECK (title_source IN ('GENERATED', 'CUSTOM'));
+      rollback:
+        - sql:
+            comment: "Drop check constraint for chat title_source values"
+            sql: >
+              ALTER TABLE chats
+              DROP CONSTRAINT IF EXISTS chk_chats_title_source;
+        - dropColumn:
+            tableName: chats
+            columnName: title_source

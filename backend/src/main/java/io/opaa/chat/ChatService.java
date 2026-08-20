@@ -78,6 +78,7 @@ public class ChatService {
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final TransactionTemplate requiresNewTransactionTemplate;
+  private final ChatTitleGenerationService chatTitleGenerationService;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -86,7 +87,8 @@ public class ChatService {
       SpaceMembershipRepository spaceMembershipRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      ChatTitleGenerationService chatTitleGenerationService) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
@@ -96,6 +98,7 @@ public class ChatService {
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.chatTitleGenerationService = chatTitleGenerationService;
   }
 
   @Transactional
@@ -253,14 +256,29 @@ public class ChatService {
    * on this method, precisely so a failed attempt's rollback cannot poison a subsequent one) and
    * recomputes the sequence from scratch, so a retry after losing the race simply picks the number
    * the winner just took.
+   *
+   * <p><b>#557 - asynchronous LLM title generation.</b> Once the retry loop above has committed the
+   * turn and the synchronous prefix-derived fallback title, this method triggers {@link
+   * ChatTitleGenerationService#generateTitleAsync} - but only when this turn was the chat's very
+   * first ({@code nextSequence == 0} on the attempt that finally succeeded) and the chat's title is
+   * still {@link TitleSource#GENERATED} (a title explicitly set before the first answer even
+   * arrived, e.g. at creation, is never touched). The trigger happens after the retry loop, i.e.
+   * after the writing transaction has already committed - {@code @Async} dispatches to a genuinely
+   * separate thread with no ambient transaction of its own regardless of where it is called from,
+   * but calling it only once the turn is durably persisted keeps the ordering easy to reason about:
+   * by the time title generation's own transaction ({@link
+   * ChatTitleGenerationService#applyGeneratedTitle}) reads the chat, this turn is guaranteed to
+   * already be visible.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void appendTurn(Chat chat, String question, String answer, List<SourceReference> sources) {
+    boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
       try {
-        requiresNewTransactionTemplate.executeWithoutResult(
-            status -> appendTurnOnce(chat, question, answer, sources));
-        return;
+        firstTurn =
+            requiresNewTransactionTemplate.execute(
+                status -> appendTurnOnce(chat, question, answer, sources));
+        break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
           throw e;
@@ -273,9 +291,15 @@ public class ChatService {
             e);
       }
     }
+    if (firstTurn && chat.getTitleSource() == TitleSource.GENERATED) {
+      chatTitleGenerationService.generateTitleAsync(chat.getId(), question, answer);
+    }
   }
 
-  private void appendTurnOnce(
+  /**
+   * @return true if this turn was the chat's very first ({@code nextSequence == 0})
+   */
+  private boolean appendTurnOnce(
       Chat chat, String question, String answer, List<SourceReference> sources) {
     int nextSequence = nextSequenceFor(chat.getId());
     chatMessageRepository.save(
@@ -289,6 +313,7 @@ public class ChatService {
     // use" ordering (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
     chat.touch();
     chatRepository.save(chat);
+    return nextSequence == 0;
   }
 
   private int nextSequenceFor(UUID chatId) {

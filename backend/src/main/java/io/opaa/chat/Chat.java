@@ -43,6 +43,15 @@ public class Chat {
   @Column(name = "title", length = 255)
   private String title;
 
+  /**
+   * Where {@link #title} came from (#557, migration 034) - see {@link TitleSource}'s Javadoc.
+   * {@code GENERATED} unless the constructor or {@link #applyUpdate} set it to {@code CUSTOM}
+   * because a title was explicitly supplied.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "title_source", nullable = false, length = 20)
+  private TitleSource titleSource;
+
   @Column(name = "use_knowledge", nullable = false)
   private boolean useKnowledge;
 
@@ -90,6 +99,10 @@ public class Chat {
     this.authorId = authorId;
     this.organizationId = organizationId;
     this.title = title;
+    // #557: a title supplied at creation - even an explicit blank string - is CUSTOM and must
+    // never be overwritten by the prefix fallback or LLM-derived title generation, see
+    // TitleSource's Javadoc.
+    this.titleSource = title != null ? TitleSource.CUSTOM : TitleSource.GENERATED;
     this.useKnowledge = useKnowledge;
     this.status = ChatStatus.PRIVATE;
     if (referencedLibraryIds != null) {
@@ -118,6 +131,9 @@ public class Chat {
       String newTitle, Boolean newUseKnowledge, Set<UUID> newReferencedLibraryIds) {
     if (newTitle != null) {
       this.title = newTitle;
+      // #557: a user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
+      // Javadoc, regardless of whether this happens before or after the chat's first answer.
+      this.titleSource = TitleSource.CUSTOM;
     }
     if (newUseKnowledge != null) {
       this.useKnowledge = newUseKnowledge;
@@ -137,6 +153,28 @@ public class Chat {
     if (this.title == null) {
       this.title = derivedTitle;
     }
+  }
+
+  /**
+   * Applies an LLM-derived title (#557, {@code ChatTitleGenerationService}) unless the chat's title
+   * is {@link TitleSource#CUSTOM} - a title the user set explicitly, at creation or via a later
+   * {@code PATCH}, always wins, even one set in the narrow window between the question that
+   * triggered generation being asked and this method eventually being called (title generation runs
+   * asynchronously, well after the answer was already returned - see {@code
+   * ChatTitleGenerationService}'s Javadoc). Stays {@link TitleSource#GENERATED}: the title is still
+   * system-derived, merely a better one than the prefix fallback it replaces.
+   *
+   * @return true if the title was applied, false if it was rejected (a {@code CUSTOM} title, or a
+   *     blank/null {@code generatedTitle} - e.g. the LLM returned nothing usable)
+   */
+  public boolean applyGeneratedTitle(String generatedTitle) {
+    if (this.titleSource == TitleSource.CUSTOM
+        || generatedTitle == null
+        || generatedTitle.isBlank()) {
+      return false;
+    }
+    this.title = generatedTitle;
+    return true;
   }
 
   /**
@@ -169,6 +207,10 @@ public class Chat {
 
   public String getTitle() {
     return title;
+  }
+
+  public TitleSource getTitleSource() {
+    return titleSource;
   }
 
   public boolean isUseKnowledge() {

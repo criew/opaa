@@ -152,6 +152,49 @@ describe('chatListStore', () => {
     expect(useChatListStore.getState().chatsBySpaceId['space-unloaded']).toBeUndefined()
   })
 
+  it('updateChatTitle applies a title without re-sorting, and is a no-op for an unlisted chat', () => {
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        [SPACE_ID]: [
+          {
+            id: 'chat-a',
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            createdAt: '2020-01-01T00:00:00Z',
+            updatedAt: '2020-01-01T00:00:00Z',
+          },
+          {
+            id: 'chat-b',
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: 'B',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            createdAt: '2027-01-01T00:00:00Z',
+            updatedAt: '2027-01-01T00:00:00Z',
+          },
+        ],
+      },
+    })
+
+    useChatListStore.getState().updateChatTitle(SPACE_ID, 'chat-a', 'LLM-generierter Titel')
+
+    const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
+    // #557: a title update is not a "last use" event - the order stays exactly as it was, unlike
+    // touchChat.
+    expect(chats?.map((chat) => chat.id)).toEqual(['chat-a', 'chat-b'])
+    expect(chats?.find((chat) => chat.id === 'chat-a')?.title).toBe('LLM-generierter Titel')
+
+    // A chat that isn't in the (possibly not yet loaded) list is left alone rather than crashing.
+    useChatListStore.getState().updateChatTitle('space-unloaded', 'chat-x', 'Titel')
+    expect(useChatListStore.getState().chatsBySpaceId['space-unloaded']).toBeUndefined()
+  })
+
   it('renames a chat in the list', async () => {
     await useChatListStore.getState().loadChats(SPACE_ID)
 
