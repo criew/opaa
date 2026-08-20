@@ -22,6 +22,7 @@ import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
 import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import ChatList from '../components/chat/ChatList'
+import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
@@ -35,6 +36,7 @@ export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { spaceId: routeSpaceId } = useParams<{ spaceId?: string }>()
+  const chatSpaceId = useChatStore((s) => s.spaceId)
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const spaces = useSpaceStore((s) => s.spaces)
@@ -52,10 +54,12 @@ export default function Sidebar() {
 
   // The chats section follows the space currently shown by the route (space overview, space
   // detail, or an open chat - all of which carry :spaceId), so switching spaces in the overview
-  // updates the list immediately instead of waiting for a chat to be opened (#556). Falls back to
-  // the user's default space (or their first space) on routes without a :spaceId, e.g. /settings.
+  // updates the list immediately instead of waiting for a chat to be opened (#556). On routes
+  // without a :spaceId (e.g. /settings), it falls back to the space of the still-open chat rather
+  // than jumping to the default space, and only then to the default (or first) space if neither is
+  // known yet.
   const defaultSpace = spaces.find((space) => space.isDefault) ?? spaces[0]
-  const activeChatSpaceId = routeSpaceId ?? defaultSpace?.id ?? null
+  const activeChatSpaceId = routeSpaceId ?? chatSpaceId ?? defaultSpace?.id ?? null
 
   return (
     <Box
