@@ -250,6 +250,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setScopeAll: () => {
+    // Already showing @Alles-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
+    // that would just re-send the chat's current settings (#564 review).
+    if (get().scope === 'all') return
     // Re-adding @Alles-Wissen replaces any concrete chips (#560) - the two are mutually
     // exclusive states of the same bar, never shown together.
     applyScopeChange(get, set, 'all', [])
@@ -272,6 +275,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearScope: () => {
+    // Already empty - same reasoning as setScopeAll's short-circuit above.
+    if (get().scope === 'none') return
     applyScopeChange(get, set, 'none', [])
   },
 }))

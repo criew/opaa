@@ -95,7 +95,7 @@ die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein s
   die der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten),
 - **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
   Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
-  dazu immer als erster Eintrag @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
+  dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
   konkrete Chip ersetzt @Alles-Wissen; @Alles-Wissen erneut hinzuzufügen ersetzt umgekehrt die
   konkreten Chips,
 - **leere Leiste** — kein Retrieval, das Modell antwortet ohne Wissensbasis, sichtbar gekennzeichnet in

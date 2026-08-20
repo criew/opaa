@@ -143,6 +143,45 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
       expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
     })
+
+    // #564 review: scope "libraries" with an id that is not (yet, or no longer) in the loaded
+    // library list must never look like an emptied bar - that would be indistinguishable from a
+    // deliberate "ohne Wissen" and silently drop the reference from what the user sees.
+    it('shows a loading chip for a referenced id while the library list is still loading', () => {
+      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
+      useLibraryStore.setState({
+        libraries: [],
+        libraryDetails: {},
+        isLoading: true,
+        error: null,
+      })
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(screen.getByLabelText('Bibliotheksreferenz wird geladen')).toBeInTheDocument()
+      expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
+    })
+
+    it('shows a removable placeholder chip for a referenced id that is no longer readable', async () => {
+      const user = userEvent.setup()
+      useChatStore.setState({
+        scope: 'libraries',
+        referencedLibraryIds: ['library-referat-50', 'library-removed'],
+      })
+      // The library list finished loading but no longer contains "library-removed" - it was
+      // deleted, or is no longer readable by this user.
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
+      const placeholder = screen.getByRole('button', {
+        name: 'Nicht verfügbare Bibliotheksreferenz entfernen',
+      })
+      expect(placeholder).toBeInTheDocument()
+
+      placeholder.focus()
+      await user.keyboard('{Backspace}')
+
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
+    })
   })
 
   describe('replacement logic', () => {

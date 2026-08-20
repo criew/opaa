@@ -78,6 +78,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const clearScope = useChatStore((s) => s.clearScope)
 
   const libraries = useLibraryStore((s) => s.libraries)
+  const librariesLoading = useLibraryStore((s) => s.isLoading)
   const loadLibraries = useLibraryStore((s) => s.loadLibraries)
 
   useEffect(() => {
@@ -93,13 +94,21 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     wasDisabled.current = disabled
   }, [disabled])
 
-  const referencedLibraries = useMemo(
-    () =>
-      scope === 'libraries'
-        ? libraries.filter((library) => referencedLibraryIds.includes(library.id))
-        : [],
-    [libraries, referencedLibraryIds, scope],
-  )
+  // One entry per referenced id, in the order the ids were added - not per matched library, so a
+  // reference that is (still, or no longer) missing from the loaded list keeps its own chip
+  // instead of silently disappearing. An empty-looking bar for scope 'libraries' would otherwise
+  // be indistinguishable from a deliberately emptied one (#564 review).
+  const libraryChips = useMemo(() => {
+    if (scope !== 'libraries') return []
+    return referencedLibraryIds.map((libraryId) => {
+      const library = libraries.find((l) => l.id === libraryId)
+      if (library) return { kind: 'known' as const, libraryId, library }
+      if (librariesLoading) return { kind: 'loading' as const, libraryId }
+      // Loaded, and still not found - either no longer readable or deleted. Removable like any
+      // other chip, so a stale reference does not get stuck in the bar.
+      return { kind: 'missing' as const, libraryId }
+    })
+  }, [libraries, librariesLoading, referencedLibraryIds, scope])
 
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
@@ -243,17 +252,44 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           />
         )}
         {scope === 'libraries' &&
-          referencedLibraries.map((library) => (
-            <Chip
-              key={library.id}
-              label={library.name}
-              size="small"
-              variant="filled"
-              color="primary"
-              onDelete={disabled ? undefined : () => removeReferencedLibrary(library.id)}
-              aria-label={`Bibliotheksreferenz ${library.name} entfernen`}
-            />
-          ))}
+          libraryChips.map((chip) => {
+            if (chip.kind === 'known') {
+              return (
+                <Chip
+                  key={chip.libraryId}
+                  label={chip.library.name}
+                  size="small"
+                  variant="filled"
+                  color="primary"
+                  onDelete={disabled ? undefined : () => removeReferencedLibrary(chip.libraryId)}
+                  aria-label={`Bibliotheksreferenz ${chip.library.name} entfernen`}
+                />
+              )
+            }
+            if (chip.kind === 'loading') {
+              return (
+                <Chip
+                  key={chip.libraryId}
+                  label="Bibliothek wird geladen …"
+                  size="small"
+                  variant="outlined"
+                  disabled
+                  aria-label="Bibliotheksreferenz wird geladen"
+                />
+              )
+            }
+            return (
+              <Chip
+                key={chip.libraryId}
+                label="Nicht verfügbare Bibliothek"
+                size="small"
+                variant="outlined"
+                color="warning"
+                onDelete={disabled ? undefined : () => removeReferencedLibrary(chip.libraryId)}
+                aria-label="Nicht verfügbare Bibliotheksreferenz entfernen"
+              />
+            )
+          })}
         {scope === 'none' && (
           <>
             <Typography variant="caption" color="warning.main">

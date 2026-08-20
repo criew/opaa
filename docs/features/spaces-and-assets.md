@@ -571,7 +571,7 @@ Ein Chat entsteht als `PRIVATE` und ist ausschließlich für seinen Autor sichtb
 
 **Reihenfolge des Aufbaus.** Zuerst entsteht die Persistenz-Grundlage: Chat und Nachrichten leben in genau einem Space, in dem der Chat erstellt und gelistet wird, und sind zunächst ausschließlich `PRIVATE` — der Teilen-Mechanismus (`SHARED`, Provenienz-Hinweis, Widerruf, Benachrichtigung bei erweitertem Leserkreis) baut erst darauf auf. Die Status-Achse aus der Tabelle oben wird im Datenmodell von Anfang an offengehalten, auch bevor sie bedient wird. Ein Chat kann **nicht in einen anderen Space verschoben** werden.
 
-**Der Suchbereich eines Chats wird ausschließlich über die Chip-Leiste am Eingabefeld gesteuert** — sie ist ein Attribut des Chats, nicht der einzelnen Anfrage, und die einzige Regel, die sich Nutzer merken müssen, lautet: **„Durchsucht wird, was in der Leiste steht."** Beim Tippen von `@` im Eingabefeld werden die lesbaren Bibliotheken vorgeschlagen, dazu **immer als erster Eintrag** die Spezial-Referenz **@Alles-Wissen**; referenzierbar sind ansonsten **alle lesbaren Bibliotheken**, unabhängig vom Space. Die Leiste kennt drei Zustände:
+**Der Suchbereich eines Chats wird ausschließlich über die Chip-Leiste am Eingabefeld gesteuert** — sie ist ein Attribut des Chats, nicht der einzelnen Anfrage, und die einzige Regel, die sich Nutzer merken müssen, lautet: **„Durchsucht wird, was in der Leiste steht."** Beim Tippen von `@` im Eingabefeld werden die lesbaren Bibliotheken vorgeschlagen, dazu **als erster Eintrag**, solange die eingegebene Zeichenfolge dazu passt (bei leerer Eingabe also immer), die Spezial-Referenz **@Alles-Wissen**; referenzierbar sind ansonsten **alle lesbaren Bibliotheken**, unabhängig vom Space. Die Leiste kennt drei Zustände:
 
 | Zustand | Chip-Leiste | Suchbereich |
 |---|---|---|
@@ -693,7 +693,7 @@ Die Berechtigungsprüfung ist **Teil der Vektorsuche**, kein Nachfilter. Die Men
 
 ### Suchbereich je Chatart
 
-Der Suchbereich eines Chats wird **nicht über eine Space-Auswahl im Suchfeld gesteuert.** Eine solche Auswahl entfällt ersatzlos, sowohl im Frontend als auch in der API (das heutige `QueryRequest.spaceIds` wird ohnehin ignoriert und fällt mit weg). Stattdessen bestimmt ihn **ausschließlich die Chip-Leiste** am Eingabefeld — die einzige Suchbereichssteuerung, kein zusätzlicher Schalter daneben: **„Durchsucht wird, was in der Leiste steht."** Referenzierbar sind beim Tippen von `@` alle Bibliotheken, die der Nutzer lesen darf, unabhängig vom Space, dazu immer als erster Eintrag die Spezial-Referenz **@Alles-Wissen** (siehe [Chats](#chats)).
+Der Suchbereich eines Chats wird **nicht über eine Space-Auswahl im Suchfeld gesteuert.** Eine solche Auswahl entfällt ersatzlos, sowohl im Frontend als auch in der API (das heutige `QueryRequest.spaceIds` wird ohnehin ignoriert und fällt mit weg). Stattdessen bestimmt ihn **ausschließlich die Chip-Leiste** am Eingabefeld — die einzige Suchbereichssteuerung, kein zusätzlicher Schalter daneben: **„Durchsucht wird, was in der Leiste steht."** Referenzierbar sind beim Tippen von `@` alle Bibliotheken, die der Nutzer lesen darf, unabhängig vom Space, dazu als erster Eintrag (bei leerer Eingabe) die Spezial-Referenz **@Alles-Wissen** (siehe [Chats](#chats)).
 
 Ist der Chat an einen Agenten gebunden, tritt die Chip-Leiste zurück: Der Agent bestimmt den Suchbereich.
 

@@ -80,6 +80,62 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
     })
 
+    // #564 review: the "empty bar" persisted state (useKnowledge=false, no referencedLibraryIds)
+    // must restore as scope "none", not silently fall back to "all" or "libraries".
+    it('restores the chat-level scope as "none" for useKnowledge=false with no referencedLibraryIds', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+      )
+
+      await useChatStore.getState().loadChat('chat-empty-bar')
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('none')
+      expect(state.referencedLibraryIds).toEqual([])
+    })
+
+    // #564 review: a chat persisted with useKnowledge=true still carrying leftover
+    // referencedLibraryIds (a legacy/inconsistent record) must show @Alles-Wissen, not a mix of
+    // both - the bar has to mirror exactly one state, and the ids are meaningless while
+    // useKnowledge is true (#560).
+    it('discards referencedLibraryIds locally when useKnowledge=true carries a non-empty list', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: ['library-stale'],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+      )
+
+      await useChatStore.getState().loadChat('chat-stale-ids')
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('all')
+      expect(state.referencedLibraryIds).toEqual([])
+    })
+
     it('sets an error when the chat cannot be found', async () => {
       await useChatStore.getState().loadChat('chat-unknown')
 
