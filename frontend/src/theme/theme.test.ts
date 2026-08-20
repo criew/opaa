@@ -8,9 +8,9 @@ describe('tokens', () => {
   })
 
   test('accent states carry the sampled mockup values (hover -8%, press -16%)', () => {
-    expect(lightRoles.accent).toBe(blue[500])
-    expect(lightRoles.accentHover).toBe(blue[600])
-    expect(lightRoles.accentPress).toBe(blue[700])
+    expect(lightRoles.accent).toBe(blue[700])
+    expect(lightRoles.accentHover).toBe(blue[800])
+    expect(lightRoles.accentPress).toBe(blue[900])
   })
 
   test('the default radius is the 10px squircle from the guidelines', () => {
@@ -25,7 +25,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.background.default).toBe(white)
     expect(theme.palette.text.primary).toBe(navy[800])
     expect(theme.palette.text.secondary).toBe(gray[600])
-    expect(theme.palette.primary.main).toBe(blue[500])
+    expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(lightRoles.border)
     expect(theme.palette.error.main).toBe(semanticColors.danger)
   })
@@ -36,7 +36,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.background.default).toBe(navy[800])
     expect(theme.palette.text.primary).toBe(white)
     expect(theme.palette.text.secondary).toBe(darkRoles.fg2)
-    expect(theme.palette.primary.main).toBe(blue[500])
+    expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(darkRoles.border)
   })
 
@@ -61,7 +61,7 @@ describe('createAppTheme', () => {
   test('without branding the derived button states stay pixel-identical to the mockups', () => {
     const theme = createAppTheme('light')
 
-    expect(theme.palette.primary.dark).toBe(blue[700])
+    expect(theme.palette.primary.dark).toBe(blue[900])
   })
 
   test('an empty branding object behaves exactly like no branding', () => {

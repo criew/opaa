@@ -258,7 +258,7 @@ export const mockAuthConfig: AuthConfig = { mode: 'dev' }
 export let mockBranding: BrandingResponse = {
   productName: 'OPAA',
   claim: 'Fragen. Belegen. Entscheiden.',
-  primaryColor: '#1292EE',
+  primaryColor: '#0B6FBC',
   defaultColorScheme: 'SYSTEM',
 }
 
@@ -270,7 +270,7 @@ export function resetMockBranding() {
   mockBranding = {
     productName: 'OPAA',
     claim: 'Fragen. Belegen. Entscheiden.',
-    primaryColor: '#1292EE',
+    primaryColor: '#0B6FBC',
     defaultColorScheme: 'SYSTEM',
   }
 }

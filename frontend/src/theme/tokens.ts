@@ -93,10 +93,13 @@ export const lightRoles: SchemeRoles = {
   fg1: navy[800],
   fg2: gray[600],
   fg3: gray[400],
-  accent: blue[500],
+  // #634: blue[500] only reaches 3.29:1 against white button text (below the 4.5:1 WCAG
+  // minimum for normal text). blue[700] is the lightest step of the scale that still clears it
+  // (5.23:1), so hover/press move one and two steps darker in lockstep.
+  accent: blue[700],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: gray[100],
   borderStrong: gray[200],
 }
@@ -108,10 +111,13 @@ export const darkRoles: SchemeRoles = {
   fg1: white,
   fg2: '#B9C6D4',
   fg3: '#7A8BA0',
-  accent: blue[500],
+  // Same accent as the light scheme (#634) - white button text needs the same 4.5:1 floor
+  // regardless of scheme, and blue[700] still clears the 3:1 UI-component threshold against the
+  // dark scheme's navy-800 base surface (3.09:1).
+  accent: blue[700],
   accentFg: white,
-  accentHover: blue[600],
-  accentPress: blue[700],
+  accentHover: blue[800],
+  accentPress: blue[900],
   border: 'rgba(255, 255, 255, 0.08)',
   borderStrong: 'rgba(255, 255, 255, 0.14)',
 }

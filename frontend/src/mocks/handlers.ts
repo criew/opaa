@@ -1150,7 +1150,7 @@ export const handlers = [
       return HttpResponse.json(
         {
           error:
-            "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #1292EE",
+            "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #0B6FBC",
           status: 400,
           timestamp: new Date().toISOString(),
         },
@@ -1161,7 +1161,7 @@ export const handlers = [
       ...mockBranding,
       productName: body.productName?.trim() || 'OPAA',
       claim: body.claim?.trim() || 'Fragen. Belegen. Entscheiden.',
-      primaryColor: primaryColor || '#1292EE',
+      primaryColor: primaryColor || '#0B6FBC',
       defaultColorScheme: body.defaultColorScheme ?? 'SYSTEM',
     })
     return HttpResponse.json(mockBranding)

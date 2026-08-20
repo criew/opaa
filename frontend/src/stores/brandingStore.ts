@@ -20,7 +20,9 @@ import {
 export const OPAA_BRANDING: BrandingResponse = {
   productName: 'OPAA',
   claim: 'Fragen. Belegen. Entscheiden.',
-  primaryColor: '#1292EE',
+  // #634: blue[700], not blue[500] - the lighter step only reaches 3.29:1 against white button
+  // text, below the 4.5:1 WCAG minimum for normal text (frontend/src/theme/tokens.ts).
+  primaryColor: '#0B6FBC',
   defaultColorScheme: 'SYSTEM',
 }
 

@@ -32,7 +32,7 @@ siehe Epic #600, „Außerhalb des Umfangs".
 
 ### Designsystem in Kürze
 
-- **Farben:** Blau `#1292EE` auf Navy `#012142` und Weiß; helles und dunkles Schema gleichrangig
+- **Farben:** Blau `#0B6FBC` auf Navy `#012142` und Weiß; helles und dunkles Schema gleichrangig
 - **Schrift:** Inter (Sklow ist Firmenschrift ohne freie Lizenz und bleibt außerhalb des Repos)
 - **Flächen:** flach, 1-px-Rahmen statt Schatten, 10-px-Standardradius
 - **Branding:** Produktname, Logo und Akzentfarbe sind Betreiber-Konfiguration, nicht Code

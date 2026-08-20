@@ -41,11 +41,11 @@ aufgezählt.
 
 | Stufe | Wert | Stufe | Wert |
 |---|---|---|---|
-| 50 | `#E7F4FE` | 500 | `#1292EE` *(Basis)* |
-| 100 | `#C6E3FC` | 600 | `#0F80D6` *(Hover, −8 % Helligkeit)* |
-| 200 | `#9BCEFA` | 700 | `#0B6FBC` *(Aktiv/Gedrückt, −16 %)* |
-| 300 | `#61B5F6` | 800 | `#085B9C` |
-| 400 | `#349EF2` | 900 | `#05447A` |
+| 50 | `#E7F4FE` | 500 | `#1292EE` |
+| 100 | `#C6E3FC` | 600 | `#0F80D6` |
+| 200 | `#9BCEFA` | 700 | `#0B6FBC` *(Basis, #634)* |
+| 300 | `#61B5F6` | 800 | `#085B9C` *(Hover, −8 % Helligkeit)* |
+| 400 | `#349EF2` | 900 | `#05447A` *(Aktiv/Gedrückt, −16 %)* |
 
 **Navy** — Struktur- und Textfarbe:
 
@@ -78,7 +78,7 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | `fg-1` | Primärtext | Navy `#012142` | Weiß `#FFFFFF` |
 | `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#B9C6D4` |
 | `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#7A8BA0` |
-| `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
+| `accent` | Handlung, Bezug, aktiver Zustand | Blau-700 `#0B6FBC` | Blau-700 `#0B6FBC` |
 | `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
 | `border` | Standardrahmen | Grau-100 `#E6EBF1` | `rgba(255,255,255,0.08)` |
 | `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | `rgba(255,255,255,0.14)` |
@@ -207,7 +207,7 @@ Zustandswechsel.
 
 | Variante | Ruhe | Hover | Aktiv |
 |---|---|---|---|
-| Primär | `accent`-Fläche, `accent-fg`-Text | Blau-600 (−8 % Helligkeit) | Blau-700 (−16 %) |
+| Primär | `accent`-Fläche, `accent-fg`-Text | Blau-800 (−8 % Helligkeit) | Blau-900 (−16 %) |
 | Sekundär | `bg-1` mit `border-strong` | `bg-2` | `bg-3` |
 | Still (Text/Ghost) | transparent, `accent`-Text | `bg-2` | `bg-3` |
 

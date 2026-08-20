@@ -6,8 +6,10 @@ package io.opaa.branding;
  * product name, and a later change to the standard reaches every deployment that never overrode it.
  *
  * <p>The values mirror docs/design/guidelines.md - {@link #PRIMARY_COLOR} is the accent {@code
- * blue.500} the token layer already carries ({@code frontend/src/theme/tokens.ts}, #581). Changing
- * one here without changing it there would split the standard in two.
+ * blue.700} the token layer already carries ({@code frontend/src/theme/tokens.ts}, #581). blue.500
+ * only reached 3.29:1 against white button text, below the 4.5:1 WCAG minimum for normal text
+ * (#634); blue.700 is the lightest step of the scale that still clears it. Changing one here
+ * without changing it there would split the standard in two.
  */
 public final class BrandingDefaults {
 
@@ -21,7 +23,7 @@ public final class BrandingDefaults {
 
   public static final String CLAIM = "Fragen. Belegen. Entscheiden.";
 
-  public static final String PRIMARY_COLOR = "#1292EE";
+  public static final String PRIMARY_COLOR = "#0B6FBC";
 
   public static final ColorScheme COLOR_SCHEME = ColorScheme.SYSTEM;
 

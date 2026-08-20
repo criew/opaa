@@ -73,20 +73,16 @@ describe('checkAccentContrast', () => {
   })
 
   /**
-   * Documents a real finding, not a preference: the OPAA standard accent reaches only 3,3:1 behind
-   * white button text, below the 4,5:1 WCAG asks for normal text - even though
-   * docs/design/guidelines.md#24-kontrast claims the role pairs all satisfy their thresholds. This
-   * test exists so the claim and the arithmetic cannot drift apart silently; if the standard accent
-   * is ever corrected, this is the test that says so.
+   * #634: the OPAA standard accent used to reach only 3,3:1 behind white button text, below the
+   * 4,5:1 WCAG asks for normal text, even though docs/design/guidelines.md#24-kontrast claimed the
+   * role pairs all satisfy their thresholds. blue[700] (`#0B6FBC`) is now the standard - this test
+   * exists so the claim and the arithmetic cannot drift apart silently again.
    */
-  it('shows that the OPAA standard accent itself misses the text threshold', () => {
+  it('confirms the OPAA standard accent clears every threshold', () => {
     const checks = checkAccentContrast(OPAA_BRANDING.primaryColor)
 
-    const buttonLabel = checks.find((c) => c.label.includes('Schaltflächen'))
-    expect(buttonLabel?.ratio).toBeCloseTo(3.3, 1)
-    expect(buttonLabel?.passes).toBe(false)
-    // Both surface checks do pass - the shortfall is specific to white-on-accent text.
-    expect(checks.filter((c) => !c.passes)).toHaveLength(1)
+    expect(checks).toHaveLength(3)
+    expect(checks.every((c) => c.passes)).toBe(true)
   })
 
   it('returns nothing to warn about for an unparseable colour', () => {

@@ -3539,7 +3539,7 @@ components:
           type: string
           description: Accent colour as a six-digit hex triplet with a leading '#'.
           pattern: "^#[0-9A-Fa-f]{6}$"
-          example: "#1292EE"
+          example: "#0B6FBC"
         defaultColorScheme:
           $ref: "#/components/schemas/ColorScheme"
         logoUrl:
@@ -3585,7 +3585,7 @@ components:
             Six-digit hex triplet with a leading '#'. The empty string is accepted alongside it and
             means the OPAA default applies again; anything else is rejected with 400.
           pattern: "^$|^#[0-9A-Fa-f]{6}$"
-          example: "#1292EE"
+          example: "#0B6FBC"
         defaultColorScheme:
           $ref: "#/components/schemas/ColorScheme"
 

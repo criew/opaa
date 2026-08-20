@@ -238,7 +238,7 @@ public class BrandingSettingsService {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-              + " #1292EE");
+              + " #0B6FBC");
     }
     return trimmed;
   }

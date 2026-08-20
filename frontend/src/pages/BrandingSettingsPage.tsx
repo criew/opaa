@@ -214,7 +214,7 @@ export default function BrandingSettingsPage() {
                 error={primaryColor.trim() !== '' && !isColorValid}
                 helperText={
                   primaryColor.trim() !== '' && !isColorValid
-                    ? 'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.'
+                    ? 'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #0B6FBC.'
                     : 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.'
                 }
                 sx={{ flexGrow: 1 }}
