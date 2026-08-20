@@ -318,6 +318,39 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/quellkonfiguration/i)).not.toBeInTheDocument()
   })
 
+  it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
+    // #434/#589 review, item 6: a FAILED row's asynchronous processing failure is only visible to
+    // the user via this German errorMessage - the status chip text alone only says something went
+    // wrong ("fehlgeschlagen"), not what.
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          id: 'doc-failed',
+          fileName: 'unlesbar.pdf',
+          contentType: 'application/pdf',
+          fileSize: 512,
+          status: 'FAILED',
+          sourceType: 'UPLOAD',
+          chunkCount: 0,
+          indexedAt: null,
+          uploadedByUserId: 'u1',
+          errorMessage: 'Aus der Datei konnte kein Text extrahiert werden',
+        },
+      ]),
+    )
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await screen.findByText('unlesbar.pdf')
+    const statusChip = screen.getByText('fehlgeschlagen')
+    await user.hover(statusChip)
+
+    expect(
+      await screen.findByText('Aus der Datei konnte kein Text extrahiert werden'),
+    ).toBeInTheDocument()
+  })
+
   it('uploads a file and shows it in the list afterwards', async () => {
     // #506 review, finding 5: durchstich test for upload on the new page, mirroring the
     // equivalent test in the deleted DocumentsPage.test.tsx.

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
@@ -257,17 +259,13 @@ class LibraryDocumentServiceTest {
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-real-pdf");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-real-pdf"))
         .thenReturn(Optional.empty());
-    Document processed = new Document("report.pdf", "irrelevant", "application/pdf", 10L);
-    processed.setSourceType(DocumentSourceType.UPLOAD);
-    when(fileProcessingService.processUploadedFile(
-            any(Path.class), eq("report.pdf"), eq("checksum-real-pdf"), any(), any(), any()))
-        .thenReturn(processed);
 
     LibraryDocumentResponse response =
         service.uploadDocument(
             libraryId, pdfFile("report.pdf", "%PDF content"), currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("report.pdf");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
   }
 
   @Test
@@ -284,21 +282,12 @@ class LibraryDocumentServiceTest {
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-docx");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-docx"))
         .thenReturn(Optional.empty());
-    Document processed =
-        new Document(
-            "vertrag.docx",
-            "irrelevant",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            30L);
-    processed.setSourceType(DocumentSourceType.UPLOAD);
-    when(fileProcessingService.processUploadedFile(
-            any(Path.class), eq("vertrag.docx"), eq("checksum-docx"), any(), any(), any()))
-        .thenReturn(processed);
 
     LibraryDocumentResponse response =
         service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("vertrag.docx");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
   }
 
   private MultipartFile realDocxFile(String originalFileName) throws IOException {
@@ -336,8 +325,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .pdf");
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never())
-        .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
+    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -348,11 +336,6 @@ class LibraryDocumentServiceTest {
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-md");
     when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-md"))
         .thenReturn(Optional.empty());
-    Document processed = new Document("notes.md", "irrelevant", "text/markdown", 20L);
-    processed.setSourceType(DocumentSourceType.UPLOAD);
-    when(fileProcessingService.processUploadedFile(
-            any(Path.class), eq("notes.md"), eq("checksum-md"), any(), any(), any()))
-        .thenReturn(processed);
 
     MultipartFile markdown =
         new MockMultipartFile(
@@ -362,6 +345,7 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, markdown, currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("notes.md");
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
   }
 
   @Test
@@ -381,8 +365,7 @@ class LibraryDocumentServiceTest {
         .hasMessageContaining("entspricht nicht dem Format .txt");
 
     assertNoFilesWereStored();
-    verify(fileProcessingService, never())
-        .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
+    verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
   }
 
   @Test
@@ -416,6 +399,44 @@ class LibraryDocumentServiceTest {
 
     assertNoFilesWereStored();
     verify(fileProcessingService, never()).processUploadedFileAsync(any(), any());
+  }
+
+  @Test
+  void aFailedRowWithTheSameChecksumIsReplacedInsteadOfBlockingARetry() throws IOException {
+    // PR #589 review, item 3: a FAILED row (e.g. from a transient embedding failure) must not
+    // block the same file being uploaded again forever - the dedup check now only rejects a
+    // still-live (PENDING/INDEXED) match, and replaces a FAILED one.
+    grantEditor();
+    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path oldFailedFile = libraryDir.resolve("old-failed.pdf");
+    Files.writeString(oldFailedFile, "content from the failed attempt");
+
+    Document oldFailedDoc =
+        new Document(
+            "report.pdf",
+            oldFailedFile.toString(),
+            "application/pdf",
+            5L,
+            DocumentSourceType.UPLOAD);
+    oldFailedDoc.setLibraryId(libraryId);
+    oldFailedDoc.setStatus(DocumentStatus.FAILED);
+    oldFailedDoc.setErrorMessage("Die Datei konnte nicht verarbeitet werden");
+
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-retry");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-retry"))
+        .thenReturn(Optional.of(oldFailedDoc));
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
+    verify(vectorStore).delete("document_id == '" + oldFailedDoc.getId() + "'");
+    verify(documentRepository).delete(oldFailedDoc);
+    assertThat(Files.exists(oldFailedFile))
+        .as("The old FAILED row's own file must be cleaned up when it is replaced")
+        .isFalse();
+    verify(fileProcessingService).processUploadedFileAsync(eq(response.getId()), any());
   }
 
   @Test
@@ -470,6 +491,55 @@ class LibraryDocumentServiceTest {
     assertThat(storedPath.startsWith(libraryDir))
         .as("Stored file must stay inside the library's own storage directory")
         .isTrue();
+  }
+
+  @Test
+  void aFullProcessingQueueMarksTheDocumentFailedInsteadOfLeavingItPendingForever()
+      throws IOException {
+    // PR #589 review, item 2: uploadTaskExecutor rejects (AbortPolicy) rather than silently
+    // discarding a task when its queue is full - this is where LibraryDocumentService catches
+    // that rejection and turns it into an immediate, explained FAILED row instead of a PENDING
+    // one nothing will ever pick up.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-queue-full");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-queue-full"))
+        .thenReturn(Optional.empty());
+    doThrow(new TaskRejectedException("queue is full"))
+        .when(fileProcessingService)
+        .processUploadedFileAsync(any(), any());
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.getErrorMessage())
+        .isEqualTo("Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
+    assertNoFilesWereStored();
+  }
+
+  @Test
+  void anUnexpectedFailureStartingProcessingMarksTheAlreadyPersistedRowFailed() throws IOException {
+    // PR #589 review, item 4: once the PENDING row is committed, a RuntimeException must never
+    // again just delete the file and rethrow, leaving the row behind pointing at a dead
+    // file_path - it is marked FAILED instead, the same way the more specific
+    // TaskRejectedException case above already is.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-unexpected");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-unexpected"))
+        .thenReturn(Optional.empty());
+    doThrow(new IllegalStateException("submission blew up unexpectedly"))
+        .when(fileProcessingService)
+        .processUploadedFileAsync(any(), any());
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.getErrorMessage())
+        .isEqualTo("Die Verarbeitung konnte nicht gestartet werden");
+    assertNoFilesWereStored();
   }
 
   @Test

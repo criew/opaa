@@ -661,10 +661,16 @@ class LibraryDocumentServiceIntegrationTest {
 
   /**
    * Polls the document row until asynchronous processing (#434) has moved it past {@code PENDING}
-   * to the given status - mirrors {@code DocumentIndexingIntegrationTest#awaitJobCompletion}'s use
-   * of Awaitility for the same reason: {@code indexingTaskExecutor} runs on its own thread pool, so
-   * a test asserting on the eventual outcome cannot simply read the row synchronously right after
-   * {@code uploadDocument} returns.
+   * to some terminal status, then asserts it is the expected one - mirrors {@code
+   * DocumentIndexingIntegrationTest#awaitJobCompletion}'s use of Awaitility for the same reason:
+   * {@code uploadTaskExecutor} runs on its own thread pool, so a test asserting on the eventual
+   * outcome cannot simply read the row synchronously right after {@code uploadDocument} returns.
+   *
+   * <p>Waits for "no longer PENDING", not for the expected status directly (PR #589 review, item
+   * 6): waiting for the expected status directly would time out after the full 30 seconds with an
+   * unhelpful "still PENDING" message if processing actually finished quickly but landed on the
+   * *other* terminal status - this instead fails fast with a clear expected/actual mismatch the
+   * moment processing is done, whichever status it reached.
    */
   private Document awaitDocumentStatus(UUID documentId, DocumentStatus expected) {
     await()
@@ -674,9 +680,11 @@ class LibraryDocumentServiceIntegrationTest {
                 documentRepository
                     .findById(documentId)
                     .map(Document::getStatus)
-                    .filter(status -> status == expected)
+                    .filter(status -> status != DocumentStatus.PENDING)
                     .isPresent());
-    return documentRepository.findById(documentId).orElseThrow();
+    Document document = documentRepository.findById(documentId).orElseThrow();
+    assertThat(document.getStatus()).isEqualTo(expected);
+    return document;
   }
 
   private void assertNoFilesStored() throws IOException {

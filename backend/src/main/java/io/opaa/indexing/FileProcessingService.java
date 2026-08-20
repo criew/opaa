@@ -320,8 +320,28 @@ public class FileProcessingService {
    * error state off of - so both "no extractable content" and any unexpected exception during
    * chunking/embedding land as {@code FAILED} with a German, user-facing {@link
    * Document#getErrorMessage()}, not a deleted row.
+   *
+   * <p><b>Runs on {@code uploadTaskExecutor}, a separate pool from {@code indexingTaskExecutor} (PR
+   * #589 review, finding 2).</b> {@code indexingTaskExecutor} discards a task outright when its
+   * queue is full ({@code ThreadPoolExecutor.DiscardPolicy}) - acceptable for a directory/URL
+   * indexing run, which is retried on its own schedule, but fatal here: a discarded upload task
+   * would leave its row stuck at {@code PENDING} forever with nothing to explain why, and the
+   * frontend would poll it indefinitely. {@code uploadTaskExecutor} keeps {@code
+   * ThreadPoolTaskExecutor}'s own default ({@code AbortPolicy}) instead, so a full queue throws
+   * {@link org.springframework.core.task.TaskRejectedException} synchronously in {@code
+   * LibraryDocumentService#uploadDocument}'s own thread, which catches it and marks the row {@code
+   * FAILED} immediately.
+   *
+   * <p><b>The status transition is a conditional {@code UPDATE}, not an entity save (PR #589
+   * review, finding 1).</b> {@link DocumentRepository#markIndexed} / {@link
+   * DocumentRepository#markFailed} affect the row only if it still exists - if {@code
+   * LibraryDocumentService#deleteDocument} removed it while this method was still parsing/embedding
+   * (after the {@link DocumentRepository#findById} above, before either of those runs), a plain
+   * {@code save} would silently re-insert it as a zombie ({@link Document} assigns its own id and
+   * carries no {@code @Version}). Zero rows updated means exactly that happened - any chunks {@link
+   * #storeChunks} already wrote are removed again, and there is nothing left to mark.
    */
-  @Async("indexingTaskExecutor")
+  @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
     Document doc = documentRepository.findById(documentId).orElse(null);
     if (doc == null) {
@@ -335,7 +355,7 @@ public class FileProcessingService {
           documentService.parseDocument(storedFile);
       if (parsed.isEmpty()) {
         log.warn("No content extracted from uploaded document: {}", doc.getFileName());
-        failUpload(doc, "Aus der Datei konnte kein Text extrahiert werden");
+        markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
         metrics.recordFailed();
         return;
       }
@@ -346,11 +366,15 @@ public class FileProcessingService {
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setStatus(DocumentStatus.INDEXED);
-      doc.setErrorMessage(null);
-      documentRepository.save(doc);
+      int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
+      if (updated == 0) {
+        log.warn(
+            "Uploaded document {} was deleted while its chunks were being written; removing them"
+                + " again",
+            doc.getId());
+        vectorStore.delete("document_id == '" + doc.getId() + "'");
+        return;
+      }
       metrics.recordProcessed();
     } catch (Exception e) {
       log.error("Failed to process uploaded document {}", doc.getFileName(), e);
@@ -358,15 +382,16 @@ public class FileProcessingService {
       // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
       // cleanup, so a FAILED row never leaves orphaned chunks still returned by /api/v1/query.
       vectorStore.delete("document_id == '" + doc.getId() + "'");
-      failUpload(doc, "Die Datei konnte nicht verarbeitet werden");
+      markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
     }
   }
 
-  private void failUpload(Document doc, String errorMessage) {
-    doc.setStatus(DocumentStatus.FAILED);
-    doc.setErrorMessage(errorMessage);
-    documentRepository.save(doc);
+  private void markUploadFailed(UUID documentId, String errorMessage) {
+    int updated = documentRepository.markFailed(documentId, errorMessage);
+    if (updated == 0) {
+      log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
+    }
   }
 
   /**
