@@ -505,7 +505,9 @@ class RssFeedIndexingExecutorTest {
 
     execute(baseUrl + "/feed.xml");
 
-    // 1 processed (/ok.html), 1 skipped (the invalid link), 0 failed, 2 total.
+    // completeJob(jobId, documentsProcessed, documentsFailed, documentsSkipped,
+    // documentsIndexedTotal): 1 processed (/ok.html), 0 failed, 1 skipped (the invalid link), 1
+    // document indexed in total.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, timeout(2000))
         .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
@@ -515,6 +517,114 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/a b.html").equals(event.getReference())));
+  }
+
+  @Test
+  void anEntryLinkWithAHostUriCannotParseIsSkippedAndTheRunContinues() {
+    // PR #664 review, finding 1a: URI.create itself accepts a link whose host it cannot parse
+    // (e.g. one containing an underscore) without throwing at all - isValidUri's original
+    // URI.create(url) call therefore let this link straight through, both isHttpOrHttps and
+    // isValidUri passed, and only the later HttpRequest.newBuilder().uri(...) inside
+    // sendDetailPageRequest rejected it (with IllegalArgumentException: unsupported URI),
+    // uncaught there and propagating out to execute()'s outer catch - ending the entire run
+    // instead of skipping just this one entry.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml("http://ex_ample.invalid/a.html", baseUrl + "/ok.html"));
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "http://ex_ample.invalid/a.html".equals(event.getReference())));
+  }
+
+  @Test
+  void aDetailPageRedirectToAnUnresolvableLocationIsSkippedAndTheRunContinues() {
+    // PR #664 review, finding 1b: a redirect hop's own Location header is server-controlled input
+    // no pre-validation of entryUrl can cover - sendDetailPageRequest's
+    // currentUri.resolve(location) can itself throw IllegalArgumentException for a Location value
+    // that is not a valid relative/absolute reference at all (here: a space inside the authority).
+    // Before this fix, that exception propagated out of processEntry entirely, ending the run
+    // instead of skipping just this one entry.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/a.html", baseUrl + "/ok.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", "http://ex ample.invalid/x");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/a.html").equals(event.getReference())));
+  }
+
+  @Test
+  void aDetailPageRedirectedToAHostUriCannotParseIsRejectedAndTheRunContinues() {
+    // PR #664 review, finding 3: the RSS variant of isForeignHostRedirect had no dedicated test -
+    // a detail-page redirect whose target host URI cannot parse (here: an underscore) must be
+    // rejected as foreign (RejectedByRemoteException -> REJECTED event, entry skipped), not crash
+    // the run and not be treated as same-origin.
+    serve(
+        "/feed.xml",
+        200,
+        "application/rss+xml",
+        feedXml(baseUrl + "/a.html", baseUrl + "/ok.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", "http://ex_ample.invalid/x");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && (baseUrl + "/a.html").equals(event.getReference())
+                        && event.getMessage() != null
+                        && event.getMessage().contains("abgewiesen")));
   }
 
   @Test

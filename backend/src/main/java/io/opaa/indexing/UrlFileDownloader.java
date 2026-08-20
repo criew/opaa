@@ -175,13 +175,19 @@ public class UrlFileDownloader {
    * {@code getHost() == null} to {@code false} ("not foreign") - see {@code
    * RssFeedIndexingExecutor#isForeignHostRedirect}'s Javadoc for why that inverted {@code
    * sameOrigin}'s own reasoning (#615 review, finding 1).
+   *
+   * <p><b>An unparsable {@code originalUrl} is foreign too (PR #664 review, finding 2).</b> Mirrors
+   * {@code RssFeedIndexingExecutor#isForeignHostRedirect}'s identical fix: {@code originalUrl} is
+   * always {@code fileUrl} or an already-followed, previously-vetted redirect hop here, so a {@code
+   * new URI(...)} failure at this point has no legitimate cause - falling back to {@code false}
+   * would reintroduce the same inverted "unparsable = trusted" default the null-host fix removes.
    */
   private static boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
       return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
-      return false;
+      return true;
     }
   }
 
