@@ -45,6 +45,17 @@ describe('buildCitationIndex', () => {
     expect(index.docs[1].numbers).toEqual([])
   })
 
+  test('a marker outranks the cited flag - the text is the truth (#592)', () => {
+    const index = buildCitationIndex('Beleg【source: aa#0 | doch-zitiert.md】', [
+      source('doch-zitiert.md', false),
+    ])
+
+    expect(index.docs).toHaveLength(1)
+    expect(index.docs[0].fileName).toBe('doch-zitiert.md')
+    expect(index.docs[0].source?.fileName).toBe('doch-zitiert.md')
+    expect(index.uncited).toEqual([])
+  })
+
   test('keeps a marker without matching source as a numbered row without metadata', () => {
     const index = buildCitationIndex('Text【source: xx#0 | verwaist.md】', [])
 

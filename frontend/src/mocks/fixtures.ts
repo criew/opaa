@@ -190,7 +190,7 @@ export const mockQueryResponses: QueryResponse[] = [
         relevanceScore: 0.82,
         matchCount: 1,
         indexedAt: '2025-01-12T09:00:00Z',
-        cited: false,
+        cited: true,
       },
       {
         fileName: 'postgres-setup.md',
