@@ -4,8 +4,8 @@ Verbindliche Gestaltungsregeln der OPAA-Weboberfläche. Sie gelten für jedes UI
 Frontend-PR; Abweichungen werden im PR begründet. Quelle der Werte sind die Zielbild-Mockups
 ([OPAA Mockups.html](<./OPAA Mockups.html>), Seiten 1a–1i) und die Zielbild-Beschreibung
 ([redesign-prompt.md](./redesign-prompt.md)). Die technische Umsetzung als Token-Ebene und
-MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie entsteht mit Issue #584
-und ergänzt dieses Dokument um die verbindliche Prüfliste.
+MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie
+([accessibility.md](./accessibility.md)) ergänzt dieses Dokument um die verbindliche Prüfliste.
 
 **Beide Farbschemata sind gleichrangig.** Jede Regel in diesem Dokument definiert das helle und
 das dunkle Schema. Ein PR, der nur eines von beiden gestaltet, ist unvollständig.
@@ -104,7 +104,7 @@ Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px f
 UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
 den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent`); wer andere
 Kombinationen bildet, weist den Kontrast im PR nach. Details regelt die
-Barrierefreiheits-Richtlinie (Issue #584).
+[Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ---
 
@@ -189,7 +189,8 @@ Gruppen deutlich getrennt (24–48).
 
 Sichtbarer Fokusring für jedes interaktive Element: 3 px in `accent` mit 32 % Deckung
 (`0 0 0 3px rgba(18,144,239,0.32)`) zusätzlich zum Rahmen, in beiden Schemata deutlich.
-Fokus wird nie unterdrückt, nur gestaltet. Umsetzung und Prüfung: Issues #585/#584.
+Fokus wird nie unterdrückt, nur gestaltet. Umsetzung: Issue #585; Prüfung:
+[Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ### 4.5 Bewegung
 
@@ -219,7 +220,8 @@ rote Primärfläche als Standardaktion.
 
 Beschriftung oberhalb (14 px, Gewicht 500), Feld auf `bg-3` mit `border-strong`, Radius md,
 Höhe 40 px; Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
-Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet (Details #584).
+Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
+(Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7).
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 
@@ -317,7 +319,7 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 ## 8 · Geltung und Pflege
 
 - Diese Guidelines sind Prüfmaßstab für jedes Frontend-Review; das PR-Template verweist auf die
-  Barrierefreiheits-Prüfliste (#584).
+  [Barrierefreiheits-Prüfliste](./accessibility.md).
 - Änderungen an den Guidelines laufen als eigener PR mit Begründung; Wertänderungen werden mit
   der Token-Ebene (#581) synchron gehalten — die Token-Datei setzt um, dieses Dokument
   entscheidet.
