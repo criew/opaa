@@ -5,6 +5,7 @@ import SpacePage from './SpacePage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
+import type { SpaceMemberResponse } from '../types/api'
 
 const currentSpaceId = 'space-personal'
 const mockNavigate = vi.fn()
@@ -26,7 +27,7 @@ vi.mock('react-router', async () => {
 // once SpacePage's own selectSpace effect resolves. vi.hoisted because vi.mock's factory below is
 // itself hoisted above this module's regular top-level statements.
 const { mockListSpaceMembers } = vi.hoisted(() => ({
-  mockListSpaceMembers: vi.fn(async () => []),
+  mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
 }))
 
 vi.mock('../services/api', async () => {
