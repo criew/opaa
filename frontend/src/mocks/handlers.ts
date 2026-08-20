@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { assetRoleLabel } from '../utils/labels'
 import {
   mockHealthResponse,
   mockIndexingIdle,
@@ -978,7 +979,9 @@ export const handlers = [
     const requestedRoleIndex = ASSET_ROLE_ORDER.indexOf(body.role)
     if (requestedRoleIndex > callerRoleIndex) {
       return HttpResponse.json(
-        { error: `Die eigene Rolle reicht nicht aus, um die Rolle ${body.role} zu vergeben` },
+        {
+          error: `Die eigene Rolle reicht nicht aus, um die Rolle ${assetRoleLabel(body.role)} zu vergeben`,
+        },
         { status: 403 },
       )
     }
@@ -997,7 +1000,7 @@ export const handlers = [
       if (existingRoleIndex > callerRoleIndex) {
         return HttpResponse.json(
           {
-            error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${existingGrant.role}-Berechtigung zu aendern`,
+            error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${assetRoleLabel(existingGrant.role)}-Berechtigung zu ändern`,
           },
           { status: 403 },
         )
@@ -1015,7 +1018,7 @@ export const handlers = [
       ) {
         return HttpResponse.json(
           {
-            error: 'Die letzte OWNER-Berechtigung einer Bibliothek kann nicht herabgestuft werden',
+            error: `Die letzte ${assetRoleLabel('OWNER')}-Berechtigung einer Bibliothek kann nicht herabgestuft werden`,
           },
           { status: 409 },
         )
@@ -1067,7 +1070,7 @@ export const handlers = [
     if (grantRoleIndex > callerRoleIndex) {
       return HttpResponse.json(
         {
-          error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${grant.role}-Berechtigung zu entfernen`,
+          error: `Die eigene Rolle reicht nicht aus, um eine bestehende ${assetRoleLabel(grant.role)}-Berechtigung zu entfernen`,
         },
         { status: 403 },
       )
@@ -1079,7 +1082,9 @@ export const handlers = [
       countOtherActiveMockOwnerGrants(libraryId, grant.id) === 0
     ) {
       return HttpResponse.json(
-        { error: 'Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden' },
+        {
+          error: `Die letzte ${assetRoleLabel('OWNER')}-Berechtigung einer Bibliothek kann nicht entfernt werden`,
+        },
         { status: 409 },
       )
     }

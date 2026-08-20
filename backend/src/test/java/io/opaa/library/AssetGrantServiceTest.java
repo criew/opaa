@@ -250,9 +250,16 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+              // #448: the message names the role in German ("Eigentümer"), not the raw enum
+              // constant ("OWNER") - the escalation guard's whole point is a message an end user
+              // (not just a developer reading logs) can act on.
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um die Rolle Eigentümer zu vergeben");
+            });
     verify(grantRepository, never()).save(any());
   }
 
@@ -292,9 +299,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              // #448: correct German umlaut ("aufgelöst"), not the umlaut-free "aufgeloest".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr"
+                          + " erhalten");
+            });
     verify(grantRepository, never()).save(any());
   }
 
@@ -325,9 +338,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht"
+                          + " herabgestuft werden");
+            });
     verify(grantRepository, never()).save(any());
   }
 
@@ -347,9 +366,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht entfernt"
+                          + " werden");
+            });
     verify(grantRepository, never()).delete(any());
   }
 
@@ -401,9 +426,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+              // #448: the existing grant's role is named as "Eigentümer", not the raw "OWNER".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um eine bestehende"
+                          + " Eigentümer-Berechtigung zu entfernen");
+            });
     verify(grantRepository, never()).delete(any());
     // The role-escalation guard must short-circuit before the last-active-OWNER count is even
     // read - a MANAGER is refused for the more fundamental reason regardless of how many other
@@ -435,9 +466,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.FORBIDDEN));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+              // #448: "ändern" with the correct umlaut, not the umlaut-free "aendern".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um eine bestehende"
+                          + " Eigentümer-Berechtigung zu ändern");
+            });
     verify(grantRepository, never()).save(any());
   }
 
