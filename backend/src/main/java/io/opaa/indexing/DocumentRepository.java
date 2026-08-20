@@ -116,4 +116,23 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("id") UUID id,
       @Param("chunkCount") int chunkCount,
       @Param("indexedAt") Instant indexedAt);
+
+  /**
+   * Backs {@code UploadPendingRecoveryRunner} (#614): every {@code PENDING} upload created before
+   * {@code threshold} is stuck for good, not merely queued - the process that would have finished
+   * it (via {@code uploadTaskExecutor}) died before {@link #markIndexed}/{@link #markFailed} could
+   * run, and a fresh JVM start has no in-memory record of that task to wait for. A bulk {@code
+   * UPDATE}, not a load-then-save loop, mirrors {@link #deleteByLibraryId}'s reasoning: one round
+   * trip regardless of how many rows are affected.
+   *
+   * @return the number of rows transitioned to {@code FAILED}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.indexing.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.indexing.DocumentStatus.PENDING and"
+          + " d.createdAt < :threshold")
+  int failStalePending(
+      @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 }

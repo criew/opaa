@@ -78,7 +78,8 @@ class LibraryDocumentServiceTest {
     checksumService = mock(ChecksumService.class);
     fileProcessingService = mock(FileProcessingService.class);
     vectorStore = mock(VectorStore.class);
-    UploadProperties uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024);
+    UploadProperties uploadProperties =
+        new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
 
     service =
         new LibraryDocumentService(
@@ -607,6 +608,35 @@ class LibraryDocumentServiceTest {
     verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(storedFile)).isFalse();
+  }
+
+  @Test
+  void deletingAnUploadedDocumentDeletesTheRowBeforeTheVectorStoreChunks() throws IOException {
+    // #614, PR #589 second review round, finding 2: a concurrent uploadTaskExecutor task finishing
+    // the very same document races this method. DocumentRepository#markIndexed/#markFailed are
+    // conditional UPDATEs that only ever affect a row that still exists - so the row must already
+    // be gone (or at least already deleted within this transaction) by the time the vector store
+    // delete below runs, or a racing task's own chunk writes could survive after this method's
+    // vectorStore.delete already ran and will never run again. Verifying call order is the
+    // unit-test
+    // approximation of that guarantee; the genuine cross-thread race is exercised end to end by
+    // LibraryDocumentServiceIntegrationTest.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve("stored.pdf");
+    Files.writeString(storedFile, "content");
+
+    Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
+    doc.setLibraryId(libraryId);
+    doc.setSourceType(DocumentSourceType.UPLOAD);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+
+    service.deleteDocument(libraryId, documentId, currentUserId, false);
+
+    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    inOrder.verify(documentRepository).delete(doc);
+    inOrder.verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
   }
 
   @Test

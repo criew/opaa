@@ -1,0 +1,29 @@
+databaseChangeLog:
+  # #614: startup recovery for uploads stuck at PENDING (see UploadPendingRecoveryRunner) needs to
+  # tell a genuinely stale row from one a currently-running uploadTaskExecutor task is still working
+  # on - indexed_at stays null for the entire PENDING lifetime and is therefore useless for that, so
+  # this adds the row's own creation time instead. DEFAULT CURRENT_TIMESTAMP on the ADD COLUMN
+  # populates every pre-existing row in the same statement (Postgres evaluates the default for
+  # existing rows on an ALTER TABLE ADD COLUMN, unlike a plain INSERT default) - close enough for
+  # startup recovery's purpose, since any row that already existed before this migration ran is, by
+  # construction, older than the recovery threshold the very next time the application starts.
+  - changeSet:
+      id: 043-add-created-at-to-documents
+      author: opaa
+      comment: >
+        documents.created_at (#614) - backs UploadPendingRecoveryRunner's "older than X minutes"
+        check for PENDING uploads left behind by a process that died mid-task.
+      changes:
+        - addColumn:
+            tableName: documents
+            columns:
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: documents
+            columnName: created_at
