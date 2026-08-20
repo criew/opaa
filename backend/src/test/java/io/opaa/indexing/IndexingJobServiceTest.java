@@ -90,7 +90,8 @@ class IndexingJobServiceTest {
   @Test
   void failJobUpdatesTheRowConditionallyOnStillBeingRunning() {
     UUID jobId = UUID.randomUUID();
-    when(indexingJobRepository.failIfRunning(eq(jobId), eq("Something went wrong"), any(Instant.class)))
+    when(indexingJobRepository.failIfRunning(
+            eq(jobId), eq("Something went wrong"), any(Instant.class)))
         .thenReturn(1);
 
     service.failJob(jobId, "Something went wrong");

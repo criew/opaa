@@ -91,12 +91,13 @@ public class IndexingJobService {
   }
 
   /**
-   * Completes {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding
-   * 1). Without that guard, a job the stale-run sweep or startup recovery already failed - while its
-   * own executor thread, unaware of the recovery, kept running regardless - would have this call
-   * silently flip the row back from {@code FAILED} to {@code COMPLETED} once that thread finally
-   * finishes, stranding the already-set {@code errorMessage} on a row that now looks successful. See
-   * {@link IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics.
+   * Completes {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review,
+   * finding 1). Without that guard, a job the stale-run sweep or startup recovery already failed -
+   * while its own executor thread, unaware of the recovery, kept running regardless - would have
+   * this call silently flip the row back from {@code FAILED} to {@code COMPLETED} once that thread
+   * finally finishes, stranding the already-set {@code errorMessage} on a row that now looks
+   * successful. See {@link IndexingJobRepository#completeIfRunning}'s Javadoc for the
+   * conditional-update mechanics.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(
@@ -107,14 +108,18 @@ public class IndexingJobService {
       int documentsIndexedTotal) {
     int updated =
         indexingJobRepository.completeIfRunning(
-            jobId, documentsProcessed, documentsFailed, documentsSkipped, documentsIndexedTotal,
+            jobId,
+            documentsProcessed,
+            documentsFailed,
+            documentsSkipped,
+            documentsIndexedTotal,
             Instant.now());
     requireJobExistedIfNoRowsUpdated(jobId, updated);
   }
 
   /**
-   * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding 1),
-   * the same reasoning and guard as {@link #completeJob}.
+   * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding
+   * 1), the same reasoning and guard as {@link #completeJob}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage) {
@@ -149,13 +154,13 @@ public class IndexingJobService {
   /**
    * Reports progress and, since #501 (review finding 1), touches {@link
    * IndexingJob#getLastProgressAt()} - the heartbeat {@link #recoverStaleJobs} compares against its
-   * cutoff. Called once per file/entry an active run processes ({@link IndexingRunProgress#report}),
-   * so a genuinely active run's heartbeat never falls behind, however long the run's total wall-clock
-   * age grows.
+   * cutoff. Called once per file/entry an active run processes ({@link
+   * IndexingRunProgress#report}), so a genuinely active run's heartbeat never falls behind, however
+   * long the run's total wall-clock age grows.
    *
    * <p>A no-op once the job is no longer {@link JobStatus#RUNNING} - mirrors {@link #completeJob}'s
-   * and {@link #failJob}'s conditional-update guard: a job the sweep already failed must not have its
-   * counters (or heartbeat) keep moving because its executor thread, unaware, is still running.
+   * and {@link #failJob}'s conditional-update guard: a job the sweep already failed must not have
+   * its counters (or heartbeat) keep moving because its executor thread, unaware, is still running.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(

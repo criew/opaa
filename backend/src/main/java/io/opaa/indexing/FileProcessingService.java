@@ -323,10 +323,10 @@ public class FileProcessingService {
    *
    * <p><b>Runs on {@code uploadTaskExecutor}, a separate pool from {@code indexingTaskExecutor} (PR
    * #589 review, finding 2)</b> - so a burst of uploads can never itself exhaust the pool a
-   * directory/URL/RSS indexing run depends on, or vice versa. Both executors reject a full queue the
-   * same way since #501: {@code ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws {@link
-   * org.springframework.core.task.TaskRejectedException} synchronously back to the caller, so a full
-   * queue never leaves a row stuck mid-flight. Here that means {@code
+   * directory/URL/RSS indexing run depends on, or vice versa. Both executors reject a full queue
+   * the same way since #501: {@code ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws
+   * {@link org.springframework.core.task.TaskRejectedException} synchronously back to the caller,
+   * so a full queue never leaves a row stuck mid-flight. Here that means {@code
    * LibraryDocumentService#uploadDocument}'s own thread catches it and marks the row {@code FAILED}
    * immediately - the frontend's polling (#434, {@code documentStore.ts}) has an explicit terminal
    * state to key off of instead of {@code PENDING} forever with nothing to explain why.

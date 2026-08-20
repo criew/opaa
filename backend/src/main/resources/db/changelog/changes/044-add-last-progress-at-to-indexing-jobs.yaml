@@ -7,7 +7,7 @@ databaseChangeLog:
   # sweep's cutoff only ever catches a run that has stopped making progress, not one that is merely
   # long-running.
   - changeSet:
-      id: 043-add-last-progress-at-to-indexing-jobs
+      id: 044-add-last-progress-at-to-indexing-jobs
       author: opaa
       comment: "Add last_progress_at heartbeat to indexing_jobs (#501)"
       changes:
@@ -25,7 +25,7 @@ databaseChangeLog:
             columnName: last_progress_at
 
   - changeSet:
-      id: 043-backfill-last-progress-at
+      id: 044-backfill-last-progress-at
       author: opaa
       comment: >
         Backfills last_progress_at from started_at for every pre-existing row - started_at is the
@@ -41,7 +41,7 @@ databaseChangeLog:
             sql: "SELECT 1;"
 
   - changeSet:
-      id: 043-last-progress-at-not-null
+      id: 044-last-progress-at-not-null
       author: opaa
       comment: "Enforce last_progress_at NOT NULL now that every row has a value (#501)"
       changes:
