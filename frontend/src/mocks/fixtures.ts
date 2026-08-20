@@ -79,9 +79,10 @@ export const mockQueryResponses: QueryResponse[] = [
   {
     answer:
       'Das Projekt nutzt eine modulare Monolith-Architektur mit drei Hauptmodulen: ' +
-      'api, indexing und query. Das Modul api stellt die REST-Endpunkte und DTOs bereit, ' +
-      'das Modul indexing verwaltet die Dokumentenaufnahme und das Modul query ' +
-      'beantwortet Fragen über RAG.',
+      'api, indexing und query【source: doc-arch#0 | architecture-overview.md】. Das Modul api ' +
+      'stellt die REST-Endpunkte und DTOs bereit, das Modul indexing verwaltet die ' +
+      'Dokumentenaufnahme【source: doc-start#2 | getting-started.pdf】 und das Modul query ' +
+      'beantwortet Fragen über RAG【source: doc-arch#3 | architecture-overview.md】.',
     sources: [
       {
         fileName: 'architecture-overview.md',

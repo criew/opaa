@@ -64,7 +64,7 @@ describe('ChatPage', () => {
       { timeout: 10000 },
     )
 
-    expect(screen.getAllByText(/% relevant/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Fundstellen').length).toBeGreaterThanOrEqual(1)
     expect(useChatStore.getState().chatId).toBeTruthy()
     // The URL is replaced to point at the now-persisted chat, so a reload restores it.
     expect(mockNavigate).toHaveBeenCalledWith(

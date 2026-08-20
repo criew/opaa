@@ -70,17 +70,18 @@ describe('MessageBubble', () => {
     expect(screen.queryByText('not bold')?.tagName).not.toBe('STRONG')
   })
 
-  it('renders cited source cards directly', () => {
+  it('lists cited sources in the Fundstellen block (#590)', () => {
     const msg: ChatMessage = {
       id: '3',
       role: 'assistant',
-      content: 'Answer',
+      content: 'Answer【source: aa#0 | test.md】',
       sources: [citedSource],
       timestamp: new Date(),
     }
     render(<MessageBubble message={msg} />)
+    expect(screen.getByText('Fundstellen')).toBeInTheDocument()
+    expect(screen.getByText('1 Stelle in 1 Dokument')).toBeInTheDocument()
     expect(screen.getByText('test.md')).toBeInTheDocument()
-    expect(screen.getByText('90% relevant')).toBeInTheDocument()
   })
 
   it('hides uncited sources behind collapsible section', () => {
@@ -93,7 +94,9 @@ describe('MessageBubble', () => {
     }
     render(<MessageBubble message={msg} />)
     expect(screen.getByText('test.md')).toBeInTheDocument()
-    expect(screen.getByText(/1 weitere/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Weitere geprüfte, nicht zitierte Treffer \(1\) anzeigen/),
+    ).toBeInTheDocument()
     expect(screen.queryByText('other.pdf')).not.toBeVisible()
   })
 
@@ -135,7 +138,7 @@ describe('MessageBubble', () => {
       timestamp: new Date(),
     }
     render(<MessageBubble message={msg} />)
-    await user.click(screen.getByText(/1 weitere/))
+    await user.click(screen.getByText(/Weitere geprüfte, nicht zitierte Treffer \(1\) anzeigen/))
     expect(await screen.findByText('other.pdf')).toBeVisible()
   })
 })
