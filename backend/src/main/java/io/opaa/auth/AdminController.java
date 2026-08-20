@@ -33,15 +33,24 @@ public class AdminController {
     this.userService = userService;
   }
 
+  // #271: scoped to the acting SYSTEM_ADMIN's own organization - listing every organization's
+  // users used to be reachable here, the one place the organization boundary (#199) had not been
+  // applied yet.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/users")
-  public List<UserInfoResponse> listUsers() {
-    return userService.findAll().stream().map(this::toResponse).toList();
+  public List<UserInfoResponse> listUsers(@AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return userService.findAllInOrganization(currentUser.getOrganizationId()).stream()
+        .map(this::toResponse)
+        .toList();
   }
 
   // #392 code review, finding 3: the acting person is now resolved and passed through, the same
   // @AuthenticationPrincipal Jwt / currentUser(jwt) pattern LibraryController already uses - see
-  // UserService#updateRole for why it needs one (SYSTEM_ADMIN_ROLE_GRANTED/_REVOKED).
+  // UserService#updateRole for why it needs one (SYSTEM_ADMIN_ROLE_GRANTED/_REVOKED). #271: the
+  // full acting User (not just its id) is now passed through so UserService#updateRole can reject
+  // a target user from another organization with 404, the same as every other foreign-user-id path
+  // guarded by SpaceService#requireUserInOrganization.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/users/{id}/role")
   public ResponseEntity<UserInfoResponse> changeRole(
@@ -49,7 +58,7 @@ public class AdminController {
       @Valid @RequestBody RoleChangeRequest request,
       @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    User user = userService.updateRole(id, request.getRole(), currentUser.getId());
+    User user = userService.updateRole(id, request.getRole(), currentUser);
     return ResponseEntity.ok(toResponse(user));
   }
 

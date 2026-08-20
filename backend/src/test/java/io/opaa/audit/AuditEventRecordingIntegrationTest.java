@@ -698,10 +698,11 @@ class AuditEventRecordingIntegrationTest {
     // "Systemrollen und Konten" event the underlying functionality (UserService#updateRole) already
     // supported before this PR.
     UUID actingAdmin = createUser();
+    User actingAdminUser = userRepository.findById(actingAdmin).orElseThrow();
     UUID targetUser = createUser();
     String targetEmail = userRepository.findById(targetUser).orElseThrow().getEmail();
 
-    userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, actingAdmin);
+    userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, actingAdminUser);
     // #392/#444 re-review: object_id is now the account's pseudonym, not its real id - the entry
     // can no longer be found by filtering on the real userId as objectId (that would defeat the
     // fix), so this queries by event type across the organization's entries instead.
@@ -713,7 +714,7 @@ class AuditEventRecordingIntegrationTest {
     assertThat(granted).hasSize(1);
     assertThat(granted.get(0).getSubjectKind()).isEqualTo(AuditSubjectKind.USER);
 
-    userService.updateRole(targetUser, SystemRole.USER, actingAdmin);
+    userService.updateRole(targetUser, SystemRole.USER, actingAdminUser);
     List<AuditLogEntry> revoked =
         auditLogRepository.findAll().stream()
             .filter(e -> e.getOrganizationId().equals(organizationId))
@@ -737,7 +738,7 @@ class AuditEventRecordingIntegrationTest {
 
     // Re-setting the same role is not a change and writes nothing more.
     long before = auditLogRepository.count();
-    userService.updateRole(targetUser, SystemRole.USER, actingAdmin);
+    userService.updateRole(targetUser, SystemRole.USER, actingAdminUser);
     assertThat(auditLogRepository.count()).isEqualTo(before);
   }
 

@@ -196,17 +196,23 @@ public class UserService {
     return userRepository.findById(id);
   }
 
-  public List<User> findAll() {
-    return userRepository.findAll();
+  /**
+   * Scopes the admin user list to the caller's own organization (#271) - {@code findAll()} used to
+   * return every organization's users, including to a SYSTEM_ADMIN, whose reach the organization
+   * boundary must stop at just as it does everywhere else (#199), and whose acting person is
+   * resolved by {@code AdminController#listUsers}.
+   */
+  public List<User> findAllInOrganization(UUID organizationId) {
+    return userRepository.findByOrganizationId(organizationId);
   }
 
   /**
    * #392 code review, finding 3: the specification names "Erteilung und Entzug der
    * System-Admin-Rolle" explicitly in the first-stage event list, and this is the one method that
-   * already performs it - {@code actorUserId} is the person making the change (the {@code
-   * SYSTEM_ADMIN} caller {@code AdminController#changeRole} enforces via {@code @PreAuthorize}),
-   * {@code userId}/{@code role} describe the change itself. {@code @Transactional} (already present
-   * on this method beforehand) is what makes the audit write commit or roll back together with the
+   * already performs it - {@code actor} is the person making the change (the {@code SYSTEM_ADMIN}
+   * caller {@code AdminController#changeRole} enforces via {@code @PreAuthorize}), {@code
+   * userId}/{@code role} describe the change itself. {@code @Transactional} (already present on
+   * this method beforehand) is what makes the audit write commit or roll back together with the
    * role change itself, the same as every other write this method makes.
    *
    * <p><b>#392/#444 re-review: object and subject are the same person here</b> - {@code userId} is
@@ -222,12 +228,20 @@ public class UserService {
    * objectLabel} is {@code null} - there is no non-identifying label for "this one account" that
    * would not just be another name for the pseudonym already carried in {@code object_id}/{@code
    * subject_ref}.
+   *
+   * <p><b>#271:</b> {@code actor} is now the full, already-resolved {@link User} rather than a bare
+   * {@code UUID} - {@code AdminController#changeRole} already resolves it via
+   * {@code @AuthenticationPrincipal Jwt} to enforce {@code @PreAuthorize}, and this method needs
+   * the actor's {@code organizationId} to reject a target user from another organization the same
+   * way {@code SpaceService#requireUserInOrganization} does: a 404, not a 403, so a caller cannot
+   * distinguish "no such user" from "user in another organization" even for the widest-reaching
+   * role in the system.
    */
   @Transactional
-  public User updateRole(UUID userId, SystemRole role, UUID actorUserId) {
+  public User updateRole(UUID userId, SystemRole role, User actor) {
     User user =
         userRepository
-            .findById(userId)
+            .findByIdAndOrganizationId(userId, actor.getOrganizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
     SystemRole previousRole = user.getSystemRole();
     user.setSystemRole(role);
@@ -251,26 +265,36 @@ public class UserService {
       if (previousRole == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(
             saved,
-            actorUserId,
+            actor.getId(),
             pseudonym,
             AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED,
             previousRole,
             role);
       } else if (previousRole == SystemRole.AUDITOR) {
         recordRoleChange(
-            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_REVOKED, previousRole, role);
+            saved,
+            actor.getId(),
+            pseudonym,
+            AuditEventType.AUDITOR_ROLE_REVOKED,
+            previousRole,
+            role);
       }
       if (role == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(
             saved,
-            actorUserId,
+            actor.getId(),
             pseudonym,
             AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED,
             previousRole,
             role);
       } else if (role == SystemRole.AUDITOR) {
         recordRoleChange(
-            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);
+            saved,
+            actor.getId(),
+            pseudonym,
+            AuditEventType.AUDITOR_ROLE_GRANTED,
+            previousRole,
+            role);
       }
     }
     return saved;
