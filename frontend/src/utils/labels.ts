@@ -23,7 +23,11 @@ export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
 }
 
 // #272: mirrors the three-row table in docs/features/spaces-and-assets.md#space-sichtbarkeit -
-// PRIVATE is the default for every newly created space.
+// PRIVATE is the default for every newly created space. The order here is also the order both
+// CreateSpaceDialog and SpaceManagementPage render their Select options in - a single source
+// keeps the two menus from drifting apart if a future enum value is added.
+export const spaceVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
+
 const spaceVisibilityLabels: Record<SpaceVisibility, string> = {
   PRIVATE: 'Privat',
   DISCOVERABLE: 'Auffindbar',
@@ -35,11 +39,16 @@ export function spaceVisibilityLabel(visibility: SpaceVisibility | string | unde
   return spaceVisibilityLabels[visibility as SpaceVisibility] ?? visibility
 }
 
+// #671 review: DISCOVERABLE/OPEN must not claim a directory or self-join already exist - neither
+// SpaceService nor opaa-api.yaml has a directory or join endpoint yet (#272 is UI wiring only,
+// see the issue's own "Einordnung" section). These describe the intended future meaning of each
+// stage without promising a present-tense effect.
 const spaceVisibilityDescriptions: Record<SpaceVisibility, string> = {
   PRIVATE:
     'Nur Mitglieder wissen, dass dieser Space existiert. Voreinstellung für jeden neu angelegten Space.',
-  DISCOVERABLE: 'Im Space-Verzeichnis sichtbar. Der Beitritt erfolgt auf Antrag.',
-  OPEN: 'Im Space-Verzeichnis sichtbar. Jeder kann mit einem Klick selbst beitreten.',
+  DISCOVERABLE:
+    'Vorgesehen für das künftige Space-Verzeichnis: dort sichtbar, Beitritt auf Antrag. Verzeichnis und Beitritt kommen mit einem der Folge-Issues.',
+  OPEN: 'Vorgesehen für das künftige Space-Verzeichnis: dort sichtbar, Selbstbeitritt mit einem Klick. Verzeichnis und Beitritt kommen mit einem der Folge-Issues.',
 }
 
 export function spaceVisibilityDescription(

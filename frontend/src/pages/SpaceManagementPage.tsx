@@ -6,6 +6,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
@@ -18,12 +19,15 @@ import type { SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceRoleLabel, spaceVisibilityDescription, spaceVisibilityLabel } from '../utils/labels'
+import {
+  spaceRoleLabel,
+  spaceVisibilities,
+  spaceVisibilityDescription,
+  spaceVisibilityLabel,
+} from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
-// #272: mirrors docs/features/spaces-and-assets.md#space-sichtbarkeit.
-const editableVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
 
 function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
@@ -191,17 +195,18 @@ export default function SpaceManagementPage() {
                     visibility: event.target.value as SpaceVisibility,
                   })
                 }
+                aria-describedby="space-visibility-helper"
               >
-                {editableVisibilities.map((option) => (
+                {spaceVisibilities.map((option) => (
                   <MenuItem key={option} value={option}>
                     {spaceVisibilityLabel(option)}
                   </MenuItem>
                 ))}
               </Select>
+              <FormHelperText id="space-visibility-helper">
+                {spaceVisibilityDescription(visibility)}
+              </FormHelperText>
             </FormControl>
-            <Typography variant="caption" color="text.secondary">
-              {spaceVisibilityDescription(visibility)}
-            </Typography>
             {canManage && (
               <Button
                 variant="contained"

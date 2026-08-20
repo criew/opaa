@@ -145,7 +145,11 @@ describe('SpaceManagementPage', () => {
   })
 
   it('saves settings by calling updateSpaceDetails with name, description and the unchanged visibility', async () => {
-    setSpaceState(teamSpace)
+    // #671 review: OPEN here (not PRIVATE, which is both the draft's initial value and the
+    // fallback for a missing space.visibility) - only this way can the test actually catch a page
+    // that fails to read the space's own visibility and silently sends PRIVATE instead, which
+    // would downgrade an OPEN space on a plain rename.
+    setSpaceState({ ...teamSpace, visibility: 'OPEN' })
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
@@ -158,7 +162,7 @@ describe('SpaceManagementPage', () => {
         'space-team',
         'Team Renamed',
         'Team docs',
-        'PRIVATE',
+        'OPEN',
       )
     })
   })

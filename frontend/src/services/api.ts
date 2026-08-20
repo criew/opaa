@@ -26,6 +26,7 @@ import type {
   SourceConnectionTestResponse,
   SpaceListResponse,
   SpaceMemberResponse,
+  SpaceRequest,
   SpaceRole,
   SpaceResponse,
   SpaceUpdateRequest,
@@ -251,13 +252,14 @@ export async function createSpace(
 ): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
-    const { data } = await client.post<SpaceResponse>('/v1/spaces', {
+    const body: SpaceRequest = {
       name,
       description,
       visibility,
       ownerId: currentUserId,
       initialMembers: [],
-    })
+    }
+    const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
     return data
   } catch (err) {
     normalizeError(err)

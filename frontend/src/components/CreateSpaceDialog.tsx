@@ -6,17 +6,17 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import type { SpaceVisibility } from '../types/api'
-import { spaceVisibilityDescription, spaceVisibilityLabel } from '../utils/labels'
-
-// #272: PRIVATE is the default for every newly created space, mirroring
-// docs/features/spaces-and-assets.md#space-sichtbarkeit.
-const spaceVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
+import {
+  spaceVisibilities,
+  spaceVisibilityDescription,
+  spaceVisibilityLabel,
+} from '../utils/labels'
 
 interface CreateSpaceDialogProps {
   open: boolean
@@ -103,6 +103,7 @@ export default function CreateSpaceDialog({ open, onClose, onCreated }: CreateSp
             label="Sichtbarkeit"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as SpaceVisibility)}
+            aria-describedby="create-space-visibility-helper"
           >
             {spaceVisibilities.map((option) => (
               <MenuItem key={option} value={option}>
@@ -110,10 +111,10 @@ export default function CreateSpaceDialog({ open, onClose, onCreated }: CreateSp
               </MenuItem>
             ))}
           </Select>
+          <FormHelperText id="create-space-visibility-helper">
+            {spaceVisibilityDescription(visibility)}
+          </FormHelperText>
         </FormControl>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          {spaceVisibilityDescription(visibility)}
-        </Typography>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>
