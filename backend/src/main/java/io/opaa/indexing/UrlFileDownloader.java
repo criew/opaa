@@ -9,7 +9,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,23 +31,31 @@ public class UrlFileDownloader {
 
     log.debug("Downloading: {}", fileUrl);
 
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(Duration.ofSeconds(120)).GET();
-
+    Map<String, String> headers = new LinkedHashMap<>();
     if (authHeader != null) {
-      reqBuilder.header("Authorization", authHeader);
+      headers.put("Authorization", authHeader);
     }
+
+    // #538: Authorization (built from the source configuration's own credentials) must not be
+    // replayed to a redirect target on a different host/scheme - see
+    // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
+    HttpResponse<InputStream> response =
+        AutoindexCrawlerService.sendFollowingRedirects(
+            httpClient, fileUrl, Duration.ofSeconds(120), headers);
 
     // Preserve original extension for correct content-type detection
     String suffix = extractExtension(fileName);
     Path tempFile = Files.createTempFile("opaa-", suffix);
 
-    HttpResponse<Path> response =
-        httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofFile(tempFile));
-
-    if (response.statusCode() != 200) {
+    try (InputStream body = response.body()) {
+      if (response.statusCode() != 200) {
+        Files.deleteIfExists(tempFile);
+        throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+      }
+      Files.copy(body, tempFile, StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException | RuntimeException e) {
       Files.deleteIfExists(tempFile);
-      throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+      throw e;
     }
 
     log.debug("Downloaded {} to {}", fileUrl, tempFile);
@@ -79,30 +91,53 @@ public class UrlFileDownloader {
       throws IOException, InterruptedException {
     log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
 
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(Duration.ofSeconds(120)).GET();
-    if (userAgent != null && !userAgent.isBlank()) {
-      requestBuilder.header("User-Agent", userAgent);
-    }
-
-    HttpResponse<InputStream> response =
-        httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
-
-    try (InputStream body = response.body()) {
-      if (isForeignHostRedirect(fileUrl, response.uri())) {
-        throw new ForeignHostRedirectException("redirected to a foreign host: " + response.uri());
-      }
-      if (response.statusCode() != 200) {
-        throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+    URI currentUri = URI.create(fileUrl);
+    for (int hop = 0; ; hop++) {
+      HttpRequest.Builder requestBuilder =
+          HttpRequest.newBuilder().uri(currentUri).timeout(Duration.ofSeconds(120)).GET();
+      if (userAgent != null && !userAgent.isBlank()) {
+        requestBuilder.header("User-Agent", userAgent);
       }
 
-      byte[] bytes = readBounded(body, maxBytes);
-      Path tempFile = Files.createTempFile("opaa-", extractExtension(fileName));
-      Files.write(tempFile, bytes);
+      HttpResponse<InputStream> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
 
-      String contentType = response.headers().firstValue("Content-Type").orElse(null);
-      log.debug("Downloaded {} to {}", fileUrl, tempFile);
-      return new DownloadedFile(tempFile, contentType);
+      try (InputStream body = response.body()) {
+        // Covers a client that already followed the redirect itself (e.g. Redirect.NORMAL) -
+        // response.uri() then already reflects the followed target.
+        if (isForeignHostRedirect(fileUrl, response.uri())) {
+          throw new ForeignHostRedirectException("redirected to a foreign host: " + response.uri());
+        }
+
+        // #538: covers the production client (Redirect.NEVER,
+        // AutoindexCrawlerService#buildHttpClient)
+        // - the response is the raw 3xx here, never auto-followed, so the redirect target is
+        // resolved and vetted manually before a single further byte is ever requested.
+        if (AutoindexCrawlerService.isRedirectStatus(response.statusCode())) {
+          Optional<String> location = response.headers().firstValue("Location");
+          if (location.isEmpty() || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {
+            throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+          }
+          URI redirectUri = currentUri.resolve(location.get());
+          if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
+            throw new ForeignHostRedirectException("redirected to a foreign host: " + redirectUri);
+          }
+          currentUri = redirectUri;
+          continue;
+        }
+
+        if (response.statusCode() != 200) {
+          throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+        }
+
+        byte[] bytes = readBounded(body, maxBytes);
+        Path tempFile = Files.createTempFile("opaa-", extractExtension(fileName));
+        Files.write(tempFile, bytes);
+
+        String contentType = response.headers().firstValue("Content-Type").orElse(null);
+        log.debug("Downloaded {} to {}", fileUrl, tempFile);
+        return new DownloadedFile(tempFile, contentType);
+      }
     }
   }
 

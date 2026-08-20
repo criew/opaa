@@ -14,8 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -558,22 +560,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private HttpResponse<InputStream> fetchFeed(
       HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState)
       throws IOException, InterruptedException {
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(feedUrl))
-            .timeout(Duration.ofSeconds(60))
-            .header("User-Agent", properties.userAgent())
-            .GET();
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("User-Agent", properties.userAgent());
     feedState.ifPresent(
         state -> {
           if (state.getEtag() != null) {
-            reqBuilder.header("If-None-Match", state.getEtag());
+            headers.put("If-None-Match", state.getEtag());
           }
           if (state.getLastModified() != null) {
-            reqBuilder.header("If-Modified-Since", state.getLastModified());
+            headers.put("If-Modified-Since", state.getLastModified());
           }
         });
-    return httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+    // #538: the feed URL carries no Authorization header (#505 - credentials are not yet applied
+    // to the feed fetch itself), so following a redirect here has nothing to leak - a same-host
+    // redirect (e.g. http -> https) must still work, exactly as it did under Redirect.NORMAL.
+    return AutoindexCrawlerService.sendFollowingRedirects(
+        httpClient, feedUrl, Duration.ofSeconds(60), headers);
   }
 
   private void saveFeedState(String feedUrl, HttpResponse<InputStream> feedResponse) {
@@ -607,16 +609,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    */
   private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl)
       throws IOException, InterruptedException {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(entryUrl))
-            .timeout(Duration.ofSeconds(30))
-            .header("User-Agent", properties.userAgent())
-            .GET()
-            .build();
-
-    HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+    HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl);
 
     // #490 review, finding 4: every path below - the three early rejections and the ordinary
     // 200 - must close the response body. try-with-resources around the whole evaluation (rather
@@ -675,6 +668,46 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       List<AttachmentCandidate> attachments =
           properties.attachmentProfile().findAttachments(content, URI.create(entryUrl));
       return new DetailPage(content.text(), attachments);
+    }
+  }
+
+  /**
+   * Sends the detail-page request for {@code entryUrl}, manually following up to {@link
+   * AutoindexCrawlerService#MAX_REDIRECTS} same-host redirects (#538) - {@code httpClient} (built
+   * with {@code Redirect.NEVER} by {@link AutoindexCrawlerService#buildHttpClient}) never follows
+   * one on its own any more. A redirect to a foreign host is rejected right here with a {@link
+   * RejectedByRemoteException} - the same exception a post-hoc check on an already-followed
+   * response produced before #538, still thrown for the same reason (ADR-0017's bot-protection
+   * motivation), just before the foreign host is ever contacted instead of after.
+   */
+  private HttpResponse<InputStream> sendDetailPageRequest(HttpClient httpClient, String entryUrl)
+      throws IOException, InterruptedException {
+    URI currentUri = URI.create(entryUrl);
+    for (int hop = 0; ; hop++) {
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(currentUri)
+              .timeout(Duration.ofSeconds(30))
+              .header("User-Agent", properties.userAgent())
+              .GET()
+              .build();
+      HttpResponse<InputStream> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+      if (!AutoindexCrawlerService.isRedirectStatus(response.statusCode())
+          || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {
+        return response;
+      }
+      Optional<String> location = response.headers().firstValue("Location");
+      if (location.isEmpty()) {
+        return response;
+      }
+      URI redirectUri = currentUri.resolve(location.get());
+      closeQuietly(response.body());
+      if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
+        throw new RejectedByRemoteException("redirected to a foreign host: " + redirectUri);
+      }
+      currentUri = redirectUri;
     }
   }
 
