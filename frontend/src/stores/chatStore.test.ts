@@ -810,16 +810,21 @@ describe('chatStore', () => {
       useChatStore.getState().clearScope() // scope -> 'none', PATCH in flight (slow, will fail)
       const stalePatch = useChatStore.getState().pendingSettingsUpdate
 
-      // User simply navigates away - no further settings change on the new chat.
-      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
-      expect(useChatStore.getState().scope).toBe('all') // EMPTY_CHAT_ID's own, unrelated scope
+      // User simply navigates away - to a chat with a different scope of its own - without any
+      // further settings change. Using a chat whose scope differs from EXISTING_CHAT_ID's own
+      // pre-change value ('all') makes the scope assertion below actually exercise the guard too,
+      // not just the error assertion (#570 review, third round).
+      await useChatStore.getState().loadChat('chat-personal-2')
+      expect(useChatStore.getState().scope).toBe('libraries') // chat-personal-2's own, unrelated scope
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
 
       // The stale failure from the chat that's no longer active arrives.
       await stalePatch
 
       const state = useChatStore.getState()
-      expect(state.chatId).toBe(EMPTY_CHAT_ID)
-      expect(state.scope).toBe('all')
+      expect(state.chatId).toBe('chat-personal-2')
+      expect(state.scope).toBe('libraries')
+      expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
       expect(state.error).toBeNull()
     })
 
@@ -898,9 +903,10 @@ describe('chatStore', () => {
       useChatStore.getState().clearScope() // action 1: 'all' -> 'none', slow, will fail
       useChatStore.getState().setScopeAll() // action 2 (last action): 'none' -> 'all', fast, succeeds
 
+      // Action 2's chain entry is, by construction, chained behind action 1 (see
+      // settingsUpdateChains) - awaiting it already means action 1 has fully settled too, so no
+      // extra sleep is needed here (#570 review, third round).
       await useChatStore.getState().pendingSettingsUpdate
-      // Let action 1's stale failure resolve too.
-      await new Promise((resolve) => setTimeout(resolve, 40))
 
       const state = useChatStore.getState()
       expect(state.scope).toBe('all')
@@ -955,6 +961,86 @@ describe('chatStore', () => {
       await useChatStore.getState().sendMessage('Frage')
 
       expect(events).toEqual(['patch-start', 'patch-end', 'query-start'])
+    })
+
+    // #570 review, second round: sendMessage must await the *active chat's own* settings chain,
+    // not the global pendingSettingsUpdate slot - a fast settings change on a different chat can
+    // already have cleared that slot back to null while the active chat's own PATCH is still in
+    // flight (scenario: slow change on chat A, switch to chat B, fast change on B, switch back to
+    // A - the global slot reflects B's already-settled PATCH, not A's still-pending one).
+    it("awaits the active chat's own settings PATCH even after a different chat's faster PATCH already cleared the global pending slot", async () => {
+      const events: string[] = []
+      // A's settings PATCH resolves only once this test calls resolveExistingChatPatch() itself -
+      // deterministic, unlike a fixed delay racing against however long the rest of this test's
+      // network round-trips happen to take.
+      let resolveExistingChatPatch: (() => void) | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params }) => {
+          const chatId = String(params.chatId)
+          events.push(`patch-start:${chatId}`)
+          if (chatId === EXISTING_CHAT_ID) {
+            await new Promise<void>((resolve) => {
+              resolveExistingChatPatch = resolve
+            })
+          }
+          events.push(`patch-end:${chatId}`)
+          return HttpResponse.json({
+            id: chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+        http.post('/api/v1/query', async ({ request }) => {
+          events.push('query-start')
+          const body = (await request.json()) as { chatId?: string }
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: {
+              model: 'gpt-4o',
+              tokenCount: 5,
+              durationMs: 1,
+              answeredWithoutKnowledge: false,
+            },
+            chatId: body.chatId,
+          })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // chat A active
+      useChatStore.getState().clearScope() // settings change on A, PATCH deliberately held open
+
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID) // switch to chat B
+      useChatStore.getState().addReferencedLibrary('library-b') // fast settings change on B
+      await useChatStore.getState().pendingSettingsUpdate // B's PATCH settles quickly
+
+      // The global slot now reflects B's already-settled PATCH - it says nothing about A's, whose
+      // PATCH is still deliberately held open above.
+      expect(useChatStore.getState().pendingSettingsUpdate).toBeNull()
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // switch back to chat A
+      const sendPromise = useChatStore.getState().sendMessage('Frage')
+
+      // Give sendMessage's microtask chain a macrotask tick to reach (or skip) the point where it
+      // would await A's own pending settings PATCH.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // A's PATCH is still held open at this point - the query must not have been sent yet.
+      expect(events).not.toContain('query-start')
+
+      resolveExistingChatPatch?.()
+      await sendPromise
+
+      expect(events.indexOf(`patch-end:${EXISTING_CHAT_ID}`)).toBeLessThan(
+        events.indexOf('query-start'),
+      )
     })
   })
 })

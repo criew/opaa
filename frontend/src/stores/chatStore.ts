@@ -122,11 +122,12 @@ interface ChatState {
   // addReferencedLibrary/removeReferencedLibrary); before that, they only shape the first
   // message's implicit chat creation.
   referencedLibraryIds: string[]
-  /** The in-flight PATCH (if any) from the most recent setScopeAll/addReferencedLibrary/
-   * removeReferencedLibrary call - never rejects (failures are caught and turned into `error` +
-   * a local rollback), so sendMessage can safely await it to avoid racing a PATCH that has not
-   * reached the server yet against the query that reads the chat's persisted settings (#548
-   * review, finding 3). */
+  /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
+   * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
+   * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
+   * itself awaits the current chat's own settingsUpdateChains entry, not this global slot, since a
+   * fast settings change on a *different* chat can already have cleared this back to null while
+   * the active chat's own chain is still running (#570 review, second round). */
   pendingSettingsUpdate: Promise<void> | null
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
@@ -289,11 +290,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // A PATCH from setScopeAll/addReferencedLibrary/removeReferencedLibrary may still be in
-      // flight - awaiting it first avoids racing it against this query, which the backend answers
-      // using the chat's persisted settings (#548 review, finding 3).
-      const pendingSettingsUpdate = get().pendingSettingsUpdate
-      if (pendingSettingsUpdate) {
-        await pendingSettingsUpdate
+      // flight for *this* chat - awaiting it first avoids racing it against this query, which the
+      // backend answers using the chat's persisted settings (#548 review, finding 3). Reading
+      // settingsUpdateChains by chatId here, not the global pendingSettingsUpdate slot (#570
+      // review, second round): the slot only ever reflects the most recently *started* settings
+      // change across all chats - a fast PATCH on another chat can already have cleared it back to
+      // null while this chat's own chain is still running (e.g. slow change on chat A, switch to
+      // chat B, fast change on B, switch back to A - pendingSettingsUpdate would be null even
+      // though A's chain has not settled yet).
+      const pendingChainForChat = settingsUpdateChains.get(chatId)
+      if (pendingChainForChat) {
+        await pendingChainForChat
       }
 
       const response = await sendQuery(question, chatId, useKnowledge, libraryIds)
