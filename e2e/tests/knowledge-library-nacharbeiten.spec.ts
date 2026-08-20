@@ -1,7 +1,8 @@
+import { crc32, deflateSync } from 'node:zlib'
 import { randomBytes } from 'node:crypto'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { expect, test } from '../fixtures/auth'
-import type { Page } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 
 // Nacharbeiten-Serie aus Epic #458 (#514, #516, #517, #519, siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -12,19 +13,12 @@ import type { Page } from '@playwright/test'
 // knowledge-libraries.spec.ts (siehe dort OWN_DOCUMENT_PATH's Kommentar), nur ohne den
 // Freigabe-Aspekt, den dieses Issue ausdrücklich nicht abdeckt.
 //
-// Dateiname bewusst "knowledge-library-..." (Singular), nicht "knowledge-libraries-...": Playwright
-// führt alle Spec-Dateien dieser (workers: 1, fullyParallel: false) Suite in alphabetischer
-// Reihenfolge aus, und knowledge-libraries.spec.ts's Szenario 2 verlässt sich darauf, dass admins
-// gesamter lesbarer Bestand zum Zeitpunkt seiner Chat-Suche noch klein ist (ai-stub liefert für
-// jede Anfrage denselben Embedding-Vektor, siehe e2e/README.md - eine Suche kann das eigene
-// Dokument unter vielen weiteren, admin-lesbaren Dokumenten mit identischem Vektor verlieren, wenn
-// genug davon vor diesem Test entstehen). Ein Dateiname, der nach "knowledge-libraries.spec.ts"
-// sortiert (Singular "library" schlägt hier alphabetisch nach Plural "libraries" durch: 'y' > 'i'
-// an der ersten abweichenden Stelle), stellt sicher, dass die eigenen, dutzendfach admin-lesbaren
-// Wegwerfdokumente dieser Datei erst NACH #424s vollständigem Lauf entstehen - manuell verifiziert:
-// mit einem vor "knowledge-libraries.spec.ts" sortierenden Dateinamen schlägt genau
-// "knowledge-libraries.spec.ts:164 › 2. Suche findet das eigene Dokument" fehl (source-card für
-// wissensdokument.txt bleibt aus), mit dieser Reihenfolge ist die gesamte Suite wieder grün.
+// Dateiname bewusst "knowledge-library-..." (Singular): sortiert alphabetisch nach
+// "knowledge-libraries.spec.ts", dessen Szenario 2 sich sonst mit den hier angelegten,
+// admin-lesbaren Wegwerfdokumenten in die Quere käme (siehe #424, ai-stub liefert für jede Anfrage
+// denselben Embedding-Vektor) - jede Bibliothek dieser Datei räumt sich zusätzlich über
+// test.afterAll selbst wieder ab (siehe cleanupLibraries unten), das ist also nur die zweite,
+// unabhängige Absicherung.
 const runId = Date.now()
 
 // Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER - not imported from there since e2e/
@@ -44,49 +38,137 @@ async function gotoLibraries(page: Page) {
   ])
 }
 
+/** Reads the library id CreateLibraryDialog navigated to after a successful "Erstellen". */
+function libraryIdFromCurrentUrl(page: Page): string {
+  const match = page.url().match(/\/libraries\/([^/]+)$/)
+  if (!match) {
+    throw new Error(`Unexpected library detail URL after creation: ${page.url()}`)
+  }
+  return match[1]
+}
+
+/**
+ * Deletes a library this file created for a scenario, together with any documents it holds -
+ * registered per test.describe block (see cleanupLibraries below) rather than relying solely on
+ * the filename-ordering trick above to keep other specs' shared, admin-readable corpus from
+ * growing without bound across repeated local runs. Works for both library kinds this file
+ * creates: an UPLOAD library rejects DELETE while it still holds documents (ADR-0018), so those
+ * are removed first; a connector (HTTP_DIRECTORY) library never has any (no indexing run was ever
+ * triggered against it here), so the listing call below simply returns nothing to delete.
+ */
+async function deleteLibraryCompletely(request: APIRequestContext, libraryId: string) {
+  const documentsResponse = await request.get(`/api/v1/libraries/${libraryId}/documents?size=100`, {
+    headers: { [DEV_USER_HEADER]: 'dev-admin' },
+  })
+  if (documentsResponse.ok()) {
+    const body = (await documentsResponse.json()) as { items: Array<{ id: string }> }
+    for (const document of body.items) {
+      await request.delete(`/api/v1/libraries/${libraryId}/documents/${document.id}`, {
+        headers: { [DEV_USER_HEADER]: 'dev-admin' },
+      })
+    }
+  }
+  const libraryResponse = await request.delete(`/api/v1/libraries/${libraryId}`, {
+    headers: { [DEV_USER_HEADER]: 'dev-admin' },
+  })
+  expect(libraryResponse.ok()).toBe(true)
+}
+
+/**
+ * Registers a test.describe-scoped cleanup: tests push the id of every library they create onto
+ * the returned array, and test.afterAll deletes all of them (see deleteLibraryCompletely) once the
+ * block's tests have finished - regardless of whether any of them failed, so a failed assertion
+ * never leaves that scenario's own library behind for the next local run.
+ */
+function cleanupLibraries(): string[] {
+  const createdLibraryIds: string[] = []
+  test.afterAll(async ({ request }) => {
+    for (const libraryId of createdLibraryIds) {
+      await deleteLibraryCompletely(request, libraryId)
+    }
+  })
+  return createdLibraryIds
+}
+
 /**
  * Builds a real, parseable PDF of roughly 2 MB, entirely in memory - not one of the suite's
  * committed fixtures under fixtures/test-documents/ (see knowledge-libraries.spec.ts's comment on
  * TEST_DOCUMENT_PATH for why those live there and stay tiny): a 2 MB binary has no business being
- * checked into git for a single regression test. Padding is real, Tika-extractable text rather
- * than an opaque padded byte blob - FileProcessingService#processUploadedFile throws
- * EmptyDocumentContentException when parsing yields no content at all (see its Javadoc), so a
- * file PDFBox cannot actually read would fail for the wrong reason and never reach the
- * client_max_body_size regression this test exists to catch (#519).
+ * checked into git for a single regression test.
  *
- * Text content is pseudo-random printable ASCII, not repeated/natural-language text: pdf-lib
- * flate-compresses content streams by default, and a first attempt using a single repeated German
- * sentence collapsed to ~17 KB - nowhere near the ~2 MB this test needs to actually exceed nginx's
- * old 1 MB default. Printable-ASCII noise barely compresses at all, so the saved PDF stays close to
- * the raw text size. Spread across many separate drawText calls rather than one giant string: PDF
- * 1.7's own architectural limit (Appendix C) caps a single string literal at 65,535 bytes - well
- * below the ~46 KB chosen per line, but a single string covering the whole ~2 MB would exceed it
- * several times over. Every character comes from WinAnsiEncoding's plain-ASCII range (0x20-0x7E),
- * which Helvetica (a StandardFonts entry) always supports, so embedding never hits an "unsupported
- * glyph" error regardless of which random bytes come up.
+ * The extractable page text is a single short, real sentence - just enough to avoid
+ * FileProcessingService#processUploadedFile's EmptyDocumentContentException (thrown when Tika
+ * extracts no text at all), so the document stays a single-digit number of chunks. The ~2 MB of
+ * bulk instead comes from an embedded image (pdf.embedPng) built from random pixel data: PDFBox's
+ * plain text extraction never reads image content (that would need OCR, which this backend does
+ * not run), so it never becomes part of the parsed/chunked/embedded text. An earlier version
+ * padded the *page text* itself with ~2 MB of pseudo-random characters instead - technically
+ * incompressible enough to survive pdf-lib's own Flate compression at the right file size, but
+ * Tika dutifully extracted every byte of it as body text, producing roughly a thousand chunks and
+ * turning this test's upload into a real embedding-load test rather than the nginx
+ * client_max_body_size regression check it is meant to be (60s upload timeouts even without any
+ * other load on the stack).
+ *
+ * The PNG is hand-built (raw IHDR/IDAT/IEND chunks via node:zlib's deflateSync/crc32, no PNG
+ * encoder dependency) rather than filled with e.g. a solid color: real image compression /
+ * pdf-lib's own re-encoding of the pixel data on embed would otherwise shrink solid or
+ * low-entropy pixels down to a few hundred bytes, the same problem the page-text approach above
+ * had.
  */
 async function buildLargePdf(): Promise<Buffer> {
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const page = pdf.addPage([595, 842])
-  const { height } = page.getSize()
-  const lineLength = 46_000 // well under the 65,535-byte PDF string literal limit
-  const lineCount = 45 // ~46 KB * 45 =~ 2.07 MB of near-incompressible extractable text
-  for (let i = 0; i < lineCount; i++) {
-    page.drawText(randomPrintableAscii(lineLength), { x: 20, y: height - 20 - i * 2, size: 8, font })
-  }
+  page.drawText('Testdokument fuer den Upload-Regressionstest (#547).', {
+    x: 20,
+    y: 800,
+    size: 12,
+    font,
+  })
+  const png = buildRandomPng(820, 820) // ~2 MB of near-incompressible random RGB pixel data
+  const image = await pdf.embedPng(png)
+  page.drawImage(image, { x: 0, y: 0, width: 100, height: 100 })
   const bytes = await pdf.save()
   return Buffer.from(bytes)
 }
 
-/** Pseudo-random printable ASCII (0x20-0x7E, 95 values) of exactly `length` characters. */
-function randomPrintableAscii(length: number): string {
-  const bytes = randomBytes(length)
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += String.fromCharCode(0x20 + (bytes[i] % 95))
+/** A minimal, valid, uncompressed (per-scanline) truecolor PNG filled with random pixel data. */
+function buildRandomPng(width: number, height: number): Buffer {
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const ihdrData = Buffer.concat([
+    uint32BE(width),
+    uint32BE(height),
+    Buffer.from([8, 2, 0, 0, 0]), // 8-bit depth, color type 2 (truecolor RGB), default compression/filter/interlace
+  ])
+  const rowBytes = 1 + width * 3 // leading filter-type byte (0 = None) per scanline
+  const raw = Buffer.alloc(rowBytes * height)
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * rowBytes
+    raw[rowStart] = 0
+    randomBytes(width * 3).copy(raw, rowStart + 1)
   }
-  return result
+  return Buffer.concat([
+    signature,
+    pngChunk('IHDR', ihdrData),
+    pngChunk('IDAT', deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const typeBuf = Buffer.from(type, 'ascii')
+  return Buffer.concat([
+    uint32BE(data.length),
+    typeBuf,
+    data,
+    uint32BE(crc32(Buffer.concat([typeBuf, data]))),
+  ])
+}
+
+function uint32BE(value: number): Buffer {
+  const buf = Buffer.alloc(4)
+  buf.writeUInt32BE(value >>> 0, 0)
+  return buf
 }
 
 /**
@@ -118,6 +200,8 @@ async function uploadFillerDocuments(page: Page, libraryId: string, count: numbe
 // than a mocked or dev-server request - client_max_body_size is the one setting no unit test can
 // exercise, only a request that actually passes through that proxy.
 test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
+  const createdLibraryIds = cleanupLibraries()
+
   test('Ein ~2-MB-PDF wird hochgeladen und erfolgreich indiziert', async ({
     authenticatedPage: page,
   }) => {
@@ -136,6 +220,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
       page.getByRole('button', { name: 'Erstellen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
     await page.getByLabel('Dateien auswählen').setInputFiles({
       name: fileName,
@@ -146,12 +231,12 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     // Both assertions gate on the same round trip: uploadNewDocument's request only resolves once
     // the backend has fully parsed/chunked/embedded the file, and the row (filename + status)
     // only renders once that response comes back - there is no earlier moment at which the
-    // filename alone would already be visible. A larger file needs more time for that whole
-    // round trip than the suite's tiny committed fixtures, hence 60s on both (not the 10s
-    // default from playwright.config.ts's expect.timeout) rather than the 20-30s used elsewhere
-    // in the suite for the same reason.
-    await expect(page.getByText(fileName)).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByText('indiziert')).toBeVisible({ timeout: 60_000 })
+    // filename alone would already be visible. Generous timeouts (not the 10s default from
+    // playwright.config.ts's expect.timeout) purely for the extra network transfer time a ~2 MB
+    // body needs over the suite's tiny committed fixtures - the document itself stays a
+    // single-digit number of chunks (see buildLargePdf), so this is not an embedding-load wait.
+    await expect(page.getByText(fileName)).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
   })
 })
 
@@ -178,6 +263,8 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 // instead of the intended "Host not found" one. A connection refused by a real, internally
 // resolvable host needs no DNS round trip at all and fails deterministically fast.
 test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
+  const createdLibraryIds = cleanupLibraries()
+
   test('Erreichbare Quelle zeigt einen Zaehlwert', async ({ authenticatedPage: page }) => {
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
@@ -191,6 +278,8 @@ test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
     await expect(result).toContainText(
       'Webverzeichnis erreichbar, 1 unterstuetzte Dokument auf oberster Ebene gefunden.',
     )
+    // Deliberately never clicked "Erstellen" - this scenario only exercises the test call itself,
+    // no library was created and there is nothing for cleanupLibraries to remove.
   })
 
   test('Nicht erreichbare Quelle zeigt eine deutsche Fehlermeldung, Anlegen bleibt moeglich', async ({
@@ -219,6 +308,7 @@ test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
       dialog.getByRole('button', { name: 'Erstellen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    createdLibraryIds.push(libraryIdFromCurrentUrl(page))
   })
 })
 
@@ -227,6 +317,8 @@ test.describe('Verbindungstest im Erstellungsdialog (#514)', () => {
 // whenever library details are loaded, regardless of sourceType; only the upload widget itself is
 // gated to UPLOAD.
 test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
+  const createdLibraryIds = cleanupLibraries()
+
   // DEFAULT_PAGE_SIZE in frontend/src/stores/documentStore.ts - not imported from there (e2e/ has
   // no dependency on frontend/src, see DEV_USER_HEADER's comment above for the same reasoning),
   // duplicated as a plain constant instead.
@@ -246,11 +338,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
       page.getByRole('button', { name: 'Erstellen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
-    const match = page.url().match(/\/libraries\/([^/]+)$/)
-    if (!match) {
-      throw new Error(`Unexpected library detail URL after creation: ${page.url()}`)
-    }
-    const libraryId = match[1]
+    const libraryId = libraryIdFromCurrentUrl(page)
+    createdLibraryIds.push(libraryId)
 
     // PAGE_SIZE + 1 filler documents plus one distinctly named search target - one more document
     // than a single page holds, so the list is provably on more than one page (#517 acceptance
@@ -320,6 +409,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
       dialog.getByRole('button', { name: 'Erstellen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
     // No indexing run was triggered - the section itself must still render (with its empty state
     // and without an upload widget, since this library was never given upload rights at all).
@@ -334,6 +424,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
 // (KnowledgeLibraryService#updateLibrary, ADR-0018; frontend behaviour added by #516, refined by
 // #542's origin check).
 test.describe('Quellkonfiguration bearbeiten (#516)', () => {
+  const createdLibraryIds = cleanupLibraries()
+
   test('URL-Aenderung zeigt den Hinweis, leeres Credentials-Feld laesst bestehende unveraendert', async ({
     authenticatedPage: page,
   }) => {
@@ -353,6 +445,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
       createDialog.getByRole('button', { name: 'Erstellen' }).click(),
     ])
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
     await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
     const editDialog = page.getByRole('dialog')
