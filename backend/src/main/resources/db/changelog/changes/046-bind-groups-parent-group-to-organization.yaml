@@ -1,0 +1,80 @@
+databaseChangeLog:
+  # #400: fk_groups_parent_group (migration 009) only references groups(id) - it does not carry an
+  # organization dimension, so a group's parent_group_id could point at a group belonging to a
+  # different organization without the database ever noticing. Groups carry the Fachbereich
+  # distribution level (docs/features/spaces-and-assets.md), so a parent-group chain crossing the
+  # organization boundary is a way to smuggle grant scope into a foreign organization - see #356.
+  # Unlike the six remaining cases from #289 (which all need users(id, organization_id), not yet
+  # available), groups already has uk_groups_id_organization (migration 009), so the composite
+  # foreign key is possible without any further vorarbeit.
+  #
+  # Two changeSets, in dependency order:
+  #   1. 046-clear-cross-organization-parent-groups - nulls out any parent_group_id whose target
+  #      group belongs to a different organization, so the constraint swap below cannot fail on
+  #      pre-existing data (GroupService never let this happen through the application; #400 exists
+  #      precisely because nothing below it ever enforced that).
+  #   2. 046-bind-groups-parent-group-to-organization - drops the single-column
+  #      fk_groups_parent_group and replaces it with a composite foreign key on
+  #      (parent_group_id, organization_id) -> groups(id, organization_id), the same pattern already
+  #      used by fk_group_memberships_group_organization (migration 009).
+  #
+  # Rollback order (reverse of apply order):
+  # 046-bind-groups-parent-group-to-organization
+  # 046-clear-cross-organization-parent-groups (irreversible no-op, see its rollback block)
+
+  - changeSet:
+      id: 046-clear-cross-organization-parent-groups
+      author: opaa
+      comment: >
+        Nulls out any parent_group_id that currently points at a group in a different organization
+        (#400) - the exact condition the composite foreign key below is about to forbid. Lossless in
+        the sense that matters: only the parent link is cleared, never the group itself or its
+        memberships.
+      changes:
+        - sql:
+            sql: >
+              UPDATE groups AS child
+              SET parent_group_id = NULL
+              FROM groups AS parent
+              WHERE child.parent_group_id = parent.id
+                AND child.organization_id <> parent.organization_id;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: which rows were cleared, and what their original parent_group_id was, is
+              not recorded. Deliberate no-op, same reasoning as 045-clear-rss-feed-state.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 046-bind-groups-parent-group-to-organization
+      author: opaa
+      comment: >
+        Replaces the single-column fk_groups_parent_group with a composite foreign key on
+        (parent_group_id, organization_id) referencing groups(id, organization_id) (#400) - a group
+        can no longer name a parent group from another organization, at the database level. Uses raw
+        SQL rather than Liquibase's addForeignKeyConstraint changeType because ON DELETE SET NULL
+        must be restricted to the parent_group_id column alone (Postgres 15+ column-list syntax,
+        "ON DELETE SET NULL (parent_group_id)"): organization_id is NOT NULL and belongs to the
+        child row itself, not to the deleted parent, so the plain (whole-row) SET NULL that
+        addForeignKeyConstraint would generate for a composite key is not an option here - it would
+        try to null organization_id too and fail that NOT NULL constraint on every parent deletion.
+        Rollback restores the original single-column foreign key; it always succeeds because the
+        composite constraint it replaces is strictly stronger, so no row can violate the weaker one.
+      changes:
+        - sql:
+            sql: >
+              ALTER TABLE groups DROP CONSTRAINT fk_groups_parent_group;
+              ALTER TABLE groups
+              ADD CONSTRAINT fk_groups_parent_group_organization
+              FOREIGN KEY (parent_group_id, organization_id)
+              REFERENCES groups (id, organization_id)
+              ON DELETE SET NULL (parent_group_id);
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE groups DROP CONSTRAINT fk_groups_parent_group_organization;
+              ALTER TABLE groups
+              ADD CONSTRAINT fk_groups_parent_group
+              FOREIGN KEY (parent_group_id)
+              REFERENCES groups (id)
+              ON DELETE SET NULL;
