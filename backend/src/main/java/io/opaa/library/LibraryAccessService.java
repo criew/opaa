@@ -13,7 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Resolves the {@link AssetRole} a user effectively holds on a {@link KnowledgeLibrary}, and the
@@ -127,6 +129,33 @@ public class LibraryAccessService {
    */
   public boolean canDelete(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     return atLeast(effectiveRole(library, userId, systemAdmin), AssetRole.OWNER);
+  }
+
+  /**
+   * Requires at least {@code required} on {@code library}, distinguishing "no access at all" from
+   * "some access, but not enough" (#436) - the single helper every library-scoped endpoint now
+   * calls instead of the {@code canXxx}/throw-403 pairs above, so a user who holds no {@link
+   * AssetGrant} on the library at all and no organization-wide floor gets the same {@code 404} the
+   * library's own lookup already produces for "does not exist", rather than a {@code 403} that
+   * confirms the library is there. Introduced in #420 for the two upload endpoints as {@code
+   * LibraryDocumentService#requireEditable}, later found to be missing from every other
+   * library-scoped endpoint (#436) - both now share this one implementation instead of each
+   * maintaining its own copy of the same two-step check.
+   *
+   * @return the caller's resolved role, at least {@code required} - callers that also need the
+   *     concrete role (e.g. to embed it in a response) do not have to call {@link #effectiveRole} a
+   *     second time.
+   */
+  public AssetRole requireRole(
+      KnowledgeLibrary library, UUID userId, boolean systemAdmin, AssetRole required) {
+    AssetRole role = effectiveRole(library, userId, systemAdmin);
+    if (role == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
+    }
+    if (!role.atLeast(required)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    }
+    return role;
   }
 
   /**

@@ -464,9 +464,9 @@ public class AssetGrantService {
     if (!library.getOrganizationId().equals(currentUser.getOrganizationId())) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden");
     }
-    if (!accessService.canManage(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    // #436: no access at all (no grant, no organization-wide visibility) also answers 404, not just
+    // the organization-boundary case above - see LibraryAccessService#requireRole.
+    accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     return library;
   }
 

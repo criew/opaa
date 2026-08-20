@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -78,13 +79,14 @@ public class DocumentIndexingService {
   /**
    * The current or most recently completed run for {@code libraryId}, for whoever can at least read
    * the library (a narrower bar than {@link #requireEditableLibrary}'s {@code EDITOR} - seeing the
-   * last run's outcome is not the same right as starting a new one).
+   * last run's outcome is not the same right as starting a new one). Uses {@link
+   * LibraryAccessService#requireRole} (#436) rather than a plain {@code canRead}/403 check, so a
+   * caller with no grant at all on the library gets the same 404 {@code GET /libraries/{id}}
+   * already answers, instead of a 403 that gives away the library's existence one endpoint over.
    */
   public Optional<IndexingJob> getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canRead(library, currentUserId, systemAdmin)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     return indexingJobService.getLatestJob(libraryId);
   }
 
@@ -115,18 +117,20 @@ public class DocumentIndexingService {
    * "Anstoss-Knopf" only the systemwide administration could ever press would be dead for every
    * other library owner.
    *
-   * <p><b>No blanket system-admin bypass here</b>, mirroring the endpoint this replaces: {@code
-   * canEdit} is always called with {@code systemAdmin = false}, so the real grant/visibility
-   * formula decides, unconditionally. Until #521, this method took a {@code systemAdmin} parameter
-   * for one exception - the well-known system library, seeded with no owner and no grants
-   * (migration 012) - that a system admin could target without a grant; #521 deleted that library
-   * outright, so the parameter had nothing left to do and is gone too.
+   * <p><b>No blanket system-admin bypass here</b>, mirroring the endpoint this replaces: {@link
+   * LibraryAccessService#requireRole} is always called with {@code systemAdmin = false}, so the
+   * real grant/visibility formula decides, unconditionally. Until #521, this method took a {@code
+   * systemAdmin} parameter for one exception - the well-known system library, seeded with no owner
+   * and no grants (migration 012) - that a system admin could target without a grant; #521 deleted
+   * that library outright, so the parameter had nothing left to do and is gone too.
+   *
+   * <p>Uses {@link LibraryAccessService#requireRole} (#436) instead of a plain {@code canEdit}/403
+   * check for the same reason {@link #getStatus} does: "no access at all" must answer 404, not a
+   * 403 that confirms the library exists.
    */
   private KnowledgeLibrary requireEditableLibrary(UUID libraryId, UUID currentUserId) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canEdit(library, currentUserId, false)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.EDITOR);
     return library;
   }
 

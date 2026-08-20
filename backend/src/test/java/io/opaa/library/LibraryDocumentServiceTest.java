@@ -105,17 +105,19 @@ class LibraryDocumentServiceTest {
   }
 
   private void grantEditor() {
-    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false)))
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
         .thenReturn(AssetRole.EDITOR);
   }
 
   private void grantViewerOnly() {
-    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false)))
-        .thenReturn(AssetRole.VIEWER);
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
+        .thenThrow(
+            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
   }
 
   private void grantNoAccess() {
-    when(accessService.effectiveRole(any(), eq(currentUserId), eq(false))).thenReturn(null);
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.EDITOR)))
+        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
   }
 
   // Real PDF magic bytes (#435): since uploadDocument now runs Tika content detection against the
