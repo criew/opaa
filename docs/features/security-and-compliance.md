@@ -554,9 +554,9 @@ Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne 
 5. Pseudonymzuordnung entfernen — das Protokoll bleibt unverändert bestehen
 ```
 
-Entwürfe des Nutzers folgen den Regeln des persönlichen Space. Abgelegte Chats und Artefakte in geteilten
-Spaces sind Arbeitsergebnisse der Organisation und verschwinden nicht mit dem Konto ihres Erstellers,
-werden aber nach Ablauf der Aufbewahrungsfrist gelöscht.
+Private Chats und Artefakte des Nutzers folgen den Regeln privater Inhalte. Geteilte Chats und Artefakte
+sind Arbeitsergebnisse der Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber
+nach Ablauf der Aufbewahrungsfrist gelöscht.
 
 Dokumente werden über ihre Wissensbibliothek gelöscht. Für konnektor-indizierte Dokumente gilt weiterhin
 der Ausschluss-Mechanismus, weil sie beim nächsten Lauf sonst erneut aufgenommen würden.
@@ -698,7 +698,7 @@ OPAA verhält sich in beiden Fällen gleich.
 
 ## Mitbestimmungsfähigkeit
 
-OPAA erzeugt Daten mit Personenbezug: abgelegte Chatverläufe in gemeinsamen Räumen, Nutzungsstatistiken
+OPAA erzeugt Daten mit Personenbezug: geteilte Chatverläufe in gemeinsamen Räumen, Nutzungsstatistiken
 je Asset, Protokolldaten. In einer Behörde ist das mitbestimmungsrelevant — **ohne Dienstvereinbarung
 beginnt in aller Regel kein Rollout**, und die Personalvertretung spricht genau diese Punkte an. Das ist
 das am häufigsten unterschätzte Einführungshindernis: kein technisches, sondern eines, das ein Projekt vor
@@ -711,14 +711,15 @@ stehen die fünf Eigenschaften, die das Produkt dafür tragen muss.
 
 ### 1. Sichtbarkeit ist eine Handlung, keine Automatik
 
-Chats und Artefakte entstehen als **Entwurf** und werden erst sichtbar, wenn die Person sie ablegt. Wer
-teilt, tut es bewusst. Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, bei der jemand unsicher
-ist, wird damit nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
+Chats und Artefakte entstehen als **`PRIVATE`** und werden erst sichtbar, wenn die Person sie in den Space
+teilt. Wer teilt, tut es bewusst. Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, bei der jemand
+unsicher ist, wird damit nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
 
-Der persönliche Space ist **verbindlich unbeobachtet** — auch gegenüber Systemverwaltung, Revision und
-Dienststellenleitung — und **fachlich gleichwertig**: Dort steht dasselbe Wissen und derselbe Suchbereich
-zur Verfügung wie im gemeinsamen Raum. Ohne diese Gleichwertigkeit wäre die Ausweichmöglichkeit nur
-formal und der Zwang zum sichtbaren Raum faktisch.
+**Private Inhalte sind verbindlich unbeobachtet** — in jedem Space, nicht nur in einem dafür vorgesehenen,
+und auch gegenüber Systemverwaltung, Revision und Dienststellenleitung — und **fachlich gleichwertig**:
+Dort steht dasselbe Wissen und derselbe Suchbereich zur Verfügung wie in einem gemeinsamen Raum. Ohne
+diese Gleichwertigkeit wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum
+faktisch.
 
 Geschützt ist der **Inhalt**, nicht die Tatsache der Nutzung: Dass jemand arbeitet, wird protokolliert;
 was er schreibt, nicht. Das gehört ausgesprochen, damit die Auskunft an die Beschäftigten stimmt.

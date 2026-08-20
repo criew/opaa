@@ -53,7 +53,8 @@ Sie ist eine systemweite Rolle und wird auf der Benutzer-Entität gespeichert.
 
 System-Admins können:
 
-- Team- und Fachbereichs-Spaces anlegen und löschen (Projekt-Spaces legen Nutzer selbst an)
+- Gruppengebundene Spaces (`memberSource = GROUP`) anlegen und löschen — alle anderen Spaces legen Nutzer
+  selbst an
 - Konnektoren konfigurieren
 - Quell-Zuordnungen definieren — welche Quelle in welche Wissensbibliothek indiziert
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken setzen
@@ -67,7 +68,7 @@ organisationsübergreifende Sicht.
 Wichtige Abgrenzung: System-Admins verwalten das System, sind aber **nicht automatisch berechtigt, jeden
 Inhalt zu lesen**. Der Zugriff auf Wissensbibliotheken folgt der Rechteliste des Assets. Wo eine Übernahme
 nötig ist (offene Nachfolge, Offboarding), ist sie ein protokollierter Verwaltungsakt und keine
-stillschweigende Leseberechtigung. Entwürfe und persönliche Spaces bleiben auch dabei unlesbar.
+stillschweigende Leseberechtigung. Private Inhalte bleiben auch dabei unlesbar — in jedem Space.
 
 ### Dokumentenfluss: Konnektoren gegen Benutzer-Uploads
 
@@ -99,10 +100,10 @@ Ein Space zu löschen ist unter dem neuen Modell ein vergleichsweise harmloser V
 Assoziationen; die Assets selbst bleiben unberührt.
 
 **Space-eigene Inhalte werden dabei nicht gelöscht.** Die Regel „Zurückziehen statt Löschen" gilt auch
-hier: Abgelegte Chats und Artefakte werden zurückgezogen und bleiben für ihre Autoren und im Nachweis
-erhalten; Entwürfe bleiben ihren Erstellern erhalten. Andernfalls wäre die Space-Löschung ein
-Massenlöschpfad für die Arbeitsspuren fremder Beschäftigter — genau das, was der Schutz an anderer Stelle
-ausschließt. Ein Protokolleintrag hält den Vorgang fest.
+hier: Geteilte Chats und Artefakte werden zurückgezogen und bleiben für ihre Autoren und im Nachweis
+erhalten; private Inhalte bleiben ohnehin ihren Erstellern erhalten. Andernfalls wäre die Space-Löschung
+ein Massenlöschpfad für die Arbeitsspuren fremder Beschäftigter — genau das, was der Schutz an anderer
+Stelle ausschließt. Ein Protokolleintrag hält den Vorgang fest.
 
 Löschen darf nur der im Space als Verantwortlicher hinterlegte Nutzer oder ein System-Admin.
 
@@ -301,7 +302,8 @@ Wenn ein Nutzer die Organisation verlässt:
 4. Für zentral gepflegte Bestände ist Gruppen-Eigentum der Regelfall und verhindert das Problem von
    vornherein.
 5. Sein persönlicher Space wird deaktiviert, nicht gelöscht (Nachweisgründe) — und **nicht lesbar
-   gemacht**. Entwürfe darin bleiben unzugänglich. Chats und Artefakte unterliegen der Aufbewahrungsregel.
+   gemacht**. Private Chats und Artefakte darin bleiben unzugänglich. Geteilte Inhalte unterliegen der
+   Aufbewahrungsregel.
 
 Die **Löschung** eines Kontos ist davon zu unterscheiden: Sie ist ein Vorgang nach DSGVO und in
 [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md#vollständigkeit-nach-dsgvo-löschung-und-export)
@@ -339,7 +341,7 @@ Befristung:  bis 2026-03-31
 Hinweis:     Sie sieht alle Chats und Artefakte des Space — vor der Aufnahme prüfen
 ```
 
-Die Aufnahme externer Personen ist besonders folgenreich, weil ihnen damit alle **abgelegten** Inhalte des
+Die Aufnahme externer Personen ist besonders folgenreich, weil ihnen damit alle **geteilten** Inhalte des
 Space offenstehen — also die Arbeitsergebnisse namentlich bekannter Beschäftigter. Externe Konten sind
 gekennzeichnet, die Aufnahme verlangt eine ausdrückliche Bestätigung und wird protokolliert. Ein bloßer
 Hinweistext genügt hier nicht. Für solche Fälle ist ein eigener, eng geschnittener Space der richtige Weg.
