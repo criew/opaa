@@ -160,8 +160,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String authHeader =
           AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
+      // #637: the library's own sourceInsecureSsl, mirroring UrlIndexingExecutor#execute - before
+      // this fix it was always false here, so a RSS_FEED library configured with
+      // sourceInsecureSsl: true still rejected a self-signed certificate on its own feed fetch.
       HttpClient httpClient =
-          AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+          AutoindexCrawlerService.buildHttpClient(
+              config.proxyHost(), config.proxyPort(), targetLibrary.isSourceInsecureSsl());
 
       Optional<RssFeedState> feedState = feedStateRepository.findByFeedUrl(feedUrl);
       HttpResponse<InputStream> feedResponse =
