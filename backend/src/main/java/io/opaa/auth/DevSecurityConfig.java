@@ -74,6 +74,16 @@ public class DevSecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
+                    // #582/#583: branding is readable without authentication. The sign-in
+                    // page is the first thing a user sees and has to carry the operator's own
+                    // product name, claim and logo - it renders before there is a session, so an
+                    // authenticated-only endpoint could not brand it at all. What this exposes is
+                    // deliberate and bounded: the name, claim, accent colour and logo of the
+                    // deployment - that is, which Behörde runs it, which anyone reaching its
+                    // sign-in page in the first place can already tell. No user, space, library or
+                    // configuration data is reachable through either path.
+                    .requestMatchers("/api/v1/branding", "/api/v1/branding/logo")
+                    .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()

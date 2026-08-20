@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { Navigate, useLocation } from 'react-router'
+import BrandMark from '../components/BrandMark'
 import { useAuthStore } from '../stores/authStore'
 import { usePageTitle } from '../hooks/usePageTitle'
 
@@ -38,10 +39,15 @@ export default function LoginPage() {
       }}
     >
       <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
-        <Typography component="h1" variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
-          OPAA
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        {/*
+          The sign-in page is the one screen that renders before there is a session, which is why
+          #582's read endpoint is reachable without authentication (#583) - otherwise the first
+          thing a user sees would be the only thing that could not carry their house's mark.
+        */}
+        <Box component="h1" sx={{ m: 0, mb: 0.5 }}>
+          <BrandMark variant="h5" logoHeight={36} showClaim />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 3 }}>
           Zum Fortfahren anmelden
         </Typography>
 

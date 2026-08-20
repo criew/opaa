@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
+import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 import LoginPage from './LoginPage'
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    useBrandingStore.setState({ branding: OPAA_BRANDING })
     useAuthStore.setState({
       mode: null,
       user: null,
@@ -17,10 +19,45 @@ describe('LoginPage', () => {
     })
   })
 
-  it('renders OPAA title', () => {
+  it('renders the product name as the page heading', () => {
     useAuthStore.setState({ mode: 'oidc' })
     renderWithProviders(<LoginPage />, { withRouter: true })
     expect(screen.getByText('OPAA')).toBeInTheDocument()
+  })
+
+  /**
+   * #583's reason for opening the read endpoint to unauthenticated callers (#582): the sign-in
+   * page renders before there is a session and is the first thing anyone sees, so it has to carry
+   * the operator's own mark rather than the OPAA standard.
+   */
+  it('carries the operator branding, logo included', () => {
+    useAuthStore.setState({ mode: 'oidc' })
+    useBrandingStore.setState({
+      branding: {
+        productName: 'Landesamt-Assistent',
+        claim: 'Kurz und klar',
+        primaryColor: '#0B6FBC',
+        defaultColorScheme: 'LIGHT',
+        logoUrl: '/api/v1/branding/logo?v=abc123',
+      },
+    })
+
+    const { container } = renderWithProviders(<LoginPage />, { withRouter: true })
+
+    expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
+    expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
+    expect(container.querySelector('img')).toHaveAttribute('src', '/api/v1/branding/logo?v=abc123')
+    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+  })
+
+  it('falls back to the OPAA standard when nothing is configured', () => {
+    useAuthStore.setState({ mode: 'oidc' })
+    useBrandingStore.setState({ branding: OPAA_BRANDING })
+
+    const { container } = renderWithProviders(<LoginPage />, { withRouter: true })
+
+    expect(screen.getByText(OPAA_BRANDING.productName)).toBeInTheDocument()
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('renders SSO button for oidc mode', () => {

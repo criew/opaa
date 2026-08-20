@@ -325,6 +325,12 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
    tatsächlichen Neuverarbeitung (Stufe 2) oder — bei einem unveränderten Eintrag ohne bisherige Anlagen —
    aus dem Nachholmechanismus der Änderungserkennung unten.
 
+**Herkunftsanzeige (gebaut, #493).** Eine Anlage führt intern fest, zu welchem Eintrag sie gehört
+(`source_entry_url`). Die Bibliotheksdetailseite zeigt diesen Eintrag als Link unter der Anlage an, und
+`LibraryDocumentResponse` trägt ihn als `sourceEntryUrl` — eine Anlage im Index bleibt damit ihrem
+Feed-Eintrag zuordenbar. Noch nicht durchgereicht ist er in die Belegangabe einer Chat-Antwort
+(`SourceReference`); das ist als eigenständiger Folgeschritt in **Issue #639** erfasst.
+
 **Änderungserkennung — gestuft, je nach Sicherheit der Angabe:**
 
 - Der **Feed selbst** wird mit einer bedingten Anfrage abgerufen (ETag/`If-Modified-Since`); meldet die
@@ -390,9 +396,6 @@ Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lau
 
 - **Zeitplan.** Der Lauf wird angestoßen, nicht geplant, wie bei der Verzeichnisliste. Erfasst als
   **Issue #485**.
-- **Herkunftsanzeige.** Eine Anlage führt intern fest, zu welchem Eintrag sie gehört
-  (`source_entry_url`), aber weder die Schnittstelle noch die Oberfläche zeigen das an. Erfasst als
-  **Issue #493**.
 - **Zielprüfung.** Wie bei der Verzeichnisliste wird die angegebene Feed-Adresse nicht gegen private,
   lokale und nicht routbare Adressbereiche geprüft. Erfasst als **Issue #267**.
 
