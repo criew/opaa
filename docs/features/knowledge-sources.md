@@ -93,9 +93,14 @@ Ablauf beim Hochladen:
    Drag-and-drop. Ein Anhang im Chat ist ein eigener, noch offener Vorgang.
 2. Prüfung: Format, Größe, Schadsoftware. Abgelehnte Dateien werden mit Grund gemeldet.
    **Format und Größe sind gebaut** (#420) — dieselbe Formatliste (`SupportedDocumentFormats`) wie
-   Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Die Schadsoftwareprüfung
-   fehlt noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist
-   als eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
+   Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Seit #435 prüft der
+   Upload zusätzlich den tatsächlichen Dateiinhalt** per Tika-Erkennung anhand der Magic Bytes gegen
+   die behauptete Dateiendung — eine Binärdatei als `.pdf` oder eine Office-Datei als `.txt` wird
+   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Diese
+   Inhaltsprüfung gilt nur für den Upload-Pfad; Verzeichnis- und URL-Aufnahme bleiben bei der reinen
+   Endungsentscheidung (Begründung in `SupportedDocumentFormats`). **Die Schadsoftwareprüfung fehlt
+   noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
+   eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
    dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.

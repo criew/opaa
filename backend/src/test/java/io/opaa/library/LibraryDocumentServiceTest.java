@@ -20,11 +20,15 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.EmptyDocumentContentException;
 import io.opaa.indexing.FileProcessingService;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -269,6 +273,52 @@ class LibraryDocumentServiceTest {
             libraryId, pdfFile("report.pdf", "%PDF content"), currentUserId, false);
 
     assertThat(response.getFileName()).isEqualTo("report.pdf");
+  }
+
+  @Test
+  void aRealDocxUploadedAsDocxIsAccepted() throws IOException {
+    // #435 code review, finding 1: the riskiest cases in STRICT_CONTENT_TYPES_BY_EXTENSION are the
+    // Office formats, because their correct detection depends on transitive Tika parser modules
+    // (tika-parsers-standard, POI) actually being on the classpath - a plain byte literal like
+    // pdfFile's "%PDF-1.4\n" cannot stand in for them the way it can for PDF. Building a genuine
+    // .docx with POI (already on the test classpath via spring-ai-tika-document-reader) exercises
+    // the real ZipContainerDetector/POIFSContainerDetector path end to end, so a future Spring AI
+    // bump that trims those parsers would turn this test red instead of failing silently in
+    // production.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-docx");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-docx"))
+        .thenReturn(Optional.empty());
+    Document processed =
+        new Document(
+            "vertrag.docx",
+            "irrelevant",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            30L);
+    processed.setSourceType(DocumentSourceType.UPLOAD);
+    when(fileProcessingService.processUploadedFile(
+            any(Path.class), eq("vertrag.docx"), eq("checksum-docx"), any(), any(), any()))
+        .thenReturn(processed);
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), currentUserId, false);
+
+    assertThat(response.getFileName()).isEqualTo("vertrag.docx");
+  }
+
+  private MultipartFile realDocxFile(String originalFileName) throws IOException {
+    try (XWPFDocument document = new XWPFDocument()) {
+      XWPFParagraph paragraph = document.createParagraph();
+      XWPFRun run = paragraph.createRun();
+      run.setText("Ein echter DOCX-Inhalt fuer den Formaterkennungstest.");
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      document.write(out);
+      return new MockMultipartFile(
+          "file",
+          originalFileName,
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          out.toByteArray());
+    }
   }
 
   @Test

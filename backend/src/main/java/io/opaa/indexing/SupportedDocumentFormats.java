@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.apache.tika.mime.MediaType;
+import org.apache.tika.mime.MediaTypeRegistry;
 
 /**
  * The single place that decides which documents this system accepts for indexing (issue #375).
@@ -79,7 +81,15 @@ public final class SupportedDocumentFormats {
   private static final Map<String, Set<String>> STRICT_CONTENT_TYPES_BY_EXTENSION =
       Map.of(
           ".pdf", Set.of("application/pdf"),
-          ".doc", Set.of("application/msword", "application/x-tika-msoffice"),
+          // Deliberately *not* including application/x-tika-msoffice (#435 code review): that is
+          // the generic, unresolved OLE2 container type Tika falls back to when POI's format-
+          // specific sniffing inside the container fails - any OLE2 file this system cannot
+          // actually identify would pass as a "matching" .doc, defeating the point of this check.
+          // A real .doc Tika can parse is reported as application/msword (see the class Javadoc's
+          // note on tika-parser-microsoft-module/poi-scratchpad); anything that only resolves to
+          // the generic container type is content this system could not positively identify as
+          // Word at all, and is rejected like any other mismatch.
+          ".doc", Set.of("application/msword"),
           ".docx",
               Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
           ".pptx",
@@ -122,9 +132,16 @@ public final class SupportedDocumentFormats {
    * no entry in either map below and this method returns {@code false} for it, same as for a {@code
    * null} detection result.
    *
-   * <p>{@link #TEXT_TOLERANT_EXTENSIONS} only demand the content look like text at all (any {@code
-   * text/*} media type); every other supported extension demands one of the specific media types
-   * {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} lists for it.
+   * <p>{@link #TEXT_TOLERANT_EXTENSIONS} only demand the content look like text at all - not
+   * literally {@code text/*} (#435 code review: that would reject, say, an XML-formatted .txt
+   * export, since Tika reports XML as {@code application/xml}), but anything {@link
+   * MediaTypeRegistry#isInstanceOf} recognizes as {@code text/plain} or one of its declared
+   * specializations in Tika's own media type hierarchy - {@code application/xml}, {@code
+   * application/rtf} and {@code message/rfc822} among them, per {@code tika-mimetypes.xml}'s {@code
+   * sub-class-of} declarations. {@code application/pdf} and the ZIP/OLE2-based office types are not
+   * declared as such a specialization, so they are still rejected. Every other supported extension
+   * demands one of the specific media types {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} lists for
+   * it.
    */
   public static boolean contentMatchesExtension(String extension, String detectedMimeType) {
     if (detectedMimeType == null) {
@@ -132,7 +149,9 @@ public final class SupportedDocumentFormats {
     }
     String normalized = detectedMimeType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
     if (TEXT_TOLERANT_EXTENSIONS.contains(extension)) {
-      return normalized.startsWith("text/");
+      MediaTypeRegistry registry = MediaTypeRegistry.getDefaultRegistry();
+      MediaType detected = registry.normalize(MediaType.parse(normalized));
+      return detected != null && registry.isInstanceOf(detected, MediaType.TEXT_PLAIN);
     }
     Set<String> expected = STRICT_CONTENT_TYPES_BY_EXTENSION.get(extension);
     return expected != null && expected.contains(normalized);
