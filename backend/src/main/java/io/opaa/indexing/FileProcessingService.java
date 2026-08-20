@@ -82,9 +82,7 @@ public class FileProcessingService {
       List<org.springframework.ai.document.Document> parsed = documentService.parseDocument(file);
       if (parsed.isEmpty()) {
         log.warn("No content extracted from: {}", file);
-        doc.setStatus(DocumentStatus.FAILED);
-        documentRepository.save(doc);
-        return FileProcessingResult.PROCESSED;
+        return markConnectorFailed(doc.getId());
       }
 
       // Chunk the parsed content
@@ -95,14 +93,13 @@ public class FileProcessingService {
       // Enrich chunks with metadata and store via VectorStore
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      documentRepository.markFailed(doc.getId(), null);
       metrics.recordFailed();
       throw e;
     }
@@ -195,9 +192,7 @@ public class FileProcessingService {
           documentService.parseDocument(localFile);
       if (parsed.isEmpty()) {
         log.warn("No content extracted from URL document: {}", remoteUrl);
-        doc.setStatus(DocumentStatus.FAILED);
-        documentRepository.save(doc);
-        return FileProcessingResult.PROCESSED;
+        return markConnectorFailed(doc.getId());
       }
 
       List<org.springframework.ai.document.Document> chunks =
@@ -206,15 +201,13 @@ public class FileProcessingService {
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setLastModifiedRemote(lastModified);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      documentRepository.markFailed(doc.getId(), null);
       metrics.recordFailed();
       throw e;
     }
@@ -281,15 +274,13 @@ public class FileProcessingService {
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setChecksum(checksum);
-      doc.setLastModifiedRemote(publishedAt);
-      doc.setStatus(DocumentStatus.INDEXED);
-      documentRepository.save(doc);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
     } catch (Exception e) {
-      doc.setStatus(DocumentStatus.FAILED);
-      documentRepository.save(doc);
+      documentRepository.markFailed(doc.getId(), null);
       metrics.recordFailed();
       throw e;
     }
@@ -392,6 +383,54 @@ public class FileProcessingService {
     if (updated == 0) {
       log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
     }
+  }
+
+  /**
+   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
+   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry} (#632,
+   * generalizing PR #589's upload-path pattern). Uses {@link
+   * DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a plain
+   * {@code documentRepository.save}, because the row can be deleted (e.g. by a concurrent {@code
+   * LibraryDocumentService#deleteDocument} or a connector library delete) between this method's
+   * caller creating/re-reading the row and {@link #storeChunks} finishing. A plain {@code save}
+   * would not notice: {@link Document} assigns its own id and carries no {@code @Version}, so
+   * Hibernate would silently re-{@code INSERT} it as a zombie row.
+   *
+   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
+   *     {@link #storeChunks}, are removed again here and nothing is marked failed - the document
+   *     was deliberately deleted, not a processing failure), otherwise {@link
+   *     FileProcessingResult#PROCESSED}
+   */
+  private FileProcessingResult markConnectorIndexed(
+      UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
+    int updated =
+        documentRepository.markIndexedFromSource(
+            documentId, chunkCount, Instant.now(), checksum, lastModifiedRemote);
+    if (updated == 0) {
+      log.warn(
+          "Document {} was deleted while its chunks were being written; removing them again",
+          documentId);
+      vectorStore.delete("document_id == '" + documentId + "'");
+      return FileProcessingResult.SKIPPED;
+    }
+    return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The connector counterpart to {@link #markUploadFailed}, backing the {@code FAILED} transition
+   * in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry} when no content could
+   * be extracted (#632). Called before {@link #storeChunks} ever runs on this code path, so unlike
+   * {@link #markConnectorIndexed} there are no chunks to clean up on a zero-rows result - the row
+   * was simply deleted concurrently, and this quietly reports {@link FileProcessingResult#SKIPPED}
+   * instead of the usual {@link FileProcessingResult#PROCESSED}.
+   */
+  private FileProcessingResult markConnectorFailed(UUID documentId) {
+    int updated = documentRepository.markFailed(documentId, null);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked FAILED", documentId);
+      return FileProcessingResult.SKIPPED;
+    }
+    return FileProcessingResult.PROCESSED;
   }
 
   /**
