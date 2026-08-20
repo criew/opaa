@@ -27,6 +27,8 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.RssFeedState;
+import io.opaa.indexing.RssFeedStateRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceRepository;
@@ -97,6 +99,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private RssFeedStateRepository rssFeedStateRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
@@ -384,6 +387,69 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void updateLibraryChangingSourceUrlDeletesTheLibrarysOwnStaleRssFeedState() {
+    // #646, PR #665 review "should" finding 3: fk_rss_feed_state_library's ON DELETE CASCADE
+    // (migration 045) only fires on a library *deletion* - a sourceUrl change on an
+    // otherwise-surviving library needs its own cleanup, or a later reconfiguration back to a
+    // previously-used address would find this library's own stale ETag/Last-Modified again and end
+    // that run in a false 304 (the same defect #646 fixed, one level down: the same library reusing
+    // its own former address instead of a different library reusing another's).
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
+                .sourceUrl(URI.create("https://example.com/feed.xml")),
+            owner);
+    rssFeedStateRepository.save(
+        new RssFeedState(
+            library.getId(),
+            "https://example.com/feed.xml",
+            "\"etag\"",
+            "Mon, 01 Jan 2024 00:00:00 GMT"));
+    assertThat(
+            rssFeedStateRepository.findByLibraryIdAndFeedUrl(
+                library.getId(), "https://example.com/feed.xml"))
+        .isPresent();
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Feed-Bibliothek")
+            .sourceUrl(URI.create("https://example.com/other-feed.xml"));
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(
+            rssFeedStateRepository.findByLibraryIdAndFeedUrl(
+                library.getId(), "https://example.com/feed.xml"))
+        .isEmpty();
+  }
+
+  @Test
+  void updateLibraryWithoutChangingSourceUrlLeavesTheRssFeedStateRowUntouched() {
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Feed-Bibliothek", DocumentSourceType.RSS_FEED)
+                .sourceUrl(URI.create("https://example.com/feed.xml")),
+            owner);
+    rssFeedStateRepository.save(
+        new RssFeedState(
+            library.getId(),
+            "https://example.com/feed.xml",
+            "\"etag\"",
+            "Mon, 01 Jan 2024 00:00:00 GMT"));
+
+    // A rename alone (no source configuration fields in the request at all) must not touch the
+    // feed state - mirrors updateLibraryLeavesTheSourceConfigurationUntouchedWhenTheRequestCarries
+    // NoConfigField's reasoning for the source columns themselves.
+    libraryService.updateLibrary(
+        library.getId(), new LibraryUpdateRequest("Feed-Bibliothek umbenannt"), owner, false);
+
+    assertThat(
+            rssFeedStateRepository.findByLibraryIdAndFeedUrl(
+                library.getId(), "https://example.com/feed.xml"))
+        .isPresent();
   }
 
   @Test

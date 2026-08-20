@@ -25,6 +25,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 
 /**
@@ -258,6 +259,17 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
+    } catch (DataIntegrityViolationException e) {
+      // #646, PR #665 review, optional finding 6: fk_rss_feed_state_library (migration 045) makes
+      // the narrow delete-during-run race visible as a constraint violation - the target library
+      // was deleted (e.g. by a concurrent request that raced
+      // KnowledgeLibraryService#deleteLibrary's
+      // own RUNNING guard) between this run starting and saveFeedState's write. The raw JDBC/
+      // Hibernate exception message must never reach the user-facing run status (German, technical
+      // detail belongs in the log only, mirroring every other progress.fail call in this class).
+      log.error("RSS feed indexing failed - target library no longer exists: {}", feedUrl, e);
+      events.finalizeRun();
+      progress.fail("Die Bibliothek wurde während des Laufs gelöscht.");
     } catch (Exception e) {
       log.error("RSS feed indexing failed unexpectedly: {}", feedUrl, e);
       events.finalizeRun();

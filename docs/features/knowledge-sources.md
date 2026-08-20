@@ -336,7 +336,9 @@ Feed-Eintrag zuordenbar. Noch nicht durchgereicht ist er in die Belegangabe eine
 **Änderungserkennung — gestuft, je nach Sicherheit der Angabe:**
 
 - Der **Feed selbst** wird mit einer bedingten Anfrage abgerufen (ETag/`If-Modified-Since`); meldet die
-  Gegenstelle „unverändert", endet der Lauf nach dieser einen Anfrage.
+  Gegenstelle „unverändert", endet der Lauf nach dieser einen Anfrage. Dieser Zustand wird je Bibliothek
+  geführt, nicht je Feed-Adresse (#646) — eine neue oder umkonfigurierte Bibliothek mit einer zuvor schon
+  verwendeten Adresse erbt nie den ETag einer anderen Bibliothek und startet stets als „nie indiziert".
 - Jeder **Eintrag** wird zuerst gegen sein zuletzt gesehenes `pubDate` geprüft — bevor die Detailseite
   überhaupt angefragt wird. Ein Eintrag mit unverändertem `pubDate`, der bereits Anlagen-Dokumente
   besitzt, kostet damit nichts über den bereits geladenen Feed hinaus. **Fehlen ihm noch Anlagen** —

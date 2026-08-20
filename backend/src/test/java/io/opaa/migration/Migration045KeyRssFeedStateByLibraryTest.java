@@ -29,9 +29,10 @@ import org.junit.jupiter.api.Test;
  * a deleted library's row behind for a later library to collide with. That test fails without 045
  * applied (a real {@link SQLException} on the unique constraint) and is not run again after 045 -
  * the schema itself no longer permits reproducing the old defect once the fix is in place, which is
- * the point. Every other test in this class applies 045 and proves the fixed behavior: a
- * per-library row, orphan cleanup on backfill, and cascading deletion via {@code
- * fk_rss_feed_state_library}.
+ * the point. Every other test in this class applies 045 and proves the fixed behavior: every
+ * pre-existing row is cleared rather than guess-assigned to a library (PR #665 review, blocking
+ * finding 1 - guessing from feed_url would have reproduced #646 one migration later), and a
+ * library's own deletion cascades to its own row only.
  */
 class Migration045KeyRssFeedStateByLibraryTest extends AbstractMigrationTest {
 
@@ -78,18 +79,22 @@ class Migration045KeyRssFeedStateByLibraryTest extends AbstractMigrationTest {
   }
 
   @Test
-  void backfillAssignsAPreExistingRowToTheLibraryCurrentlyConfiguredWithThatFeedUrl()
-      throws Exception {
-    UUID libraryId = insertRssFeedLibrary(FEED_URL);
+  void clearsAPreExistingRowEvenWhenExactlyOneLibraryMatchesItsFeedUrl() throws Exception {
+    // PR #665 review, blocking finding 1: an earlier version of this migration backfilled
+    // library_id by matching feed_url against knowledge_libraries.source_url - even in this
+    // single-match case, that is unsafe in general (a second library could always have used the
+    // same address in the past) and this migration deliberately never distinguishes "exactly one
+    // match" from "several" - every pre-existing row is cleared unconditionally instead.
+    insertRssFeedLibrary(FEED_URL);
     insertLegacyFeedState(FEED_URL, "\"etag-a\"");
 
     applyChangelog045();
 
-    assertThat(feedStateLibraryId(FEED_URL)).isEqualTo(libraryId.toString());
+    assertThat(feedStateRowCount(FEED_URL)).isZero();
   }
 
   @Test
-  void backfillDeletesARowNoLiveLibraryClaims() throws Exception {
+  void clearsAPreExistingRowWhenNoLiveLibraryClaimsIt() throws Exception {
     // No knowledge_libraries row references this feed_url at all - e.g. the library that once did
     // was deleted (pre-fix, deleteLibrary left the row behind) or moved to a different sourceUrl.
     insertLegacyFeedState(FEED_URL, "\"etag-orphaned\"");
@@ -97,6 +102,22 @@ class Migration045KeyRssFeedStateByLibraryTest extends AbstractMigrationTest {
     applyChangelog045();
 
     assertThat(feedStateRowCount(FEED_URL)).isZero();
+  }
+
+  @Test
+  void clearsAPreExistingRowWhenTwoDifferentLibrariesOnceUsedTheSameFeedUrl() throws Exception {
+    // The exact scenario blocking finding 1 warned about: library A was deleted (pre-fix, leaving
+    // its row behind) and library B was later configured with the same feed_url. A backfill that
+    // matches by feed_url would non-deterministically attach the leftover row - carrying A's stale
+    // ETag - to B, reproducing #646's false-304 defect one migration later. Clearing the table
+    // outright never has this ambiguity.
+    UUID libraryB = insertRssFeedLibrary(FEED_URL);
+    insertLegacyFeedState(FEED_URL, "\"etag-from-deleted-library-a\"");
+
+    applyChangelog045();
+
+    assertThat(feedStateRowCount(FEED_URL)).isZero();
+    assertThat(libraryB).isNotNull();
   }
 
   @Test
@@ -151,7 +172,7 @@ class Migration045KeyRssFeedStateByLibraryTest extends AbstractMigrationTest {
             "db/changelog/changes/045-key-rss-feed-state-by-library.yaml",
             new ClassLoaderResourceAccessor(),
             liquibaseDatabase(connection));
-    liquibase.rollback(4, (String) null);
+    liquibase.rollback(3, (String) null);
     connection.setAutoCommit(true);
 
     assertThat(hasLibraryIdColumn()).isFalse();
@@ -235,16 +256,6 @@ class Migration045KeyRssFeedStateByLibraryTest extends AbstractMigrationTest {
               + "', '"
               + Instant.now()
               + "')");
-    }
-  }
-
-  private String feedStateLibraryId(String feedUrl) throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet result =
-            statement.executeQuery(
-                "SELECT library_id FROM rss_feed_state WHERE feed_url = '" + feedUrl + "'")) {
-      result.next();
-      return result.getString(1);
     }
   }
 
