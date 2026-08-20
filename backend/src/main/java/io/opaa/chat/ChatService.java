@@ -444,8 +444,9 @@ public class ChatService {
 
   /**
    * #613 review, finding 2: the shared guard {@link #updateChat} and {@link #appendTurn} both use -
-   * a chat's space always exists (fk_chats_space is ON DELETE RESTRICT, migration 032), so this
-   * never needs to reason about a missing space the way {@link #requireMembership} does.
+   * a chat's space always exists (fk_chats_space_organization is ON DELETE RESTRICT, migration 032,
+   * composite as of migration 047), so this never needs to reason about a missing space the way
+   * {@link #requireMembership} does.
    */
   private void requireSpaceNotArchived(UUID spaceId) {
     Space space =

@@ -128,12 +128,13 @@ public class UserService {
    * {@code @Transactional} and inserted the new user in a still-open transaction; {@code
    * ensureDefaultSpace} inserts the default space in its own {@code REQUIRES_NEW} transaction (see
    * its Javadoc), on a separate connection with its own snapshot that could not see the uncommitted
-   * {@code users} row, so the insert violated {@code fk_spaces_owner} and the whole login failed.
-   * Deferring the call to {@link TransactionSynchronization#afterCommit()} fixed that by
-   * guaranteeing the user row was already committed and visible by the time the personal space was
-   * created. #201 later added an equivalent personal-library provisioning call here; #522 removed
-   * it again (a user now creates their own libraries, there is no automatic default), so this
-   * method is back to guarding {@code ensureDefaultSpace} alone.
+   * {@code users} row, so the insert violated {@code fk_spaces_owner} (now {@code
+   * fk_spaces_owner_organization} as of migration 047) and the whole login failed. Deferring the
+   * call to {@link TransactionSynchronization#afterCommit()} fixed that by guaranteeing the user
+   * row was already committed and visible by the time the personal space was created. #201 later
+   * added an equivalent personal-library provisioning call here; #522 removed it again (a user now
+   * creates their own libraries, there is no automatic default), so this method is back to guarding
+   * {@code ensureDefaultSpace} alone.
    *
    * <p>Since {@link #findOrCreateUser} was made deliberately non-{@code @Transactional} (#293 code
    * review - see its Javadoc), there is no ambient transaction synchronization active here to

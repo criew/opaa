@@ -57,6 +57,17 @@ databaseChangeLog:
   #     columns staying RESTRICT rather than CASCADE. If a genuine violation exists in any of these
   #     six, changeSet 3/4 below fails loudly, which is the correct outcome - it is not this
   #     migration's job to invent a safe repair for that case.
+  #
+  # PR #678 review, finding 5: Liquibase commits each changeSet on Postgres. If changeSet 3 or 4
+  # ever does fail loudly on a genuine violation (see above), changeSet 2 has already committed and
+  # is not undone by that failure - a real operator facing this needs to know changeSet 2 already
+  # ran and deleted/nulled specific rows (which rows is not recorded anywhere; its own rollback is
+  # a deliberate no-op, mirroring 046-clear-cross-organization-parent-groups) before investigating
+  # further. Not addressed structurally here: splitting cleanup and constraint changes into
+  # different changeSets is required for the composite foreign keys to have clean data to apply
+  # against in the first place, and the alternative (one changeSet, relying on Postgres' per-
+  # changeSet transaction to roll back both together) would fail the same violation just as loudly,
+  # only without the intermediate, potentially useful state cleanup produces on the way there.
 
   - changeSet:
       id: 047-add-users-id-organization-unique-index
@@ -100,15 +111,16 @@ databaseChangeLog:
         - sql:
             comment: >
               A direct USER grant naming a foreign-organization subject is not a right worth
-              keeping in any form: delete it (asset_grants.subject_user_id). subject_group_id rows
-              are untouched - fk_asset_grants_subject_group_organization (migration 013) already
-              binds them to the organization.
+              keeping in any form: delete it (asset_grants.subject_user_id). No subject_type filter
+              needed - chk_asset_grants_subject (migration 013) already guarantees subject_user_id
+              is only ever set on a USER-subject row, so the join condition alone identifies them;
+              subject_group_id rows are untouched either way -
+              fk_asset_grants_subject_group_organization (migration 013) already binds them to the
+              organization.
             sql: >
               DELETE FROM asset_grants ag
               USING users u
-              WHERE ag.subject_type = 'USER'
-                AND ag.subject_user_id = u.id
-                AND ag.organization_id <> u.organization_id;
+              WHERE ag.subject_user_id = u.id AND ag.organization_id <> u.organization_id;
         - sql:
             comment: >
               An incident-scope grant naming a foreign-organization subject, requester or approver

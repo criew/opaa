@@ -399,9 +399,10 @@ public class SpaceService {
 
     // #525: chats are composition, not association - docs/features/spaces-and-assets.md#chats-
     // sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
-    // erhalten", so deleting the space they live in must not silently destroy them. fk_chats_space
-    // is ON DELETE RESTRICT (migration 032) and would reject this anyway, but a raw constraint
-    // violation surfaces as an opaque 500 - this check turns it into an understandable 409 instead.
+    // erhalten", so deleting the space they live in must not silently destroy them.
+    // fk_chats_space_organization is ON DELETE RESTRICT (migration 032, composite as of migration
+    // 047) and would reject this anyway, but a raw constraint violation surfaces as an opaque 500 -
+    // this check turns it into an understandable 409 instead.
     if (chatRepository.existsBySpaceId(spaceId)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
@@ -425,18 +426,18 @@ public class SpaceService {
 
   /**
    * Archives a space (#543, docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-
-   * statt-löschen) - the maintainer-decided way out of a space that {@code fk_chats_space} (ON
-   * DELETE RESTRICT, migration 032) makes permanently undeletable because it still contains a chat
-   * authored by someone other than the space owner, who cannot even see - let alone delete - that
-   * chat themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s
-   * behaviour: a real delete remains possible once every chat is actually gone. What it does
-   * instead is stop the space from accepting new content ({@code ChatService#createChat}, {@code
-   * ChatService#appendTurn}, {@code ChatService#updateChat} and {@link #addMember} all reject with
-   * 409) and hide it from {@link #listSpaces} for members without a chat of their own in it - but
-   * never for the owner or a system admin, since there is no unarchive endpoint and the typical
-   * case (#613 review, finding 3) is exactly an owner with no chat of their own in the space they
-   * just archived - while every chat, including ones the owner cannot see, stays fully readable for
-   * its author.
+   * statt-löschen) - the maintainer-decided way out of a space that {@code
+   * fk_chats_space_organization} (ON DELETE RESTRICT, migration 032, composite as of migration 047)
+   * makes permanently undeletable because it still contains a chat authored by someone other than
+   * the space owner, who cannot even see - let alone delete - that chat themselves. Archiving does
+   * not remove that guard or change {@link #deleteSpace}'s behaviour: a real delete remains
+   * possible once every chat is actually gone. What it does instead is stop the space from
+   * accepting new content ({@code ChatService#createChat}, {@code ChatService#appendTurn}, {@code
+   * ChatService#updateChat} and {@link #addMember} all reject with 409) and hide it from {@link
+   * #listSpaces} for members without a chat of their own in it - but never for the owner or a
+   * system admin, since there is no unarchive endpoint and the typical case (#613 review, finding
+   * 3) is exactly an owner with no chat of their own in the space they just archived - while every
+   * chat, including ones the owner cannot see, stays fully readable for its author.
    *
    * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
    * cannot be archived either, for the same reason it cannot be deleted (#333 - it is not this
@@ -517,10 +518,11 @@ public class SpaceService {
    * <p><b>Caller requirement:</b> because the insert runs on its own connection, {@code userId}
    * must already be committed and visible to other connections when this method is called - not
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
-   * that first creates the user row will fail with a {@code fk_spaces_owner} violation, because the
-   * {@code REQUIRES_NEW} connection cannot see the uncommitted row (regression fixed as a follow-up
-   * to #265/#280; see {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to
-   * a post-commit hook for exactly this reason).
+   * that first creates the user row will fail with a {@code fk_spaces_owner_organization} violation
+   * (composite as of migration 047), because the {@code REQUIRES_NEW} connection cannot see the
+   * uncommitted row (regression fixed as a follow-up to #265/#280; see {@code
+   * UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit hook for
+   * exactly this reason).
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
    * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
