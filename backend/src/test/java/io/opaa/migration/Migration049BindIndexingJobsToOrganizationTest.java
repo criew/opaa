@@ -16,14 +16,15 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Applies Liquibase changelog 049 in isolation against a database built from {@code
- * test-master-for-049.yaml} - the real changelog through changeSet 046, the same pattern as {@code
- * Migration046GroupsParentGroupOrganizationBindingTest}. 047 and 048 are reserved for other
- * in-flight issues at the time this class was written (#401 review context, 20.08.2026) - see that
- * fixture's own comment for the rebase note once they land.
+ * test-master-through-047.yaml} - the real changelog through changeSet 047 (#678, merged), the same
+ * pattern as {@code Migration046GroupsParentGroupOrganizationBindingTest} and {@code
+ * Migration047UserReferencesOrganizationBindingTest}. 048 (#680) is not yet merged at the time this
+ * class was rebased onto that fixture (#401 review follow-up, 20.08.2026) - see the fixture's own
+ * comment for the rebase note once it lands.
  *
  * <p><b>#401: reproduces the bug at the schema level before proving the fix.</b> {@link
  * #beforeTheMigrationIndexingJobsCarriesNoOrganizationIdAtAll} runs against the pre-migration
- * ({@code for-049}) fixture alone, without applying 049 - the exact defect the issue describes:
+ * ({@code through-047}) fixture alone, without applying 049 - the exact defect the issue describes:
  * {@code indexing_jobs} has no {@code organization_id} column at all, so nothing on the database
  * (or application) side can attribute a run to an organization, and a composite foreign key on
  * {@code library_id} referencing {@code knowledge_libraries(id, organization_id)} is not even
@@ -38,7 +39,7 @@ class Migration049BindIndexingJobsToOrganizationTest extends AbstractMigrationTe
 
   @Override
   protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-for-049.yaml";
+    return "db/changelog/test-master-through-047.yaml";
   }
 
   @BeforeEach
@@ -46,9 +47,12 @@ class Migration049BindIndexingJobsToOrganizationTest extends AbstractMigrationTe
     connection = connect();
     connection.setAutoCommit(true);
     // ORGANIZATION_A is migration 008's own seeded default organization id - insertOrganization is
-    // idempotent (ON CONFLICT DO NOTHING) so re-inserting it here is harmless.
+    // idempotent (ON CONFLICT DO NOTHING) so re-inserting it here is harmless. ORGANIZATION_B is
+    // deliberately *not* inserted here: 049-backfill-indexing-jobs-organization-id's own
+    // preConditions HALTs unless exactly one organization exists at the moment it runs (#401
+    // review, Nit 4), so any test that needs a second organization inserts it itself, strictly
+    // after applyChangelog049() has already run.
     insertOrganization(ORGANIZATION_A);
-    insertOrganization(ORGANIZATION_B);
   }
 
   @AfterEach
@@ -111,6 +115,9 @@ class Migration049BindIndexingJobsToOrganizationTest extends AbstractMigrationTe
   @Test
   void afterTheMigrationAJobCannotNameALibraryFromAnotherOrganization() throws Exception {
     applyChangelog049();
+    // Inserted only now, after the migration (and its single-organization-backfill precondition)
+    // has already run - see setUp()'s own comment.
+    insertOrganization(ORGANIZATION_B);
     UUID libraryInOrganizationB = insertLibrary(ORGANIZATION_B);
 
     // The composite foreign key fk_indexing_jobs_library_organization references

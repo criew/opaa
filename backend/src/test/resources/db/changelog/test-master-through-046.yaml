@@ -1,3 +1,12 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 046 - i.e. the schema exactly as it existed immediately before migration 047.
+#
+# Used by:
+# - Migration047UserReferencesOrganizationBindingTest, to build a realistic pre-migration
+#   database (via the real, versioned changelog files, not a hand-rolled schema) and then apply
+#   047 in isolation.
+#
+# See test-master-through-045.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -91,7 +100,3 @@ databaseChangeLog:
       file: db/changelog/changes/045-key-rss-feed-state-by-library.yaml
   - include:
       file: db/changelog/changes/046-bind-groups-parent-group-to-organization.yaml
-  - include:
-      file: db/changelog/changes/047-bind-user-references-to-organization.yaml
-  - include:
-      file: db/changelog/changes/049-bind-indexing-jobs-to-organization.yaml

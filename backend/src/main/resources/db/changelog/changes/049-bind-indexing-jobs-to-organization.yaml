@@ -79,6 +79,22 @@ databaseChangeLog:
         precondition): every row in this table today was necessarily written while exactly one
         organization existed, so "the one existing organization" and "the row's true organization"
         are the same fact, not a guess.
+
+        The precondition below turns that argument into an enforced check (#401 review, Nit 4):
+        if a second organization has somehow been created by the time this migration runs, the
+        single-organization fallback below would silently misattribute any library-less row to the
+        wrong organization - HALT makes that fail loudly instead, the same posture migrations 016
+        and 031 already use for their own preConditions.
+      preConditions:
+        - onFail: HALT
+          onFailMessage: >
+            049-backfill-indexing-jobs-organization-id assumes exactly one organization exists (see
+            this changeSet's own comment) - found more than one. The single-organization fallback
+            for library-less indexing_jobs rows is not safe to run as-is; resolve the correct
+            organization_id for those rows by hand first.
+        - sqlCheck:
+            expectedResult: "1"
+            sql: "SELECT count(*) FROM organizations"
       changes:
         - sql:
             sql: >
@@ -158,6 +174,15 @@ databaseChangeLog:
         organization_id too and fail that NOT NULL constraint on every library deletion. Uses the
         existing uk_knowledge_libraries_id_organization unique index (migration 012) as its target,
         the same one fk_documents_library_organization (migration 012) already relies on.
+
+        MATCH SIMPLE (Postgres' default, and what this composite key uses): when library_id IS
+        NULL, the whole composite key is not checked at all - a row with no library reference is
+        not "checked against no library", it is simply exempt from this constraint. That is exactly
+        the right behavior here, not a gap: such a row no longer names any library (migration 019's
+        own ON DELETE SET NULL, or a pre-#419 row that never had one), and its organization is still
+        held independently by the NOT NULL fk_indexing_jobs_organization from the previous
+        changeSet. The composite key is therefore never weaker than a bare NOT NULL library_id
+        would have been - it simply has nothing left to enforce once library_id itself is absent.
       changes:
         - sql:
             sql: >

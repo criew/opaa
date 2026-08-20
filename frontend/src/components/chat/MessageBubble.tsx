@@ -7,6 +7,7 @@ import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
 import { buildCitationIndex } from './citations'
 import MarkdownRenderer from './MarkdownRenderer'
+import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import SourceFootnotes from './SourceFootnotes'
 import FeedbackButtons from './FeedbackButtons'
 
@@ -28,6 +29,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   // a range like "3–4" covers several (#590 Nachbesserung). Transient, so the flash reads as a
   // pointer rather than a persistent selection.
   const [highlightedDocIndexes, setHighlightedDocIndexes] = useState<number[]>([])
+  const [evidenceOpen, setEvidenceOpen] = useState(false)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleCitationClick = useCallback(
     (numbers: number[]) => {
@@ -107,6 +109,19 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               messageId={message.id}
               citations={citations}
               highlightedDocIndexes={highlightedDocIndexes}
+              onOpenEvidence={
+                citations.docs.length > 0 || citations.uncited.length > 0
+                  ? () => setEvidenceOpen(true)
+                  : undefined
+              }
+            />
+          )}
+          {!isUser && (
+            <SourceEvidenceDrawer
+              open={evidenceOpen}
+              onClose={() => setEvidenceOpen(false)}
+              citations={citations}
+              answeredAt={message.timestamp}
             />
           )}
 

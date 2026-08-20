@@ -1,18 +1,18 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 046 - i.e. the schema exactly as it existed immediately before migration 049.
+# changeSet 047 - i.e. the schema exactly as it existed immediately before migration 049.
 #
-# Named "-for-049", not "-through-046", because 047 and 048 are reserved for other in-flight
-# issues at the time this fixture was written (#401 review context, 20.08.2026) - the numbering
-# skip is deliberate, not a gap to fill in later. Once 047 and 048 have actually landed on main,
-# Migration049BindIndexingJobsToOrganizationTest should be rebased onto the regular
-# test-master-through-048.yaml (if that fixture exists by then) instead of this one.
+# 048 (#680, chats organization binding) is not yet merged at the time this fixture was written
+# (#401 review follow-up, 20.08.2026) - db.changelog-master.yaml on main goes 046 -> 047 -> 049
+# directly, so this fixture mirrors that real order rather than anticipating a changeSet that does
+# not exist yet. Once 048 lands, Migration049BindIndexingJobsToOrganizationTest should move onto
+# whatever "-through-048" fixture that PR adds instead of this one.
 #
 # Used by:
 # - Migration049BindIndexingJobsToOrganizationTest, to build a realistic pre-migration database
 #   (via the real, versioned changelog files, not a hand-rolled schema) and then apply 049 in
 #   isolation.
 #
-# See test-master-through-045.yaml for the pattern this fixture follows.
+# See test-master-through-046.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -106,3 +106,5 @@ databaseChangeLog:
       file: db/changelog/changes/045-key-rss-feed-state-by-library.yaml
   - include:
       file: db/changelog/changes/046-bind-groups-parent-group-to-organization.yaml
+  - include:
+      file: db/changelog/changes/047-bind-user-references-to-organization.yaml

@@ -136,8 +136,10 @@ public class AssetGrantService {
     }
     // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
     // The guard's catch block pseudonymises request.getSubjectId() as the DENIED entry's
-    // subject_ref - audit_actor_pseudonyms.user_id carries fk_audit_actor_pseudonyms_user against
-    // users.id (migration 017), so pseudonymising an id that names no real user (a bogus id, or a
+    // subject_ref - audit_actor_pseudonyms.user_id carries
+    // fk_audit_actor_pseudonyms_user_organization against users(id, organization_id) (migration
+    // 017, composite as of migration 047), so pseudonymising an id that names no real user (a
+    // bogus id, or a
     // valid id probed from outside this organization) violated that FK, turned a should-be-403 into
     // an unhandled 500, and - because a DataIntegrityViolationException is not a
     // ResponseStatusException, so upsertGrant's noRollbackFor did not apply - rolled back the very
