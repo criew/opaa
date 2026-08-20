@@ -16,18 +16,19 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Applies Liquibase changelog 048 in isolation against a database built from the real, versioned
- * changelog through changeSet 046 - {@code test-master-for-048.yaml} (see that file's own comment
- * for why it stands in for the usual {@code test-master-through-047.yaml}: migration 047 was still
- * being developed in a parallel issue when this test was written).
+ * changelog through changeSet 046 - {@code test-master-through-046.yaml} (see that file's own
+ * comment for why it stands in for the usual {@code test-master-through-047.yaml}: migration 047
+ * was still being developed in a parallel issue when this test was written).
  *
  * <p><b>#677: reproduces the bug at the schema level before proving the fix.</b> {@link
  * #beforeTheMigrationAChatCanReferenceALibraryFromAnotherOrganization} runs against the
- * pre-migration ({@code for-048}) fixture alone, without applying 048 - the exact defect the issue
- * describes: {@code fk_chat_library_references_chat} and {@code fk_chat_library_references_library}
- * (migration 032) only referenced {@code chats(id)} and {@code knowledge_libraries(id)}, not their
- * composite {@code (id, organization_id)} counterparts, so nothing on the database side stopped a
- * chat from referencing a library in a different organization. That test succeeds where it should
- * fail, which is the bug. Every other test in this class applies 048 and proves the fixed behavior.
+ * pre-migration ({@code through-046}) fixture alone, without applying 048 - the exact defect the
+ * issue describes: {@code fk_chat_library_references_chat} and {@code
+ * fk_chat_library_references_library} (migration 032) only referenced {@code chats(id)} and {@code
+ * knowledge_libraries(id)}, not their composite {@code (id, organization_id)} counterparts, so
+ * nothing on the database side stopped a chat from referencing a library in a different
+ * organization. That test succeeds where it should fail, which is the bug. Every other test in this
+ * class applies 048 and proves the fixed behavior.
  *
  * <p>048 also installs a BEFORE INSERT trigger that derives organization_id from the row's own
  * chat, so every {@code insertLibraryReference} call in this class stays a plain two-column insert
@@ -43,7 +44,7 @@ class Migration048ChatLibraryReferencesOrganizationBindingTest extends AbstractM
 
   @Override
   protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-for-048.yaml";
+    return "db/changelog/test-master-through-046.yaml";
   }
 
   @BeforeEach
@@ -207,6 +208,8 @@ class Migration048ChatLibraryReferencesOrganizationBindingTest extends AbstractM
   }
 
   private void rollbackChangelog048() throws Exception {
+    // The "6" below is the current changeSet count of 048 (PR #680 review, finding 5) - update it
+    // if 048 ever grows another changeSet, or this silently rolls back too few.
     Liquibase liquibase =
         new Liquibase(
             "db/changelog/changes/048-bind-chat-library-references-to-organization.yaml",

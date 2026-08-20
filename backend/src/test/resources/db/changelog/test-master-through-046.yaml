@@ -1,13 +1,14 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
 # changeSet 046 - i.e. the schema exactly as it existed immediately before migration 048.
 #
-# Named test-master-for-048.yaml rather than the usual test-master-through-047.yaml because
-# migration 047 is being developed in parallel, in a separate issue, and had not been merged to
-# main at the time 048 was written (migration numbers 047 and 049 are reserved for that other work
-# and a further one; see 048-bind-chat-library-references-to-organization.yaml). 048 does not
-# depend on anything 047 introduces, so this fixture simply stops at 046 instead. If 047 has been
-# merged by the time this branch is rebased onto main, switch
-# Migration048ChatLibraryReferencesOrganizationBindingTest over to the regular
+# Named test-master-through-046.yaml, not test-master-through-047.yaml, because migration 047 was
+# being developed in parallel, in a separate issue (PR #678), and had not been merged to main at
+# the time 048 was written (migration numbers 047 and 049 are reserved for that other work and a
+# further one; see 048-bind-chat-library-references-to-organization.yaml). 048 does not depend on
+# anything 047 introduces, so this fixture simply stops at 046 instead - the usual "through the
+# changeSet immediately preceding the one under test" rule, just one migration earlier than the
+# convention would otherwise suggest. If 047 has been merged by the time this branch is rebased
+# onto main, switch Migration048ChatLibraryReferencesOrganizationBindingTest over to the regular
 # test-master-through-047.yaml fixture and delete this file.
 #
 # Used by:

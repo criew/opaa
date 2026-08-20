@@ -465,6 +465,17 @@ public class ChatService {
    * distinguishing "not readable" from "does not exist" would let a caller probe for library ids
    * they have no rights on, and a bare foreign-key violation from {@code chat_library_references}
    * would otherwise surface as an opaque 500 instead of a 400.
+   *
+   * <p>#677 (migration 048, PR #680 review, finding 3): {@code chat_library_references} now also
+   * carries organization_id, backed by a BEFORE INSERT trigger and enforced via composite foreign
+   * keys - see {@link Chat#getReferencedLibraryIds()}'s Javadoc. That layer is unreachable from
+   * this method: the chat itself is always persisted in the same transaction before this check's
+   * result is used, so chat_id is never dangling here, and {@code readableLibraryIds} is already
+   * scoped to {@code organizationId}, so a library from another organization never reaches this far
+   * to begin with. The trigger's {@code SELECT ... INTO STRICT} does change which exception class a
+   * raw SQL insert with a nonexistent chat_id would hit (plpgsql {@code NO_DATA_FOUND}, SQLState
+   * P0002, instead of the composite foreign key's SQLState 23503) - a case this method never
+   * produces.
    */
   private void requireReadableLibraries(
       Set<UUID> referencedLibraryIds, UUID authorId, UUID organizationId) {
