@@ -18,7 +18,7 @@ public class SecurityCorsConfig {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(
         Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
-    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
     config.setAllowCredentials(false);
 
