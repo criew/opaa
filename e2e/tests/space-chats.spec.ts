@@ -4,23 +4,29 @@ import { expect, test } from '../fixtures/auth'
 import {
   askQuestion,
   createLibraryWithDocument,
+  expectAnyCitedSource,
   expectCitedExclusively,
-  expectCitedSource,
   shareLibraryWithPerson,
   startFreshChat,
 } from '../fixtures/chat'
 import type { Page, TestInfo } from '@playwright/test'
 
-// Own fixture files, deliberately never uploaded by any other spec in this suite (review finding
-// on PR #554): io.opaa.query.QueryService merges source references by file name
+// This file (space-chats.spec.ts) is named, and sorts alphabetically, to run *after*
+// knowledge-libraries.spec.ts and knowledge-library-nacharbeiten.spec.ts (`s` > `k`) - the same
+// pattern the nacharbeiten spec already uses relative to knowledge-libraries.spec.ts, for the same
+// reason: #424's own scenarios run an *unscoped* topK search over the whole readable corpus, and
+// need a small, unpolluted one for their "the right document was cited" assertions to be
+// meaningful rather than incidentally true. This file, in turn, uploads several of its own
+// libraries - if it ran first, it would be #424's pollution problem instead of the other way
+// round (that was in fact CI-red on an earlier version of this file - see git history).
+//
+// For the same reason, own fixture files here too, deliberately never uploaded by any other spec
+// in this suite: io.opaa.query.QueryService merges source references by file name
 // (`toMap(SourceReference::getFileName, ...)`), and the KI stub gives every chunk the exact same
-// embedding (see e2e/ai-stub/server.mjs) - reusing knowledge-libraries.spec.ts's
-// wissensdokument.txt/eigenesdokument.txt here (this file sorts alphabetically *before*
-// knowledge-libraries.spec.ts, so its libraries exist first) would let that spec's own
-// "1./2. Bibliothek anlegen und finden" and the positive half of "5. Entzug wirkt" stay green even
-// if their own upload/share path were broken - a same-named document from one of this file's
-// long-lived, differently-shared libraries (e.g. scenario 4's dev-user-shared library) would
-// silently stand in for theirs. See e2e/README.md's "Szenarien" section for the full reasoning.
+// embedding (see e2e/ai-stub/server.mjs) - reusing wissensdokument.txt/eigenesdokument.txt here
+// would let #424's own assertions stay green even if its own upload/share path were broken, a
+// same-named document from one of this file's libraries silently standing in for theirs. See
+// e2e/README.md's "Szenarien" section for the full reasoning.
 const DOCUMENT_A_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -102,7 +108,16 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
 
     await startFreshChat(page)
     await askQuestion(page, question)
-    await expectCitedSource(page, DOCUMENT_A_NAME)
+    // Deliberately not expectCitedSource(page, DOCUMENT_A_NAME): this scenario is about the chat
+    // mechanism (an answer with sources exists, and both it and the chat list entry survive a
+    // reload), not about which library "Wissen nutzen" = on (the default, left untouched here) end
+    // up citing - that search is an unscoped topK over the entire readable corpus, and this file
+    // deliberately runs after several other specs that keep adding to it (see the module doc
+    // comment on sort order above). Asserting on this scenario's own document specifically would
+    // make the test fragile to how large that corpus has grown by the time it runs, not to
+    // anything this scenario is meant to catch - scenarios 2 and 5 below cover "the right library
+    // was searched" deterministically via "Wissen nutzen" off plus an explicit @-reference.
+    await expectAnyCitedSource(page)
 
     // sendMessage implicitly creates the chat and replaces the URL to point at it (#548) - once
     // that has happened, the URL no longer ends in ".../chats/new".
@@ -117,7 +132,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     // comment on deriveTitle), so every assertion below scopes to one or the other rather than the
     // whole page, to stay a single, unambiguous match.
     await expect(page.getByRole('main').getByText(question)).toBeVisible()
-    await expectCitedSource(page, DOCUMENT_A_NAME)
+    await expectAnyCitedSource(page)
     // The chat list (sidebar) reloads from the backend on a fresh page load - its entry is what
     // proves the chat itself, not just this one still-open tab, was actually persisted.
     await expect(page.getByRole('navigation').getByText(question, { exact: true })).toBeVisible()

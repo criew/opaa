@@ -5,7 +5,7 @@ import { expect } from '@playwright/test'
  * Reusable building blocks for scenarios that drive the chat UI (test(e2e) #424, #529). Extracted
  * out of knowledge-libraries.spec.ts, whose scenarios needed the exact same "reach a clean chat,
  * ask a question, assert on the cited sources" and "create/share a library" steps that #529's
- * chats-in-spaces.spec.ts now also needs - kept here once instead of duplicated across both spec
+ * space-chats.spec.ts now also needs - kept here once instead of duplicated across both spec
  * files.
  */
 
@@ -46,6 +46,23 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
 export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
   const card = page.getByTestId('source-card').filter({ hasText: fileName })
   await expect(card).toHaveAttribute('data-cited', 'true', { timeout: 15_000 })
+}
+
+/**
+ * Waits for *some* source card to appear cited, without pinning down which file. For scenarios
+ * whose point is the chat mechanism itself (an answer with sources exists, and survives a reload)
+ * rather than which library the unscoped, "Wissen nutzen" = on search actually reached: that
+ * search runs topK over the *entire* readable corpus, which by the time a given scenario runs
+ * also holds whatever every earlier-sorting spec file left behind (same fixed ai-stub embedding
+ * for every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall out of the
+ * top results as the corpus grows, without anything actually being broken. Scenarios that need to
+ * prove *which* library a search reached still use expectCitedSource/expectCitedExclusively with
+ * "Wissen nutzen" off plus an explicit @-reference, which scopes the search deterministically
+ * regardless of corpus size.
+ */
+export async function expectAnyCitedSource(page: Page): Promise<void> {
+  const citedCard = page.locator('[data-testid="source-card"][data-cited="true"]').first()
+  await expect(citedCard).toBeVisible({ timeout: 15_000 })
 }
 
 // Not "no source card at all": a plain absence check would pass just as happily before the

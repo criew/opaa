@@ -1,6 +1,6 @@
 Chat-Dokument A fuer die E2E-Suite (Issue #529)
 
-Dieses Dokument gehoert ausschliesslich chats-in-spaces.spec.ts und wird nie in einer der
+Dieses Dokument gehoert ausschliesslich space-chats.spec.ts und wird nie in einer der
 Bibliotheken von knowledge-libraries.spec.ts hochgeladen. Eigener, in der Suite einmaliger
 Dateiname - nicht wissensdokument.txt oder eigenesdokument.txt: io.opaa.query.QueryService fasst
 Quellenangaben ueber ihren Dateinamen zusammen (toMap(SourceReference::getFileName, ...)), und der
