@@ -134,7 +134,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // Step 3: Process each file
       for (AutoindexCrawlerService.CrawledFileEntry entry : supportedFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
-        if (isUnchanged(entry.url(), entry.lastModified())) {
+        if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
           log.info("Skipping unchanged URL document: {}", entry.name());
           progress.recordSkipped();
           progress.report();
@@ -233,15 +233,23 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * empty string every run. Treating two empty strings as equal would mean such a source is fetched
    * once and then never re-fetched again, no matter how the remote file actually changes - always
    * re-fetching when the signal is missing is the only safe fallback.
+   *
+   * <p>#491: mirrors the same check {@code FileProcessingService#processUrlFile} makes (library
+   * changed -> not unchanged) - without it, indexing the same source into a different target
+   * library never took effect for a document whose {@code lastModified} is otherwise unchanged,
+   * because this check runs before the download (and {@code processUrlFile}) is ever reached, and
+   * the document stayed behind in its previous library. The RSS path ({@link
+   * RssFeedIndexingExecutor#isUnchanged}) closed the equivalent gap in #490's review.
    */
-  boolean isUnchanged(String remoteUrl, String lastModified) {
+  boolean isUnchanged(String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
     if (lastModified == null || lastModified.isBlank()) {
       return false;
     }
     Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
     return existing.isPresent()
         && lastModified.equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED;
+        && existing.get().getStatus() == DocumentStatus.INDEXED
+        && targetLibrary.getId().equals(existing.get().getLibraryId());
   }
 
   static boolean isSupportedFormat(AutoindexCrawlerService.CrawledFileEntry entry) {
