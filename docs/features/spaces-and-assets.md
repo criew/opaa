@@ -62,7 +62,7 @@ Die Ausdifferenzierung der Asset-Typen ist **nicht** Gegenstand dieses Dokuments
 
 | Rolle | Darf |
 |---|---|
-| `VIEWER` | das Asset benutzen und seine Konfiguration einsehen — Agent aufrufen, Bibliothek liefert Treffer, Aufgabenbeschreibung und Dokumentenliste sind sichtbar |
+| `VIEWER` | das Asset benutzen und seine Konfiguration einsehen — Agent aufrufen, Bibliothek liefert Treffer, Aufgabenbeschreibung und Dokumentenliste sind sichtbar. Ausnahme Wissensbibliothek: ihre Quellverbindung (interner Serverpfad, Quell-URL, Proxy-Host) bleibt selbst einem `EDITOR` verborgen und wird erst ab `MANAGER` sichtbar — sie ist Infrastrukturdetail, nicht Konfiguration im Sinne dieser Zeile (#507) |
 | `EDITOR` | zusätzlich ändern |
 | `MANAGER` | zusätzlich teilen, Rechte vergeben, Freigabestufe und Auffindbarkeit setzen |
 | `OWNER` | zusätzlich löschen und Eigentum übertragen |

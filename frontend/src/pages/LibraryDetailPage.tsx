@@ -841,8 +841,13 @@ function LibraryIndexingSection({
         // Deliberately avoids the word "Quellkonfiguration" itself - several other tests on this
         // page match the section heading with the loose /quellkonfiguration/i and would otherwise
         // ambiguously match this hint too.
+        //
+        // #507 code review, finding 3: "Bearbeitende" reads as EDITOR in this app's own role
+        // vocabulary (assetRoleLabel maps EDITOR to "Bearbeiter") - the exact role this hint's
+        // gate (canEditSource, the MANAGER/OWNER bar) excludes. "Verwaltende" mirrors MANAGER's
+        // own label ("Verwalter") instead.
         <Alert severity="info" sx={{ mb: 2 }}>
-          Die Verbindungsdaten sind nur für Bearbeitende sichtbar.
+          Die Verbindungsdaten sind nur für Verwaltende (Verwalter oder Eigentümer) sichtbar.
         </Alert>
       )}
 

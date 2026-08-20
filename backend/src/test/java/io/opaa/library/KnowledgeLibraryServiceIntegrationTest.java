@@ -1001,12 +1001,28 @@ class KnowledgeLibraryServiceIntegrationTest {
     // organization-wide connector library.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
+    UUID editorGrantee = createUser(organizationA);
+    UUID managerGrantee = createUser(organizationA);
     LibraryResponse created =
         libraryService.createLibrary(
             new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
                 .visibility(LibraryVisibility.ORGANIZATION),
             owner);
+    // #507 code review, finding 2: an explicit EDITOR grant (one rank below the MANAGER bar) and
+    // an explicit MANAGER grant, so an accidental weakening to atLeast(EDITOR) - a plausible typo
+    // given AssetRole's general Javadoc calls EDITOR the "changes configuration" rank - fails this
+    // test, not just the coarser OWNER/VIEWER pairing above.
+    grantService.upsertGrant(
+        created.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, editorGrantee, AssetRole.EDITOR),
+        owner,
+        false);
+    grantService.upsertGrant(
+        created.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, managerGrantee, AssetRole.MANAGER),
+        owner,
+        false);
 
     // The owner holds OWNER (at least MANAGER) and sees the full source configuration.
     LibraryResponse asOwner = libraryService.getLibrary(created.getId(), owner, false);
@@ -1014,6 +1030,23 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(asOwner.getSourcePath()).isEqualTo("/data/documents");
     assertThat(asOwner.getSourceInsecureSsl()).isNotNull();
     assertThat(asOwner.getSourceCredentialsSet()).isNotNull();
+
+    // A direct MANAGER grantee sees it too - the bar is MANAGER, not OWNER specifically.
+    LibraryResponse asManager = libraryService.getLibrary(created.getId(), managerGrantee, false);
+    assertThat(asManager.getMyRole()).isEqualTo(AssetRole.MANAGER);
+    assertThat(asManager.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(asManager.getSourceInsecureSsl()).isNotNull();
+    assertThat(asManager.getSourceCredentialsSet()).isNotNull();
+
+    // An EDITOR grantee - one rank above VIEWER, one below the MANAGER bar - must not receive the
+    // source configuration fields either.
+    LibraryResponse asEditor = libraryService.getLibrary(created.getId(), editorGrantee, false);
+    assertThat(asEditor.getMyRole()).isEqualTo(AssetRole.EDITOR);
+    assertThat(asEditor.getSourcePath()).isNull();
+    assertThat(asEditor.getSourceUrl()).isNull();
+    assertThat(asEditor.getSourceProxy()).isNull();
+    assertThat(asEditor.getSourceInsecureSsl()).isNull();
+    assertThat(asEditor.getSourceCredentialsSet()).isNull();
 
     // Another organization member only reaches VIEWER through the ORGANIZATION-wide visibility
     // and must not receive the source configuration fields at all.

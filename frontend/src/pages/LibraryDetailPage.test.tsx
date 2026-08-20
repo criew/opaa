@@ -485,9 +485,7 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
-    expect(
-      screen.queryByText(/verbindungsdaten sind nur für bearbeitende sichtbar/i),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/verbindungsdaten sind nur für verwaltende/i)).not.toBeInTheDocument()
     unmount()
 
     setLibraryState(
@@ -496,7 +494,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(
-      await screen.findByText(/verbindungsdaten sind nur für bearbeitende sichtbar/i),
+      await screen.findByText(/verbindungsdaten sind nur für verwaltende/i),
     ).toBeInTheDocument()
     expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
   })
