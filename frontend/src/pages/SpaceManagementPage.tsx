@@ -39,7 +39,10 @@ export default function SpaceManagementPage() {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const selectSpace = useSpaceStore((s) => s.selectSpace)
+  const loadMembers = useSpaceStore((s) => s.loadMembers)
   const space = useSpaceStore((s) => s.selectedSpace)
+  const members = useSpaceStore((s) => s.members)
+  const isLoadingMembers = useSpaceStore((s) => s.isLoadingMembers)
   const error = useSpaceStore((s) => s.error)
   const addMember = useSpaceStore((s) => s.addMember)
   const updateMemberRole = useSpaceStore((s) => s.updateMemberRole)
@@ -76,6 +79,15 @@ export default function SpaceManagementPage() {
     }
   }, [loadSpaces, selectSpace, spaceId])
 
+  // #144: this page is only linked to for ADMIN (see SpacePage's "Space verwalten" button), but a
+  // MEMBER or CURATOR reaching it directly via URL simply gets an empty list from the 403 below
+  // instead of any identities or display names.
+  useEffect(() => {
+    if (spaceId) {
+      void loadMembers(spaceId)
+    }
+  }, [loadMembers, spaceId])
+
   useEffect(() => {
     void getUsers()
       .then(setAllUsers)
@@ -84,9 +96,9 @@ export default function SpaceManagementPage() {
 
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
   const availableUsers = useMemo(() => {
-    const memberIds = new Set(space?.members.map((m) => m.userId) ?? [])
+    const memberIds = new Set(members.map((m) => m.userId))
     return allUsers.filter((u) => !memberIds.has(u.id))
-  }, [allUsers, space?.members])
+  }, [allUsers, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const activeSpaceId = space?.id ?? null
   const name = draft.spaceId === activeSpaceId ? draft.name : (space?.name ?? '')
@@ -292,9 +304,20 @@ export default function SpaceManagementPage() {
               Dies ist Ihr Standard-Space. Sie arbeiten hier allein — Sie können jederzeit
               Mitglieder hinzufügen.
             </Alert>
+          ) : isLoadingMembers ? (
+            <Typography color="text.secondary">Mitgliederliste wird geladen …</Typography>
+          ) : members.length === 0 && !canManage && !isOwner ? (
+            // #674 review, nit c: a MEMBER or CURATOR reaching this page directly by URL gets a
+            // silent empty list from listSpaceMembers's 403 handling (#144) - without this, that
+            // renders as an unexplained blank block instead of naming why nothing is shown.
+            <Alert severity="info">
+              Sie haben nicht die erforderliche Rolle, um die Mitgliederliste dieses Space
+              einzusehen. Nur Administratoren, der Eigentümer und Systemadministratoren können sie
+              sehen.
+            </Alert>
           ) : (
             <Stack spacing={1.5}>
-              {space.members.map((member) => {
+              {members.map((member) => {
                 const memberIsOwner = member.userId === space.ownerId
                 return (
                   <Box

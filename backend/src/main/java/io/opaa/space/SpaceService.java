@@ -147,8 +147,13 @@ public class SpaceService {
   public List<SpaceMemberResponse> listMembers(
       UUID spaceId, UUID currentUserId, boolean systemAdmin) {
     Space space = loadSpace(spaceId, currentUserId);
+    // #144: the member list names every member of the space - who else works in "Disziplinar-
+    // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
+    // checks membership, this is restricted to ADMIN, the owner (checked explicitly by
+    // requireMemberListViewer - transferOwnership never changes the new owner's membership role,
+    // so the owner is not always ADMIN) and system admins.
     if (!systemAdmin) {
-      requireMembership(space, currentUserId);
+      requireMemberListViewer(space, currentUserId);
     }
 
     List<UUID> userIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
@@ -638,6 +643,23 @@ public class SpaceService {
   }
 
   /**
+   * #144: the member list is restricted to ADMIN, the owner and system admins. The owner check is
+   * explicit and not folded into "owner's membership is always ADMIN" - {@link #transferOwnership}
+   * only reassigns {@code Space.ownerId} and never touches the new owner's {@link SpaceMembership}
+   * role (review finding on #674), so a space can genuinely have an owner whose own membership is
+   * MEMBER or CURATOR.
+   */
+  private SpaceMembership requireMemberListViewer(Space space, UUID userId) {
+    SpaceMembership membership = requireMembership(space, userId);
+    if (membership.getRole() != SpaceRole.ADMIN && !space.getOwnerId().equals(userId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN,
+          "Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen");
+    }
+    return membership;
+  }
+
+  /**
    * #613 review, finding 2: "kein neuer Inhalt" is not only "no new chats" (already enforced by
    * {@code ChatService#createChat}) - it also covers adding a new member, which is why this is
    * called from {@link #addMember} too. See docs/features/spaces-and-assets.md#einen-space-
@@ -719,26 +741,17 @@ public class SpaceService {
     }
     space.getMemberships().forEach(m -> roleCounts.merge(m.getRole().name(), 1L, Long::sum));
 
-    List<UUID> memberIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
-    Map<UUID, String> displayNames = resolveDisplayNames(memberIds);
-
-    List<SpaceMemberResponse> members =
-        space.getMemberships().stream()
-            .map(
-                m ->
-                    new SpaceMemberResponse(m.getUserId(), m.getRole(), m.getCreatedAt())
-                        .displayName(displayNames.get(m.getUserId())))
-            .toList();
-
+    // #144: the aggregated roleCounts stay visible to every member ("how big is this room"), but
+    // the full member list with identities and display names is not part of SpaceResponse anymore
+    // - it is only available via listMembers, restricted to ADMIN, owner and system admins.
     return new SpaceResponse(
             space.getId(),
             space.getName(),
             space.isDefault(),
             space.isArchived(),
             space.getOwnerId(),
-            members.size(),
+            space.getMemberships().size(),
             roleCounts,
-            members,
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())

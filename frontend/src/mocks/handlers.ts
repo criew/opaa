@@ -14,6 +14,7 @@ import {
   mockUsers,
   mockSpaces,
   mockSpaceDetails,
+  mockSpaceMembers,
   mockGroups,
   mockGroupDetails,
   mockLibraries,
@@ -139,13 +140,14 @@ const UPLOAD_LIBRARY_INDEXING_ERROR = 'Für UPLOAD-Bibliotheken gibt es keinen I
 
 function recalculateRoleCounts(spaceId: string) {
   const space = mockSpaceDetails[spaceId]
-  if (!space) return
+  const members = mockSpaceMembers[spaceId]
+  if (!space || !members) return
   const base = { MEMBER: 0, CURATOR: 0, ADMIN: 0 }
-  for (const member of space.members) {
+  for (const member of members) {
     base[member.role] += 1
   }
   space.roleCounts = base
-  space.memberCount = space.members.length
+  space.memberCount = members.length
 }
 
 function getRunningStatus(step: number): IndexingStatusResponse {
@@ -368,9 +370,9 @@ export const handlers = [
       ...listEntry,
       ownerId: 'mock-user-id',
       roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-      members: [{ userId: 'mock-user-id', role: 'ADMIN' as const, createdAt: now }],
     }
     mockSpaceDetails[id] = detail
+    mockSpaceMembers[id] = [{ userId: 'mock-user-id', role: 'ADMIN' as const, createdAt: now }]
     return HttpResponse.json(detail, { status: 201 })
   }),
 
@@ -387,10 +389,30 @@ export const handlers = [
     return HttpResponse.json(space)
   }),
 
+  // #144: restricted to ADMIN, owner and system admin - the mock's single authenticated user is
+  // always the system admin (see mockUser), but its own membership role in this space still gates
+  // the list, mirroring SpaceService#listMembers/#requireMemberListViewer.
+  http.get('/api/v1/spaces/:spaceId/members', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    const members = mockSpaceMembers[spaceId]
+    if (!space || !members) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    if (space.userRole !== 'ADMIN') {
+      return HttpResponse.json(
+        { error: 'Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen' },
+        { status: 403 },
+      )
+    }
+    return HttpResponse.json(members)
+  }),
+
   http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {
     const spaceId = String(params.spaceId)
     const space = mockSpaceDetails[spaceId]
-    if (!space) {
+    const members = mockSpaceMembers[spaceId]
+    if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
 
@@ -398,7 +420,7 @@ export const handlers = [
     if (!body.userId) {
       return HttpResponse.json({ error: 'userId is required' }, { status: 400 })
     }
-    if (space.members.some((member) => member.userId === body.userId)) {
+    if (members.some((member) => member.userId === body.userId)) {
       return HttpResponse.json(
         { error: 'Der Benutzer ist bereits Mitglied dieses Space' },
         { status: 409 },
@@ -407,7 +429,7 @@ export const handlers = [
 
     const role = body.role ?? 'MEMBER'
     const member = { userId: body.userId, role, createdAt: new Date().toISOString() }
-    space.members.push(member)
+    members.push(member)
     recalculateRoleCounts(spaceId)
     return HttpResponse.json(member, { status: 201 })
   }),
@@ -416,10 +438,11 @@ export const handlers = [
     const spaceId = String(params.spaceId)
     const userId = String(params.userId)
     const space = mockSpaceDetails[spaceId]
-    if (!space) {
+    const members = mockSpaceMembers[spaceId]
+    if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    space.members = space.members.filter((member) => member.userId !== userId)
+    mockSpaceMembers[spaceId] = members.filter((member) => member.userId !== userId)
     recalculateRoleCounts(spaceId)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -428,10 +451,11 @@ export const handlers = [
     const spaceId = String(params.spaceId)
     const userId = String(params.userId)
     const space = mockSpaceDetails[spaceId]
-    if (!space) {
+    const members = mockSpaceMembers[spaceId]
+    if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const target = space.members.find((member) => member.userId === userId)
+    const target = members.find((member) => member.userId === userId)
     if (!target) {
       return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }
@@ -444,11 +468,12 @@ export const handlers = [
   http.post('/api/v1/spaces/:spaceId/transfer-ownership', async ({ params, request }) => {
     const spaceId = String(params.spaceId)
     const space = mockSpaceDetails[spaceId]
-    if (!space) {
+    const members = mockSpaceMembers[spaceId]
+    if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { userId: string }
-    const newOwner = space.members.find((member) => member.userId === body.userId)
+    const newOwner = members.find((member) => member.userId === body.userId)
     if (!newOwner) {
       return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }
@@ -474,6 +499,7 @@ export const handlers = [
   http.delete('/api/v1/spaces/:spaceId', ({ params }) => {
     const spaceId = String(params.spaceId)
     delete mockSpaceDetails[spaceId]
+    delete mockSpaceMembers[spaceId]
     const idx = mockSpaces.findIndex((item) => item.id === spaceId)
     if (idx >= 0) {
       mockSpaces.splice(idx, 1)

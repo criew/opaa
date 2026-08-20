@@ -2161,7 +2161,7 @@ components:
     SpaceResponse:
       type: object
       required:
-        [id, name, isDefault, archived, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
+        [id, name, isDefault, archived, ownerId, memberCount, roleCounts, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -2204,10 +2204,6 @@ components:
             MEMBER: 2
             CURATOR: 1
             ADMIN: 1
-        members:
-          type: array
-          items:
-            $ref: "#/components/schemas/SpaceMemberResponse"
         createdAt:
           type: string
           format: date-time

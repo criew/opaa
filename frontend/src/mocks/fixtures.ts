@@ -10,6 +10,7 @@ import type {
   QueryResponse,
   UserInfo,
   SpaceListResponse,
+  SpaceMemberResponse,
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
@@ -338,14 +339,6 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     memberCount: 1,
     userRole: 'ADMIN',
     roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-    members: [
-      {
-        userId: 'mock-user-id',
-        displayName: 'Admin',
-        role: 'ADMIN',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -360,26 +353,6 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     memberCount: 3,
     userRole: 'ADMIN',
     roleCounts: { MEMBER: 1, CURATOR: 1, ADMIN: 1 },
-    members: [
-      {
-        userId: 'owner-1',
-        displayName: 'Alice',
-        role: 'ADMIN',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-      {
-        userId: 'mock-user-id',
-        displayName: 'Admin',
-        role: 'ADMIN',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-      {
-        userId: 'curator-1',
-        displayName: 'Bob',
-        role: 'CURATOR',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -394,23 +367,57 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
     memberCount: 2,
     userRole: 'CURATOR',
     roleCounts: { MEMBER: 0, CURATOR: 1, ADMIN: 1 },
-    members: [
-      {
-        userId: 'owner-2',
-        displayName: 'Chris',
-        role: 'ADMIN',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-      {
-        userId: 'mock-user-id',
-        displayName: 'Admin',
-        role: 'CURATOR',
-        createdAt: '2026-03-01T10:00:00Z',
-      },
-    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
+}
+
+// #144: the full member list moved out of SpaceResponse into its own GET /members endpoint,
+// restricted (in the real backend) to ADMIN, owner and system admins - handlers.ts enforces the
+// same restriction against this fixture rather than exposing it unconditionally.
+export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
+  'space-personal': [
+    {
+      userId: 'mock-user-id',
+      displayName: 'Admin',
+      role: 'ADMIN',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+  ],
+  'space-engineering': [
+    {
+      userId: 'owner-1',
+      displayName: 'Alice',
+      role: 'ADMIN',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      userId: 'mock-user-id',
+      displayName: 'Admin',
+      role: 'ADMIN',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      userId: 'curator-1',
+      displayName: 'Bob',
+      role: 'CURATOR',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+  ],
+  'space-phoenix': [
+    {
+      userId: 'owner-2',
+      displayName: 'Chris',
+      role: 'ADMIN',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      userId: 'mock-user-id',
+      displayName: 'Admin',
+      role: 'CURATOR',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+  ],
 }
 
 export const mockGroups: GroupListResponse[] = [

@@ -16,6 +16,8 @@ vi.mock('react-router', async () => {
   }
 })
 
+// #144: membersBySpaceId lives here too - vi.hoisted's factory runs before the imports below, so
+// mockListSpaceMembers cannot close over a module-level const declared after it.
 const {
   mockUpdateSpaceDetails,
   mockUpdateSpaceMemberRole,
@@ -24,15 +26,36 @@ const {
   mockAddSpaceMember,
   mockDeleteSpace,
   mockArchiveSpace,
-} = vi.hoisted(() => ({
-  mockUpdateSpaceDetails: vi.fn(async () => ({}) as SpaceResponse),
-  mockUpdateSpaceMemberRole: vi.fn(async () => ({})),
-  mockRemoveSpaceMember: vi.fn(async () => undefined),
-  mockTransferSpaceOwnership: vi.fn(async () => undefined),
-  mockAddSpaceMember: vi.fn(async () => ({})),
-  mockDeleteSpace: vi.fn(async () => undefined),
-  mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
-}))
+  mockListSpaceMembers,
+  membersBySpaceId,
+} = vi.hoisted(() => {
+  const membersBySpaceId: Record<
+    string,
+    Array<{
+      userId: string
+      displayName?: string
+      role: 'MEMBER' | 'CURATOR' | 'ADMIN'
+      createdAt: string
+    }>
+  > = {
+    'space-personal': [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
+    'space-team': [
+      { userId: 'u1', displayName: 'Owner', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+      { userId: 'u2', displayName: 'Colleague', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+    ],
+  }
+  return {
+    mockUpdateSpaceDetails: vi.fn(async () => ({}) as SpaceResponse),
+    mockUpdateSpaceMemberRole: vi.fn(async () => ({})),
+    mockRemoveSpaceMember: vi.fn(async () => undefined),
+    mockTransferSpaceOwnership: vi.fn(async () => undefined),
+    mockAddSpaceMember: vi.fn(async () => ({})),
+    mockDeleteSpace: vi.fn(async () => undefined),
+    mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
+    mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
+    membersBySpaceId,
+  }
+})
 
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
@@ -43,6 +66,7 @@ vi.mock('../services/api', async () => {
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
+    listSpaceMembers: mockListSpaceMembers,
     updateSpaceDetails: mockUpdateSpaceDetails,
     updateSpaceMemberRole: mockUpdateSpaceMemberRole,
     removeSpaceMember: mockRemoveSpaceMember,
@@ -64,7 +88,6 @@ const personalSpace: SpaceResponse = {
   memberCount: 1,
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-  members: [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -80,10 +103,26 @@ const teamSpace: SpaceResponse = {
   memberCount: 2,
   userRole: 'ADMIN',
   roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 2 },
-  members: [
-    { userId: 'u1', displayName: 'Owner', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
-    { userId: 'u2', displayName: 'Colleague', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
-  ],
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
+// #674 review, nit e: a MEMBER who is neither ADMIN nor owner, reached this page directly by URL
+// (not via SpacePage's "Space verwalten" button, which is hidden from them). Reuses 'space-team's
+// id - the mocked useParams above is hardcoded to it - and the test below overrides
+// mockListSpaceMembers for a single call to return [], mirroring listSpaceMembers's
+// silent-empty-list handling of the backend's 403 for this caller.
+const nonAdminSpace: SpaceResponse = {
+  id: 'space-team',
+  name: 'Fremdverwaltet',
+  description: 'Team docs',
+  isDefault: false,
+  archived: false,
+  visibility: 'PRIVATE',
+  ownerId: 'someone-else',
+  memberCount: 2,
+  userRole: 'MEMBER',
+  roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -96,6 +135,8 @@ function setSpaceState(space: SpaceResponse) {
     isLoadingList: false,
     isLoadingDetails: false,
     error: null,
+    members: membersBySpaceId[space.id] ?? [],
+    isLoadingMembers: false,
   })
 }
 
@@ -121,15 +162,27 @@ describe('SpaceManagementPage', () => {
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
   })
 
-  it('marks the owner and hides remove/transfer actions for their own row', () => {
+  it('marks the owner and hides remove/transfer actions for their own row', async () => {
+    // #144: the page's own selectSpace effect clears the store's members synchronously before
+    // the mocked listSpaceMembers response repopulates it - findByText waits for that repopulation
+    // instead of racing it, matching the real (also async) endpoint this now goes through.
     setSpaceState(teamSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
 
-    expect(screen.getByText(/Owner · Eigentümer/)).toBeInTheDocument()
+    expect(await screen.findByText(/Owner · Eigentümer/)).toBeInTheDocument()
     // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves.
     expect(screen.getByText('Colleague')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /entfernen/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /zum eigentümer machen/i })).toBeInTheDocument()
+  })
+
+  it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([])
+    setSpaceState(nonAdminSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/nicht die erforderliche rolle/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
   })
 
   it('shows the delete button only for the owner of a non-personal space', () => {

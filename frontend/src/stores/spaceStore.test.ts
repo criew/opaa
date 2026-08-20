@@ -73,10 +73,14 @@ vi.mock('../services/api', () => ({
     memberCount: 1,
     userRole: 'ADMIN',
     roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-    members: [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   })),
+  // #144: the full member list moved to its own endpoint - loadMembers (called by
+  // archiveSelectedSpace among others) needs this mocked or it throws on the now-undefined import.
+  listSpaceMembers: vi.fn(async () => [
+    { userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+  ]),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
 }))
