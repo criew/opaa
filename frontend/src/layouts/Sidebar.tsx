@@ -17,7 +17,8 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
-import GridViewIcon from '@mui/icons-material/GridView'
+import CheckIcon from '@mui/icons-material/Check'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
 import SettingsIcon from '@mui/icons-material/Settings'
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore'
@@ -30,7 +31,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore } from '../stores/brandingStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { createSidebarTheme } from '../theme/theme'
-import { blue, darkRoles, fontFamily, navyRoles } from '../theme/tokens'
+import { blue, darkRoles, fontFamily, navyRoles, shadow } from '../theme/tokens'
 
 const SIDEBAR_WIDTH = 272
 
@@ -111,7 +112,7 @@ export default function Sidebar() {
         }}
       >
         <Box sx={{ px: 2.5, pt: 2.5, pb: 2 }}>
-          <BrandMark showClaim variant="h5" />
+          <BrandMark variant="h5" />
         </Box>
 
         <Box sx={{ px: 2, pb: 1.5 }}>
@@ -124,7 +125,7 @@ export default function Sidebar() {
               justifyContent: 'space-between',
               textAlign: 'left',
               px: 1.5,
-              py: 1,
+              py: 1.25,
               borderRadius: '10px',
               border: 1,
               // Mockup 1a outlines the switcher one step brighter than the section rules (#658).
@@ -132,7 +133,7 @@ export default function Sidebar() {
               bgcolor: 'background.paper',
               color: 'text.primary',
             }}
-            endIcon={<UnfoldMoreIcon sx={{ opacity: 0.7 }} />}
+            endIcon={<ExpandMoreIcon sx={{ opacity: 0.8 }} />}
           >
             <Box sx={{ minWidth: 0 }}>
               <Typography
@@ -161,12 +162,18 @@ export default function Sidebar() {
               anchorEl={spaceMenuAnchor}
               open={Boolean(spaceMenuAnchor)}
               onClose={closeSpaceMenu}
-              slotProps={{ paper: { sx: { width: SIDEBAR_WIDTH - 32 } } }}
+              slotProps={{
+                paper: { sx: { width: SIDEBAR_WIDTH - 32, boxShadow: shadow.overlay } },
+                list: { sx: { py: 0.5 } },
+              }}
             >
               <ListSubheader
                 sx={{
                   bgcolor: 'transparent',
                   lineHeight: 2.6,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  mb: 0.5,
                   fontFamily: fontFamily.mono,
                   fontSize: 9.5,
                   letterSpacing: '0.08em',
@@ -192,32 +199,38 @@ export default function Sidebar() {
                   <ListItemText
                     primary={space.name}
                     secondary={spaceSubtitle(space)}
-                    slotProps={{ primary: { noWrap: true } }}
+                    slotProps={{
+                      primary: {
+                        noWrap: true,
+                        sx: { fontWeight: space.id === activeChatSpaceId ? 500 : 400 },
+                      },
+                    }}
                   />
                   {space.archived && <Chip label="Archiviert" size="small" sx={{ ml: 1 }} />}
+                  {space.id === activeChatSpaceId && (
+                    <CheckIcon sx={{ ml: 1, fontSize: 15, color: 'primary.main' }} />
+                  )}
                 </MenuItem>
               ))}
-              <Divider />
+              <Divider sx={{ my: 0.5 }} />
               <MenuItem
                 onClick={() => {
                   closeSpaceMenu()
                   navigate('/spaces')
                 }}
+                sx={{ fontSize: 12.5, color: 'text.secondary' }}
               >
-                <ListItemIcon>
-                  <GridViewIcon fontSize="small" />
-                </ListItemIcon>
                 Alle Spaces anzeigen
               </MenuItem>
+              <Divider sx={{ my: 0.5 }} />
               <MenuItem
                 onClick={() => {
                   closeSpaceMenu()
                   setCreateDialogOpen(true)
                 }}
+                sx={{ fontWeight: 500, color: 'primary.main' }}
               >
-                <ListItemIcon>
-                  <AddIcon fontSize="small" />
-                </ListItemIcon>
+                <AddIcon sx={{ fontSize: 15, mr: 1 }} />
                 Neuen Space anlegen
               </MenuItem>
             </Menu>
@@ -225,17 +238,26 @@ export default function Sidebar() {
         </Box>
 
         <Box sx={{ px: 2, pb: 1, flexGrow: 1, minHeight: 0, overflowY: 'auto' }}>
-          <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
-            Chats
-          </Typography>
           {activeChatSpaceId ? (
             <Box sx={{ mt: 0.5 }}>
-              <ChatList spaceId={activeChatSpaceId} />
+              <ChatList
+                spaceId={activeChatSpaceId}
+                header={
+                  <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
+                    Chats
+                  </Typography>
+                }
+              />
             </Box>
           ) : (
-            <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
-              Kein Space verfügbar.
-            </Typography>
+            <>
+              <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
+                Chats
+              </Typography>
+              <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                Kein Space verfügbar.
+              </Typography>
+            </>
           )}
         </Box>
 

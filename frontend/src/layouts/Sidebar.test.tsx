@@ -114,12 +114,12 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
   })
 
-  it('renders the configured product name and claim rather than a hardcoded one', () => {
-    // #583: the sidebar head is no longer literal text - it comes from the branding store, which
-    // starts on the OPAA standard. The next test proves it actually follows a change.
+  it('renders the configured product name without the claim (mockup 1a shows the mark only)', () => {
+    // #583: the sidebar head comes from the branding store, which starts on the OPAA standard.
+    // #658: the claim moved out of the sidebar - mockup 1a reserves it for the sign-in page.
     renderSidebarAtRoute('/settings')
     expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+    expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
   })
 
   it('follows a configured branding', () => {
@@ -136,7 +136,6 @@ describe('Sidebar', () => {
     renderSidebarAtRoute('/settings')
 
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
-    expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
   })
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -14,6 +15,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import { useLocation, useNavigate } from 'react-router'
+import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
 import { useChatListStore } from '../../stores/chatListStore'
 import { useSpaceStore } from '../../stores/spaceStore'
@@ -22,15 +24,13 @@ function chatTitle(chat: ChatSummary): string {
   return chat.title?.trim() || 'Unbenannter Chat'
 }
 
-function formatUpdatedAt(updatedAt: string): string {
-  return new Date(updatedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
 interface ChatListProps {
   spaceId: string
+  /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
+  header?: ReactNode
 }
 
-export default function ChatList({ spaceId }: ChatListProps) {
+export default function ChatList({ spaceId, header }: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -85,23 +85,32 @@ export default function ChatList({ spaceId }: ChatListProps) {
 
   return (
     <Box>
-      <Tooltip
-        title={isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''}
+      {/* Mockup 1a: section head and the "+ Neu" action share one baseline row (#658). */}
+      <Box
+        sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', pb: 0.5 }}
       >
-        <span>
-          <Button
-            variant="text"
-            size="small"
-            startIcon={<AddIcon sx={{ fontSize: 14 }} />}
-            onClick={handleNewChat}
-            disabled={Boolean(isArchived)}
-            // Mockup 1a renders "+ Neu" as a quiet small link, not a boxed button (#658).
-            sx={{ mb: 0.5, minHeight: 0, px: 1, py: 0.25, fontSize: 12.5 }}
-          >
-            Neuer Chat
-          </Button>
-        </span>
-      </Tooltip>
+        {header ?? <span />}
+        <Tooltip
+          title={
+            isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
+          }
+        >
+          <span>
+            <Button
+              variant="text"
+              size="small"
+              aria-label="Neuer Chat"
+              startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+              onClick={handleNewChat}
+              disabled={Boolean(isArchived)}
+              // Mockup 1a: a quiet small link in blue-300 on the navy block, not a boxed button.
+              sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5, color: blue[300] }}
+            >
+              Neu
+            </Button>
+          </span>
+        </Tooltip>
+      </Box>
 
       {error && (
         <Typography color="error.main" variant="body2" sx={{ mb: 1 }}>
@@ -192,11 +201,7 @@ export default function ChatList({ spaceId }: ChatListProps) {
                   ) : (
                     <ListItemText
                       primary={chatTitle(chat)}
-                      secondary={formatUpdatedAt(chat.updatedAt)}
-                      slotProps={{
-                        primary: { noWrap: true, variant: 'body2' },
-                        secondary: { variant: 'caption' },
-                      }}
+                      slotProps={{ primary: { noWrap: true, variant: 'body2' } }}
                     />
                   )}
                 </ListItemButton>
