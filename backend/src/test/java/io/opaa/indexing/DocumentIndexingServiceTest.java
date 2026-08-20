@@ -43,6 +43,7 @@ class DocumentIndexingServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private KnowledgeLibraryRepository libraryRepository;
   @Mock private LibraryAccessService libraryAccessService;
+  @Mock private IndexingRunEventRepository indexingRunEventRepository;
 
   private DocumentIndexingService service;
 
@@ -60,7 +61,12 @@ class DocumentIndexingServiceTest {
             List.of(asyncIndexingExecutor, urlIndexingExecutor, rssFeedIndexingExecutor));
     service =
         new DocumentIndexingService(
-            indexingJobService, registry, userRepository, libraryRepository, libraryAccessService);
+            indexingJobService,
+            registry,
+            userRepository,
+            libraryRepository,
+            libraryAccessService,
+            indexingRunEventRepository);
 
     currentUser = new User("subject", "issuer", "user@example.com", "Test User");
     currentUser.setOrganizationId(organizationId);

@@ -43,6 +43,7 @@ class RssFeedIndexingExecutorTest {
   private IndexingJobService indexingJobService;
   private DocumentRepository documentRepository;
   private RssFeedStateRepository feedStateRepository;
+  private IndexingRunEventRepository indexingRunEventRepository;
   private RssFeedIndexingExecutor executor;
 
   // #478: sourceUrl is mutated in place per test via execute(String) below
@@ -75,6 +76,7 @@ class RssFeedIndexingExecutorTest {
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
     when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
+    indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     executor =
         newExecutor(
@@ -91,7 +93,8 @@ class RssFeedIndexingExecutorTest {
         documentRepository,
         feedStateRepository,
         new UrlFileDownloader(),
-        properties);
+        properties,
+        indexingRunEventRepository);
   }
 
   @AfterEach

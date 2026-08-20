@@ -1179,6 +1179,42 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/libraries/{libraryId}/indexing/runs:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibraryIndexingRuns
+      tags: [library, indexing]
+      summary: >
+        The last 10 indexing runs for a library, each with its own protocol of skipped/rejected
+        items and errors (#513).
+      description: >
+        Same read bar as GET .../indexing/status (at least a read grant on the library, #513) -
+        seeing past runs' outcomes is not the same right as starting a new one. Runs are ordered
+        newest first; older runs (beyond the last 10 for this library) are pruned together with
+        their events, mirroring indexing_jobs' own existing retention (IndexingJobService). Every
+        run's event list is capped (IndexingRunEventRecorder) - eventsTruncatedCount on a run
+        names how many further events that run recorded beyond the cap, without listing them.
+      responses:
+        "200":
+          description: The last 10 runs for this library, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingRunListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # #393: exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
@@ -1523,6 +1559,122 @@ components:
       type: string
       enum: [IDLE, RUNNING, COMPLETED, FAILED]
       example: COMPLETED
+
+    IndexingRunEventCategory:
+      type: string
+      description: >
+        Why a single item was skipped/rejected during a run, or that the run recorded an error for
+        it (#513). Deliberately coarse (five buckets, not one per exception type) so the category
+        stays a stable, translatable label rather than growing a new value with every executor
+        change:
+          * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
+            to a foreign host that looks like a bot-protection challenge, an unsupported link
+            scheme) - not a failure of OPAA's own processing.
+          * UNREACHABLE - the item's network location could not be reached at all (connection
+            failure, timeout, non-2xx status unrelated to a rejection above).
+          * UNSUPPORTED_FORMAT - the item's file format or content type is not one
+            SupportedDocumentFormats indexes.
+          * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
+            sourcePath) falls outside an operator-configured allowlist (#484).
+          * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
+      enum: [REJECTED, UNREACHABLE, UNSUPPORTED_FORMAT, ALLOWLIST, ERROR]
+      example: REJECTED
+
+    IndexingRunEvent:
+      type: object
+      required: [category, message]
+      properties:
+        category:
+          $ref: "#/components/schemas/IndexingRunEventCategory"
+        message:
+          type: string
+          description: >
+            A German, human-readable reason (#513) - never a raw challenge/redirect URL or
+            exception stack trace, only what an operator needs to understand why the item was
+            skipped.
+          example: "Vom Quellserver abgewiesen (Weiterleitung auf einen fremden Host)"
+        reference:
+          type: string
+          nullable: true
+          description: >
+            The affected document name, file path or source URL - never the raw challenge/
+            redirect target a bot-protection page issued (#513 acceptance criteria).
+          example: https://example.org/aktuelles/pressemitteilung-42
+      example:
+        category: REJECTED
+        message: "Vom Quellserver abgewiesen (Weiterleitung auf einen fremden Host)"
+        reference: https://example.org/aktuelles/pressemitteilung-42
+
+    IndexingRunResponse:
+      type: object
+      required:
+        [
+          id,
+          status,
+          documentCount,
+          totalDocuments,
+          documentsSkipped,
+          documentsFailed,
+          documentsIndexedTotal,
+          startedAt,
+          events,
+          eventsTruncatedCount,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/IndexingStatus"
+        documentCount:
+          type: integer
+          example: 42
+        totalDocuments:
+          type: integer
+          example: 42
+        documentsSkipped:
+          type: integer
+          example: 0
+        documentsFailed:
+          type: integer
+          example: 0
+        documentsIndexedTotal:
+          type: integer
+          example: 42
+        message:
+          type: string
+          nullable: true
+          example: Indexing completed successfully
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        events:
+          type: array
+          description: >
+            This run's protocol (#513), capped at 500 entries (IndexingRunEventRecorder) - see
+            eventsTruncatedCount for how many further events beyond the cap this run recorded.
+          items:
+            $ref: "#/components/schemas/IndexingRunEvent"
+        eventsTruncatedCount:
+          type: integer
+          description: >
+            How many further events this run recorded beyond the 500-entry cap on the events
+            list above (#513) - 0 when every event fit. The UI renders this as "… und N weitere".
+          example: 0
+
+    IndexingRunListResponse:
+      type: object
+      required: [runs]
+      properties:
+        runs:
+          type: array
+          description: The last 10 runs for this library, newest first (#513).
+          items:
+            $ref: "#/components/schemas/IndexingRunResponse"
 
     QueryRequest:
       type: object

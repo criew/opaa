@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
    * than the whole {@code indexing_jobs} table.
    */
   boolean existsByStatusAndLibraryId(JobStatus status, UUID libraryId);
+
+  /**
+   * Every run for {@code libraryId}, newest first (#513) - used both to answer the run-history
+   * endpoint and by {@code IndexingJobService#pruneOldRuns} to find runs beyond the retained last
+   * 10.
+   */
+  List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
 }

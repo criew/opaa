@@ -23,16 +23,19 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
   private final FilesystemPathAllowlist filesystemAllowlist;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
-      FilesystemPathAllowlist filesystemAllowlist) {
+      FilesystemPathAllowlist filesystemAllowlist,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.filesystemAllowlist = filesystemAllowlist;
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   @Override
@@ -44,6 +47,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
+    var events = new IndexingRunEventRecorder(indexingRunEventRepository, jobId);
 
     // #484/ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update
     // time - the operator-configured allowlist can be narrowed after a FILESYSTEM library was
@@ -56,6 +60,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           "Refusing to index library {}: sourcePath {} is outside the configured filesystem"
               + " allowlist",
           targetLibrary.getId(),
+          targetLibrary.getSourcePath());
+      events.record(
+          IndexingEventCategory.ALLOWLIST,
+          "Verzeichnispfad liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse",
           targetLibrary.getSourcePath());
       progress.fail(
           "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse - der Lauf"
@@ -75,7 +83,15 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
-      // documents is lower than the number of files in the directory.
+      // documents is lower than the number of files in the directory. #513: each one now also
+      // becomes its own UNSUPPORTED_FORMAT event, so the reason is visible per file, not only as
+      // a total in the backend log.
+      for (Path rejected : discovered.rejected()) {
+        events.record(
+            IndexingEventCategory.UNSUPPORTED_FORMAT,
+            "Dateiformat wird nicht unterstuetzt",
+            rejected.getFileName().toString());
+      }
       progress.addSkipped(
           RejectedDocumentReporter.reportRejected(
               IndexingSourceType.FILESYSTEM,
@@ -98,18 +114,33 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           }
         } catch (Exception e) {
           log.error("Failed to process file: {}", fileName, e);
+          events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", fileName);
           progress.recordFailed();
         }
         progress.report();
       }
 
+      finalizeEvents(jobId, events);
       progress.complete();
     } catch (IOException e) {
       log.error("Failed to discover files", e);
+      finalizeEvents(jobId, events);
       progress.fail(e.getMessage());
     } catch (Exception e) {
       log.error("Indexing failed unexpectedly", e);
+      finalizeEvents(jobId, events);
       progress.fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Persists {@code events}' overflow count on the job, once, at the end of a run (#513) - a no-op
+   * when nothing was truncated, so a run whose protocol fit under the cap never writes an empty
+   * {@code events_truncated_count} update.
+   */
+  private void finalizeEvents(UUID jobId, IndexingRunEventRecorder events) {
+    if (events.overflowCount() > 0) {
+      indexingJobService.recordEventsTruncated(jobId, events.overflowCount());
     }
   }
 }

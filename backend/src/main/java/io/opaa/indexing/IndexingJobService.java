@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,6 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 public class IndexingJobService {
+
+  /**
+   * How many runs are kept per library (#513, Umfangserweiterung - Maintainer-Ergaenzung
+   * 20.08.2026): older runs, together with their {@link IndexingRunEvent}s, are pruned by {@link
+   * #pruneOldRuns} whenever a new run starts.
+   */
+  static final int MAX_RETAINED_RUNS_PER_LIBRARY = 10;
 
   private final IndexingJobRepository indexingJobRepository;
 
@@ -36,12 +44,35 @@ public class IndexingJobService {
   public IndexingJob startJob(UUID libraryId) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
+    IndexingJob saved;
     try {
-      return indexingJobRepository.saveAndFlush(job);
+      saved = indexingJobRepository.saveAndFlush(job);
     } catch (DataIntegrityViolationException ex) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Fuer diese Bibliothek laeuft bereits ein Indizierungslauf", ex);
     }
+    pruneOldRuns(libraryId);
+    return saved;
+  }
+
+  /**
+   * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId}
+   * (#513, Umfangserweiterung), deleting every older one - {@code fk_indexing_run_events_job}'s
+   * {@code ON DELETE CASCADE} (migration 035) removes each pruned run's own {@link
+   * IndexingRunEvent}s along with it, so this method never needs to know about the event table at
+   * all. Called from {@link #startJob} so the newly started run is always counted among the
+   * retained ones, rather than pruning happening only on completion and briefly allowing 11.
+   */
+  private void pruneOldRuns(UUID libraryId) {
+    List<IndexingJob> runs = indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
+    if (runs.size() <= MAX_RETAINED_RUNS_PER_LIBRARY) {
+      return;
+    }
+    List<UUID> staleIds =
+        runs.subList(MAX_RETAINED_RUNS_PER_LIBRARY, runs.size()).stream()
+            .map(IndexingJob::getId)
+            .toList();
+    indexingJobRepository.deleteAllByIdInBatch(staleIds);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -105,12 +136,38 @@ public class IndexingJobService {
   }
 
   /**
+   * Records how many further {@link IndexingRunEvent}s {@code jobId}'s run recorded beyond {@link
+   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} (#513) - a no-op call (0) is never made; every
+   * executor only calls this once, at the end of a run, when {@code
+   * IndexingRunEventRecorder#overflowCount()} is actually positive.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordEventsTruncated(UUID jobId, int truncatedCount) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    job.setEventsTruncatedCount(truncatedCount);
+    indexingJobRepository.save(job);
+  }
+
+  /**
    * The most recent run for {@code libraryId}, or empty if it never ran. Used both to answer the
    * per-library status endpoint and, indirectly, by {@link #isJobRunning(UUID)} (#478).
    */
   @Transactional(readOnly = true)
   public Optional<IndexingJob> getLatestJob(UUID libraryId) {
     return indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId);
+  }
+
+  /**
+   * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first
+   * (#513) - never more than that, since {@link #pruneOldRuns} keeps at most that many rows in
+   * {@code indexing_jobs} for any one library to begin with.
+   */
+  @Transactional(readOnly = true)
+  public List<IndexingJob> getRecentJobs(UUID libraryId) {
+    return indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
   }
 
   /**

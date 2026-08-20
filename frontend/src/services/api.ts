@@ -10,6 +10,7 @@ import type {
   GroupMemberResponse,
   GroupResponse,
   HealthResponse,
+  IndexingRunListResponse,
   IndexingStatusResponse,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
@@ -282,6 +283,20 @@ export async function getIndexingStatus(libraryId: string): Promise<IndexingStat
   try {
     const { data } = await client.get<IndexingStatusResponse>(
       `/v1/libraries/${libraryId}/indexing/status`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #513: the last 10 runs for a library, each with its own protocol of skipped/rejected items and
+// errors - distinct from getIndexingStatus above, which only ever names the single current/most
+// recent run.
+export async function getIndexingRuns(libraryId: string): Promise<IndexingRunListResponse> {
+  try {
+    const { data } = await client.get<IndexingRunListResponse>(
+      `/v1/libraries/${libraryId}/indexing/runs`,
     )
     return data
   } catch (err) {

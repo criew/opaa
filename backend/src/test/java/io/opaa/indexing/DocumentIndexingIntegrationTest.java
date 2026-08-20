@@ -93,6 +93,7 @@ class DocumentIndexingIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private QueryService queryService;
   @MockitoBean private ChatModel chatModel;
@@ -239,11 +240,53 @@ class DocumentIndexingIntegrationTest {
     assertThat(completedJob.getDocumentsTotal()).isEqualTo(2);
     assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
 
+    // #513: the run's own protocol names *why* the file was skipped, not just that it was -
+    // without this, a rejected format is indistinguishable from any other skip reason once the
+    // run has finished.
+    List<IndexingRunEvent> events =
+        indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(completedJob.getId());
+    assertThat(events).hasSize(1);
+    assertThat(events.getFirst().getCategory()).isEqualTo(IndexingEventCategory.UNSUPPORTED_FORMAT);
+    assertThat(events.getFirst().getReference()).isEqualTo("bad.csv");
+    assertThat(completedJob.getEventsTruncatedCount()).isZero();
+
     // Verify only the supported file was indexed
     List<Document> documents = documentRepository.findAll();
     assertThat(documents).hasSize(1);
     assertThat(documents.getFirst().getFileName()).isEqualTo("good.txt");
     assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
+    // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
+    // library stay around - older ones, and their own events, are pruned once an 11th run starts.
+    Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
+
+    IndexingJob firstJob = triggerIndexing();
+    awaitJobCompletion(firstJob);
+    var firstCompleted = indexingJobRepository.findById(firstJob.getId()).orElseThrow();
+    assertThat(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(firstCompleted.getId()))
+        .as("the first run's own event exists before it gets pruned")
+        .isNotEmpty();
+
+    IndexingJob lastJob = firstJob;
+    for (int i = 0; i < 10; i++) {
+      lastJob = triggerIndexing();
+      awaitJobCompletion(lastJob);
+    }
+
+    List<IndexingJob> remainingRuns =
+        indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(targetLibraryId);
+    assertThat(remainingRuns).hasSize(10);
+    assertThat(remainingRuns).noneMatch(job -> job.getId().equals(firstJob.getId()));
+    assertThat(remainingRuns.getFirst().getId()).isEqualTo(lastJob.getId());
+
+    // The pruned run's event is gone too (fk_indexing_run_events_job's ON DELETE CASCADE) - not
+    // merely orphaned and still counted somewhere.
+    assertThat(indexingJobRepository.findById(firstJob.getId())).isEmpty();
+    assertThat(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(firstJob.getId()))
+        .isEmpty();
   }
 
   @Test

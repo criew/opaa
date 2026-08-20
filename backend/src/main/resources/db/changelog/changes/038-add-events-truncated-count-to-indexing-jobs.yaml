@@ -1,0 +1,23 @@
+databaseChangeLog:
+  # #513: how many further IndexingRunEvents a run recorded beyond the 500-entry cap
+  # (IndexingRunEventRecorder), without persisting them - see IndexingJob#eventsTruncatedCount's
+  # Javadoc. Defaults to 0 for every pre-existing row, which is correct: a run started before
+  # this issue never recorded any events at all, truncated or not.
+  - changeSet:
+      id: 038-add-events-truncated-count-to-indexing-jobs
+      author: opaa
+      comment: "Add events_truncated_count to indexing_jobs (#513)"
+      changes:
+        - addColumn:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: events_truncated_count
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: indexing_jobs
+            columnName: events_truncated_count

@@ -6,6 +6,7 @@ import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -36,18 +37,21 @@ public class DocumentIndexingService {
   private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService libraryAccessService) {
+      LibraryAccessService libraryAccessService,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
     this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   /**
@@ -88,6 +92,25 @@ public class DocumentIndexingService {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     return indexingJobService.getLatestJob(libraryId);
+  }
+
+  /**
+   * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
+   * newest first, each with its own protocol (#513) - same read bar as {@link #getStatus}: seeing
+   * past runs' outcomes is not the same right as starting a new one.
+   */
+  public List<IndexingRunDetail> getRecentRuns(
+      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+    if (!libraryAccessService.canRead(library, currentUserId, systemAdmin)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    }
+    return indexingJobService.getRecentJobs(libraryId).stream()
+        .map(
+            job ->
+                new IndexingRunDetail(
+                    job, indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId())))
+        .toList();
   }
 
   /**

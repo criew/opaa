@@ -3,6 +3,7 @@ import type {
   ChatDetail,
   ChatSummary,
   HealthResponse,
+  IndexingRunListResponse,
   IndexingStatusResponse,
   LibraryListResponse,
   QueryResponse,
@@ -44,6 +45,34 @@ export const mockIndexingCompleted: IndexingStatusResponse = {
 
 /** @deprecated Use mockIndexingCompleted instead */
 export const mockIndexingStatus = mockIndexingCompleted
+
+// #513: fixture for GET /api/v1/libraries/{libraryId}/indexing/runs - one run with a protocol
+// entry, mirroring the issue's own motivating BMF case (a rejected RSS entry).
+export const mockIndexingRuns: IndexingRunListResponse = {
+  runs: [
+    {
+      id: '11111111-1111-1111-1111-111111111111',
+      status: 'COMPLETED',
+      documentCount: 37,
+      totalDocuments: 42,
+      documentsSkipped: 5,
+      documentsFailed: 0,
+      documentsIndexedTotal: 37,
+      message: 'Indizierung abgeschlossen: 37 verarbeitet, 5 übersprungen, 0 fehlgeschlagen',
+      startedAt: '2025-01-15T10:29:00Z',
+      completedAt: '2025-01-15T10:30:00Z',
+      events: [
+        {
+          category: 'REJECTED',
+          message:
+            'Vom Quellserver abgewiesen (z. B. Bot-Schutz oder Weiterleitung auf einen fremden Host)',
+          reference: 'https://example.org/aktuelles/pressemitteilung-42',
+        },
+      ],
+      eventsTruncatedCount: 0,
+    },
+  ],
+}
 
 export const mockQueryResponses: QueryResponse[] = [
   {

@@ -62,6 +62,16 @@ public class IndexingJob {
   @Column(name = "library_id")
   private UUID libraryId;
 
+  /**
+   * How many further {@link IndexingRunEvent}s this run recorded beyond {@link
+   * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} (#513), without persisting them - 0 when every
+   * event fit under the cap. Set once, at the end of a run, by {@code
+   * IndexingJobService#recordEventsTruncated}; the UI renders it as "… und N weitere" after the
+   * (necessarily capped) event list.
+   */
+  @Column(name = "events_truncated_count")
+  private int eventsTruncatedCount;
+
   protected IndexingJob() {}
 
   public IndexingJob(JobStatus status) {
@@ -148,5 +158,13 @@ public class IndexingJob {
 
   public void setLibraryId(UUID libraryId) {
     this.libraryId = libraryId;
+  }
+
+  public int getEventsTruncatedCount() {
+    return eventsTruncatedCount;
+  }
+
+  public void setEventsTruncatedCount(int eventsTruncatedCount) {
+    this.eventsTruncatedCount = eventsTruncatedCount;
   }
 }

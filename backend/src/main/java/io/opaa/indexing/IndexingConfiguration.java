@@ -76,9 +76,14 @@ public class IndexingConfiguration {
       DocumentService documentService,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
-      FilesystemPathAllowlist filesystemPathAllowlist) {
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      IndexingRunEventRepository indexingRunEventRepository) {
     return new AsyncIndexingExecutor(
-        documentService, fileProcessingService, indexingJobService, filesystemPathAllowlist);
+        documentService,
+        fileProcessingService,
+        indexingJobService,
+        filesystemPathAllowlist,
+        indexingRunEventRepository);
   }
 
   @Bean
@@ -97,13 +102,15 @@ public class IndexingConfiguration {
       UrlFileDownloader urlFileDownloader,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      IndexingRunEventRepository indexingRunEventRepository) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         urlFileDownloader,
         fileProcessingService,
         indexingJobService,
-        documentRepository);
+        documentRepository,
+        indexingRunEventRepository);
   }
 
   @Bean
@@ -119,7 +126,8 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
       UrlFileDownloader urlFileDownloader,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      IndexingRunEventRepository indexingRunEventRepository) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
         fileProcessingService,
@@ -127,7 +135,8 @@ public class IndexingConfiguration {
         documentRepository,
         rssFeedStateRepository,
         urlFileDownloader,
-        properties);
+        properties,
+        indexingRunEventRepository);
   }
 
   /**
@@ -147,13 +156,15 @@ public class IndexingConfiguration {
       IndexingSourceExecutorRegistry indexingSourceExecutorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService libraryAccessService) {
+      LibraryAccessService libraryAccessService,
+      IndexingRunEventRepository indexingRunEventRepository) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
         userRepository,
         libraryRepository,
-        libraryAccessService);
+        libraryAccessService,
+        indexingRunEventRepository);
   }
 
   @Bean

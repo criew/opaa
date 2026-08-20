@@ -1,13 +1,16 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
+import { server } from '../mocks/server'
 import LibraryDetailPage from './LibraryDetailPage'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import type {
+  IndexingRunListResponse,
   IndexingStatusResponse,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
@@ -490,6 +493,105 @@ describe('LibraryDetailPage', () => {
       await screen.findByText(/dokumente: 10 verarbeitet \(2 übersprungen\)/i),
     ).toBeInTheDocument()
     expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
+  })
+
+  // #513: the run history section shows past runs' header data up front and reveals each run's
+  // own protocol (category/message/reference per skipped or rejected item) only after expanding
+  // it - collapsed by default, so a library with a long history does not dump every event onto
+  // the page at once.
+  it('shows past runs collapsed, revealing the protocol only after expanding a run', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-1',
+              status: 'COMPLETED',
+              documentCount: 10,
+              totalDocuments: 12,
+              documentsSkipped: 2,
+              documentsFailed: 0,
+              documentsIndexedTotal: 10,
+              message: null,
+              startedAt: '2026-03-01T09:00:00Z',
+              completedAt: '2026-03-01T09:01:00Z',
+              events: [
+                {
+                  category: 'UNSUPPORTED_FORMAT',
+                  message: 'Dateiformat wird nicht unterstuetzt',
+                  reference: 'bad.csv',
+                },
+              ],
+              eventsTruncatedCount: 0,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText(/letzte indizierungsläufe/i)).toBeInTheDocument()
+    await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
+    // MUI's Accordion keeps its (collapsed) AccordionDetails mounted in the DOM for the
+    // collapse/expand animation - collapsed-ness is exposed through aria-expanded on the summary
+    // button, not through the protocol's absence from the DOM.
+    const runToggle = screen.getByRole('button', { name: /10 verarbeitet, 2 übersprungen/i })
+    expect(runToggle).toHaveAttribute('aria-expanded', 'false')
+
+    const user = userEvent.setup()
+    await user.click(runToggle)
+
+    expect(runToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByText('bad.csv')).toBeVisible()
+    expect(screen.getByText('Dateiformat wird nicht unterstuetzt')).toBeVisible()
+    expect(
+      within(screen.getByText('bad.csv').closest('div')!).getByText(/format nicht/i),
+    ).toBeVisible()
+  })
+
+  it('names how many further events a run recorded beyond the protocol cap', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-1',
+              status: 'COMPLETED',
+              documentCount: 1,
+              totalDocuments: 600,
+              documentsSkipped: 599,
+              documentsFailed: 0,
+              documentsIndexedTotal: 1,
+              message: null,
+              startedAt: '2026-03-01T09:00:00Z',
+              completedAt: '2026-03-01T09:01:00Z',
+              events: [
+                {
+                  category: 'REJECTED',
+                  message: 'Vom Quellserver abgewiesen',
+                  reference: 'https://example.org/1',
+                },
+              ],
+              eventsTruncatedCount: 42,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByText(/1 verarbeitet, 599 übersprungen/i))
+
+    expect(await screen.findByText(/… und 42 weitere/i)).toBeInTheDocument()
   })
 
   it('shows the feed-entries-plus-document-total wording for a completed RSS_FEED run', async () => {
