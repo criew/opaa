@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.library.KnowledgeLibrary;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class UrlIndexingExecutorTest {
@@ -26,35 +28,72 @@ class UrlIndexingExecutorTest {
     // The <ul>-based layouts (Apache -FancyIndexing, Python http.server) never report a
     // lastModified at all - two blank strings comparing equal would mean such a source is
     // fetched once and never again, no matter how the remote file changes.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary targetLibrary = libraryWithId(libraryId);
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn("");
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(existing.getLibraryId()).thenReturn(libraryId);
     when(documentRepository.findByFilePath("https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
-    assertThat(executor.isUnchanged("https://host/file.txt", "")).isFalse();
+    assertThat(executor.isUnchanged("https://host/file.txt", "", targetLibrary)).isFalse();
   }
 
   @Test
   void isUnchanged_treatsNullLastModifiedAsUnknownAndAlwaysRefetches() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary targetLibrary = libraryWithId(libraryId);
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn(null);
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(existing.getLibraryId()).thenReturn(libraryId);
     when(documentRepository.findByFilePath("https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
-    assertThat(executor.isUnchanged("https://host/file.txt", null)).isFalse();
+    assertThat(executor.isUnchanged("https://host/file.txt", null, targetLibrary)).isFalse();
   }
 
   @Test
   void isUnchanged_returnsTrueForAMatchingNonBlankLastModified() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary targetLibrary = libraryWithId(libraryId);
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(existing.getLibraryId()).thenReturn(libraryId);
     when(documentRepository.findByFilePath("https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
-    assertThat(executor.isUnchanged("https://host/file.txt", "2025-06-14 09:00")).isTrue();
+    assertThat(executor.isUnchanged("https://host/file.txt", "2025-06-14 09:00", targetLibrary))
+        .isTrue();
+  }
+
+  // --- #491: the target library must be part of the skip decision ----------------------------
+
+  @Test
+  void isUnchanged_returnsFalseWhenTargetLibraryDiffersFromTheExistingDocuments() {
+    // A run indexing the same source into a different library must not skip the document just
+    // because its lastModified is unchanged - otherwise it stays behind in the old library
+    // forever (#491), since FileProcessingService#processUrlFile's own library check never gets
+    // a chance to run for a document already skipped here.
+    UUID libraryA = UUID.randomUUID();
+    KnowledgeLibrary libraryB = libraryWithId(UUID.randomUUID());
+    Document existing = mock(Document.class);
+    when(existing.getLastModifiedRemote()).thenReturn("2025-06-14 09:00");
+    when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(existing.getLibraryId()).thenReturn(libraryA);
+    when(documentRepository.findByFilePath("https://host/file.txt"))
+        .thenReturn(Optional.of(existing));
+
+    assertThat(executor.isUnchanged("https://host/file.txt", "2025-06-14 09:00", libraryB))
+        .isFalse();
+  }
+
+  private static KnowledgeLibrary libraryWithId(UUID id) {
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    when(library.getId()).thenReturn(id);
+    return library;
   }
 
   @Test
