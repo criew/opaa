@@ -44,6 +44,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    env_file: ${OPAA_ENV_FILE:-.env.docker}
     ports:
       - "${OPAA_FRONTEND_PORT:-3000}:80"
     depends_on:
