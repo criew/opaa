@@ -22,14 +22,58 @@ const ADMIN_USER = 'dev-admin'
 const REGULAR_USER = 'dev-user'
 const OUTSIDER_USER = 'dev-outsider'
 
+// display_name values from e2e/docker-compose.e2e.yml's OPAA_AUTH_DEV_USERS_* - what
+// GET /api/v1/auth/me actually returns for each subject, used below to prove which identity a
+// devUser navigation really landed on.
+const DEV_USER_DISPLAY_NAMES: Record<string, string> = {
+  [ADMIN_USER]: 'Dev Admin',
+  [REGULAR_USER]: 'Dev User',
+  [OUTSIDER_USER]: 'Dev Outsider',
+}
+
 /**
- * Opens the app as the given dev user and returns once the app shell has rendered. This is the
- * single reusable building block every scenario should use to reach the app authenticated,
- * instead of re-implementing it per spec.
+ * Opens the app as the given dev user and returns once the app shell has rendered - and, unlike a
+ * plain navigation, only once GET /api/v1/auth/me has actually confirmed the expected identity.
+ *
+ * This exists because of a CI finding (PR #554 follow-up, reported against an unrelated PR's run):
+ * `outsiderPage` was observed to end up authenticated as "Dev Admin" instead of "Dev Outsider" -
+ * `io.opaa.auth.DevAuthFilter` falls back to the configured *default* dev user whenever the
+ * `X-OPAA-Dev-User` header is absent, so a request that goes out before the frontend's dev-auth
+ * bootstrap (authStore#initialize -> devAuth#resolveDevUser, see frontend/src/services/devAuth.ts)
+ * has captured `?devUser=` from the URL and written it to sessionStorage silently authenticates as
+ * that default instead of failing loudly. A static read of the current frontend code did not turn
+ * up a concrete path for that (ProtectedRoute keeps the app shell - and with it the index route's
+ * `<Navigate to="/chat" replace/>`, which would otherwise strip the query string - unrendered
+ * until authStore's `isLoading` flips false, i.e. until well after resolveDevUser() has already
+ * run); this hardening is a safety net regardless of whether that gap gets tracked down, not a fix
+ * for it.
+ *
+ * A single retry (fresh navigation, not just a reload - a plain reload could hit the same race
+ * again with the query string already gone from the address bar) covers a one-off race; a second,
+ * still-wrong identity throws instead of silently letting a scenario run under the wrong account.
  */
-async function openAs(page: Page, devUser: string): Promise<void> {
-  await page.goto(`/?devUser=${encodeURIComponent(devUser)}`)
+async function openAs(page: Page, devUser: string, attempt = 1): Promise<void> {
+  const expectedDisplayName = DEV_USER_DISPLAY_NAMES[devUser]
+  const [meResponse] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' && response.url().endsWith('/api/v1/auth/me'),
+    ),
+    page.goto(`/?devUser=${encodeURIComponent(devUser)}`),
+  ])
   await expect(page).not.toHaveURL(/\/login(?:$|[/?#])/, { timeout: 15_000 })
+
+  const me = (await meResponse.json()) as { displayName: string | null }
+  if (me.displayName === expectedDisplayName) return
+
+  if (attempt >= 2) {
+    throw new Error(
+      `Dev-Auth-Identität stimmt nicht: erwartet "${expectedDisplayName}" (?devUser=${devUser}), ` +
+        `aber GET /api/v1/auth/me lieferte "${me.displayName}". Vermutlich lief die Anfrage vor ` +
+        'der devUser-Übernahme aus der URL (siehe openAs-Dokumentation in fixtures/auth.ts).',
+    )
+  }
+  await openAs(page, devUser, attempt + 1)
 }
 
 export const test = base.extend<{

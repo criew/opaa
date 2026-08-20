@@ -1,6 +1,16 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '../fixtures/auth'
+import {
+  askQuestion,
+  createLibraryWithDocument,
+  expectCitedExclusively,
+  expectCitedSource,
+  gotoLibraries,
+  gotoLibraryDetail,
+  shareLibraryWithPerson,
+  startFreshChat,
+} from '../fixtures/chat'
 import type { Page } from '@playwright/test'
 
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
@@ -53,95 +63,21 @@ const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 // Chats are persisted server-side (#525/#527) and keyed per user, not per browser session: a
 // fresh Playwright context (a new browser context per fixture, see fixtures/auth.ts) still talks
 // to the same backend account, so `/chat` now restores whatever chat that account last used - not
-// necessarily an empty one. `expectCitedSource`/`expectOwnFoundForeignNotFound` below assert
-// page-wide, which is only correct on a chat that holds exactly the one turn just asked; without
-// this, a later scenario reusing the same account (dev-user in scenarios 3 and 5, dev-outsider in
+// necessarily an empty one. `expectCitedSource`/`expectCitedExclusively` below assert page-wide,
+// which is only correct on a chat that holds exactly the one turn just asked; without this, a
+// later scenario reusing the same account (dev-user in scenarios 3 and 5, dev-outsider in
 // scenarios 4 and 6) would see source cards from an earlier scenario's turn still in the DOM
 // alongside the new one. Every scenario below explicitly starts a fresh, not-yet-persisted chat
-// before asking its question instead, so "the page shows exactly this one turn" is a fact, not an
-// assumption that happened to hold by scenario order (CI fix following PR #548's review).
-async function startFreshChat(page: Page) {
-  await page.goto('/chat')
-  await page.getByRole('button', { name: 'Neuer Chat' }).click()
-  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  // The route change can briefly leave ChatPage showing its loading spinner instead of the input -
-  // a stale loadChat for the previously active chat racing the reset to "new", or simply the
-  // moment before the freshly emptied chat has rendered. Waiting here explicitly, instead of
-  // trusting the URL alone, is what askQuestion below actually needs (CI fix following PR #548's
-  // review, nit 3).
-  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
-}
-
-async function askQuestion(page: Page, question: string) {
-  const input = page.getByPlaceholder('Stellen Sie eine Frage …')
-  await expect(input).toBeVisible()
-  await input.fill(question)
-  await page.getByRole('button', { name: 'Nachricht senden' }).click()
-}
-
-async function expectCitedSource(page: Page, fileName: string) {
-  const card = page.getByTestId('source-card').filter({ hasText: fileName })
-  await expect(card).toHaveAttribute('data-cited', 'true', { timeout: 15_000 })
-}
-
-// Not "no source card at all": see OWN_DOCUMENT_PATH's comment above for why the negative
-// scenarios assert a real own-vs-foreign split instead of a plain absence check.
-async function expectOwnFoundForeignNotFound(
-  page: Page,
-  ownFileName: string,
-  foreignFileName: string,
-) {
-  await expectCitedSource(page, ownFileName)
-  await expect(page.getByTestId('source-card').filter({ hasText: foreignFileName })).toHaveCount(
-    0,
-  )
-}
-
-// GET /api/v1/libraries is what decides whether a library is listed at all - the very thing
-// scenarios 4 and 5 assert the *absence* of. `toHaveCount(0)` alone would pass just as happily
-// before that request has even returned as after it confirmed absence, so this waits for the
-// concrete response instead of a fixed delay (see AGENTS.md / e2e/README.md "Serialisierungs-
-// Konvention" on not hanging scenarios on wall-clock time).
-async function gotoLibraries(page: Page) {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' && response.url().endsWith('/api/v1/libraries'),
-    ),
-    page.goto('/libraries'),
-  ])
-}
-
-// #481: the library overview no longer expands inline - every row navigates to its own detail
-// page (/libraries/:id), which is where Stammdaten, "Rechte verwalten" and, for an UPLOAD
-// library, the upload zone and document list now live.
-async function gotoLibraryDetail(page: Page, libraryName: string) {
-  await Promise.all([
-    page.waitForURL(/\/libraries\/[^/]+$/),
-    page.getByText(libraryName, { exact: true }).click(),
-  ])
-  await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
-}
+// (`startFreshChat`, see fixtures/chat.ts) before asking its question instead, so "the page shows
+// exactly this one turn" is a fact, not an assumption that happened to hold by scenario order (CI
+// fix following PR #548's review).
 
 // Creates a fresh library named libraryName for the acting user (mirroring scenario 1's own
 // creation step) and uploads OWN_DOCUMENT_PATH into it. Since #522 removed the automatically
 // provisioned personal library, there is no existing library to rely on for this upload - it must
 // be created here, on demand, same as any other library a user wants.
 async function uploadOwnDocument(page: Page, libraryName: string) {
-  await gotoLibraries(page)
-  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-  await page.getByRole('dialog').getByLabel('Name').fill(libraryName)
-  await Promise.all([
-    page.waitForURL(/\/libraries\/[^/]+$/),
-    page.getByRole('button', { name: 'Erstellen' }).click(),
-  ])
-  await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
-
-  await page.getByLabel('Dateien auswählen').setInputFiles(OWN_DOCUMENT_PATH)
-  // exact: true - a non-exact match risks a strict-mode violation once anything else on the page
-  // (e.g. a status hint) also happens to contain this filename as a substring.
-  await expect(page.getByText(OWN_DOCUMENT_NAME, { exact: true })).toBeVisible()
-  await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
+  await createLibraryWithDocument(page, libraryName, OWN_DOCUMENT_PATH, OWN_DOCUMENT_NAME)
 }
 
 /**
@@ -162,28 +98,14 @@ async function uploadOwnDocument(page: Page, libraryName: string) {
  * applied to a pre-existing feature rather than a fix: with `.filterExpression(...)` removed from
  * that call and `readableLibraryIds.isEmpty() ? List.of() : ...` short-circuit bypassed, both
  * scenarios fail identically - the own document is still (rightfully) cited, so
- * `expectOwnFoundForeignNotFound`'s first assertion passes, but its second one does not:
+ * `expectCitedExclusively`'s first assertion passes, but its second one does not:
  * `expect(locator).toHaveCount(expected) failed / Locator: getByTestId('source-card').filter({
  * hasText: 'wissensdokument.txt' }) / Expected: 0 / Received: 1` - the excluded user now finds the
  * other's document too. Both restored to green with the filter back in place.
  */
 test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Suche (#424)', () => {
   test('1. Eigene Bibliothek anlegen und befüllen', async ({ authenticatedPage: page }) => {
-    await gotoLibraries(page)
-    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByRole('dialog').getByLabel('Name').fill(LIBRARY_NAME)
-    // #481: the create dialog navigates straight to the new library's detail page on success -
-    // there is no separate documents page or picker to visit afterwards.
-    await Promise.all([
-      page.waitForURL(/\/libraries\/[^/]+$/),
-      page.getByRole('button', { name: 'Erstellen' }).click(),
-    ])
-    await expect(page.getByRole('heading', { name: LIBRARY_NAME })).toBeVisible()
-
-    await page.getByLabel('Dateien auswählen').setInputFiles(TEST_DOCUMENT_PATH)
-
-    await expect(page.getByText(TEST_DOCUMENT_NAME)).toBeVisible()
-    await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
+    await createLibraryWithDocument(page, LIBRARY_NAME, TEST_DOCUMENT_PATH, TEST_DOCUMENT_NAME)
   })
 
   test('2. Suche findet das eigene Dokument', async ({ authenticatedPage: page }) => {
@@ -196,20 +118,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // regularUserPage's fixture setup already logged dev-user in once (see fixtures/auth.ts),
     // which is what provisions the account GET /v1/admin/users below can find - without this, the
     // admin's picker would never list dev-user at all.
-    await gotoLibraries(adminPage)
-    await gotoLibraryDetail(adminPage, LIBRARY_NAME)
-    await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
-    await adminPage.getByRole('button', { name: 'Freigeben' }).click()
-    // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points
-    // back at "Person auswählen", so getByLabel resolves to both the input and the listbox.
-    // getByRole('combobox', ...) only ever matches the input itself.
-    const personInput = adminPage.getByRole('combobox', { name: 'Person auswählen' })
-    await personInput.click()
-    await personInput.fill('Dev User')
-    await adminPage.getByRole('option', { name: /Dev User/ }).click()
-    await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
-    await expect(adminPage.getByText('Dev User')).toBeVisible()
-    await adminPage.getByRole('button', { name: 'Schließen' }).click()
+    await shareLibraryWithPerson(adminPage, LIBRARY_NAME, 'Dev User', /Dev User/)
 
     await gotoLibraries(bPage)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
@@ -227,7 +136,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
 
     await startFreshChat(cPage)
     await askQuestion(cPage, QUESTION)
-    await expectOwnFoundForeignNotFound(cPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
+    await expectCitedExclusively(cPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
 
   test('5. Entzug wirkt', async ({ authenticatedPage: adminPage, regularUserPage: bPage }) => {
@@ -249,7 +158,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
 
     await startFreshChat(bPage)
     await askQuestion(bPage, QUESTION)
-    await expectOwnFoundForeignNotFound(bPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
+    await expectCitedExclusively(bPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
 
   test('6. Freigabe an eine Gruppe', async ({ authenticatedPage: adminPage, outsiderPage: cPage }) => {

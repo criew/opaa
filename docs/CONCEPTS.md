@@ -190,26 +190,29 @@ Zugangskontrolle](./features/spaces-and-assets.md).
 
 ### Suchbereich eines Chats
 
-Was ein Chat durchsucht, wird nicht durch eine Auswahl je Anfrage bestimmt, sondern durch zwei
-Steuerungen, die **am Chat selbst** hängen: den Schalter **„Wissen nutzen"** (Standard: an) und
-**@-Bibliotheksreferenzen** — beim Tippen von `@` im Eingabefeld vorgeschlagen, referenzierbar sind
-alle Bibliotheken, die der Nutzer lesen darf, unabhängig vom Space. Gesetzte Referenzen bleiben als
-entfernbare Chips **sticky am Chat**, nicht nur für eine einzelne Anfrage.
+Was ein Chat durchsucht, wird nicht durch eine Auswahl je Anfrage bestimmt, sondern ausschließlich
+durch die **Chip-Leiste am Eingabefeld** — die einzige Suchbereichssteuerung, kein zusätzlicher
+Schalter daneben: „Durchsucht wird, was in der Leiste steht." Beim Tippen von `@` werden alle
+Bibliotheken vorgeschlagen, die der Nutzer lesen darf, unabhängig vom Space, dazu immer als erster
+Eintrag die Spezial-Referenz **@Alles-Wissen**. Der Zustand bleibt als entfernbare Chips **sticky am
+Chat**, nicht nur für eine einzelne Anfrage.
 
-- **an** — im Zielbild die dem Space assoziierten Bibliotheken, geschnitten mit den lesbaren; bis zur
-  Space↔Bibliothek-Assoziation (#203) gelten ersatzweise alle lesbaren Bibliotheken, und ein Space ohne
-  Assoziationen verengt auch danach dauerhaft nicht. @-Referenzen bleiben in diesem Zustand ohne Wirkung
-  auf den Suchbereich
-- **aus** — ausschließlich die per @ referenzierten Bibliotheken, geschnitten mit den lesbaren; ohne
-  Referenz findet keine Dokumentensuche statt
+- **@Alles-Wissen** (Standard) — im Zielbild die dem Space assoziierten Bibliotheken, geschnitten mit
+  den lesbaren; bis zur Space↔Bibliothek-Assoziation (#203) gelten ersatzweise alle lesbaren
+  Bibliotheken, und ein Space ohne Assoziationen verengt auch danach dauerhaft nicht
+- **konkrete Bibliotheks-Chips** — ausschließlich die referenzierten Bibliotheken, geschnitten mit den
+  lesbaren. Der erste konkrete Chip ersetzt @Alles-Wissen; @Alles-Wissen erneut hinzuzufügen ersetzt
+  umgekehrt die konkreten Chips
+- **leere Leiste** — kein Retrieval; jeder Chip ist entfernbar, auch @Alles-Wissen, mit einem
+  Ein-Klick-Weg zurück
 
 Eine Space-Auswahl, die den Suchbereich einer einzelnen Anfrage steuert, gibt es nicht mehr. Siehe
 [Suchbereich je Chatart](./features/spaces-and-assets.md#suchbereich-je-chatart).
 
 - **Beispiel:** Eine Sachbearbeiterin öffnet einen Chat im Team-Space „Bauleitplanung" zu einer Frage,
-  die ausschließlich die Bibliothek „Rechtsquellen Denkmalschutz" betrifft. Sie schaltet „Wissen
-  nutzen" aus und referenziert die Bibliothek per `@Rechtsquellen-Denkmalschutz` — die Antwort stützt
-  sich dann nur auf diesen Bestand, nicht auf das gesamte lesbare Wissen.
+  die ausschließlich die Bibliothek „Rechtsquellen Denkmalschutz" betrifft. Sie referenziert die
+  Bibliothek per `@Rechtsquellen-Denkmalschutz`, was den vorbelegten @Alles-Wissen-Chip ersetzt — die
+  Antwort stützt sich dann nur auf diesen Bestand, nicht auf das gesamte lesbare Wissen.
 
 ---
 
@@ -447,8 +450,8 @@ Metadatenfilter in die Abfrage ein. Nicht freigegebene Chunks werden nie geladen
 
 **Ablauf:**
 1. Das System ermittelt die lesbaren Wissensbibliotheken der fragenden Person und schneidet sie mit dem
-   [Suchbereich des Chats](#suchbereich-eines-chats) — bestimmt durch „Wissen nutzen" und @-Referenzen,
-   oder durch den gebundenen Agenten
+   [Suchbereich des Chats](#suchbereich-eines-chats) — bestimmt durch die Chip-Leiste (@Alles-Wissen,
+   konkrete @-Referenzen oder eine leere Leiste), oder durch den gebundenen Agenten
 2. Die Frage lautet etwa: „Wie ist die Regelung zu Zulagen?"
 3. Die Vektorsuche liefert nur Chunks, deren Bibliothek im ermittelten Suchbereich liegt
 4. Es erscheinen ausschließlich Inhalte, für die eine Leseberechtigung besteht
@@ -969,7 +972,7 @@ Recherchegrundlage steht in [GraphRAG.md](./GraphRAG.md).
 | **Zitierzwang** | Ohne Beleg keine Antwort | „Dazu lässt sich nichts feststellen" |
 | **Konfidenz** | Wie belastbar die Grundlage ist | 0,4 — Auskunft vor Verwendung prüfen |
 | **Space** | Thematischer Arbeitsraum, flach; trägt Chats und Artefakte | „Bauleitplanung" |
-| **Suchbereich eines Chats** | Gesteuert am Chat über „Wissen nutzen" und @-Referenzen, nicht per Anfrage | Schalter aus + `@Rechtsquellen-Denkmalschutz` schränkt auf eine Bibliothek ein |
+| **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Alles-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage | `@Rechtsquellen-Denkmalschutz` ersetzt @Alles-Wissen und schränkt auf eine Bibliothek ein |
 | **KI-Asset** | Benanntes, teilbares Objekt mit Eigentümer und Rechten | Agent, Prompt-Bibliothek, Wissensbibliothek |
 | **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | „Rechtsquellen Soziales" |
 | **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Team-Spaces |

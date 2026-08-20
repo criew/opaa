@@ -26,7 +26,7 @@ function resetChatStore() {
     isLoading: false,
     isLoadingChat: false,
     error: null,
-    useKnowledge: true,
+    scope: 'all',
     referencedLibraryIds: [],
     pendingSettingsUpdate: null,
   })

@@ -1,5 +1,10 @@
 server:
   address: ${OPAA_SERVER_ADDRESS:localhost}
+  # Honor X-Forwarded-* from the reverse proxy chain so that same-origin browser requests are
+  # recognized as such behind a TLS-terminating proxy (#553). The outer proxy MUST set
+  # X-Forwarded-Proto authoritatively (overwriting any client-supplied value) - see
+  # docs/deployment.md; a spoofed header would otherwise let a request bypass the CORS check.
+  forward-headers-strategy: framework
 
 spring:
   application:

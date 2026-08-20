@@ -51,7 +51,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
 | **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527) |
-| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | ja — die Space-Auswahl ist entfernt; Schalter, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
+| **Suchfilter** | den Suchbereich einer Anfrage ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Alles-Wissen, konkrete @-Bibliotheksreferenzen, oder eine geleerte Leiste), nicht mehr über eine Space-Auswahl oder einen separaten Schalter | ja — die Space-Auswahl ist entfernt; Chip-Leiste, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
@@ -88,16 +88,22 @@ keine Wirkung im Backend, weil der zugrundeliegende Parameter dort ignoriert wur
 bereits in genau einem Arbeitsraum, eine zusätzliche Space-Auswahl je Anfrage wäre redundant gewesen
 und hätte eine Wirkung suggeriert, die es nicht gab. An ihre Stelle tritt eine gesprächsbezogene, keine
 anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md#suchbereich-je-chatart)):
+die **Chip-Leiste** am Eingabefeld, die einzige Suchbereichssteuerung — kein separater Schalter daneben.
+„Durchsucht wird, was in der Leiste steht" — die Leiste kennt drei Zustände:
 
-- ein Schalter **„Wissen nutzen"** (Standard: an) — an durchsucht heute alle Wissensbibliotheken, die
-  der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten), aus
-  durchsucht ausschließlich die per @ referenzierten. Ist aus und keine Bibliothek referenziert,
-  antwortet das Modell ohne Wissensbasis, sichtbar gekennzeichnet in Eingabefeld und Antwort,
-- **@-Bibliotheksreferenzen** direkt im Eingabefeld: Tippen von `@` schlägt alle Bibliotheken vor, die
-  der Nutzer lesen darf, unabhängig vom Arbeitsraum, per Tastatur oder Maus auswählbar. Gesetzte
-  Referenzen bleiben als entfernbare Chips **sticky am Gespräch** erhalten, nicht nur für eine einzelne
-  Anfrage — beide Steuerungen werden mit dem Gespräch persistiert (`PATCH /api/v1/chats/{chatId}`,
-  #527) und überleben damit ein Neuladen der Seite.
+- **@Alles-Wissen** (Standard, vorbelegter Spezial-Chip) — durchsucht heute alle Wissensbibliotheken,
+  die der Nutzer lesen darf (Übergangsregel bis #203; im Zielbild die dem Arbeitsraum assoziierten),
+- **konkrete Bibliotheks-Chips** — durchsucht ausschließlich die referenzierten. Tippen von `@` im
+  Eingabefeld schlägt alle Bibliotheken vor, die der Nutzer lesen darf, unabhängig vom Arbeitsraum,
+  dazu als erster Eintrag (bei leerer Eingabe) @Alles-Wissen selbst, per Tastatur oder Maus auswählbar. Der erste
+  konkrete Chip ersetzt @Alles-Wissen; @Alles-Wissen erneut hinzuzufügen ersetzt umgekehrt die
+  konkreten Chips,
+- **leere Leiste** — kein Retrieval, das Modell antwortet ohne Wissensbasis, sichtbar gekennzeichnet in
+  Eingabefeld und Antwort, mit einem Ein-Klick-Weg zurück zu @Alles-Wissen.
+
+Jeder Chip ist entfernbar, auch @Alles-Wissen. Der Zustand bleibt als entfernbare Chips **sticky am
+Gespräch** erhalten, nicht nur für eine einzelne Anfrage — er wird mit dem Gespräch persistiert
+(`PATCH /api/v1/chats/{chatId}`, #527) und überlebt damit ein Neuladen der Seite.
 
 Im Zielbild kommen dazu die Eingrenzung auf den Dokumenttyp und auf den Stand der Indizierung. Ein
 Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die Sicht, sie
@@ -192,7 +198,7 @@ Zweck, nicht nach Pfad.
 
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
-| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen, Schalter und @-Referenzen sind gebaut; die Space↔Bibliothek-Assoziation (#203) bleibt Zielbild |
+| Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage | `POST /api/v1/query` | ja — Frage, Antwort, Fundstellen und die Chip-Leiste (@Alles-Wissen, @-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203) bleibt Zielbild |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
 
 **Wissensbestände verwalten**
