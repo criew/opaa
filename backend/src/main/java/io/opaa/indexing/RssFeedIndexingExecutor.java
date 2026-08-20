@@ -160,12 +160,29 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String authHeader =
           AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-      HttpClient httpClient =
+      // #637: the library's own sourceInsecureSsl, mirroring UrlIndexingExecutor#execute - before
+      // this fix it was always false here, so a RSS_FEED library configured with
+      // sourceInsecureSsl: true still rejected a self-signed certificate on its own feed fetch.
+      //
+      // #663 review, finding 1: sourceInsecureSsl must never weaken certificate validation for a
+      // target the feed's own *content* points at (an entry's <link>, an attachment URL) once that
+      // target is a foreign host - only the feed's own origin is a source configuration the library
+      // owner actually vouches for. Two clients are therefore built: secureClient always validates
+      // normally, insecureClient relaxes validation only when the library asks for it, and is used
+      // exclusively for requests {@link #httpClientForTarget} resolves as same-origin with the feed
+      // itself (mirroring {@link #authHeaderForTarget}'s already-existing same-origin decision for
+      // the Authorization header, #642 review finding 1).
+      HttpClient secureClient =
           AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+      HttpClient insecureClient =
+          targetLibrary.isSourceInsecureSsl()
+              ? AutoindexCrawlerService.buildHttpClient(
+                  config.proxyHost(), config.proxyPort(), true)
+              : secureClient;
 
       Optional<RssFeedState> feedState = feedStateRepository.findByFeedUrl(feedUrl);
       HttpResponse<InputStream> feedResponse =
-          fetchFeed(httpClient, feedUrl, feedState, authHeader);
+          fetchFeed(insecureClient, feedUrl, feedState, authHeader);
 
       if (feedResponse.statusCode() == 304) {
         closeQuietly(feedResponse.body());
@@ -219,7 +236,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
         processEntry(
-            httpClient,
+            secureClient,
+            insecureClient,
             entry,
             targetLibrary,
             progress,
@@ -260,7 +278,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private void processEntry(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       RssFeedEntry entry,
       KnowledgeLibrary targetLibrary,
       IndexingRunProgress progress,
@@ -285,7 +304,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
-          httpClient,
+          secureClient,
+          insecureClient,
           entryUrl,
           progress,
           events,
@@ -301,7 +321,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     DetailPage detailPage;
     try {
       detailPage =
-          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
+          fetchDetailPage(
+              secureClient,
+              insecureClient,
+              feedUrl,
+              entryUrl,
+              authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -366,7 +391,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
         processAttachments(
-            httpClient,
+            secureClient,
+            insecureClient,
             detailPage.attachments(),
             entryUrl,
             targetLibrary,
@@ -400,7 +426,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * (no detail-page request at all).
    */
   private void processUnchangedEntry(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       String entryUrl,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
@@ -422,7 +449,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     DetailPage detailPage;
     try {
       detailPage =
-          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
+          fetchDetailPage(
+              secureClient,
+              insecureClient,
+              feedUrl,
+              entryUrl,
+              authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
@@ -466,7 +498,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     processAttachments(
-        httpClient,
+        secureClient,
+        insecureClient,
         detailPage.attachments(),
         entryUrl,
         targetLibrary,
@@ -493,7 +526,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * of bug, one level down).
    */
   private void processAttachments(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       List<AttachmentCandidate> candidates,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
@@ -515,7 +549,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
       delayBeforeRequest();
       processAttachment(
-          httpClient,
+          secureClient,
+          insecureClient,
           candidate,
           entryUrl,
           targetLibrary,
@@ -535,7 +570,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * both processed <em>and</em> failed.
    */
   private void processAttachment(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       AttachmentCandidate candidate,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
@@ -546,9 +582,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String feedUrl) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
+      // #663 review, finding 1: an attachment candidate's own URL is content the feed operator
+      // controls, exactly like an entry's <link> (see #httpClientForTarget) - sourceInsecureSsl
+      // must not weaken certificate validation for it once it points off the feed's own origin.
+      HttpClient client =
+          httpClientForTarget(secureClient, insecureClient, feedUrl, candidate.url());
       downloaded =
           attachmentDownloader.downloadBounded(
-              httpClient,
+              client,
               candidate.url(),
               candidate.suggestedFileName(),
               properties.maxAttachmentSizeBytes(),
@@ -768,9 +809,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * the configured selector is applied, so boilerplate that happens to sit inside the matched main
    * element (a skip link, a "share this article" bar) does not survive either, and is never
    * considered for attachments.
+   *
+   * <p>{@code secureClient}/{@code insecureClient} (#663 review, finding 1): {@link
+   * #httpClientForTarget} picks the client for {@code entryUrl} itself, once, before any redirect
+   * is followed - {@link #sendDetailPageRequest} already refuses every hop that would leave {@code
+   * entryUrl}'s own origin (a foreign one, or the feed's), so the origin - and therefore which
+   * client is correct - never changes mid-chain.
    */
-  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl, String authHeader)
+  private DetailPage fetchDetailPage(
+      HttpClient secureClient,
+      HttpClient insecureClient,
+      String feedUrl,
+      String entryUrl,
+      String authHeader)
       throws IOException, InterruptedException {
+    HttpClient httpClient = httpClientForTarget(secureClient, insecureClient, feedUrl, entryUrl);
     HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
     // #490 review, finding 4: every path below - the three early rejections and the ordinary
@@ -956,14 +1009,32 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (authHeader == null) {
       return null;
     }
+    return isSameOriginAsFeed(feedUrl, targetUrl) ? authHeader : null;
+  }
+
+  /**
+   * Picks {@code insecureClient} for a request whose target shares the feed's own origin ({@link
+   * AutoindexCrawlerService#sameOrigin}), {@code secureClient} for anything else - #663 review,
+   * finding 1. {@code sourceInsecureSsl} is a property of the library's own configured source, not
+   * a blanket "skip certificate validation for whatever this feed points at": an entry's own {@code
+   * <link>} or an attachment candidate's URL is content the feed operator controls, exactly like
+   * {@link #authHeaderForTarget}'s credentials case above, and a request to an address outside the
+   * feed's origin must be validated normally, no matter how the library itself is configured. An
+   * unparseable {@code targetUrl} is treated as foreign (the secure client) rather than trusted by
+   * default.
+   */
+  private static HttpClient httpClientForTarget(
+      HttpClient secureClient, HttpClient insecureClient, String feedUrl, String targetUrl) {
+    return isSameOriginAsFeed(feedUrl, targetUrl) ? insecureClient : secureClient;
+  }
+
+  private static boolean isSameOriginAsFeed(String feedUrl, String targetUrl) {
     try {
-      if (AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl))) {
-        return authHeader;
-      }
+      return AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl));
     } catch (IllegalArgumentException e) {
-      // Falls through - an unparseable target URL is never trusted with the feed's credentials.
+      // An unparseable target URL is never trusted as same-origin.
+      return false;
     }
-    return null;
   }
 
   private void delayBeforeRequest() {
