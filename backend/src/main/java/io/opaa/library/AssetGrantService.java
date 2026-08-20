@@ -331,7 +331,10 @@ public class AssetGrantService {
         && isLastActiveOwnerGrant(library.getId(), grant.getId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht entfernt werden");
+          "Die letzte "
+              + roleLabel(AssetRole.OWNER)
+              + "-Berechtigung einer Bibliothek kann nicht"
+              + " entfernt werden");
     }
 
     // #238: record the revocation before the row is gone - recordGrantRevoked reads the grant's
@@ -442,7 +445,10 @@ public class AssetGrantService {
     if (isLastActiveOwnerGrant(libraryId, existingGrant.getId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Die letzte OWNER-Berechtigung einer Bibliothek kann nicht herabgestuft werden");
+          "Die letzte "
+              + roleLabel(AssetRole.OWNER)
+              + "-Berechtigung einer Bibliothek kann nicht"
+              + " herabgestuft werden");
     }
   }
 

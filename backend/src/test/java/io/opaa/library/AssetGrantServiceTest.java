@@ -338,9 +338,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht"
+                          + " herabgestuft werden");
+            });
     verify(grantRepository, never()).save(any());
   }
 
@@ -360,9 +366,15 @@ class AssetGrantServiceTest {
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht entfernt"
+                          + " werden");
+            });
     verify(grantRepository, never()).delete(any());
   }
 
