@@ -3,7 +3,7 @@ import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { AuthMode, AuthUser } from '../types/auth'
 import { getAuthConfig, getMe } from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
-import { useSpaceStore } from './spaceStore'
+import { resetAllStores } from './resettableStores'
 
 interface AuthState {
   mode: AuthMode | null
@@ -121,7 +121,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await userManager.signoutRedirect()
     }
     clearDevUser()
-    useSpaceStore.getState().reset()
+    // Resets every store that caches data scoped to the signed-in user's session (#440) - see
+    // resettableStores.ts for which stores that covers and why.
+    resetAllStores()
     set({
       token: null,
       user: null,

@@ -67,6 +67,7 @@ interface IndexingState {
   loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
   stopPolling: (libraryId: string) => void
   closeSnackbar: () => void
+  reset: () => void
 }
 
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
@@ -197,6 +198,14 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   },
 
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
+
+  reset: () => {
+    Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
+    set({
+      runsByLibrary: {},
+      snackbar: { open: false, message: '', severity: 'success' },
+    })
+  },
 }))
 
 function startPolling(
