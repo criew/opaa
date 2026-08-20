@@ -53,8 +53,9 @@ Sie ist eine systemweite Rolle und wird auf der Benutzer-Entität gespeichert.
 
 System-Admins können:
 
-- Gruppengebundene Spaces (`memberSource = GROUP`) anlegen und löschen — alle anderen Spaces legen Nutzer
-  selbst an
+- Gruppengebundene Spaces (`memberSource = GROUP`) anlegen — alle anderen Spaces legen Nutzer selbst an
+  (der Standard-Space entsteht automatisch bei der ersten Anmeldung); Löschbefugnis regelt der
+  Space-Verantwortliche, siehe [Löschung eines Space](#löschung-eines-space)
 - Konnektoren konfigurieren
 - Quell-Zuordnungen definieren — welche Quelle in welche Wissensbibliothek indiziert
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken setzen
@@ -170,7 +171,7 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 
 1. **Anlage.** Ein Konto entsteht durch die Bereitstellung aus dem Verzeichnis, nicht durch eine
    Einladung im Produkt. Wer im Verzeichnis nicht existiert, hat in OPAA nichts.
-2. **Erste Anmeldung.** Der persönliche Space entsteht dabei; eine Wissensbibliothek legt die Person
+2. **Erste Anmeldung.** Der Standard-Space (`isDefault`) entsteht dabei; eine Wissensbibliothek legt die Person
    bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
    Assets ergibt sich aus den Gruppen der Person.
 3. **Änderung.** Wechselt jemand das Referat, ändern sich seine Gruppenmitgliedschaften — und damit
@@ -301,7 +302,7 @@ Wenn ein Nutzer die Organisation verlässt:
    System-Admin; der Vorgang erscheint mit Frist auf der Governance-Arbeitsliste.
 4. Für zentral gepflegte Bestände ist Gruppen-Eigentum der Regelfall und verhindert das Problem von
    vornherein.
-5. Sein persönlicher Space wird deaktiviert, nicht gelöscht (Nachweisgründe) — und **nicht lesbar
+5. Sein Standard-Space (`isDefault`) wird deaktiviert, nicht gelöscht (Nachweisgründe) — und **nicht lesbar
    gemacht**. Private Chats und Artefakte darin bleiben unzugänglich. Geteilte Inhalte unterliegen der
    Aufbewahrungsregel.
 

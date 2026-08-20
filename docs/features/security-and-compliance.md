@@ -554,9 +554,12 @@ Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne 
 5. Pseudonymzuordnung entfernen — das Protokoll bleibt unverändert bestehen
 ```
 
-Private Chats und Artefakte des Nutzers folgen den Regeln privater Inhalte. Geteilte Chats und Artefakte
-sind Arbeitsergebnisse der Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber
-nach Ablauf der Aufbewahrungsfrist gelöscht.
+Private Chats und Artefakte des Nutzers folgen den
+[Offboarding-Regeln für den Standard-Space](./access-control.md#der-lebenszyklus-eines-kontos): Der
+Standard-Space wird deaktiviert statt gelöscht, private Inhalte bleiben darin unzugänglich — für
+niemanden, auch nicht für einen Nachfolger. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
+Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Ablauf der
+Aufbewahrungsfrist gelöscht.
 
 Dokumente werden über ihre Wissensbibliothek gelöscht. Für konnektor-indizierte Dokumente gilt weiterhin
 der Ausschluss-Mechanismus, weil sie beim nächsten Lauf sonst erneut aufgenommen würden.
@@ -711,15 +714,15 @@ stehen die fünf Eigenschaften, die das Produkt dafür tragen muss.
 
 ### 1. Sichtbarkeit ist eine Handlung, keine Automatik
 
-Chats und Artefakte entstehen als **`PRIVATE`** und werden erst sichtbar, wenn die Person sie in den Space
+Chats und Artefakte entstehen zunächst privat und werden erst sichtbar, wenn die Person sie in den Space
 teilt. Wer teilt, tut es bewusst. Die dreimal gestellte Rückfrage zu einer Rechtsgrundlage, bei der jemand
 unsicher ist, wird damit nicht zur dauerhaft sichtbaren Wissenslücke in Schriftform.
 
 **Private Inhalte sind verbindlich unbeobachtet** — in jedem Space, nicht nur in einem dafür vorgesehenen,
 und auch gegenüber Systemverwaltung, Revision und Dienststellenleitung — und **fachlich gleichwertig**:
-Dort steht dasselbe Wissen und derselbe Suchbereich zur Verfügung wie in einem gemeinsamen Raum. Ohne
-diese Gleichwertigkeit wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren Raum
-faktisch.
+Ein privater Chat verfügt über dasselbe Wissen und denselben Suchbereich wie ein geteilter im selben
+Space. Ohne diese Gleichwertigkeit wäre die Ausweichmöglichkeit nur formal und der Zwang zum sichtbaren
+Raum faktisch.
 
 Geschützt ist der **Inhalt**, nicht die Tatsache der Nutzung: Dass jemand arbeitet, wird protokolliert;
 was er schreibt, nicht. Das gehört ausgesprochen, damit die Auskunft an die Beschäftigten stimmt.
@@ -766,7 +769,7 @@ folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstve
 
 ### 4. Aufbewahrung mit Ober- und Untergrenze
 
-Für Chats, Artefakte, Entwürfe, Herkunftsdaten **und Protokolldaten**: konfigurierbare Frist mit einer
+Für Chats, Artefakte, Herkunftsdaten **und Protokolldaten**: konfigurierbare Frist mit einer
 **Höchstdauer**, nicht nur einer Mindestdauer, und automatischer Löschung nach Ablauf.
 
 Die **Netzadresse gehört nicht zum Standard-Protokollsatz**, weil sie Dienststelle und Heimarbeit
