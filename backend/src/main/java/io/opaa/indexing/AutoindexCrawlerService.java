@@ -18,18 +18,29 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Crawls Apache mod_autoindex HTML directory listings and returns discovered file entries. */
+/**
+ * Crawls HTTP directory-listing pages and returns discovered file entries. Understands the
+ * autoindex layouts a plain HTTP server is realistically going to serve (#550): Apache
+ * mod_autoindex with {@code IndexOptions HTMLTable} (a {@code <table>} of {@code <tr>} rows), plain
+ * Apache mod_autoindex ({@code <pre>} listing with icons), nginx's {@code autoindex on} ({@code
+ * <pre>} listing without icons) and the plain {@code <ul>} layout used by both {@code IndexOptions
+ * -FancyIndexing} and Python's {@code http.server}.
+ */
 public class AutoindexCrawlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AutoindexCrawlerService.class);
@@ -118,14 +129,56 @@ public class AutoindexCrawlerService {
     return parseDirectory(html, baseUrl, 0);
   }
 
-  /** Parses an Apache mod_autoindex HTML directory listing using JSoup. */
+  /**
+   * Parses an autoindex-style directory listing using JSoup, trying every layout this class
+   * understands (see the class Javadoc). The Apache {@code HTMLTable} layout is tried first since
+   * it carries date/size in dedicated columns the other layouts only approximate from trailing
+   * text; if it finds no rows, the page is re-parsed as a link-based layout ({@code <pre>} or
+   * {@code <ul>}), which covers everything else.
+   */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     if (html == null) {
       return List.of();
     }
 
+    Document doc = Jsoup.parse(html);
+    List<CrawledFileEntry> tableEntries = parseHtmlTableLayout(doc, baseUrl, depth);
+    if (!tableEntries.isEmpty()) {
+      return tableEntries;
+    }
+    return parseLinkBasedLayout(doc, baseUrl, depth);
+  }
+
+  /**
+   * Whether {@code html} looks like a directory-listing page in any of the layouts this class
+   * understands, even if the listing turned out to be empty (no linked files) - used by the source
+   * connection test (#514, #550) to tell "reachable, but genuinely empty directory" apart from
+   * "reachable, but this isn't a directory listing at all", which needs a different, more
+   * explanatory response.
+   */
+  public boolean looksLikeDirectoryListing(String html) {
+    if (html == null) {
+      return false;
+    }
+    Document doc = Jsoup.parse(html);
+    // A <table> or <pre> full of links is specific enough on its own - real websites rarely use
+    // either for navigation. A plain <ul> of links, however, is exactly what an ordinary page's
+    // <nav> looks like too, so that signal only counts together with the page title both Apache
+    // and nginx (and Python's http.server) always set on a real listing.
+    boolean hasTable = !doc.select("tr td").isEmpty();
+    boolean hasPreLinks = !doc.select("pre a[href]").isEmpty();
+    String title = doc.title() == null ? "" : doc.title().toLowerCase(Locale.ROOT);
+    boolean titleMatchesListing =
+        title.contains("index of") || title.contains("directory listing for");
+    return hasTable || hasPreLinks || titleMatchesListing;
+  }
+
+  /**
+   * Parses the Apache {@code IndexOptions HTMLTable} layout: {@code <tr>} rows of {@code <td>}
+   * cells.
+   */
+  private List<CrawledFileEntry> parseHtmlTableLayout(Document doc, String baseUrl, int depth) {
     List<CrawledFileEntry> entries = new ArrayList<>();
-    org.jsoup.nodes.Document doc = Jsoup.parse(html);
     Elements rows = doc.select("tr");
 
     for (Element row : rows) {
@@ -178,6 +231,100 @@ public class AutoindexCrawlerService {
     }
 
     return entries;
+  }
+
+  /**
+   * Parses the link-based layouts: Apache mod_autoindex without {@code HTMLTable} and nginx's
+   * {@code autoindex on} both render a {@code <pre>} block of one {@code <a>} link per line,
+   * followed by a trailing-text "column" of date and size; Apache {@code -FancyIndexing} and
+   * Python's {@code http.server} both render a plain {@code <ul>} of one {@code <a>} link per
+   * {@code <li>}, without any date/size at all. Rather than distinguishing those four layouts up
+   * front, this walks every {@code <a href>} in the document and reconstructs an entry from
+   * whatever surrounds it - robust against layout variance because it never assumes a specific
+   * markup shape, only that a real file/subdirectory is, in every one of these layouts, a link.
+   */
+  private List<CrawledFileEntry> parseLinkBasedLayout(Document doc, String baseUrl, int depth) {
+    List<CrawledFileEntry> entries = new ArrayList<>();
+    Elements links = doc.select("a[href]");
+
+    for (Element link : links) {
+      String href = link.attr("href");
+      String name = link.text().trim();
+
+      if (href.isEmpty() || name.isEmpty()) {
+        continue;
+      }
+      if (isParentDirectoryLink(href, name)) {
+        continue;
+      }
+      if (href.contains("?C=")) {
+        continue;
+      }
+      String lowerHref = href.toLowerCase(Locale.ROOT);
+      if (href.startsWith("#")
+          || lowerHref.startsWith("mailto:")
+          || lowerHref.startsWith("javascript:")) {
+        continue;
+      }
+
+      String fullUrl;
+      if (href.startsWith("http://") || href.startsWith("https://")) {
+        fullUrl = href;
+      } else {
+        fullUrl = resolveUrl(baseUrl, href);
+      }
+
+      String type = href.endsWith("/") ? "DIR" : "";
+      String[] trailingMeta = extractTrailingLineMeta(link);
+      entries.add(
+          new CrawledFileEntry(
+              stripTrailingSlash(name), fullUrl, trailingMeta[0], trailingMeta[1], type, depth));
+    }
+
+    return entries;
+  }
+
+  private static boolean isParentDirectoryLink(String href, String name) {
+    return name.contains("Parent Directory")
+        || "..".equals(href)
+        || "../".equals(href)
+        || "..".equals(name)
+        || "../".equals(name);
+  }
+
+  private static String stripTrailingSlash(String name) {
+    return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
+  }
+
+  /**
+   * Reconstructs the "date size" trailing text that both {@code <pre>}-based layouts (Apache
+   * without {@code HTMLTable}, nginx) print after each link on the same line, e.g. {@code <a
+   * href="report.pdf">report.pdf</a> 10-Jun-2025 14:22 4.5M}. The {@code <ul>}-based layouts never
+   * have this trailing text, so this simply returns two empty strings for those - date/size are
+   * informational only (used for change-detection, see {@code UrlIndexingExecutor#isUnchanged}),
+   * never for deciding what gets indexed.
+   */
+  private static String[] extractTrailingLineMeta(Element link) {
+    StringBuilder line = new StringBuilder();
+    Node sibling = link.nextSibling();
+    while (sibling instanceof TextNode textNode) {
+      String text = textNode.text();
+      int newline = text.indexOf('\n');
+      if (newline >= 0) {
+        line.append(text, 0, newline);
+        break;
+      }
+      line.append(text);
+      sibling = sibling.nextSibling();
+    }
+
+    String[] parts = line.toString().trim().split("\\s+");
+    if (parts.length >= 3) {
+      String size = parts[parts.length - 1];
+      String date = parts[parts.length - 3] + " " + parts[parts.length - 2];
+      return new String[] {date, size};
+    }
+    return new String[] {"", ""};
   }
 
   static String resolveUrl(String baseUrl, String relative) {

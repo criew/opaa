@@ -379,6 +379,15 @@ public class SourceConnectionTestService {
                 .filter(e -> !e.isDirectory())
                 .filter(e -> SupportedDocumentFormats.isSupported(e.name()))
                 .count();
+        // #550: an empty result can mean two very different things - a directory listing that is
+        // genuinely empty (still a valid, working source), or a page that isn't a directory
+        // listing this class recognizes at all (a login page, an error page, a plain website).
+        // Only the latter gets the more explanatory response; a recognized-but-empty listing keeps
+        // reporting the same "0 gefunden" it always did.
+        if (linkedDocuments == 0 && !crawlerService.looksLikeDirectoryListing(html)) {
+          return unreachable(
+              "Die Seite ist erreichbar, enthält aber kein erkennbares Verzeichnislisting.");
+        }
         return reachable(
             "Webverzeichnis erreichbar, "
                 + supportedDocumentPhrase(linkedDocuments)

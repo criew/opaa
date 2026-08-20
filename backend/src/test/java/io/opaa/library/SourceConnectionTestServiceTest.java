@@ -243,6 +243,95 @@ class SourceConnectionTestServiceTest {
   }
 
   @Test
+  void httpDirectoryReportsLinkedDocumentCountForApachePreLayout() throws IOException {
+    // #550: Apache mod_autoindex without "IndexOptions HTMLTable" - a <pre> listing, not a table.
+    String html =
+        """
+        <html><head><title>Index of /dir/</title></head><body>
+        <pre><a href="/">Parent Directory</a>
+        <a href="a.txt">a.txt</a>            2025-01-01 00:00  10
+        <a href="b.pdf">b.pdf</a>            2025-01-01 00:00  20
+        </pre></body></html>
+        """;
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(2L);
+  }
+
+  @Test
+  void httpDirectoryReportsLinkedDocumentCountForUlLayout() throws IOException {
+    // #550: Python http.server / Apache "-FancyIndexing" - a plain <ul>, no HTMLTable at all.
+    String html =
+        """
+        <html><head><title>Directory listing for /dir/</title></head><body>
+        <ul>
+        <li><a href="a.txt">a.txt</a></li>
+        <li><a href="b.pdf">b.pdf</a></li>
+        </ul></body></html>
+        """;
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(2L);
+  }
+
+  @Test
+  void httpDirectoryReportsAnExplanatoryHintForAnUnrecognizedPage() throws IOException {
+    // #550: a page that is reachable but isn't a directory listing this class recognizes at all
+    // (e.g. a login page) must not be reported as "0 unterstuetzte Dokumente gefunden" - that
+    // reads like a successful, merely-empty directory instead of a configuration problem.
+    String html =
+        """
+        <html><head><title>Welcome</title></head>
+        <body><p>This is just a website, not a directory listing.</p></body></html>
+        """;
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/")));
+
+    assertThat(response.getReachable()).isFalse();
+    assertThat(response.getMessage()).contains("kein erkennbares Verzeichnislisting");
+  }
+
+  @Test
   void httpDirectoryFollowsASameOriginRedirect() throws IOException {
     // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
     // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate
