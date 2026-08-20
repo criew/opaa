@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.ChatCreateRequest;
@@ -83,7 +85,22 @@ class ChatServiceIntegrationTest {
 
   // #557: ChatService#appendTurn now triggers ChatTitleGenerationService's real, Spring-managed
   // LLM call on a chat's first turn - without this mock, every appendTurn test in this class would
-  // attempt a genuine call against whichever provider the active profile configures.
+  // attempt a genuine call against whichever provider the active profile configures. That title job
+  // (ChatTitleGenerationService#generateTitleAsync) runs on chatTitleTaskExecutor, genuinely off
+  // the
+  // calling thread, and several tests below (e.g. appendTurnPersistsBothMessagesAndDerives...,
+  // appendTurnOrdersMessagesBySequenceAndTouchesUpdatedAt) trigger it via a first turn without
+  // waiting for it to finish, since their assertions only concern the synchronous fallback title.
+  // Unlike QueryIntegrationTest (#616/#621), replacing chatTitleTaskExecutor with a synchronous one
+  // is not an option here: two tests in this class
+  // (appendTurnAsynchronouslyAppliesAnLlmGenerated...,
+  // appendTurnNeverOverwritesATitleRenamedWhileGenerationIsStillInFlight) deliberately exercise the
+  // real, concurrent timing of that job. Instead, every stub on this class-wide shared mock below
+  // uses Mockito's doReturn/doAnswer/doThrow - not when(...).thenReturn(...) - precisely because
+  // doReturn(...).when(mock)... never invokes the mock while building the stub, so it cannot race a
+  // still in-flight title job from an earlier test's unwaited-for call the way when(mock.call(...))
+  // does (#623, same root cause as #616 - a leftover async chatModel.call() from a previous test
+  // landing exactly while a later when(...) call is mid-setup throws a MockitoException).
   @MockitoBean private ChatModel chatModel;
 
   private UUID organizationA;
@@ -91,7 +108,10 @@ class ChatServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null.
-    when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    // doReturn, not when(...).thenReturn(...) (#623): a previous test's title generation job can
+    // still be in flight on chatTitleTaskExecutor when the next test's @BeforeEach runs and calls
+    // this getOptions() as well - see the chatModel field's Javadoc.
+    doReturn(ChatOptions.builder().build()).when(chatModel).getOptions();
     chatMessageRepository.deleteAll();
     chatRepository.deleteAll();
     spaceMembershipRepository.deleteAll();
@@ -444,10 +464,12 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
-    when(chatModel.call(any(Prompt.class)))
-        .thenReturn(
+    // doReturn, not when(...).thenReturn(...) - see the chatModel field's Javadoc (#623).
+    doReturn(
             new ChatResponse(
-                List.of(new Generation(new AssistantMessage("Rückstellung Altlastensanierung")))));
+                List.of(new Generation(new AssistantMessage("Rückstellung Altlastensanierung")))))
+        .when(chatModel)
+        .call(any(Prompt.class));
 
     chatService.appendTurn(
         chat,
@@ -480,15 +502,20 @@ class ChatServiceIntegrationTest {
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
     CountDownLatch llmCallStarted = new CountDownLatch(1);
     CountDownLatch renameApplied = new CountDownLatch(1);
-    when(chatModel.call(any(Prompt.class)))
-        .thenAnswer(
+    // doAnswer, not when(...).thenAnswer(...) - see the chatModel field's Javadoc (#623). This does
+    // not weaken the latch-based synchronization this test relies on: doAnswer merely avoids
+    // invoking the mock while the stub is being built, the returned Answer still runs exactly once,
+    // on the async job's own thread, when generateTitleAsync actually calls chatModel.call(...).
+    doAnswer(
             invocation -> {
               llmCallStarted.countDown();
               assertThat(renameApplied.await(5, TimeUnit.SECONDS))
                   .as("the test must release the blocked LLM call within the timeout")
                   .isTrue();
               return new ChatResponse(List.of(new Generation(new AssistantMessage("LLM-Titel"))));
-            });
+            })
+        .when(chatModel)
+        .call(any(Prompt.class));
 
     chatService.appendTurn(chat, "Frage", "Antwort", List.of());
     assertThat(llmCallStarted.await(5, TimeUnit.SECONDS))
@@ -565,7 +592,8 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
-    when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("LLM nicht erreichbar"));
+    // doThrow, not when(...).thenThrow(...) - see the chatModel field's Javadoc (#623).
+    doThrow(new RuntimeException("LLM nicht erreichbar")).when(chatModel).call(any(Prompt.class));
 
     chatService.appendTurn(chat, "Wie hoch ist die Rückstellung?", "42.000 EUR.", List.of());
 
