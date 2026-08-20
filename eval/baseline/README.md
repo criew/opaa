@@ -30,7 +30,9 @@ ausgewertet wird sie von `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparato
 - **`groups`** enthält die vier Kernmetriken (`hitRateAt5`, `mrr`, `ndcgAt10`, `recallAt10`) plus
   `recallAt10Ceiling` und `distinctExpectedDocumentSets` (die Grundgröße der Toleranzformel unten,
   `n_eff`) für `overall` und jede Ausprägung von Kategorie (`category:<name>`), Schwierigkeit
-  (`difficulty:<name>`) und Sprache (`language:<name>`) aus dem Golden Dataset.
+  (`difficulty:<name>`) und Sprache (`language:<name>`) aus dem Golden Dataset — mit einer
+  Ausnahme, siehe [Konsolidierung von `language:de`](#konsolidierung-von-languagede-issue-304)
+  unten.
 - **`measuredAt`**/**`provenance`**/**`notes`** sind rein dokumentarisch (nie Teil des Vergleichs):
   wann, mit welchem PR und welchem Report gemessen wurde, inklusive Verweis auf frühere, hinfällige
   Zahlen (siehe unten).
@@ -90,7 +92,9 @@ Es gibt bewusst **keine** separate absolute Unter- oder Obergrenze mehr: Eine ei
 Grenze band an beiden Enden der Skala zugleich. Fallbasiert plus relative (nicht absolute) Deckelung
 vermeidet diese Kollision.
 
-Resultierende Toleranzen für die aktuelle Baseline, **alle elf Gruppen und alle vier Metriken**:
+Resultierende Toleranzen für die aktuelle Baseline, **alle zehn Gruppen und alle vier Metriken**
+(`language:de` ist keine eigene Gruppe mehr — siehe
+[Konsolidierung von `language:de`](#konsolidierung-von-languagede-issue-304) unten):
 
 | Gruppe | n | n_eff | Metrik | Baseline | Toleranz | dominanter Term |
 |---|---|---|---|---|---|---|
@@ -134,10 +138,6 @@ Resultierende Toleranzen für die aktuelle Baseline, **alle elf Gruppen und alle
 | language:en | 87 | 85 | mrr | 0,509 | 0,0235 | fallbasiert |
 | language:en | 87 | 85 | ndcgAt10 | 0,502 | 0,0235 | fallbasiert |
 | language:en | 87 | 85 | recallAt10 | 0,555 | 0,0235 | fallbasiert |
-| language:de | 34 | 33 | hitRateAt5 | 0,382 | 0,0606 | fallbasiert |
-| language:de | 34 | 33 | mrr | 0,337 | 0,0606 | fallbasiert |
-| language:de | 34 | 33 | ndcgAt10 | 0,302 | 0,0606 | fallbasiert |
-| language:de | 34 | 33 | recallAt10 | 0,322 | 0,0606 | fallbasiert |
 
 Diese Tabelle ist reproduzierbar aus der committeten Baseline nachrechenbar
 (`BaselineComparator.toleranceFor`, unit-getestet in `BaselineComparatorTest`) und keine separate,
@@ -195,6 +195,35 @@ feste Komponente die Ankerfunktion. Die baseline-relative Toleranz greift im Reg
 vor der harten Untergrenze; deren Zweck bleibt ein zweiter, von der primären Toleranzformel
 unabhängiger Fangnetz gegen katastrophales Versagen (z. B. ein leerer oder falsch konfigurierter
 Vektor-Store) — jetzt tatsächlich mit dieser Wirkung, nicht nur der Absicht danach.
+
+## Konsolidierung von `language:de` (Issue #304)
+
+Im Golden Dataset (`eval/golden/comic-characters.json`) ist jeder `crosslingual`-Fall
+konstruktionsbedingt eine deutsche Frage gegen den englischen Korpus — und es gibt keine andere
+Quelle für deutsche Fälle. `category:crosslingual` und `language:de` waren damit exakt dieselbe
+Fallmenge (34 Fälle, 33 unterschiedliche Erwartungsmengen), nicht nur ähnlich: derselbe Baseline-
+Eintrag, dieselbe Toleranz, dieselben Werte. Der Regressionsjob prüfte diese eine Fallmenge doppelt
+(acht statt vier Prüfungen) und suggerierte damit eine Abdeckung, die nicht bestand — ADR-0013,
+Abschnitt „Offen", benannte das als offenen Punkt.
+
+**Entscheidung: Konsolidierung, nicht getrennte Gruppen und keine Generator-Erweiterung.** Die
+Baseline-Gruppe `language:de` wurde entfernt, `category:crosslingual` bleibt bestehen — sie benennt
+die fachliche Eigenschaft, um die es hier tatsächlich geht (deutsche Fragen gegen einen englischen
+Korpus), während `language:de` nur die zufällige sprachliche Ausprägung dieser einen Kategorie war.
+`BaselineComparator.compare` überspringt die vom Report weiterhin gelieferte `language:de`-Gruppe
+gezielt (`REDUNDANT_LANGUAGE_GROUP`), statt sie gegen einen entfernten Baseline-Eintrag zu prüfen.
+Das Golden Dataset selbst bleibt unverändert — kein Umbau des Generators
+(`eval/generator/generate_golden_dataset.py`) in diesem Schritt.
+
+**Erwogene, nicht gewählte Alternative: Generator-Erweiterung.** Der Generator könnte
+`crosslingual`-Fälle künftig auch für mindestens eine weitere Sprache oder Domäne erzeugen, sodass
+`category:crosslingual` und `language:de` sich tatsächlich unterscheiden und beide Gruppen
+eigenständige Aussagekraft behalten. Das würde die Redundanz an der Wurzel auflösen, verlangt aber
+einen neuen Corpus-/Golden-Dataset-Lauf und eine neu gezogene Baseline (`eval/baseline/comic-
+characters.json`) — ein größerer, eigenständiger Schritt, der über die reine Konsolidierung der
+Baseline-Gruppen hinausgeht und hier bewusst nicht gegangen wird. Sollte künftig echter Bedarf an
+mehrsprachiger `crosslingual`-Abdeckung entstehen, ist das ein eigenes Vorhaben mit eigenem Issue,
+kein Nachtrag zu #304.
 
 ## Baseline ungültig vs. Regression — wie der Job das unterscheidet
 

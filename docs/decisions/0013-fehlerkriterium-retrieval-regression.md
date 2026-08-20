@@ -109,9 +109,6 @@ nicht mehr allein auf der Aufmerksamkeit des Reviewers.
 
 ## Offen
 
-- Ob `category:crosslingual` und `language:de` als getrennte Gruppen geführt werden sollen, solange
-  sie identisch sind — heute erzeugen sie acht statt vier Prüfungen über dieselben Daten. Eigenes
-  Issue (`evaluation`, `size:S`).
 - Ob Gruppen mit sehr niedrigem Baselinewert überhaupt über Mittelwerte geprüft werden sollten oder
   besser über die absolute Zahl getroffener Fälle (z. B. „die Zahl der Fälle mit nDCG@10 > 0 darf um
   höchstens 1 sinken"). **Konkret bekannt und bewusst nicht gelöst — korrigiert in der zweiten
@@ -190,3 +187,27 @@ berührt.
    und damals noch freiwilligen, Kontrolle. Korrigiert: `eval/baseline/diff_baseline.py` läuft jetzt
    über einen eigenen, Docker-freien Workflow (`.github/workflows/baseline-diff.yml`) für **jeden**
    PR, der `eval/baseline/**` ändert, unabhängig vom Label.
+
+## Nachtrag: Konsolidierung von `category:crosslingual` und `language:de` (Issue #304)
+
+> Löst den ersten Punkt des ursprünglichen „Offen"-Abschnitts auf, statt ihn dort unverändert stehen
+> zu lassen.
+
+`category:crosslingual` und `language:de` waren, wie im Abschnitt „Kontext" oben bereits notiert,
+konstruktionsbedingt exakt dieselbe Fallmenge (34 Fälle, 33 unterschiedliche Erwartungsmengen) —
+jeder `crosslingual`-Fall im Golden Dataset ist eine deutsche Frage gegen den englischen Korpus, und
+es gibt keine andere Quelle für deutsche Fälle. Der Regressionsjob prüfte diese eine Fallmenge acht
+statt vier Mal.
+
+**Entscheidung: Konsolidierung.** Die Baseline-Gruppe `language:de` entfällt,
+`category:crosslingual` bleibt — sie benennt die fachliche Eigenschaft, um die es geht (deutsche
+Fragen gegen einen englischen Korpus), während `language:de` nur deren zufällige sprachliche
+Ausprägung war. `BaselineComparator.compare` überspringt die vom Report weiterhin gelieferte
+`language:de`-Gruppe gezielt (`REDUNDANT_LANGUAGE_GROUP`). Das Golden Dataset und der Generator
+(`eval/generator/generate_golden_dataset.py`) bleiben unverändert.
+
+**Erwogene, nicht gewählte Alternative:** den Generator um `crosslingual`-Fälle in mindestens einer
+weiteren Sprache oder Domäne zu erweitern, sodass beide Gruppen sich tatsächlich unterscheiden. Das
+wäre der grundsätzlichere Fix, verlangt aber einen neuen Corpus-/Golden-Dataset-Lauf und eine neu
+gezogene Baseline — ein eigenständiges, hier bewusst nicht gegangenes Vorhaben. Details und
+Begründung: `eval/baseline/README.md`, Abschnitt „Konsolidierung von `language:de`".

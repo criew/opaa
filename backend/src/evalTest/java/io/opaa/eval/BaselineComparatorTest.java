@@ -224,6 +224,49 @@ class BaselineComparatorTest {
   }
 
   @Test
+  void ignoresTheRedundantLanguageDeGroupEvenThoughTheReportStillProducesIt() {
+    // Issue #304: category:crosslingual and language:de are, by construction, exactly the same
+    // case set in the golden dataset. The baseline no longer carries a language:de entry, but the
+    // harness still computes a language:de aggregate from the (unchanged) golden dataset. Without
+    // the skip in BaselineComparator.compare, this would throw "Baseline has no entry for group
+    // 'language:de'" via checkGroup — proving the fix requires the report to still contain the
+    // group despite the baseline dropping it.
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("crosslingual"),
+                overallMetrics()),
+            "2026-08-03",
+            null,
+            "test fixture — language:de deliberately absent (issue #304)");
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            cfg,
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of("crosslingual", overallMetrics()),
+            Map.of(),
+            Map.of("de", overallMetrics()),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isTrue();
+    assertThat(result.checks())
+        .extracting(BaselineComparator.MetricCheck::group)
+        .doesNotContain("language:de");
+    assertThat(result.passed()).isTrue();
+  }
+
+  @Test
   void failsWhenReportIsMissingAGroupThatIsPresentInTheBaseline() {
     // PR #301 review: a report whose byCategory/byDifficulty/byLanguage came back empty or partial
     // must not silently pass with only the four overall checks run.
