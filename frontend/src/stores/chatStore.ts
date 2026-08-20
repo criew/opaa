@@ -36,6 +36,13 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
 // never read by a component, only compared against itself across async gaps.
 let chatLoadSequence = 0
 
+// The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
+// chip (backend useKnowledge=true), 'libraries' shows the sticky concrete-library chips
+// (useKnowledge=false + referencedLibraryIds), 'none' is an emptied bar (useKnowledge=false, no
+// ids) - "Durchsucht wird, was in der Leiste steht." @Space (space-associated libraries) is
+// intentionally not a fourth state yet - it lands with #203.
+export type SearchScope = 'all' | 'libraries' | 'none'
+
 interface ChatState {
   /** The space the active (or about-to-be-created) chat lives in - null before any space is
    * known, e.g. right after login before ChatRedirect has resolved a default space. */
@@ -51,13 +58,14 @@ interface ChatState {
   /** True while an existing chat's history is being fetched via loadChat. */
   isLoadingChat: boolean
   error: string | null
-  /** Whether the search scope includes the knowledge base at all (#528, backend default: true). */
-  useKnowledge: boolean
-  // Sticky per-chat @-references (#523/#528). Persisted via PATCH /api/v1/chats/{chatId} once a
-  // chat exists (see setUseKnowledge/addReferencedLibrary/removeReferencedLibrary); before that,
-  // they only shape the first message's implicit chat creation.
+  /** The chip bar's state (#560, backend default: 'all'). */
+  scope: SearchScope
+  // Sticky per-chat @-references (#523/#528/#560), meaningful only while scope === 'libraries'.
+  // Persisted via PATCH /api/v1/chats/{chatId} once a chat exists (see setScopeAll/
+  // addReferencedLibrary/removeReferencedLibrary); before that, they only shape the first
+  // message's implicit chat creation.
   referencedLibraryIds: string[]
-  /** The in-flight PATCH (if any) from the most recent setUseKnowledge/addReferencedLibrary/
+  /** The in-flight PATCH (if any) from the most recent setScopeAll/addReferencedLibrary/
    * removeReferencedLibrary call - never rejects (failures are caught and turned into `error` +
    * a local rollback), so sendMessage can safely await it to avoid racing a PATCH that has not
    * reached the server yet against the query that reads the chat's persisted settings (#548
@@ -66,18 +74,36 @@ interface ChatState {
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
   sendMessage: (question: string) => Promise<void>
-  setUseKnowledge: (useKnowledge: boolean) => void
+  /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
+  setScopeAll: () => void
+  /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
+   * 'libraries'); further chips are added to the existing selection. */
   addReferencedLibrary: (libraryId: string) => void
+  /** Removes a concrete library chip. Removing the last one empties the bar (scope -> 'none'),
+   * matching "leere Leiste = ohne Wissen". */
   removeReferencedLibrary: (libraryId: string) => void
+  /** Removes the @Alles-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
+   * setScopeAll. Every chip - including @Alles-Wissen - is removable (#560). */
+  clearScope: () => void
+}
+
+/** Maps the backend's useKnowledge/referencedLibraryIds pair onto the chip bar's scope. */
+function scopeFromChatDetail(useKnowledge: boolean, referencedLibraryIds: string[]): SearchScope {
+  if (useKnowledge) return 'all'
+  return referencedLibraryIds.length > 0 ? 'libraries' : 'none'
 }
 
 function applyChatDetail(detail: ChatDetail) {
+  const referencedLibraryIds = detail.referencedLibraryIds ?? []
+  const scope = scopeFromChatDetail(detail.useKnowledge, referencedLibraryIds)
   return {
     spaceId: detail.spaceId,
     chatId: detail.id,
     title: detail.title ?? null,
-    useKnowledge: detail.useKnowledge,
-    referencedLibraryIds: detail.referencedLibraryIds ?? [],
+    scope,
+    // Only 'libraries' actually uses these ids as the search scope - dropping them for 'all'/
+    // 'none' keeps the chip bar an exact mirror of what the server applies (#560).
+    referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     messages: detail.messages.map(toChatMessage),
   }
 }
@@ -90,7 +116,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoading: false,
   isLoadingChat: false,
   error: null,
-  useKnowledge: true,
+  scope: 'all',
   referencedLibraryIds: [],
   pendingSettingsUpdate: null,
 
@@ -126,7 +152,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // only persisted once the first message is sent (see sendMessage).
   startNewChat: (spaceId: string) => {
     // Invalidates any loadChat still in flight - otherwise its eventual response could overwrite
-    // this synchronous reset (#548 review, finding d).
+    // this synchronous reset (#548 review, finding d). The superseded loadChat handler then
+    // returns early (its requestId no longer matches chatLoadSequence) without ever reaching its
+    // own set() call, so isLoadingChat must be cleared here too - otherwise ChatPage's spinner
+    // never clears and the chat input never reappears (#559).
     chatLoadSequence++
     set({
       spaceId,
@@ -134,8 +163,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       title: null,
       messages: [],
       error: null,
-      useKnowledge: true,
+      scope: 'all',
       referencedLibraryIds: [],
+      isLoadingChat: false,
     })
   },
 
@@ -155,12 +185,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       let { chatId } = get()
-      const { spaceId, useKnowledge, referencedLibraryIds } = get()
+      const { spaceId, scope, referencedLibraryIds } = get()
+      const useKnowledge = scope === 'all'
+      // Only 'libraries' actually names a scope - 'none' sends an empty array, matching what the
+      // chip bar shows (#560).
+      const libraryIds = scope === 'libraries' ? referencedLibraryIds : []
       if (!chatId) {
         if (!spaceId) {
           throw new Error('Kein Space für den neuen Chat ausgewählt')
         }
-        const created = await createChat(spaceId, { useKnowledge, referencedLibraryIds })
+        const created = await createChat(spaceId, {
+          useKnowledge,
+          referencedLibraryIds: libraryIds,
+        })
         chatId = created.id
         set({ chatId })
         // Makes the implicitly created chat show up in its space's chat list immediately,
@@ -178,7 +215,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         })
       }
 
-      // A PATCH from setUseKnowledge/addReferencedLibrary/removeReferencedLibrary may still be in
+      // A PATCH from setScopeAll/addReferencedLibrary/removeReferencedLibrary may still be in
       // flight - awaiting it first avoids racing it against this query, which the backend answers
       // using the chat's persisted settings (#548 review, finding 3).
       const pendingSettingsUpdate = get().pendingSettingsUpdate
@@ -186,7 +223,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         await pendingSettingsUpdate
       }
 
-      const response = await sendQuery(question, chatId, useKnowledge, referencedLibraryIds)
+      const response = await sendQuery(question, chatId, useKnowledge, libraryIds)
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -212,52 +249,67 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  setUseKnowledge: (useKnowledge: boolean) => {
-    const previous = get().useKnowledge
-    set({ useKnowledge })
-    persistChatSettings(get, set, { useKnowledge }, { useKnowledge: previous })
+  setScopeAll: () => {
+    // Already showing @Alles-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
+    // that would just re-send the chat's current settings (#564 review).
+    if (get().scope === 'all') return
+    // Re-adding @Alles-Wissen replaces any concrete chips (#560) - the two are mutually
+    // exclusive states of the same bar, never shown together.
+    applyScopeChange(get, set, 'all', [])
   },
 
   addReferencedLibrary: (libraryId: string) => {
-    const previous = get().referencedLibraryIds
-    if (previous.includes(libraryId)) return
-    const next = [...previous, libraryId]
-    set({ referencedLibraryIds: next })
-    persistChatSettings(
-      get,
-      set,
-      { referencedLibraryIds: next },
-      { referencedLibraryIds: previous },
-    )
+    const { scope, referencedLibraryIds } = get()
+    // The first concrete chip replaces @Alles-Wissen; from 'libraries' or 'none' it simply
+    // extends/starts the selection (#560).
+    const previousIds = scope === 'libraries' ? referencedLibraryIds : []
+    if (previousIds.includes(libraryId)) return
+    applyScopeChange(get, set, 'libraries', [...previousIds, libraryId])
   },
 
   removeReferencedLibrary: (libraryId: string) => {
-    const previous = get().referencedLibraryIds
-    const next = previous.filter((id) => id !== libraryId)
-    set({ referencedLibraryIds: next })
-    persistChatSettings(
-      get,
-      set,
-      { referencedLibraryIds: next },
-      { referencedLibraryIds: previous },
-    )
+    const next = get().referencedLibraryIds.filter((id) => id !== libraryId)
+    // Removing the last concrete chip empties the bar rather than falling back to @Alles-Wissen -
+    // "leere Leiste = ohne Wissen" (#560), with an explicit one-click way back via setScopeAll.
+    applyScopeChange(get, set, next.length > 0 ? 'libraries' : 'none', next)
+  },
+
+  clearScope: () => {
+    // Already empty - same reasoning as setScopeAll's short-circuit above.
+    if (get().scope === 'none') return
+    applyScopeChange(get, set, 'none', [])
   },
 }))
 
 /**
- * Persists a chat-settings change (useKnowledge/referencedLibraryIds) via PATCH, if a chat exists
- * yet, and tracks it as `pendingSettingsUpdate` so sendMessage can await it. On failure, rolls the
- * optimistically-applied local state back to `rollbackState` and surfaces `error` - the server's
- * chat settings otherwise silently diverge from what the UI shows (#548 review, finding 3).
+ * Applies a chip-bar scope change locally and persists it via PATCH, if a chat exists yet, and
+ * tracks it as `pendingSettingsUpdate` so sendMessage can await it. On failure, rolls the
+ * optimistically-applied local state back and surfaces `error` - the server's chat settings
+ * otherwise silently diverge from what the chip bar shows (#548 review, finding 3; carried over to
+ * the chip-only model in #560). useKnowledge and referencedLibraryIds are always sent together,
+ * even when only one conceptually changed, because a scope change - e.g. the first concrete chip
+ * replacing @Alles-Wissen - flips both fields atomically; splitting them into separate PATCHes
+ * could let a chat briefly sit with useKnowledge=true and stale referencedLibraryIds server-side.
  */
-function persistChatSettings(
+function applyScopeChange(
   get: () => ChatState,
   set: (partial: Partial<ChatState>) => void,
-  patch: ChatUpdateRequest,
-  rollbackState: Partial<ChatState>,
+  nextScope: SearchScope,
+  nextReferencedLibraryIds: string[],
 ): void {
+  const rollbackState: Partial<ChatState> = {
+    scope: get().scope,
+    referencedLibraryIds: get().referencedLibraryIds,
+  }
+  set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
+
   const { chatId } = get()
   if (!chatId) return
+
+  const patch: ChatUpdateRequest = {
+    useKnowledge: nextScope === 'all',
+    referencedLibraryIds: nextScope === 'libraries' ? nextReferencedLibraryIds : [],
+  }
 
   const promise: Promise<void> = updateChat(chatId, patch).then(
     () => undefined,
