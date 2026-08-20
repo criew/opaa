@@ -1,0 +1,26 @@
+<!--
+  test(e2e) #547: a hand-crafted "Apache mod_autoindex FancyIndexing HTMLTable" page (the layout
+  io.opaa.indexing.AutoindexCrawlerService#parseDirectory actually parses - <tr><td> rows with an
+  icon cell, a link cell, a date cell and a size cell). httpd:2.4-alpine's *default* httpd.conf
+  loads mod_autoindex but does not enable "IndexOptions HTMLTable" (that lives in the commented-out
+  "Include conf/extra/httpd-autoindex.conf" - see httpd.conf shipped in the image), so a real
+  autoindex response from this fixture's own directories renders as a <pre> list instead, which the
+  parser's `cells.size() < 4` guard skips entirely, yielding "0 Dokumente gefunden" - not what a
+  happy-path connection test needs to demonstrate. This static page stands in for that HTMLTable
+  layout without having to reconfigure the shared "rss-feed" httpd fixture (also used by #471) -
+  httpd serves it automatically for a GET of this directory since an index.html is present, no
+  autoindex module involved at all.
+-->
+<html>
+<head><title>Index of /webverzeichnis/</title></head>
+<body>
+<h1>Index of /webverzeichnis/</h1>
+<table>
+<tr><th valign="top"><img src="/icons/blank.gif" alt="[ICO]"></th><th>Name</th><th>Last modified</th><th>Size</th><th>Description</th></tr>
+<tr><th colspan="5"><hr></th></tr>
+<tr><td valign="top"><img src="/icons/back.gif" alt="[PARENTDIR]"></td><td><a href="/">Parent Directory</a></td><td>&nbsp;</td><td align="right">  - </td><td>&nbsp;</td></tr>
+<tr><td valign="top"><img src="/icons/text.gif" alt="[TXT]"></td><td><a href="merkblatt.txt">merkblatt.txt</a></td><td align="right">2026-01-01 00:00  </td><td align="right">1.0K</td><td>&nbsp;</td></tr>
+<tr><th colspan="5"><hr></th></tr>
+</table>
+</body>
+</html>

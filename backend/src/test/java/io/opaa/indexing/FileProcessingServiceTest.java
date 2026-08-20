@@ -64,13 +64,7 @@ class FileProcessingServiceTest {
 
   private KnowledgeLibrary library() {
     return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(),
-        "Bibliothek",
-        null,
-        UUID.randomUUID(),
-        LibraryVisibility.PRIVATE,
-        false,
-        false);
+        UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
   }
 
   @Test

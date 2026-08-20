@@ -74,7 +74,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 | Richtung | Mensch übergibt an OPAA | OPAA zieht aus dem Quellsystem |
 | Auslöser | Handlung einer Person | Zeitplan, Ereignis oder ausdrücklicher Anstoß |
 | Aktualität | statisch — die Fassung bleibt, wie sie übergeben wurde | selbst aktualisierend bei Änderung in der Quelle |
-| Ziel | persönliche Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | die eigene Bibliothek — sie **ist** die Quelle, Typ aus einem Template bei der Anlage gewählt |
+| Ziel | eine eigene Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | die eigene Bibliothek — sie **ist** die Quelle, Typ aus einem Template bei der Anlage gewählt |
 | Ablage des Originals | im Dokumentenspeicher von OPAA | im Quellsystem; OPAA hält Extrakt und Verweis |
 | Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy — an der Bibliothek hinterlegt; Zeitplan noch offen (#485) |
 | Typischer Zweck | einzelner Vorgang, Anlage zu einer Frage, kurzlebiges Material | dauerhaft gepflegte Bestände, Rechtsquellen, Dienstanweisungen |
@@ -99,12 +99,13 @@ Ablauf beim Hochladen:
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
    dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
-5. Ziel ist standardmäßig die **persönliche Wissensbibliothek**. Ein anderes Ziel ist wählbar, wo die
-   Person am Ziel mindestens `EDITOR` ist. **Gebaut** — die Vorauswahl der persönlichen Bibliothek ist
-   eine Client-Entscheidung (`personal`-Feld der Bibliotheksliste), kein zweiter Serverpfad. Es gibt
-   dazu genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek (`LibraryDetailPage.tsx`),
-   die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint nur, solange die dort geöffnete
-   Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke nie widersprechen können.
+5. Ziel ist jede Bibliothek, an der die Person mindestens `EDITOR` ist — es gibt keine Vorauswahl
+   (bis #522 war das standardmäßig die automatisch angelegte persönliche Bibliothek; diese
+   Automatik entfiel ersatzlos, siehe [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md)).
+   **Gebaut** — es gibt genau eine Bibliotheksauswahl auf der Detailseite der Bibliothek
+   (`LibraryDetailPage.tsx`), die zugleich Anzeige- und Upload-Ziel ist: Der Ablagebereich erscheint
+   nur, solange die dort geöffnete Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke
+   nie widersprechen können.
 
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
@@ -144,8 +145,21 @@ Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
 **Quellentyp** — Dateisystem-Verzeichnis, Webverzeichnis, RSS-Feed — und, für diesen
 Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
-Typ wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
-verlangt eine neue Bibliothek.
+**Typ** wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
+verlangt eine neue Bibliothek. Die **Konfiguration** dagegen ist keine reine Anlage-Entscheidung mehr:
+Berechtigte (MANAGER/OWNER, oder ein Systemadministrator ohne eigene Berechtigung) können sie auf der
+Bibliotheks-Detailseite jederzeit bearbeiten (**gebaut, #516**) — etwa um ein Crawl-Ziel zu verschieben
+oder Zugangsdaten zu rotieren, ohne die Bibliothek samt Index löschen und neu anlegen zu müssen. Der
+Dialog übernimmt Felder und Validierungen des Erstellungsdialogs, zeigt bestehende Zugangsdaten nie an
+und weist darauf hin, dass eine Änderung erst mit dem nächsten Indizierungslauf wirkt. Aus
+Zugangsdaten selbst wird beim Speichern eine Bindung an den bisherigen Ursprung: bleiben Schema, Host
+und Port der Adresse unverändert und wird kein neuer Wert eingegeben, bleiben die gespeicherten
+Zugangsdaten erhalten; wandert die Adresse auf einen anderen Host, werden sie verworfen und müssen neu
+eingegeben werden — sonst könnte eine berechtigte Person ohne Kenntnis des Passworts es allein durch
+eine Adressänderung an einen von ihr kontrollierten Server umleiten (`AutoindexCrawlerService` sendet
+den `Authorization`-Header präemptiv, ohne vorherige 401-Aufforderung der Gegenstelle). Ein explizites
+Entfernen hinterlegter Zugangsdaten (Quelle wird auf "keine Authentifizierung" umgestellt) ist über
+diesen Weg bewusst **nicht** möglich — dafür bleibt nur das Löschen und Neuanlegen der Bibliothek.
 
 **Verbindungstest vor dem Anlegen (gebaut, #514).** Im Erstellungsdialog prüft ein „Verbindung
 testen"-Knopf die eingegebene Quellkonfiguration serverseitig, bevor die Bibliothek überhaupt
@@ -718,10 +732,10 @@ Idee wieder aufgemacht werden.
   (ADR-0018, Entscheidung 6) ist diese Frage dringlicher geworden, nicht weniger relevant. Entschieden
   wird das in **Issue #207**.
 - Welche Quellsysteme geben Rechte belastbar genug heraus, dass Option 2 der Spiegelung sich lohnt?
-- Wie werden Zugangsdaten für Quellsysteme **gewechselt**, ohne dass ein Lauf ausfällt? Die Verwahrung
-  selbst ist geklärt — verschlüsselt, write-only, keine Rückgabe in keiner API-Antwort
-  ([ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 4) —, der
-  Wechselweg (Rotation eines kompromittierten oder ablaufenden Zugangs) bleibt offen.
+- **Der Rotationsweg für Zugangsdaten ist geklärt (gebaut, #516):** die Detailseite bearbeitet die
+  Quellkonfiguration einer Bibliothek jederzeit, ohne einen Lauf zu unterbrechen (siehe oben, Abschnitt
+  „Konnektor“). Offen bleibt die davon getrennte Frage, ob und wie sich hinterlegte Zugangsdaten
+  **entfernen** lassen sollen, ohne die Bibliothek neu anzulegen — bislang bewusst nicht vorgesehen.
 - Soll ein Konnektor Dokumente aus dem Quellsystem **zwischenspeichern** dürfen, damit Belegsprünge auch
   bei nicht erreichbarem Quellsystem funktionieren? Das erhöht den Nutzen und zugleich die
   Datenhaltung.

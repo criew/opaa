@@ -44,7 +44,6 @@ class LibraryAccessServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false);
     setId(library, libraryId);
     return library;
@@ -58,7 +57,7 @@ class LibraryAccessServiceTest {
   private KnowledgeLibrary libraryWithVisibility(UUID libraryId, LibraryVisibility visibility) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, UUID.randomUUID(), visibility, false, false);
+            organizationId, "Bibliothek", null, UUID.randomUUID(), visibility, false);
     setId(library, libraryId);
     return library;
   }
@@ -300,7 +299,6 @@ class LibraryAccessServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.ORGANIZATION,
-            false,
             false);
     setId(library, libraryId);
     when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of());
@@ -328,7 +326,6 @@ class LibraryAccessServiceTest {
             null,
             UUID.randomUUID(),
             LibraryVisibility.ORGANIZATION,
-            false,
             false);
     setId(orgWide, orgLibrary);
     when(libraryRepository.findByOrganizationIdAndVisibility(

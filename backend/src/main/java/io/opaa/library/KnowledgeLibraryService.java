@@ -35,11 +35,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -65,6 +61,14 @@ import org.springframework.web.server.ResponseStatusException;
  * 031-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
  * the deleted {@code LibraryOwnerType.SYSTEM} for the history. Every library now has a real owner,
  * and {@link #createLibrary}/{@link #deleteLibrary} carry no owner-kind-specific exception.
+ *
+ * <p>An automatically provisioned personal library (the {@code personal} flag, {@code
+ * ensurePersonalLibrary}) existed from #201 until #522: every user's first login used to create a
+ * "Meine Dokumente" upload library alongside their personal space. #522 removed that automation
+ * without a replacement - a user who wants a library now creates one themselves via {@link
+ * #createLibrary}, exactly like any other library. Libraries the automation had already created
+ * before #522 are unaffected: they keep their existing owner grant and simply become ordinary
+ * user-owned libraries, indistinguishable from one a user created by hand.
  */
 @Service
 @Transactional(readOnly = true)
@@ -72,7 +76,6 @@ public class KnowledgeLibraryService {
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
-  private static final String PERSONAL_LIBRARY_NAME = "Meine Dokumente";
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
@@ -84,7 +87,6 @@ public class KnowledgeLibraryService {
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final VectorStore vectorStore;
-  private final TransactionTemplate requiresNewTransactionTemplate;
   private final FilesystemPathAllowlist filesystemAllowlist;
 
   public KnowledgeLibraryService(
@@ -98,7 +100,6 @@ public class KnowledgeLibraryService {
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorStore vectorStore,
-      PlatformTransactionManager transactionManager,
       FilesystemPathAllowlist filesystemAllowlist) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -110,9 +111,6 @@ public class KnowledgeLibraryService {
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.vectorStore = vectorStore;
-    this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
-    this.requiresNewTransactionTemplate.setPropagationBehavior(
-        TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.filesystemAllowlist = filesystemAllowlist;
   }
 
@@ -167,7 +165,6 @@ public class KnowledgeLibraryService {
               currentUserId,
               visibility,
               listed,
-              false,
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
@@ -355,17 +352,6 @@ public class KnowledgeLibraryService {
     if (!accessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
-    // Mirrors the delete guard on the personal library (code review of #201/#305): once #202 makes
-    // library_id the filter axis for the permission-aware vector search, widening a personal
-    // library's visibility to ORGANIZATION would expose its owner's private documents
-    // organization-wide - a change no owner is likely to intend for a library the system, not they,
-    // created. The personal library's name and description can still be changed.
-    if (library.isPersonal() && request.getVisibility() == LibraryVisibility.ORGANIZATION) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "Die Sichtbarkeit der persoenlichen Bibliothek kann nicht auf ORGANIZATION gesetzt"
-              + " werden");
-    }
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
     // Bestand and Loeschsemantik the way the ADR explicitly rules out. request.getSourceType() is
@@ -385,9 +371,7 @@ public class KnowledgeLibraryService {
     // absent from that unrelated request.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     SourceConfiguration sourceConfiguration =
-        replacesSourceConfiguration
-            ? validateSourceConfigurationForUpdate(library.getSourceType(), request)
-            : null;
+        replacesSourceConfiguration ? validateSourceConfigurationForUpdate(library, request) : null;
 
     String normalizedName = validateName(request.getName());
     validateDescription(request.getDescription());
@@ -464,10 +448,6 @@ public class KnowledgeLibraryService {
   @Transactional
   public void deleteLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibrary(libraryId, currentUserId);
-    if (library.isPersonal()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Die persoenliche Bibliothek kann nicht geloescht werden");
-    }
     // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
     // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
     // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
@@ -563,78 +543,6 @@ public class KnowledgeLibraryService {
         page.getTotalElements());
   }
 
-  /**
-   * Creates the automatic personal library "Meine Dokumente" for a user if it does not exist yet.
-   * Mirrors {@code SpaceService#ensureDefaultSpace} exactly, including its {@code ON CONFLICT ...
-   * DO NOTHING} race handling via the partial unique index {@code
-   * uk_knowledge_libraries_personal_owner} (migration 012) - see that method's Javadoc for the full
-   * reasoning, not repeated here. Both are called from the same {@code UserService} post-commit
-   * callback for the same reason: the referenced {@code users} row must already be committed and
-   * visible on this method's own connection (see {@code
-   * UserService#ensurePersonalAssetsAfterCommit} for why the call is deferred to after commit).
-   *
-   * <p>Called independently of (not nested inside) {@code SpaceService#ensureDefaultSpace}'s own
-   * transaction, so a failure creating the library never rolls back an already-committed personal
-   * space and vice versa - each keeps the same self-contained failure boundary #265 established for
-   * the personal space alone. "Atomically" in #201's acceptance criteria is satisfied at the level
-   * that matters operationally: both calls are always attempted together, from the same afterCommit
-   * callback, so provisioning never silently creates one without the other.
-   *
-   * <p><b>{@code Propagation.NOT_SUPPORTED}, deliberately overriding the class-level
-   * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
-   * through the Spring proxy would open an ambient read-only transaction (and thus hold one JDBC
-   * connection) for this method's entire duration, while {@code requiresNewTransactionTemplate}
-   * below opens a <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction
-   * - two connections held by one caller at once, the same class of bug #299 fixed in {@code
-   * UserService.findOrCreateUser}. {@code SpaceService#ensureDefaultSpace} had the identical defect
-   * and is fixed the same way, in this same PR (#201/#305 code review) - not deferred to a
-   * follow-up issue, because the fix is one annotation and both methods are exercised together by
-   * {@link io.opaa.auth.UserServiceCreationRaceIntegrationTest}. {@code NOT_SUPPORTED} suspends any
-   * ambient transaction for this method's duration (there normally is none, since {@code
-   * findOrCreateUser} itself is not {@code @Transactional} either) and leaves only the one
-   * connection {@code requiresNewTransactionTemplate} actually needs.
-   */
-  @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public void ensurePersonalLibrary(UUID userId, UUID organizationId) {
-    if (libraryRepository.existsByOwnerUserIdAndPersonalTrue(userId)) {
-      return;
-    }
-
-    requiresNewTransactionTemplate.executeWithoutResult(
-        status -> {
-          UUID libraryId = UUID.randomUUID();
-          // #238 code review, finding 2: the return value is the number of rows this call itself
-          // inserted (0 on the ON CONFLICT ... DO NOTHING no-op path, 1 otherwise) - history is
-          // written only on the path that actually inserted, never for a personal library another
-          // concurrent call already created, so two racing callers never both write a conflicting
-          // open interval for the same library.
-          int libraryInserted =
-              libraryRepository.insertPersonalLibraryIfAbsent(
-                  libraryId,
-                  organizationId,
-                  PERSONAL_LIBRARY_NAME,
-                  "Private persoenliche Wissensbibliothek",
-                  userId);
-          if (libraryInserted > 0) {
-            // Same connection/transaction as the insert above, so this always sees the row it just
-            // wrote.
-            permissionHistoryService.recordLibraryCreated(
-                libraryRepository.findById(libraryId).orElseThrow(), userId);
-          }
-
-          UUID grantId = UUID.randomUUID();
-          // Same connection/transaction as the insert above, so it always sees the row it just
-          // wrote (or the pre-existing one another concurrent call won the race for) - see
-          // AssetGrantRepository#insertOwnerGrantForPersonalLibraryIfAbsent.
-          int grantInserted =
-              grantRepository.insertOwnerGrantForPersonalLibraryIfAbsent(grantId, userId);
-          if (grantInserted > 0) {
-            permissionHistoryService.recordGrantCreated(
-                grantRepository.findById(grantId).orElseThrow(), userId);
-          }
-        });
-  }
-
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name ist erforderlich");
@@ -703,20 +611,72 @@ public class KnowledgeLibraryService {
    * stay updatable even though {@code sourceType} itself never is. {@code sourceType} is always the
    * library's own, already-immutable value - never taken from the update request - so a caller
    * cannot use this path to smuggle in a type change.
+   *
+   * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
+   * request omits it <em>and</em> the new {@code sourceUrl} still names the same origin (scheme,
+   * host and port) as the currently stored one (issue #516, PR #542 review finding 1): credentials
+   * are write-only (never returned by any API response, ADR-0018), so a client editing e.g. only
+   * the path portion of {@code sourceUrl} has no value it could resend even if it wanted to, and
+   * without this fallback that edit alone would silently wipe an unrelated, previously configured
+   * credential. The fallback is deliberately restricted to the same origin: {@link
+   * io.opaa.indexing.AutoindexCrawlerService} sends the stored {@code Authorization} header
+   * preemptively on the very first request (RFC 7617 does not require a 401 challenge first), so a
+   * caller who does not know a configured credential could otherwise redirect it to a host they
+   * control simply by changing {@code sourceUrl} and leaving the credentials field blank - turning
+   * "must know the credential" into "can exfiltrate the credential". A host change intentionally
+   * drops the stored credential instead (matching the pre-fallback behaviour of #476), forcing the
+   * caller to re-enter it for the new host. There is deliberately no way to explicitly clear a
+   * stored credential while keeping the same origin - blank input is indistinguishable from "leave
+   * unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
-      DocumentSourceType sourceType, LibraryUpdateRequest request) {
+      KnowledgeLibrary library, LibraryUpdateRequest request) {
+    DocumentSourceType sourceType = library.getSourceType();
     String sourcePath = blankToNull(request.getSourcePath());
     String sourceUrl =
         blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     String sourceProxy = blankToNull(request.getSourceProxy());
     String sourceCredentials = blankToNull(request.getSourceCredentials());
+    if (sourceCredentials == null && sameSourceOrigin(library.getSourceUrl(), sourceUrl)) {
+      sourceCredentials = library.getSourceCredentials();
+    }
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
 
     validateConfigurationForType(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
     return new SourceConfiguration(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+  }
+
+  /**
+   * Whether {@code previousUrl} and {@code nextUrl} name the same origin - scheme, host and
+   * (explicit or scheme-default) port - the boundary the stored-credentials fallback in {@link
+   * #validateSourceConfigurationForUpdate} is restricted to (issue #516, PR #542 review finding 1).
+   * Either URL being {@code null} (FILESYSTEM carries no sourceUrl at all, or the request carries
+   * no sourceUrl of its own) or unparsable is treated conservatively as "different origin" - the
+   * caller then re-requires the credential rather than risking a false positive match.
+   */
+  private boolean sameSourceOrigin(String previousUrl, String nextUrl) {
+    if (previousUrl == null || nextUrl == null) {
+      return false;
+    }
+    try {
+      URI previous = URI.create(previousUrl);
+      URI next = URI.create(nextUrl);
+      return Objects.equals(previous.getScheme(), next.getScheme())
+          && Objects.equals(previous.getHost(), next.getHost())
+          && defaultedPort(previous) == defaultedPort(next);
+    } catch (IllegalArgumentException ex) {
+      return false;
+    }
+  }
+
+  /** Resolves the scheme's default port (http 80, https 443) when a URI carries no explicit one. */
+  private int defaultedPort(URI uri) {
+    if (uri.getPort() != -1) {
+      return uri.getPort();
+    }
+    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 
   /**
@@ -888,7 +848,6 @@ public class KnowledgeLibraryService {
             library.getOwnerType(),
             library.getVisibility(),
             library.isListed(),
-            library.isPersonal(),
             myRole,
             library.getSourceType(),
             documentCount,
@@ -907,7 +866,6 @@ public class KnowledgeLibraryService {
             library.getOwnerId(),
             library.getVisibility(),
             library.isListed(),
-            library.isPersonal(),
             myRole,
             library.getSourceType(),
             library.getCreatedAt(),
@@ -917,7 +875,11 @@ public class KnowledgeLibraryService {
         .sourcePath(library.getSourcePath())
         .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
         .sourceProxy(library.getSourceProxy())
-        .sourceInsecureSsl(library.isSourceInsecureSsl());
+        .sourceInsecureSsl(library.isSourceInsecureSsl())
+        // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
+        // a client phrase an accurate "leave blank to keep the current credential" hint only when
+        // one is actually stored.
+        .sourceCredentialsSet(library.getSourceCredentials() != null);
   }
 
   private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {

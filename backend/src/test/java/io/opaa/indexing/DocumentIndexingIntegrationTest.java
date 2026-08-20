@@ -150,7 +150,6 @@ class DocumentIndexingIntegrationTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
-                false,
                 DocumentSourceType.FILESYSTEM,
                 sharedTempDir.toAbsolutePath().toString(),
                 null,
@@ -345,7 +344,6 @@ class DocumentIndexingIntegrationTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
-                false,
                 DocumentSourceType.FILESYSTEM,
                 sharedTempDir.toAbsolutePath().toString(),
                 null,
@@ -464,7 +462,6 @@ class DocumentIndexingIntegrationTest {
                 null,
                 strangerId,
                 LibraryVisibility.PRIVATE,
-                false,
                 false));
     grantOwner(strangerLibrary.getId(), strangerId);
 
@@ -527,7 +524,6 @@ class DocumentIndexingIntegrationTest {
                 null,
                 userId,
                 LibraryVisibility.PRIVATE,
-                false,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 sharedTempDir

@@ -27,11 +27,7 @@ interface LibraryState {
 }
 
 function sortLibraries(list: LibraryListResponse[]): LibraryListResponse[] {
-  return [...list].sort((a, b) => {
-    if (a.personal && !b.personal) return -1
-    if (!a.personal && b.personal) return 1
-    return a.name.localeCompare(b.name)
-  })
+  return [...list].sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({

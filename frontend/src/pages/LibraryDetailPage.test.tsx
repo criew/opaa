@@ -100,7 +100,6 @@ const managerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'SHARED',
   listed: true,
-  personal: false,
   myRole: 'MANAGER',
   sourceType: 'UPLOAD',
   documentCount: 431,
@@ -115,7 +114,6 @@ const viewerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
-  personal: false,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
   documentCount: 87,
@@ -124,13 +122,12 @@ const viewerLibrary: LibraryListResponse = {
 }
 
 const personalLibrary: LibraryListResponse = {
-  id: 'library-personal',
+  id: 'library-mine',
   name: 'Meine Dokumente',
   description: 'Private Dokumente',
   ownerType: 'USER',
   visibility: 'PRIVATE',
   listed: false,
-  personal: true,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
   documentCount: 12,
@@ -178,14 +175,14 @@ describe('LibraryDetailPage', () => {
     useDocumentStore.getState().reset()
     useIndexingStore.getState().stopPolling('library-team')
     useIndexingStore.getState().stopPolling('library-readonly')
-    useIndexingStore.getState().stopPolling('library-personal')
+    useIndexingStore.getState().stopPolling('library-mine')
   })
 
   afterEach(() => {
     useAuthStore.setState({ user: null })
     useIndexingStore.getState().stopPolling('library-team')
     useIndexingStore.getState().stopPolling('library-readonly')
-    useIndexingStore.getState().stopPolling('library-personal')
+    useIndexingStore.getState().stopPolling('library-mine')
   })
 
   it('shows neither edit nor delete controls for a VIEWER', async () => {
@@ -215,27 +212,6 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('never offers deleting or sharing the personal library, even for its OWNER', async () => {
-    setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
-  })
-
-  it('does not offer ORGANIZATION visibility for the personal library', async () => {
-    setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByRole('combobox', { name: /sichtbarkeit/i }))
-
-    expect(screen.getByRole('option', { name: 'privat' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'geteilt' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'organisationsweit' })).not.toBeInTheDocument()
   })
 
   it('lets a system admin edit and delete a library without an own grant', async () => {
@@ -435,6 +411,61 @@ describe('LibraryDetailPage', () => {
 
     await waitFor(() => {
       expect(mockTriggerIndexing).toHaveBeenCalledWith('library-team')
+    })
+  })
+
+  it('offers "Bearbeiten" for a MANAGER on a connector library but hides it for a VIEWER', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/quellkonfiguration/i)
+    expect(
+      screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('edits the source configuration through the dialog, resending the unrelated Stammdaten fields untouched', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    )
+    const pathField = await screen.findByLabelText(/verzeichnispfad/i)
+    await user.clear(pathField)
+    await user.type(pathField, '/data/umgezogen')
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
+        name: ownerLibrary.name,
+        description: ownerLibrary.description,
+        visibility: ownerLibrary.visibility,
+        listed: ownerLibrary.listed,
+        sourcePath: '/data/umgezogen',
+        sourceUrl: undefined,
+        sourceProxy: undefined,
+        sourceCredentials: undefined,
+        sourceInsecureSsl: false,
+      } satisfies LibraryUpdateRequest)
     })
   })
 

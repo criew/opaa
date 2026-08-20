@@ -421,13 +421,12 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
 // read-only rendering in tests.
 export const mockLibraries: LibraryListResponse[] = [
   {
-    id: 'library-personal',
+    id: 'library-mine',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
     ownerType: 'USER',
     visibility: 'PRIVATE',
     listed: false,
-    personal: true,
     myRole: 'OWNER',
     sourceType: 'UPLOAD',
     documentCount: 12,
@@ -441,7 +440,6 @@ export const mockLibraries: LibraryListResponse[] = [
     ownerType: 'GROUP',
     visibility: 'SHARED',
     listed: true,
-    personal: false,
     myRole: 'MANAGER',
     // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run.
@@ -457,17 +455,14 @@ export const mockLibraries: LibraryListResponse[] = [
     ownerType: 'GROUP',
     visibility: 'ORGANIZATION',
     listed: true,
-    personal: false,
     myRole: 'VIEWER',
     sourceType: 'UPLOAD',
     documentCount: 87,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
-  // #423 code review, nit 4: a non-personal library where the caller holds OWNER (not just
-  // MANAGER), used to exercise AssetGrantService's last-active-OWNER guard (409) - library-personal
-  // cannot stand in for this, since AssetGrantService#upsertGrant rejects every grant on the
-  // personal library outright before that guard is even reached.
+  // #423 code review, nit 4: a library where the caller holds OWNER (not just MANAGER), used to
+  // exercise AssetGrantService's last-active-OWNER guard (409).
   {
     id: 'library-solo-owner',
     name: 'Projektakte Phoenix',
@@ -475,7 +470,6 @@ export const mockLibraries: LibraryListResponse[] = [
     ownerType: 'USER',
     visibility: 'PRIVATE',
     listed: false,
-    personal: false,
     myRole: 'OWNER',
     sourceType: 'UPLOAD',
     documentCount: 0,
@@ -485,15 +479,14 @@ export const mockLibraries: LibraryListResponse[] = [
 ]
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {
-  'library-personal': {
-    id: 'library-personal',
+  'library-mine': {
+    id: 'library-mine',
     name: 'Meine Dokumente',
     description: 'Private Dokumente',
     ownerType: 'USER',
     ownerId: 'mock-user-id',
     visibility: 'PRIVATE',
     listed: false,
-    personal: true,
     myRole: 'OWNER',
     documentCount: 12,
     sourceType: 'UPLOAD',
@@ -508,7 +501,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     ownerId: 'group-referat-50',
     visibility: 'SHARED',
     listed: true,
-    personal: false,
     myRole: 'MANAGER',
     documentCount: 431,
     // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
@@ -527,7 +519,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     ownerId: 'group-referat-50',
     visibility: 'ORGANIZATION',
     listed: true,
-    personal: false,
     myRole: 'VIEWER',
     documentCount: 87,
     sourceType: 'UPLOAD',
@@ -542,7 +533,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     ownerId: 'mock-user-id',
     visibility: 'PRIVATE',
     listed: false,
-    personal: false,
     myRole: 'OWNER',
     documentCount: 0,
     sourceType: 'UPLOAD',
@@ -564,7 +554,7 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
 )
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
-  'library-personal': [
+  'library-mine': [
     {
       id: 'document-dienstanweisung',
       fileName: 'dienstanweisung-2024.pdf',
@@ -680,11 +670,11 @@ const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
       updatedAt: '2026-03-01T10:00:00Z',
     },
   ],
-  'library-personal': [],
+  'library-mine': [],
   'library-dienstanweisungen': [],
   // #423 code review, nit 4: the library's only active OWNER grant, matching its myRole: 'OWNER'
   // fixture - exercises the 409 "last active OWNER" guard on both downgrade (POST) and revoke
-  // (DELETE), which library-personal cannot stand in for (grants there are rejected outright).
+  // (DELETE).
   'library-solo-owner': [
     {
       id: 'grant-solo-owner',

@@ -1,0 +1,3 @@
+Merkblatt fuer den Webverzeichnis-Verbindungstest (test(e2e) #547) - erfundener Inhalt, keine
+reale Behoerde. Dient nur dazu, dass AutoindexCrawlerService#parseTopLevelEntries genau ein
+unterstuetztes Dokument auf oberster Ebene findet.

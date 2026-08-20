@@ -53,8 +53,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -94,7 +92,6 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
-  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
@@ -212,7 +209,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(response.getOwnerId()).isEqualTo(owner);
     assertThat(response.getVisibility()).isEqualTo(LibraryVisibility.PRIVATE);
     assertThat(response.getListed()).isFalse();
-    assertThat(response.getPersonal()).isFalse();
   }
 
   @Test
@@ -652,6 +648,62 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void
+      updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThemAndTheOriginIsUnchanged() {
+    // Issue #516: sourceCredentials is write-only (never returned by any API response,
+    // ADR-0018), so a client editing e.g. only the path portion of sourceUrl through a UI dialog
+    // has no value it could resend even if it wanted to. Omitting the field must not be
+    // indistinguishable from "clear the credential" the way it would be for a plain full-object
+    // replace - as long as the request still names the same origin (PR #542 review finding 1;
+    // see the sibling test below for a host change, which must drop the credential instead).
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://files.example.com/other-documents/"));
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSourceUrl())
+        .isEqualTo(URI.create("https://files.example.com/other-documents/"));
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.getSourceCredentials()).isEqualTo("admin:old-secret");
+  }
+
+  @Test
+  void updateLibraryDropsStoredCredentialsWhenSourceUrlMovesToADifferentHost() {
+    // PR #542 review finding 1: without this, a MANAGER who does not know a configured
+    // credential could redirect it to a host they control by pointing sourceUrl at their own
+    // server and leaving the credentials field blank - AutoindexCrawlerService sends the stored
+    // Authorization header preemptively on the very first request, so the attacker's server would
+    // receive the credential in plaintext without ever needing to know it.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://internal.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://attacker.example.com/documents/"));
+
+    LibraryResponse updated = libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    assertThat(updated.getSourceUrl())
+        .isEqualTo(URI.create("https://attacker.example.com/documents/"));
+    KnowledgeLibrary stored = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(stored.getSourceCredentials()).isNull();
+  }
+
+  @Test
   void updateLibraryRejectsAConfigurationThatContradictsTheExistingSourceType() {
     // The same 400-before-write validation applies on update, keyed on the library's own,
     // unchangeable sourceType (FILESYSTEM here), not any sourceType in the request.
@@ -787,60 +839,6 @@ class KnowledgeLibraryServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
-  }
-
-  @Test
-  void personalLibraryCannotBeDeletedEvenByASystemAdmin() {
-    // Until #521, the system library carried the same guard - see that issue for why it was
-    // deleted outright instead of kept as a permanently undeletable special case.
-    UUID admin = createUser(organizationA);
-
-    libraryService.ensurePersonalLibrary(admin, organizationA);
-    List<KnowledgeLibrary> personalLibraries =
-        libraryRepository.findByOrganizationIdAndOwnerUserId(organizationA, admin);
-    assertThat(personalLibraries).hasSize(1);
-
-    assertThatThrownBy(
-            () -> libraryService.deleteLibrary(personalLibraries.getFirst().getId(), admin, true))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
-  }
-
-  @Test
-  void cannotWidenThePersonalLibraryToOrganizationVisibilityButCanRenameIt() {
-    // Code review of #201/#305: once #202 makes library_id the filter axis for the
-    // permission-aware vector search, ORGANIZATION visibility on the personal library would expose
-    // its owner's private documents organization-wide. Mirrors the delete guard on the same
-    // library.
-    UUID owner = createUser(organizationA);
-    libraryService.ensurePersonalLibrary(owner, organizationA);
-    KnowledgeLibrary personalLibrary =
-        libraryRepository.findByOrganizationIdAndOwnerUserId(organizationA, owner).getFirst();
-
-    assertThatThrownBy(
-            () ->
-                libraryService.updateLibrary(
-                    personalLibrary.getId(),
-                    new LibraryUpdateRequest(personalLibrary.getName())
-                        .visibility(LibraryVisibility.ORGANIZATION),
-                    owner,
-                    false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
-    assertThat(libraryRepository.findById(personalLibrary.getId()).orElseThrow().getVisibility())
-        .isEqualTo(LibraryVisibility.PRIVATE);
-
-    // Renaming (without touching visibility) is still allowed.
-    LibraryResponse renamed =
-        libraryService.updateLibrary(
-            personalLibrary.getId(), new LibraryUpdateRequest("Umbenannt"), owner, false);
-    assertThat(renamed.getName()).isEqualTo("Umbenannt");
   }
 
   @Test
@@ -1692,7 +1690,6 @@ class KnowledgeLibraryServiceIntegrationTest {
             "Owner does not exist",
             UUID.randomUUID(),
             LibraryVisibility.PRIVATE,
-            false,
             false);
 
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
@@ -1714,39 +1711,5 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("fk_knowledge_libraries_owner_group_organization");
-  }
-
-  @Test
-  void insertPersonalLibraryIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
-    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertPersonalLibraryIfAbsent's
-    // Javadoc) only ever suppresses the one named partial unique index - a genuinely dangling
-    // owner must still violate fk_knowledge_libraries_owner_user exactly as the entity-based save
-    // above does, not be silently swallowed as if it were a race loss.
-    //
-    // A transaction is required around the call (unlike the saveAndFlush-based tests above):
-    // @Modifying custom @Query methods, unlike the inherited save/saveAndFlush methods, do not get
-    // an implicit transaction from the repository proxy and fail with "No active transaction for
-    // update or delete query" without one. A plain test-method @Transactional does not work here
-    // either - Spring wraps @BeforeEach/@AfterEach into that same transaction by default, and
-    // Postgres aborts the whole transaction on the constraint violation this test deliberately
-    // provokes, poisoning the next test method's setUp() on the same connection. Using this
-    // class's own TransactionTemplate mirrors exactly how KnowledgeLibraryService itself calls
-    // this method in production (its own requiresNewTransactionTemplate) and keeps the transaction
-    // - and its rollback on failure - fully scoped to this one call.
-    UUID nonExistentOwner = UUID.randomUUID();
-    TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-
-    assertThatThrownBy(
-            () ->
-                transactionTemplate.executeWithoutResult(
-                    status ->
-                        libraryRepository.insertPersonalLibraryIfAbsent(
-                            UUID.randomUUID(),
-                            organizationA,
-                            "Meine Dokumente",
-                            "Private persoenliche Wissensbibliothek",
-                            nonExistentOwner)))
-        .isInstanceOf(DataIntegrityViolationException.class)
-        .hasMessageContaining("fk_knowledge_libraries_owner_user");
   }
 }

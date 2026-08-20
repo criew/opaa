@@ -69,7 +69,7 @@ class AssetGrantServiceTest {
     // what AssetGrantService reads via library.getId().
     library =
         KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, managerId, LibraryVisibility.PRIVATE, false, false);
+            organizationId, "Bibliothek", null, managerId, LibraryVisibility.PRIVATE, false);
     libraryId = library.getId();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
 
@@ -273,34 +273,6 @@ class AssetGrantServiceTest {
     var response = grantService.upsertGrant(libraryId, request, managerId, false);
 
     assertThat(response.getRole()).isEqualTo(AssetRole.MANAGER);
-  }
-
-  @Test
-  void upsertGrantRejectsAGrantOnThePersonalLibrary() {
-    KnowledgeLibrary personalLibrary =
-        KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Meine Dokumente",
-            null,
-            managerId,
-            LibraryVisibility.PRIVATE,
-            false,
-            true);
-    UUID personalLibraryId = personalLibrary.getId();
-    when(libraryRepository.findById(personalLibraryId)).thenReturn(Optional.of(personalLibrary));
-    when(accessService.canManage(any(), eq(managerId), anyBoolean())).thenReturn(true);
-    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
-        .thenReturn(AssetRole.OWNER);
-    AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
-
-    assertThatThrownBy(() -> grantService.upsertGrant(personalLibraryId, request, managerId, false))
-        .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.BAD_REQUEST));
-    verify(grantRepository, never()).save(any());
   }
 
   @Test

@@ -19,14 +19,14 @@ const TEST_DOCUMENT_PATH = join(
 )
 const TEST_DOCUMENT_NAME = 'wissensdokument.txt'
 
-// Negative scenarios (4, 5) upload this into their own personal library rather than asserting
-// "zero results" against the shared library alone (see the module doc comment below and PR #453
-// review, nit 1): the only library an excluded user can otherwise read is their empty personal
-// one, so "zero source cards" would just as happily mean "the search never ran" as "the filter
-// works" - a stalled or failed personal-library provisioning (see
-// io.opaa.user.UserService#ensureBothPersonalAssets, retried on next login) would leave both
-// scenarios silently green without checking anything. A real, non-empty, own-vs-foreign
-// distinction closes that gap.
+// Negative scenarios (4, 5) upload this into a library the acting user creates for the occasion
+// (see uploadOwnDocument below) rather than asserting "zero results" against the shared library
+// alone (see the module doc comment below and PR #453 review, nit 1): without a real, non-empty
+// upload of their own, "zero source cards" would just as happily mean "the search never ran" as
+// "the filter works", leaving both scenarios silently green without checking anything. A real,
+// non-empty, own-vs-foreign distinction closes that gap. Before #522 this uploaded into the
+// automatically provisioned personal library instead - that automation is gone, so each scenario
+// now creates its own throwaway library first, the same way scenario 1 does for the shared one.
 const OWN_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -43,6 +43,12 @@ const QUESTION = 'Was steht im Wissensdokument?'
 const runId = Date.now()
 const LIBRARY_NAME = `E2E Wissensbibliothek ${runId}`
 const GROUP_NAME = `E2E Gruppe ${runId}`
+// One own throwaway library per negative scenario (4, 5) - each acting user (C, then B) creates
+// and uploads into their own, never the other's, so a leftover from a previous run can never be
+// mistaken for this run's upload (see OWN_DOCUMENT_PATH's comment for why this upload matters at
+// all, and uploadOwnDocument for how it is created).
+const OWN_LIBRARY_NAME_OUTSIDER = `E2E Eigene Bibliothek Outsider ${runId}`
+const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 
 // Chats are persisted server-side (#525/#527) and keyed per user, not per browser session: a
 // fresh Playwright context (a new browser context per fixture, see fixtures/auth.ts) still talks
@@ -117,16 +123,20 @@ async function gotoLibraryDetail(page: Page, libraryName: string) {
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 }
 
-// Uploads OWN_DOCUMENT_PATH into the caller's own personal library. The personal library is
-// always the first row on the overview (LibraryManagementPage sorts it first), marked "persönlich"
-// in its summary line - unlike the pre-#481 DocumentsPage, there is no default-selected library to
-// rely on, so this actually finds and opens that row.
-async function uploadOwnDocument(page: Page) {
+// Creates a fresh library named libraryName for the acting user (mirroring scenario 1's own
+// creation step) and uploads OWN_DOCUMENT_PATH into it. Since #522 removed the automatically
+// provisioned personal library, there is no existing library to rely on for this upload - it must
+// be created here, on demand, same as any other library a user wants.
+async function uploadOwnDocument(page: Page, libraryName: string) {
   await gotoLibraries(page)
+  await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await page.getByRole('dialog').getByLabel('Name').fill(libraryName)
   await Promise.all([
     page.waitForURL(/\/libraries\/[^/]+$/),
-    page.getByText('persönlich', { exact: false }).first().click(),
+    page.getByRole('button', { name: 'Erstellen' }).click(),
   ])
+  await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+
   await page.getByLabel('Dateien auswählen').setInputFiles(OWN_DOCUMENT_PATH)
   // exact: true - a non-exact match risks a strict-mode violation once anything else on the page
   // (e.g. a status hint) also happens to contain this filename as a substring.
@@ -143,7 +153,7 @@ async function uploadOwnDocument(page: Page) {
  * POST /api/v1/libraries/{libraryId}/documents, which io.opaa.ratelimit.RateLimitConfiguration
  * never guards - only POST /api/v1/libraries/{libraryId}/indexing is, which this suite never
  * calls). Scenarios 4
- * and 5 each add one more upload of their own, into the acting user's own personal library - see
+ * and 5 each create one throwaway library of their own and upload one more document into it - see
  * OWN_DOCUMENT_PATH's comment for why.
  *
  * Scenarios 4 and 5 (the negative cases) are the ones that actually exercise
@@ -210,7 +220,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('4. Negativfall: keine Freigabe, kein Treffer', async ({ outsiderPage: cPage }) => {
-    await uploadOwnDocument(cPage)
+    await uploadOwnDocument(cPage, OWN_LIBRARY_NAME_OUTSIDER)
 
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
@@ -232,7 +242,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await expect(adminPage.getByText('Dev User')).toHaveCount(0)
     await adminPage.getByRole('button', { name: 'Schließen' }).click()
 
-    await uploadOwnDocument(bPage)
+    await uploadOwnDocument(bPage, OWN_LIBRARY_NAME_REGULAR)
 
     await gotoLibraries(bPage)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)

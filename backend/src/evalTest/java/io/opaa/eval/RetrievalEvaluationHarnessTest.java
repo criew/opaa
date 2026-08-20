@@ -349,7 +349,6 @@ class RetrievalEvaluationHarnessTest {
                 null,
                 evalUserId,
                 LibraryVisibility.PRIVATE,
-                false,
                 false));
     evalLibraryId = library.getId();
 

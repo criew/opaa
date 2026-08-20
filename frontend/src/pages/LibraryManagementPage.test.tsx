@@ -30,7 +30,6 @@ const { mockCreateLibrary, mockGetMyGroups } = vi.hoisted(() => ({
       ownerType: request.ownerType ?? 'USER',
       visibility: request.visibility ?? 'PRIVATE',
       listed: request.listed ?? false,
-      personal: false,
       myRole: 'OWNER',
       sourceType: request.sourceType,
       documentCount: 0,
@@ -55,14 +54,13 @@ vi.mock('../services/api', async () => {
   }
 })
 
-const personalLibrary: LibraryListResponse = {
-  id: 'library-personal',
+const ownLibrary: LibraryListResponse = {
+  id: 'library-mine',
   name: 'Meine Dokumente',
   description: 'Private Dokumente',
   ownerType: 'USER',
   visibility: 'PRIVATE',
   listed: false,
-  personal: true,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
   documentCount: 12,
@@ -77,7 +75,6 @@ const managerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'SHARED',
   listed: true,
-  personal: false,
   myRole: 'MANAGER',
   sourceType: 'FILESYSTEM',
   documentCount: 431,
@@ -92,7 +89,6 @@ const viewerLibrary: LibraryListResponse = {
   ownerType: 'GROUP',
   visibility: 'ORGANIZATION',
   listed: true,
-  personal: false,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
   documentCount: 87,
@@ -114,13 +110,13 @@ describe('LibraryManagementPage', () => {
     vi.clearAllMocks()
   })
 
-  it('lists libraries with the personal library first and marked as such', async () => {
-    setLibraryState([managerLibrary, personalLibrary])
+  it('lists libraries sorted alphabetically by name', async () => {
+    setLibraryState([managerLibrary, ownLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    const items = await screen.findAllByText(/persönlich|Rechtsquellen Soziales/)
-    expect(items[0]).toHaveTextContent('persönlich')
-    expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
+    const items = await screen.findAllByText(/Meine Dokumente|Rechtsquellen Soziales/)
+    expect(items[0]).toHaveTextContent('Meine Dokumente')
+    expect(items[1]).toHaveTextContent('Rechtsquellen Soziales')
   })
 
   it('shows the document count and source type per library without a detail round trip', async () => {

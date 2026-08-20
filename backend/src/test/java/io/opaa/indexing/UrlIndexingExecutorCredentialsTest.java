@@ -81,7 +81,6 @@ class UrlIndexingExecutorCredentialsTest {
                 userId,
                 LibraryVisibility.PRIVATE,
                 false,
-                false,
                 DocumentSourceType.HTTP_DIRECTORY,
                 null,
                 "https://files.example.com/documents/",

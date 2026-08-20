@@ -7,39 +7,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
-
-  /**
-   * Grants the owner of a personal library {@link AssetRole#OWNER} on it, in a single
-   * insert-or-noop round trip keyed off the library row itself rather than a passed-in library id -
-   * mirrors {@link KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent}'s {@code ON CONFLICT
-   * ... DO NOTHING} race handling, targeting the partial unique index {@code
-   * uk_asset_grants_user_subject} (migration 013) so a concurrent call for the same user is a
-   * silent no-op rather than a duplicate-grant error. Used only by {@code
-   * KnowledgeLibraryService#ensurePersonalLibrary}, after the library itself has been
-   * inserted-or-confirmed-existing in the same {@code REQUIRES_NEW} transaction.
-   *
-   * <p>Returns the number of rows actually inserted (0 or 1) - {@code
-   * KnowledgeLibraryService#ensurePersonalLibrary} historises the new grant only when this is 1,
-   * for the same reason {@link KnowledgeLibraryRepository#insertPersonalLibraryIfAbsent} does (code
-   * review of #238, finding 2).
-   */
-  @Modifying
-  @Query(
-      value =
-          "INSERT INTO asset_grants"
-              + "  (id, library_id, organization_id, subject_type, subject_user_id, role, granted_by_user_id, created_at, updated_at)"
-              + " SELECT :grantId, kl.id, kl.organization_id, 'USER', :ownerUserId, 'OWNER', :ownerUserId, now(), now()"
-              + " FROM knowledge_libraries kl"
-              + " WHERE kl.owner_user_id = :ownerUserId AND kl.personal = true"
-              + " ON CONFLICT (library_id, subject_user_id) WHERE subject_type = 'USER' DO NOTHING",
-      nativeQuery = true)
-  int insertOwnerGrantForPersonalLibraryIfAbsent(
-      @Param("grantId") UUID grantId, @Param("ownerUserId") UUID ownerUserId);
 
   /** All grants on a library, used to populate {@link LibraryAccessService}'s per-library cache. */
   List<AssetGrant> findByLibraryId(UUID libraryId);

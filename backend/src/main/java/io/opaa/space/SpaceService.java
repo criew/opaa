@@ -412,8 +412,8 @@ public class SpaceService {
    * most one of several concurrent calls for the same owner actually inserts a row, the rest are
    * silent no-ops - never a {@link DataIntegrityViolationException} to catch, and never a second
    * query to re-read the winner's row, because this method returns {@code void} and the caller
-   * (idempotent by design - see {@code UserService#ensureBothPersonalAssets}) does not need it
-   * back. A genuinely unrelated constraint violation (e.g. a dangling {@code ownerId}) still throws
+   * (idempotent by design - see {@code UserService#ensurePersonalSpace}) does not need it back. A
+   * genuinely unrelated constraint violation (e.g. a dangling {@code ownerId}) still throws
    * normally, because {@code ON CONFLICT} only ever suppresses the one named partial index, never
    * any other constraint.
    *
@@ -421,9 +421,10 @@ public class SpaceService {
    * {@code UserServiceCreationRaceIntegrationTest} 12-concurrent-first-login load, the previous
    * insert-then-catch-{@code DataIntegrityViolationException}-then-reread sequence needed up to two
    * round trips per losing caller (the failed insert attempt, whose aborted transaction then had to
-   * be rolled back before the connection could be reused, plus the follow-up read), and #201
-   * doubled the number of callers doing this in the same per-login sequence by adding {@code
-   * KnowledgeLibraryService#ensurePersonalLibrary} right after this method. That was enough
+   * be rolled back before the connection could be reused, plus the follow-up read); #201 had
+   * temporarily doubled the number of callers doing this in the same per-login sequence by adding a
+   * sibling personal-library provisioning call right after this method - since removed again by
+   * #522, which deleted the automatic personal library entirely. That doubling was enough
    * additional connection-pool queueing to intermittently exceed Hikari's default 30-second {@code
    * connectionTimeout} at the production default pool size of 10 - not a deadlock (each connection
    * was still only held by one caller at a time; see the {@code Propagation.NOT_SUPPORTED} note
@@ -440,8 +441,8 @@ public class SpaceService {
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
    * that first creates the user row will fail with a {@code fk_spaces_owner} violation, because the
    * {@code REQUIRES_NEW} connection cannot see the uncommitted row (regression fixed as a follow-up
-   * to #265/#280; see {@code UserService#ensurePersonalAssetsAfterCommit}, which defers this call
-   * to a post-commit hook for exactly this reason).
+   * to #265/#280; see {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to
+   * a post-commit hook for exactly this reason).
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
    * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method

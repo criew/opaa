@@ -6,9 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.library.AssetGrantHistoryRepository;
-import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
@@ -51,11 +49,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * just inserted was not committed yet, so it was invisible on the {@code REQUIRES_NEW} connection,
  * and the personal-space insert failed on {@code fk_spaces_owner} for every single first login (not
  * just concurrent ones) - the whole outer transaction then rolled back, so not even the user was
- * created. {@link #firstLoginCreatesUserAndPersonalSpaceAndPersonalLibraryWithoutError()}
- * reproduces this with a single call and no concurrency at all. {@code UserService} now defers the
- * {@code ensureDefaultSpace} call (and, since #201, {@code ensurePersonalLibrary} alongside it) to
- * a {@code TransactionSynchronization#afterCommit} callback, guaranteeing the user row is committed
- * and visible by the time the personal space and personal library are created.
+ * created. {@link #firstLoginCreatesUserAndPersonalSpaceWithoutError()} reproduces this with a
+ * single call and no concurrency at all. {@code UserService} now defers the {@code
+ * ensureDefaultSpace} call to a {@code TransactionSynchronization#afterCommit} callback,
+ * guaranteeing the user row is committed and visible by the time the personal space is created.
+ *
+ * <p>#201 had temporarily added an equivalent personal-library provisioning call alongside {@code
+ * ensureDefaultSpace}, exercised by this class's now-removed library-race tests; #522 deleted the
+ * automatic personal library entirely, so this class is back to covering the personal space alone.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
@@ -65,10 +66,9 @@ class UserServicePersonalSpaceIntegrationTest {
 
   @Autowired private UserService userService;
   @Autowired private SpaceService spaceService;
-  @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private SpaceRepository spaceRepository;
-  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
 
@@ -76,18 +76,16 @@ class UserServicePersonalSpaceIntegrationTest {
   void cleanUp() {
     spaceRepository.deleteAll();
     libraryRepository.deleteAll();
-    // #238 code review, finding 2+4: ensurePersonalLibrary now historises the personal library and
-    // its owner grant on every first login this class exercises, and
-    // asset_grant_history.subject_user_id/group_membership_history.user_id are ON DELETE RESTRICT
-    // (see 018-permission-history.yaml's "Deletion survival" comment) - a blanket
-    // userRepository.deleteAll() below would otherwise fail from the second test method onward.
+    // #238 code review, finding 2+4: RESTRICT foreign keys from the permission-history tables mean
+    // a blanket userRepository.deleteAll() below would otherwise fail from the second test method
+    // onward.
     grantHistoryRepository.deleteAll();
     membershipHistoryRepository.deleteAll();
     userRepository.deleteAll();
   }
 
   @Test
-  void firstLoginCreatesUserAndPersonalSpaceAndPersonalLibraryWithoutError() {
+  void firstLoginCreatesUserAndPersonalSpaceWithoutError() {
     String subject = UUID.randomUUID().toString();
 
     // A single, non-concurrent call is enough to reproduce the regression - see the class
@@ -101,14 +99,21 @@ class UserServicePersonalSpaceIntegrationTest {
     List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(user.getId());
     assertThat(spaces).hasSize(1);
     assertThat(spaces.getFirst().isDefault()).isEqualTo(true);
+  }
 
-    // #201: a personal space never arrives without its personal library, from the very first
-    // login - not just eventually via a later, separate provisioning step.
-    List<KnowledgeLibrary> libraries =
-        libraryRepository.findByOrganizationIdAndOwnerUserId(
-            user.getOrganizationId(), user.getId());
-    assertThat(libraries).hasSize(1);
-    assertThat(libraries.getFirst().isPersonal()).isTrue();
+  @Test
+  void firstLoginCreatesNoLibraryAnymore() {
+    // #522 acceptance criterion: a first login provisions only the personal space, never a
+    // library - the automatic "Meine Dokumente" upload library #201 used to create here is gone
+    // without replacement.
+    String subject = UUID.randomUUID().toString();
+
+    User user = userService.findOrCreateUser(subject, "test-issuer", "user@example.com", "Test");
+
+    assertThat(
+            libraryRepository.findByOrganizationIdAndOwnerUserId(
+                user.getOrganizationId(), user.getId()))
+        .isEmpty();
   }
 
   @Test
@@ -181,112 +186,5 @@ class UserServicePersonalSpaceIntegrationTest {
     }
 
     assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).hasSize(1);
-  }
-
-  @Test
-  void concurrentEnsurePersonalLibraryCallsForTheSameAlreadyCommittedUserCreateExactlyOneLibrary()
-      throws Exception {
-    // The library-side counterpart of the space race test above, same pattern: isolate
-    // KnowledgeLibraryService's own uk_knowledge_libraries_personal_owner race from the
-    // user-creation race exercised in
-    // concurrentFirstLoginsOfDifferentUsersEachGetExactlyOnePersonalSpace.
-    User user =
-        userService.findOrCreateUser(
-            UUID.randomUUID().toString(), "test-issuer", "race-lib@example.com", "RaceLib");
-    libraryRepository.deleteAll(
-        libraryRepository.findByOrganizationIdAndOwnerUserId(
-            user.getOrganizationId(), user.getId()));
-
-    int threadCount = 2;
-    CountDownLatch ready = new CountDownLatch(threadCount);
-    CountDownLatch start = new CountDownLatch(1);
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-    try {
-      List<Future<?>> futures =
-          List.of(
-              executor.submit(
-                  () -> {
-                    ready.countDown();
-                    start.await();
-                    libraryService.ensurePersonalLibrary(user.getId(), user.getOrganizationId());
-                    return null;
-                  }),
-              executor.submit(
-                  () -> {
-                    ready.countDown();
-                    start.await();
-                    libraryService.ensurePersonalLibrary(user.getId(), user.getOrganizationId());
-                    return null;
-                  }));
-      ready.await();
-      start.countDown();
-      for (Future<?> future : futures) {
-        future.get(30, TimeUnit.SECONDS);
-      }
-    } finally {
-      executor.shutdown();
-    }
-
-    assertThat(
-            libraryRepository.findByOrganizationIdAndOwnerUserId(
-                user.getOrganizationId(), user.getId()))
-        .hasSize(1);
-  }
-
-  @Test
-  void concurrentFirstLoginRacesOnSpaceAndLibraryProvisioningEachResolveToExactlyOne()
-      throws Exception {
-    // The two mechanisms this class coordinates (personal space provisioning, personal library
-    // provisioning) racing at the same time, for the same already-committed user, through the
-    // real end-to-end findOrCreateUser -> afterCommit -> ensureBothPersonalAssets path - not each
-    // mechanism isolated in its own test as the two tests above do. A regression that only
-    // guards one partial-unique-index race while accidentally sharing mutable state between the
-    // two ensure* calls (e.g. a single shared transaction that a losing space insert would poison
-    // for the library insert too) would still pass the two isolated tests above but fail here.
-    User user =
-        userService.findOrCreateUser(
-            UUID.randomUUID().toString(), "test-issuer", "race-both@example.com", "RaceBoth");
-    spaceRepository.deleteAll();
-    libraryRepository.deleteAll(
-        libraryRepository.findByOrganizationIdAndOwnerUserId(
-            user.getOrganizationId(), user.getId()));
-
-    int threadCount = 2;
-    CountDownLatch ready = new CountDownLatch(threadCount);
-    CountDownLatch start = new CountDownLatch(1);
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-    try {
-      List<Future<?>> futures =
-          List.of(
-              executor.submit(
-                  () -> {
-                    ready.countDown();
-                    start.await();
-                    userService.findOrCreateUser(
-                        user.getSubject(), user.getIssuer(), user.getEmail(), "RaceBoth");
-                    return null;
-                  }),
-              executor.submit(
-                  () -> {
-                    ready.countDown();
-                    start.await();
-                    userService.findOrCreateUser(
-                        user.getSubject(), user.getIssuer(), user.getEmail(), "RaceBoth");
-                    return null;
-                  }));
-      ready.await();
-      start.countDown();
-      for (Future<?> future : futures) {
-        future.get(30, TimeUnit.SECONDS);
-      }
-    } finally {
-      executor.shutdown();
-    }
-
-    assertThat(spaceRepository.findDistinctByMembershipsUserId(user.getId())).hasSize(1);
-    assertThat(
-            libraryRepository.findByOrganizationIdAndOwnerUserId(
-                user.getOrganizationId(), user.getId()))
-        .hasSize(1);
   }
 }
