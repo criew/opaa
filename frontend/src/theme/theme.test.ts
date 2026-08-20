@@ -71,4 +71,24 @@ describe('createAppTheme', () => {
     expect(branded.palette.primary.main).toBe(plain.palette.primary.main)
     expect(branded.palette.primary.dark).toBe(plain.palette.primary.dark)
   })
+
+  test('ButtonBase re-applies the focus ring that MUI resets with outline: 0', () => {
+    const theme = createAppTheme('light')
+    const root = theme.components?.MuiButtonBase?.styleOverrides?.root as Record<string, unknown>
+    const ring = root['&:focus-visible, &.Mui-focusVisible'] as Record<string, string>
+
+    expect(ring.outline).toMatch(/^3px solid /)
+    expect(ring.outlineOffset).toBe('2px')
+  })
+
+  test('reduced motion also disables smooth scrolling', () => {
+    const theme = createAppTheme('dark')
+    const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>
+    const reduced = baseline['@media (prefers-reduced-motion: reduce)'] as Record<
+      string,
+      Record<string, string>
+    >
+
+    expect(reduced['*, *::before, *::after'].scrollBehavior).toBe('auto !important')
+  })
 })

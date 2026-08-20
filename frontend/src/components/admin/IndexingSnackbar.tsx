@@ -13,7 +13,9 @@ export default function IndexingSnackbar() {
       onClose={closeSnackbar}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
     >
-      <Alert onClose={closeSnackbar} severity={snackbar.severity} variant="filled">
+      {/* A polite status, not an interrupting alert - screen readers read it after the current
+          utterance. */}
+      <Alert onClose={closeSnackbar} severity={snackbar.severity} variant="filled" role="status">
         {snackbar.message}
       </Alert>
     </Snackbar>

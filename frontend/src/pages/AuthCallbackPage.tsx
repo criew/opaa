@@ -4,8 +4,10 @@ import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import { useAuthStore } from '../stores/authStore'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function AuthCallbackPage() {
+  usePageTitle('Anmeldung')
   const handleOidcCallback = useAuthStore((s) => s.handleOidcCallback)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isLoading = useAuthStore((s) => s.isLoading)

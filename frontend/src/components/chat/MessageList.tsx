@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import type { ChatMessage } from '../../types/chat'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
@@ -20,14 +22,37 @@ function shouldShowDate(messages: ChatMessage[], index: number): boolean {
   return prev.toDateString() !== curr.toDateString()
 }
 
+export const ANSWER_ARRIVED_ANNOUNCEMENT = 'Antwort eingetroffen'
+
 export default function MessageList({ messages, isLoading }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const wasLoading = useRef(isLoading)
+  const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
     if (typeof bottomRef.current?.scrollIntoView === 'function') {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' })
+      bottomRef.current.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' })
     }
-  }, [messages.length])
+  }, [messages.length, prefersReducedMotion])
+
+  // Answers arrive in one piece, so the only cue for screen reader users is this live region:
+  // announce the loading -> done transition, then clear it so the next answer is read out again.
+  useEffect(() => {
+    if (wasLoading.current && !isLoading) {
+      setAnnouncement(ANSWER_ARRIVED_ANNOUNCEMENT)
+      const timer = setTimeout(() => setAnnouncement(''), 1000)
+      wasLoading.current = isLoading
+      return () => clearTimeout(timer)
+    }
+    wasLoading.current = isLoading
+  }, [isLoading])
+
+  const liveRegion = (
+    <Box component="div" role="status" aria-live="polite" sx={visuallyHidden}>
+      {announcement}
+    </Box>
+  )
 
   if (messages.length === 0 && !isLoading) {
     return (
@@ -45,6 +70,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
         <SmartToyIcon sx={{ fontSize: 48 }} />
         <Typography variant="h6">Womit kann ich Ihnen heute helfen?</Typography>
         <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+        {liveRegion}
       </Box>
     )
   }
@@ -60,7 +86,11 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
         ))}
 
         {isLoading && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}>
+          <Box
+            role="status"
+            aria-live="polite"
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}
+          >
             <CircularProgress size={20} />
             <Typography variant="body2" color="text.secondary">
               Denkt nach …
@@ -68,6 +98,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
           </Box>
         )}
 
+        {liveRegion}
         <div ref={bottomRef} />
       </Box>
     </Box>

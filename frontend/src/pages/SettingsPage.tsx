@@ -8,6 +8,7 @@ import LightModeIcon from '@mui/icons-material/LightMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import { useUiStore } from '../stores/uiStore'
 import type { ThemeMode } from '../stores/uiStore'
+import PageHeading from '../components/a11y/PageHeading'
 
 export default function SettingsPage() {
   const themeMode = useUiStore((s) => s.themeMode)
@@ -15,9 +16,7 @@ export default function SettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: 4, maxWidth: 600 }}>
-      <Typography variant="h5" gutterBottom>
-        Einstellungen
-      </Typography>
+      <PageHeading title="Einstellungen" gutterBottom />
 
       <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
         <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>

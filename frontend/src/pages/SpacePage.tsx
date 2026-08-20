@@ -17,6 +17,7 @@ import { useNavigate, useParams } from 'react-router'
 import ChatList from '../components/chat/ChatList'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
+import PageHeading from '../components/a11y/PageHeading'
 
 function canManage(role: string | undefined): boolean {
   return role === 'ADMIN'
@@ -62,7 +63,7 @@ export default function SpacePage() {
   if (!space) {
     return (
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h6">Kein Space ausgewählt</Typography>
+        <PageHeading title="Kein Space ausgewählt" variant="h6" />
       </Box>
     )
   }
@@ -83,7 +84,7 @@ export default function SpacePage() {
           >
             <Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-                <Typography variant="h5">{space.name}</Typography>
+                <PageHeading title={space.name} />
                 {space.isDefault && (
                   <Chip label="Standard" size="small" color="primary" variant="outlined" />
                 )}
@@ -113,7 +114,9 @@ export default function SpacePage() {
           disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography variant="h6">Chats</Typography>
+            <Typography component="h2" variant="h6">
+              Chats
+            </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
@@ -128,7 +131,9 @@ export default function SpacePage() {
           disableGutters
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography variant="h6">Mitglieder</Typography>
+            <Typography component="h2" variant="h6">
+              Mitglieder
+            </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />

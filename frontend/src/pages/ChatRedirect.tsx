@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /**
  * Resolves the legacy `/chat` entry point (#527): lands on the user's default space and, within
@@ -17,6 +18,7 @@ import { useChatListStore } from '../stores/chatListStore'
  * (#548 review, nit c).
  */
 export default function ChatRedirect() {
+  usePageTitle('Chat')
   const navigate = useNavigate()
   const spaces = useSpaceStore((s) => s.spaces)
   const isLoadingSpaces = useSpaceStore((s) => s.isLoadingList)

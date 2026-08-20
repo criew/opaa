@@ -51,6 +51,7 @@ import {
 } from '../utils/labels'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
+import PageHeading from '../components/a11y/PageHeading'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - only a
 // client-side hint for the file picker; the backend remains the authority on what is accepted.
@@ -210,7 +211,7 @@ export default function LibraryDetailPage() {
       </Link>
 
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
-        <Typography variant="h6">{library.name}</Typography>
+        <PageHeading title={library.name} variant="h6" />
         {details && (
           <Chip
             label={documentSourceTypeLabel(details.sourceType)}
@@ -850,7 +851,7 @@ function LibraryIndexingSection({
                 value={progressPercent}
                 sx={{ mb: 1 }}
               />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" role="status">
                 {totalDocuments > 0
                   ? isRssFeed
                     ? `${documentCount + documentsSkipped} von ${totalDocuments} Feed-Einträgen verarbeitet (${documentsIndexedTotal} Dokumente indiziert)`

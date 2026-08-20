@@ -17,6 +17,7 @@ import { getUsers } from '../services/api'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
+import PageHeading from '../components/a11y/PageHeading'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
   const details = useGroupStore((s) => s.groupDetails[group.id])
@@ -253,7 +254,7 @@ export default function GroupManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Gruppen</Typography>
+        <PageHeading title="Gruppen" variant="h6" />
         <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
           Neue Gruppe
         </Button>

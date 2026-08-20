@@ -14,7 +14,7 @@ describe('IndexingSnackbar', () => {
   it('does not show snackbar when closed', () => {
     renderWithProviders(<IndexingSnackbar />)
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows success snackbar', () => {
@@ -23,7 +23,7 @@ describe('IndexingSnackbar', () => {
     })
     renderWithProviders(<IndexingSnackbar />)
 
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByText('Indexing completed: 42 documents')).toBeInTheDocument()
   })
 
@@ -33,7 +33,7 @@ describe('IndexingSnackbar', () => {
     })
     renderWithProviders(<IndexingSnackbar />)
 
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByText('Indizierung fehlgeschlagen')).toBeInTheDocument()
   })
 })

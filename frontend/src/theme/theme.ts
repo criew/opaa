@@ -58,6 +58,12 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
   const roles = isDark ? darkRoles : lightRoles
   const { accent, accentHover, accentPress } = resolveAccent(roles, branding)
   const focusRing = alpha(accent, focusRingAlpha)
+  // One focus ring for everything interactive, in both schemes (guidelines 4.4). Shared between
+  // the global rule and MuiButtonBase, which resets `outline` itself and would otherwise win.
+  const focusRingStyle = {
+    outline: `${focusRingWidthPx}px solid ${focusRing}`,
+    outlineOffset: '2px',
+  }
 
   return createTheme({
     palette: {
@@ -172,17 +178,24 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
           body: {
             backgroundColor: roles.bg1,
           },
-          // Visible focus for every interactive element, in both schemes (guidelines 4.4).
-          '*:focus-visible': {
-            outline: `${focusRingWidthPx}px solid ${focusRing}`,
-            outlineOffset: '2px',
-          },
+          '*:focus-visible': focusRingStyle,
+          // Motion collapses to state changes; smooth scrolling becomes instant (guidelines 4.5).
           '@media (prefers-reduced-motion: reduce)': {
             '*, *::before, *::after': {
               animationDuration: '0.01ms !important',
               animationIterationCount: '1 !important',
               transitionDuration: '0.01ms !important',
+              scrollBehavior: 'auto !important',
             },
+          },
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          root: {
+            // ButtonBase sets `outline: 0` at the same specificity as the global rule above and
+            // later in the sheet, so every button would lose its ring without this override.
+            '&:focus-visible, &.Mui-focusVisible': focusRingStyle,
           },
         },
       },
