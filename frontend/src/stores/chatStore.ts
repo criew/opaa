@@ -8,6 +8,7 @@ import type {
 } from '../types/api'
 import { createChat, getChat, sendQuery, updateChat } from '../services/api'
 import { useChatListStore } from './chatListStore'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -95,6 +96,17 @@ export function dropChatSettingsCache(chatId: string): void {
     return
   }
   confirmedSettingsByChatId.delete(chatId)
+}
+
+/**
+ * Test-only accessor for confirmedSettingsByChatId (#575 review) - lets chatStore.test.ts verify
+ * that a settings PATCH resolving after a logout does not repopulate this module-level map,
+ * which is otherwise entirely private to this module.
+ */
+export function getConfirmedSettingsForTesting(
+  chatId: string,
+): { scope: SearchScope; referencedLibraryIds: string[] } | undefined {
+  return confirmedSettingsByChatId.get(chatId)
 }
 
 // The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
@@ -274,6 +286,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (question: string) => {
+    // #575: this call's token in the session epoch, captured before any await below. Checked
+    // again before every set() that follows an await - a logout (resetAllStores) in the meantime
+    // bumps the epoch, so a response arriving afterwards is recognized as stale and its write-back
+    // is skipped instead of resurrecting the previous user's chatId/messages into the now-emptied
+    // store (#618 review: this applies to both the implicit-chat-creation write-back and the final
+    // answer write-back below).
+    const sessionEpoch = currentSessionEpoch()
+
     // #557: whether this is the chat's first-ever turn - captured before the optimistic user
     // message below is pushed, since that would make messages.length always >= 1. Only a first
     // turn triggers the backend's asynchronous LLM title generation, so only a first turn
@@ -309,6 +329,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           referencedLibraryIds: libraryIds,
         })
         chatId = created.id
+        // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
+        // let this chat's id resurrect into the now-emptied store.
+        if (isStaleSessionEpoch(sessionEpoch)) return
         set({ chatId })
         // The settings this chat was just created with are the server's own record too (#565
         // review) - same reasoning as loadChat above.
@@ -343,6 +366,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       const response = await sendQuery(question, chatId, useKnowledge, libraryIds)
+      // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
+      // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -372,6 +398,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
     } catch (err) {
+      // #575: a failure arriving after a logout must not write isLoading/error into the
+      // now-emptied store either - same reasoning as the two success write-backs above.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
       set({ error: message, isLoading: false })
@@ -462,6 +491,12 @@ function applyScopeChange(
   // once the PATCH's response - possibly stale - actually arrives.
   const requestChatId = get().chatId
   const requestId = ++settingsUpdateSequence
+  // #575 review: this call's token in the session epoch, checked in the success handler below
+  // before confirmedSettingsByChatId.set() - a logout in the meantime clears that module-level
+  // map (see chatStore's own reset()), and without this guard a PATCH that was already in flight
+  // at that point still repopulates it once it resolves, resurrecting a rollback base for a chat
+  // the reset just discarded.
+  const sessionEpoch = currentSessionEpoch()
 
   set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
 
@@ -483,6 +518,10 @@ function applyScopeChange(
     .then(() => updateChat(chatId, patch))
     .then(
       () => {
+        // #575 review: a logout in the meantime already cleared confirmedSettingsByChatId (see
+        // reset()'s clearSettingsPersistenceCache() call) - writing to it here regardless would
+        // resurrect a rollback base for a chat that reset just discarded.
+        if (isStaleSessionEpoch(sessionEpoch)) return
         // This request's settings are now the server's own record - the rollback base for any
         // *later* PATCH on this chat that fails (#565 review).
         confirmedSettingsByChatId.set(chatId, {
