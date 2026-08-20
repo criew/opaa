@@ -36,7 +36,7 @@ const dienstanweisungen: LibraryListResponse = {
 
 describe('ChatInput', () => {
   beforeEach(() => {
-    useChatStore.setState({ useKnowledge: true, referencedLibraryIds: [] })
+    useChatStore.setState({ scope: 'all', referencedLibraryIds: [] })
     useLibraryStore.setState({
       libraries: [rechtsquellen, dienstanweisungen],
       libraryDetails: {},
@@ -45,11 +45,11 @@ describe('ChatInput', () => {
     })
   })
 
-  it('renders input field, send button and knowledge switch (on by default)', () => {
+  it('renders input field, send button and the @Alles-Wissen chip by default', () => {
     render(<ChatInput onSend={vi.fn()} />)
     expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeInTheDocument()
     expect(screen.getByLabelText('Nachricht senden')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Wissen nutzen' })).toBeChecked()
+    expect(screen.getByText('@Alles-Wissen')).toBeInTheDocument()
   })
 
   it('calls onSend with trimmed text on button click', () => {
@@ -96,49 +96,100 @@ describe('ChatInput', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
-  it('disables input and knowledge switch when disabled prop is true', () => {
+  it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
     expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Wissen nutzen' })).toBeDisabled()
   })
 
-  it('toggles the knowledge switch and updates the chat store', async () => {
-    const user = userEvent.setup()
-    render(<ChatInput onSend={vi.fn()} />)
+  describe('the three chip-bar states (#560)', () => {
+    it('shows the @Alles-Wissen chip, removable, as the default state', async () => {
+      const user = userEvent.setup()
+      render(<ChatInput onSend={vi.fn()} />)
 
-    await user.click(screen.getByRole('switch', { name: 'Wissen nutzen' }))
+      const chip = screen.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' })
+      chip.focus()
+      await user.keyboard('{Backspace}')
 
-    expect(useChatStore.getState().useKnowledge).toBe(false)
-    expect(screen.getByRole('switch', { name: 'Wissen nutzen' })).not.toBeChecked()
+      expect(useChatStore.getState().scope).toBe('none')
+    })
+
+    it('shows concrete library chips when the scope is "libraries"', () => {
+      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
+      expect(screen.queryByText('@Alles-Wissen')).not.toBeInTheDocument()
+    })
+
+    it('shows a hint and a way back to @Alles-Wissen when the bar is empty', async () => {
+      const user = userEvent.setup()
+      useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(screen.getByText('Antwortet ohne Dokumente.')).toBeInTheDocument()
+      const backButton = screen.getByRole('button', { name: 'Wieder alles Wissen durchsuchen' })
+
+      await user.click(backButton)
+
+      expect(useChatStore.getState().scope).toBe('all')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
+
+    it('does not show the empty-bar hint while scope is "all" or "libraries"', () => {
+      render(<ChatInput onSend={vi.fn()} />)
+      expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
+
+      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
+      render(<ChatInput onSend={vi.fn()} />)
+      expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
+    })
   })
 
-  it('shows a hint when knowledge is off and no library is referenced', async () => {
-    const user = userEvent.setup()
-    render(<ChatInput onSend={vi.fn()} />)
+  describe('replacement logic', () => {
+    it('replaces @Alles-Wissen with the first concrete chip selected via @', async () => {
+      const user = userEvent.setup()
+      render(<ChatInput onSend={vi.fn()} />)
+      const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
 
-    await user.click(screen.getByRole('switch', { name: 'Wissen nutzen' }))
+      await user.type(input, 'Bitte @Rechts')
+      await user.click(await screen.findByText('Rechtsquellen Soziales'))
 
-    expect(
-      screen.getByText(/Ohne referenzierte Bibliotheken antwortet die KI ohne Wissensbasis/),
-    ).toBeInTheDocument()
+      expect(useChatStore.getState().scope).toBe('libraries')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
+      expect(screen.queryByText('@Alles-Wissen')).not.toBeInTheDocument()
+    })
+
+    it('replaces concrete chips when @Alles-Wissen is picked from the @ suggestions', async () => {
+      const user = userEvent.setup()
+      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
+      render(<ChatInput onSend={vi.fn()} />)
+      const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+
+      await user.type(input, '@Alles')
+      await user.click(await screen.findByText('@Alles-Wissen'))
+
+      expect(useChatStore.getState().scope).toBe('all')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
   })
 
-  it('does not show the hint while knowledge is on', () => {
-    render(<ChatInput onSend={vi.fn()} />)
-    expect(
-      screen.queryByText(/Ohne referenzierte Bibliotheken antwortet die KI ohne Wissensbasis/),
-    ).not.toBeInTheDocument()
-  })
-
-  it('opens library suggestions on "@" and filters them by further typing', async () => {
+  it('opens library suggestions on "@", with @Alles-Wissen always listed first, and filters by further typing', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
     const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
 
-    await user.type(input, '@Rechts')
+    await user.type(input, '@')
+    const listbox = await screen.findByRole('listbox', { name: 'Suchbereich' })
+    const options = listbox.querySelectorAll('[role="option"]')
+    expect(options[0]).toHaveTextContent('@Alles-Wissen')
+
+    await user.type(input, 'Rechts')
 
     expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
     expect(screen.queryByText('Dienstanweisungen')).not.toBeInTheDocument()
+    // The chip bar itself still shows @Alles-Wissen (scope hasn't changed yet) - only the
+    // suggestion list must have filtered the special entry out.
+    expect(screen.queryByRole('option', { name: /Alles-Wissen/ })).not.toBeInTheDocument()
   })
 
   it('selects a suggestion by click, adds a chip and removes the @-fragment from the text', async () => {
@@ -160,9 +211,9 @@ describe('ChatInput', () => {
 
     await user.type(input, '@')
     await screen.findByText('Rechtsquellen Soziales')
-    // library order is [rechtsquellen, dienstanweisungen] - two ArrowDown presses land on the
-    // second option.
-    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    // suggestion order is [@Alles-Wissen, rechtsquellen, dienstanweisungen] - three ArrowDown
+    // presses land on the last option.
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-dienstanweisungen'])
   })
@@ -247,7 +298,7 @@ describe('ChatInput', () => {
 
   it('renders referenced libraries as chips with an accessible name, removable via keyboard', async () => {
     const user = userEvent.setup()
-    useChatStore.setState({ referencedLibraryIds: ['library-referat-50'] })
+    useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
     render(<ChatInput onSend={vi.fn()} />)
 
     expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
@@ -265,5 +316,6 @@ describe('ChatInput', () => {
     await user.keyboard('{Backspace}')
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    expect(useChatStore.getState().scope).toBe('none')
   })
 })

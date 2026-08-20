@@ -64,7 +64,7 @@ function resetChatStore() {
     isLoading: false,
     isLoadingChat: false,
     error: null,
-    useKnowledge: true,
+    scope: 'all',
     referencedLibraryIds: [],
     pendingSettingsUpdate: null,
   })
@@ -196,7 +196,7 @@ describe('ChatPage routing (real router)', () => {
 
     await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-2'))
     expect(useChatStore.getState().messages.length).toBeGreaterThan(0)
-    expect(useChatStore.getState().useKnowledge).toBe(false)
+    expect(useChatStore.getState().scope).toBe('libraries')
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
   })
 })

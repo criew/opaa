@@ -2,7 +2,6 @@ import type { ChangeEvent, KeyboardEvent } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -10,14 +9,14 @@ import ListItemText from '@mui/material/ListItemText'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
+import type { LibraryListResponse } from '../../types/api'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -30,6 +29,11 @@ interface ActiveMention {
   /** Text typed after '@', used to filter suggestions. */
   query: string
 }
+
+/** The chip bar's special entry: matches every readable library (#560), always offered first. */
+const ALL_KNOWLEDGE_LABEL = 'Alles-Wissen'
+
+type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryListResponse }
 
 /**
  * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
@@ -63,11 +67,15 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const wasDisabled = useRef(false)
   const mentionListboxId = useId()
 
-  const useKnowledge = useChatStore((s) => s.useKnowledge)
-  const setUseKnowledge = useChatStore((s) => s.setUseKnowledge)
+  // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
+  // steht." scope 'all' -> the special @Alles-Wissen chip, 'libraries' -> concrete chips,
+  // 'none' -> an emptied bar with a hint and a one-click way back to @Alles-Wissen.
+  const scope = useChatStore((s) => s.scope)
+  const setScopeAll = useChatStore((s) => s.setScopeAll)
   const referencedLibraryIds = useChatStore((s) => s.referencedLibraryIds)
   const addReferencedLibrary = useChatStore((s) => s.addReferencedLibrary)
   const removeReferencedLibrary = useChatStore((s) => s.removeReferencedLibrary)
+  const clearScope = useChatStore((s) => s.clearScope)
 
   const libraries = useLibraryStore((s) => s.libraries)
   const loadLibraries = useLibraryStore((s) => s.loadLibraries)
@@ -86,18 +94,30 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   }, [disabled])
 
   const referencedLibraries = useMemo(
-    () => libraries.filter((library) => referencedLibraryIds.includes(library.id)),
-    [libraries, referencedLibraryIds],
+    () =>
+      scope === 'libraries'
+        ? libraries.filter((library) => referencedLibraryIds.includes(library.id))
+        : [],
+    [libraries, referencedLibraryIds, scope],
   )
 
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
     const query = mention.query.toLowerCase()
-    return libraries
-      .filter((library) => !referencedLibraryIds.includes(library.id))
+    const suggestions: MentionSuggestion[] = []
+    // @Alles-Wissen is always offered first (#560), regardless of the current scope - re-selecting
+    // it while already active is a harmless no-op, and it is the only way back once removed.
+    if (ALL_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
+      suggestions.push({ kind: 'all' })
+    }
+    const alreadyReferenced = scope === 'libraries' ? referencedLibraryIds : []
+    libraries
+      .filter((library) => !alreadyReferenced.includes(library.id))
       .filter((library) => library.name.toLowerCase().includes(query))
-      .slice(0, 8)
-  }, [libraries, mention, referencedLibraryIds])
+      .slice(0, 8 - suggestions.length)
+      .forEach((library) => suggestions.push({ kind: 'library', library }))
+    return suggestions
+  }, [libraries, mention, referencedLibraryIds, scope])
 
   /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
   const closeMention = () => {
@@ -105,14 +125,18 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     setHighlightedIndex(-1)
   }
 
-  const selectSuggestion = (libraryId: string) => {
+  const selectSuggestion = (suggestion: MentionSuggestion) => {
     if (mention === null) return
     const cursor = inputRef.current?.selectionStart ?? value.length
     const before = value.slice(0, mention.start)
     const after = value.slice(cursor)
     const nextValue = `${before}${after}`
     setValue(nextValue)
-    addReferencedLibrary(libraryId)
+    if (suggestion.kind === 'all') {
+      setScopeAll()
+    } else {
+      addReferencedLibrary(suggestion.library.id)
+    }
     setDismissedMentionStart(null)
     closeMention()
     requestAnimationFrame(() => {
@@ -172,7 +196,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         }
         if (e.key === 'Enter' && highlightedIndex >= 0) {
           e.preventDefault()
-          selectSuggestion(suggestions[highlightedIndex].id)
+          selectSuggestion(suggestions[highlightedIndex])
           return
         }
       }
@@ -195,40 +219,58 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
 
   return (
     <Box sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}>
-      {referencedLibraries.length > 0 && (
-        <Tooltip
-          title={
-            useKnowledge
-              ? 'Diese Referenzen wirken erst, wenn „Wissen nutzen" ausgeschaltet ist.'
-              : 'Nur diese Bibliotheken werden durchsucht.'
-          }
-        >
-          <Box
-            sx={{
-              maxWidth: CHAT_MAX_WIDTH,
-              mx: 'auto',
-              mb: 1,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 0.75,
-            }}
-          >
-            {referencedLibraries.map((library) => (
-              <Chip
-                key={library.id}
-                label={library.name}
-                size="small"
-                variant={useKnowledge ? 'outlined' : 'filled'}
-                color={useKnowledge ? 'default' : 'primary'}
-                onDelete={disabled ? undefined : () => removeReferencedLibrary(library.id)}
-                // The default delete icon carries aria-hidden from MUI, so the accessible name
-                // has to sit on the chip itself rather than on that icon (review finding #539).
-                aria-label={`Bibliotheksreferenz ${library.name} entfernen`}
-              />
-            ))}
-          </Box>
-        </Tooltip>
-      )}
+      <Box
+        sx={{
+          maxWidth: CHAT_MAX_WIDTH,
+          mx: 'auto',
+          mb: 1,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 0.75,
+        }}
+      >
+        {scope === 'all' && (
+          <Chip
+            icon={<AllInclusiveIcon />}
+            label="@Alles-Wissen"
+            size="small"
+            color="primary"
+            onDelete={disabled ? undefined : clearScope}
+            // The default delete icon carries aria-hidden from MUI, so the accessible name has to
+            // sit on the chip itself rather than on that icon (review finding #539).
+            aria-label="Referenz Alles-Wissen entfernen"
+          />
+        )}
+        {scope === 'libraries' &&
+          referencedLibraries.map((library) => (
+            <Chip
+              key={library.id}
+              label={library.name}
+              size="small"
+              variant="filled"
+              color="primary"
+              onDelete={disabled ? undefined : () => removeReferencedLibrary(library.id)}
+              aria-label={`Bibliotheksreferenz ${library.name} entfernen`}
+            />
+          ))}
+        {scope === 'none' && (
+          <>
+            <Typography variant="caption" color="warning.main">
+              Antwortet ohne Dokumente.
+            </Typography>
+            <Chip
+              icon={<AllInclusiveIcon />}
+              label="@Alles-Wissen nutzen"
+              size="small"
+              variant="outlined"
+              onClick={disabled ? undefined : setScopeAll}
+              disabled={disabled}
+              aria-label="Wieder alles Wissen durchsuchen"
+            />
+          </>
+        )}
+      </Box>
 
       <Box
         ref={setInputBoxEl}
@@ -308,24 +350,30 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <ClickAwayListener onClickAway={closeMention}>
           <Paper elevation={4} sx={{ maxHeight: 240, overflowY: 'auto' }}>
             {suggestions.length > 0 ? (
-              <List id={mentionListboxId} role="listbox" aria-label="Wissensbibliotheken" dense>
-                {suggestions.map((library, index) => (
-                  <ListItemButton
-                    key={library.id}
-                    id={`${mentionListboxId}-option-${index}`}
-                    role="option"
-                    aria-selected={index === highlightedIndex}
-                    selected={index === highlightedIndex}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onClick={() => selectSuggestion(library.id)}
-                  >
-                    <ListItemText
-                      primary={library.name}
-                      secondary={library.description ?? undefined}
-                    />
-                  </ListItemButton>
-                ))}
+              <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
+                {suggestions.map((suggestion, index) => {
+                  const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
+                  const primary =
+                    suggestion.kind === 'all' ? '@Alles-Wissen' : suggestion.library.name
+                  const secondary =
+                    suggestion.kind === 'all'
+                      ? 'Alle lesbaren Bibliotheken durchsuchen'
+                      : (suggestion.library.description ?? undefined)
+                  return (
+                    <ListItemButton
+                      key={key}
+                      id={`${mentionListboxId}-option-${index}`}
+                      role="option"
+                      aria-selected={index === highlightedIndex}
+                      selected={index === highlightedIndex}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      onClick={() => selectSuggestion(suggestion)}
+                    >
+                      <ListItemText primary={primary} secondary={secondary} />
+                    </ListItemButton>
+                  )
+                })}
               </List>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
@@ -342,36 +390,13 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           mx: 'auto',
           mt: 0.75,
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          justifyContent: 'flex-end',
         }}
       >
-        <FormControlLabel
-          control={
-            <Switch
-              size="small"
-              checked={useKnowledge}
-              onChange={(e) => setUseKnowledge(e.target.checked)}
-              disabled={disabled}
-            />
-          }
-          label={<Typography variant="body2">Wissen nutzen</Typography>}
-        />
         <Typography variant="caption" color="text.secondary">
           Enter zum Senden, Umschalt+Enter für eine neue Zeile
         </Typography>
       </Box>
-
-      {!useKnowledge && referencedLibraryIds.length === 0 && (
-        <Typography
-          variant="caption"
-          color="warning.main"
-          sx={{ display: 'block', maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.5 }}
-        >
-          Ohne referenzierte Bibliotheken antwortet die KI ohne Wissensbasis. Mit @ eine Bibliothek
-          referenzieren.
-        </Typography>
-      )}
     </Box>
   )
 }
