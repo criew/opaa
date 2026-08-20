@@ -1,0 +1,27 @@
+databaseChangeLog:
+  # #434: the upload endpoint now processes parsing/embedding asynchronously (Maintainer-Entscheidung
+  # vom 20.08.2026) - a failure that used to surface as a synchronous 4xx response
+  # (EmptyDocumentContentException et al.) instead lands on the document row itself as
+  # status=FAILED, with a German, user-facing reason the frontend's polling-based document list can
+  # display. Nullable, and meaningful only while status is FAILED - PENDING/INDEXED rows never set
+  # it (see Document#getErrorMessage's Javadoc).
+
+  - changeSet:
+      id: 036-add-error-message-to-documents
+      author: opaa
+      comment: >
+        documents.error_message (#434) - the reason FileProcessingService#processUploadedFileAsync
+        recorded for a FAILED upload, surfaced to the frontend via LibraryDocumentResponse.
+      changes:
+        - addColumn:
+            tableName: documents
+            columns:
+              - column:
+                  name: error_message
+                  type: text
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: documents
+            columnName: error_message

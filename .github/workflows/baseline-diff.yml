@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Für `git show origin/main:...` unten wird main's Version der Baseline-Datei gebraucht,
           # die ein flacher Checkout (Default fetch-depth: 1, nur der PR-Kopf) nicht auflösen kann.
@@ -57,7 +57,7 @@ jobs:
       # darf den Job nicht als fehlgeschlagen markieren, die Diff-Prüfung selbst ist rein informativ.
       - name: Diff-Tabelle als PR-Kommentar posten
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

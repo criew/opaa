@@ -22,6 +22,7 @@ final class LibraryDocumentResponses {
         .contentType(document.getContentType())
         .fileSize(document.getFileSize())
         .indexedAt(document.getIndexedAt())
-        .uploadedByUserId(document.getUploadedByUserId());
+        .uploadedByUserId(document.getUploadedByUserId())
+        .errorMessage(document.getErrorMessage());
   }
 }

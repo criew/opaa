@@ -70,6 +70,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/035-widen-audit-event-type-library-source-updated.yaml
   - include:
+      file: db/changelog/changes/036-add-error-message-to-documents.yaml
+  - include:
       file: db/changelog/changes/037-create-indexing-run-events.yaml
   - include:
       file: db/changelog/changes/038-add-events-truncated-count-to-indexing-jobs.yaml

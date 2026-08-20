@@ -10,6 +10,7 @@ Redesign-Epic #600.
 |---|---|
 | [OPAA Mockups.html](<./OPAA Mockups.html>) | 9 Mockup-Seiten (Claude Design; zum Ansehen im Browser öffnen, JavaScript erforderlich) |
 | [guidelines.md](./guidelines.md) | Verbindliche Gestaltungsregeln: Farben, Typografie, Abstände, Komponenten, Begriffe |
+| [accessibility.md](./accessibility.md) | Barrierefreiheits-Richtlinie (BITV 2.0 / WCAG 2.1 AA): Prüfliste und Prüfverfahren je UI-Issue |
 | [redesign-prompt.md](./redesign-prompt.md) | Zielbild-Beschreibung der Oberfläche (Briefing, aus dem die Mockups entstanden) |
 
 ### Mockup-Seiten

@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
@@ -78,4 +80,40 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     long getDocumentCount();
   }
+
+  /**
+   * Conditionally transitions an asynchronously-processed upload to {@code FAILED} (PR #589 review,
+   * finding 1). {@code FileProcessingService#processUploadedFileAsync} re-reads the row by id
+   * before it starts, but Tika parsing/embedding can run for seconds - long enough for {@code
+   * LibraryDocumentService#deleteDocument} to remove that same row from another request in the
+   * meantime. A plain {@code documentRepository.save} on the (now stale) entity would not notice:
+   * {@link Document} assigns its own id in its constructor and carries no {@code @Version}, so
+   * Hibernate's merge would silently re-{@code INSERT} it as a zombie row - {@code FAILED} with no
+   * backing file, or worse, {@code INDEXED} pointing at chunks the caller believes were already
+   * cleaned up. A conditional {@code UPDATE} has no such failure mode: it either affects the row
+   * that is still there, or affects nothing at all.
+   *
+   * @return the number of rows updated - {@code 0} means the row no longer exists, and the caller
+   *     must clean up any chunks it already wrote instead of trying to persist anything
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.indexing.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.id = :id")
+  int markFailed(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
+
+  /**
+   * The successful counterpart to {@link #markFailed} - same reasoning, same
+   * zero-rows-means-the-row-is-gone contract.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.indexing.DocumentStatus.INDEXED, d.chunkCount ="
+          + " :chunkCount, d.indexedAt = :indexedAt, d.errorMessage = null where d.id = :id")
+  int markIndexed(
+      @Param("id") UUID id,
+      @Param("chunkCount") int chunkCount,
+      @Param("indexedAt") Instant indexedAt);
 }

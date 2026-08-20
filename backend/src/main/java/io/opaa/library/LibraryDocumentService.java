@@ -7,7 +7,7 @@ import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
-import io.opaa.indexing.EmptyDocumentContentException;
+import io.opaa.indexing.DocumentStatus;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import java.io.IOException;
@@ -17,11 +17,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 import java.util.UUID;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -40,12 +42,23 @@ import org.springframework.web.server.ResponseStatusException;
  * content without being allowed to change who else can.
  *
  * <p>Reuses the existing indexing pipeline deliberately: {@link #uploadDocument} stores the
- * incoming bytes and computes their checksum itself (both are specific to how this endpoint decides
- * *where* a file goes and whether it is a duplicate *within its target library* - a different
- * question from what {@code FileProcessingService#processFile}'s file-path-keyed dedup answers),
- * then hands off to {@link FileProcessingService#processUploadedFile} for parsing, chunking and
- * vector storage - the same three steps every other ingestion path goes through, so a chat query
- * finds an uploaded document exactly the same way it finds a crawled one.
+ * incoming bytes, computes their checksum and creates the {@code Document} row itself (all three
+ * are specific to how this endpoint decides *where* a file goes and whether it is a duplicate
+ * *within its target library* - a different question from what {@code
+ * FileProcessingService#processFile}'s file-path-keyed dedup answers), then hands off to {@link
+ * FileProcessingService#processUploadedFileAsync} for parsing, chunking and vector storage - the
+ * same three steps every other ingestion path goes through, so a chat query finds an uploaded
+ * document exactly the same way it finds a crawled one.
+ *
+ * <p><b>Processing is asynchronous (#434).</b> {@link #uploadDocument} returns as soon as the file
+ * is stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
+ * FileProcessingService#processUploadedFileAsync} to finish parsing/embedding on {@code
+ * indexingTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
+ * for the full duration of Tika parsing and embedding on every upload, with no rate limit covering
+ * this endpoint (#434 supersedes #420's synchronous design for exactly this reason). The caller
+ * observes the eventual {@code INDEXED}/{@code FAILED} transition by polling {@code GET
+ * /libraries/{libraryId}/documents}, the same way the frontend's {@code documentStore.ts} already
+ * polls a directory/URL indexing run in progress.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
  * never used to build a filesystem path. The stored file always lives at {@code
@@ -147,25 +160,85 @@ public class LibraryDocumentService {
       // Dedup is scoped per library (#420 acceptance criteria): the same file uploaded into two
       // different libraries is two legitimate documents, only a second copy inside the *same*
       // library is rejected.
-      if (documentRepository.findByLibraryIdAndChecksum(libraryId, checksum).isPresent()) {
-        Files.deleteIfExists(storedFile);
-        throw new ResponseStatusException(
-            HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
+      Optional<Document> existing =
+          documentRepository.findByLibraryIdAndChecksum(libraryId, checksum);
+      if (existing.isPresent()) {
+        Document existingDoc = existing.get();
+        if (existingDoc.getStatus() != DocumentStatus.FAILED) {
+          Files.deleteIfExists(storedFile);
+          throw new ResponseStatusException(
+              HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
+        }
+        // #589 review, item 3: a FAILED row must not block a retry of the same file forever - the
+        // per-library dedup check above (and uk_documents_library_checksum, migration 020) can't
+        // otherwise tell "this content already succeeded" from "this content failed once and the
+        // user is trying again", so it replaces the old FAILED row instead of rejecting the new
+        // upload. It should never have surviving chunks (FileProcessingService cleans those up on
+        // every failure path), but the delete is unconditional anyway, mirroring processFile's own
+        // re-index cleanup - defence in depth costs nothing here.
+        Path oldFailedFile = uploadedFileIfManagedByThisService(existingDoc, libraryId);
+        vectorStore.delete("document_id == '" + existingDoc.getId() + "'");
+        documentRepository.delete(existingDoc);
+        if (oldFailedFile != null) {
+          deleteQuietly(oldFailedFile);
+        }
       }
 
+      // #434: the row is created - and returned - as PENDING here, before any parsing/embedding
+      // has happened. contentType/fileSize are read from the file this class itself just wrote,
+      // mirroring FileProcessingService#processFile's own stat-after-store approach.
+      String contentType = Files.probeContentType(storedFile);
+      long fileSize = Files.size(storedFile);
       Document document =
-          fileProcessingService.processUploadedFile(
-              storedFile,
+          new Document(
               displayFileName,
-              checksum,
-              libraryId,
-              library.getOrganizationId(),
-              currentUserId);
+              storedFile.toAbsolutePath().toString(),
+              contentType,
+              fileSize,
+              DocumentSourceType.UPLOAD);
+      document.setLibraryId(libraryId);
+      document.setOrganizationId(library.getOrganizationId());
+      document.setUploadedByUserId(currentUserId);
+      // Set on this first (and only synchronous) save: this is where a concurrent duplicate
+      // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
+      // before any embedding work starts, not after (#420 second code review round, finding 1,
+      // still true now that the embedding work itself has moved off this thread entirely).
+      document.setChecksum(checksum);
+      document = documentRepository.save(document);
+
+      // #589 review, item 4: from here on, the row is committed - a RuntimeException must never
+      // again just delete the file and rethrow (the outer catch below), or the row would survive
+      // pointing at a dead file_path forever. This inner try/catch keeps that guarantee local to
+      // the one call that can still fail after the row exists, instead of relying on it being the
+      // last statement in the method.
+      try {
+        // Parsing/chunking/embedding run on uploadTaskExecutor from here (#434) - this method
+        // returns the PENDING row without waiting for that to finish.
+        fileProcessingService.processUploadedFileAsync(document.getId(), storedFile);
+      } catch (TaskRejectedException e) {
+        // #589 review, item 2: uploadTaskExecutor's queue is full - unlike indexingTaskExecutor,
+        // it does not silently discard the task (see IndexingConfiguration#uploadTaskExecutor), so
+        // this is the one place that ever has to react to it. The row is already visible to the
+        // caller as PENDING; leaving it there would have it poll forever for a job nothing will
+        // ever run.
+        log.warn(
+            "Upload processing queue is full; marking document {} as FAILED immediately",
+            document.getId(),
+            e);
+        return failAlreadyPersistedUpload(
+            document,
+            storedFile,
+            "Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
+      } catch (RuntimeException e) {
+        log.error(
+            "Failed to start asynchronous processing for uploaded document {}",
+            document.getId(),
+            e);
+        return failAlreadyPersistedUpload(
+            document, storedFile, "Die Verarbeitung konnte nicht gestartet werden");
+      }
+
       return LibraryDocumentResponses.from(document);
-    } catch (EmptyDocumentContentException e) {
-      deleteQuietly(storedFile);
-      throw new ResponseStatusException(
-          HttpStatus.UNPROCESSABLE_ENTITY, "Aus der Datei konnte kein Text extrahiert werden");
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
@@ -179,9 +252,27 @@ public class LibraryDocumentService {
       deleteQuietly(storedFile);
       throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
     } catch (RuntimeException e) {
+      // Only reachable before the row is committed (validation, file I/O, the dedup check above) -
+      // everything from documentRepository.save(document) onward has its own inner try/catch that
+      // never lets a RuntimeException escape to here (#589 review, item 4).
       deleteQuietly(storedFile);
       throw e;
     }
+  }
+
+  /**
+   * Marks an already-persisted upload row {@code FAILED} and cleans up its file, instead of leaving
+   * a {@code PENDING} row with a dead {@code file_path} behind (#589 review, item 4) - the
+   * counterpart, once the row exists, to the pre-commit paths above that simply delete the file and
+   * rethrow. Returns the response the caller hands back to the client, same as the success path.
+   */
+  private LibraryDocumentResponse failAlreadyPersistedUpload(
+      Document document, Path storedFile, String errorMessage) {
+    document.setStatus(DocumentStatus.FAILED);
+    document.setErrorMessage(errorMessage);
+    document = documentRepository.save(document);
+    deleteQuietly(storedFile);
+    return LibraryDocumentResponses.from(document);
   }
 
   @Transactional

@@ -103,7 +103,13 @@ Ablauf beim Hochladen:
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
 4. Übergabe an die Verarbeitungskette (siehe [Wissensschicht](./data-indexing-rag.md)). **Gebaut** —
-   dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege.
+   dieselbe Pipeline (`FileProcessingService`) wie die anderen Aufnahmewege, seit #434 **asynchron**:
+   Die Antwort auf die Anfrage kommt, sobald die Datei abgelegt und die Dokumentzeile mit Status
+   `PENDING` angelegt ist, ohne auf Aufschlüsselung und Einbettung zu warten — ein einzelner Upload
+   soll keine Anfrage über die volle Verarbeitungsdauer blockieren. Die Oberfläche zeigt den
+   Verarbeitungsstand (`PENDING`/`INDEXED`/`FAILED`) über dasselbe Abfragen an, das auch einen
+   laufenden Verzeichnis-/URL-Lauf anzeigt; bei `FAILED` liegt am Dokument eine deutschsprachige
+   Fehlermeldung.
 5. Ziel ist jede Bibliothek, an der die Person mindestens `EDITOR` ist — es gibt keine Vorauswahl
    (bis #522 war das standardmäßig die automatisch angelegte persönliche Bibliothek; diese
    Automatik entfiel ersatzlos, siehe [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md)).
@@ -647,9 +653,14 @@ Dienstanweisungen wartet. Drei Stufen ordnen das:
 
 | Stufe | Beispiel | Verhalten |
 |---|---|---|
-| **sofort** | Upload durch eine Person, die auf das Ergebnis wartet | wird vorgezogen |
+| **sofort** | Upload durch eine Person, die auf das Ergebnis wartet | läuft auf einem eigenen Worker-Pool, unabhängig vom Regelbetrieb (**gebaut**, #434) |
 | **regulär** | geplante Aktualisierung eines gepflegten Bestands | Regelbetrieb |
 | **nachrangig** | Erstlauf, vollständige Neuindizierung | läuft in den Lücken, wird bei Bedarf ausgesetzt |
+
+Ein Upload teilt sich also keine Warteschlange mit Verzeichnis-/URL-/RSS-Läufen und muss ihnen
+gegenüber nicht eigens vorgezogen werden — beide laufen gleichzeitig auf getrennten Pools. Innerhalb
+des Upload-Pools selbst gilt einfaches FIFO; ist er ausgelastet, schlägt die Verarbeitung mit einer
+Fehlermeldung am betroffenen Dokument fehl, statt endlos zu warten.
 
 Zusätzlich soll ein **Schonzeitraum je Bibliothek** (Zielbild, mit dem Zeitplan aus #485) die Last auf
 das Quellsystem begrenzen. Ein Fachverfahren, das tagsüber im Wirkbetrieb steht, soll nicht in der

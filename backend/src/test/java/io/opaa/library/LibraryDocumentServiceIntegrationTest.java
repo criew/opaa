@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.TestcontainersConfiguration;
@@ -65,6 +66,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * reads from; a VIEWER is refused; an unsupported format and an over-limit file are refused without
  * a stored file; a duplicate checksum in the same library is refused, the same content in a
  * different library is not; deleting removes the row, the chunks and the file.
+ *
+ * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now (#434) - parsing and
+ * embedding run asynchronously on {@code indexingTaskExecutor}, the real thread pool this test's
+ * Spring context wires up (unlike the unit tests in {@code LibraryDocumentServiceTest}, which mock
+ * {@code FileProcessingService} outright). {@link #awaitDocumentStatus} polls the row via
+ * Awaitility the same way {@code DocumentIndexingIntegrationTest#awaitJobCompletion} already does
+ * for a directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code
+ * FAILED} outcome rather than the immediate {@code PENDING} response.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -162,11 +171,13 @@ class LibraryDocumentServiceIntegrationTest {
             editor.getId(),
             false);
 
-    assertThat(response.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    // #434: uploadDocument itself only ever returns PENDING - parsing/embedding still run on
+    // indexingTaskExecutor after this call has already returned.
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     assertThat(response.getUploadedByUserId()).isEqualTo(editor.getId());
 
-    Document saved = documentRepository.findById(response.getId()).orElseThrow();
+    Document saved = awaitDocumentStatus(response.getId(), DocumentStatus.INDEXED);
     assertThat(saved.getLibraryId()).isEqualTo(libraryId);
     assertThat(saved.getOrganizationId()).isEqualTo(organizationId);
 
@@ -253,7 +264,7 @@ class LibraryDocumentServiceIntegrationTest {
       LibraryDocumentResponse response =
           documentService.uploadDocument(
               secondLibrary.getId(), textFile("third.txt", content), editor.getId(), false);
-      assertThat(response.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+      awaitDocumentStatus(response.getId(), DocumentStatus.INDEXED);
       assertThat(documentRepository.findByLibraryId(secondLibrary.getId())).hasSize(1);
     } finally {
       documentRepository.findByLibraryId(secondLibrary.getId()).forEach(documentRepository::delete);
@@ -266,7 +277,7 @@ class LibraryDocumentServiceIntegrationTest {
     LibraryDocumentResponse uploaded =
         documentService.uploadDocument(
             libraryId, textFile("to-delete.txt", "content to remove"), editor.getId(), false);
-    Document savedDoc = documentRepository.findById(uploaded.getId()).orElseThrow();
+    Document savedDoc = awaitDocumentStatus(uploaded.getId(), DocumentStatus.INDEXED);
     Path storedFile = Path.of(savedDoc.getFilePath());
     assertThat(Files.exists(storedFile)).isTrue();
 
@@ -399,6 +410,9 @@ class LibraryDocumentServiceIntegrationTest {
           .isTrue();
       UUID winnerId = firstResult != null ? firstResult : secondResult;
       assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
+      // #434: the winner's chunks are written asynchronously - wait for that to finish before
+      // checking the vector store below, or this could observe it mid-write.
+      awaitDocumentStatus(winnerId, DocumentStatus.INDEXED);
 
       // The actual regression this test exists for (#420 second code review round, finding 1): the
       // loser must not have written chunks to the vector store before losing the race - the
@@ -643,6 +657,34 @@ class LibraryDocumentServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  /**
+   * Polls the document row until asynchronous processing (#434) has moved it past {@code PENDING}
+   * to some terminal status, then asserts it is the expected one - mirrors {@code
+   * DocumentIndexingIntegrationTest#awaitJobCompletion}'s use of Awaitility for the same reason:
+   * {@code uploadTaskExecutor} runs on its own thread pool, so a test asserting on the eventual
+   * outcome cannot simply read the row synchronously right after {@code uploadDocument} returns.
+   *
+   * <p>Waits for "no longer PENDING", not for the expected status directly (PR #589 review, item
+   * 6): waiting for the expected status directly would time out after the full 30 seconds with an
+   * unhelpful "still PENDING" message if processing actually finished quickly but landed on the
+   * *other* terminal status - this instead fails fast with a clear expected/actual mismatch the
+   * moment processing is done, whichever status it reached.
+   */
+  private Document awaitDocumentStatus(UUID documentId, DocumentStatus expected) {
+    await()
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () ->
+                documentRepository
+                    .findById(documentId)
+                    .map(Document::getStatus)
+                    .filter(status -> status != DocumentStatus.PENDING)
+                    .isPresent());
+    Document document = documentRepository.findById(documentId).orElseThrow();
+    assertThat(document.getStatus()).isEqualTo(expected);
+    return document;
   }
 
   private void assertNoFilesStored() throws IOException {

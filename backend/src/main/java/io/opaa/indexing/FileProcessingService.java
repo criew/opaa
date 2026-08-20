@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.scheduling.annotation.Async;
 
 public class FileProcessingService {
 
@@ -298,105 +299,99 @@ public class FileProcessingService {
   }
 
   /**
-   * Processes a file uploaded through the REST upload endpoint (#420, {@code
-   * io.opaa.library.LibraryDocumentService}). Unlike {@link #processFile} and {@link
-   * #processUrlFile}, the caller has already decided the target library and organization and
-   * already checked - via {@link ChecksumService#computeSha256} and {@code
-   * DocumentRepository#findByLibraryIdAndChecksum} - that no document with this content exists in
-   * that library yet, so this method does not repeat the existing-document lookup or dedup those
-   * two do (dedup here is scoped per library, not per file path, which is why it lives one layer up
-   * rather than here). {@code checksum} is passed in rather than recomputed for the same reason:
-   * the caller already hashed the file to make that decision, and hashing a large upload twice
-   * would be wasted work.
+   * Parses, chunks and embeds a document already stored on disk and already persisted as a {@code
+   * PENDING} row by the REST upload endpoint (#434, {@code
+   * io.opaa.library.LibraryDocumentService#uploadDocument}). Runs asynchronously on {@code
+   * indexingTaskExecutor} - the same pool the directory/URL indexing executors use ({@link
+   * IndexingConfiguration}) - so the upload request itself returns as soon as the file is stored
+   * and the row created, without blocking a request thread for the duration of Tika parsing and
+   * embedding (#434, superseding the synchronous design #420 originally shipped with, see the git
+   * history of this method for that version).
    *
-   * <p>Returns the persisted {@link Document} itself, not a {@link FileProcessingResult} - unlike
-   * {@link #processFile}/{@link #processUrlFile}, whose callers (the async job executors) only need
-   * the processed/skipped/failed distinction for job counters, the upload endpoint's caller needs
-   * the row itself to build its {@code 201} response.
+   * <p>Takes the document's id, not the entity itself: by the time this runs on a worker thread,
+   * the caller's own transaction (creating the {@code PENDING} row) has long committed, and a
+   * detached entity passed across threads would risk stale-write surprises on save. Re-reads the
+   * row fresh instead - if it is gone (the caller deleted it before this ran), there is nothing
+   * left to update and this method quietly returns.
    *
-   * <p><b>No document row survives a failed upload (#420 code review, nit 6).</b> Unlike {@link
-   * #processFile}/{@link #processUrlFile}, which persist a row up front and mark it {@code FAILED}
-   * on any problem - appropriate for their job-based reporting model, where a batch run's summary
-   * has a place for "processed but failed" - this method parses the file <em>before</em> creating
-   * any row at all, and deletes the row (and any chunks already written for it) again if
-   * chunking/embedding fails afterwards. An interactively uploaded document has no such use for a
-   * listed {@code FAILED} row pointing at a file the caller is about to delete: the caller gets a
-   * thrown exception instead, translates it into the appropriate {@code 4xx}, and there is nothing
-   * left over to clean up later.
+   * <p><b>Every outcome leaves a row behind, unlike the synchronous design #420 shipped with.</b> A
+   * row that never leaves {@code PENDING} would look identical to one still queued behind other
+   * uploads, and the frontend's polling (#434, {@code documentStore.ts}) has nothing else to key an
+   * error state off of - so both "no extractable content" and any unexpected exception during
+   * chunking/embedding land as {@code FAILED} with a German, user-facing {@link
+   * Document#getErrorMessage()}, not a deleted row.
    *
-   * <p><b>The checksum is set on the first {@code save}, before chunking/embedding, not on the
-   * second (#420 second code review round, finding 1).</b> {@code
-   * io.opaa.library.LibraryDocumentService}'s {@code uk_documents_library_checksum} partial unique
-   * index can only reject a concurrent duplicate upload once a row actually carries a non-null
-   * checksum - setting it here means two racing uploads of the same file into the same library
-   * settle the race at this first {@code save}, before either has done any embedding work, rather
-   * than after the loser has already written its chunks to the vector store. The second {@code
-   * save} below still exists (for {@code chunkCount}/{@code indexedAt}/{@code status}), but a
-   * unique-index violation can now only happen there in the much rarer case of a second document
-   * row racing to the identical checksum by some path other than a concurrent call to this same
-   * method - {@code storeChunks} below is the reason the {@code catch} block also removes any
-   * chunks the failed attempt wrote, not just the row: whichever save fails, chunks may already be
-   * in the vector store, exactly as {@link #processFile} (line 61) and {@link #processUrlFile}
-   * (line 136) already do for their own re-index paths.
+   * <p><b>Runs on {@code uploadTaskExecutor}, a separate pool from {@code indexingTaskExecutor} (PR
+   * #589 review, finding 2).</b> {@code indexingTaskExecutor} discards a task outright when its
+   * queue is full ({@code ThreadPoolExecutor.DiscardPolicy}) - acceptable for a directory/URL
+   * indexing run, which is retried on its own schedule, but fatal here: a discarded upload task
+   * would leave its row stuck at {@code PENDING} forever with nothing to explain why, and the
+   * frontend would poll it indefinitely. {@code uploadTaskExecutor} keeps {@code
+   * ThreadPoolTaskExecutor}'s own default ({@code AbortPolicy}) instead, so a full queue throws
+   * {@link org.springframework.core.task.TaskRejectedException} synchronously in {@code
+   * LibraryDocumentService#uploadDocument}'s own thread, which catches it and marks the row {@code
+   * FAILED} immediately.
    *
-   * @throws EmptyDocumentContentException if Tika extracts no text at all - deliberately thrown
-   *     rather than returning a {@code FAILED} row, since there is nothing indexed and nothing to
-   *     list.
+   * <p><b>The status transition is a conditional {@code UPDATE}, not an entity save (PR #589
+   * review, finding 1).</b> {@link DocumentRepository#markIndexed} / {@link
+   * DocumentRepository#markFailed} affect the row only if it still exists - if {@code
+   * LibraryDocumentService#deleteDocument} removed it while this method was still parsing/embedding
+   * (after the {@link DocumentRepository#findById} above, before either of those runs), a plain
+   * {@code save} would silently re-insert it as a zombie ({@link Document} assigns its own id and
+   * carries no {@code @Version}). Zero rows updated means exactly that happened - any chunks {@link
+   * #storeChunks} already wrote are removed again, and there is nothing left to mark.
    */
-  public Document processUploadedFile(
-      Path storedFile,
-      String fileName,
-      String checksum,
-      UUID libraryId,
-      UUID organizationId,
-      UUID uploadedByUserId)
-      throws IOException {
-    List<org.springframework.ai.document.Document> parsed =
-        documentService.parseDocument(storedFile);
-    if (parsed.isEmpty()) {
-      log.warn("No content extracted from uploaded document: {}", fileName);
-      throw new EmptyDocumentContentException(fileName);
+  @Async("uploadTaskExecutor")
+  public void processUploadedFileAsync(UUID documentId, Path storedFile) {
+    Document doc = documentRepository.findById(documentId).orElse(null);
+    if (doc == null) {
+      log.warn(
+          "Uploaded document {} no longer exists, skipping asynchronous processing", documentId);
+      return;
     }
 
-    String filePath = storedFile.toAbsolutePath().toString();
-    String contentType = Files.probeContentType(storedFile);
-    long fileSize = Files.size(storedFile);
-
-    var doc = new Document(fileName, filePath, contentType, fileSize, DocumentSourceType.UPLOAD);
-    doc.setLibraryId(libraryId);
-    doc.setOrganizationId(organizationId);
-    doc.setUploadedByUserId(uploadedByUserId);
-    // Set before the first save (see the method Javadoc): this is where the concurrent-upload
-    // race against uk_documents_library_checksum is meant to be settled - before any embedding
-    // work, not after.
-    doc.setChecksum(checksum);
-    doc = documentRepository.save(doc);
-
     try {
+      List<org.springframework.ai.document.Document> parsed =
+          documentService.parseDocument(storedFile);
+      if (parsed.isEmpty()) {
+        log.warn("No content extracted from uploaded document: {}", doc.getFileName());
+        markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
+        metrics.recordFailed();
+        return;
+      }
+
       List<org.springframework.ai.document.Document> chunks =
-          chunkingService.chunkDocuments(fileName, parsed);
-      log.debug("Uploaded file {} produced {} chunks", fileName, chunks.size());
+          chunkingService.chunkDocuments(doc.getFileName(), parsed);
+      log.debug("Uploaded file {} produced {} chunks", doc.getFileName(), chunks.size());
 
       storeChunks(doc, chunks);
 
-      doc.setChunkCount(chunks.size());
-      doc.setIndexedAt(Instant.now());
-      doc.setStatus(DocumentStatus.INDEXED);
-      doc = documentRepository.save(doc);
+      int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
+      if (updated == 0) {
+        log.warn(
+            "Uploaded document {} was deleted while its chunks were being written; removing them"
+                + " again",
+            doc.getId());
+        vectorStore.delete("document_id == '" + doc.getId() + "'");
+        return;
+      }
+      metrics.recordProcessed();
     } catch (Exception e) {
-      // Mirrors processFile/processUrlFile's own re-index cleanup (lines 61/136): whatever failed
-      // here, storeChunks may already have written chunks for doc.getId() into the vector store -
-      // deleting only the row would leave them orphaned, unreachable through deleteDocument (which
-      // needs a row to key off of) but still returned by /api/v1/query (whose library_id filter
-      // does not check that the document row still exists).
+      log.error("Failed to process uploaded document {}", doc.getFileName(), e);
+      // Whatever failed, storeChunks may already have written chunks for doc.getId() into the
+      // vector store - deleting them here mirrors processFile/processUrlFile's own re-index
+      // cleanup, so a FAILED row never leaves orphaned chunks still returned by /api/v1/query.
       vectorStore.delete("document_id == '" + doc.getId() + "'");
-      documentRepository.delete(doc);
+      markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
-      throw e;
     }
+  }
 
-    metrics.recordProcessed();
-    return doc;
+  private void markUploadFailed(UUID documentId, String errorMessage) {
+    int updated = documentRepository.markFailed(documentId, errorMessage);
+    if (updated == 0) {
+      log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
+    }
   }
 
   /**
