@@ -17,7 +17,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryVisibility;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -144,6 +146,15 @@ class RssFeedIndexingExecutorTest {
 
   private void execute(String feedUrl) {
     library.updateSourceConfiguration(null, feedUrl, null, null, false);
+    executor.execute(UUID.randomUUID(), library);
+  }
+
+  /**
+   * Like {@link #execute(String)}, but also configures the library's own
+   * sourceProxy/sourceCredentials (#505).
+   */
+  private void execute(String feedUrl, String proxy, String credentials) {
+    library.updateSourceConfiguration(null, feedUrl, proxy, credentials, false);
     executor.execute(UUID.randomUUID(), library);
   }
 
@@ -1094,5 +1105,116 @@ class RssFeedIndexingExecutorTest {
         .processUrlFile(
             any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString());
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
+  }
+
+  // --- #505: sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
+  // attachments, mirroring UrlIndexingExecutor ---
+
+  private static String expectedBasicAuth(String credentials) {
+    return "Basic "
+        + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void feedRequestSendsTheConfiguredAuthorizationHeader() {
+    AtomicReference<String> authorization = new AtomicReference<>();
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = feedXml().getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/rss+xml");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    execute(baseUrl + "/feed.xml", null, "user:pass");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
+    assertThat(authorization.get()).isEqualTo(expectedBasicAuth("user:pass"));
+  }
+
+  @Test
+  void detailPageRequestSendsTheConfiguredAuthorizationHeader() {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    AtomicReference<String> authorization = new AtomicReference<>();
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes =
+              "<html><body><main>Text</main></body></html>".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml", null, "admin:secret");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    assertThat(authorization.get()).isEqualTo(expectedBasicAuth("admin:secret"));
+  }
+
+  @Test
+  void attachmentDownloadSendsTheConfiguredAuthorizationHeader() throws IOException {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    String detailHtml =
+        "<html><body><main>Text"
+            + "<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", detailHtml);
+    AtomicReference<String> authorization = new AtomicReference<>();
+    server.createContext(
+        "/downloads/anlage.pdf",
+        exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml", null, "attachment:credentials");
+
+    verify(fileProcessingService, timeout(2000))
+        .processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString());
+    assertThat(authorization.get()).isEqualTo(expectedBasicAuth("attachment:credentials"));
+  }
+
+  @Test
+  void feedRequestUsesTheConfiguredProxyConnectionRefusedFailsTheJob() throws IOException {
+    // The feed server is reachable directly, but every request must still be routed through the
+    // configured (here: closed, unreachable) proxy instead - proving sourceProxy is actually
+    // applied to AutoindexCrawlerService.buildHttpClient, mirroring UrlIndexingExecutor.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    int closedPort;
+    try (ServerSocket socket = new ServerSocket(0)) {
+      closedPort = socket.getLocalPort();
+    }
+
+    execute(baseUrl + "/feed.xml", "127.0.0.1:" + closedPort, null);
+
+    // The underlying connect-refused exception's own message can be null depending on the JDK's
+    // networking stack - unlike the other failJob assertions in this class, this test only cares
+    // that the run actually failed, not what it says.
+    verify(indexingJobService, timeout(2000)).failJob(any(), any());
   }
 }

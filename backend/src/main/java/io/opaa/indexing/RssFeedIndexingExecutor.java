@@ -73,6 +73,17 @@ import org.springframework.scheduling.annotation.Async;
  * case its detail page is fetched once more for attachments alone; see {@link
  * #processUnchangedEntry}. Without this, an entry indexed before attachment support existed would
  * never get attachments discovered for it at all, since its {@code pubDate} never changes again.
+ *
+ * <p><b>Credentials and proxy (#505).</b> {@code targetLibrary}'s {@code sourceCredentials} (Basic
+ * Auth, {@code user:password}) and {@code sourceProxy} - already offered by the schema (#476) for
+ * {@code RSS_FEED} exactly like {@code HTTP_DIRECTORY} - are applied to every request this executor
+ * makes: the feed itself, every entry's detail page, and every attachment download, mirroring
+ * {@link UrlIndexingExecutor#toUrlIndexingRequest}. The {@code Authorization} header is never
+ * replayed to a foreign host: {@link #fetchFeed} relies on {@link
+ * AutoindexCrawlerService#sendFollowingRedirects} for that, {@link #sendDetailPageRequest} only
+ * ever continues to a hop {@link #isForeignHostRedirect} has already cleared, and attachment
+ * downloads go through {@link UrlFileDownloader#downloadBounded}, which rejects a foreign-host
+ * redirect outright before a further request is ever sent.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -121,10 +132,36 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     String feedUrl = targetLibrary.getSourceUrl();
 
     try {
-      HttpClient httpClient = AutoindexCrawlerService.buildHttpClient(null, -1, false);
+      // #505: sourceProxy/sourceCredentials, mirroring UrlIndexingExecutor#toUrlIndexingRequest -
+      // the library's persisted quellkonfiguration, not a per-request field.
+      String proxyHost = null;
+      int proxyPort = -1;
+      String proxy = targetLibrary.getSourceProxy();
+      if (proxy != null && !proxy.isBlank()) {
+        int colonIdx = proxy.lastIndexOf(':');
+        if (colonIdx > 0) {
+          proxyHost = proxy.substring(0, colonIdx);
+          proxyPort = Integer.parseInt(proxy.substring(colonIdx + 1));
+        }
+      }
+
+      String username = null;
+      String password = null;
+      String credentials = targetLibrary.getSourceCredentials();
+      if (credentials != null && !credentials.isBlank()) {
+        int colonIdx = credentials.indexOf(':');
+        if (colonIdx > 0) {
+          username = credentials.substring(0, colonIdx);
+          password = credentials.substring(colonIdx + 1);
+        }
+      }
+      String authHeader = AutoindexCrawlerService.buildAuthHeader(username, password);
+
+      HttpClient httpClient = AutoindexCrawlerService.buildHttpClient(proxyHost, proxyPort, false);
 
       Optional<RssFeedState> feedState = feedStateRepository.findByFeedUrl(feedUrl);
-      HttpResponse<InputStream> feedResponse = fetchFeed(httpClient, feedUrl, feedState);
+      HttpResponse<InputStream> feedResponse =
+          fetchFeed(httpClient, feedUrl, feedState, authHeader);
 
       if (feedResponse.statusCode() == 304) {
         closeQuietly(feedResponse.body());
@@ -177,7 +214,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
       var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
-        processEntry(httpClient, entry, targetLibrary, progress, events, anyEntryDeferred);
+        processEntry(
+            httpClient, entry, targetLibrary, progress, events, anyEntryDeferred, authHeader);
         progress.report();
       }
 
@@ -216,7 +254,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       KnowledgeLibrary targetLibrary,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
-      AtomicBoolean anyEntryDeferred) {
+      AtomicBoolean anyEntryDeferred,
+      String authHeader) {
     String entryUrl = entry.link();
 
     if (!isHttpOrHttps(entryUrl)) {
@@ -234,7 +273,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
-          httpClient, entryUrl, progress, events, anyEntryDeferred, targetLibrary);
+          httpClient, entryUrl, progress, events, anyEntryDeferred, targetLibrary, authHeader);
       return;
     }
 
@@ -242,7 +281,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     DetailPage detailPage;
     try {
-      detailPage = fetchDetailPage(httpClient, entryUrl);
+      detailPage = fetchDetailPage(httpClient, entryUrl, authHeader);
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -313,7 +352,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             targetLibrary,
             anyEntryDeferred,
             progress,
-            events);
+            events,
+            authHeader);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -344,7 +384,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
       AtomicBoolean anyEntryDeferred,
-      KnowledgeLibrary targetLibrary) {
+      KnowledgeLibrary targetLibrary,
+      String authHeader) {
     progress.recordSkipped();
     if (documentRepository.existsBySourceEntryUrl(entryUrl)) {
       log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
@@ -358,7 +399,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     delayBeforeRequest();
     DetailPage detailPage;
     try {
-      detailPage = fetchDetailPage(httpClient, entryUrl);
+      detailPage = fetchDetailPage(httpClient, entryUrl, authHeader);
     } catch (RejectedByRemoteException e) {
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
@@ -408,7 +449,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         targetLibrary,
         anyEntryDeferred,
         progress,
-        events);
+        events,
+        authHeader);
   }
 
   /**
@@ -433,7 +475,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       KnowledgeLibrary targetLibrary,
       AtomicBoolean anyEntryDeferred,
       IndexingRunProgress progress,
-      IndexingRunEventRecorder events) {
+      IndexingRunEventRecorder events,
+      String authHeader) {
     int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
     if (candidates.size() > limit) {
       log.info(
@@ -447,7 +490,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
       delayBeforeRequest();
       processAttachment(
-          httpClient, candidate, entryUrl, targetLibrary, anyEntryDeferred, progress, events);
+          httpClient,
+          candidate,
+          entryUrl,
+          targetLibrary,
+          anyEntryDeferred,
+          progress,
+          events,
+          authHeader);
     }
   }
 
@@ -465,7 +515,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       KnowledgeLibrary targetLibrary,
       AtomicBoolean anyEntryDeferred,
       IndexingRunProgress progress,
-      IndexingRunEventRecorder events) {
+      IndexingRunEventRecorder events,
+      String authHeader) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -474,7 +525,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               candidate.url(),
               candidate.suggestedFileName(),
               properties.maxAttachmentSizeBytes(),
-              properties.userAgent());
+              properties.userAgent(),
+              authHeader);
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {
@@ -638,10 +690,16 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private HttpResponse<InputStream> fetchFeed(
-      HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState)
+      HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState, String authHeader)
       throws IOException, InterruptedException {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("User-Agent", properties.userAgent());
+    // #505: the library's own sourceCredentials, exactly like UrlIndexingExecutor already applies
+    // to its own crawl. sendFollowingRedirects itself drops this header the moment a hop leaves
+    // the feed's own origin, so a redirect (e.g. http -> https) never leaks it to a foreign host.
+    if (authHeader != null) {
+      headers.put("Authorization", authHeader);
+    }
     feedState.ifPresent(
         state -> {
           if (state.getEtag() != null) {
@@ -651,9 +709,6 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             headers.put("If-Modified-Since", state.getLastModified());
           }
         });
-    // #538: the feed URL carries no Authorization header (#505 - credentials are not yet applied
-    // to the feed fetch itself), so following a redirect here has nothing to leak - a same-host
-    // redirect (e.g. http -> https) must still work, exactly as it did under Redirect.NORMAL.
     return AutoindexCrawlerService.sendFollowingRedirects(
         httpClient, feedUrl, Duration.ofSeconds(60), headers);
   }
@@ -687,9 +742,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * element (a skip link, a "share this article" bar) does not survive either, and is never
    * considered for attachments.
    */
-  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl)
+  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl, String authHeader)
       throws IOException, InterruptedException {
-    HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl);
+    HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
     // #490 review, finding 4: every path below - the three early rejections and the ordinary
     // 200 - must close the response body. try-with-resources around the whole evaluation (rather
@@ -760,20 +815,27 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * with a {@link RejectedByRemoteException} - the same exception a post-hoc check on an
    * already-followed response produced before #538, still thrown for the same reason (ADR-0017's
    * bot-protection motivation), just before the foreign target is ever contacted instead of after.
+   *
+   * <p><b>{@code authHeader} (#505).</b> Sent on every hop this loop actually reaches - a foreign
+   * host is always rejected with {@link RejectedByRemoteException} before the request for it is
+   * built, so the header is never resent to anything outside {@code entryUrl}'s own origin.
    */
-  private HttpResponse<InputStream> sendDetailPageRequest(HttpClient httpClient, String entryUrl)
+  private HttpResponse<InputStream> sendDetailPageRequest(
+      HttpClient httpClient, String entryUrl, String authHeader)
       throws IOException, InterruptedException {
     URI currentUri = URI.create(entryUrl);
     for (int hop = 0; ; hop++) {
-      HttpRequest request =
+      HttpRequest.Builder requestBuilder =
           HttpRequest.newBuilder()
               .uri(currentUri)
               .timeout(Duration.ofSeconds(30))
               .header("User-Agent", properties.userAgent())
-              .GET()
-              .build();
+              .GET();
+      if (authHeader != null) {
+        requestBuilder.header("Authorization", authHeader);
+      }
       HttpResponse<InputStream> response =
-          httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
 
       if (!AutoindexCrawlerService.isRedirectStatus(response.statusCode())
           || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {

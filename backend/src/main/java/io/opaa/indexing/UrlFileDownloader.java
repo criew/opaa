@@ -77,6 +77,11 @@ public class UrlFileDownloader {
    *     #492 review, finding 6: {@link RssFeedIndexingExecutor} already sends its configured,
    *     truthful {@code User-Agent} for the feed and every detail page; an attachment request left
    *     it out entirely.
+   * @param authHeader the {@code Authorization} header value to send (e.g. {@code Basic ...}), or
+   *     {@code null} to send none (#505) - mirrors {@link #download}'s own {@code authHeader}
+   *     parameter. Never resent past a foreign-host redirect: {@link ForeignHostRedirectException}
+   *     is thrown before a request for that hop is ever built, exactly as it already was before
+   *     this parameter existed.
    * @return the temp file alongside the response's declared {@code Content-Type}, which the
    *     Government Site Builder attachment profile ({@link AttachmentProfile#GSB}) needs to derive
    *     a file extension its URLs do not carry (#468)
@@ -89,7 +94,12 @@ public class UrlFileDownloader {
    *     the same exception even on an otherwise same-host redirect.
    */
   public DownloadedFile downloadBounded(
-      HttpClient httpClient, String fileUrl, String fileName, long maxBytes, String userAgent)
+      HttpClient httpClient,
+      String fileUrl,
+      String fileName,
+      long maxBytes,
+      String userAgent,
+      String authHeader)
       throws IOException, InterruptedException {
     log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
 
@@ -99,6 +109,9 @@ public class UrlFileDownloader {
           HttpRequest.newBuilder().uri(currentUri).timeout(Duration.ofSeconds(120)).GET();
       if (userAgent != null && !userAgent.isBlank()) {
         requestBuilder.header("User-Agent", userAgent);
+      }
+      if (authHeader != null) {
+        requestBuilder.header("Authorization", authHeader);
       }
 
       HttpResponse<InputStream> response =
