@@ -5,6 +5,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
@@ -12,14 +14,16 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
-import type { SpaceRole, UserInfo } from '../types/api'
+import type { SpaceRole, SpaceVisibility, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceRoleLabel } from '../utils/labels'
+import { spaceRoleLabel, spaceVisibilityDescription, spaceVisibilityLabel } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
+// #272: mirrors docs/features/spaces-and-assets.md#space-sichtbarkeit.
+const editableVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
 
 function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
@@ -44,10 +48,12 @@ export default function SpaceManagementPage() {
     spaceId: string | null
     name: string
     description: string
+    visibility: SpaceVisibility
   }>({
     spaceId: null,
     name: '',
     description: '',
+    visibility: 'PRIVATE',
   })
   const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
@@ -82,6 +88,8 @@ export default function SpaceManagementPage() {
   const name = draft.spaceId === activeSpaceId ? draft.name : (space?.name ?? '')
   const description =
     draft.spaceId === activeSpaceId ? draft.description : (space?.description ?? '')
+  const visibility =
+    draft.spaceId === activeSpaceId ? draft.visibility : (space?.visibility ?? 'PRIVATE')
 
   if (!spaceId || !space) {
     return (
@@ -149,6 +157,7 @@ export default function SpaceManagementPage() {
                   spaceId: activeSpaceId,
                   name: event.target.value,
                   description,
+                  visibility,
                 })
               }
               disabled={!canManage}
@@ -161,19 +170,45 @@ export default function SpaceManagementPage() {
                   spaceId: activeSpaceId,
                   name,
                   description: event.target.value,
+                  visibility,
                 })
               }
               multiline
               minRows={2}
               disabled={!canManage}
             />
+            <FormControl disabled={!canManage}>
+              <InputLabel id="space-visibility-label">Sichtbarkeit</InputLabel>
+              <Select
+                labelId="space-visibility-label"
+                label="Sichtbarkeit"
+                value={visibility}
+                onChange={(event) =>
+                  setDraft({
+                    spaceId: activeSpaceId,
+                    name,
+                    description,
+                    visibility: event.target.value as SpaceVisibility,
+                  })
+                }
+              >
+                {editableVisibilities.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {spaceVisibilityLabel(option)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="text.secondary">
+              {spaceVisibilityDescription(visibility)}
+            </Typography>
             {canManage && (
               <Button
                 variant="contained"
                 onClick={async () => {
                   setLocalError(null)
                   try {
-                    await updateDetails(spaceId, name, description)
+                    await updateDetails(spaceId, name, description, visibility)
                     setSuccessMessage('Space aktualisiert')
                   } catch (err) {
                     setLocalError(

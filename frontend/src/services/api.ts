@@ -244,12 +244,17 @@ export async function updateSpaceDetails(
   }
 }
 
-export async function createSpace(name: string, description: string): Promise<SpaceResponse> {
+export async function createSpace(
+  name: string,
+  description: string,
+  visibility?: SpaceVisibility,
+): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
     const { data } = await client.post<SpaceResponse>('/v1/spaces', {
       name,
       description,
+      visibility,
       ownerId: currentUserId,
       initialMembers: [],
     })

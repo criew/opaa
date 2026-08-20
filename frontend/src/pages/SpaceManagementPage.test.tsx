@@ -144,7 +144,7 @@ describe('SpaceManagementPage', () => {
     expect(screen.queryByRole('button', { name: /space löschen/i })).not.toBeInTheDocument()
   })
 
-  it('saves settings by calling updateSpaceDetails with name and description only', async () => {
+  it('saves settings by calling updateSpaceDetails with name, description and the unchanged visibility', async () => {
     setSpaceState(teamSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
@@ -154,7 +154,28 @@ describe('SpaceManagementPage', () => {
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team Renamed', 'Team docs')
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team Renamed',
+        'Team docs',
+        'PRIVATE',
+      )
+    })
+  })
+
+  // #272: the visibility axis (docs/features/spaces-and-assets.md#space-sichtbarkeit) must be
+  // changeable in space management, not just at creation time.
+  it('saves the chosen visibility when it is changed', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(await screen.findByRole('option', { name: /^offen$/i }))
+    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', 'OPEN')
     })
   })
 

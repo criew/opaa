@@ -7,6 +7,7 @@ import type {
   LibraryVisibility,
   PermissionSubjectType,
   SpaceRole,
+  SpaceVisibility,
 } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
@@ -19,6 +20,33 @@ const spaceRoleLabels: Record<SpaceRole, string> = {
 export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
   if (!role) return ''
   return spaceRoleLabels[role as SpaceRole] ?? role
+}
+
+// #272: mirrors the three-row table in docs/features/spaces-and-assets.md#space-sichtbarkeit -
+// PRIVATE is the default for every newly created space.
+const spaceVisibilityLabels: Record<SpaceVisibility, string> = {
+  PRIVATE: 'Privat',
+  DISCOVERABLE: 'Auffindbar',
+  OPEN: 'Offen',
+}
+
+export function spaceVisibilityLabel(visibility: SpaceVisibility | string | undefined): string {
+  if (!visibility) return ''
+  return spaceVisibilityLabels[visibility as SpaceVisibility] ?? visibility
+}
+
+const spaceVisibilityDescriptions: Record<SpaceVisibility, string> = {
+  PRIVATE:
+    'Nur Mitglieder wissen, dass dieser Space existiert. Voreinstellung für jeden neu angelegten Space.',
+  DISCOVERABLE: 'Im Space-Verzeichnis sichtbar. Der Beitritt erfolgt auf Antrag.',
+  OPEN: 'Im Space-Verzeichnis sichtbar. Jeder kann mit einem Klick selbst beitreten.',
+}
+
+export function spaceVisibilityDescription(
+  visibility: SpaceVisibility | string | undefined,
+): string {
+  if (!visibility) return ''
+  return spaceVisibilityDescriptions[visibility as SpaceVisibility] ?? ''
 }
 
 const groupKindLabels: Record<GroupKind, string> = {
