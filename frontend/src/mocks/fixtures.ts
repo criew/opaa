@@ -79,9 +79,10 @@ export const mockQueryResponses: QueryResponse[] = [
   {
     answer:
       'Das Projekt nutzt eine modulare Monolith-Architektur mit drei Hauptmodulen: ' +
-      'api, indexing und query. Das Modul api stellt die REST-Endpunkte und DTOs bereit, ' +
-      'das Modul indexing verwaltet die Dokumentenaufnahme und das Modul query ' +
-      'beantwortet Fragen über RAG.',
+      'api, indexing und query【source: doc-arch#0 | architecture-overview.md】. Das Modul api ' +
+      'stellt die REST-Endpunkte und DTOs bereit, das Modul indexing verwaltet die ' +
+      'Dokumentenaufnahme【source: doc-start#2 | getting-started.pdf】 und das Modul query ' +
+      'beantwortet Fragen über RAG【source: doc-arch#3 | architecture-overview.md】.',
     sources: [
       {
         fileName: 'architecture-overview.md',
@@ -119,9 +120,10 @@ export const mockQueryResponses: QueryResponse[] = [
   {
     answer:
       'Für einen neuen REST-Endpunkt legen Sie im Modul api eine Controller-Klasse mit der ' +
-      'Annotation @RestController an. Request- und Response-DTOs werden als Java-Records ' +
-      'definiert, die Eingabevalidierung erfolgt über Jakarta Bean Validation. Der Endpunkt ' +
-      'wird automatisch über die OpenAPI-Spezifikation dokumentiert.',
+      'Annotation @RestController an【source: doc-contrib#1 | contributing-guide.md】. Request- ' +
+      'und Response-DTOs werden als Java-Records definiert, die Eingabevalidierung erfolgt ' +
+      'über Jakarta Bean Validation【source: doc-contrib#4 | contributing-guide.md】. Der ' +
+      'Endpunkt wird automatisch über die OpenAPI-Spezifikation dokumentiert.',
     sources: [
       {
         fileName: 'contributing-guide.md',
@@ -142,10 +144,13 @@ export const mockQueryResponses: QueryResponse[] = [
   },
   {
     answer:
-      'Die Deployment-Pipeline orchestriert alle Dienste über Docker Compose. ' +
-      'PostgreSQL mit pgvector speichert die Vektoren der Embeddings, Liquibase verwaltet ' +
-      'die Datenbankmigrationen. Die CI/CD-Pipeline läuft auf GitHub Actions mit getrennten ' +
-      'Jobs für Backend- und Frontend-Build, Linting und Testausführung.',
+      'Die Deployment-Pipeline orchestriert alle Dienste über Docker ' +
+      'Compose【source: doc-compose#0 | docker-compose.yml】. PostgreSQL mit pgvector speichert ' +
+      'die Vektoren der Embeddings【source: doc-adr2#2 | adr-0002-technology-stack.md】, ' +
+      'Liquibase verwaltet die Datenbankmigrationen【source: doc-deploy#1 | deployment-guide.pdf】' +
+      '【source: doc-liqui#0 | liquibase-changelog.xml】. Die CI/CD-Pipeline läuft auf GitHub ' +
+      'Actions mit getrennten Jobs für Backend- und Frontend-Build, Linting und ' +
+      'Testausführung【source: doc-ci#3 | ci-pipeline.md】.',
     sources: [
       {
         fileName: 'docker-compose.yml',

@@ -1,16 +1,13 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
-import Collapse from '@mui/material/Collapse'
-import IconButton from '@mui/material/IconButton'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
+import { buildCitationIndex } from './citations'
 import MarkdownRenderer from './MarkdownRenderer'
-import SourceCard from './SourceCard'
+import SourceFootnotes from './SourceFootnotes'
 import FeedbackButtons from './FeedbackButtons'
 
 interface MessageBubbleProps {
@@ -19,10 +16,34 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
-  const [uncitedOpen, setUncitedOpen] = useState(false)
 
-  const citedSources = message.sources?.filter((s) => s.cited) ?? []
-  const uncitedSources = message.sources?.filter((s) => !s.cited) ?? []
+  // Mockup 1a (#590): the answer's citation markers resolve to footnote numbers, rendered as
+  // superscripts in the text and as the Fundstellen block below it.
+  const citations = useMemo(
+    () => buildCitationIndex(message.content, message.sources),
+    [message.content, message.sources],
+  )
+
+  // A clicked footnote highlights every row it covers - the URL hash can only carry one target,
+  // a range like "3–4" covers several (#590 Nachbesserung). Transient, so the flash reads as a
+  // pointer rather than a persistent selection.
+  const [highlightedDocIndexes, setHighlightedDocIndexes] = useState<number[]>([])
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleCitationClick = useCallback(
+    (numbers: number[]) => {
+      const docIndexes = [
+        ...new Set(
+          numbers
+            .map((n) => citations.docIndexByNumber.get(n))
+            .filter((i): i is number => i !== undefined),
+        ),
+      ]
+      setHighlightedDocIndexes(docIndexes)
+      if (highlightTimer.current) clearTimeout(highlightTimer.current)
+      highlightTimer.current = setTimeout(() => setHighlightedDocIndexes([]), 2400)
+    },
+    [citations],
+  )
 
   return (
     <Box
@@ -67,7 +88,12 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               </Typography>
             </Box>
           ) : (
-            <MarkdownRenderer content={message.content} />
+            <MarkdownRenderer
+              content={message.content}
+              citations={citations}
+              messageId={message.id}
+              onCitationClick={handleCitationClick}
+            />
           )}
 
           {!isUser && message.answeredWithoutKnowledge && (
@@ -76,54 +102,12 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
-          {!isUser && citedSources.length > 0 && (
-            <Stack direction="row" spacing={1} sx={{ mt: 1, overflowX: 'auto', pb: 0.5 }}>
-              {citedSources.map((source) => (
-                <SourceCard key={source.fileName} source={source} />
-              ))}
-            </Stack>
-          )}
-
-          {!isUser && uncitedSources.length > 0 && (
-            <Box sx={{ mt: 1 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
-                onClick={() => setUncitedOpen((prev) => !prev)}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  {uncitedSources.length} weitere{' '}
-                  {uncitedSources.length === 1 ? 'Quelle' : 'Quellen'}
-                </Typography>
-                <IconButton
-                  size="small"
-                  aria-label={
-                    uncitedOpen ? 'Weitere Quellen einklappen' : 'Weitere Quellen ausklappen'
-                  }
-                  sx={{
-                    ml: 0.5,
-                    transform: uncitedOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: (theme) =>
-                      theme.transitions.create('transform', {
-                        duration: theme.transitions.duration.shorter,
-                      }),
-                  }}
-                >
-                  <ExpandMoreIcon fontSize="small" />
-                </IconButton>
-              </Box>
-              <Collapse in={uncitedOpen}>
-                <Stack direction="row" spacing={1} sx={{ mt: 0.5, overflowX: 'auto', pb: 0.5 }}>
-                  {uncitedSources.map((source) => (
-                    <SourceCard key={source.fileName} source={source} />
-                  ))}
-                </Stack>
-              </Collapse>
-            </Box>
+          {!isUser && (
+            <SourceFootnotes
+              messageId={message.id}
+              citations={citations}
+              highlightedDocIndexes={highlightedDocIndexes}
+            />
           )}
 
           {!isUser && (

@@ -1,8 +1,8 @@
 import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import MarkdownRenderer from './MarkdownRenderer'
+import { buildCitationIndex } from './citations'
 
 describe('MarkdownRenderer', () => {
   it('renders plain text', () => {
@@ -57,24 +57,38 @@ describe('MarkdownRenderer', () => {
     expect(cells[0].textContent).toBe('Name')
   })
 
-  it('renders citation markers as icon badges with tooltip', async () => {
-    const user = userEvent.setup()
+  it('renders citation markers as superscript footnote anchors (#590)', () => {
+    const content = 'The answer is 42【source: doc-1#0 | readme.md】.'
     renderWithProviders(
-      <MarkdownRenderer content="The answer is 42 【source: doc-1#0 | readme.md】." />,
+      <MarkdownRenderer
+        content={content}
+        citations={buildCitationIndex(content, undefined)}
+        messageId="m1"
+      />,
     )
     expect(screen.getByText(/The answer is 42/)).toBeInTheDocument()
-    expect(screen.getByLabelText('readme.md')).toBeInTheDocument()
-
-    await user.hover(screen.getByLabelText('readme.md'))
-    expect(await screen.findByRole('tooltip', { name: 'readme.md' })).toBeInTheDocument()
+    const anchor = screen.getByRole('link', { name: 'Fundstelle 1: readme.md' })
+    expect(anchor).toHaveTextContent('1')
+    expect(anchor).toHaveAttribute('href', '#fundstelle-m1-0')
   })
 
-  it('renders multiple citations as separate badges', () => {
+  it('numbers multiple citations in order of appearance (#590)', () => {
+    const content = 'Info【source: id-1#0 | arch.md】 und【source: id-2#3 | deploy.pdf】.'
     renderWithProviders(
-      <MarkdownRenderer content="Info 【source: id-1#0 | arch.md】 and 【source: id-2#3 | deploy.pdf】." />,
+      <MarkdownRenderer
+        content={content}
+        citations={buildCitationIndex(content, undefined)}
+        messageId="m2"
+      />,
     )
-    expect(screen.getByLabelText('arch.md')).toBeInTheDocument()
-    expect(screen.getByLabelText('deploy.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Fundstelle 1: arch.md' })).toHaveTextContent('1')
+    expect(screen.getByRole('link', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
+  })
+
+  it('strips markers when no citation index is provided', () => {
+    renderWithProviders(<MarkdownRenderer content="Satz【source: doc-1#0 | readme.md】 Ende." />)
+    expect(screen.getByText(/Satz\s*Ende\./)).toBeInTheDocument()
+    expect(screen.queryByText(/source:/)).not.toBeInTheDocument()
   })
 
   it('does not render citation chips when no citations present', () => {
