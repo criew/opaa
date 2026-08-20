@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
+import Divider from '@mui/material/Divider'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -13,7 +18,11 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
+import { ThemeProvider } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
+import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
 import { useChatListStore } from '../../stores/chatListStore'
 import { useSpaceStore } from '../../stores/spaceStore'
@@ -22,15 +31,18 @@ function chatTitle(chat: ChatSummary): string {
   return chat.title?.trim() || 'Unbenannter Chat'
 }
 
-function formatUpdatedAt(updatedAt: string): string {
-  return new Date(updatedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
 interface ChatListProps {
   spaceId: string
+  /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
+  header?: ReactNode
+  /**
+   * Theme for the context menu. Mockup 1a shows light panels even over the navy sidebar, so
+   * the Sidebar passes the app theme in here - the list itself stays on the sidebar theme.
+   */
+  menuTheme?: Theme
 }
 
-export default function ChatList({ spaceId }: ChatListProps) {
+export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -46,6 +58,7 @@ export default function ChatList({ spaceId }: ChatListProps) {
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
 
   useEffect(() => {
     if (chats === undefined) {
@@ -85,21 +98,40 @@ export default function ChatList({ spaceId }: ChatListProps) {
 
   return (
     <Box>
-      <Tooltip
-        title={isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''}
+      {/* Mockup 1a: section head and the "+ Neu" action share one baseline row (#658). */}
+      <Box
+        sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', pb: 0.5 }}
       >
-        <span>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={handleNewChat}
-            disabled={Boolean(isArchived)}
-            sx={{ mb: 1.5, borderRadius: 2, textTransform: 'none' }}
-          >
-            Neuer Chat
-          </Button>
-        </span>
-      </Tooltip>
+        {header ?? <span />}
+        <Tooltip
+          title={
+            isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
+          }
+        >
+          <span>
+            <Button
+              variant="text"
+              size="small"
+              aria-label="Neuer Chat"
+              startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+              onClick={handleNewChat}
+              disabled={Boolean(isArchived)}
+              // Mockup 1a: a quiet small link, not a boxed button. Blue-300 on the navy/carbon
+              // sidebar; on light surfaces (SpacePage renders this list on white) blue-700 keeps
+              // the 4.5:1 contrast the a11y suite enforces (#586).
+              sx={{
+                minHeight: 0,
+                px: 0.75,
+                py: 0.25,
+                fontSize: 11.5,
+                color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+              }}
+            >
+              Neu
+            </Button>
+          </span>
+        </Tooltip>
+      </Box>
 
       {error && (
         <Typography color="error.main" variant="body2" sx={{ mb: 1 }}>
@@ -124,24 +156,32 @@ export default function ChatList({ spaceId }: ChatListProps) {
               <ListItem
                 key={chat.id}
                 disablePadding
+                // Mockup 1a keeps chat rows quiet - the actions only surface on hover or
+                // keyboard focus (#658). They stay in the tab order either way.
+                sx={{
+                  '& .MuiListItemSecondaryAction-root': {
+                    opacity: menuAnchor?.chatId === chat.id ? 1 : 0,
+                    transition: 'opacity 120ms',
+                  },
+                  '&:hover .MuiListItemSecondaryAction-root, &:focus-within .MuiListItemSecondaryAction-root':
+                    { opacity: 1 },
+                }}
                 secondaryAction={
                   !isRenaming && (
-                    <>
-                      <IconButton
-                        size="small"
-                        aria-label={`Chat „${chatTitle(chat)}“ umbenennen`}
-                        onClick={() => startRename(chat)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        aria-label={`Chat „${chatTitle(chat)}“ löschen`}
-                        onClick={() => void handleDelete(chat)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </>
+                    // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
+                    // light dropdown (#658 Nachbesserung).
+                    <IconButton
+                      size="small"
+                      aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
+                      aria-haspopup="menu"
+                      aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
+                      onClick={(event) =>
+                        setMenuAnchor({ chatId: chat.id, el: event.currentTarget })
+                      }
+                      sx={{ p: 0.5, borderRadius: '4px' }}
+                    >
+                      <MoreVertIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
                   )
                 }
               >
@@ -150,7 +190,7 @@ export default function ChatList({ spaceId }: ChatListProps) {
                   onClick={
                     isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)
                   }
-                  sx={{ borderRadius: 2, mb: 0.5, pr: 9 }}
+                  sx={{ borderRadius: '6px', mb: 0.25, pr: 5.5, py: 0.5 }}
                 >
                   {isRenaming ? (
                     <TextField
@@ -178,8 +218,7 @@ export default function ChatList({ spaceId }: ChatListProps) {
                   ) : (
                     <ListItemText
                       primary={chatTitle(chat)}
-                      secondary={formatUpdatedAt(chat.updatedAt)}
-                      slotProps={{ primary: { noWrap: true } }}
+                      slotProps={{ primary: { noWrap: true, variant: 'body2' } }}
                     />
                   )}
                 </ListItemButton>
@@ -188,6 +227,46 @@ export default function ChatList({ spaceId }: ChatListProps) {
           })}
         </List>
       )}
+
+      {(() => {
+        const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)
+        const menu = (
+          <Menu
+            anchorEl={menuAnchor?.el ?? null}
+            open={Boolean(menuAnchor && menuChat)}
+            onClose={() => setMenuAnchor(null)}
+            slotProps={{ paper: { sx: { width: 190 } }, list: { 'aria-label': 'Chat-Aktionen' } }}
+          >
+            <MenuItem
+              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ umbenennen` : undefined}
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) startRename(menuChat)
+              }}
+            >
+              <ListItemIcon>
+                <EditIcon sx={{ fontSize: 15 }} />
+              </ListItemIcon>
+              Umbenennen
+            </MenuItem>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ löschen` : undefined}
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) void handleDelete(menuChat)
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon>
+                <DeleteIcon sx={{ fontSize: 15, color: 'error.main' }} />
+              </ListItemIcon>
+              Löschen
+            </MenuItem>
+          </Menu>
+        )
+        return menuTheme ? <ThemeProvider theme={menuTheme}>{menu}</ThemeProvider> : menu
+      })()}
     </Box>
   )
 }

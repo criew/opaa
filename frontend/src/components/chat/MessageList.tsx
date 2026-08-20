@@ -76,7 +76,9 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', py: 2 }}>
+    // data-testid: the chat header (#658) repeats the first question as the fallback title, so
+    // the E2E suite anchors history assertions here instead of on <main> as a whole.
+    <Box data-testid="message-list" sx={{ flexGrow: 1, overflowY: 'auto', py: 2 }}>
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', pb: 2 }}>
         {messages.map((msg, i) => (
           <Box key={msg.id}>

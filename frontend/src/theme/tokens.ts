@@ -145,17 +145,19 @@ export const navyRoles: SchemeRoles = {
   accentFg: white,
   accentHover: blue[600],
   accentPress: blue[700],
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  border: navy[700],
+  borderStrong: navy[600],
 }
 
 /**
- * Font stacks (guidelines 3.1). Inter and JetBrains Mono ship with the repo (SIL OFL); the
+ * Font stacks (guidelines 3.1). Quicksand is the free relative of the Sklow brand face the
+ * mockups use (round-geometric, single-story g, SIL OFL, #658); Inter stays in the stack as
+ * fallback. Both and JetBrains Mono ship with the repo (SIL OFL); the
  * stacks deliberately end in system fonts so an operator-provided brand font can be loaded
  * in front of them later via the branding configuration.
  */
 export const fontFamily = {
-  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif",
+  sans: "'Quicksand', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif",
   mono: "'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace",
 } as const
 
@@ -219,6 +221,8 @@ export const radius = {
  * borders and surface steps, never through shadows.
  */
 export const shadow = {
+  /** Hairline lift for resting rows that need a whisper of depth (mockup 1a input row). */
+  hairline: '0 1px 2px rgba(1, 32, 66, 0.06)',
   /** Level 2: menus, popovers, suggestion lists. */
   floating: '0 2px 6px rgba(1, 32, 66, 0.08)',
   /** Level 3: dialogs, side panels. */

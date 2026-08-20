@@ -56,8 +56,10 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
 }
 
 /**
- * The sidebar's chat list entries, as their "… umbenennen" rename buttons (ChatList.tsx) - each
- * present exactly once per chat regardless of what that chat is currently titled. A Locator, not a
+ * The sidebar's chat list entries, as their three-dot "Aktionen für Chat „…"" menu triggers
+ * (ChatList.tsx, #658) - each present exactly once per chat regardless of what that chat is
+ * currently titled. They fade in on hover/focus, but only via opacity, which Playwright's
+ * visibility model (and getAttribute) deliberately ignores. A Locator, not a
  * resolved count, so callers can use Playwright's own auto-retrying `expect(...).toHaveCount(...)`
  * instead of racing the sidebar's React re-render with a one-shot `.count()`.
  *
@@ -71,7 +73,7 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
  * (expectTopSidebarChatToBeNamed below) replace what used to be exact title-text assertions.
  */
 export function chatSidebarEntries(page: Page): Locator {
-  return page.getByRole('navigation').getByRole('button', { name: /umbenennen$/ })
+  return page.getByRole('navigation').getByRole('button', { name: /^Aktionen für Chat/ })
 }
 
 /**

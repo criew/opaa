@@ -132,12 +132,14 @@ Kombinationen bildet, weist den Kontrast im PR nach. Details regelt die
 
 | Rolle | Schrift | Lizenz |
 |---|---|---|
-| Fließtext & Überschriften | **Inter** | SIL Open Font License — im Repo via `@fontsource/inter` |
+| Fließtext & Überschriften | **Quicksand** | SIL Open Font License — im Repo via `@fontsource/quicksand` |
+| Rückfall im Stapel | Inter | SIL Open Font License |
 | Mono (Aktenzeichen, Werte, Code) | **JetBrains Mono** | SIL Open Font License |
 
 Die Zielbild-Mockups verwenden „Sklow", eine Firmenschrift ohne freie Lizenz. **Sie wird nicht
-ins Repository aufgenommen.** Inter ist der Standard der offenen Codebasis; die Mockup-Werte
-(Skala, Gewichte, Laufweiten) sind auf Inter übertragen. Eine Firmenschrift kann ein Betreiber
+ins Repository aufgenommen.** Quicksand (#658) ist ihre freie Entsprechung — rund-geometrisch,
+einstöckiges g, monolineare Strichführung — und damit Standard der offenen Codebasis; Inter
+bleibt als Rückfall im Stapel. Eine Firmenschrift kann ein Betreiber
 später über die Branding-Konfiguration nachladen; die Schriftstapel enden deshalb immer in
 `system-ui, sans-serif`.
 
@@ -158,6 +160,11 @@ Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehör
 | 2xl | 30 px | Seitenüberschriften (h2) |
 | 3xl | 36 px | große Seitenköpfe |
 | 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI |
+
+Die Arbeitsflächen folgen zusätzlich dem **Feinraster aus Mockup 1a** (#658): Fließtext
+14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
+Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
+bleiben das Vokabular für Markenmomente.
 
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
 
@@ -187,8 +194,8 @@ Gruppen deutlich getrennt (24–48).
 | Stufe | Wert | Verwendung |
 |---|---|---|
 | xs | 4 px | kleine Chips, Tastenkürzel |
-| sm | 6 px | Menüeinträge, kleine Schaltflächen |
-| **md** | **10 px** | **Standard: Karten, Eingaben, Schaltflächen, Dialoge** |
+| sm | 6 px | Schaltflächen, Menüeinträge (#658, Mockup 1a) |
+| **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge** |
 | lg | 16 px | große Karten, Nachrichtenblasen |
 | xl | 24 px | Bühnenflächen |
 | pill | 999 px | Rollen- und Statuschips |
@@ -229,7 +236,7 @@ Zustandswechsel.
 | Sekundär | `bg-1` mit `border-strong` | `bg-2` | `bg-3` |
 | Still (Text/Ghost) | transparent, `accent`-Text | `bg-2` | `bg-3` |
 
-Radius md, Gewicht 500, Höhe 40 px (kompakt 32 px), Beschriftung als Verb („Fragen",
+Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als Verb („Fragen",
 „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion.
