@@ -19,6 +19,10 @@ Die Tickets selbst werden als Sub-Issues eingetragen (Seitenleiste „Create sub
 bzw. bestehendes Issue verknüpfen), nicht als Checkliste im Body. GitHub führt damit
 Status und Fortschritt selbst; der Tagesreport liest dieselbe Beziehung.
 
+Sind alle Sub-Issues geschlossen, wird das Epic mit einem kurzen Abschlusskommentar
+geschlossen (Geliefertes mit PR-Verweisen, entstandene Folge-Issues) — siehe AGENTS.md,
+Abschnitt „GitHub-Issues".
+
 Hier steht nur, was die Sub-Issue-Liste nicht ausdrücken kann: warum in dieser
 Reihenfolge geschnitten wurde. Die Reihenfolge der Sub-Issues lässt sich passend
 sortieren.
