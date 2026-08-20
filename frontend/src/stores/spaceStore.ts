@@ -12,6 +12,7 @@ import {
   updateSpaceDetails,
   updateSpaceMemberRole,
 } from '../services/api'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface SpaceState {
   spaces: SpaceListResponse[]
@@ -60,9 +61,14 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }),
 
   loadSpaces: async () => {
+    // #575: captured before the await below - checked again once it resolves, so a response
+    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+    // previous user's spaces into the now-emptied store.
+    const sessionEpoch = currentSessionEpoch()
     set({ isLoadingList: true, error: null })
     try {
       const spaces = sortSpaces(await getSpaces())
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const currentSelected = get().selectedSpaceId
       const nextSelected =
         currentSelected && spaces.some((space) => space.id === currentSelected)
@@ -74,20 +80,24 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         isLoadingList: false,
       })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Spaces konnten nicht geladen werden'
       set({ error: message, isLoadingList: false })
     }
   },
 
   selectSpace: async (spaceId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     set({ selectedSpaceId: spaceId, isLoadingDetails: true, error: null })
     try {
       const space = await getSpace(spaceId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         selectedSpace: space,
         isLoadingDetails: false,
       })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Space-Details konnten nicht geladen werden'
       set({
@@ -124,12 +134,17 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   },
 
   deleteSelectedSpace: async (spaceId) => {
+    const sessionEpoch = currentSessionEpoch()
     await deleteSpace(spaceId)
     await get().loadSpaces()
     const fallbackSpaceId = get().spaces[0]?.id
     if (fallbackSpaceId) {
       await get().selectSpace(fallbackSpaceId)
     } else {
+      // #575: loadSpaces()/selectSpace() above already guard their own write-backs - this direct
+      // set() needs the same guard, otherwise a logout in between still resurrects an (empty but
+      // non-null) selection state into the store reset() just cleared.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({ selectedSpace: null, selectedSpaceId: null })
     }
   },

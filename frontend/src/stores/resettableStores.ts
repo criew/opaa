@@ -6,6 +6,7 @@ import { useChatListStore } from './chatListStore'
 import { useDocumentStore } from './documentStore'
 import { useIndexingStore } from './indexingStore'
 import { useGrantStore } from './grantStore'
+import { bumpSessionEpoch } from './sessionEpoch'
 
 /**
  * Every store that caches data scoped to the signed-in user's session - space/group/library
@@ -31,5 +32,11 @@ export const resettableStores = [
 ]
 
 export function resetAllStores(): void {
+  // Bumped first, before any store's own reset() runs (#575): every async action across the
+  // stores below captures the epoch at its start and checks it again before writing back once its
+  // await resolves, so an in-flight request that resolves after this call skips its write-back
+  // instead of resurrecting the previous user's data into a store this function is about to empty.
+  // See sessionEpoch.ts for the full rationale.
+  bumpSessionEpoch()
   resettableStores.forEach((store) => store.getState().reset())
 }

@@ -1,9 +1,23 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '../mocks/server'
+// #575: must be imported before chatListStore below - see the matching comment in
+// chatStore.test.ts for why the chatStore/chatListStore circular import makes this order matter.
+import { resetAllStores } from './resettableStores'
 import { useChatListStore } from './chatListStore'
 
 const SPACE_ID = 'space-personal'
+
+/** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
+ * wants the response to arrive, so it can trigger resetAllStores() while the request is still in
+ * flight (#575). */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 
 describe('chatListStore', () => {
   beforeEach(() => {
@@ -217,5 +231,38 @@ describe('chatListStore', () => {
     await useChatListStore.getState().loadChats('space-unknown')
 
     expect(useChatListStore.getState().error).toBeTruthy()
+  })
+
+  // #575: found while systematically checking the resettableStores registry for further
+  // unguarded async set() paths beyond the ones the issue named explicitly.
+  it('a loadChats response arriving after a session reset does not resurrect the chat list', async () => {
+    const gate = deferred<void>()
+    server.use(
+      http.get('/api/v1/spaces/:spaceId/chats', async () => {
+        await gate.promise
+        return HttpResponse.json([
+          {
+            id: 'chat-personal-1',
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: 'Architektur des Projekts',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          },
+        ])
+      }),
+    )
+
+    const loadPromise = useChatListStore.getState().loadChats(SPACE_ID)
+    resetAllStores()
+    gate.resolve()
+    await loadPromise
+
+    const state = useChatListStore.getState()
+    expect(state.chatsBySpaceId[SPACE_ID]).toBeUndefined()
+    expect(state.isLoading).toBe(false)
   })
 })

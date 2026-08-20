@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ChatSummary } from '../types/api'
 import { createChat, deleteChat, listSpaceChats, updateChat } from '../services/api'
 import { dropChatSettingsCache } from './chatStore'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface ChatListState {
   /** Chats per space, sorted by last use (most recently updated first). Undefined means "not
@@ -65,22 +66,30 @@ export const useChatListStore = create<ChatListState>((set) => ({
   reset: () => set({ chatsBySpaceId: {}, isLoading: false, error: null }),
 
   loadChats: async (spaceId: string) => {
+    // #575: captured before the await below - checked again once it resolves, so a response
+    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+    // previous user's chat list into the now-emptied store.
+    const sessionEpoch = currentSessionEpoch()
     set({ isLoading: true, error: null })
     try {
       const chats = sortByLastUse(await listSpaceChats(spaceId))
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set((state) => ({
         chatsBySpaceId: { ...state.chatsBySpaceId, [spaceId]: chats },
         isLoading: false,
       }))
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Chats konnten nicht geladen werden'
       set({ error: message, isLoading: false })
     }
   },
 
   createChatInSpace: async (spaceId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       const detail = await createChat(spaceId)
+      if (isStaleSessionEpoch(sessionEpoch)) return null
       const summary = toChatSummary(detail)
       set((state) => ({
         chatsBySpaceId: {
@@ -90,6 +99,7 @@ export const useChatListStore = create<ChatListState>((set) => ({
       }))
       return summary
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return null
       const message = err instanceof Error ? err.message : 'Chat konnte nicht erstellt werden'
       set({ error: message })
       return null
@@ -97,8 +107,10 @@ export const useChatListStore = create<ChatListState>((set) => ({
   },
 
   renameChat: async (spaceId: string, chatId: string, title: string) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       await updateChat(chatId, { title })
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
@@ -110,18 +122,22 @@ export const useChatListStore = create<ChatListState>((set) => ({
         }
       })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht umbenannt werden'
       set({ error: message })
     }
   },
 
   deleteChatFromList: async (spaceId: string, chatId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       await deleteChat(chatId)
       // #573: a deleted chat can never again be the target of a queued settings PATCH or a
       // rollback base - dropping its entries from chatStore's module-level maps here keeps them
-      // from growing unbounded for the rest of the session.
+      // from growing unbounded for the rest of the session. Done regardless of the session epoch
+      // below: the chat really was deleted server-side, so its cache entries must go either way.
       dropChatSettingsCache(chatId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
@@ -133,6 +149,7 @@ export const useChatListStore = create<ChatListState>((set) => ({
         }
       })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht gelöscht werden'
       set({ error: message })
     }

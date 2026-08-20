@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { DocumentSourceType, IndexingRunResponse, IndexingStatus } from '../types/api'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -126,8 +127,11 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   snackbar: { open: false, message: '', severity: 'success' },
 
   loadRunHistory: async (libraryId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       const response = await getIndexingRuns(libraryId)
+      // #575: a response arriving after a logout must not write into the now-emptied store.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         runHistoryByLibrary: { ...get().runHistoryByLibrary, [libraryId]: response.runs },
       })
@@ -138,11 +142,15 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   },
 
   triggerIndexing: async (libraryId: string, sourceType: DocumentSourceType) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       // #478: sourceType and every typed configuration field come from the library itself
       // (ADR-0018) - the trigger only ever names the library. sourceType is passed in purely for
       // this store's own wording decisions (#518 review, finding 1), not sent to the backend.
       const response = await triggerIndexing(libraryId)
+      // #575: a response arriving after a logout must not write into the now-emptied store, nor
+      // start a poll interval whose ticks would keep writing into it afterwards.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       setRun(
         libraryId,
         {
@@ -162,6 +170,8 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       get().stopPolling(libraryId)
       startPolling(libraryId, set, get)
     } catch (err) {
+      // #575: a failure arriving after a logout must not write into the now-emptied store either.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Indizierung konnte nicht gestartet werden'
       // An UPLOAD library never had a run to fail - overwriting status to FAILED would misleadingly
@@ -175,12 +185,16 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   },
 
   loadStatus: async (libraryId: string, sourceType: DocumentSourceType) => {
+    const sessionEpoch = currentSessionEpoch()
     // Reset to IDLE up front: if this library never had a status loaded before, or the fetch
     // below fails, the section must show this library's own default rather than whatever another
     // library left behind in a shared field.
     setRun(libraryId, { ...IDLE_RUN_STATE, sourceType }, set, get)
     try {
       const response = await getIndexingStatus(libraryId)
+      // #575: a response arriving after a logout must not write into the now-emptied store, nor
+      // start a poll interval whose ticks would keep writing into it afterwards.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       setRun(
         libraryId,
         {
@@ -238,8 +252,14 @@ function startPolling(
   setRun(libraryId, { isPolling: true }, set, get)
 
   pollIntervalIds[libraryId] = setInterval(async () => {
+    // #575: this tick's token in the session epoch, captured before the await below. clearInterval
+    // (see stopPolling, called by reset()) only stops *future* ticks - a tick already in flight
+    // when reset() runs would otherwise still call setRun() once its own await resolves, writing a
+    // run status back into runsByLibrary right after reset() just emptied it.
+    const sessionEpoch = currentSessionEpoch()
     try {
       const response = await getIndexingStatus(libraryId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
       // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
       // polling ever starts (#518 review, finding 1) - polling itself never learns it anew.
       const isRssFeed = get().runsByLibrary[libraryId]?.sourceType === 'RSS_FEED'
@@ -274,6 +294,7 @@ function startPolling(
         })
       }
     } catch {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       get().stopPolling(libraryId)
       setRun(
         libraryId,

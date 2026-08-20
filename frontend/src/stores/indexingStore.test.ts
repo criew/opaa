@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from './indexingStore'
+import { resetAllStores } from './resettableStores'
 import type { IndexingStatusResponse } from '../types/api'
 
 const { mockTriggerIndexing, mockGetIndexingStatus } = vi.hoisted(() => ({
@@ -225,6 +226,32 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().snackbar.message).toBe(
       'Indizierung abgeschlossen: 10 verarbeitet, 2 übersprungen',
     )
+  })
+
+  // #575: the poll callback is the indexing store's explicitly named unguarded write path (Issue
+  // #575) - clearInterval (via reset()'s stopPolling loop) only stops *future* ticks, so a tick
+  // already awaiting getIndexingStatus when reset() runs must still recognize the reset once its
+  // own await resolves, instead of writing a run status back into runsByLibrary right after
+  // reset() emptied it.
+  it('a poll tick response arriving after a session reset does not resurrect run status', async () => {
+    vi.useFakeTimers()
+    mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+    await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+    expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
+
+    // The reset happens *inside* the tick's own request - by the time it resolves and the tick's
+    // continuation runs, resetAllStores() has already bumped the session epoch, exactly matching
+    // what happens when authStore.logout() -> resetAllStores() runs while a poll tick's own
+    // getIndexingStatus call is still in flight.
+    mockGetIndexingStatus.mockImplementationOnce(async () => {
+      resetAllStores()
+      return runningStatus({ status: 'COMPLETED' })
+    })
+
+    await vi.advanceTimersByTimeAsync(2000)
+
+    expect(useIndexingStore.getState().runsByLibrary['library-a']).toBeUndefined()
+    expect(useIndexingStore.getState().snackbar.open).toBe(false)
   })
 
   it('reset() stops every library poll interval so no further tick fires (#440)', async () => {

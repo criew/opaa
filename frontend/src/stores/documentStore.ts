@@ -5,6 +5,7 @@ import {
   getLibraryDocuments,
   uploadDocument as uploadDocumentRequest,
 } from '../services/api'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 const POLL_INTERVAL_MS = 3000
 export const DEFAULT_PAGE_SIZE = 20
@@ -81,6 +82,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   loadDocuments: async (libraryId, options) => {
+    // #575: captured before the await below - checked again once it resolves, so a response
+    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+    // previous user's documents into the now-emptied store, and does not start a poll interval
+    // whose ticks would keep writing into it afterwards.
+    const sessionEpoch = currentSessionEpoch()
     const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
     const page = options?.page ?? previous.page
     const size = options?.size ?? previous.size
@@ -89,6 +95,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const response = await getLibraryDocuments(libraryId, { page, size, q })
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
         pageStateByLibrary: {
@@ -108,17 +115,21 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         get().stopPolling(libraryId)
       }
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Dokumente konnten nicht geladen werden'
       set({ error: message, isLoading: false })
     }
   },
 
   uploadNewDocument: async (libraryId: string, file: File) => {
+    const sessionEpoch = currentSessionEpoch()
     set({ isUploading: true })
     try {
       await uploadDocumentRequest(libraryId, file)
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({ isUploading: false })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) throw err
       const rawMessage =
         err instanceof Error ? err.message : 'Datei konnte nicht hochgeladen werden'
       // Names the concerned file alongside the backend's German reason (format, size, dedup) - the
@@ -136,13 +147,16 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   removeDocument: async (libraryId: string, documentId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     try {
       await deleteLibraryDocument(libraryId, documentId)
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) throw err
       const message = err instanceof Error ? err.message : 'Dokument konnte nicht gelöscht werden'
       set({ deleteError: message })
       throw err
     }
+    if (isStaleSessionEpoch(sessionEpoch)) return
     set({ deleteError: null })
     // #517 code review, finding 2 (Szenario A/B): filtering the row out of the locally cached page
     // alone leaves totalElements and the neighbouring pages stale - a full page loses its would-be
@@ -190,6 +204,11 @@ function startPolling(
   if (pollIntervalIds[libraryId]) return
 
   pollIntervalIds[libraryId] = setInterval(async () => {
+    // #575: this tick's token in the session epoch, captured before the await below.
+    // clearInterval (see stopPolling, called by reset()) only stops *future* ticks - a tick
+    // already in flight when reset() runs would otherwise still write into documentsByLibrary
+    // once its own await resolves, right after reset() just emptied it.
+    const sessionEpoch = currentSessionEpoch()
     try {
       const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
       const response = await getLibraryDocuments(libraryId, {
@@ -197,6 +216,7 @@ function startPolling(
         size: pageState.size,
         q: pageState.q,
       })
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
         pageStateByLibrary: {

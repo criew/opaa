@@ -8,6 +8,7 @@ import type {
 } from '../types/api'
 import { createChat, getChat, sendQuery, updateChat } from '../services/api'
 import { useChatListStore } from './chatListStore'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -274,6 +275,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (question: string) => {
+    // #575: this call's token in the session epoch, captured before any await below. Checked
+    // again before every set() that follows an await - a logout (resetAllStores) in the meantime
+    // bumps the epoch, so a response arriving afterwards is recognized as stale and its write-back
+    // is skipped instead of resurrecting the previous user's chatId/messages into the now-emptied
+    // store (#618 review: this applies to both the implicit-chat-creation write-back and the final
+    // answer write-back below).
+    const sessionEpoch = currentSessionEpoch()
+
     // #557: whether this is the chat's first-ever turn - captured before the optimistic user
     // message below is pushed, since that would make messages.length always >= 1. Only a first
     // turn triggers the backend's asynchronous LLM title generation, so only a first turn
@@ -309,6 +318,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           referencedLibraryIds: libraryIds,
         })
         chatId = created.id
+        // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
+        // let this chat's id resurrect into the now-emptied store.
+        if (isStaleSessionEpoch(sessionEpoch)) return
         set({ chatId })
         // The settings this chat was just created with are the server's own record too (#565
         // review) - same reasoning as loadChat above.
@@ -343,6 +355,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       const response = await sendQuery(question, chatId, useKnowledge, libraryIds)
+      // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
+      // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const assistantMessage: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -372,6 +387,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
     } catch (err) {
+      // #575: a failure arriving after a logout must not write isLoading/error into the
+      // now-emptied store either - same reasoning as the two success write-backs above.
+      if (isStaleSessionEpoch(sessionEpoch)) return
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
       set({ error: message, isLoading: false })

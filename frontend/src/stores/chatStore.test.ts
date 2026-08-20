@@ -1,8 +1,26 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
+// #575: resettableStores.ts must be imported before chatStore/chatListStore here, not after -
+// chatStore.ts and chatListStore.ts import from each other (chatStore needs useChatListStore to
+// touch a space's chat list, chatListStore needs dropChatSettingsCache to clean up a deleted
+// chat's settings cache), and letting either of them start this test file's module graph first
+// leaves useChatListStore unresolved by the time resettableStores.ts's own top-level array
+// literal runs, silently dropping it from resetAllStores()'s loop.
+import { resetAllStores } from './resettableStores'
 import { clearSettingsPersistenceCache, dropChatSettingsCache, useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
+
+/** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
+ * wants the response to arrive, so it can trigger resetAllStores() while the request is still in
+ * flight (#575). */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 
 const SPACE_ID = 'space-personal'
 const EXISTING_CHAT_ID = 'chat-personal-1'
@@ -319,6 +337,95 @@ describe('chatStore', () => {
       expect(state.isLoading).toBe(false)
       expect(state.messages).toHaveLength(1)
       expect(state.messages[0].role).toBe('user')
+    })
+
+    // #575, #618 review: sendMessage has two write-back paths after an await - the implicit chat
+    // creation (chatId) and the final answer (messages/chatId) - both must skip their set() call
+    // once a logout (resetAllStores) ran while the request was still in flight, instead of
+    // resurrecting the previous user's chat into the store logout just emptied.
+    describe('does not resurrect state after a session reset (#575)', () => {
+      it('an implicit chat creation resolving after reset() does not resurrect chatId', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/spaces/:spaceId/chats', async ({ params, request }) => {
+            await gate.promise
+            const spaceId = String(params.spaceId)
+            const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+            return HttpResponse.json(
+              {
+                id: 'chat-resurrected',
+                spaceId,
+                authorId: 'mock-user-id',
+                title: null,
+                useKnowledge: body?.useKnowledge ?? true,
+                referencedLibraryIds: body?.referencedLibraryIds ?? [],
+                status: 'PRIVATE',
+                messages: [],
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-01T00:00:00Z',
+              },
+              { status: 201 },
+            )
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.chatId).toBeNull()
+        expect(state.spaceId).toBeNull()
+        expect(state.messages).toHaveLength(0)
+      })
+
+      it('a query answer resolving after reset() does not resurrect messages/chatId', async () => {
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json({
+              answer: 'Antwort, die nach dem Logout eintrifft',
+              sources: [],
+              metadata: { model: 'gpt-4o', tokenCount: 10, durationMs: 5 },
+              chatId: EMPTY_CHAT_ID,
+              chatTitle: null,
+            })
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.messages).toHaveLength(0)
+        expect(state.chatId).toBeNull()
+      })
+
+      it('a query failure resolving after reset() does not write error/isLoading back', async () => {
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json({ error: 'Serverfehler' }, { status: 500 })
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.error).toBeNull()
+        expect(state.isLoading).toBe(false)
+      })
     })
 
     // Payload mapping for all three chip-bar states (#560): @Alles-Wissen -> useKnowledge=true (no
