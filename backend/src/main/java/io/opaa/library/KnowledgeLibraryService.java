@@ -83,6 +83,7 @@ public class KnowledgeLibraryService {
   private final GroupMembershipResolver membershipResolver;
   private final DocumentRepository documentRepository;
   private final AssetGrantRepository grantRepository;
+  private final AssetGrantService grantService;
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
@@ -96,6 +97,7 @@ public class KnowledgeLibraryService {
       GroupMembershipResolver membershipResolver,
       DocumentRepository documentRepository,
       AssetGrantRepository grantRepository,
+      AssetGrantService grantService,
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
@@ -107,6 +109,7 @@ public class KnowledgeLibraryService {
     this.membershipResolver = membershipResolver;
     this.documentRepository = documentRepository;
     this.grantRepository = grantRepository;
+    this.grantService = grantService;
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
@@ -142,6 +145,11 @@ public class KnowledgeLibraryService {
             HttpStatus.FORBIDDEN,
             "Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen");
       }
+      // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
+      // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
+      // than duplicated so the two grant-writing paths can never disagree on which groups are
+      // grantable.
+      grantService.requireGrantableGroup(ownerGroup.getId(), currentUser.getOrganizationId());
       library =
           KnowledgeLibrary.ownedByGroup(
               currentUser.getOrganizationId(),

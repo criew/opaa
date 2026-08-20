@@ -921,6 +921,31 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void createGroupOwnedLibraryRejectsADissolvedGroupAsOwner() {
+    // #441: createLibrary used to write the group's MANAGER grant directly, bypassing
+    // AssetGrantService#requireGrantableGroup's dissolved-group check that upsertGrant already
+    // enforces for every other grant - see that method's Javadoc.
+    UUID member = createUser(organizationA);
+    Group group = createGroup(organizationA, member);
+    group.dissolve(Instant.now());
+    groupRepository.save(group);
+
+    LibraryRequest request =
+        new LibraryRequest("Aufgeloeste Gruppe", DocumentSourceType.UPLOAD)
+            .ownerType(LibraryOwnerType.GROUP)
+            .ownerId(group.getId());
+
+    assertThatThrownBy(() -> libraryService.createLibrary(request, member))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+    assertThat(libraryRepository.findAll())
+        .noneMatch(l -> "Aufgeloeste Gruppe".equals(l.getName()));
+  }
+
+  @Test
   void getLibraryTreatsALibraryFromAnotherOrganizationAsNotFoundEvenForASystemAdmin() {
     UUID ownerInA = createUser(organizationA);
     UUID adminInB = createUser(organizationB);
