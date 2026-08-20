@@ -165,6 +165,42 @@ describe('chatStore', () => {
       expect(state.chatId).toBeNull()
       expect(state.messages).toEqual([])
     })
+
+    // #559: startNewChat invalidates an in-flight loadChat via chatLoadSequence, but the
+    // superseded loadChat handler returns before its own set() call - nobody else resets
+    // isLoadingChat back to false, so ChatPage's spinner branch (`if (isLoadingChat) ...`) never
+    // clears and the chat input never reappears.
+    it('clears isLoadingChat when startNewChat supersedes an in-flight loadChat', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          await new Promise((resolve) => setTimeout(resolve, 30))
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      const pendingLoad = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().isLoadingChat).toBe(true)
+
+      useChatStore.getState().startNewChat(SPACE_ID)
+      // startNewChat is synchronous - the loading flag must already be cleared right after it
+      // returns, not only once the superseded loadChat's (never-applied) response arrives.
+      expect(useChatStore.getState().isLoadingChat).toBe(false)
+
+      await pendingLoad
+
+      expect(useChatStore.getState().isLoadingChat).toBe(false)
+    })
   })
 
   describe('sendMessage', () => {
