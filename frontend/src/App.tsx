@@ -11,6 +11,7 @@ import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
+import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceManagementPage from './pages/SpaceManagementPage'
 import GroupManagementPage from './pages/GroupManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
@@ -67,7 +68,7 @@ export default function App() {
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
               <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
-              <Route path="spaces" element={<SpacePage />} />
+              <Route path="spaces" element={<SpacesOverviewPage />} />
               <Route path="libraries" element={<LibraryManagementPage />} />
               <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
               <Route path="admin/groups" element={<GroupManagementPage />} />

@@ -1,0 +1,86 @@
+import { describe, expect, it, beforeEach } from 'vitest'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithProviders } from '../test/test-utils'
+import SpacesOverviewPage from './SpacesOverviewPage'
+import { useSpaceStore } from '../stores/spaceStore'
+
+const personal = {
+  id: 'space-personal',
+  name: 'Mein Space',
+  description: 'Eigener Denkraum ohne Mitleser.',
+  isDefault: true,
+  archived: false,
+  visibility: 'PRIVATE' as const,
+  memberCount: 1,
+  userRole: 'ADMIN' as const,
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
+const team = {
+  id: 'space-team',
+  name: 'Widerspruchsstelle',
+  description: 'Bearbeitung laufender Widersprüche.',
+  isDefault: false,
+  archived: true,
+  visibility: 'PRIVATE' as const,
+  memberCount: 9,
+  userRole: 'CURATOR' as const,
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
+describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
+  beforeEach(() => {
+    useSpaceStore.setState({ spaces: [personal, team], isLoadingList: false, error: null })
+  })
+
+  it('renders the header with the membership count line', () => {
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Spaces' })).toBeInTheDocument()
+    expect(screen.getByText('2 Räume, in denen Sie Mitglied sind')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Neuer Space' })).toBeInTheDocument()
+  })
+
+  it('renders one linked card per space with kind, description, figures and role', () => {
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    const personalCard = screen.getByRole('link', { name: /Mein Space/ })
+    expect(personalCard).toHaveAttribute('href', '/spaces/space-personal')
+    expect(personalCard).toHaveTextContent('Persönlich')
+    expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
+    expect(personalCard).toHaveTextContent('nur Sie')
+
+    const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
+    expect(teamCard).toHaveTextContent('Team')
+    expect(teamCard).toHaveTextContent('9 Mitglieder')
+    expect(teamCard).toHaveTextContent('Archiviert')
+  })
+
+  it('opens the create dialog from the trailing card', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    await user.click(screen.getByRole('button', { name: 'Neuen Space anlegen' }))
+
+    expect(await screen.findByText('Space erstellen')).toBeInTheDocument()
+  })
+
+  it('shows a designed empty state without spaces', () => {
+    // loadSpaces stubben - der Auto-Load der Seite würde sonst sofort Mock-Spaces nachladen
+    // und den Leerzustand verdecken.
+    useSpaceStore.setState({
+      spaces: [],
+      isLoadingList: false,
+      error: null,
+      loadSpaces: async () => {},
+    })
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    expect(screen.getByText('0 Räume, in denen Sie Mitglied sind')).toBeInTheDocument()
+    expect(screen.getByText(/Noch kein Space/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Neuen Space anlegen' })).toBeInTheDocument()
+  })
+})
