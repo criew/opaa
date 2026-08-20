@@ -41,15 +41,15 @@ export async function startFreshChat(page: Page): Promise<void> {
   // against accounts that by then already had several persisted chats (PR #554) - reported as a
   // product bug rather than fixed here. Settling on the landed chat's own input first (instead of
   // firing the click immediately) avoids ever hitting that window in the first place.
-  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
+  await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
   await page.getByRole('button', { name: 'Neuer Chat' }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
+  await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
 }
 
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
 export async function askQuestion(page: Page, question: string): Promise<void> {
-  const input = page.getByPlaceholder('Stellen Sie eine Frage …')
+  const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
   await expect(input).toBeVisible()
   await input.fill(question)
   await page.getByRole('button', { name: 'Nachricht senden' }).click()
