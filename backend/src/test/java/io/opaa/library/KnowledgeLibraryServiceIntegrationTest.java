@@ -994,6 +994,41 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void getLibraryHidesSourceConfigurationFromAViewerButNotFromAManagerOrAbove() {
+    // #507: sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/sourceCredentialsSet expose
+    // internal server infrastructure (a filesystem path here) - fine for whoever may change it
+    // (MANAGER+, the same bar updateLibrary enforces), a leak for a mere VIEWER of an
+    // organization-wide connector library.
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    LibraryResponse created =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents")
+                .visibility(LibraryVisibility.ORGANIZATION),
+            owner);
+
+    // The owner holds OWNER (at least MANAGER) and sees the full source configuration.
+    LibraryResponse asOwner = libraryService.getLibrary(created.getId(), owner, false);
+    assertThat(asOwner.getMyRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(asOwner.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(asOwner.getSourceInsecureSsl()).isNotNull();
+    assertThat(asOwner.getSourceCredentialsSet()).isNotNull();
+
+    // Another organization member only reaches VIEWER through the ORGANIZATION-wide visibility
+    // and must not receive the source configuration fields at all.
+    LibraryResponse asViewer = libraryService.getLibrary(created.getId(), otherMember, false);
+    assertThat(asViewer.getMyRole()).isEqualTo(AssetRole.VIEWER);
+    assertThat(asViewer.getSourcePath()).isNull();
+    assertThat(asViewer.getSourceUrl()).isNull();
+    assertThat(asViewer.getSourceProxy()).isNull();
+    assertThat(asViewer.getSourceInsecureSsl()).isNull();
+    assertThat(asViewer.getSourceCredentialsSet()).isNull();
+    // sourceType itself (the connector kind, not where it points) stays visible to everyone.
+    assertThat(asViewer.getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
+  }
+
+  @Test
   void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
     // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
     // #420 introduced for the two upload endpoints, unified across the rest of the library API -

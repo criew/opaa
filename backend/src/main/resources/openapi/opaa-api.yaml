@@ -2891,32 +2891,43 @@ components:
         sourcePath:
           type: string
           nullable: true
-          description: Set only for sourceType FILESYSTEM.
+          description: >
+            Set only for sourceType FILESYSTEM, and only if myRole is at least MANAGER (#507) -
+            an internal server path is configuration detail for whoever may change it, not for a
+            mere VIEWER of an organization-wide library. Absent (not merely null) for a lower
+            role, mirroring the MANAGER bar PUT /api/v1/libraries/{libraryId} already enforces
+            for changing it.
         sourceUrl:
           type: string
           format: uri
           nullable: true
-          description: Set only for sourceType HTTP_DIRECTORY or RSS_FEED.
+          description: >
+            Set only for sourceType HTTP_DIRECTORY or RSS_FEED, and only if myRole is at least
+            MANAGER (#507) - see sourcePath above for why.
         sourceProxy:
           type: string
           nullable: true
           description: >
-            Set only for sourceType HTTP_DIRECTORY or RSS_FEED, and only if configured.
+            Set only for sourceType HTTP_DIRECTORY or RSS_FEED, only if configured, and only if
+            myRole is at least MANAGER (#507) - see sourcePath above for why.
         sourceInsecureSsl:
           type: boolean
           nullable: true
           description: >
-            Set only for sourceType HTTP_DIRECTORY or RSS_FEED. sourceCredentials is
-            deliberately absent from this response (ADR-0018) - it is a write-only field of
+            Set only for sourceType HTTP_DIRECTORY or RSS_FEED, and only if myRole is at least
+            MANAGER (#507) - see sourcePath above for why. sourceCredentials is deliberately
+            absent from this response regardless of role (ADR-0018) - it is a write-only field of
             LibraryRequest and appears in no API response.
         sourceCredentialsSet:
           type: boolean
+          nullable: true
           description: >
             Whether a credential is currently stored for this library - never the credential
             itself (ADR-0018). Only meaningful for sourceType HTTP_DIRECTORY or RSS_FEED; always
             false otherwise. Lets a client (e.g. the source configuration edit dialog) phrase an
             accurate "leave blank to keep the current credential" hint only when one actually
-            exists, instead of implying one is configured when none is.
+            exists, instead of implying one is configured when none is. Set only if myRole is at
+            least MANAGER (#507) - see sourcePath above for why.
         createdAt:
           type: string
           format: date-time
@@ -2999,7 +3010,11 @@ components:
         role name occurs in both. VIEWER uses the asset and sees its configuration, EDITOR
         additionally changes it, MANAGER additionally shares/grants and sets visibility, OWNER
         additionally deletes and transfers ownership. See
-        docs/features/spaces-and-assets.md#asset-rollen.
+        docs/features/spaces-and-assets.md#asset-rollen. Exception for a knowledge library: its
+        source connection detail (LibraryResponse's sourcePath/sourceUrl/sourceProxy/
+        sourceInsecureSsl/sourceCredentialsSet) is internal server infrastructure, not merely
+        "configuration" - it stays hidden from a VIEWER and even an EDITOR, matching the MANAGER
+        bar PUT /api/v1/libraries/{libraryId} already enforces for changing it (#507).
       enum: [VIEWER, EDITOR, MANAGER, OWNER]
       example: VIEWER
 
