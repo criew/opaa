@@ -132,28 +132,35 @@ public class SourceConnectionTestService {
 
   /**
    * Convenience overload for a standalone test carrying no {@code libraryId} (#514's original
-   * shape, before #544) - equivalent to {@link #test(SourceConnectionTestRequest, UUID)} with a
-   * {@code null} caller, which that overload only ever consults once {@code request.getLibraryId()}
-   * is set.
+   * shape, before #544) - equivalent to {@link #test(SourceConnectionTestRequest, UUID, boolean)}
+   * with a {@code null} caller, which that overload only ever consults once {@code
+   * request.getLibraryId()} is set.
    */
   public SourceConnectionTestResponse test(SourceConnectionTestRequest request) {
-    return test(request, null);
+    return test(request, null, false);
   }
 
   /**
    * @param currentUserId the caller, only consulted when {@code request.getLibraryId()} is set
    *     (#544) - a standalone test (no libraryId) keeps #514's original permission bar, checked by
    *     the controller before this method is even called.
+   * @param systemAdmin whether the caller holds {@code SystemRole.SYSTEM_ADMIN}, also only
+   *     consulted once {@code request.getLibraryId()} is set (#615 review, finding 3) - {@code
+   *     LibraryController} passes the same value here it already passes to {@code
+   *     KnowledgeLibraryService#updateLibrary} for the very save this test precedes, so a system
+   *     admin who can save a library's quellkonfiguration without a grant can test it beforehand
+   *     too, instead of the test alone answering 404.
    */
   public SourceConnectionTestResponse test(
-      SourceConnectionTestRequest request, UUID currentUserId) {
+      SourceConnectionTestRequest request, UUID currentUserId, boolean systemAdmin) {
     DocumentSourceType sourceType = request.getSourceType();
     if (sourceType == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
     }
     SourceConnectionTestRequest effectiveRequest = request;
     if (request.getLibraryId() != null) {
-      KnowledgeLibrary library = requireManagedLibrary(request.getLibraryId(), currentUserId);
+      KnowledgeLibrary library =
+          requireManagedLibrary(request.getLibraryId(), currentUserId, systemAdmin);
       if (library.getSourceType() != sourceType) {
         throw new ResponseStatusException(
             HttpStatus.BAD_REQUEST,
@@ -179,8 +186,16 @@ public class SourceConnectionTestService {
    * even that much), 403 if the caller's role is below MANAGER, the same distinction every other
    * library-scoped endpoint now makes (e.g. {@code KnowledgeLibraryService#updateLibrary}, {@code
    * DocumentIndexingService#requireEditableLibrary}).
+   *
+   * <p>{@code systemAdmin} is passed through to {@code requireRole} exactly like {@code
+   * KnowledgeLibraryService#updateLibrary} passes it (#615 review, finding 3) - the save this test
+   * precedes already lets a {@code SYSTEM_ADMIN} through without a grant, so hard-coding {@code
+   * false} here (as {@code DocumentIndexingService#requireEditableLibrary} deliberately does for
+   * indexing runs, ADR-0018 Entscheidung 2) would make a system admin's own "Verbindung testen"
+   * click fail with 404 right before a save that would have succeeded.
    */
-  private KnowledgeLibrary requireManagedLibrary(UUID libraryId, UUID currentUserId) {
+  private KnowledgeLibrary requireManagedLibrary(
+      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     User currentUser =
         userRepository
             .findById(currentUserId)
@@ -195,10 +210,7 @@ public class SourceConnectionTestService {
             .orElseThrow(
                 () ->
                     new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
-    // No system-admin bypass here (systemAdmin always false), mirroring
-    // DocumentIndexingService#requireEditableLibrary - the real grant/visibility formula decides,
-    // unconditionally, same as every other library-scoped write action.
-    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER);
+    libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     return library;
   }
 

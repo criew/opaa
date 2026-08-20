@@ -1,7 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.indexing.AutoindexCrawlerService;
 import java.net.URI;
-import java.util.Objects;
 
 /**
  * Whether two source URLs name the same origin (scheme, host and explicit-or-scheme-default port) -
@@ -10,6 +10,14 @@ import java.util.Objects;
  * a second, drifting copy). Either URL being {@code null} or unparsable is treated conservatively
  * as "different origin" - a caller then re-requires the credential rather than risking a false
  * positive match.
+ *
+ * <p><b>Delegates to {@link AutoindexCrawlerService#sameOrigin(URI, URI)} (#615 review, finding
+ * 1)</b> rather than re-implementing the comparison on top of {@link URI#getHost()} directly: a
+ * naive {@code Objects.equals(a.getHost(), b.getHost())} treats two unrelated underscore-hostname
+ * URLs as the same origin, since {@code URI} parses an underscore-containing host as {@code null}
+ * on both sides - {@code AutoindexCrawlerService#sameOrigin} already guards against exactly that
+ * (any {@code null} host loses outright, never matches another {@code null}), and duplicating that
+ * guard here would only risk the copy drifting out of sync again.
  */
 final class SourceOriginMatcher {
 
@@ -20,21 +28,9 @@ final class SourceOriginMatcher {
       return false;
     }
     try {
-      URI previous = URI.create(previousUrl);
-      URI next = URI.create(nextUrl);
-      return Objects.equals(previous.getScheme(), next.getScheme())
-          && Objects.equals(previous.getHost(), next.getHost())
-          && defaultedPort(previous) == defaultedPort(next);
+      return AutoindexCrawlerService.sameOrigin(URI.create(previousUrl), URI.create(nextUrl));
     } catch (IllegalArgumentException ex) {
       return false;
     }
-  }
-
-  /** Resolves the scheme's default port (http 80, https 443) when a URI carries no explicit one. */
-  private static int defaultedPort(URI uri) {
-    if (uri.getPort() != -1) {
-      return uri.getPort();
-    }
-    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 }

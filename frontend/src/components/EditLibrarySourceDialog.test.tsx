@@ -7,6 +7,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import type {
   LibraryResponse,
   LibraryUpdateRequest,
+  SourceConnectionTestRequest,
   SourceConnectionTestResponse,
 } from '../types/api'
 
@@ -14,14 +15,16 @@ const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   mockUpdateLibrary: vi.fn(async (_id: string, request: LibraryUpdateRequest) => {
     return { id: _id, ...request } as unknown as LibraryResponse
   }),
-  mockTestLibrarySource: vi.fn(
-    async () =>
-      ({
-        reachable: true,
-        documentCount: 3,
-        message: 'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
-      }) as SourceConnectionTestResponse,
-  ),
+  // Typed via the explicit generic (rather than CreateLibraryDialog.test.tsx's parameterless
+  // implementation) so mockTestLibrarySource.mock.calls[0] below is typed as a tuple with an
+  // element at index 0, not `[]`.
+  mockTestLibrarySource: vi.fn<
+    (request: SourceConnectionTestRequest) => Promise<SourceConnectionTestResponse>
+  >(async () => ({
+    reachable: true,
+    documentCount: 3,
+    message: 'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
+  })),
 }))
 
 vi.mock('../services/api', async () => {
@@ -384,12 +387,17 @@ describe('EditLibrarySourceDialog', () => {
 
       await waitFor(() => {
         expect(mockTestLibrarySource).toHaveBeenCalledWith(
-          expect.objectContaining({
-            sourceCredentials: 'admin:new-secret',
-            libraryId: undefined,
-          }),
+          expect.objectContaining({ sourceCredentials: 'admin:new-secret' }),
         )
       })
+      // #615 review, nit c: objectContaining({ libraryId: undefined }) alone does not prove the
+      // key is actually absent from the network payload - an explicitly assigned `libraryId:
+      // undefined` property still exists on the JS object itself (toHaveProperty would find it
+      // too), it is only JSON.stringify (the real serialization the HTTP client performs) that
+      // drops an undefined-valued key. Asserting on the serialized form is what actually proves
+      // the backend never sees the key.
+      const [requestBody] = mockTestLibrarySource.mock.calls[0]
+      expect(JSON.stringify(requestBody)).not.toContain('libraryId')
     })
 
     it('shows an unreachable result as a warning, not an error, since the test itself succeeded', async () => {

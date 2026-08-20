@@ -287,26 +287,28 @@ export default function EditLibrarySourceDialog({
             </>
           )}
 
-          <Box>
-            <Button
-              onClick={() => void handleTest()}
-              disabled={testing}
-              variant="outlined"
-              size="small"
-            >
-              {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-            </Button>
-            {testErrorMessage && (
-              <Alert severity="error" sx={{ mt: 1 }}>
-                {testErrorMessage}
-              </Alert>
-            )}
-            {testResult && (
-              <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
-                {testResult.message}
-              </Alert>
-            )}
-          </Box>
+          {configKind !== 'none' && (
+            <Box>
+              <Button
+                onClick={() => void handleTest()}
+                disabled={testing}
+                variant="outlined"
+                size="small"
+              >
+                {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
+              </Button>
+              {testErrorMessage && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {testErrorMessage}
+                </Alert>
+              )}
+              {testResult && (
+                <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
+                  {testResult.message}
+                </Alert>
+              )}
+            </Box>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
