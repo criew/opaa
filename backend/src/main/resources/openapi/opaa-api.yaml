@@ -1739,6 +1739,12 @@ components:
         message:
           type: string
           nullable: true
+          description: >
+            For status FAILED, the detail is only included if the caller holds at least MANAGER
+            on the library (#507/#659) - the underlying exception message routinely repeats the
+            library's own sourcePath/sourceUrl (an absolute server path or a host:port), the same
+            internal-infrastructure leak #507 already closes for the source configuration display
+            itself. A caller below MANAGER gets a generic German message instead.
           example: Indexing completed successfully
         libraryId:
           type: string

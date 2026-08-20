@@ -318,9 +318,10 @@ class DocumentIndexingServiceTest {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
     when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.empty());
 
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false)).isEmpty();
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).isEmpty();
   }
 
   @Test
@@ -329,10 +330,31 @@ class DocumentIndexingServiceTest {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
     var job = new IndexingJob(JobStatus.COMPLETED);
     when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.of(job));
 
-    assertThat(service.getStatus(library.getId(), currentUser.getId(), false)).contains(job);
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).contains(job);
+  }
+
+  @Test
+  void getStatusReportsCanSeeErrorDetailOnlyForAManagerOrAbove() {
+    // #507/#659: getStatus's caller (LibraryController) decides whether to shorten a FAILED job's
+    // raw error message based on this flag - pinned here independently of that shortening so a
+    // regression in either place fails the layer it actually belongs to.
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
+        .thenReturn(AssetRole.VIEWER);
+    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.empty());
+
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).canSeeErrorDetail())
+        .isFalse();
+
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(true);
+    assertThat(service.getStatus(library.getId(), currentUser.getId(), false).canSeeErrorDetail())
+        .isTrue();
   }
 
   @Test

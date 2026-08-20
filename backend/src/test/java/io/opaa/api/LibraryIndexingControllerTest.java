@@ -18,6 +18,7 @@ import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingRunDetail;
 import io.opaa.indexing.IndexingRunEvent;
+import io.opaa.indexing.IndexingStatusView;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
@@ -151,7 +152,7 @@ class LibraryIndexingControllerTest {
   void getStatusReturnsIdleWhenTheLibraryNeverRan() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenReturn(Optional.empty());
+        .thenReturn(new IndexingStatusView(Optional.empty(), false));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -169,7 +170,7 @@ class LibraryIndexingControllerTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenReturn(Optional.of(job));
+        .thenReturn(new IndexingStatusView(Optional.of(job), false));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -193,7 +194,7 @@ class LibraryIndexingControllerTest {
     job.setDocumentsIndexedTotal(23);
     job.setCompletedAt(Instant.now());
     when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
-        .thenReturn(Optional.of(job));
+        .thenReturn(new IndexingStatusView(Optional.of(job), false));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -205,6 +206,43 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.documentsIndexedTotal").value(23))
         .andExpect(jsonPath("$.message").value(containsString("5 übersprungen")))
         .andExpect(jsonPath("$.message").value(containsString("1 fehlgeschlagen")));
+  }
+
+  @Test
+  void getStatusOfAFailedRunHidesTheRawErrorDetailBelowManagerButShowsItForAManager()
+      throws Exception {
+    // #507/#659: job.getErrorMessage() is the raw exception message from the executor that ran
+    // this job - e.g. "/data/dokumente/geheim: No such file or directory" for a FILESYSTEM run
+    // whose configured directory vanished, the exact internal server path #507 already hides from
+    // a VIEWER on the source configuration display itself.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.FAILED);
+    job.setLibraryId(libraryId);
+    job.setErrorMessage("/data/dokumente/geheim: No such file or directory");
+
+    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), false));
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("FAILED"))
+        .andExpect(
+            jsonPath("$.message")
+                .value("Indizierung fehlgeschlagen. Details sind für Verwaltende sichtbar."))
+        .andExpect(jsonPath("$.message", org.hamcrest.Matchers.not(containsString("/data"))));
+
+    when(indexingService.getStatus(eq(libraryId), eq(currentUser.getId()), eq(false)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), true));
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("FAILED"))
+        .andExpect(
+            jsonPath("$.message")
+                .value(
+                    "Indizierung fehlgeschlagen: /data/dokumente/geheim: No such file or"
+                        + " directory"));
   }
 
   @Test

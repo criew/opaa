@@ -7,7 +7,6 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -87,11 +86,18 @@ public class DocumentIndexingService {
    * LibraryAccessService#requireRole} (#436) rather than a plain {@code canRead}/403 check, so a
    * caller with no grant at all on the library gets the same 404 {@code GET /libraries/{id}}
    * already answers, instead of a 403 that gives away the library's existence one endpoint over.
+   *
+   * <p>The returned {@link IndexingStatusView#canSeeErrorDetail()} additionally reports whether the
+   * caller may see a {@code FAILED} job's raw error message (#507/#659) - requires {@link
+   * AssetRole#MANAGER}, the same bar {@link #getRecentRuns} already enforces for the run history's
+   * own leak-prone detail. The caller (the controller) is responsible for actually shortening the
+   * message when this is {@code false}; this method only decides the permission.
    */
-  public Optional<IndexingJob> getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+  public IndexingStatusView getStatus(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
-    return indexingJobService.getLatestJob(libraryId);
+    boolean canSeeErrorDetail = libraryAccessService.canManage(library, currentUserId, systemAdmin);
+    return new IndexingStatusView(indexingJobService.getLatestJob(libraryId), canSeeErrorDetail);
   }
 
   /**

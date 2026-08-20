@@ -23,6 +23,7 @@ import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingRunDetail;
+import io.opaa.indexing.IndexingStatusView;
 import io.opaa.indexing.JobStatus;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
@@ -249,10 +250,11 @@ public class LibraryController {
   public IndexingStatusResponse getIndexingStatus(
       @PathVariable UUID libraryId, @AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return indexingService
-        .getStatus(
-            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN)
-        .map(this::toIndexingStatusResponse)
+    IndexingStatusView view =
+        indexingService.getStatus(
+            libraryId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+    return view.job()
+        .map(job -> toIndexingStatusResponse(job, view.canSeeErrorDetail()))
         .orElse(
             new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now())
                 .message("Kein Indizierungslauf gefunden")
@@ -315,7 +317,22 @@ public class LibraryController {
     };
   }
 
+  // triggerIndexing (above) always hands back a freshly started job (JobStatus.RUNNING) - the
+  // FAILED branch below is unreachable from that call site, so whether it may see the error
+  // detail is moot there. true keeps that call site's intent transparent instead of threading a
+  // meaningless boolean through it.
   private IndexingStatusResponse toIndexingStatusResponse(IndexingJob job) {
+    return toIndexingStatusResponse(job, true);
+  }
+
+  // #507/#659: a FAILED job's errorMessage is the raw exception message from the executor that
+  // ran it - a NoSuchFileException's absolute server path, a ConnectException's/
+  // UnknownHostException's host:port - exactly the internal-infrastructure leak #507 already
+  // closes for the source configuration display. canSeeErrorDetail (MANAGER+, from
+  // DocumentIndexingService#getStatus) gates it the same way, without shortening it for RUNNING/
+  // COMPLETED, which never carry that detail in the first place.
+  private IndexingStatusResponse toIndexingStatusResponse(
+      IndexingJob job, boolean canSeeErrorDetail) {
     IndexingStatus status = mapIndexingStatus(job.getStatus());
     String message =
         switch (job.getStatus()) {
@@ -328,7 +345,10 @@ public class LibraryController {
                   + " übersprungen, "
                   + job.getDocumentsFailed()
                   + " fehlgeschlagen";
-          case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
+          case FAILED ->
+              canSeeErrorDetail
+                  ? "Indizierung fehlgeschlagen: " + job.getErrorMessage()
+                  : "Indizierung fehlgeschlagen. Details sind für Verwaltende sichtbar.";
         };
     return new IndexingStatusResponse(
             status,
