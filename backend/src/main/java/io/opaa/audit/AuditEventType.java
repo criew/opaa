@@ -97,6 +97,15 @@ public enum AuditEventType {
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+  /**
+   * A change to the operator's branding - product name, claim, logo, accent colour or default
+   * colour scheme (#582, docs/design/guidelines.md#7). Deliberately not folded into {@link
+   * #GOVERNANCE_SETTINGS_CHANGED}: branding decides what every user sees on every page, which is
+   * exactly the kind of change an auditor wants to find by its own name rather than inside a
+   * catch-all governance bucket. Migration 042 widens {@code chk_audit_log_event_type} to include
+   * it.
+   */
+  BRANDING_SETTINGS_CHANGED,
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */

@@ -255,6 +255,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "AuditIncidentScopeStatus" to "AuditIncidentScopeStatus",
         "ChatStatus" to "ChatStatus",
         "ChatRole" to "ChatRole",
+        "ColorScheme" to "ColorScheme",
     ))
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
@@ -279,6 +280,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "AuditIncidentScopeStatus" to "io.opaa.audit.AuditIncidentScopeStatus",
         "ChatStatus" to "io.opaa.chat.ChatStatus",
         "ChatRole" to "io.opaa.chat.ChatRole",
+        "ColorScheme" to "io.opaa.branding.ColorScheme",
     ))
 }
 
@@ -287,7 +289,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
         val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
-        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java").forEach { fileName ->
+        listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java", "ColorScheme.java").forEach { fileName ->
             file("$generatedDir/$fileName").delete()
         }
     }

@@ -566,18 +566,22 @@ class Migration017AuditLogTest extends AbstractMigrationTest {
   void theEventTypeCheckConstraintMatchesTheJavaEnumExactly() throws Exception {
     // #393 code review, finding 1: migration 022 widens this same constraint to also accept
     // AUDITOR_ROLE_GRANTED/AUDITOR_ROLE_REVOKED, #545's migration 035 further widens it to accept
-    // LIBRARY_SOURCE_UPDATED, and #543's migration 040 further widens it to accept SPACE_ARCHIVED
-    // - this test applies 017 alone (on top of test-master-through-016), so it must compare
-    // against 017's own, narrower value set, not the full live enum, which now includes those
-    // later-added values. See Migration022AuditorRoleEventTypesTest/
-    // Migration035LibrarySourceUpdatedEventTypeTest/Migration040SpaceArchivedEventTypeTest for the
-    // equivalent proof once 022/035/040 have run.
+    // LIBRARY_SOURCE_UPDATED, #543's migration 040 to accept SPACE_ARCHIVED and #582's migration
+    // 042 to accept BRANDING_SETTINGS_CHANGED - this test applies 017 alone (on top of
+    // test-master-through-016), so it must compare against 017's own, narrower value set, not the
+    // full live enum, which now includes those later-added values. See
+    // Migration022AuditorRoleEventTypesTest/Migration035LibrarySourceUpdatedEventTypeTest/
+    // Migration040SpaceArchivedEventTypeTest/Migration042BrandingSettingsEventTypeTest for the
+    // equivalent proof once 022/035/040/042 have run. Every future widening migration adds its own
+    // value here too - that this list has to grow is the mechanism by which a widening that never
+    // reached a migration at all is caught.
     Set<String> valuesAddedAfterMigration017 =
         Set.of(
             AuditEventType.AUDITOR_ROLE_GRANTED.name(),
             AuditEventType.AUDITOR_ROLE_REVOKED.name(),
             AuditEventType.LIBRARY_SOURCE_UPDATED.name(),
-            AuditEventType.SPACE_ARCHIVED.name());
+            AuditEventType.SPACE_ARCHIVED.name(),
+            AuditEventType.BRANDING_SETTINGS_CHANGED.name());
     Set<String> expected = new HashSet<>(enumNames(AuditEventType.values()));
     expected.removeAll(valuesAddedAfterMigration017);
 
