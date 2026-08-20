@@ -52,6 +52,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * carry the identical
  * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
  * signature and share one cached context and one container.
+ *
+ * <p><b>Caveat that comes with sharing that context:</b> the {@code RateLimitService} instances
+ * behind {@code RateLimitFilter} are singleton beans, so their in-memory request counters are
+ * <em>not</em> reset between test classes (or even between test methods) in this group - only a
+ * fresh {@code ApplicationContext} would reset them, and this group deliberately avoids building
+ * one per class. A future test added to this class, {@code BrandingControllerIntegrationTest} or
+ * {@code AuditControllerAuthorizationIntegrationTest} that calls a rate-limited endpoint enough
+ * times across the whole group's combined test run can observe an unexpected 429 that a standalone
+ * run of that one class would not have shown.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

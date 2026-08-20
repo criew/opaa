@@ -228,6 +228,13 @@ tasks.withType<Test> {
 // the default (they run a different, much smaller source set and were never part of this
 // problem).
 tasks.named<Test>("test") {
+    // maxHeapSize is a per-worker-process ceiling, not a suite-wide one: with maxParallelForks = 2
+    // below (CI-only), two Gradle test-worker JVMs run concurrently, each capped at this size and
+    // each building its own copy of every shared Spring context and Testcontainers container from
+    // scratch - up to 4g combined heap plus a doubled container set, exactly the OOM axis the
+    // comment above this block describes. That is headroom this ceiling already has to cover on
+    // the constrained CI runner it targets; if CI heap pressure shows up again, prefer lowering
+    // this value (e.g. to "1500m") over raising it, since raising it multiplies by the fork count.
     maxHeapSize = "2g"
 
     // Issue #497, measure 4 (CI-only): forking two Gradle test-worker JVMs (each with its own
@@ -238,7 +245,10 @@ tasks.named<Test>("test") {
     // Dedicated CI runners do not share that contention the same way, so this stays opt-in via the
     // `CI` environment variable GitHub Actions sets on every job - local `./gradlew test` runs
     // single-forked exactly as before, and this is a one-line revert if CI turns out unstable too.
-    if (System.getenv("CI") != null) {
+    // Uses the environment-variable value provider (not System.getenv) so this stays
+    // configuration-cache-safe: Gradle can track it as a build input instead of silently missing
+    // that the task's behavior depends on it.
+    if (providers.environmentVariable("CI").isPresent) {
         maxParallelForks = 2
     }
 }
