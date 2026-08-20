@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Only the title of the very first paint. Once the app has the branding configuration it sets
+      document.title to the operator's product name (usePageTitle, #583); there is no server-side
+      rendering that could put it here before the first byte reaches the browser.
+    -->
     <title>OPAA</title>
   </head>
   <body>

@@ -93,13 +93,11 @@ class BrandingControllerIntegrationTest {
   }
 
   /**
-   * #582: "lesbar für alle angemeldeten Nutzer" - the read endpoint is deliberately not
-   * administrator-only, because every rendered page needs it. The other half of that sentence (that
-   * it is not reachable without authentication) cannot be asserted from this profile: {@link
-   * DevAuthFilter} authenticates every request as the configured default user, so a header-less
-   * request here is not an anonymous one. What guarantees it is that neither security chain lists
-   * this path among its {@code permitAll} exceptions, and everything else under {@code /api/**} is
-   * {@code authenticated()} - see {@code BrandingController}'s own Javadoc.
+   * The read endpoint is deliberately not administrator-only, because every rendered page needs it
+   * (#582). That it is reachable with no credentials at all (#583, for the sign-in page) is a
+   * question this profile cannot answer - {@link DevAuthFilter} authenticates every request as the
+   * configured default user, so a header-less request here is not an anonymous one; {@code
+   * BrandingPublicAccessTest} asserts that against the {@code oidc} chain instead.
    */
   @Test
   void readingBrandingIsOpenToAPlainUserNotOnlyToAdministrators() throws Exception {

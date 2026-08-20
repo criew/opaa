@@ -17,10 +17,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupsIcon from '@mui/icons-material/Groups'
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'
 import LogoutIcon from '@mui/icons-material/Logout'
+import PaletteIcon from '@mui/icons-material/Palette'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
+import BrandMark from '../components/BrandMark'
 import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
@@ -78,12 +80,7 @@ export default function Sidebar() {
       }}
     >
       <Box sx={{ p: 2.5 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          OPAA
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          KI-Projektassistent
-        </Typography>
+        <BrandMark showClaim />
       </Box>
 
       <Divider />
@@ -225,6 +222,19 @@ export default function Sidebar() {
               <ListItemText primary="Gruppen" />
             </ListItemButton>
           </ListItem>
+        )}
+        {user?.systemRole === 'SYSTEM_ADMIN' && (
+          <ListItemButton
+            component={NavLink}
+            to="/admin/branding"
+            selected={location.pathname === '/admin/branding'}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <PaletteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Branding" />
+          </ListItemButton>
         )}
       </List>
 
