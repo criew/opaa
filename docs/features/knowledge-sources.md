@@ -259,8 +259,14 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 
 **Was der Weg heute kann:** rekursives Durchlaufen, einfache Anmeldung mit Benutzername und Kennwort,
 Zugriff über einen Netzvermittler (Proxy), auf Wunsch das Aussetzen der Zertifikatsprüfung für
-Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die verbreiteten
-Verzeichnislistenformate der gängigen Webserver verträgt.
+Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die gängigen
+Verzeichnislistenlayouts versteht (#550): Apache `mod_autoindex` mit `IndexOptions HTMLTable`
+(eine `<table>`-Auflistung), Apache `mod_autoindex` ohne `HTMLTable` (eine `<pre>`-Auflistung mit
+Symbolen), nginx' `autoindex on` (eine `<pre>`-Auflistung ohne Symbole) sowie die schlichte
+`<ul>`-Auflistung, wie sie sowohl `IndexOptions -FancyIndexing` als auch Pythons `http.server`
+ausgeben. Erkannt wird anhand der vorhandenen Verweise, nicht anhand einer festen Layout-Annahme —
+enthält die abgerufene Seite kein erkennbares Verzeichnislisting in einem dieser Formate, meldet der
+Verbindungstest das statt einer irreführenden "0 Dokumente gefunden".
 
 **Auslösung.** Der Lauf wird **an der Bibliothek** angestoßen — über `POST
 /api/v1/libraries/{libraryId}/indexing` oder die Detailseite der Bibliothek. Auslösen darf, wer an der

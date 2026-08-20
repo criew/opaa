@@ -246,14 +246,13 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 // (docker-compose.e2e.yml, also used by #471), reachable from the backend container under the
 // stack-internal hostname "rss-feed" - no dedicated fixture service needed just for this test.
 // Not .../anlagen/ itself (used elsewhere in this file and in the #516 scenario below, where only
-// creation/editing matters, never a parsed count): a *real* mod_autoindex response from
-// httpd:2.4-alpine's stock config renders as a <pre> list, not the <table> layout
-// AutoindexCrawlerService#parseDirectory actually parses (that needs "IndexOptions HTMLTable",
-// which lives in the image's own commented-out httpd-autoindex.conf) - manually verified: hitting
-// .../anlagen/ answers "reachable" but with a count of 0, not 1. .../webverzeichnis/ instead serves
-// a hand-crafted static index.html mimicking that exact HTMLTable layout (see
-// e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html for why), with exactly one supported
-// document.
+// creation/editing matters, never a parsed count): since #550, AutoindexCrawlerService#parseDirectory
+// also understands the plain <pre> listing httpd:2.4-alpine's stock mod_autoindex config actually
+// renders (no "IndexOptions HTMLTable" needed any more), so .../anlagen/ would work here too - but
+// its exact rendering depends on the base image's autoindex defaults, which this suite does not
+// control. .../webverzeichnis/ instead serves a hand-crafted static index.html mimicking the
+// HTMLTable layout deliberately (see e2e/fixtures/rss-feed/htdocs/webverzeichnis/index.html for
+// why), with exactly one supported document and a count this test can assert on deterministically.
 //
 // Error path: a closed port on a hostname the backend container can resolve instantly via Docker's
 // own embedded DNS ("ai-stub", already part of this stack) - not a hostname under the reserved

@@ -226,8 +226,18 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * Checks if a URL document exists and is unchanged based on the lastModified date from the
    * directory listing. This avoids downloading the file when it hasn't changed. After download, the
    * SHA-256 checksum provides an additional content-based verification layer.
+   *
+   * <p>A blank {@code lastModified} (#550 review) means "unknown", not "unchanged": the {@code
+   * <ul>}-based autoindex layouts ({@code IndexOptions -FancyIndexing}, Python's {@code
+   * http.server}) never carry a date at all, so {@link AutoindexCrawlerService} reports it as an
+   * empty string every run. Treating two empty strings as equal would mean such a source is fetched
+   * once and then never re-fetched again, no matter how the remote file actually changes - always
+   * re-fetching when the signal is missing is the only safe fallback.
    */
-  private boolean isUnchanged(String remoteUrl, String lastModified) {
+  boolean isUnchanged(String remoteUrl, String lastModified) {
+    if (lastModified == null || lastModified.isBlank()) {
+      return false;
+    }
     Optional<Document> existing = documentRepository.findByFilePath(remoteUrl);
     return existing.isPresent()
         && lastModified.equals(existing.get().getLastModifiedRemote())
