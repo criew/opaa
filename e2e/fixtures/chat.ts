@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 
 /**
@@ -53,6 +53,40 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
   await expect(input).toBeVisible()
   await input.fill(question)
   await page.getByRole('button', { name: 'Nachricht senden' }).click()
+}
+
+/**
+ * The sidebar's chat list entries, as their "… umbenennen" rename buttons (ChatList.tsx) - each
+ * present exactly once per chat regardless of what that chat is currently titled. A Locator, not a
+ * resolved count, so callers can use Playwright's own auto-retrying `expect(...).toHaveCount(...)`
+ * instead of racing the sidebar's React re-render with a one-shot `.count()`.
+ *
+ * Needed since #557: the backend replaces a chat's question-derived title with an LLM-generated
+ * one asynchronously, and the deterministic KI stub used in this suite (ai-stub/server.mjs) answers
+ * every title-generation prompt with the exact same fixed text - its title-generation prompt
+ * carries no citation markers for the stub's citation-echoing logic to key off, so it always falls
+ * back to the stub's one fixed "no-context" answer. Two chats therefore reliably end up sharing the
+ * identical title text once generation completes, making that text useless as a per-chat anchor in
+ * the sidebar - counting entries (this) and checking the topmost one is actually named
+ * (expectTopSidebarChatToBeNamed below) replace what used to be exact title-text assertions.
+ */
+export function chatSidebarEntries(page: Page): Locator {
+  return page.getByRole('navigation').getByRole('button', { name: /umbenennen$/ })
+}
+
+/**
+ * Asserts the sidebar's most recently used chat (topmost, see chatListStore's sortByLastUse) has
+ * a real title - present and not the "Unbenannter Chat" fallback ChatList.tsx renders for a still-
+ * empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
+ * Javadoc not reliably unique across chats) title text: this only proves *some* title reached the
+ * sidebar for whichever chat was most recently interacted with, which - directly after that
+ * interaction, with nothing else touching any other chat in between (this suite runs with a single
+ * Playwright worker, see playwright.config.ts) - is unambiguously the chat under test.
+ */
+export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
+  const ariaLabel = await chatSidebarEntries(page).first().getAttribute('aria-label')
+  expect(ariaLabel).toBeTruthy()
+  expect(ariaLabel).not.toContain('Unbenannter Chat')
 }
 
 /** Waits for fileName's source card to appear in the current answer, cited. */
