@@ -204,7 +204,9 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // Leaves the page on its IDLE default for this library rather than surfacing an error for a
       // status check the caller did not explicitly request.
     }
-    void get().loadRunHistory(libraryId)
+    // #604 review, nit (c): LibraryIndexingHistorySection's own mount effect already loads the
+    // run history - a second call here duplicated that request on every mount without ever
+    // being the one either component actually depended on.
   },
 
   stopPolling: (libraryId: string) => {

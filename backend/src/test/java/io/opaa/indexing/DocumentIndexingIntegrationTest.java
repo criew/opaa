@@ -263,6 +263,32 @@ class DocumentIndexingIntegrationTest {
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
     Files.writeString(sharedTempDir.resolve("bad.csv"), "a,b,c");
 
+    // #604 review, nit (d): a second library's own single run, untouched by the first library's
+    // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
+    // of indexing_jobs overall (which pruneOldRuns' own libraryId-scoped query would satisfy even
+    // if it silently reverted to a global limit by mistake, unless another library's run is a
+    // reference point for what must survive).
+    KnowledgeLibrary otherLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Andere Bibliothek (Retention)",
+                null,
+                userId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                sharedTempDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    UUID otherLibraryId = otherLibrary.getId();
+    grantOwner(otherLibraryId, userId);
+    IndexingJob otherLibraryJob =
+        documentIndexingService.triggerIndexing(otherLibraryId, userId, true);
+    awaitJobCompletion(otherLibraryJob);
+
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);
     var firstCompleted = indexingJobRepository.findById(firstJob.getId()).orElseThrow();
@@ -287,6 +313,13 @@ class DocumentIndexingIntegrationTest {
     assertThat(indexingJobRepository.findById(firstJob.getId())).isEmpty();
     assertThat(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(firstJob.getId()))
         .isEmpty();
+
+    // The other library's single run survived every one of targetLibraryId's eleven triggers -
+    // pruning never looked past its own libraryId.
+    assertThat(indexingJobRepository.findById(otherLibraryJob.getId())).isPresent();
+
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", otherLibraryId);
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", otherLibraryId);
   }
 
   @Test

@@ -1195,12 +1195,14 @@ paths:
         The last 10 indexing runs for a library, each with its own protocol of skipped/rejected
         items and errors (#513).
       description: >
-        Same read bar as GET .../indexing/status (at least a read grant on the library, #513) -
-        seeing past runs' outcomes is not the same right as starting a new one. Runs are ordered
-        newest first; older runs (beyond the last 10 for this library) are pruned together with
-        their events, mirroring indexing_jobs' own existing retention (IndexingJobService). Every
-        run's event list is capped (IndexingRunEventRecorder) - eventsTruncatedCount on a run
-        names how many further events that run recorded beyond the cap, without listing them.
+        Requires MANAGER role or above on the library (PR #604 review, finding 1) - stricter than
+        GET .../indexing/status's plain read grant, since an event's reference routinely carries
+        the library's own sourcePath/sourceUrl, the same internal-path leak #507 exists to close
+        for the source configuration display itself. Runs are ordered newest first; older runs
+        (beyond the last 10 for this library) are pruned together with their events, mirroring
+        indexing_jobs' own existing retention (IndexingJobService). Every run's event list is
+        capped (IndexingRunEventRecorder) - eventsTruncatedCount on a run names how many further
+        events that run recorded beyond the cap, without listing them.
       responses:
         "200":
           description: The last 10 runs for this library, newest first

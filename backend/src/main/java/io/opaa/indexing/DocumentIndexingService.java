@@ -96,13 +96,24 @@ public class DocumentIndexingService {
 
   /**
    * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
-   * newest first, each with its own protocol (#513) - same read bar as {@link #getStatus}: seeing
-   * past runs' outcomes is not the same right as starting a new one.
+   * newest first, each with its own protocol (#513) - unlike {@link #getStatus}, this requires
+   * {@link io.opaa.library.AssetRole#MANAGER}, not just {@code canRead}.
+   *
+   * <p><b>PR #604 review, finding 1.</b> An {@link IndexingRunEvent#getReference()} routinely
+   * carries the library's own {@code sourcePath}/{@code sourceUrl} (a rejected file's absolute
+   * server path, a skipped entry's source URL) - exactly the internal-path leak #507 exists to
+   * close for the source configuration display itself. Gating this at {@code canRead} (the same bar
+   * as the harmless counters {@link #getStatus} exposes) would reopen that leak through a different
+   * endpoint: a {@code VIEWER} on an organization-wide connector library would see the server's
+   * internal filesystem layout or upstream URLs it was never granted access to. {@code canManage}
+   * mirrors {@code KnowledgeLibraryService#updateLibrary}'s own bar for touching the source
+   * configuration - one level above {@link #requireEditableLibrary}'s {@code EDITOR}, deliberately:
+   * triggering a run is not the same right as reading where it reads from.
    */
   public List<IndexingRunDetail> getRecentRuns(
       UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
-    if (!libraryAccessService.canRead(library, currentUserId, systemAdmin)) {
+    if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
     return indexingJobService.getRecentJobs(libraryId).stream()

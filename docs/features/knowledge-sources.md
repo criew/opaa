@@ -670,6 +670,27 @@ ungewöhnlich langem Lauf und knappem Speicher.
 Diese Auswertungen sind **bestands-, nicht personenbezogen**. Sie zählen Dokumente und Läufe, nicht
 Menschen.
 
+**Protokoll je Indizierungslauf (#513, für alle lauf-basierten Quellentypen — FILESYSTEM,
+HTTP_DIRECTORY, RSS_FEED):** Neben den Kopfdaten (Start, Ende, Status, Zähler) führt jeder Lauf eine
+Ereignisliste mit einer kategorisierten, deutschen Begründung je übersprungenem oder fehlgeschlagenem
+Element:
+
+- **abgewiesen** — die Quelle selbst hat das Element zurückgewiesen (z. B. Bot-Schutz, Weiterleitung
+  auf einen fremden Host, HTTP 403/429).
+- **nicht erreichbar** — das Element war über das Netz nicht erreichbar (Verbindungsfehler, Zeitüberschreitung).
+- **Format nicht unterstützt** — Datei- oder Inhaltstyp wird nicht indiziert.
+- **Allowlist** — die Quellkonfiguration selbst liegt außerhalb der vom Betrieb freigegebenen Pfade.
+- **Fehler** — die Verarbeitung wurde begonnen, ist aber unerwartet gescheitert.
+
+Ein Ereignis nennt nie eine rohe Challenge- oder Weiterleitungs-URL, sondern nur das betroffene
+Dokument bzw. die betroffene Quell-URL. Die Ereignisliste eines Laufs ist auf 500 Einträge gekappt;
+darüber hinausgehende Ereignisse werden nur noch gezählt ("… und N weitere"), statt den Lauf selbst zu
+verlangsamen. Je Bibliothek bleiben die letzten **10** Läufe samt Protokoll erhalten; ältere Läufe
+werden beim Start eines neuen Laufs automatisch aufgeräumt. Da die Ereignisreferenzen häufig den
+internen Quellpfad bzw. die Quell-URL der Bibliothek selbst tragen (derselbe interne Pfad, den #507
+für die Quellkonfigurationsanzeige verbirgt), ist das Protokoll — anders als der reine Laufstatus —
+Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht jeder Leseberechtigung.
+
 ---
 
 ## Integrationspunkte

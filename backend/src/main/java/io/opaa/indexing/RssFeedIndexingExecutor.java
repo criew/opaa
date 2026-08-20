@@ -115,7 +115,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
-    var events = new IndexingRunEventRecorder(indexingRunEventRepository, jobId);
+    var events =
+        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
     // ADR-0018 (#478): the feed's address is the library's own sourceUrl, not a per-request field.
     String feedUrl = targetLibrary.getSourceUrl();
 
@@ -193,29 +194,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                 + " entry, so a future 304 must not suppress it",
             feedUrl);
       }
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.complete();
     } catch (IOException | InterruptedException e) {
       log.error("RSS feed indexing failed: {}", feedUrl, e);
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.fail(e.getMessage());
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
     } catch (Exception e) {
       log.error("RSS feed indexing failed unexpectedly: {}", feedUrl, e);
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.fail(e.getMessage());
-    }
-  }
-
-  /**
-   * Persists {@code events}' overflow count on the job, once, at the end of a run (#513) - a no-op
-   * when nothing was truncated.
-   */
-  private void finalizeEvents(UUID jobId, IndexingRunEventRecorder events) {
-    if (events.overflowCount() > 0) {
-      indexingJobService.recordEventsTruncated(jobId, events.overflowCount());
     }
   }
 
@@ -500,7 +491,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         events.record(
             IndexingEventCategory.REJECTED,
             "Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)",
-            entryUrl);
+            candidate.url());
         anyEntryDeferred.set(true);
         return;
       }
@@ -519,7 +510,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT,
             "Anlagenformat wird nicht unterstuetzt",
-            entryUrl);
+            candidate.url());
         anyEntryDeferred.set(true);
         return;
       }
@@ -558,7 +549,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           candidate.url(),
           entryUrl);
       events.record(
-          IndexingEventCategory.REJECTED, "Anlage ueberschreitet die zulaessige Groesse", entryUrl);
+          IndexingEventCategory.REJECTED,
+          "Anlage ueberschreitet die zulaessige Groesse",
+          candidate.url());
       anyEntryDeferred.set(true);
     } catch (UrlFileDownloader.ForeignHostRedirectException e) {
       log.warn(
@@ -569,7 +562,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       events.record(
           IndexingEventCategory.REJECTED,
           "Anlage auf einen fremden Host umgeleitet (vermutlich Bot-Schutz)",
-          entryUrl);
+          candidate.url());
       anyEntryDeferred.set(true);
     } catch (IOException | InterruptedException e) {
       log.warn(
@@ -577,7 +570,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           candidate.url(),
           entryUrl,
           e.getMessage());
-      events.record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", entryUrl);
+      events.record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", candidate.url());
       anyEntryDeferred.set(true);
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -586,7 +579,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       log.error(
           "Failed to process RSS attachment: {} (from entry {})", candidate.url(), entryUrl, e);
       events.record(
-          IndexingEventCategory.ERROR, "Verarbeitung der Anlage fehlgeschlagen", entryUrl);
+          IndexingEventCategory.ERROR, "Verarbeitung der Anlage fehlgeschlagen", candidate.url());
       anyEntryDeferred.set(true);
     } finally {
       if (downloaded != null) {

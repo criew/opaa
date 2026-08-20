@@ -369,4 +369,64 @@ class DocumentIndexingServiceTest {
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
   }
+
+  // --- getRecentRuns (#513, PR #604 review finding 1) ---
+
+  @Test
+  void getRecentRunsWithManageAccessReturnsTheLibrarysRuns() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(true);
+    var job = new IndexingJob(JobStatus.COMPLETED);
+    when(indexingJobService.getRecentJobs(library.getId())).thenReturn(List.of(job));
+    when(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId()))
+        .thenReturn(List.of());
+
+    var runs = service.getRecentRuns(library.getId(), currentUser.getId(), false);
+
+    assertThat(runs).hasSize(1);
+    assertThat(runs.getFirst().job()).isEqualTo(job);
+  }
+
+  /**
+   * A mere {@code VIEWER} (only {@code canRead}, not {@code canManage}) must not see the run
+   * protocol - {@link IndexingRunEvent#getReference()} routinely carries the library's own {@code
+   * sourcePath}/{@code sourceUrl}, exactly the internal-path leak #507 exists to close for the
+   * source configuration display itself (PR #604 review, finding 1). Kept as its own test distinct
+   * from {@link #getStatusWithoutReadAccessFailsWithForbidden} - that one only proves the
+   * *narrower* {@code canRead} bar is enforced; this one proves the *stricter* {@code canManage}
+   * bar applies here even when {@code canRead} would have passed.
+   */
+  @Test
+  void getRecentRunsWithOnlyReadAccessFailsWithForbidden() {
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.getRecentRuns(library.getId(), currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
+  }
+
+  @Test
+  void getRecentRunsForAForeignLibraryFailsWithNotFound() {
+    KnowledgeLibrary foreignLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Fremde Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false);
+    when(userRepository.findById(currentUser.getId())).thenReturn(Optional.of(currentUser));
+    when(libraryRepository.findById(foreignLibrary.getId()))
+        .thenReturn(Optional.of(foreignLibrary));
+
+    assertThatThrownBy(
+            () -> service.getRecentRuns(foreignLibrary.getId(), currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
+  }
 }

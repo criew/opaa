@@ -47,7 +47,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
-    var events = new IndexingRunEventRecorder(indexingRunEventRepository, jobId);
+    var events =
+        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
 
     // #484/ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update
     // time - the operator-configured allowlist can be narrowed after a FILESYSTEM library was
@@ -120,27 +121,16 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.complete();
     } catch (IOException e) {
       log.error("Failed to discover files", e);
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.fail(e.getMessage());
     } catch (Exception e) {
       log.error("Indexing failed unexpectedly", e);
-      finalizeEvents(jobId, events);
+      events.finalizeRun();
       progress.fail(e.getMessage());
-    }
-  }
-
-  /**
-   * Persists {@code events}' overflow count on the job, once, at the end of a run (#513) - a no-op
-   * when nothing was truncated, so a run whose protocol fit under the cap never writes an empty
-   * {@code events_truncated_count} update.
-   */
-  private void finalizeEvents(UUID jobId, IndexingRunEventRecorder events) {
-    if (events.overflowCount() > 0) {
-      indexingJobService.recordEventsTruncated(jobId, events.overflowCount());
     }
   }
 }

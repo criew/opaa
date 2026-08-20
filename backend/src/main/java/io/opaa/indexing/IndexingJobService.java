@@ -58,7 +58,7 @@ public class IndexingJobService {
   /**
    * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId}
    * (#513, Umfangserweiterung), deleting every older one - {@code fk_indexing_run_events_job}'s
-   * {@code ON DELETE CASCADE} (migration 035) removes each pruned run's own {@link
+   * {@code ON DELETE CASCADE} (migration 037) removes each pruned run's own {@link
    * IndexingRunEvent}s along with it, so this method never needs to know about the event table at
    * all. Called from {@link #startJob} so the newly started run is always counted among the
    * retained ones, rather than pruning happening only on completion and briefly allowing 11.
@@ -162,12 +162,16 @@ public class IndexingJobService {
 
   /**
    * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first
-   * (#513) - never more than that, since {@link #pruneOldRuns} keeps at most that many rows in
-   * {@code indexing_jobs} for any one library to begin with.
+   * (#513). {@link #pruneOldRuns} keeps at most that many rows for a library going forward, but a
+   * Bestandsbibliothek can still carry far more historical rows predating this issue's retention
+   * pruning until its next run prunes them - {@link
+   * IndexingJobRepository#findTop10ByLibraryIdOrderByStartedAtDesc}, not the unbounded {@code
+   * findByLibraryIdOrderByStartedAtDesc} {@link #pruneOldRuns} itself uses, is what actually bounds
+   * this query (PR #604 review, finding 3).
    */
   @Transactional(readOnly = true)
   public List<IndexingJob> getRecentJobs(UUID libraryId) {
-    return indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
+    return indexingJobRepository.findTop10ByLibraryIdOrderByStartedAtDesc(libraryId);
   }
 
   /**

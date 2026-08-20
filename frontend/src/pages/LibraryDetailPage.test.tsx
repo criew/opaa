@@ -666,6 +666,21 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
   })
 
+  // #604 review, finding 1: the backend gates GET .../indexing/runs at MANAGER (canManage) since
+  // its events routinely carry the library's own sourcePath/sourceUrl - the same internal-path
+  // leak #507 exists to close for the source configuration display. The frontend must not even
+  // fire that request for a VIEWER, let alone render a section only an error would otherwise fill.
+  it('hides the run history section entirely for a VIEWER on a connector library', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await screen.findByText(/quellkonfiguration/i)
+    expect(screen.queryByText(/letzte indizierungsläufe/i)).not.toBeInTheDocument()
+  })
+
   it('hides the indexing trigger for a VIEWER on a connector library', async () => {
     setLibraryState(
       viewerLibrary,

@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 /**
  * A single skipped/rejected item or error an indexing run recorded (#513) - the "why" behind a
@@ -19,11 +20,18 @@ import java.util.UUID;
  * {@code @ManyToOne}, mirroring {@link IndexingJob#getLibraryId()}'s own plain-UUID style, since
  * nothing here ever needs to navigate back to the job entity itself. Rows are deleted in bulk by
  * {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE} whenever {@link
- * IndexingJobService} prunes an old run (migration 035), not by any code in this class.
+ * IndexingJobService} prunes an old run (migration 037), not by any code in this class.
+ *
+ * <p>Implements {@link Persistable} with {@link #isNew()} always {@code true} - the same reason and
+ * the same pattern as {@code io.opaa.audit.AuditLogEntry} (see that class's Javadoc): {@code id} is
+ * client-generated in the constructor, never database-assigned, so without this Spring Data JPA
+ * would treat every {@code save} as an update candidate and route it through {@code
+ * EntityManager#merge} - an extra {@code SELECT} before every insert, on the hot path of every
+ * executor's per-item skip/error recording (PR #604 review, nit a).
  */
 @Entity
 @Table(name = "indexing_run_events")
-public class IndexingRunEvent {
+public class IndexingRunEvent implements Persistable<UUID> {
 
   @Id private UUID id;
 
@@ -61,8 +69,18 @@ public class IndexingRunEvent {
     this.createdAt = Instant.now();
   }
 
+  @Override
   public UUID getId() {
     return id;
+  }
+
+  /**
+   * Always {@code true} - see the class Javadoc. There is no code path anywhere that loads an
+   * {@code IndexingRunEvent} and passes it back to {@code save}.
+   */
+  @Override
+  public boolean isNew() {
+    return true;
   }
 
   public UUID getJobId() {

@@ -361,7 +361,13 @@ export default function LibraryDetailPage() {
           canEditSource={canEdit}
         />
       )}
-      {details && details.sourceType !== 'UPLOAD' && (
+      {/* #604 review, finding 1: the backend gates GET .../indexing/runs at MANAGER (canManage),
+          not the narrower canRead a VIEWER already has - an IndexingRunEvent's reference
+          routinely carries the library's own sourcePath/sourceUrl, the exact internal-path leak
+          #507 exists to close for the source configuration display itself. canEdit here mirrors
+          that same MANAGER/OWNER threshold (see canEditSource above), so the section is never
+          rendered - and its GET never even fired - for a caller who could not read it anyway. */}
+      {details && details.sourceType !== 'UPLOAD' && canEdit && (
         <LibraryIndexingHistorySection libraryId={libraryId} />
       )}
       {details && (
