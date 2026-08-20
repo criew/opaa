@@ -52,6 +52,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
     AssetGrantService grantService = mock(AssetGrantService.class);
     when(grantRepository.findByLibraryId(any())).thenReturn(List.of());
+    AssetGrantService grantService = mock(AssetGrantService.class);
     accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);

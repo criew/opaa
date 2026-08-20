@@ -795,8 +795,11 @@ paths:
       operationId: testLibrarySource
       tags: [library]
       summary: >
-        Test a quellkonfiguration before a library is created (#514) - same permission bar as
-        createLibrary (any authenticated user; there is no library yet to hold a role on).
+        Test a quellkonfiguration before a library is created, or an existing library's
+        quellkonfiguration while editing it (#514, #544). Without libraryId, the permission bar
+        is the same as createLibrary (any authenticated user; there is no library yet to hold a
+        role on). With libraryId, the caller additionally needs AssetRole.MANAGER on that
+        library (see SourceConnectionTestRequest.libraryId).
       description: >
         Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
         sourceInsecureSsl combination the way the corresponding indexing run later would,
@@ -814,7 +817,12 @@ paths:
         synchronous probe with its own outbound connections and short timeouts, not a
         replacement for #267's still-outstanding target validation (blocking internal/private
         address ranges) for HTTP_DIRECTORY/RSS_FEED, which this endpoint makes cheaper to
-        reach than the indexing run it mirrors (see docs/features/knowledge-sources.md).
+        reach than the indexing run it mirrors (see docs/features/knowledge-sources.md). With
+        libraryId set (#544), sourceType must match that library's own sourceType (otherwise
+        400) and a missing sourceCredentials falls back to the library's stored one, but only
+        if sourceUrl still names the same origin as the library's stored sourceUrl - the same
+        rule KnowledgeLibraryService#validateSourceConfigurationForUpdate already applies when
+        saving.
       requestBody:
         required: true
         content:
@@ -834,6 +842,10 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/libraries/{libraryId}:
     parameters:
@@ -2441,6 +2453,21 @@ components:
           nullable: true
           description: Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
           default: false
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Optional (#544). Identifies the library whose already-stored source credentials this
+            test may fall back to when sourceCredentials is omitted here - the same
+            same-origin-only fallback KnowledgeLibraryService#validateSourceConfigurationForUpdate
+            already applies when saving an edited quellkonfiguration, so a caller pointed at a
+            different host cannot silently reuse a credential it never entered. Requires at least
+            AssetRole.MANAGER on that library (404 if it does not exist or belongs to another
+            organization, 403 if it exists but the caller's role is below MANAGER - the same
+            not-found/forbidden split every other library endpoint uses). The library's own
+            sourceType must match this request's sourceType, otherwise 400. Absent, this behaves
+            exactly like before #544 - a standalone test with no stored library to fall back to.
 
     SourceConnectionTestResponse:
       type: object

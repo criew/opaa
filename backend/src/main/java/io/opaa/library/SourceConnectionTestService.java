@@ -2,6 +2,8 @@ package io.opaa.library;
 
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
@@ -29,6 +31,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +74,19 @@ import org.springframework.web.server.ResponseStatusException;
  * validation for HTTP_DIRECTORY/RSS_FEED addresses themselves (blocking internal/private ranges)
  * remains #267's responsibility, same as for the indexing run this tests - see
  * docs/features/knowledge-sources.md.
+ *
+ * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link
+ * SourceConnectionTestRequest#getLibraryId()} lets {@code EditLibrarySourceDialog} test a
+ * password-protected source without forcing the caller to re-type a credential the library already
+ * has stored - reachable only with at least {@link AssetRole#MANAGER} on that library (see {@link
+ * #requireManagedLibrary}), the same not-found/forbidden split every other library endpoint uses
+ * ({@link KnowledgeLibraryService}'s own {@code loadLibrary}). The library's own {@code sourceType}
+ * must match this request's (otherwise 400 - #544 acceptance criterion), and a missing {@code
+ * sourceCredentials} falls back to the library's stored one only when {@code sourceUrl} still names
+ * the same origin as the library's own stored {@code sourceUrl} - the identical {@link
+ * SourceOriginMatcher} rule {@link KnowledgeLibraryService#validateSourceConfigurationForUpdate}
+ * already applies when saving, so a caller pointed at a different host cannot silently reuse a
+ * credential it never entered.
  */
 @Service
 public class SourceConnectionTestService {
@@ -84,6 +100,9 @@ public class SourceConnectionTestService {
   private final AutoindexCrawlerService crawlerService;
   private final RssFeedParser rssFeedParser;
   private final FilesystemPathAllowlist filesystemAllowlist;
+  private final UserRepository userRepository;
+  private final KnowledgeLibraryRepository libraryRepository;
+  private final LibraryAccessService libraryAccessService;
   private final String rssUserAgent;
   private final long maxPageSizeBytes;
   private final long maxFeedSizeBytes;
@@ -94,30 +113,118 @@ public class SourceConnectionTestService {
       AutoindexCrawlerService crawlerService,
       RssFeedParser rssFeedParser,
       FilesystemPathAllowlist filesystemAllowlist,
+      UserRepository userRepository,
+      KnowledgeLibraryRepository libraryRepository,
+      LibraryAccessService libraryAccessService,
       IndexingProperties properties) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
     this.filesystemAllowlist = filesystemAllowlist;
+    this.userRepository = userRepository;
+    this.libraryRepository = libraryRepository;
+    this.libraryAccessService = libraryAccessService;
     this.rssUserAgent = properties.rss().userAgent();
     this.maxPageSizeBytes = properties.rss().maxPageSizeBytes();
     this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
     this.maxFeedEntries = properties.rss().maxEntries();
   }
 
+  /**
+   * Convenience overload for a standalone test carrying no {@code libraryId} (#514's original
+   * shape, before #544) - equivalent to {@link #test(SourceConnectionTestRequest, UUID)} with a
+   * {@code null} caller, which that overload only ever consults once {@code request.getLibraryId()}
+   * is set.
+   */
   public SourceConnectionTestResponse test(SourceConnectionTestRequest request) {
+    return test(request, null);
+  }
+
+  /**
+   * @param currentUserId the caller, only consulted when {@code request.getLibraryId()} is set
+   *     (#544) - a standalone test (no libraryId) keeps #514's original permission bar, checked by
+   *     the controller before this method is even called.
+   */
+  public SourceConnectionTestResponse test(
+      SourceConnectionTestRequest request, UUID currentUserId) {
     DocumentSourceType sourceType = request.getSourceType();
     if (sourceType == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceType ist erforderlich");
+    }
+    SourceConnectionTestRequest effectiveRequest = request;
+    if (request.getLibraryId() != null) {
+      KnowledgeLibrary library = requireManagedLibrary(request.getLibraryId(), currentUserId);
+      if (library.getSourceType() != sourceType) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
+      }
+      effectiveRequest = withStoredCredentialsIfOmitted(request, library);
     }
     return switch (sourceType) {
       case UPLOAD ->
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST, "sourceType UPLOAD unterstützt keinen Verbindungstest");
-      case FILESYSTEM -> testFilesystem(request);
-      case HTTP_DIRECTORY -> testHttpDirectory(request);
-      case RSS_FEED -> testRssFeed(request);
+      case FILESYSTEM -> testFilesystem(effectiveRequest);
+      case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
+      case RSS_FEED -> testRssFeed(effectiveRequest);
     };
+  }
+
+  /**
+   * Resolves {@code libraryId} and enforces both the organization boundary and the {@link
+   * AssetRole#MANAGER} bar (#544) - 404 if the library does not exist or belongs to another
+   * organization (indistinguishable from "does not exist" - the org boundary must not leak even
+   * that much), 403 if it exists but the caller's role is below MANAGER, mirroring {@code
+   * KnowledgeLibraryService#loadLibrary}/{@code DocumentIndexingService#loadLibraryInOrganization}.
+   */
+  private KnowledgeLibrary requireManagedLibrary(UUID libraryId, UUID currentUserId) {
+    User currentUser =
+        userRepository
+            .findById(currentUserId)
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+    KnowledgeLibrary library =
+        libraryRepository
+            .findById(libraryId)
+            .filter(l -> l.getOrganizationId().equals(currentUser.getOrganizationId()))
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+    // No system-admin bypass here (systemAdmin always false), mirroring
+    // DocumentIndexingService#requireEditableLibrary - the real grant/visibility formula decides,
+    // unconditionally, same as every other library-scoped write action.
+    if (!libraryAccessService.canManage(library, currentUserId, false)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    }
+    return library;
+  }
+
+  /**
+   * Fills in the library's own stored {@code sourceCredentials} when the request carries none and
+   * {@code sourceUrl} still names the same origin as the library's stored one (#544, same rule as
+   * {@code KnowledgeLibraryService#validateSourceConfigurationForUpdate}) - a no-op for FILESYSTEM,
+   * which carries no sourceUrl/sourceCredentials at all.
+   */
+  private SourceConnectionTestRequest withStoredCredentialsIfOmitted(
+      SourceConnectionTestRequest request, KnowledgeLibrary library) {
+    if (blankToNull(request.getSourceCredentials()) != null) {
+      return request;
+    }
+    String requestSourceUrl =
+        request.getSourceUrl() == null ? null : request.getSourceUrl().toString();
+    if (!SourceOriginMatcher.sameOrigin(library.getSourceUrl(), requestSourceUrl)) {
+      return request;
+    }
+    return new SourceConnectionTestRequest(request.getSourceType())
+        .sourcePath(request.getSourcePath())
+        .sourceUrl(request.getSourceUrl())
+        .sourceProxy(request.getSourceProxy())
+        .sourceCredentials(library.getSourceCredentials())
+        .sourceInsecureSsl(request.getSourceInsecureSsl())
+        .libraryId(request.getLibraryId());
   }
 
   private SourceConnectionTestResponse testFilesystem(SourceConnectionTestRequest request) {
