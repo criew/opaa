@@ -644,6 +644,22 @@ Der Grund ist derselbe wie bei Assets: Ein Chat kann eine fachliche Einschätzun
 
 Der Autor kann seinen Chat jederzeit exportieren.
 
+### Einen Space stilllegen: Archivieren statt Löschen
+
+Der Schutz vor fremder Löschung hat eine Kehrseite: Ein Space, in dem irgendjemand je privat gechattet hat, enthält für seinen Eigentümer einen Chat, den er nicht sehen und deshalb nicht entfernen kann — das echte Löschen bleibt an genau dieser Stelle blockiert, dauerhaft ([#543](https://github.com/criew/opaa/issues/543)). Löschen bleibt möglich, sobald kein fremder Chat mehr im Space liegt; solange das nicht der Fall ist, braucht der Eigentümer einen anderen Weg, den Space loszuwerden.
+
+**Der Weg ist Archivieren, nicht eine Ausnahme von der Löschsperre:**
+
+- Ein archivierter Space nimmt **keinen neuen Inhalt** mehr an — kein neuer Chat lässt sich darin anlegen.
+- Er wird aus den **regulären Listen ausgeblendet**, außer für ein Mitglied, das dort selbst einen Chat verfasst hat: dessen Chat bleibt über den Space erreichbar, sonst wäre er für seinen eigenen Autor verloren — derselbe Grundsatz wie beim Zurückziehen, nur eine Ebene höher.
+- **Private Chats bleiben für ihre Autoren uneingeschränkt lesbar.** Archivieren verändert nichts an Inhalt oder Sichtbarkeit eines Chats, es verändert nur den Space, der ihn umschließt.
+- Archivieren ist eine Handlung des Space-Eigentümers oder eines System-Admins — dieselbe Berechtigungsschwelle wie beim Löschen — und protokolliert.
+- Ein bereits archivierter Space lässt sich erneut archivieren, ohne dass das ein Fehler ist; es ändert nichts am Zustand.
+- Der Standard-Space lässt sich ebenso wenig archivieren wie löschen — er ist nicht stillzulegen, sondern das dauerhafte Zuhause seines Eigentümers.
+- Löscht der Eigentümer stattdessen einen Space, der noch Chats enthält, verweist die Fehlermeldung auf das Archivieren als Ausweg.
+
+Archivieren ist damit kein Ersatz für Löschen, sondern die einzige Handlung, die auf einen Space wirkt, den die Löschsperre dauerhaft festhält: Sie stellt den Betrieb still, ohne den Nachweis zu zerstören, den die Löschsperre gerade schützen soll.
+
 ### Artefakte
 
 In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Für sie gilt **dieselbe** Regel wie für Chats — sie sind zunächst privat und werden durch Teilen space-sichtbar. Kein Sonderweg, keine Abhängigkeit von der Herkunft der Daten.
