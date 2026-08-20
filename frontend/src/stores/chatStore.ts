@@ -377,6 +377,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
     chatLoadSequence++
+    // #440 review, point 3: both module-level maps are keyed by chatId, not scoped to any
+    // particular user - a stale entry for a chat the previous user had open would otherwise
+    // survive into the next user's session in the same tab, e.g. letting a late PATCH failure
+    // for that old chat roll back to settings the new user never saw (#565's rollback base).
+    settingsUpdateChains.clear()
+    confirmedSettingsByChatId.clear()
     set({
       spaceId: null,
       chatId: null,
