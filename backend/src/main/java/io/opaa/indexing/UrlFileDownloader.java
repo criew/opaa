@@ -81,10 +81,12 @@ public class UrlFileDownloader {
    *     Government Site Builder attachment profile ({@link AttachmentProfile#GSB}) needs to derive
    *     a file extension its URLs do not carry (#468)
    * @throws AttachmentTooLargeException if the response body exceeds {@code maxBytes}
-   * @throws ForeignHostRedirectException if the request was redirected to a different host than
-   *     {@code fileUrl}'s own (PR #492 review, finding 4) - a same-host attachment link a profile
-   *     already vetted must not silently end up downloading from, and being recorded as originating
-   *     from, an address the profile never approved.
+   * @throws ForeignHostRedirectException if the request was redirected to a different origin than
+   *     {@code fileUrl}'s own - scheme, host or normalized port (PR #492 review, finding 4; port
+   *     added in the #538 follow-up review) - a same-origin attachment link a profile already
+   *     vetted must not silently end up downloading from, and being recorded as originating from,
+   *     an address the profile never approved. A protocol downgrade (https to http) is refused with
+   *     the same exception even on an otherwise same-host redirect.
    */
   public DownloadedFile downloadBounded(
       HttpClient httpClient, String fileUrl, String fileName, long maxBytes, String userAgent)
@@ -119,6 +121,13 @@ public class UrlFileDownloader {
             throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
           }
           URI redirectUri = currentUri.resolve(location.get());
+          // #538 follow-up review: a protocol downgrade is refused outright, the one thing
+          // Redirect.NORMAL itself always refused too - see
+          // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
+          if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
+            throw new ForeignHostRedirectException(
+                "refusing a protocol downgrade redirect (https to http): " + redirectUri);
+          }
           if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
             throw new ForeignHostRedirectException("redirected to a foreign host: " + redirectUri);
           }
@@ -142,7 +151,9 @@ public class UrlFileDownloader {
   }
 
   /**
-   * Whether {@code finalUri} landed on a different host than {@code originalUrl} - mirrors {@code
+   * Whether {@code finalUri} is a different origin than {@code originalUrl} (scheme, host and
+   * normalized port - {@link AutoindexCrawlerService#sameOrigin}, #538 follow-up review closing the
+   * port gap a host-only comparison originally left open) - mirrors {@code
    * RssFeedIndexingExecutor#isForeignHostRedirect}'s treatment of detail-page redirects (PR #492
    * review, finding 4).
    */
@@ -151,7 +162,7 @@ public class UrlFileDownloader {
       URI originalUri = new URI(originalUrl);
       return originalUri.getHost() != null
           && finalUri.getHost() != null
-          && !originalUri.getHost().equalsIgnoreCase(finalUri.getHost());
+          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return false;
     }

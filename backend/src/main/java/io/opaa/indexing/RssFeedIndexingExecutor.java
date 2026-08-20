@@ -673,12 +673,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Sends the detail-page request for {@code entryUrl}, manually following up to {@link
-   * AutoindexCrawlerService#MAX_REDIRECTS} same-host redirects (#538) - {@code httpClient} (built
+   * AutoindexCrawlerService#MAX_REDIRECTS} same-origin redirects (#538) - {@code httpClient} (built
    * with {@code Redirect.NEVER} by {@link AutoindexCrawlerService#buildHttpClient}) never follows
-   * one on its own any more. A redirect to a foreign host is rejected right here with a {@link
-   * RejectedByRemoteException} - the same exception a post-hoc check on an already-followed
-   * response produced before #538, still thrown for the same reason (ADR-0017's bot-protection
-   * motivation), just before the foreign host is ever contacted instead of after.
+   * one on its own any more. A redirect off origin (a different host or scheme, or a protocol
+   * downgrade specifically - {@link AutoindexCrawlerService#sameOrigin}) is rejected right here
+   * with a {@link RejectedByRemoteException} - the same exception a post-hoc check on an
+   * already-followed response produced before #538, still thrown for the same reason (ADR-0017's
+   * bot-protection motivation), just before the foreign target is ever contacted instead of after.
    */
   private HttpResponse<InputStream> sendDetailPageRequest(HttpClient httpClient, String entryUrl)
       throws IOException, InterruptedException {
@@ -704,6 +705,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       }
       URI redirectUri = currentUri.resolve(location.get());
       closeQuietly(response.body());
+      // #538 follow-up review: a protocol downgrade is refused outright, the one thing
+      // Redirect.NORMAL itself always refused too - see
+      // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
+      if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
+        throw new RejectedByRemoteException(
+            "refusing a protocol downgrade redirect (https to http): " + redirectUri);
+      }
       if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
         throw new RejectedByRemoteException("redirected to a foreign host: " + redirectUri);
       }
@@ -744,17 +752,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether {@code finalUri} landed on a different host than {@code originalUrl} - the signature of
-   * a bot-protection challenge page a feed operator's detail page redirected to (#467, ADR-0017
-   * motivation), distinguished from an ordinary same-host redirect (e.g. {@code http} to {@code
-   * https}, or a trailing slash).
+   * Whether {@code finalUri} is a different origin (scheme, host and normalized port - {@link
+   * AutoindexCrawlerService#sameOrigin}, #538 follow-up review) than {@code originalUrl} - the
+   * signature of a bot-protection challenge page a feed operator's detail page redirected to (#467,
+   * ADR-0017 motivation), distinguished from an ordinary same-origin redirect (e.g. a trailing
+   * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
+   * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
+   * downgrade specifically before ever reaching this check.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
       return originalUri.getHost() != null
           && finalUri.getHost() != null
-          && !originalUri.getHost().equalsIgnoreCase(finalUri.getHost());
+          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return false;
     }

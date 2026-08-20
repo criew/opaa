@@ -189,9 +189,11 @@ public class AutoindexCrawlerService {
 
   /**
    * Maximum number of redirects {@link #sendFollowingRedirects} follows manually (#538) - generous
-   * enough for an ordinary same-host redirect chain (http -&gt; https, a trailing-slash
-   * normalization, a login-portal bounce) while still bounding how many requests a misbehaving
-   * server can force per crawl step.
+   * enough for an ordinary same-origin redirect chain (a trailing-slash normalization, a
+   * login-portal bounce) while still bounding how many requests a misbehaving server can force per
+   * crawl step. A redirect that changes origin still gets a hop (with {@code Authorization}
+   * dropped, see {@link #sendFollowingRedirects}) - except a protocol downgrade (https to http),
+   * which is refused outright, matching {@code Redirect.NORMAL}'s own pre-#538 behaviour.
    */
   static final int MAX_REDIRECTS = 5;
 
@@ -245,11 +247,16 @@ public class AutoindexCrawlerService {
    * (#538), the way {@code httpClient} - built with {@code Redirect.NEVER} by {@link
    * #buildHttpClient} - never does on its own any more. {@code headers} (most importantly {@code
    * Authorization}, carrying a source configuration's own credentials) is sent again on the next
-   * hop only when that hop's host and scheme both still match the URL they were set for; the moment
-   * a redirect points elsewhere, the header is dropped for the rest of the chain instead of being
-   * replayed to a target the credentials were never meant for. This mirrors what a browser does on
-   * a cross-origin redirect, and closes the gap {@code Redirect.NORMAL} left open (a fremder Host
-   * redirect target received the exact same {@code Authorization} header as the original request).
+   * hop only when that hop is still the same origin ({@link #sameOrigin}) as the URL it was set
+   * for; the moment a redirect points elsewhere, the header is dropped for the rest of the chain
+   * instead of being replayed to a target the credentials were never meant for. This mirrors what a
+   * browser does on a cross-origin redirect, and closes the gap {@code Redirect.NORMAL} left open
+   * (a foreign-host redirect target received the exact same {@code Authorization} header as the
+   * original request).
+   *
+   * <p>A protocol downgrade (https to http) is never followed at all, even anonymized - {@code
+   * Redirect.NORMAL} already refused to follow one before #538, and silently downgrading the
+   * transport a source configuration was set up to use is worse than simply failing the request.
    *
    * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
    * Location} header, ends the loop and returns that response as-is - the caller's own status-code
@@ -279,7 +286,12 @@ public class AutoindexCrawlerService {
 
       closeQuietly(response.body());
       URI redirectUri = currentUri.resolve(location.get());
-      if (!sameHostAndScheme(currentUri, redirectUri)) {
+      if (isSchemeDowngrade(currentUri, redirectUri)) {
+        throw new IOException(
+            "refusing to follow a redirect from https to http (protocol downgrade): "
+                + redirectUri);
+      }
+      if (!sameOrigin(currentUri, redirectUri)) {
         currentHeaders.remove("Authorization");
       }
       currentUri = redirectUri;
@@ -297,12 +309,51 @@ public class AutoindexCrawlerService {
         || statusCode == 308;
   }
 
-  private static boolean sameHostAndScheme(URI a, URI b) {
-    return a.getHost() != null
-        && b.getHost() != null
+  /**
+   * Whether {@code a} and {@code b} are the same origin - scheme, host and port, with an absent
+   * port ({@code -1}) normalized to the scheme's default (80 for {@code http}, 443 for {@code
+   * https}) before comparing (#538 follow-up review). Comparing only host and scheme, as this
+   * method originally did, missed exactly the case that default normalization now covers: {@code
+   * https://intranet} and {@code https://intranet:8443} share a host and scheme but are different
+   * services - the JDK's own {@code Redirect.NORMAL} already told them apart before #538, and this
+   * comparison must be at least as strict everywhere it is used ({@link #sendFollowingRedirects}
+   * here, and the equivalent foreign-host checks in {@code UrlFileDownloader} and {@code
+   * RssFeedIndexingExecutor}).
+   */
+  static boolean sameOrigin(URI a, URI b) {
+    if (a.getHost() == null
+        || b.getHost() == null
+        || a.getScheme() == null
+        || b.getScheme() == null) {
+      return false;
+    }
+    return a.getScheme().equalsIgnoreCase(b.getScheme())
         && a.getHost().equalsIgnoreCase(b.getHost())
-        && a.getScheme() != null
-        && a.getScheme().equalsIgnoreCase(b.getScheme());
+        && normalizedPort(a) == normalizedPort(b);
+  }
+
+  /**
+   * Whether following the redirect from {@code from} to {@code to} would downgrade the transport
+   * from {@code https} to plain {@code http} (#538 follow-up review) - refused unconditionally by
+   * every manual redirect loop in this package, the one thing {@code Redirect.NORMAL} itself always
+   * refused too, before #538 replaced it with manual handling.
+   */
+  static boolean isSchemeDowngrade(URI from, URI to) {
+    return "https".equalsIgnoreCase(from.getScheme()) && "http".equalsIgnoreCase(to.getScheme());
+  }
+
+  private static int normalizedPort(URI uri) {
+    int port = uri.getPort();
+    if (port != -1) {
+      return port;
+    }
+    if ("https".equalsIgnoreCase(uri.getScheme())) {
+      return 443;
+    }
+    if ("http".equalsIgnoreCase(uri.getScheme())) {
+      return 80;
+    }
+    return -1;
   }
 
   private static void closeQuietly(InputStream in) {

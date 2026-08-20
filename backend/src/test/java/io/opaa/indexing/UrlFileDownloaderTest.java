@@ -11,12 +11,16 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -327,12 +331,15 @@ class UrlFileDownloaderTest {
 
   @Test
   void downloadBoundedThrowsWhenRedirectedToAForeignHost() throws IOException {
-    // 127.0.0.2, not 127.0.0.1 (also loopback, but a genuinely different host string) - two
-    // servers on 127.0.0.1 at different ports would make isForeignHostRedirect's host-only
-    // comparison see the same host and miss the redirect entirely.
-    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    // Same host (127.0.0.1), two different ports - not a second host string like 127.0.0.2 (#538
+    // follow-up review, finding 1): isForeignHostRedirect originally compared hosts only, so two
+    // servers on the same host at different ports would have looked identical to it and missed
+    // the redirect entirely. isForeignHostRedirect now delegates to
+    // AutoindexCrawlerService.sameOrigin, which normalizes and compares the port too - this test
+    // exercises exactly that gap instead of sidestepping it.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     foreignServer.start();
-    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    String foreignBaseUrl = "http://127.0.0.1:" + foreignServer.getAddress().getPort();
     try {
       foreignServer.createContext(
           "/anlage.pdf",
@@ -358,5 +365,102 @@ class UrlFileDownloaderTest {
     } finally {
       foreignServer.stop(0);
     }
+  }
+
+  @Test
+  void downloadDropsAuthorizationOnASameHostDifferentPortRedirect()
+      throws IOException, InterruptedException {
+    // #538 follow-up review, finding 1: sendFollowingRedirects originally compared host+scheme
+    // only, so a redirect to a different port of the same host would have kept Authorization
+    // attached - a service on a different port is a different origin, exactly what
+    // AutoindexCrawlerService.sameOrigin (scheme+host+normalized port) now catches.
+    HttpServer otherPortServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    otherPortServer.start();
+    String otherPortBaseUrl = "http://127.0.0.1:" + otherPortServer.getAddress().getPort();
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
+    try {
+      otherPortServer.createContext(
+          "/report.pdf",
+          exchange -> {
+            receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+      server.createContext(
+          "/report.pdf",
+          exchange -> {
+            exchange.getResponseHeaders().set("Location", otherPortBaseUrl + "/report.pdf");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+          });
+
+      Path result =
+          downloader.download(
+              AutoindexCrawlerService.buildHttpClient(null, -1, false),
+              "Basic dGVzdDp0ZXN0",
+              baseUrl + "/report.pdf",
+              "report.pdf");
+      try {
+        assertThat(receivedAuthorization.get()).isNull();
+      } finally {
+        Files.deleteIfExists(result);
+      }
+    } finally {
+      otherPortServer.stop(0);
+    }
+  }
+
+  @Test
+  void downloadRejectsAProtocolDowngradeRedirect() throws IOException, InterruptedException {
+    // #538 follow-up review, finding 2: Redirect.NORMAL always refused to follow a redirect from
+    // https to http; none of the manual replacement loops originally checked for that. Mocked
+    // (like preservesFileExtension above) rather than a real HttpServer - the test HttpServer stub
+    // used elsewhere in this class only ever speaks plain http, so it cannot itself answer an
+    // https request to demonstrate the downgrade being refused.
+    @SuppressWarnings("unchecked")
+    HttpResponse<InputStream> response = mock(HttpResponse.class);
+    HttpClient httpClient = mock(HttpClient.class);
+
+    when(response.statusCode()).thenReturn(302);
+    when(response.headers())
+        .thenReturn(
+            HttpHeaders.of(
+                Map.of("Location", List.of("http://example.com/report.pdf")), (a, b) -> true));
+    when(response.body()).thenReturn(InputStream.nullInputStream());
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(response);
+
+    assertThatThrownBy(
+            () ->
+                downloader.download(
+                    httpClient, null, "https://example.com/report.pdf", "report.pdf"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("protocol downgrade");
+  }
+
+  @Test
+  void downloadBoundedRejectsAProtocolDowngradeRedirect() throws IOException, InterruptedException {
+    @SuppressWarnings("unchecked")
+    HttpResponse<InputStream> response = mock(HttpResponse.class);
+    HttpClient httpClient = mock(HttpClient.class);
+
+    when(response.statusCode()).thenReturn(302);
+    when(response.uri()).thenReturn(URI.create("https://example.com/anlage.pdf"));
+    when(response.headers())
+        .thenReturn(
+            HttpHeaders.of(
+                Map.of("Location", List.of("http://example.com/anlage.pdf")), (a, b) -> true));
+    when(response.body()).thenReturn(InputStream.nullInputStream());
+    when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(response);
+
+    assertThatThrownBy(
+            () ->
+                downloader.downloadBounded(
+                    httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null))
+        .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class)
+        .hasMessageContaining("protocol downgrade");
   }
 }
