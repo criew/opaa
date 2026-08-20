@@ -739,6 +739,101 @@ describe('chatStore', () => {
     // #548 review, finding 3: sendMessage must await a still-in-flight settings PATCH before
     // querying, or the query could reach the server (and be answered using the chat's persisted
     // settings) before the PATCH that was meant to change them.
+    // #565: a settings PATCH for the chat that was active when the change was made must not roll
+    // back a *different* chat's state once the user has since navigated away and its slow,
+    // failing response finally arrives.
+    it('does not roll back a different chat once a stale settings PATCH from a previous chat fails', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          if (params.chatId === EXISTING_CHAT_ID) {
+            // Slow, failing PATCH for the chat that was active when the change was made.
+            await new Promise((resolve) => setTimeout(resolve, 30))
+            return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+          }
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      // Action on chat A - optimistic update applied, PATCH in flight (slow, will fail).
+      useChatStore.getState().clearScope()
+      const stalePatch = useChatStore.getState().pendingSettingsUpdate
+
+      // User navigates to a different chat before the stale PATCH settles, and changes its
+      // settings too.
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      useChatStore.getState().addReferencedLibrary('library-new-chat')
+      await useChatStore.getState().pendingSettingsUpdate
+
+      expect(useChatStore.getState().scope).toBe('libraries')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-new-chat'])
+
+      // The stale failure from chat A, now inactive, arrives.
+      await stalePatch
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe(EMPTY_CHAT_ID)
+      expect(state.scope).toBe('libraries')
+      expect(state.referencedLibraryIds).toEqual(['library-new-chat'])
+    })
+
+    // #565: two rapid scope changes on the *same* chat - the last requested action must win, not
+    // whichever PATCH response happens to arrive last over the network. Here the first (older)
+    // action's PATCH is slower and fails; the second (newer, and successful) action must not be
+    // undone by that stale failure once it finally arrives.
+    it('lets the last requested settings change win over an earlier, slower-failing PATCH on the same chat', async () => {
+      let callIndex = 0
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ request }) => {
+          const isFirstCall = callIndex === 0
+          callIndex++
+          if (isFirstCall) {
+            await new Promise((resolve) => setTimeout(resolve, 30))
+            return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+          }
+          const body = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // action 1: 'all' -> 'none', slow, will fail
+      useChatStore.getState().setScopeAll() // action 2 (last action): 'none' -> 'all', fast, succeeds
+
+      await useChatStore.getState().pendingSettingsUpdate
+      // Let action 1's stale failure resolve too.
+      await new Promise((resolve) => setTimeout(resolve, 40))
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('all')
+      expect(state.error).toBeNull()
+    })
+
     it('awaits a pending settings PATCH before sending the query', async () => {
       const events: string[] = []
       server.use(
