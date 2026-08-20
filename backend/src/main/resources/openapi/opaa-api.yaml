@@ -1510,6 +1510,129 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/branding:
+    get:
+      operationId: getBranding
+      tags: [branding]
+      summary: >
+        The branding configuration in effect (#582): product name, claim, accent colour, default
+        colour scheme and - if one is configured - the path the logo is served from. Readable by
+        every signed-in user, not just administrators: every rendered page needs it. Never fails
+        for want of configuration - a deployment that has never configured anything gets the OPAA
+        defaults, each field resolved individually, so an operator who only sets a logo keeps the
+        standard product name.
+      responses:
+        "200":
+          description: Effective branding configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+
+  /api/v1/branding/logo:
+    get:
+      operationId: getBrandingLogo
+      tags: [branding]
+      summary: >
+        The configured logo's bytes, served with the content type the server itself detected at
+        upload time - never one the uploader declared (#582: "Content-Type beim Ausliefern
+        erzwingen"). Answered with 404 while no logo is configured; clients read
+        BrandingResponse.logoUrl rather than calling this unconditionally. The response carries
+        X-Content-Type-Options and a restrictive Content-Security-Policy so a browser can never
+        be talked into treating the bytes as anything but an image.
+      responses:
+        "200":
+          description: Logo bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/system/branding:
+    put:
+      operationId: updateBranding
+      tags: [branding]
+      summary: >
+        Replace the branding configuration (SYSTEM_ADMIN only, #582). A full replacement, as PUT
+        implies: an omitted or null field is not "leave as is" but "back to the OPAA default", so
+        an operator can undo a customisation without a dedicated reset endpoint. The logo is not
+        part of this request - it has its own endpoints below, because a binary upload and a JSON
+        settings edit have nothing to gain from being welded into one multipart request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandingUpdateRequest"
+      responses:
+        "200":
+          description: Branding updated; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/branding/logo:
+    put:
+      operationId: updateBrandingLogo
+      tags: [branding]
+      summary: >
+        Upload the operator's logo (SYSTEM_ADMIN only, #582). Accepts PNG and JPEG only -
+        SVG is rejected outright rather than sanitised, because an SVG is a document that can
+        carry script and a sanitiser that is wrong once is worse than a format restriction that
+        is inconvenient always (#582 explicitly allows either). The declared content type is not
+        trusted: the actual bytes are inspected, and a mismatch is rejected.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Logo stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+    delete:
+      operationId: deleteBrandingLogo
+      tags: [branding]
+      summary: >
+        Remove the configured logo (SYSTEM_ADMIN only, #582) - the app falls back to the OPAA
+        standard logo. Idempotent: removing a logo that is not there succeeds.
+      responses:
+        "200":
+          description: Logo removed; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
     HealthResponse:
@@ -2843,6 +2966,14 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+        sourceEntryUrl:
+          type: string
+          nullable: true
+          description: >
+            For an attachment discovered on an RSS entry's detail page (#468), the URL of the entry
+            it was found on - lets a citation trace an attachment back to the feed entry it belongs
+            to. Null for every other document.
+          example: https://example.gov/aktuelles/dienstanweisung-2024
         errorMessage:
           type: string
           nullable: true
@@ -3374,6 +3505,86 @@ components:
             point, not indefinitely.
         status:
           $ref: "#/components/schemas/AuditIncidentScopeStatus"
+
+    ColorScheme:
+      type: string
+      description: >
+        The colour scheme a deployment starts users off in (#582). SYSTEM follows the operating
+        system's own preference and is the OPAA default; LIGHT and DARK are an operator's
+        deliberate override. Not a per-user setting - this is the deployment's starting point,
+        which a user's own choice may still override in the browser.
+      enum: [LIGHT, DARK, SYSTEM]
+      example: SYSTEM
+
+    BrandingResponse:
+      type: object
+      description: >
+        The branding in effect - never a partially filled object. Every field carries either the
+        operator's configured value or the OPAA default, resolved per field, so a client can
+        render from this response alone without knowing what a default even is. logoUrl is the
+        one exception: it is absent while no logo is configured, and the client falls back to the
+        bundled OPAA logo.
+      required: [productName, claim, primaryColor, defaultColorScheme]
+      properties:
+        productName:
+          type: string
+          example: OPAA
+        claim:
+          type: string
+          example: Fragen. Belegen. Entscheiden.
+        primaryColor:
+          type: string
+          description: Accent colour as a six-digit hex triplet with a leading '#'.
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          example: "#1292EE"
+        defaultColorScheme:
+          $ref: "#/components/schemas/ColorScheme"
+        logoUrl:
+          type: string
+          description: >
+            Path the configured logo is served from, carrying a content-derived version parameter
+            so a changed logo is fetched immediately while an unchanged one stays cacheable.
+            Absent while no logo is configured.
+          example: /api/v1/branding/logo?v=3f8a1c2d
+        logoContentType:
+          type: string
+          description: >
+            The server-detected media type of the configured logo - informational, for a
+            management form that wants to show it. Absent while no logo is configured.
+          example: image/png
+        logoUpdatedAt:
+          type: string
+          format: date-time
+          description: When the configured logo was last replaced. Absent while none is configured.
+
+    BrandingUpdateRequest:
+      type: object
+      description: >
+        A full replacement of the non-binary branding fields. Every field is optional, and an
+        omitted or null one means "the OPAA default applies again" rather than "keep the current
+        value" - see the endpoint's own summary.
+      properties:
+        productName:
+          type: string
+          description: >
+            Empty or omitted means the OPAA default applies again - which is why there is no
+            minLength here: a cleared form field is how an operator undoes a customisation.
+          maxLength: 60
+          example: Landesamt-Assistent
+        claim:
+          type: string
+          description: Empty or omitted means the OPAA default applies again.
+          maxLength: 120
+          example: Fragen. Belegen. Entscheiden.
+        primaryColor:
+          type: string
+          description: >
+            Six-digit hex triplet with a leading '#'. The empty string is accepted alongside it and
+            means the OPAA default applies again; anything else is rejected with 400.
+          pattern: "^$|^#[0-9A-Fa-f]{6}$"
+          example: "#1292EE"
+        defaultColorScheme:
+          $ref: "#/components/schemas/ColorScheme"
 
   parameters:
     AuditFrom:

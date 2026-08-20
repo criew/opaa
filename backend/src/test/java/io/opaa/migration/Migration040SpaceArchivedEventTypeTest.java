@@ -7,6 +7,8 @@ import io.opaa.audit.AuditEventType;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,15 +26,22 @@ import org.junit.jupiter.api.Test;
  * - the exact gap that let 040's own CHECK list silently drop {@code LIBRARY_SOURCE_UPDATED}
  * (rebuilt from the 022 state instead of the current one) without any test catching it. This class
  * now chains through every migration that has actually widened the constraint before 040, and
- * {@link #everyCurrentEventTypeIsAcceptedAfterTheWideningMigration()} inserts <em>every</em> {@link
- * AuditEventType} value - not a representative sample - so a future rebuild-from-a-stale- base
- * mistake fails on the very value it drops, rather than possibly missing it if that value is not
- * among the ones a sample happens to cover.
+ * {@link #everyEventTypeKnownWhenMigration040WasWrittenIsAcceptedAfterIt()} inserts <em>every</em>
+ * such {@link AuditEventType} value - not a representative sample - so a future
+ * rebuild-from-a-stale-base mistake fails on the very value it drops, rather than possibly missing
+ * it if that value is not among the ones a sample happens to cover.
  *
  * <p>Proves, against a real database rather than only the Java enum, that {@code
  * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 040 runs, and that every value
- * accepted before 040 - the complete {@link AuditEventType} set minus {@code SPACE_ARCHIVED} itself
- * - is still accepted afterwards (a widen must never accidentally narrow).
+ * accepted before 040 is still accepted afterwards (a widen must never accidentally narrow).
+ *
+ * <p><b>#582:</b> the exhaustive assertion is now against "every value 040 knew about", not
+ * literally {@code AuditEventType.values()}. It has to be: 042 adds {@code
+ * BRANDING_SETTINGS_CHANGED} to both the enum and the constraint, and this class deliberately stops
+ * at 040 - asserting the live enum here would make every later widening migration fail this test
+ * for a value 040 could not possibly have contained. That is the same stake-in-the-ground {@code
+ * Migration017AuditLogTest} plants for 017, and {@code Migration042BrandingSettingsEventTypeTest}
+ * is where the later value is proven instead.
  */
 class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
 
@@ -40,6 +49,14 @@ class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
   private static final String AUDIT_APP_ROLE = "audit_app_role";
   private static final String AUDIT_APP_ROLE_PASSWORD = "audit_app_role_password";
   private static final String OWNER_ROLE = "opaa_audit_owner";
+
+  /**
+   * Values added to {@link AuditEventType} by a migration <em>after</em> 040 - {@code
+   * BRANDING_SETTINGS_CHANGED} arrives with 042 (#582). This class applies 040 and stops there, so
+   * these cannot be in its constraint and must not be asserted against it.
+   */
+  private static final Set<AuditEventType> VALUES_ADDED_AFTER_MIGRATION_040 =
+      EnumSet.of(AuditEventType.BRANDING_SETTINGS_CHANGED);
 
   @Override
   protected String baseFixtureChangelogPath() {
@@ -103,14 +120,21 @@ class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
   }
 
   /**
-   * #613 review, finding 1: exhaustive, not a sample - every {@link AuditEventType} value,
-   * including {@code SPACE_ARCHIVED} itself, must round-trip through the widened constraint.
-   * Deliberately not restricted to "pre-existing" values: the whole point is that nothing in the
-   * current enum may be missing from the CHECK list 040 installs.
+   * #613 review, finding 1: exhaustive, not a sample - every {@link AuditEventType} value 040 could
+   * have contained, including {@code SPACE_ARCHIVED} itself, must round-trip through the widened
+   * constraint. Deliberately not restricted to values that existed before 040: the point is that
+   * nothing 040 was supposed to install may be missing from its CHECK list.
+   *
+   * <p>{@link #VALUES_ADDED_AFTER_MIGRATION_040} is what keeps this honest without making it wrong
+   * - see the class Javadoc. Every later widening migration adds its own value there and proves it
+   * in its own test class.
    */
   @Test
-  void everyCurrentEventTypeIsAcceptedAfterTheWideningMigration() throws Exception {
+  void everyEventTypeKnownWhenMigration040WasWrittenIsAcceptedAfterIt() throws Exception {
     for (AuditEventType eventType : AuditEventType.values()) {
+      if (VALUES_ADDED_AFTER_MIGRATION_040.contains(eventType)) {
+        continue;
+      }
       UUID eventId = insertEntry(eventType.name());
       assertThat(eventExists(eventId))
           .as("event_type %s accepted after 040", eventType.name())
