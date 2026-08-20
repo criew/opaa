@@ -790,12 +790,84 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-new-chat'])
     })
 
+    // #565 review: isolates the chatId guard from the sequence guard above - no further settings
+    // change happens on the newly active chat, so settingsUpdateSequence still points at the
+    // stale request and cannot itself block the rollback. Only the chatId comparison can. Removing
+    // just that guard (keeping the sequence guard) turns this test red.
+    it('does not inherit an error or rolled-back state from a stale PATCH failure after simply navigating to a different chat', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params }) => {
+          if (params.chatId === EXISTING_CHAT_ID) {
+            await new Promise((resolve) => setTimeout(resolve, 30))
+            return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+          }
+          throw new Error(`unexpected PATCH for ${String(params.chatId)}`)
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // scope -> 'none', PATCH in flight (slow, will fail)
+      const stalePatch = useChatStore.getState().pendingSettingsUpdate
+
+      // User simply navigates away - no further settings change on the new chat.
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all') // EMPTY_CHAT_ID's own, unrelated scope
+
+      // The stale failure from the chat that's no longer active arrives.
+      await stalePatch
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe(EMPTY_CHAT_ID)
+      expect(state.scope).toBe('all')
+      expect(state.error).toBeNull()
+    })
+
+    // #565 review, finding 1: two rapid scope changes on the same chat used to fire two PATCHes in
+    // parallel - the network, not the order the user clicked in, decided which request the server
+    // saw last. This test catches the *overlap* itself (not just its eventual symptom): the second
+    // request's handler must never start executing while the first one for the same chat is still
+    // in flight.
+    it('sends settings PATCHes for the same chat one at a time, never overlapping', async () => {
+      let inFlight = 0
+      const overlapDetected: boolean[] = []
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async () => {
+          inFlight++
+          overlapDetected.push(inFlight > 1)
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          inFlight--
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+
+      useChatStore.getState().clearScope() // action 1
+      useChatStore.getState().addReferencedLibrary('library-a') // action 2, right after action 1
+
+      await useChatStore.getState().pendingSettingsUpdate
+
+      expect(overlapDetected).toEqual([false, false])
+    })
+
     // #565: two rapid scope changes on the *same* chat - the last requested action must win, not
     // whichever PATCH response happens to arrive last over the network. Here the first (older)
     // action's PATCH is slower and fails; the second (newer, and successful) action must not be
     // undone by that stale failure once it finally arrives.
     it('lets the last requested settings change win over an earlier, slower-failing PATCH on the same chat', async () => {
       let callIndex = 0
+      const capturedBodies: Record<string, unknown>[] = []
       server.use(
         http.patch('/api/v1/chats/:chatId', async ({ request }) => {
           const isFirstCall = callIndex === 0
@@ -805,6 +877,7 @@ describe('chatStore', () => {
             return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
           }
           const body = (await request.json()) as Record<string, unknown>
+          capturedBodies.push(body)
           return HttpResponse.json({
             id: EXISTING_CHAT_ID,
             spaceId: SPACE_ID,
@@ -832,6 +905,12 @@ describe('chatStore', () => {
       const state = useChatStore.getState()
       expect(state.scope).toBe('all')
       expect(state.error).toBeNull()
+      // The last request the server actually received must be action 2's payload
+      // (setScopeAll -> useKnowledge=true, no referencedLibraryIds) - the serialized queue means
+      // the server saw action 1's request first, then action 2's, in the order they were made.
+      expect(capturedBodies).toHaveLength(1)
+      expect(capturedBodies[0]?.useKnowledge).toBe(true)
+      expect(capturedBodies[0]?.referencedLibraryIds).toEqual([])
     })
 
     it('awaits a pending settings PATCH before sending the query', async () => {

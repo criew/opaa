@@ -36,13 +36,30 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
 // never read by a component, only compared against itself across async gaps.
 let chatLoadSequence = 0
 
-// Monotonically increasing token guarding applyScopeChange's PATCH failure handler against two
-// hazards found in review of #548/#564 (#565): a settings PATCH for chat A that is still in
-// flight when the user navigates to chat B must not roll chat B's state back on failure, and two
-// rapid scope changes on the same chat (e.g. fast chip clicks) must let the *last requested*
-// change win, not whichever PATCH response happens to arrive last over the network. Same pattern
-// as chatLoadSequence above - module-level, never read by a component.
+// Monotonically increasing token guarding applyScopeChange's PATCH failure handler (#565): a
+// settings PATCH for chat A that is still in flight when the user navigates to chat B must not
+// roll chat B's state back on failure. Same pattern as chatLoadSequence above - module-level,
+// never read by a component.
 let settingsUpdateSequence = 0
+
+// Serializes settings PATCHes per chat (#565 review): each chat's queue is a promise chain, so a
+// PATCH for a chat only reaches the server once the previous one for that same chat has settled.
+// Without this, two rapid chip clicks fire two PATCHes in parallel and the network - not the order
+// the user clicked in - decides which one the server (and thus the persisted chat) ends up
+// applying last. Deliberately module-level, mirroring settingsUpdateSequence/chatLoadSequence.
+const settingsUpdateChains = new Map<string, Promise<void>>()
+
+// The most recently server-confirmed useKnowledge/referencedLibraryIds pair per chat (#565
+// review), used as the rollback base after a failed PATCH. Updated whenever a chat is loaded or
+// implicitly created, and whenever a chained PATCH succeeds. Rolling back to this - rather than to
+// "whatever the local state was right before this particular call" - matters once PATCHes are
+// chained: if an earlier queued change for the same chat also failed, its own local snapshot is
+// already stale, and rolling back to it would resurrect an optimistic value the server never saw
+// either.
+const confirmedSettingsByChatId = new Map<
+  string,
+  { scope: SearchScope; referencedLibraryIds: string[] }
+>()
 
 // The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
 // chip (backend useKnowledge=true), 'libraries' shows the sticky concrete-library chips
@@ -169,7 +186,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // applying this response now would resurrect a chat the user already navigated away from
       // (#548 review, finding d).
       if (requestId !== chatLoadSequence) return
-      set({ ...applyChatDetail(detail), isLoadingChat: false })
+      const detailState = applyChatDetail(detail)
+      set({ ...detailState, isLoadingChat: false })
+      // The just-loaded settings are the server's own record - the rollback base for any PATCH
+      // failure while this chat stays active (#565 review).
+      confirmedSettingsByChatId.set(detailState.chatId, {
+        scope: detailState.scope,
+        referencedLibraryIds: detailState.referencedLibraryIds,
+      })
     } catch (err) {
       if (requestId !== chatLoadSequence) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht geladen werden'
@@ -246,6 +270,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         })
         chatId = created.id
         set({ chatId })
+        // The settings this chat was just created with are the server's own record too (#565
+        // review) - same reasoning as loadChat above.
+        confirmedSettingsByChatId.set(chatId, { scope, referencedLibraryIds: libraryIds })
         // Makes the implicitly created chat show up in its space's chat list immediately,
         // instead of only after a manual reload (#548 review, finding 4).
         useChatListStore.getState().upsertChat(spaceId, {
@@ -338,14 +365,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
 }))
 
 /**
- * Applies a chip-bar scope change locally and persists it via PATCH, if a chat exists yet, and
- * tracks it as `pendingSettingsUpdate` so sendMessage can await it. On failure, rolls the
- * optimistically-applied local state back and surfaces `error` - the server's chat settings
- * otherwise silently diverge from what the chip bar shows (#548 review, finding 3; carried over to
- * the chip-only model in #560). useKnowledge and referencedLibraryIds are always sent together,
- * even when only one conceptually changed, because a scope change - e.g. the first concrete chip
- * replacing @Alles-Wissen - flips both fields atomically; splitting them into separate PATCHes
- * could let a chat briefly sit with useKnowledge=true and stale referencedLibraryIds server-side.
+ * Applies a chip-bar scope change locally and persists it via a per-chat PATCH chain (#565
+ * review), if a chat exists yet, and tracks the chain's tail as `pendingSettingsUpdate` so
+ * sendMessage can await it. On failure, rolls the local state back to the last server-confirmed
+ * settings and surfaces `error` - the server's chat settings otherwise silently diverge from what
+ * the chip bar shows (#548 review, finding 3; carried over to the chip-only model in #560).
+ * useKnowledge and referencedLibraryIds are always sent together, even when only one conceptually
+ * changed, because a scope change - e.g. the first concrete chip replacing @Alles-Wissen - flips
+ * both fields atomically; splitting them into separate PATCHes could let a chat briefly sit with
+ * useKnowledge=true and stale referencedLibraryIds server-side.
+ *
+ * Chained rather than fired in parallel (#565 review): two rapid chip changes on the same chat
+ * used to send two PATCHes at once, letting the network - not the order the user acted in -
+ * decide which settings the server (and thus the persisted chat) ended up with. Queuing this
+ * call's PATCH behind any still-in-flight one for the same chat guarantees the server sees them in
+ * the order they were made, and that whichever one is last in the queue is also the last one the
+ * server applies.
  */
 function applyScopeChange(
   get: () => ChatState,
@@ -359,13 +394,9 @@ function applyScopeChange(
   const requestChatId = get().chatId
   const requestId = ++settingsUpdateSequence
 
-  const rollbackState: Partial<ChatState> = {
-    scope: get().scope,
-    referencedLibraryIds: get().referencedLibraryIds,
-  }
   set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
 
-  const { chatId } = get()
+  const chatId = requestChatId
   if (!chatId) return
 
   const patch: ChatUpdateRequest = {
@@ -373,24 +404,47 @@ function applyScopeChange(
     referencedLibraryIds: nextScope === 'libraries' ? nextReferencedLibraryIds : [],
   }
 
-  const promise: Promise<void> = updateChat(chatId, patch).then(
-    () => undefined,
-    (err: unknown) => {
-      // A stale failure must not roll back a chat the user has since navigated away from (#565) -
-      // without this guard, a late-arriving PATCH failure for chat A silently resurrects chat A's
-      // pre-change state on top of chat B, which is now active.
-      if (get().chatId !== requestChatId) return
-      // Nor may it roll back over a *newer* change to the same chat that has already applied its
-      // own optimistic state (or even already succeeded) - only the most recently requested change
-      // may still roll back on failure, so the last action wins rather than the last response
-      // (#565).
-      if (requestId !== settingsUpdateSequence) return
-      const message =
-        err instanceof Error ? err.message : 'Änderung konnte nicht gespeichert werden'
-      set({ ...rollbackState, error: message })
-    },
-  )
+  // Queues this call's PATCH behind whatever is already queued for this chat - `.catch(() =>
+  // undefined)` keeps the chain alive across an earlier queued PATCH's failure, so this call's own
+  // request still gets sent (and its own outcome handled independently below) instead of being
+  // silently skipped.
+  const previousChainTail = settingsUpdateChains.get(chatId) ?? Promise.resolve()
+  const promise: Promise<void> = previousChainTail
+    .catch(() => undefined)
+    .then(() => updateChat(chatId, patch))
+    .then(
+      () => {
+        // This request's settings are now the server's own record - the rollback base for any
+        // *later* PATCH on this chat that fails (#565 review).
+        confirmedSettingsByChatId.set(chatId, {
+          scope: nextScope,
+          referencedLibraryIds: nextReferencedLibraryIds,
+        })
+      },
+      (err: unknown) => {
+        // A stale failure must not roll back a chat the user has since navigated away from
+        // (#565) - without this guard, a late-arriving PATCH failure for chat A silently
+        // resurrects chat A's pre-change state on top of chat B, which is now active.
+        if (get().chatId !== requestChatId) return
+        // Nor may it roll back over a *newer* change to the same chat that has already applied
+        // its own optimistic state (or even already succeeded) - only the most recently
+        // requested change may still roll back on failure, so the last action wins rather than
+        // the last response (#565).
+        if (requestId !== settingsUpdateSequence) return
+        const message =
+          err instanceof Error ? err.message : 'Änderung konnte nicht gespeichert werden'
+        // Rolls back to the last state the server actually confirmed for this chat, not to
+        // whatever was locally applied right before this call - if an earlier queued change for
+        // the same chat also failed, that snapshot would itself already be stale (#565 review).
+        const rollback = confirmedSettingsByChatId.get(chatId) ?? {
+          scope: 'all' as SearchScope,
+          referencedLibraryIds: [],
+        }
+        set({ ...rollback, error: message })
+      },
+    )
 
+  settingsUpdateChains.set(chatId, promise)
   set({ pendingSettingsUpdate: promise })
   void promise.finally(() => {
     if (get().pendingSettingsUpdate === promise) {
