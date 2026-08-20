@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -70,6 +71,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class LibraryDocumentService {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
+
+  // Magic-byte content detection for the upload path only (#435, see #uploadDocument and
+  // SupportedDocumentFormats#contentMatchesExtension). A single shared instance: Tika's facade is
+  // safe for concurrent #detect calls, and constructing it repeatedly re-parses its media-type
+  // registry for no benefit.
+  private final Tika tika = new Tika();
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
@@ -133,6 +140,8 @@ public class LibraryDocumentService {
       try (InputStream in = file.getInputStream()) {
         Files.copy(in, storedFile, StandardCopyOption.REPLACE_EXISTING);
       }
+
+      requireContentMatchesExtension(storedFile, extension);
 
       String checksum = checksumService.computeSha256(storedFile);
       // Dedup is scoped per library (#420 acceptance criteria): the same file uploaded into two
@@ -336,6 +345,31 @@ public class LibraryDocumentService {
     // Unreachable: callers only invoke this after SupportedDocumentFormats.isSupported returned
     // true for the same name, which guarantees exactly this loop finds a match.
     throw new IllegalStateException("No supported extension matched for: " + fileName);
+  }
+
+  /**
+   * Rejects the upload if Tika's magic-byte detection on the actually stored bytes contradicts
+   * {@code extension} (#435, Maintainer-Entscheidung 20.08.2026). Runs against the file already
+   * written to {@code storedFile} rather than the multipart stream directly, so the same bytes that
+   * end up parsed and indexed are the ones inspected here - and so a mismatch is caught before the
+   * checksum/dedup work below spends any effort on content that will be rejected anyway.
+   *
+   * <p>Deliberately scoped to this upload path alone, not {@link SupportedDocumentFormats#
+   * isSupported}: operator-managed sources (filesystem, network) keep the extension-only decision
+   * #404 settled - see the class Javadoc there for why a human uploading a file through this
+   * endpoint is a different situation.
+   */
+  private void requireContentMatchesExtension(Path storedFile, String extension) {
+    String detectedMimeType;
+    try (InputStream contentStream = Files.newInputStream(storedFile)) {
+      detectedMimeType = tika.detect(contentStream);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Datei konnte nicht auf ihr Format geprueft werden", e);
+    }
+    if (!SupportedDocumentFormats.contentMatchesExtension(extension, detectedMimeType)) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Der Inhalt der Datei entspricht nicht dem Format " + extension);
+    }
   }
 
   private void deleteQuietly(Path path) {

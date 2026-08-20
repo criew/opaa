@@ -114,8 +114,15 @@ class LibraryDocumentServiceTest {
     when(accessService.effectiveRole(any(), eq(currentUserId), eq(false))).thenReturn(null);
   }
 
+  // Real PDF magic bytes (#435): since uploadDocument now runs Tika content detection against the
+  // actually stored bytes, a MockMultipartFile whose body is plain text would be rejected as a
+  // content/extension mismatch even when it is only meant to stand in for "some PDF". Every test
+  // that needs a file Tika detects as application/pdf goes through this helper.
+  private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n";
+
   private MultipartFile pdfFile(String originalFileName, String content) {
-    return new MockMultipartFile("file", originalFileName, "application/pdf", content.getBytes());
+    return new MockMultipartFile(
+        "file", originalFileName, "application/pdf", (PDF_MAGIC_BYTES + content).getBytes());
   }
 
   @Test
@@ -244,6 +251,96 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void aRealPdfUploadedAsPdfIsAccepted() throws IOException {
+    // #435: content detection is a positive check too, not only a rejection path - genuine PDF
+    // bytes with a .pdf extension must not be caught by the new guard.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-real-pdf");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-real-pdf"))
+        .thenReturn(Optional.empty());
+    Document processed = new Document("report.pdf", "irrelevant", "application/pdf", 10L);
+    processed.setSourceType(DocumentSourceType.UPLOAD);
+    when(fileProcessingService.processUploadedFile(
+            any(Path.class), eq("report.pdf"), eq("checksum-real-pdf"), any(), any(), any()))
+        .thenReturn(processed);
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "%PDF content"), currentUserId, false);
+
+    assertThat(response.getFileName()).isEqualTo("report.pdf");
+  }
+
+  @Test
+  void binaryGarbageClaimingToBeAPdfIsRejectedWithABadRequestAndAGermanMessage()
+      throws IOException {
+    // #435, Maintainer-Entscheidung 20.08.2026: Tika's magic-byte detection catches the mismatch
+    // between a claimed .pdf extension and content that is not actually a PDF.
+    grantEditor();
+
+    MultipartFile fakePdf =
+        new MockMultipartFile(
+            "file",
+            "not-really-a-pdf.pdf",
+            "application/pdf",
+            new byte[] {0x00, 0x01, 0x02, (byte) 0xFF, 0x00, (byte) 0xDE, (byte) 0xAD});
+
+    assertThatThrownBy(() -> service.uploadDocument(libraryId, fakePdf, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
+        .hasMessageContaining("entspricht nicht dem Format .pdf");
+
+    assertNoFilesWereStored();
+    verify(fileProcessingService, never())
+        .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
+  }
+
+  @Test
+  void markdownTextUploadedAsMdIsAcceptedWithoutRequiringAnExactMediaType() throws IOException {
+    // #435, "Toleranz bei Textformaten": .md content only has to look like text, not match one
+    // specific detected media type - Markdown syntax itself is not a distinct magic-byte format.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-md");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-md"))
+        .thenReturn(Optional.empty());
+    Document processed = new Document("notes.md", "irrelevant", "text/markdown", 20L);
+    processed.setSourceType(DocumentSourceType.UPLOAD);
+    when(fileProcessingService.processUploadedFile(
+            any(Path.class), eq("notes.md"), eq("checksum-md"), any(), any(), any()))
+        .thenReturn(processed);
+
+    MultipartFile markdown =
+        new MockMultipartFile(
+            "file", "notes.md", "text/markdown", "# Titel\n\nEin Absatz Text.".getBytes());
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(libraryId, markdown, currentUserId, false);
+
+    assertThat(response.getFileName()).isEqualTo("notes.md");
+  }
+
+  @Test
+  void pdfContentUploadedAsTxtIsRejectedAsBinaryContentClaimingToBeText() throws IOException {
+    // #435: the text-tolerant check for .txt/.md still rejects genuinely binary content - it only
+    // waives the requirement for one *specific* text media type, not the text-vs-binary distinction
+    // itself.
+    grantEditor();
+
+    MultipartFile pdfAsTxt =
+        new MockMultipartFile(
+            "file", "report.txt", "text/plain", (PDF_MAGIC_BYTES + "binary-ish").getBytes());
+
+    assertThatThrownBy(() -> service.uploadDocument(libraryId, pdfAsTxt, currentUserId, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.BAD_REQUEST)
+        .hasMessageContaining("entspricht nicht dem Format .txt");
+
+    assertNoFilesWereStored();
+    verify(fileProcessingService, never())
+        .processUploadedFile(any(), anyString(), anyString(), any(), any(), any());
+  }
+
+  @Test
   void aFileOverTheSizeLimitIsRejectedWithoutBeingStored() throws IOException {
     grantEditor();
     String tooBig = "x".repeat(11 * 1024);
@@ -337,7 +434,10 @@ class LibraryDocumentServiceTest {
 
     MultipartFile traversal =
         new MockMultipartFile(
-            "file", "../../../../etc/evil.pdf", "application/pdf", "content".getBytes());
+            "file",
+            "../../../../etc/evil.pdf",
+            "application/pdf",
+            (PDF_MAGIC_BYTES + "content").getBytes());
 
     service.uploadDocument(libraryId, traversal, currentUserId, false);
 
