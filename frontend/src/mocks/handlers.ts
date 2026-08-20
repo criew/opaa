@@ -971,11 +971,11 @@ export const handlers = [
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
     const body = (await request.json()) as AssetGrantRequest
-    if (!body.subjectType || !body.subjectId || !body.role) {
-      return HttpResponse.json(
-        { error: 'subjectType, subjectId und role sind erforderlich' },
-        { status: 400 },
-      )
+    if (!body.subjectType || !body.subjectId) {
+      return HttpResponse.json({ error: 'Empfänger ist erforderlich' }, { status: 400 })
+    }
+    if (!body.role) {
+      return HttpResponse.json({ error: 'Rolle ist erforderlich' }, { status: 400 })
     }
     // Mirrors AssetGrantService's escalation guard: the caller may never grant a role higher than
     // their own.

@@ -2196,7 +2196,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupUpdateRequest:
       type: object
@@ -2211,7 +2211,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupMemberResponse:
       type: object
