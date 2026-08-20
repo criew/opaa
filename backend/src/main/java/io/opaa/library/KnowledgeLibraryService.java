@@ -380,6 +380,11 @@ public class KnowledgeLibraryService {
     String previousDescription = library.getDescription();
     LibraryVisibility previousVisibility = library.getVisibility();
     boolean previousListed = library.isListed();
+    String previousSourcePath = library.getSourcePath();
+    String previousSourceUrl = library.getSourceUrl();
+    String previousSourceProxy = library.getSourceProxy();
+    String previousSourceCredentials = library.getSourceCredentials();
+    boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     library.updateDetails(
         normalizedName, request.getDescription(), request.getVisibility(), listed);
     if (replacesSourceConfiguration) {
@@ -440,6 +445,44 @@ public class KnowledgeLibraryService {
           Map.of("changedFields", changedFields),
           AuditOutcome.SUCCESS,
           null);
+    }
+    // #545: a pure source-configuration change (e.g. rotating sourceCredentials or moving a
+    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
+    // LIBRARY_CHANGED (name/description) nor ASSET_VISIBILITY_CHANGED (visibility/listed) fires
+    // for it, since the edit dialog (#516) resends name/description/visibility/listed unchanged.
+    // Only the set of changed fields is recorded, never their values - sourceCredentials in
+    // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
+    // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
+    if (replacesSourceConfiguration) {
+      List<String> changedSourceFields = new ArrayList<>();
+      if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
+        changedSourceFields.add("sourcePath");
+      }
+      if (!Objects.equals(previousSourceUrl, updated.getSourceUrl())) {
+        changedSourceFields.add("sourceUrl");
+      }
+      if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
+        changedSourceFields.add("sourceProxy");
+      }
+      if (!Objects.equals(previousSourceCredentials, updated.getSourceCredentials())) {
+        changedSourceFields.add("sourceCredentials");
+      }
+      if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
+        changedSourceFields.add("sourceInsecureSsl");
+      }
+      if (!changedSourceFields.isEmpty()) {
+        auditEventRecorder.recordUserAction(
+            updated.getOrganizationId(),
+            currentUserId,
+            AuditEventType.LIBRARY_SOURCE_UPDATED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            updated.getId(),
+            updated.getName(),
+            Map.of("changedFields", changedSourceFields),
+            Map.of("changedFields", changedSourceFields),
+            AuditOutcome.SUCCESS,
+            null);
+      }
     }
     return toLibraryResponse(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
