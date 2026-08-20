@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.SystemRole;
 import io.opaa.auth.User;
@@ -15,16 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * PR #450 review, finding 6: {@code AuditControllerTest} (the {@code @WebMvcTest} slice) mocks
@@ -37,23 +34,20 @@ import org.testcontainers.utility.DockerImageName;
  * ({@link DevAuthFilter}, {@code UserProvisioningFilter}, and - since #394 - the real role check
  * inside {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real
  * Postgres, so both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
+ *
+ * <p>Uses the shared {@link TestcontainersConfiguration} rather than its own
+ * {@code @Container}/{@code @DynamicPropertySource} (issue #497, measure 5), so it shares one
+ * cached context and one container with {@code BrandingControllerIntegrationTest} and {@code
+ * LibraryControllerCredentialsIntegrationTest} - all three now carry the identical
+ * {@code @SpringBootTest}/{@code @AutoConfigureMockMvc}/{@code @Import(TestcontainersConfiguration.class)}/{@code @ActiveProfiles("dev")}
+ * signature.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("dev")
 @Testcontainers(disabledWithoutDocker = true)
 class AuditControllerAuthorizationIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserRepository userRepository;

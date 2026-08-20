@@ -200,6 +200,18 @@ tasks.withType<Test> {
 // problem).
 tasks.named<Test>("test") {
     maxHeapSize = "2g"
+
+    // Issue #497, measure 4 (CI-only): forking two Gradle test-worker JVMs (each with its own
+    // Testcontainers container) was measured on a local Windows dev machine and rejected there -
+    // three runs swung between 4:30 and 6:42 min, worse than the 4:50 min single-fork baseline in
+    // two of three runs, because the second worker competes with the first for CPU/Docker
+    // resources already under pressure from everything else running on that machine (see PR #499).
+    // Dedicated CI runners do not share that contention the same way, so this stays opt-in via the
+    // `CI` environment variable GitHub Actions sets on every job - local `./gradlew test` runs
+    // single-forked exactly as before, and this is a one-line revert if CI turns out unstable too.
+    if (System.getenv("CI") != null) {
+        maxParallelForks = 2
+    }
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
