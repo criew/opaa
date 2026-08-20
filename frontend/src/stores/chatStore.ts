@@ -75,13 +75,25 @@ export function clearSettingsPersistenceCache(): void {
 /**
  * Drops chatId's entries from both module-level settings-persistence maps (#573): a deleted chat
  * can never again be the target of a queued PATCH or a rollback base, so leaving its entries
- * behind would just grow both maps for the rest of the session. Unlike clearSettingsPersistenceCache
- * above, this must not be reused for the per-chain cleanup in applyScopeChange's finally handler
- * below - confirmedSettingsByChatId must survive a chain settling, only a chat's actual deletion
- * may drop it (see the warning on confirmedSettingsByChatId's declaration above).
+ * behind would just grow both maps for the rest of the session. settingsUpdateChains is always
+ * dropped immediately - a later sendMessage for this (deleted) chat must not queue/await behind a
+ * chain that will never again matter. confirmedSettingsByChatId is more delicate (#573 review,
+ * second round): if a PATCH for this chat is still in flight at the moment of deletion, dropping
+ * it right away would rip out the rollback/confirmation base that PATCH's own still-running
+ * success/failure handler may need (see the warning on confirmedSettingsByChatId's declaration
+ * above) - e.g. the user deleted the chat they were currently viewing without navigating away
+ * first, and its own pending settings change then fails. `pendingChain` - this chat's most
+ * recently queued call at the time of deletion - is chained behind every earlier one for the same
+ * chat, so attaching the drop to its own settlement is safe: by the time it fires, every settings
+ * PATCH still outstanding for this chat has settled too.
  */
 export function dropChatSettingsCache(chatId: string): void {
+  const pendingChain = settingsUpdateChains.get(chatId)
   settingsUpdateChains.delete(chatId)
+  if (pendingChain) {
+    void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
+    return
+  }
   confirmedSettingsByChatId.delete(chatId)
 }
 
