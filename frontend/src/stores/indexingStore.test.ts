@@ -90,6 +90,21 @@ describe('indexingStore', () => {
     expect(state.snackbar.message).toBe(UPLOAD_LIBRARY_INDEXING_ERROR)
   })
 
+  it("recognizes the UPLOAD library error by DocumentIndexingService#toIndexingSourceType's literal wording", async () => {
+    // Deliberately not comparing against UPLOAD_LIBRARY_INDEXING_ERROR: a drift between the
+    // constant and the backend's actual German text (e.g. a missed umlaut fix) would otherwise
+    // stay invisible - this test only passes if the constant still matches the real 409 message
+    // DocumentIndexingService#toIndexingSourceType sends.
+    mockTriggerIndexing.mockRejectedValueOnce(
+      new Error('Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'),
+    )
+
+    await useIndexingStore.getState().triggerIndexing('library-a', 'UPLOAD')
+
+    const run = useIndexingStore.getState().runsByLibrary['library-a']
+    expect(run?.status ?? 'IDLE').toBe('IDLE')
+  })
+
   it('loads the current status for a library and starts polling if a run is already active', async () => {
     vi.useFakeTimers()
     mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())

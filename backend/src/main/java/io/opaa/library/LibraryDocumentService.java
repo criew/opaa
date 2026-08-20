@@ -118,7 +118,7 @@ public class LibraryDocumentService {
     if (file.getSize() > uploadProperties.maxFileSize()) {
       throw new ResponseStatusException(
           HttpStatus.PAYLOAD_TOO_LARGE,
-          "Die Datei ist zu gross. Erlaubt sind hoechstens "
+          "Die Datei ist zu groß. Erlaubt sind höchstens "
               + (uploadProperties.maxFileSize() / (1024 * 1024))
               + " MB");
     }
@@ -127,7 +127,7 @@ public class LibraryDocumentService {
     if (!SupportedDocumentFormats.isSupported(displayFileName)) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Das Dateiformat wird nicht unterstuetzt. Erlaubt sind: "
+          "Das Dateiformat wird nicht unterstützt. Erlaubt sind: "
               + String.join(", ", SupportedDocumentFormats.extensions()));
     }
     String extension = matchedExtension(displayFileName);

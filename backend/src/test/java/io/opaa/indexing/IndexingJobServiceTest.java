@@ -63,7 +63,7 @@ class IndexingJobServiceTest {
     assertThatThrownBy(() -> service.startJob(libraryId))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT)
-        .hasMessageContaining("Fuer diese Bibliothek laeuft bereits ein Indizierungslauf");
+        .hasMessageContaining("Für diese Bibliothek läuft bereits ein Indizierungslauf");
   }
 
   @Test

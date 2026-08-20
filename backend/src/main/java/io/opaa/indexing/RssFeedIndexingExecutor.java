@@ -224,7 +224,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           "Skipping RSS entry with a non-http(s) link (rejected by scheme check): {}", entryUrl);
       events.record(
           IndexingEventCategory.REJECTED,
-          "Verknuepfung mit nicht unterstuetztem Schema abgelehnt",
+          "Verknüpfung mit nicht unterstütztem Schema abgelehnt",
           entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
@@ -269,7 +269,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           e.getMessage());
       events.record(
           IndexingEventCategory.UNSUPPORTED_FORMAT,
-          "Inhaltstyp der Detailseite wird nicht unterstuetzt",
+          "Inhaltstyp der Detailseite wird nicht unterstützt",
           entryUrl);
       progress.recordSkipped();
       anyEntryDeferred.set(true);
@@ -380,7 +380,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           e.getMessage());
       events.record(
           IndexingEventCategory.UNSUPPORTED_FORMAT,
-          "Inhaltstyp der Detailseite wird nicht unterstuetzt (Anlagen konnten nicht nachgeladen"
+          "Inhaltstyp der Detailseite wird nicht unterstützt (Anlagen konnten nicht nachgeladen"
               + " werden)",
           entryUrl);
       anyEntryDeferred.set(true);
@@ -509,7 +509,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             contentType);
         events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT,
-            "Anlagenformat wird nicht unterstuetzt",
+            "Anlagenformat wird nicht unterstützt",
             candidate.url());
         anyEntryDeferred.set(true);
         return;
@@ -550,7 +550,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           entryUrl);
       events.record(
           IndexingEventCategory.REJECTED,
-          "Anlage ueberschreitet die zulaessige Groesse",
+          "Anlage überschreitet die zulässige Größe",
           candidate.url());
       anyEntryDeferred.set(true);
     } catch (UrlFileDownloader.ForeignHostRedirectException e) {

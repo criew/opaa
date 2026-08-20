@@ -9,7 +9,7 @@ const POLL_INTERVAL_MS = 2000
 // this specific message instead of the generic failure one, and leave status untouched rather than
 // FAILED, since no run was ever started.
 export const UPLOAD_LIBRARY_INDEXING_ERROR =
-  'Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
+  'Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
 
 type SnackbarSeverity = 'success' | 'error'
 

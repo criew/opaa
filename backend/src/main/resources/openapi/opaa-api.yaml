@@ -2196,7 +2196,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupUpdateRequest:
       type: object
@@ -2211,7 +2211,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupMemberResponse:
       type: object
@@ -2476,7 +2476,7 @@ components:
         Structured result of a source connection test (#514). message is always German and
         always safe to show to the caller verbatim - both on success ("Verzeichnis erreichbar,
         42 Dokumente gefunden") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
-        gueltiges XML."); no exception text or stack trace ever reaches it.
+        gültiges XML."); no exception text or stack trace ever reaches it.
       properties:
         reachable:
           type: boolean

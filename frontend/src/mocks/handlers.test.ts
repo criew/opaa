@@ -47,7 +47,7 @@ describe('MSW Handlers', () => {
       const data = await response.json()
 
       expect(response.status).toBe(409)
-      expect(data.error).toBe('Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
+      expect(data.error).toBe('Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf')
     })
   })
 

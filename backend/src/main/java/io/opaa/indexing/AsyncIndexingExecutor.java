@@ -64,10 +64,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           targetLibrary.getSourcePath());
       events.record(
           IndexingEventCategory.ALLOWLIST,
-          "Verzeichnispfad liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse",
+          "Verzeichnispfad liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse",
           targetLibrary.getSourcePath());
       progress.fail(
-          "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse - der Lauf"
+          "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse - der Lauf"
               + " wurde nicht gestartet");
       return;
     }
@@ -90,7 +90,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       for (Path rejected : discovered.rejected()) {
         events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT,
-            "Dateiformat wird nicht unterstuetzt",
+            "Dateiformat wird nicht unterstützt",
             rejected.getFileName().toString());
       }
       progress.addSkipped(

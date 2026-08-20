@@ -99,13 +99,13 @@ class LibraryIndexingControllerTest {
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenThrow(
             new ResponseStatusException(
-                HttpStatus.CONFLICT, "Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
+                HttpStatus.CONFLICT, "Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
         .andExpect(status().isConflict())
         .andExpect(
-            jsonPath("$.error").value("Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
+            jsonPath("$.error").value("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
   }
 
   @Test
@@ -114,13 +114,12 @@ class LibraryIndexingControllerTest {
     when(indexingService.triggerIndexing(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenThrow(
             new ResponseStatusException(
-                HttpStatus.CONFLICT, "Fuer diese Bibliothek laeuft bereits ein Indizierungslauf"));
+                HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf"));
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
         .andExpect(status().isConflict())
-        .andExpect(
-            jsonPath("$.error").value(containsString("laeuft bereits ein Indizierungslauf")));
+        .andExpect(jsonPath("$.error").value(containsString("läuft bereits ein Indizierungslauf")));
   }
 
   @Test
@@ -222,7 +221,7 @@ class LibraryIndexingControllerTest {
         new IndexingRunEvent(
             job.getId(),
             IndexingEventCategory.UNSUPPORTED_FORMAT,
-            "Dateiformat wird nicht unterstuetzt",
+            "Dateiformat wird nicht unterstützt",
             "bad.csv");
     when(indexingService.getRecentRuns(eq(libraryId), eq(currentUser.getId()), eq(false)))
         .thenReturn(List.of(new IndexingRunDetail(job, List.of(event))));
@@ -235,7 +234,7 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.runs[0].eventsTruncatedCount").value(3))
         .andExpect(jsonPath("$.runs[0].events[0].category").value("UNSUPPORTED_FORMAT"))
         .andExpect(
-            jsonPath("$.runs[0].events[0].message").value("Dateiformat wird nicht unterstuetzt"))
+            jsonPath("$.runs[0].events[0].message").value("Dateiformat wird nicht unterstützt"))
         .andExpect(jsonPath("$.runs[0].events[0].reference").value("bad.csv"));
   }
 

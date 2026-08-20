@@ -114,7 +114,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       for (AutoindexCrawlerService.CrawledFileEntry rejected : rejectedFiles) {
         events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT,
-            "Dateiformat wird nicht unterstuetzt",
+            "Dateiformat wird nicht unterstützt",
             rejected.url());
       }
       progress.addSkipped(

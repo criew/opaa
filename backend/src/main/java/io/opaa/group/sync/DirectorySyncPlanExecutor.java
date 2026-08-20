@@ -172,7 +172,7 @@ class DirectorySyncPlanExecutor {
       String message =
           "Das Verzeichnis hat eine leere Gruppenliste geliefert, obwohl "
               + existingOrgUnits.size()
-              + " Organisationseinheit(en) bekannt sind. Der Lauf wurde ohne Aenderungen"
+              + " Organisationseinheit(en) bekannt sind. Der Lauf wurde ohne Änderungen"
               + " abgebrochen.";
       log.warn(
           "Directory sync: directory returned an empty group list for organization {} while {}"
@@ -196,9 +196,9 @@ class DirectorySyncPlanExecutor {
       String message =
           String.format(
               Locale.ROOT,
-              "Der Lauf wuerde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
-                  + " einfrieren und damit die konfigurierte Schwelle von %s ueberschreiten."
-                  + " Abgebrochen ohne Aenderungen.",
+              "Der Lauf würde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
+                  + " einfrieren und damit die konfigurierte Schwelle von %s überschreiten."
+                  + " Abgebrochen ohne Änderungen.",
               changedPercent,
               thresholdPercent);
       log.warn(
@@ -226,7 +226,7 @@ class DirectorySyncPlanExecutor {
           correlationRef,
           now,
           DirectorySyncOutcome.DRY_RUN,
-          "Trockenlauf - keine Aenderung.",
+          "Trockenlauf - keine Änderung.",
           plan);
     }
 

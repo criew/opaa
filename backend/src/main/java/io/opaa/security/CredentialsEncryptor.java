@@ -78,7 +78,7 @@ public class CredentialsEncryptor {
       return PREFIX + Base64.getEncoder().encodeToString(combined);
     } catch (GeneralSecurityException e) {
       throw new CredentialsEncryptionKeyMissingException(
-          "Zugangsdaten konnten nicht verschluesselt werden", e);
+          "Zugangsdaten konnten nicht verschlüsselt werden", e);
     }
   }
 
@@ -105,14 +105,14 @@ public class CredentialsEncryptor {
     }
     if (!stored.startsWith(PREFIX)) {
       throw new CredentialsEncryptionKeyMissingException(
-          "Gespeicherter Zugangsdaten-Wert hat ein unbekanntes Verschluesselungsformat");
+          "Gespeicherter Zugangsdaten-Wert hat ein unbekanntes Verschlüsselungsformat");
     }
     SecretKeySpec key = requireKey();
     try {
       byte[] combined = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
       if (combined.length <= GCM_IV_LENGTH_BYTES) {
         throw new CredentialsEncryptionKeyMissingException(
-            "Gespeicherter Zugangsdaten-Wert ist beschaedigt");
+            "Gespeicherter Zugangsdaten-Wert ist beschädigt");
       }
       byte[] iv = Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH_BYTES);
       byte[] ciphertext = Arrays.copyOfRange(combined, GCM_IV_LENGTH_BYTES, combined.length);
@@ -121,8 +121,8 @@ public class CredentialsEncryptor {
       return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
     } catch (IllegalArgumentException | GeneralSecurityException e) {
       throw new CredentialsEncryptionKeyMissingException(
-          "Zugangsdaten konnten nicht entschluesselt werden - falscher oder fehlender"
-              + " Verschluesselungsschluessel oder beschaedigter Wert",
+          "Zugangsdaten konnten nicht entschlüsselt werden - falscher oder fehlender"
+              + " Verschlüsselungsschlüssel oder beschädigter Wert",
           e);
     }
   }
@@ -131,7 +131,7 @@ public class CredentialsEncryptor {
     String base64Key = properties.encryptionKey();
     if (!StringUtils.hasText(base64Key)) {
       throw new CredentialsEncryptionKeyMissingException(
-          "Zugangsdaten koennen nicht gespeichert oder gelesen werden: "
+          "Zugangsdaten können nicht gespeichert oder gelesen werden: "
               + "opaa.security.credentials.encryption-key (OPAA_CREDENTIALS_ENCRYPTION_KEY) ist"
               + " nicht gesetzt. Siehe docs/deployment.md.");
     }
@@ -140,13 +140,13 @@ public class CredentialsEncryptor {
       keyBytes = Base64.getDecoder().decode(base64Key);
     } catch (IllegalArgumentException e) {
       throw new CredentialsEncryptionKeyMissingException(
-          "OPAA_CREDENTIALS_ENCRYPTION_KEY ist kein gueltiger Base64-Wert. Siehe"
+          "OPAA_CREDENTIALS_ENCRYPTION_KEY ist kein gültiger Base64-Wert. Siehe"
               + " docs/deployment.md.",
           e);
     }
     if (keyBytes.length != REQUIRED_KEY_LENGTH_BYTES) {
       throw new CredentialsEncryptionKeyMissingException(
-          "OPAA_CREDENTIALS_ENCRYPTION_KEY muss ein Base64-kodierter 256-Bit-Schluessel (32 Byte)"
+          "OPAA_CREDENTIALS_ENCRYPTION_KEY muss ein Base64-kodierter 256-Bit-Schlüssel (32 Byte)"
               + " sein. Siehe docs/deployment.md.");
     }
     return new SecretKeySpec(keyBytes, KEY_ALGORITHM);

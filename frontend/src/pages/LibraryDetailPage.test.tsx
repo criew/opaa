@@ -522,7 +522,7 @@ describe('LibraryDetailPage', () => {
               events: [
                 {
                   category: 'UNSUPPORTED_FORMAT',
-                  message: 'Dateiformat wird nicht unterstuetzt',
+                  message: 'Dateiformat wird nicht unterstützt',
                   reference: 'bad.csv',
                 },
               ],
@@ -547,7 +547,7 @@ describe('LibraryDetailPage', () => {
 
     expect(runToggle).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByText('bad.csv')).toBeVisible()
-    expect(screen.getByText('Dateiformat wird nicht unterstuetzt')).toBeVisible()
+    expect(screen.getByText('Dateiformat wird nicht unterstützt')).toBeVisible()
     expect(
       within(screen.getByText('bad.csv').closest('div')!).getByText(/format nicht/i),
     ).toBeVisible()
