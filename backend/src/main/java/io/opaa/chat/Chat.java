@@ -77,6 +77,20 @@ public class Chat {
    * chat_library_references join table (migration 032), not an array column, so both foreign keys
    * are enforced at the database level.
    *
+   * <p><b>#677 (migration 048): chat_library_references also carries organization_id, which this
+   * collection deliberately never sets.</b> A BEFORE INSERT trigger, {@code
+   * trg_chat_library_references_set_organization}, derives it unconditionally from the row's own
+   * {@code chat_id} on every insert - the composite foreign keys {@code
+   * fk_chat_library_references_chat_organization}/{@code
+   * fk_chat_library_references_library_organization} then reject a chat_id/library_id pair whose
+   * organizations differ, at the database level, without the application ever naming an
+   * organization_id itself. Widening this {@code @ElementCollection<UUID>} to a {@code
+   * Set<Embeddable>} carrying organization_id was considered and rejected (PR #680 review): it
+   * would make the column application-settable, and therefore application-misassignable, for a
+   * value whose entire point is to be derivable and unforgeable. If this collection ever needs a
+   * second attribute for an unrelated reason, keep organization_id out of the Java model and let
+   * the trigger keep owning it.
+   *
    * <p>{@code EAGER} (#525 review round 2, finding A): {@code QueryService#query} deliberately runs
    * with no ambient transaction (see that method's Javadoc), so a {@link Chat} loaded by {@code
    * ChatService#findOwnedChat} is detached by the time {@code QueryService} reads this collection a
