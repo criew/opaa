@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import Alert from '@mui/material/Alert'
+import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { useNavigate, useParams } from 'react-router'
@@ -95,6 +96,18 @@ export default function ChatPage() {
         documentTitle={chatTitle ?? undefined}
         visuallyHidden
       />
+      {chatTitle && (
+        // Mockup 1a's header bar (#658). aria-hidden: the visually hidden PageHeading above
+        // already announces the title - this bar is purely visual.
+        <Box
+          aria-hidden="true"
+          sx={{ px: 5, py: 2, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
+        >
+          <Typography component="div" noWrap sx={{ fontSize: 18, fontWeight: 600 }}>
+            {chatTitle}
+          </Typography>
+        </Box>
+      )}
       {error && (
         <Alert severity="error" sx={{ m: 2 }}>
           {error}

@@ -32,7 +32,7 @@ export default function BrandMark({
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {branding.logoUrl && (
+        {branding.logoUrl ? (
           <Box
             component="img"
             src={branding.logoUrl}
@@ -42,6 +42,44 @@ export default function BrandMark({
             height={logoHeight}
             sx={{ height: logoHeight, width: 'auto', maxWidth: 160, objectFit: 'contain' }}
           />
+        ) : (
+          // The OPAA standard mark from mockup 1a: accent-stroked squircle, document lines in
+          // the surrounding text color so it works on navy and on white alike (#658 Nachbesserung).
+          <Box
+            component="svg"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            sx={{ width: logoHeight - 2, height: logoHeight - 2, flexShrink: 0 }}
+          >
+            <Box
+              component="rect"
+              x={2.5}
+              y={2.5}
+              width={19}
+              height={19}
+              rx={5.5}
+              sx={{ fill: 'none', stroke: (t) => t.palette.primary.main, strokeWidth: 1.8 }}
+            />
+            <Box
+              component="path"
+              d="M7 13h6M7 16.5h8.5"
+              sx={{
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.8,
+                strokeLinecap: 'round',
+              }}
+            />
+            <Box
+              component="rect"
+              x={14.5}
+              y={6.5}
+              width={3.5}
+              height={3.5}
+              rx={1}
+              sx={{ fill: (t) => t.palette.primary.main }}
+            />
+          </Box>
         )}
         <Typography variant={variant} component="span" sx={{ fontWeight: 700 }}>
           {branding.productName}

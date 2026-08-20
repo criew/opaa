@@ -68,4 +68,20 @@ describe('SourceCard', () => {
     const paper = container.firstChild as HTMLElement
     expect(paper).toHaveStyle({ opacity: '0.6' })
   })
+
+  it('renders origin link when sourceEntryUrl is set', () => {
+    render(
+      <SourceCard
+        source={{ ...baseSource, sourceEntryUrl: 'https://example.com/feed/entry-123' }}
+      />,
+    )
+    expect(screen.getByText(/Herkunft:/)).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: 'https://example.com/feed/entry-123' })
+    expect(link).toHaveAttribute('href', 'https://example.com/feed/entry-123')
+  })
+
+  it('renders no origin link when sourceEntryUrl is absent', () => {
+    render(<SourceCard source={baseSource} />)
+    expect(screen.queryByText(/Herkunft:/)).not.toBeInTheDocument()
+  })
 })

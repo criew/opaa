@@ -395,6 +395,41 @@ class UrlFileDownloaderTest {
   }
 
   @Test
+  void downloadBoundedThrowsWhenRedirectedToAHostUriCannotParse() throws IOException {
+    // #651: a redirect target with a host java.net.URI cannot parse (e.g. one containing an
+    // underscore, per RFC an illegal reg-name character) makes URI#getHost() return null on that
+    // side - isForeignHostRedirect previously special-cased "either host null" as "not foreign" and
+    // let the header-stripping/rejection logic treat this exactly like a same-origin redirect,
+    // the opposite of AutoindexCrawlerService.sameOrigin's own null-host handling (#615 review,
+    // finding 1: "both hosts null must not compare equal"). A redirect target OPAA cannot even
+    // identify the host of must never be treated as trustworthy.
+    //
+    // Uses the production client (Redirect.NEVER, downloadBounded's own manual redirect loop,
+    // mirroring downloadBoundedThrowsWhenRedirectedToAForeignHostWithTheProductionClient above) -
+    // the underscore host is never actually resolvable, so a NORMAL client auto-following the
+    // redirect at the JDK level would fail with an UnknownHostException before ever reaching
+    // isForeignHostRedirect, unlike downloadBounded's own proactive check on the raw 3xx response.
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", "http://ex_ample.invalid/anlage.pdf");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                downloader.downloadBounded(
+                    AutoindexCrawlerService.buildHttpClient(null, -1, false),
+                    baseUrl + "/anlage.pdf",
+                    "anlage.pdf",
+                    10_000,
+                    null,
+                    null))
+        .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
+  }
+
+  @Test
   void downloadDropsAuthorizationOnASameHostDifferentPortRedirect()
       throws IOException, InterruptedException {
     // #538 follow-up review, finding 1: sendFollowingRedirects originally compared host+scheme

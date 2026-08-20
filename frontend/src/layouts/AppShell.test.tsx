@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import AppShell from './AppShell'
+import { useAuthStore } from '../stores/authStore'
 import PageHeading from '../components/a11y/PageHeading'
 
 function renderShell(initialRoute = '/chat') {
@@ -47,9 +48,8 @@ describe('AppShell', () => {
 
   it('renders sidebar navigation links', () => {
     renderShell()
-    expect(screen.getByText('Spaces')).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByText('Einstellungen')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Wissensbibliotheken' })).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {
@@ -80,7 +80,12 @@ describe('AppShell', () => {
     renderShell()
     expect(document.body).toHaveFocus()
 
-    await user.click(within(screen.getByRole('navigation')).getByText('Einstellungen'))
+    // Einstellungen lives in the user menu since #587 - open it via the user badge.
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'a@b.example', displayName: 'A. Tester', systemRole: 'USER' },
+    })
+    await user.click(await screen.findByRole('button', { name: 'Benutzermenü' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toHaveFocus()
     expect(document.title).toBe('Einstellungen · OPAA')

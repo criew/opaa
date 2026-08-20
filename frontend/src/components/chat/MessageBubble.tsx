@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Avatar from '@mui/material/Avatar'
+import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Collapse from '@mui/material/Collapse'
 import IconButton from '@mui/material/IconButton'
-import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { ChatMessage } from '../../types/chat'
+import { blue } from '../../theme/tokens'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceCard from './SourceCard'
 import FeedbackButtons from './FeedbackButtons'
@@ -38,36 +37,38 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         sx={{
           display: 'flex',
           gap: 1.5,
-          maxWidth: isUser ? '80%' : '100%',
+          maxWidth: isUser ? '78%' : '100%',
           width: isUser ? undefined : '100%',
         }}
       >
-        {!isUser && (
-          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, mt: 0.5 }}>
-            <SmartToyIcon fontSize="small" />
-          </Avatar>
-        )}
-
         <Box sx={{ minWidth: 0, flexGrow: isUser ? undefined : 1 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              bgcolor: isUser ? 'primary.main' : 'background.paper',
-              color: isUser ? 'primary.contrastText' : 'text.primary',
-              borderRadius: '16px',
-              borderTopRightRadius: isUser ? '4px' : undefined,
-              borderTopLeftRadius: isUser ? undefined : '4px',
-            }}
-          >
-            {isUser ? (
+          {/* Mockup 1a (#658): questions sit in a quiet blue-50 bubble with navy text; answers
+              are plain running text without an avatar or a bubble around them. */}
+          {isUser ? (
+            <Box
+              sx={(theme) => ({
+                px: 2,
+                py: 1.5,
+                borderRadius: '10px',
+                border: 1,
+                bgcolor:
+                  theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.16)
+                    : blue[50],
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.32)
+                    : blue[100],
+                color: 'text.primary',
+              })}
+            >
               <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                 {message.content}
               </Typography>
-            ) : (
-              <MarkdownRenderer content={message.content} />
-            )}
-          </Paper>
+            </Box>
+          ) : (
+            <MarkdownRenderer content={message.content} />
+          )}
 
           {!isUser && message.answeredWithoutKnowledge && (
             <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>

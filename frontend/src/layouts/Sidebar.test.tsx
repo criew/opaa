@@ -7,6 +7,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { createAppTheme } from '../theme/theme'
 import Sidebar from './Sidebar'
+import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -63,6 +64,15 @@ describe('Sidebar', () => {
       error: null,
     })
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
+    useAuthStore.setState({
+      user: {
+        id: 'user-1',
+        email: 'b.wagner@example.de',
+        displayName: 'B. Wagner',
+        systemRole: 'USER',
+      },
+      isAuthenticated: true,
+    })
     useSpaceStore.setState({
       spaces: [
         {
@@ -94,20 +104,22 @@ describe('Sidebar', () => {
     })
   })
 
-  it('renders navigation items', () => {
+  it('renders the target-design structure: space switcher, chats, section navigation', () => {
     renderSidebarAtRoute('/settings')
-    expect(screen.getByText('Spaces')).toBeInTheDocument()
+    // The switcher carries the active (here: default) space's name.
+    expect(screen.getByRole('button', { name: /Meine Dokumente/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByText('Meine Dokumente')).toBeInTheDocument()
-    expect(screen.getByText('Einstellungen')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Wissensbibliotheken' })).toBeInTheDocument()
+    // Einstellungen moved into the user menu - not a top-level item anymore.
+    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
   })
 
-  it('renders the configured product name and claim rather than a hardcoded one', () => {
-    // #583: the sidebar head is no longer literal text - it comes from the branding store, which
-    // starts on the OPAA standard. The next test proves it actually follows a change.
+  it('renders the configured product name without the claim (mockup 1a shows the mark only)', () => {
+    // #583: the sidebar head comes from the branding store, which starts on the OPAA standard.
+    // #658: the claim moved out of the sidebar - mockup 1a reserves it for the sign-in page.
     renderSidebarAtRoute('/settings')
     expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+    expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
   })
 
   it('follows a configured branding', () => {
@@ -124,7 +136,6 @@ describe('Sidebar', () => {
     renderSidebarAtRoute('/settings')
 
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
-    expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
   })
 
@@ -176,5 +187,89 @@ describe('Sidebar', () => {
     expect(await screen.findByText('Unbenannter Chat')).toBeInTheDocument()
     expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
     expect(screen.queryByText('Deployment-Fragen')).not.toBeInTheDocument()
+  })
+
+  it('opens the space switcher listing every space with kind and member count', async () => {
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/settings')
+
+    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+
+    expect(screen.getByText('Ihre Spaces')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Engineering/ })).toBeInTheDocument()
+    expect(screen.getByText('Team · 3 Mitglieder')).toBeInTheDocument()
+    expect(screen.getByText('Persönlich · 1 Mitglied')).toBeInTheDocument()
+  })
+
+  it('navigates to a space chosen in the switcher', async () => {
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/settings')
+
+    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering')
+  })
+
+  it('navigates to the spaces overview via the switcher', async () => {
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/settings')
+
+    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces')
+  })
+
+  it('opens the create-space dialog via the switcher', async () => {
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/settings')
+
+    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))
+
+    expect(screen.getByText('Space erstellen')).toBeInTheDocument()
+  })
+
+  it('links "Space einrichten" to the active space management page', () => {
+    renderSidebarAtRoute('/spaces/space-engineering')
+
+    expect(screen.getByRole('link', { name: 'Space einrichten' })).toHaveAttribute(
+      'href',
+      '/spaces/space-engineering/manage',
+    )
+  })
+
+  it('offers Einstellungen and Abmelden in the user menu', async () => {
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/settings')
+
+    await user.click(screen.getByRole('button', { name: 'Benutzermenü' }))
+
+    expect(screen.getByRole('menuitem', { name: 'Einstellungen' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Abmelden' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
+    expect(mockNavigate).toHaveBeenCalledWith('/settings')
+  })
+
+  it('hides admin destinations from regular users and shows them to system admins', () => {
+    const { unmount } = renderSidebarAtRoute('/settings')
+    expect(screen.queryByRole('link', { name: 'Gruppen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Branding' })).not.toBeInTheDocument()
+    unmount()
+
+    useAuthStore.setState({
+      user: {
+        id: 'user-2',
+        email: 'admin@example.de',
+        displayName: 'Admin',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+      isAuthenticated: true,
+    })
+    renderSidebarAtRoute('/settings')
+    expect(screen.getByRole('link', { name: 'Gruppen' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Branding' })).toBeInTheDocument()
   })
 })

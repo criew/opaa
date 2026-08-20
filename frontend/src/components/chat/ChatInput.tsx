@@ -2,17 +2,17 @@ import type { ChangeEvent, KeyboardEvent } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
+import { darkRoles, gray, shadow } from '../../theme/tokens'
+import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
-import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
@@ -318,9 +318,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           mx: 'auto',
           bgcolor: 'background.paper',
           border: 1,
-          borderColor: 'divider',
-          borderRadius: '16px',
-          p: 1,
+          // Mockup 1a draws the input row with the crisper gray-300 line and a hairline
+          // shadow (#658).
+          borderColor: (theme) =>
+            theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
+          borderRadius: '10px',
+          boxShadow: shadow.hairline,
+          px: 1.75,
+          py: 1.25,
         }}
       >
         <TextField
@@ -359,21 +364,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
             },
           }}
         />
-        <IconButton
-          color="primary"
+        <Button
+          variant="contained"
           onClick={handleSend}
           disabled={disabled || !value.trim()}
           aria-label="Nachricht senden"
-          sx={{
-            bgcolor: 'primary.main',
-            color: 'white',
-            '&:hover': { bgcolor: 'primary.dark' },
-            '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
-            borderRadius: '12px',
-          }}
         >
-          <SendIcon />
-        </IconButton>
+          Fragen
+        </Button>
       </Box>
 
       <Popper

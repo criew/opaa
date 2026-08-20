@@ -59,6 +59,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
@@ -73,6 +74,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
 
     await waitFor(() => {
@@ -86,6 +88,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
 
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
@@ -104,6 +107,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
 
     expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
@@ -121,6 +125,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)

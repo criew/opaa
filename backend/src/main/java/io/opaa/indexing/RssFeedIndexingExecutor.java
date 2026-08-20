@@ -162,8 +162,25 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String authHeader =
           AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-      HttpClient httpClient =
+      // #637: the library's own sourceInsecureSsl, mirroring UrlIndexingExecutor#execute - before
+      // this fix it was always false here, so a RSS_FEED library configured with
+      // sourceInsecureSsl: true still rejected a self-signed certificate on its own feed fetch.
+      //
+      // #663 review, finding 1: sourceInsecureSsl must never weaken certificate validation for a
+      // target the feed's own *content* points at (an entry's <link>, an attachment URL) once that
+      // target is a foreign host - only the feed's own origin is a source configuration the library
+      // owner actually vouches for. Two clients are therefore built: secureClient always validates
+      // normally, insecureClient relaxes validation only when the library asks for it, and is used
+      // exclusively for requests {@link #httpClientForTarget} resolves as same-origin with the feed
+      // itself (mirroring {@link #authHeaderForTarget}'s already-existing same-origin decision for
+      // the Authorization header, #642 review finding 1).
+      HttpClient secureClient =
           AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+      HttpClient insecureClient =
+          targetLibrary.isSourceInsecureSsl()
+              ? AutoindexCrawlerService.buildHttpClient(
+                  config.proxyHost(), config.proxyPort(), true)
+              : secureClient;
 
       // #646: keyed by (libraryId, feedUrl), not feedUrl alone - see RssFeedState's Javadoc for
       // why a lookup by feedUrl alone let a new library inherit a previously deleted or
@@ -172,7 +189,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       Optional<RssFeedState> feedState =
           feedStateRepository.findByLibraryIdAndFeedUrl(targetLibrary.getId(), feedUrl);
       HttpResponse<InputStream> feedResponse =
-          fetchFeed(httpClient, feedUrl, feedState, authHeader);
+          fetchFeed(insecureClient, feedUrl, feedState, authHeader);
 
       if (feedResponse.statusCode() == 304) {
         closeQuietly(feedResponse.body());
@@ -226,7 +243,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
         processEntry(
-            httpClient,
+            secureClient,
+            insecureClient,
             entry,
             targetLibrary,
             progress,
@@ -278,7 +296,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private void processEntry(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       RssFeedEntry entry,
       KnowledgeLibrary targetLibrary,
       IndexingRunProgress progress,
@@ -300,10 +319,26 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
+    // #651: an http(s)-prefixed link can still be syntactically invalid (e.g. an embedded space
+    // or an illegal host character) - URI.create(entryUrl) deep inside fetchDetailPage would then
+    // throw IllegalArgumentException, uncaught by any of the catch clauses below, and propagate all
+    // the way out to execute()'s outer catch (Exception e), ending the *entire* run instead of just
+    // this one malformed entry - exactly like the scheme check above, but for a validity problem
+    // isHttpOrHttps's plain prefix check cannot detect.
+    if (!isValidUri(entryUrl)) {
+      log.warn("Skipping RSS entry with a syntactically invalid link: {}", entryUrl);
+      events.record(
+          IndexingEventCategory.REJECTED, "Verknüpfung mit ungültiger URL abgelehnt", entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
+    }
+
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
-          httpClient,
+          secureClient,
+          insecureClient,
           entryUrl,
           progress,
           events,
@@ -319,7 +354,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     DetailPage detailPage;
     try {
       detailPage =
-          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
+          fetchDetailPage(
+              secureClient,
+              insecureClient,
+              feedUrl,
+              entryUrl,
+              authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -360,6 +400,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         Thread.currentThread().interrupt();
       }
       return;
+    } catch (IllegalArgumentException e) {
+      // #651, PR #664 review finding 1: entryUrl itself already passed isValidUri above, but a
+      // redirect hop's own Location header is server-controlled input no pre-validation can cover -
+      // sendDetailPageRequest's currentUri.resolve(location) can still throw this for a Location
+      // value that is not a valid relative/absolute reference at all, uncaught by any of the
+      // clauses above. Skipping only this entry (instead of letting it propagate to execute()'s
+      // outer catch and end the whole run) mirrors every other rejection above.
+      log.warn(
+          "Skipping RSS entry whose detail-page redirect could not be resolved: {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED, "Weiterleitung der Detailseite ungültig", entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
     }
 
     if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
@@ -384,7 +440,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
         processAttachments(
-            httpClient,
+            secureClient,
+            insecureClient,
             detailPage.attachments(),
             entryUrl,
             targetLibrary,
@@ -418,7 +475,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * (no detail-page request at all).
    */
   private void processUnchangedEntry(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       String entryUrl,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
@@ -440,7 +498,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     DetailPage detailPage;
     try {
       detailPage =
-          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
+          fetchDetailPage(
+              secureClient,
+              insecureClient,
+              feedUrl,
+              entryUrl,
+              authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
@@ -482,9 +545,26 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         Thread.currentThread().interrupt();
       }
       return;
+    } catch (IllegalArgumentException e) {
+      // #651, PR #664 review finding 1 - mirrors processEntry's identical catch above: a redirect
+      // hop's own (server-controlled) Location header can still make currentUri.resolve(location)
+      // throw here, uncaught by any clause above, ending the whole run instead of just deferring
+      // this entry's attachment backfill to a future one.
+      log.warn(
+          "Could not fetch RSS detail page to backfill attachments, its redirect could not be"
+              + " resolved, will retry on a future run: {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Weiterleitung der Detailseite beim Nachladen von Anlagen ungültig",
+          entryUrl);
+      anyEntryDeferred.set(true);
+      return;
     }
     processAttachments(
-        httpClient,
+        secureClient,
+        insecureClient,
         detailPage.attachments(),
         entryUrl,
         targetLibrary,
@@ -511,7 +591,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * of bug, one level down).
    */
   private void processAttachments(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       List<AttachmentCandidate> candidates,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
@@ -533,7 +614,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
       delayBeforeRequest();
       processAttachment(
-          httpClient,
+          secureClient,
+          insecureClient,
           candidate,
           entryUrl,
           targetLibrary,
@@ -553,7 +635,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * both processed <em>and</em> failed.
    */
   private void processAttachment(
-      HttpClient httpClient,
+      HttpClient secureClient,
+      HttpClient insecureClient,
       AttachmentCandidate candidate,
       String entryUrl,
       KnowledgeLibrary targetLibrary,
@@ -564,9 +647,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       String feedUrl) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
+      // #663 review, finding 1: an attachment candidate's own URL is content the feed operator
+      // controls, exactly like an entry's <link> (see #httpClientForTarget) - sourceInsecureSsl
+      // must not weaken certificate validation for it once it points off the feed's own origin.
+      HttpClient client =
+          httpClientForTarget(secureClient, insecureClient, feedUrl, candidate.url());
       downloaded =
           attachmentDownloader.downloadBounded(
-              httpClient,
+              client,
               candidate.url(),
               candidate.suggestedFileName(),
               properties.maxAttachmentSizeBytes(),
@@ -787,9 +875,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * the configured selector is applied, so boilerplate that happens to sit inside the matched main
    * element (a skip link, a "share this article" bar) does not survive either, and is never
    * considered for attachments.
+   *
+   * <p>{@code secureClient}/{@code insecureClient} (#663 review, finding 1): {@link
+   * #httpClientForTarget} picks the client for {@code entryUrl} itself, once, before any redirect
+   * is followed - {@link #sendDetailPageRequest} already refuses every hop that would leave {@code
+   * entryUrl}'s own origin (a foreign one, or the feed's), so the origin - and therefore which
+   * client is correct - never changes mid-chain.
    */
-  private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl, String authHeader)
+  private DetailPage fetchDetailPage(
+      HttpClient secureClient,
+      HttpClient insecureClient,
+      String feedUrl,
+      String entryUrl,
+      String authHeader)
       throws IOException, InterruptedException {
+    HttpClient httpClient = httpClientForTarget(secureClient, insecureClient, feedUrl, entryUrl);
     HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
 
     // #490 review, finding 4: every path below - the three early rejections and the ordinary
@@ -947,15 +1047,28 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
    * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
    * downgrade specifically before ever reaching this check.
+   *
+   * <p><b>An unparsable host on either side is foreign, not "not foreign" (#651).</b> Delegates the
+   * comparison entirely to {@link AutoindexCrawlerService#sameOrigin}, which already treats a
+   * {@code null} host on either side (a hostname {@code URI} cannot parse, e.g. one containing an
+   * underscore) as never matching - previously this method special-cased {@code getHost() == null}
+   * itself and returned {@code false} ("not foreign") whenever a host could not be parsed, the
+   * exact opposite of {@code sameOrigin}'s reasoning (#615 review, finding 1): a redirect target
+   * OPAA cannot even identify the host of must never be trusted with the feed's own credentials.
+   *
+   * <p><b>An unparsable {@code originalUrl} is foreign too (PR #664 review, finding 2).</b> {@code
+   * originalUrl} is always {@code entryUrl} or an already-followed, previously-vetted redirect hop
+   * here - by the time this method runs it has no legitimate reason to fail {@code new URI(...)}.
+   * Falling back to "not foreign" on that failure would have silently matched the same
+   * inverted-default bug the null-host fix above closes; {@code true} is the only answer consistent
+   * with the rest of this method's "unparsable = untrustworthy" reasoning.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return originalUri.getHost() != null
-          && finalUri.getHost() != null
-          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
-      return false;
+      return true;
     }
   }
 
@@ -975,14 +1088,32 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (authHeader == null) {
       return null;
     }
+    return isSameOriginAsFeed(feedUrl, targetUrl) ? authHeader : null;
+  }
+
+  /**
+   * Picks {@code insecureClient} for a request whose target shares the feed's own origin ({@link
+   * AutoindexCrawlerService#sameOrigin}), {@code secureClient} for anything else - #663 review,
+   * finding 1. {@code sourceInsecureSsl} is a property of the library's own configured source, not
+   * a blanket "skip certificate validation for whatever this feed points at": an entry's own {@code
+   * <link>} or an attachment candidate's URL is content the feed operator controls, exactly like
+   * {@link #authHeaderForTarget}'s credentials case above, and a request to an address outside the
+   * feed's origin must be validated normally, no matter how the library itself is configured. An
+   * unparseable {@code targetUrl} is treated as foreign (the secure client) rather than trusted by
+   * default.
+   */
+  private static HttpClient httpClientForTarget(
+      HttpClient secureClient, HttpClient insecureClient, String feedUrl, String targetUrl) {
+    return isSameOriginAsFeed(feedUrl, targetUrl) ? insecureClient : secureClient;
+  }
+
+  private static boolean isSameOriginAsFeed(String feedUrl, String targetUrl) {
     try {
-      if (AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl))) {
-        return authHeader;
-      }
+      return AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl));
     } catch (IllegalArgumentException e) {
-      // Falls through - an unparseable target URL is never trusted with the feed's credentials.
+      // An unparseable target URL is never trusted as same-origin.
+      return false;
     }
-    return null;
   }
 
   private void delayBeforeRequest() {
@@ -1002,6 +1133,32 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     String lowerCased = url.strip().toLowerCase(Locale.ROOT);
     return lowerCased.startsWith("http://") || lowerCased.startsWith("https://");
+  }
+
+  /**
+   * Whether {@code url} is a syntactically valid, resolvable {@link URI} (#651) - {@code
+   * isHttpOrHttps} only checks the scheme prefix, so an http(s)-prefixed link with e.g. an embedded
+   * space or an illegal host character still passes it, but would make {@code URI.create(url)}
+   * throw {@link IllegalArgumentException} the moment {@link #fetchDetailPage} (or {@link
+   * #processUnchangedEntry}'s own detail-page fetch) is reached.
+   *
+   * <p><b>{@code getHost() != null} is checked too (PR #664 review, finding 1).</b> {@code
+   * URI.create} itself accepts a link whose host it cannot parse (e.g. a raw, non-punycode IDN like
+   * {@code https://münchen.de/...}, or one containing an underscore) without throwing at all -
+   * {@code getHost()} then simply returns {@code null}. Only the later {@code
+   * HttpRequest.newBuilder().uri(...)} call inside {@link #sendDetailPageRequest} rejects such a
+   * URI (with {@code IllegalArgumentException: unsupported URI}), by which point this check has
+   * long been passed and the same uncaught-exception problem this method exists to close would
+   * recur. This is deliberately a stricter, extra condition on top of validity - not a delegation
+   * to {@link AutoindexCrawlerService#sameOrigin}, which answers a different question (same origin
+   * as another URI) and always needs two URIs to compare, not one to validate on its own.
+   */
+  private static boolean isValidUri(String url) {
+    try {
+      return URI.create(url).getHost() != null;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /**

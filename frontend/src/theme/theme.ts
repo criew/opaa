@@ -3,6 +3,8 @@ import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import type { BrandingOverrides, SchemeRoles } from './tokens'
 import {
+  blue,
+  carbon,
   darkRoles,
   focusRingAlpha,
   focusRingWidthPx,
@@ -15,6 +17,7 @@ import {
   lineHeight,
   motion,
   navy,
+  navyRoles,
   radius,
   semanticColors,
   shadow,
@@ -24,8 +27,8 @@ import {
 export const CHAT_MAX_WIDTH = '896px'
 
 /** Guidelines 5.1: comfortable and compact control heights. */
-const CONTROL_HEIGHT = 40
-const CONTROL_HEIGHT_COMPACT = 32
+const CONTROL_HEIGHT = 34
+const CONTROL_HEIGHT_COMPACT = 28
 
 /**
  * Resolves the effective accent states. Without branding, the exact sampled mockup values
@@ -54,8 +57,20 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
  * borders and surface steps, shadows are reserved for floating layers.
  */
 export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides): Theme {
+  return buildTheme(mode, mode === 'dark' ? darkRoles : lightRoles, branding)
+}
+
+/**
+ * The sidebar's own theme (#587/#654): while the app is light it keeps the mockup's navy block
+ * ({@link navyRoles}, guidelines 2.3); while the app is dark it follows the carbon dark scheme
+ * like the rest of the interface. Always dark-mode MUI semantics, since both surfaces are dark.
+ */
+export function createSidebarTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
+  return buildTheme('dark', appMode === 'light' ? navyRoles : darkRoles, branding)
+}
+
+function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
-  const roles = isDark ? darkRoles : lightRoles
   const { accent, accentHover, accentPress } = resolveAccent(roles, branding)
   const focusRing = alpha(accent, focusRingAlpha)
   // One focus ring for everything interactive, in both schemes (guidelines 4.4). Shared between
@@ -91,64 +106,76 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
         disabled: roles.fg3,
       },
     },
+    // The fine grid below is sampled from mockup 1a's inline styles (#658) - the app surface
+    // runs deliberately smaller and denser than the token scale's headline steps.
     typography: {
       fontFamily: fontFamily.sans,
       h1: {
-        fontSize: fontSize.xl3,
-        fontWeight: fontWeight.bold,
+        fontSize: 27,
+        fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.tight,
         letterSpacing: letterSpacing.tight,
       },
       h2: {
-        fontSize: fontSize.xl2,
-        fontWeight: fontWeight.bold,
+        fontSize: 26,
+        fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.tight,
         letterSpacing: letterSpacing.tight,
       },
       h3: {
-        fontSize: fontSize.xl,
+        fontSize: 20,
         fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.snug,
         letterSpacing: letterSpacing.tight,
       },
       h4: {
-        fontSize: fontSize.lg,
+        fontSize: 18,
         fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.snug,
       },
       h5: {
-        fontSize: fontSize.md,
+        fontSize: 16,
         fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.snug,
       },
       h6: {
-        fontSize: fontSize.base,
+        fontSize: 14.5,
         fontWeight: fontWeight.semibold,
         lineHeight: lineHeight.snug,
       },
       body1: {
-        fontSize: fontSize.base,
-        lineHeight: lineHeight.normal,
+        fontSize: 14.5,
+        lineHeight: 1.65,
         letterSpacing: letterSpacing.normal,
       },
       body2: {
-        fontSize: fontSize.sm,
+        fontSize: 13,
         lineHeight: lineHeight.normal,
         letterSpacing: letterSpacing.normal,
       },
+      subtitle1: {
+        fontSize: 14.5,
+        fontWeight: fontWeight.medium,
+        lineHeight: lineHeight.snug,
+      },
+      subtitle2: {
+        fontSize: 13,
+        fontWeight: fontWeight.medium,
+        lineHeight: lineHeight.snug,
+      },
       caption: {
-        fontSize: fontSize.xs,
+        fontSize: 11,
         lineHeight: lineHeight.snug,
       },
       overline: {
-        fontSize: fontSize.xs2,
+        fontSize: 9.5,
         fontWeight: fontWeight.medium,
-        letterSpacing: letterSpacing.caps,
+        letterSpacing: '0.12em',
         textTransform: 'uppercase',
         lineHeight: lineHeight.snug,
       },
       button: {
-        fontSize: fontSize.sm,
+        fontSize: 13.5,
         fontWeight: fontWeight.medium,
         textTransform: 'none',
         letterSpacing: letterSpacing.normal,
@@ -229,8 +256,10 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
         },
         styleOverrides: {
           root: {
-            borderRadius: radius.md,
+            borderRadius: radius.sm,
             minHeight: CONTROL_HEIGHT,
+            paddingLeft: 18,
+            paddingRight: 18,
             variants: [
               {
                 props: { variant: 'contained', color: 'primary' },
@@ -283,7 +312,8 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
             backgroundColor: roles.bg3,
             borderRadius: radius.md,
             '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: roles.borderStrong,
+              // Mockup 1a draws inputs with the crisper gray-300 line (#658).
+              borderColor: isDark ? roles.borderStrong : gray[300],
             },
             '&:hover .MuiOutlinedInput-notchedOutline': {
               borderColor: roles.fg3,
@@ -352,9 +382,13 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
       MuiMenuItem: {
         styleOverrides: {
           root: {
-            fontSize: fontSize.sm,
+            fontSize: 13,
             '&:hover': {
               backgroundColor: roles.bg2,
+            },
+            // Mockup 1a: the selected space sits on the blue-50 tint (#658).
+            '&.Mui-selected': {
+              backgroundColor: isDark ? alpha(accent, 0.16) : blue[50],
             },
           },
         },
@@ -363,7 +397,7 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
         styleOverrides: {
           root: {
             borderRadius: radius.pill,
-            fontSize: fontSize.xs,
+            fontSize: 11,
             fontWeight: fontWeight.medium,
           },
           outlined: {
@@ -375,8 +409,8 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            backgroundColor: isDark ? gray[100] : navy[700],
-            color: isDark ? navy[800] : white,
+            backgroundColor: isDark ? carbon[700] : navy[700],
+            color: isDark ? roles.fg1 : white,
             fontSize: fontSize.xs,
             borderRadius: radius.sm,
           },

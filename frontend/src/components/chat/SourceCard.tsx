@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
+import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -79,6 +80,21 @@ export default function SourceCard({ source }: SourceCardProps) {
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
         Indexiert: {formatIndexedAt(source.indexedAt)}
       </Typography>
+      {/* #639: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag stammt (#468)
+          - der Link ordnet die Belegangabe direkt ihrem Eintrag zu, statt nur über die
+          Bibliotheksdetailseite auffindbar zu sein (#493). */}
+      {source.sourceEntryUrl && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 0.25, wordBreak: 'break-word' }}
+        >
+          Herkunft:{' '}
+          <Link href={source.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
+            {source.sourceEntryUrl}
+          </Link>
+        </Typography>
+      )}
     </Paper>
   )
 }
