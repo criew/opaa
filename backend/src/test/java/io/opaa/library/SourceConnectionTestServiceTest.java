@@ -217,6 +217,47 @@ class SourceConnectionTestServiceTest {
   }
 
   @Test
+  void httpDirectoryFollowsASameOriginRedirect() throws IOException {
+    // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
+    // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate
+    // same-origin redirect (e.g. a trailing slash added by the server itself) must still be chased
+    // by AutoindexCrawlerService.sendFollowingRedirects.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td><td><a href="a.txt">a.txt</a></td><td>2025-01-01</td><td>10</td></tr>
+        </table>
+        """;
+    // testHttpDirectory itself appends a trailing slash before ever sending a request (mirrors
+    // UrlIndexingExecutor) - the redirect context is therefore registered at "/dir-old/" (what the
+    // service actually requests), not at the un-normalized "/dir-old" the test passes in.
+    server.createContext(
+        "/dir-old/",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", baseUrl + "/dir/");
+          exchange.sendResponseHeaders(301, -1);
+          exchange.close();
+        });
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir-old")));
+
+    assertThat(response.getReachable()).isTrue();
+    assertThat(response.getDocumentCount()).isEqualTo(1L);
+  }
+
+  @Test
   void httpDirectoryCountsOnlySupportedFormats() throws IOException {
     // PR #537 review, nit 4: a .zip is a linked entry the crawler sees, but not a document the
     // real UrlIndexingExecutor run would ever index - the count here must agree with the run's

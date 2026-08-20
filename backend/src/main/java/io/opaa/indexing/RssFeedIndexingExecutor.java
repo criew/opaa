@@ -14,8 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -558,22 +560,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private HttpResponse<InputStream> fetchFeed(
       HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState)
       throws IOException, InterruptedException {
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(feedUrl))
-            .timeout(Duration.ofSeconds(60))
-            .header("User-Agent", properties.userAgent())
-            .GET();
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("User-Agent", properties.userAgent());
     feedState.ifPresent(
         state -> {
           if (state.getEtag() != null) {
-            reqBuilder.header("If-None-Match", state.getEtag());
+            headers.put("If-None-Match", state.getEtag());
           }
           if (state.getLastModified() != null) {
-            reqBuilder.header("If-Modified-Since", state.getLastModified());
+            headers.put("If-Modified-Since", state.getLastModified());
           }
         });
-    return httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+    // #538: the feed URL carries no Authorization header (#505 - credentials are not yet applied
+    // to the feed fetch itself), so following a redirect here has nothing to leak - a same-host
+    // redirect (e.g. http -> https) must still work, exactly as it did under Redirect.NORMAL.
+    return AutoindexCrawlerService.sendFollowingRedirects(
+        httpClient, feedUrl, Duration.ofSeconds(60), headers);
   }
 
   private void saveFeedState(String feedUrl, HttpResponse<InputStream> feedResponse) {
@@ -607,16 +609,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    */
   private DetailPage fetchDetailPage(HttpClient httpClient, String entryUrl)
       throws IOException, InterruptedException {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(entryUrl))
-            .timeout(Duration.ofSeconds(30))
-            .header("User-Agent", properties.userAgent())
-            .GET()
-            .build();
-
-    HttpResponse<InputStream> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+    HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl);
 
     // #490 review, finding 4: every path below - the three early rejections and the ordinary
     // 200 - must close the response body. try-with-resources around the whole evaluation (rather
@@ -678,6 +671,54 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
   }
 
+  /**
+   * Sends the detail-page request for {@code entryUrl}, manually following up to {@link
+   * AutoindexCrawlerService#MAX_REDIRECTS} same-origin redirects (#538) - {@code httpClient} (built
+   * with {@code Redirect.NEVER} by {@link AutoindexCrawlerService#buildHttpClient}) never follows
+   * one on its own any more. A redirect off origin (a different host or scheme, or a protocol
+   * downgrade specifically - {@link AutoindexCrawlerService#sameOrigin}) is rejected right here
+   * with a {@link RejectedByRemoteException} - the same exception a post-hoc check on an
+   * already-followed response produced before #538, still thrown for the same reason (ADR-0017's
+   * bot-protection motivation), just before the foreign target is ever contacted instead of after.
+   */
+  private HttpResponse<InputStream> sendDetailPageRequest(HttpClient httpClient, String entryUrl)
+      throws IOException, InterruptedException {
+    URI currentUri = URI.create(entryUrl);
+    for (int hop = 0; ; hop++) {
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(currentUri)
+              .timeout(Duration.ofSeconds(30))
+              .header("User-Agent", properties.userAgent())
+              .GET()
+              .build();
+      HttpResponse<InputStream> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+      if (!AutoindexCrawlerService.isRedirectStatus(response.statusCode())
+          || hop >= AutoindexCrawlerService.MAX_REDIRECTS) {
+        return response;
+      }
+      Optional<String> location = response.headers().firstValue("Location");
+      if (location.isEmpty()) {
+        return response;
+      }
+      URI redirectUri = currentUri.resolve(location.get());
+      closeQuietly(response.body());
+      // #538 follow-up review: a protocol downgrade is refused outright, the one thing
+      // Redirect.NORMAL itself always refused too - see
+      // AutoindexCrawlerService.isSchemeDowngrade's Javadoc.
+      if (AutoindexCrawlerService.isSchemeDowngrade(currentUri, redirectUri)) {
+        throw new RejectedByRemoteException(
+            "refusing a protocol downgrade redirect (https to http): " + redirectUri);
+      }
+      if (isForeignHostRedirect(currentUri.toString(), redirectUri)) {
+        throw new RejectedByRemoteException("redirected to a foreign host: " + redirectUri);
+      }
+      currentUri = redirectUri;
+    }
+  }
+
   /** Whether {@code contentType} (the raw {@code Content-Type} header value) denotes HTML. */
   private static boolean isHtmlContentType(String contentType) {
     if (contentType == null) {
@@ -711,17 +752,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether {@code finalUri} landed on a different host than {@code originalUrl} - the signature of
-   * a bot-protection challenge page a feed operator's detail page redirected to (#467, ADR-0017
-   * motivation), distinguished from an ordinary same-host redirect (e.g. {@code http} to {@code
-   * https}, or a trailing slash).
+   * Whether {@code finalUri} is a different origin (scheme, host and normalized port - {@link
+   * AutoindexCrawlerService#sameOrigin}, #538 follow-up review) than {@code originalUrl} - the
+   * signature of a bot-protection challenge page a feed operator's detail page redirected to (#467,
+   * ADR-0017 motivation), distinguished from an ordinary same-origin redirect (e.g. a trailing
+   * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
+   * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
+   * downgrade specifically before ever reaching this check.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
       return originalUri.getHost() != null
           && finalUri.getHost() != null
-          && !originalUri.getHost().equalsIgnoreCase(finalUri.getHost());
+          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
       return false;
     }

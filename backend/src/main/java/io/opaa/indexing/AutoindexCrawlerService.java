@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
@@ -15,7 +16,10 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -86,24 +90,23 @@ public class AutoindexCrawlerService {
   String fetchPage(HttpClient httpClient, String authHeader, String url)
       throws IOException, InterruptedException {
 
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder().uri(URI.create(url)).timeout(Duration.ofSeconds(60)).GET();
-
+    Map<String, String> headers = new LinkedHashMap<>();
     if (authHeader != null) {
-      reqBuilder.header("Authorization", authHeader);
+      headers.put("Authorization", authHeader);
     }
 
-    HttpResponse<String> response =
-        httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    HttpResponse<InputStream> response =
+        sendFollowingRedirects(httpClient, url, Duration.ofSeconds(60), headers);
 
-    if (response.statusCode() == 401) {
-      throw new IOException("HTTP 401 Unauthorized — check credentials. URL: " + url);
+    try (InputStream body = response.body()) {
+      if (response.statusCode() == 401) {
+        throw new IOException("HTTP 401 Unauthorized — check credentials. URL: " + url);
+      }
+      if (response.statusCode() != 200) {
+        throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
+      }
+      return new String(body.readAllBytes(), StandardCharsets.UTF_8);
     }
-    if (response.statusCode() != 200) {
-      throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
-    }
-
-    return response.body();
   }
 
   /**
@@ -184,10 +187,29 @@ public class AutoindexCrawlerService {
     return baseUrl + relative;
   }
 
+  /**
+   * Maximum number of redirects {@link #sendFollowingRedirects} follows manually (#538) - generous
+   * enough for an ordinary same-origin redirect chain (a trailing-slash normalization, a
+   * login-portal bounce) while still bounding how many requests a misbehaving server can force per
+   * crawl step. A redirect that changes origin still gets a hop (with {@code Authorization}
+   * dropped, see {@link #sendFollowingRedirects}) - except a protocol downgrade (https to http),
+   * which is refused outright, matching {@code Redirect.NORMAL}'s own pre-#538 behaviour.
+   */
+  static final int MAX_REDIRECTS = 5;
+
+  /**
+   * Builds the {@link HttpClient} shared by every indexing/connection-test caller of this class
+   * (#538). {@code Redirect.NEVER}, not {@code Redirect.NORMAL} as before #538: the JDK's built-in
+   * redirect handling resends every request header - {@code Authorization} included - to whatever
+   * host a {@code 3xx} response names, regardless of the source configuration's own credentials
+   * ever having been meant for that host. Callers that need to follow a redirect at all use {@link
+   * #sendFollowingRedirects}, which re-validates the target host/scheme on every hop and drops
+   * {@code Authorization} the moment it stops matching, instead of the JDK's silent full replay.
+   */
   public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
     HttpClient.Builder builder =
         HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NORMAL)
+            .followRedirects(HttpClient.Redirect.NEVER)
             .connectTimeout(Duration.ofSeconds(30));
 
     if (proxyHost != null && !proxyHost.isBlank()) {
@@ -218,6 +240,131 @@ public class AutoindexCrawlerService {
     }
 
     return builder.build();
+  }
+
+  /**
+   * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects
+   * (#538), the way {@code httpClient} - built with {@code Redirect.NEVER} by {@link
+   * #buildHttpClient} - never does on its own any more. {@code headers} (most importantly {@code
+   * Authorization}, carrying a source configuration's own credentials) is sent again on the next
+   * hop only when that hop is still the same origin ({@link #sameOrigin}) as the URL it was set
+   * for; the moment a redirect points elsewhere, the header is dropped for the rest of the chain
+   * instead of being replayed to a target the credentials were never meant for. This mirrors what a
+   * browser does on a cross-origin redirect, and closes the gap {@code Redirect.NORMAL} left open
+   * (a foreign-host redirect target received the exact same {@code Authorization} header as the
+   * original request).
+   *
+   * <p>A protocol downgrade (https to http) is never followed at all, even anonymized - {@code
+   * Redirect.NORMAL} already refused to follow one before #538, and silently downgrading the
+   * transport a source configuration was set up to use is worse than simply failing the request.
+   *
+   * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
+   * Location} header, ends the loop and returns that response as-is - the caller's own status-code
+   * handling then reports it the same way it always reported an unexpected status.
+   */
+  public static HttpResponse<InputStream> sendFollowingRedirects(
+      HttpClient httpClient, String url, Duration timeout, Map<String, String> headers)
+      throws IOException, InterruptedException {
+    URI currentUri = URI.create(url);
+    Map<String, String> currentHeaders = new LinkedHashMap<>(headers);
+
+    for (int hop = 0; ; hop++) {
+      HttpRequest.Builder reqBuilder =
+          HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
+      currentHeaders.forEach(reqBuilder::header);
+
+      HttpResponse<InputStream> response =
+          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+
+      if (!isRedirectStatus(response.statusCode()) || hop >= MAX_REDIRECTS) {
+        return response;
+      }
+      Optional<String> location = response.headers().firstValue("Location");
+      if (location.isEmpty()) {
+        return response;
+      }
+
+      closeQuietly(response.body());
+      URI redirectUri = currentUri.resolve(location.get());
+      if (isSchemeDowngrade(currentUri, redirectUri)) {
+        throw new IOException(
+            "refusing to follow a redirect from https to http (protocol downgrade): "
+                + redirectUri);
+      }
+      if (!sameOrigin(currentUri, redirectUri)) {
+        currentHeaders.remove("Authorization");
+      }
+      currentUri = redirectUri;
+    }
+  }
+
+  /**
+   * Whether {@code statusCode} is one of the HTTP redirect statuses this class follows manually.
+   */
+  static boolean isRedirectStatus(int statusCode) {
+    return statusCode == 301
+        || statusCode == 302
+        || statusCode == 303
+        || statusCode == 307
+        || statusCode == 308;
+  }
+
+  /**
+   * Whether {@code a} and {@code b} are the same origin - scheme, host and port, with an absent
+   * port ({@code -1}) normalized to the scheme's default (80 for {@code http}, 443 for {@code
+   * https}) before comparing (#538 follow-up review). Comparing only host and scheme, as this
+   * method originally did, missed exactly the case that default normalization now covers: {@code
+   * https://intranet} and {@code https://intranet:8443} share a host and scheme but are different
+   * services - the JDK's own {@code Redirect.NORMAL} already told them apart before #538, and this
+   * comparison must be at least as strict everywhere it is used ({@link #sendFollowingRedirects}
+   * here, and the equivalent foreign-host checks in {@code UrlFileDownloader} and {@code
+   * RssFeedIndexingExecutor}).
+   */
+  static boolean sameOrigin(URI a, URI b) {
+    if (a.getHost() == null
+        || b.getHost() == null
+        || a.getScheme() == null
+        || b.getScheme() == null) {
+      return false;
+    }
+    return a.getScheme().equalsIgnoreCase(b.getScheme())
+        && a.getHost().equalsIgnoreCase(b.getHost())
+        && normalizedPort(a) == normalizedPort(b);
+  }
+
+  /**
+   * Whether following the redirect from {@code from} to {@code to} would downgrade the transport
+   * from {@code https} to plain {@code http} (#538 follow-up review) - refused unconditionally by
+   * every manual redirect loop in this package, the one thing {@code Redirect.NORMAL} itself always
+   * refused too, before #538 replaced it with manual handling.
+   */
+  static boolean isSchemeDowngrade(URI from, URI to) {
+    return "https".equalsIgnoreCase(from.getScheme()) && "http".equalsIgnoreCase(to.getScheme());
+  }
+
+  private static int normalizedPort(URI uri) {
+    int port = uri.getPort();
+    if (port != -1) {
+      return port;
+    }
+    if ("https".equalsIgnoreCase(uri.getScheme())) {
+      return 443;
+    }
+    if ("http".equalsIgnoreCase(uri.getScheme())) {
+      return 80;
+    }
+    return -1;
+  }
+
+  private static void closeQuietly(InputStream in) {
+    if (in == null) {
+      return;
+    }
+    try {
+      in.close();
+    } catch (IOException e) {
+      log.debug("Failed to close response body while following a redirect", e);
+    }
   }
 
   public static String buildAuthHeader(String username, String password) {

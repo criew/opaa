@@ -931,6 +931,39 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void detailPageFollowsASameOriginRedirect() {
+    // #538 follow-up review, finding 4: sendDetailPageRequest's own manual redirect loop needs a
+    // same-origin positive test - buildHttpClient no longer auto-follows this at the JDK level
+    // (Redirect.NEVER), so a legitimate redirect (e.g. a trailing-slash or path normalization) must
+    // still be chased by sendDetailPageRequest itself.
+    String detailHtml =
+        "<html><body><main><article>Der eigentliche Artikeltext.</article></main></body></html>";
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", baseUrl + "/a-final.html");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    serve("/a-final.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .processRssEntry(
+            eq("Der eigentliche Artikeltext."),
+            anyString(),
+            eq(baseUrl + "/a.html"),
+            any(),
+            eq(library));
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+  }
+
+  @Test
   void anAttachmentRedirectedToAForeignHostIsSkipped() throws IOException {
     // #492 review, finding 4: a same-host link a profile already vetted must not silently end up
     // downloading from, and being recorded as originating from, an address the profile never

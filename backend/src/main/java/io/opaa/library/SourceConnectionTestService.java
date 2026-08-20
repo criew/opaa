@@ -20,14 +20,15 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,15 +210,17 @@ public class SourceConnectionTestService {
     String authHeader =
         AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder().uri(URI.create(url)).timeout(REQUEST_TIMEOUT).GET();
+    Map<String, String> headers = new LinkedHashMap<>();
     if (authHeader != null) {
-      reqBuilder.header("Authorization", authHeader);
+      headers.put("Authorization", authHeader);
     }
 
     try {
+      // #538: Authorization (the tested source configuration's own credentials) must not be
+      // replayed to a redirect target on a different host/scheme - see
+      // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
       HttpResponse<InputStream> response =
-          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+          AutoindexCrawlerService.sendFollowingRedirects(httpClient, url, REQUEST_TIMEOUT, headers);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
@@ -286,19 +289,16 @@ public class SourceConnectionTestService {
     String authHeader =
         AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-    HttpRequest.Builder reqBuilder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .timeout(REQUEST_TIMEOUT)
-            .header("User-Agent", rssUserAgent)
-            .GET();
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("User-Agent", rssUserAgent);
     if (authHeader != null) {
-      reqBuilder.header("Authorization", authHeader);
+      headers.put("Authorization", authHeader);
     }
 
     try {
+      // #538: same reasoning as testHttpDirectory above.
       HttpResponse<InputStream> response =
-          httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+          AutoindexCrawlerService.sendFollowingRedirects(httpClient, url, REQUEST_TIMEOUT, headers);
       try (InputStream body = response.body()) {
         if (response.statusCode() == 401) {
           return unreachable(
