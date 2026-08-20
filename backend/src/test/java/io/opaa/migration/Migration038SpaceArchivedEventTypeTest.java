@@ -12,16 +12,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies Liquibase changelog 036 in isolation, on top of 017 and 022 - the same restricted-role
+ * Applies Liquibase changelog 038 in isolation, on top of 017 and 022 - the same restricted-role
  * pattern {@code Migration022AuditorRoleEventTypesTest} establishes (see that class's Javadoc for
  * the full reasoning why a non-superuser {@code AUDIT_APP_ROLE} is required to actually exercise
- * 036's own {@code SET ROLE opaa_audit_owner} step).
+ * 038's own {@code SET ROLE opaa_audit_owner} step).
  *
  * <p>Proves, against a real database rather than only the Java enum, that {@code
- * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 036 runs, and that every value
- * accepted before 036 is still accepted afterwards (a widen must never accidentally narrow).
+ * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 038 runs, and that every value
+ * accepted before 038 is still accepted afterwards (a widen must never accidentally narrow).
  */
-class Migration036SpaceArchivedEventTypeTest extends AbstractMigrationTest {
+class Migration038SpaceArchivedEventTypeTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
   private static final String AUDIT_APP_ROLE = "audit_app_role";
@@ -47,7 +47,7 @@ class Migration036SpaceArchivedEventTypeTest extends AbstractMigrationTest {
     applyChangelog(
         appConnection, "db/changelog/changes/022-widen-audit-event-type-auditor-role.yaml");
     applyChangelog(
-        appConnection, "db/changelog/changes/036-widen-audit-event-type-space-archived.yaml");
+        appConnection, "db/changelog/changes/038-widen-audit-event-type-space-archived.yaml");
   }
 
   @AfterEach
@@ -96,7 +96,7 @@ class Migration036SpaceArchivedEventTypeTest extends AbstractMigrationTest {
   @Test
   void everyPreExistingEventTypeIsStillAcceptedAfterTheWideningMigration() throws Exception {
     // A widen must never accidentally narrow - spot-checks one representative value from each of
-    // the pre-036 categories the constraint's comment groups them into.
+    // the pre-038 categories the constraint's comment groups them into.
     for (String eventType :
         new String[] {
           "ASSET_GRANT_GRANTED",

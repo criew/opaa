@@ -4,7 +4,7 @@ databaseChangeLog:
   # shape and SET ROLE dance as 022 - see that migration's changeSet comment for why the temporary
   # opaa_audit_owner membership grant/revoke around the DDL is needed.
   - changeSet:
-      id: 036-widen-audit-event-type-space-archived
+      id: 038-widen-audit-event-type-space-archived
       author: opaa
       comment: >
         Widens chk_audit_log_event_type to also accept SPACE_ARCHIVED

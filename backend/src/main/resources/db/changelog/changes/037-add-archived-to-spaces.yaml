@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 035-add-archived-to-spaces
+      id: 037-add-archived-to-spaces
       author: opaa
       comment: >
         Add spaces.archived (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen).

@@ -14,17 +14,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies Liquibase changelog 035 in isolation against a database built from the real, versioned
+ * Applies Liquibase changelog 037 in isolation against a database built from the real, versioned
  * changelog through changeSet 034 - the same pattern {@code Migration034AddChatTitleSourceTest}
  * follows, with {@code test-master-through-034.yaml} as the pre-migration fixture.
  *
  * <p>#543: {@code spaces.archived} is the maintainer-decided way out of a space that {@code
  * fk_chats_space} (ON DELETE RESTRICT, migration 032) makes permanently undeletable because it
  * still contains a chat authored by someone other than the space owner. This class proves the
- * column exists after 035 runs, defaults to {@code false} for both pre-existing and newly inserted
+ * column exists after 037 runs, defaults to {@code false} for both pre-existing and newly inserted
  * rows, and that the rollback restores the pre-migration schema.
  */
-class Migration035AddArchivedToSpacesTest extends AbstractMigrationTest {
+class Migration037AddArchivedToSpacesTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -51,7 +51,7 @@ class Migration035AddArchivedToSpacesTest extends AbstractMigrationTest {
     UUID owner = insertUser();
     UUID space = insertSpace(owner);
 
-    applyChangelog035();
+    applyChangelog037();
 
     assertThat(hasArchivedColumn()).isTrue();
     assertThat(archived(space)).isFalse();
@@ -59,7 +59,7 @@ class Migration035AddArchivedToSpacesTest extends AbstractMigrationTest {
 
   @Test
   void aNewlyInsertedSpaceDefaultsToNotArchived() throws Exception {
-    applyChangelog035();
+    applyChangelog037();
     UUID owner = insertUser();
     UUID space = insertSpace(owner);
 
@@ -68,12 +68,12 @@ class Migration035AddArchivedToSpacesTest extends AbstractMigrationTest {
 
   @Test
   void rollbackRestoresThePreMigrationSchema() throws Exception {
-    applyChangelog035();
+    applyChangelog037();
     assertThat(hasArchivedColumn()).isTrue();
 
     Liquibase liquibase =
         new Liquibase(
-            "db/changelog/changes/035-add-archived-to-spaces.yaml",
+            "db/changelog/changes/037-add-archived-to-spaces.yaml",
             new ClassLoaderResourceAccessor(),
             liquibaseDatabase(connection));
     liquibase.rollback(1, (String) null);
@@ -82,8 +82,8 @@ class Migration035AddArchivedToSpacesTest extends AbstractMigrationTest {
     assertThat(hasArchivedColumn()).isFalse();
   }
 
-  private void applyChangelog035() throws Exception {
-    applyChangelog(connection, "db/changelog/changes/035-add-archived-to-spaces.yaml");
+  private void applyChangelog037() throws Exception {
+    applyChangelog(connection, "db/changelog/changes/037-add-archived-to-spaces.yaml");
   }
 
   private boolean hasArchivedColumn() throws SQLException {
