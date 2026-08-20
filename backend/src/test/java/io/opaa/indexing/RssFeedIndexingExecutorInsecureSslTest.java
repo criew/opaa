@@ -207,7 +207,8 @@ class RssFeedIndexingExecutorInsecureSslTest {
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
-    when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
+        .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     IndexingProperties.Rss rss =
