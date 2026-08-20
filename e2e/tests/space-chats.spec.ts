@@ -80,22 +80,26 @@ async function referenceLibrary(page: Page, libraryName: string) {
   await page.getByRole('option', { name: libraryName }).click()
 }
 
-async function toggleUseKnowledgeOff(page: Page) {
-  await page.getByLabel('Wissen nutzen').click()
+// #560: the switch is gone - the chip bar is the only search-scope control, and @Alles-Wissen is
+// a chip like any other, removable the same way the reference chips in fixtures/chat.ts already
+// are (see the accessible-name convention on ChatInput.tsx, review finding #539/#564: the name
+// sits on the chip root, not on its aria-hidden delete icon).
+async function clearSearchScope(page: Page) {
+  await page.getByRole('button', { name: 'Referenz Alles-Wissen entfernen' }).press('Backspace')
 }
 
 /**
- * Covers #529 (part of Epic #523): the persistent, space-owned chat and its `@`-reference /
- * "Wissen nutzen" search scope, built on top of test(e2e) #424's upload/share/search chain and
- * its helpers (see fixtures/chat.ts). Every scenario starts its own fresh chat
- * (`startFreshChat`) rather than relying on scenario order, for the same reason
- * knowledge-libraries.spec.ts does (see its module doc comment): chats are persisted per account,
- * so a later scenario reusing the same dev user would otherwise still see an earlier scenario's
- * turn in the DOM. Scenarios also each create their own library rather than sharing one across
- * scenarios (review finding on PR #554, nit 3): a scenario run in isolation (`--grep`) must not
- * depend on module state a different scenario would otherwise have set.
+ * Covers #529 (part of Epic #523): the persistent, space-owned chat and its `@`-reference / chip
+ * bar search scope (#560), built on top of test(e2e) #424's upload/share/search chain and its
+ * helpers (see fixtures/chat.ts). Every scenario starts its own fresh chat (`startFreshChat`)
+ * rather than relying on scenario order, for the same reason knowledge-libraries.spec.ts does
+ * (see its module doc comment): chats are persisted per account, so a later scenario reusing the
+ * same dev user would otherwise still see an earlier scenario's turn in the DOM. Scenarios also
+ * each create their own library rather than sharing one across scenarios (review finding on PR
+ * #554, nit 3): a scenario run in isolation (`--grep`) must not depend on module state a
+ * different scenario would otherwise have set.
  */
-test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)', () => {
+test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (#529)', () => {
   test('1. Chat im Space: Frage, Antwort mit Quellen, Verlauf überlebt Neuladen', async (
     { authenticatedPage: page },
     testInfo,
@@ -110,13 +114,13 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     await askQuestion(page, question)
     // Deliberately not expectCitedSource(page, DOCUMENT_A_NAME): this scenario is about the chat
     // mechanism (an answer with sources exists, and both it and the chat list entry survive a
-    // reload), not about which library "Wissen nutzen" = on (the default, left untouched here) end
+    // reload), not about which library the default @Alles-Wissen scope (left untouched here) ends
     // up citing - that search is an unscoped topK over the entire readable corpus, and this file
     // deliberately runs after several other specs that keep adding to it (see the module doc
     // comment on sort order above). Asserting on this scenario's own document specifically would
     // make the test fragile to how large that corpus has grown by the time it runs, not to
     // anything this scenario is meant to catch - scenarios 2 and 5 below cover "the right library
-    // was searched" deterministically via "Wissen nutzen" off plus an explicit @-reference.
+    // was searched" deterministically via an explicit @-reference, which replaces @Alles-Wissen.
     await expectAnyCitedSource(page)
 
     // sendMessage implicitly creates the chat and replaces the URL to point at it (#548) - once
@@ -151,7 +155,8 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     await createLibraryWithDocument(page, libraryBName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
 
     await startFreshChat(page)
-    await toggleUseKnowledgeOff(page)
+    // Referencing a library replaces the default @Alles-Wissen chip outright (#560) - no separate
+    // step to leave the default scope first.
     await referenceLibrary(page, libraryAName)
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryAName} entfernen`)).toBeVisible()
 
@@ -167,7 +172,10 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     const question = `Was ist die Hauptstadt von Deutschland (${id})?`
 
     await startFreshChat(page)
-    await toggleUseKnowledgeOff(page)
+    // Leaving the chip bar empty (not a switch, #560) is what "ohne Wissensbasis" means now:
+    // remove the default @Alles-Wissen chip and reference nothing in its place.
+    await clearSearchScope(page)
+    await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
 
     await askQuestion(page, question)
 
@@ -229,9 +237,9 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     const chat1Url = page.url()
 
     // "Neuer Chat" in the sidebar (same as startFreshChat) starts a second, independent chat in
-    // the same space rather than reusing chat 1.
+    // the same space rather than reusing chat 1. Referencing a library replaces its default
+    // @Alles-Wissen chip outright (#560).
     await startFreshChat(page)
-    await toggleUseKnowledgeOff(page)
     await referenceLibrary(page, libraryName)
     await askQuestion(page, questionChat2)
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)

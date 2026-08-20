@@ -64,14 +64,14 @@ export async function expectCitedSource(page: Page, fileName: string): Promise<v
 /**
  * Waits for *some* source card to appear cited, without pinning down which file. For scenarios
  * whose point is the chat mechanism itself (an answer with sources exists, and survives a reload)
- * rather than which library the unscoped, "Wissen nutzen" = on search actually reached: that
- * search runs topK over the *entire* readable corpus, which by the time a given scenario runs
- * also holds whatever every earlier-sorting spec file left behind (same fixed ai-stub embedding
- * for every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall out of the
- * top results as the corpus grows, without anything actually being broken. Scenarios that need to
- * prove *which* library a search reached still use expectCitedSource/expectCitedExclusively with
- * "Wissen nutzen" off plus an explicit @-reference, which scopes the search deterministically
- * regardless of corpus size.
+ * rather than which library the default, unscoped @Alles-Wissen search actually reached (#560):
+ * that search runs topK over the *entire* readable corpus, which by the time a given scenario
+ * runs also holds whatever every earlier-sorting spec file left behind (same fixed ai-stub
+ * embedding for every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall
+ * out of the top results as the corpus grows, without anything actually being broken. Scenarios
+ * that need to prove *which* library a search reached still use expectCitedSource/
+ * expectCitedExclusively with an explicit @-reference, which replaces @Alles-Wissen and scopes
+ * the search deterministically regardless of corpus size.
  */
 export async function expectAnyCitedSource(page: Page): Promise<void> {
   const citedCard = page.locator('[data-testid="source-card"][data-cited="true"]').first()

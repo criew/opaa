@@ -17,7 +17,7 @@ function resetChatStore() {
     isLoading: false,
     isLoadingChat: false,
     error: null,
-    useKnowledge: true,
+    scope: 'all',
     referencedLibraryIds: [],
     pendingSettingsUpdate: null,
   })
@@ -43,7 +43,7 @@ describe('chatStore', () => {
       useChatStore.setState({
         chatId: 'chat-personal-1',
         messages: [{ id: '1', role: 'user', content: 'Hallo', timestamp: new Date() }],
-        useKnowledge: false,
+        scope: 'libraries',
         referencedLibraryIds: ['library-a'],
       })
 
@@ -53,7 +53,7 @@ describe('chatStore', () => {
       expect(state.spaceId).toBe(SPACE_ID)
       expect(state.chatId).toBeNull()
       expect(state.messages).toHaveLength(0)
-      expect(state.useKnowledge).toBe(true)
+      expect(state.scope).toBe('all')
       expect(state.referencedLibraryIds).toEqual([])
     })
   })
@@ -72,12 +72,68 @@ describe('chatStore', () => {
       expect(state.isLoadingChat).toBe(false)
     })
 
-    it('restores the chat-level useKnowledge and referencedLibraryIds settings', async () => {
+    it('restores the chat-level scope as "libraries" with its referencedLibraryIds', async () => {
       await useChatStore.getState().loadChat('chat-personal-2')
 
       const state = useChatStore.getState()
-      expect(state.useKnowledge).toBe(false)
+      expect(state.scope).toBe('libraries')
       expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
+    })
+
+    // #564 review: the "empty bar" persisted state (useKnowledge=false, no referencedLibraryIds)
+    // must restore as scope "none", not silently fall back to "all" or "libraries".
+    it('restores the chat-level scope as "none" for useKnowledge=false with no referencedLibraryIds', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+      )
+
+      await useChatStore.getState().loadChat('chat-empty-bar')
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('none')
+      expect(state.referencedLibraryIds).toEqual([])
+    })
+
+    // #564 review: a chat persisted with useKnowledge=true still carrying leftover
+    // referencedLibraryIds (a legacy/inconsistent record) must show @Alles-Wissen, not a mix of
+    // both - the bar has to mirror exactly one state, and the ids are meaningless while
+    // useKnowledge is true (#560).
+    it('discards referencedLibraryIds locally when useKnowledge=true carries a non-empty list', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: ['library-stale'],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+      )
+
+      await useChatStore.getState().loadChat('chat-stale-ids')
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('all')
+      expect(state.referencedLibraryIds).toEqual([])
     })
 
     it('sets an error when the chat cannot be found', async () => {
@@ -262,35 +318,70 @@ describe('chatStore', () => {
       expect(state.messages[0].role).toBe('user')
     })
 
-    it('sends useKnowledge=false with the referenced libraryIds when the switch is off', async () => {
-      let capturedBody: Record<string, unknown> | undefined
-      server.use(
-        http.post('/api/v1/query', async ({ request }) => {
-          capturedBody = (await request.json()) as Record<string, unknown>
-          return HttpResponse.json({
-            answer: 'Antwort',
-            sources: [],
-            metadata: {
-              model: 'gpt-4o',
-              tokenCount: 10,
-              durationMs: 5,
-              answeredWithoutKnowledge: true,
-            },
-            chatId: EMPTY_CHAT_ID,
-          })
-        }),
-      )
-      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
-      useChatStore.setState({
-        useKnowledge: false,
-        referencedLibraryIds: ['library-a', 'library-b'],
+    // Payload mapping for all three chip-bar states (#560): @Alles-Wissen -> useKnowledge=true (no
+    // libraryIds), concrete chips -> useKnowledge=false + libraryIds, empty bar -> useKnowledge=
+    // false with an empty libraryIds array, mirroring exactly what the bar shows.
+    describe('maps scope to the query payload', () => {
+      function captureQueryBody() {
+        let capturedBody: Record<string, unknown> | undefined
+        server.use(
+          http.post('/api/v1/query', async ({ request }) => {
+            capturedBody = (await request.json()) as Record<string, unknown>
+            return HttpResponse.json({
+              answer: 'Antwort',
+              sources: [],
+              metadata: {
+                model: 'gpt-4o',
+                tokenCount: 10,
+                durationMs: 5,
+                answeredWithoutKnowledge:
+                  capturedBody?.useKnowledge === false &&
+                  ((capturedBody?.libraryIds as string[] | undefined)?.length ?? 0) === 0,
+              },
+              chatId: EMPTY_CHAT_ID,
+            })
+          }),
+        )
+        return () => capturedBody
+      }
+
+      it('sends useKnowledge=true without libraryIds for scope "all"', async () => {
+        const getBody = captureQueryBody()
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        useChatStore.setState({ scope: 'all', referencedLibraryIds: [] })
+
+        await useChatStore.getState().sendMessage('Frage')
+
+        expect(getBody()?.useKnowledge).toBe(true)
+        expect(getBody()?.libraryIds).toBeUndefined()
       })
 
-      await useChatStore.getState().sendMessage('Frage')
+      it('sends useKnowledge=false with the referenced libraryIds for scope "libraries"', async () => {
+        const getBody = captureQueryBody()
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        useChatStore.setState({
+          scope: 'libraries',
+          referencedLibraryIds: ['library-a', 'library-b'],
+        })
 
-      expect(capturedBody?.useKnowledge).toBe(false)
-      expect(capturedBody?.libraryIds).toEqual(['library-a', 'library-b'])
-      expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
+        await useChatStore.getState().sendMessage('Frage')
+
+        expect(getBody()?.useKnowledge).toBe(false)
+        expect(getBody()?.libraryIds).toEqual(['library-a', 'library-b'])
+        expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(false)
+      })
+
+      it('sends useKnowledge=false with an empty libraryIds array for scope "none"', async () => {
+        const getBody = captureQueryBody()
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
+
+        await useChatStore.getState().sendMessage('Frage')
+
+        expect(getBody()?.useKnowledge).toBe(false)
+        expect(getBody()?.libraryIds).toEqual([])
+        expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
+      })
     })
 
     // #548 review, finding 4: an implicitly created chat must show up in its space's chat list
@@ -345,18 +436,75 @@ describe('chatStore', () => {
     })
   })
 
-  describe('setUseKnowledge / addReferencedLibrary / removeReferencedLibrary', () => {
+  describe('setScopeAll / addReferencedLibrary / removeReferencedLibrary / clearScope', () => {
     it('updates local state without persisting when no chat exists yet', () => {
       useChatStore.getState().startNewChat(SPACE_ID)
 
-      useChatStore.getState().setUseKnowledge(false)
       useChatStore.getState().addReferencedLibrary('library-a')
 
-      expect(useChatStore.getState().useKnowledge).toBe(false)
+      expect(useChatStore.getState().scope).toBe('libraries')
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
     })
 
-    it('persists useKnowledge via PATCH once a chat is active', async () => {
+    // The Ersetzungslogik at the core of #560: the first concrete chip replaces @Alles-Wissen, and
+    // re-adding @Alles-Wissen replaces the concrete chips in turn.
+    it('replaces @Alles-Wissen with the first concrete chip', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().addReferencedLibrary('library-a')
+
+      expect(useChatStore.getState().scope).toBe('libraries')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
+
+      useChatStore.getState().addReferencedLibrary('library-b')
+
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a', 'library-b'])
+    })
+
+    it('replaces the concrete chips when @Alles-Wissen is re-added', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      useChatStore.getState().addReferencedLibrary('library-a')
+      useChatStore.getState().addReferencedLibrary('library-b')
+
+      useChatStore.getState().setScopeAll()
+
+      expect(useChatStore.getState().scope).toBe('all')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
+
+    it('empties the bar (scope "none") when the last concrete chip is removed', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      useChatStore.getState().addReferencedLibrary('library-a')
+
+      useChatStore.getState().removeReferencedLibrary('library-a')
+
+      expect(useChatStore.getState().scope).toBe('none')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
+
+    it('keeps scope "libraries" when a chip is removed but others remain', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      useChatStore.getState().addReferencedLibrary('library-a')
+      useChatStore.getState().addReferencedLibrary('library-b')
+
+      useChatStore.getState().removeReferencedLibrary('library-a')
+
+      expect(useChatStore.getState().scope).toBe('libraries')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-b'])
+    })
+
+    it('empties the bar (scope "none") when @Alles-Wissen is removed via clearScope', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope()
+
+      expect(useChatStore.getState().scope).toBe('none')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
+
+    it('persists scope "all" via PATCH once a chat is active', async () => {
       let patchedBody: Record<string, unknown> | undefined
       server.use(
         http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
@@ -367,7 +515,7 @@ describe('chatStore', () => {
             authorId: 'mock-user-id',
             title: null,
             useKnowledge: patchedBody.useKnowledge,
-            referencedLibraryIds: [],
+            referencedLibraryIds: patchedBody.referencedLibraryIds ?? [],
             status: 'PRIVATE',
             messages: [],
             createdAt: '2026-01-01T00:00:00Z',
@@ -375,13 +523,14 @@ describe('chatStore', () => {
           })
         }),
       )
-      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      await useChatStore.getState().loadChat('chat-personal-2') // starts as scope "libraries"
 
-      useChatStore.getState().setUseKnowledge(false)
+      useChatStore.getState().setScopeAll()
       await new Promise((resolve) => setTimeout(resolve, 0))
 
-      expect(useChatStore.getState().useKnowledge).toBe(false)
-      expect(patchedBody?.useKnowledge).toBe(false)
+      expect(useChatStore.getState().scope).toBe('all')
+      expect(patchedBody?.useKnowledge).toBe(true)
+      expect(patchedBody?.referencedLibraryIds).toEqual([])
     })
 
     it('persists referencedLibraryIds via PATCH once a chat is active', async () => {
@@ -394,7 +543,7 @@ describe('chatStore', () => {
             spaceId: SPACE_ID,
             authorId: 'mock-user-id',
             title: null,
-            useKnowledge: true,
+            useKnowledge: patchedBody.useKnowledge,
             referencedLibraryIds: patchedBody.referencedLibraryIds,
             status: 'PRIVATE',
             messages: [],
@@ -408,6 +557,7 @@ describe('chatStore', () => {
       useChatStore.getState().addReferencedLibrary('library-a')
       await new Promise((resolve) => setTimeout(resolve, 0))
 
+      expect(patchedBody?.useKnowledge).toBe(false)
       expect(patchedBody?.referencedLibraryIds).toEqual(['library-a'])
 
       useChatStore.getState().removeReferencedLibrary('library-a')
@@ -418,24 +568,25 @@ describe('chatStore', () => {
 
     // #548 review, finding 3: a failed PATCH used to leave the UI showing a setting the server
     // never applied (chat settings take precedence server-side) - it must roll back and surface
-    // the error instead.
-    it('rolls back useKnowledge and shows an error when the PATCH fails', async () => {
+    // the error instead. Carried over to the chip-only model: rolling back both fields together
+    // keeps the bar an exact mirror of the persisted chat settings.
+    it('rolls back the scope and shows an error when the PATCH fails', async () => {
       server.use(
         http.patch('/api/v1/chats/:chatId', () => {
           return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
         }),
       )
       await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
-      expect(useChatStore.getState().useKnowledge).toBe(true)
+      expect(useChatStore.getState().scope).toBe('all')
 
-      useChatStore.getState().setUseKnowledge(false)
-      // Immediately after the call, the switch already reflects the optimistic value.
-      expect(useChatStore.getState().useKnowledge).toBe(false)
+      useChatStore.getState().clearScope()
+      // Immediately after the call, the bar already reflects the optimistic value.
+      expect(useChatStore.getState().scope).toBe('none')
 
       await useChatStore.getState().pendingSettingsUpdate
 
       const state = useChatStore.getState()
-      expect(state.useKnowledge).toBe(true)
+      expect(state.scope).toBe('all')
       expect(state.error).toBeTruthy()
     })
 
@@ -453,6 +604,7 @@ describe('chatStore', () => {
       await useChatStore.getState().pendingSettingsUpdate
 
       const state = useChatStore.getState()
+      expect(state.scope).toBe('all')
       expect(state.referencedLibraryIds).toEqual([])
       expect(state.error).toBeTruthy()
     })
@@ -498,7 +650,7 @@ describe('chatStore', () => {
       )
       await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
 
-      useChatStore.getState().setUseKnowledge(false)
+      useChatStore.getState().clearScope()
       await useChatStore.getState().sendMessage('Frage')
 
       expect(events).toEqual(['patch-start', 'patch-end', 'query-start'])
