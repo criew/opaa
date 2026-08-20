@@ -108,9 +108,7 @@ export default function SpaceManagementPage() {
                     setLocalError(null)
                     setSuccessMessage('Space archiviert')
                   } catch (err) {
-                    setLocalError(
-                      err instanceof Error ? err.message : 'Archivieren fehlgeschlagen',
-                    )
+                    setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
                   }
                 }}
               >
@@ -204,9 +202,7 @@ export default function SpaceManagementPage() {
                     await archiveSelectedSpace(spaceId)
                     setSuccessMessage('Space archiviert')
                   } catch (err) {
-                    setLocalError(
-                      err instanceof Error ? err.message : 'Archivieren fehlgeschlagen',
-                    )
+                    setLocalError(err instanceof Error ? err.message : 'Archivieren fehlgeschlagen')
                   }
                 }}
               >
