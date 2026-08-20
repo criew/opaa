@@ -4,15 +4,16 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
-import ListItemText from '@mui/material/ListItemText'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
-import { darkRoles, gray, shadow } from '../../theme/tokens'
+import { alpha } from '@mui/material/styles'
+import { darkRoles, fontFamily, gray, shadow } from '../../theme/tokens'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
@@ -109,6 +110,20 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       return { kind: 'missing' as const, libraryId }
     })
   }, [libraries, librariesLoading, referencedLibraryIds, scope])
+
+  // Mockup 1a's quiet scope line (#591): says what the next question will search. The counts
+  // stay honest to today's model - @Alles-Wissen means every readable library, not yet the
+  // space's Datenquellen (#203).
+  const scopeSummary = useMemo(() => {
+    if (scope === 'none') return 'nichts — antwortet ohne Wissensbasis'
+    if (scope === 'libraries') {
+      const count = referencedLibraryIds.length
+      return count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`
+    }
+    if (libraries.length === 1) return '1 lesbarer Bestand'
+    if (libraries.length > 1) return `${libraries.length} lesbare Bestände`
+    return 'alle lesbaren Bestände'
+  }, [libraries.length, referencedLibraryIds.length, scope])
 
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
@@ -332,7 +347,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           fullWidth
           multiline
           maxRows={6}
-          placeholder="Stellen Sie eine Frage …"
+          placeholder="Frage stellen … mit @ auf eine Quelle eingrenzen"
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -382,17 +397,37 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         modifiers={[{ name: 'offset', options: { offset: [0, 8] } }]}
       >
         <ClickAwayListener onClickAway={closeMention}>
-          <Paper elevation={4} sx={{ maxHeight: 240, overflowY: 'auto' }}>
+          <Paper elevation={4} sx={{ maxHeight: 280, overflowY: 'auto' }}>
+            {/* Mockup 1h (#591): mono eyebrow head, book icon, typed prefix in bold, and a
+                type badge on the right - built to take agents as a second kind later. */}
+            <Typography
+              component="div"
+              sx={{
+                px: 1.5,
+                py: 1,
+                fontFamily: fontFamily.mono,
+                fontSize: 9.5,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'text.secondary',
+                borderBottom: 1,
+                borderColor: 'divider',
+              }}
+            >
+              Suchbereich eingrenzen
+            </Typography>
             {suggestions.length > 0 ? (
               <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
                 {suggestions.map((suggestion, index) => {
                   const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
-                  const primary =
-                    suggestion.kind === 'all' ? '@Alles-Wissen' : suggestion.library.name
-                  const secondary =
+                  const name = suggestion.kind === 'all' ? '@Alles-Wissen' : suggestion.library.name
+                  const badge =
                     suggestion.kind === 'all'
-                      ? 'Alle lesbaren Bibliotheken durchsuchen'
-                      : (suggestion.library.description ?? undefined)
+                      ? 'Alles Wissen · hebt Eingrenzung auf'
+                      : 'Bibliothek · verengt die Suche'
+                  const query = mention?.query ?? ''
+                  const matchIndex =
+                    query.length > 0 ? name.toLowerCase().indexOf(query.toLowerCase()) : -1
                   return (
                     <ListItemButton
                       key={key}
@@ -403,8 +438,51 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                       onMouseDown={(e) => e.preventDefault()}
                       onMouseEnter={() => setHighlightedIndex(index)}
                       onClick={() => selectSuggestion(suggestion)}
+                      sx={{
+                        gap: 1.25,
+                        py: 1,
+                        '&.Mui-selected': {
+                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                        },
+                      }}
                     >
-                      <ListItemText primary={primary} secondary={secondary} />
+                      {suggestion.kind === 'all' ? (
+                        <AllInclusiveIcon sx={{ fontSize: 15, color: 'text.primary' }} />
+                      ) : (
+                        <MenuBookOutlinedIcon sx={{ fontSize: 15, color: 'text.primary' }} />
+                      )}
+                      <Typography
+                        component="span"
+                        noWrap
+                        sx={{ flex: 1, fontSize: 13.5, color: 'text.primary' }}
+                      >
+                        {matchIndex >= 0 ? (
+                          <>
+                            {name.slice(0, matchIndex)}
+                            <Box component="strong" sx={{ fontWeight: 600 }}>
+                              {name.slice(matchIndex, matchIndex + query.length)}
+                            </Box>
+                            {name.slice(matchIndex + query.length)}
+                          </>
+                        ) : (
+                          name
+                        )}
+                      </Typography>
+                      <Typography
+                        component="span"
+                        sx={{
+                          flex: 'none',
+                          fontSize: 10.5,
+                          color: 'text.secondary',
+                          border: 1,
+                          borderColor: 'divider',
+                          borderRadius: '4px',
+                          px: 1,
+                          py: 0.25,
+                        }}
+                      >
+                        {badge}
+                      </Typography>
                     </ListItemButton>
                   )
                 })}
@@ -418,17 +496,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         </ClickAwayListener>
       </Popper>
 
-      <Box
-        sx={{
-          maxWidth: CHAT_MAX_WIDTH,
-          mx: 'auto',
-          mt: 0.75,
-          display: 'flex',
-          justifyContent: 'flex-end',
-        }}
-      >
-        <Typography variant="caption" color="text.secondary">
-          Enter zum Senden, Umschalt+Enter für eine neue Zeile
+      {/* Mockup 1a (#591): the quiet scope line under the input. */}
+      <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
+        <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
+          Durchsucht:{' '}
+          <Box component="span" sx={{ fontWeight: 500 }}>
+            {scopeSummary}
+          </Box>
+          {scope === 'all' && ' · mit @ auf eine Quelle eingrenzen'}
         </Typography>
       </Box>
     </Box>

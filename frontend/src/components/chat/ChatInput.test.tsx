@@ -45,9 +45,37 @@ describe('ChatInput', () => {
     })
   })
 
+  it('shows the search-scope line for the default scope (#591, mockup 1a)', async () => {
+    render(<ChatInput onSend={vi.fn()} />)
+    expect(await screen.findByText(/Durchsucht:/)).toBeInTheDocument()
+    expect(screen.getByText(/mit @ auf eine Quelle eingrenzen/)).toBeInTheDocument()
+  })
+
+  it('reflects chosen references in the scope line (#591)', async () => {
+    useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['lib-1', 'lib-2'] })
+    render(<ChatInput onSend={vi.fn()} />)
+    expect(await screen.findByText(/2 gewählte Bestände/)).toBeInTheDocument()
+  })
+
+  it('names the empty scope honestly (#591)', () => {
+    useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
+    render(<ChatInput onSend={vi.fn()} />)
+    expect(screen.getByText(/antwortet ohne Wissensbasis/)).toBeInTheDocument()
+  })
+
+  it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    await user.type(input, '@Rechts')
+    expect(await screen.findByText('Bibliothek · verengt die Suche')).toBeInTheDocument()
+  })
+
   it('renders input field, send button and the @Alles-Wissen chip by default', () => {
     render(<ChatInput onSend={vi.fn()} />)
-    expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+    ).toBeInTheDocument()
     expect(screen.getByLabelText('Nachricht senden')).toBeInTheDocument()
     expect(screen.getByText('@Alles-Wissen')).toBeInTheDocument()
   })
@@ -56,7 +84,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: 'Hello world' } })
     fireEvent.click(screen.getByLabelText('Nachricht senden'))
 
@@ -67,7 +95,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -78,7 +106,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
 
@@ -89,7 +117,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -98,7 +126,9 @@ describe('ChatInput', () => {
 
   it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
-    expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeDisabled()
+    expect(
+      screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+    ).toBeDisabled()
   })
 
   describe('the three chip-bar states (#560)', () => {
@@ -188,10 +218,10 @@ describe('ChatInput', () => {
     it('replaces @Alles-Wissen with the first concrete chip selected via @', async () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
       await user.type(input, 'Bitte @Rechts')
-      await user.click(await screen.findByText('Rechtsquellen Soziales'))
+      await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
 
       expect(useChatStore.getState().scope).toBe('libraries')
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
@@ -202,10 +232,10 @@ describe('ChatInput', () => {
       const user = userEvent.setup()
       useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
       await user.type(input, '@Alles')
-      await user.click(await screen.findByText('@Alles-Wissen'))
+      await user.click(await screen.findByRole('option', { name: /@Alles-Wissen/ }))
 
       expect(useChatStore.getState().scope).toBe('all')
       expect(useChatStore.getState().referencedLibraryIds).toEqual([])
@@ -215,7 +245,7 @@ describe('ChatInput', () => {
   it('opens library suggestions on "@", with @Alles-Wissen always listed first, and filters by further typing', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@')
     const listbox = await screen.findByRole('listbox', { name: 'Suchbereich' })
@@ -224,8 +254,10 @@ describe('ChatInput', () => {
 
     await user.type(input, 'Rechts')
 
-    expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
-    expect(screen.queryByText('Dienstanweisungen')).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
     // The chip bar itself still shows @Alles-Wissen (scope hasn't changed yet) - only the
     // suggestion list must have filtered the special entry out.
     expect(screen.queryByRole('option', { name: /Alles-Wissen/ })).not.toBeInTheDocument()
@@ -234,10 +266,12 @@ describe('ChatInput', () => {
   it('selects a suggestion by click, adds a chip and removes the @-fragment from the text', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …') as HTMLTextAreaElement
+    const input = screen.getByPlaceholderText(
+      'Frage stellen … mit @ auf eine Quelle eingrenzen',
+    ) as HTMLTextAreaElement
 
     await user.type(input, 'Bitte @Rechts')
-    await user.click(await screen.findByText('Rechtsquellen Soziales'))
+    await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
     expect(input.value).toBe('Bitte ')
@@ -246,10 +280,10 @@ describe('ChatInput', () => {
   it('selects the highlighted suggestion via keyboard (arrow + Enter)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@')
-    await screen.findByText('Rechtsquellen Soziales')
+    await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
     // suggestion order is [@Alles-Wissen, rechtsquellen, dienstanweisungen] - three ArrowDown
     // presses land on the last option.
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
@@ -260,10 +294,10 @@ describe('ChatInput', () => {
   it('selects the hovered suggestion on click without prior keyboard navigation', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@')
-    const option = await screen.findByText('Dienstanweisungen')
+    const option = await screen.findByRole('option', { name: /Dienstanweisungen/ })
     await user.hover(option)
     await user.click(option)
 
@@ -274,10 +308,10 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, 'Bitte @Rechts')
-    await screen.findByText('Rechtsquellen Soziales')
+    await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
     await user.keyboard('{Enter}')
 
     expect(useChatStore.getState().referencedLibraryIds).toEqual([])
@@ -288,33 +322,33 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@Rechts')
-    await screen.findByText('Rechtsquellen Soziales')
+    await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Rechtsquellen Soziales/ })).not.toBeInTheDocument()
     expect(onSend).not.toHaveBeenCalled()
   })
 
   it('does not reopen the suggestion list while typing further inside a dismissed mention', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@Rechts')
-    await screen.findByText('Rechtsquellen Soziales')
+    await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
     await user.keyboard('{Escape}')
-    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Rechtsquellen Soziales/ })).not.toBeInTheDocument()
 
     // Still typing inside the same '@'-fragment must not reopen the list.
     await user.type(input, 'quellen')
-    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Rechtsquellen Soziales/ })).not.toBeInTheDocument()
 
     // Leaving the fragment (space) and starting a new one reopens suggestions again.
     await user.type(input, ' @Dienst')
-    expect(await screen.findByText('Dienstanweisungen')).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: /Dienstanweisungen/ })).toBeInTheDocument()
   })
 
   it('closes the suggestion list on a click outside the input and popup', async () => {
@@ -325,14 +359,14 @@ describe('ChatInput', () => {
         <button type="button">Außerhalb</button>
       </div>,
     )
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
 
     await user.type(input, '@Rechts')
-    await screen.findByText('Rechtsquellen Soziales')
+    await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
 
     await user.click(screen.getByRole('button', { name: 'Außerhalb' }))
 
-    expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Rechtsquellen Soziales/ })).not.toBeInTheDocument()
   })
 
   it('renders referenced libraries as chips with an accessible name, removable via keyboard', async () => {

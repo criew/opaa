@@ -51,7 +51,7 @@ describe('ChatPage', () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: 'What is the architecture?' } })
     fireEvent.click(screen.getByLabelText('Nachricht senden'))
 

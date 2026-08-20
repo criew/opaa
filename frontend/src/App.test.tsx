@@ -26,7 +26,9 @@ describe('App', () => {
   it('redirects to the default space and its most recently used chat by default', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Stellen Sie eine Frage …')).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+      ).toBeInTheDocument()
     })
   })
 
