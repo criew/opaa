@@ -17,6 +17,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
 import io.opaa.organization.Organization;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,8 @@ import org.testcontainers.utility.DockerImageName;
  * UI to resolve it (#478's per-library concurrency turned what used to be a global inconvenience
  * into a permanent, per-library dead end). {@link IndexingJobRecoveryScheduler#recoverOnStartup}
  * must free the library the moment the application restarts; {@link
- * IndexingJobRepository#failStaleRunningJobs} must free it even without one.
+ * IndexingJobService#recoverStaleJobs} must free it even without one - but only once its
+ * heartbeat has actually gone stale, not merely because the run has been going on for a while.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -72,6 +74,7 @@ class IndexingJobRecoveryIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private IndexingJobRecoveryScheduler recoveryScheduler;
+  @Autowired private IndexingJobService indexingJobService;
 
   private User devAdmin;
 
@@ -120,6 +123,19 @@ class IndexingJobRecoveryIntegrationTest {
     return indexingJobRepository.saveAndFlush(job);
   }
 
+  /**
+   * Simulates a running job whose heartbeat ({@link IndexingJob#getLastProgressAt()}) is {@code
+   * heartbeatAge} in the past - a genuinely active run that has been running longer than that has a
+   * far more recent heartbeat (#501 review, finding 1's whole point), so this stands in for either a
+   * truly stale run (an old age) or an actively progressing one (a fresh age).
+   */
+  private IndexingJob seedRunningJobWithHeartbeat(UUID libraryId, Duration heartbeatAge) {
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(libraryId);
+    job.setLastProgressAt(Instant.now().minus(heartbeatAge));
+    return indexingJobRepository.saveAndFlush(job);
+  }
+
   @Test
   void anOrphanedRunningJobLocksTheLibraryUntilRecoveryRunsThenFreesItAgain() throws Exception {
     KnowledgeLibrary library = createFilesystemLibraryWithEditorGrant();
@@ -152,21 +168,32 @@ class IndexingJobRecoveryIntegrationTest {
                     .isFalse());
   }
 
+  /**
+   * #501 review, finding 2: the previous version of this test called the repository directly with a
+   * cutoff manufactured in the future, so removing the {@code lastProgressAt} condition entirely (or
+   * flipping its sign) would still have left this green - the assertion never depended on *which*
+   * rows the query actually selected. This version seeds two libraries, one genuinely stale (an old
+   * heartbeat) and one still actively progressing (a fresh heartbeat), and calls the real entry point
+   * ({@link IndexingJobService#recoverStaleJobs}) with a realistic timeout - only the stale row may
+   * end up FAILED.
+   */
   @Test
-  void aStaleRunningJobIsFreedByThePeriodicSweepWithoutARestart() {
-    KnowledgeLibrary library = createFilesystemLibraryWithEditorGrant();
-    IndexingJob stale = seedOrphanedRunningJob(library.getId());
+  void recoverStaleJobsOnlyFailsRunsPastTheConfiguredTimeoutNotActivelyProgressingOnes() {
+    Duration staleJobTimeout = Duration.ofHours(4);
+    KnowledgeLibrary staleLibrary = createFilesystemLibraryWithEditorGrant();
+    KnowledgeLibrary activeLibrary = createFilesystemLibraryWithEditorGrant();
+    IndexingJob staleJob =
+        seedRunningJobWithHeartbeat(staleLibrary.getId(), staleJobTimeout.plusHours(1));
+    IndexingJob activeJob = seedRunningJobWithHeartbeat(activeLibrary.getId(), Duration.ofSeconds(1));
 
-    // Even without a restart, a run stuck RUNNING for far longer than any plausible
-    // staleJobTimeout must eventually be recovered by the periodic sweep - the cutoff is set in
-    // the future here so this row (whenever it was actually started) always counts as stale.
-    int recovered =
-        indexingJobRepository.failStaleRunningJobs(
-            "test-stale", Instant.now().plusSeconds(60), Instant.now());
+    int recovered = indexingJobService.recoverStaleJobs(staleJobTimeout);
 
     assertThat(recovered).isEqualTo(1);
-    IndexingJob result = indexingJobRepository.findById(stale.getId()).orElseThrow();
-    assertThat(result.getStatus()).isEqualTo(JobStatus.FAILED);
-    assertThat(result.getErrorMessage()).isEqualTo("test-stale");
+    IndexingJob staleResult = indexingJobRepository.findById(staleJob.getId()).orElseThrow();
+    assertThat(staleResult.getStatus()).isEqualTo(JobStatus.FAILED);
+    assertThat(staleResult.getErrorMessage())
+        .isEqualTo("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)");
+    IndexingJob activeResult = indexingJobRepository.findById(activeJob.getId()).orElseThrow();
+    assertThat(activeResult.getStatus()).isEqualTo(JobStatus.RUNNING);
   }
 }

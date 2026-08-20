@@ -322,15 +322,14 @@ public class FileProcessingService {
    * Document#getErrorMessage()}, not a deleted row.
    *
    * <p><b>Runs on {@code uploadTaskExecutor}, a separate pool from {@code indexingTaskExecutor} (PR
-   * #589 review, finding 2).</b> {@code indexingTaskExecutor} discards a task outright when its
-   * queue is full ({@code ThreadPoolExecutor.DiscardPolicy}) - acceptable for a directory/URL
-   * indexing run, which is retried on its own schedule, but fatal here: a discarded upload task
-   * would leave its row stuck at {@code PENDING} forever with nothing to explain why, and the
-   * frontend would poll it indefinitely. {@code uploadTaskExecutor} keeps {@code
-   * ThreadPoolTaskExecutor}'s own default ({@code AbortPolicy}) instead, so a full queue throws
-   * {@link org.springframework.core.task.TaskRejectedException} synchronously in {@code
-   * LibraryDocumentService#uploadDocument}'s own thread, which catches it and marks the row {@code
-   * FAILED} immediately.
+   * #589 review, finding 2)</b> - so a burst of uploads can never itself exhaust the pool a
+   * directory/URL/RSS indexing run depends on, or vice versa. Both executors reject a full queue the
+   * same way since #501: {@code ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws {@link
+   * org.springframework.core.task.TaskRejectedException} synchronously back to the caller, so a full
+   * queue never leaves a row stuck mid-flight. Here that means {@code
+   * LibraryDocumentService#uploadDocument}'s own thread catches it and marks the row {@code FAILED}
+   * immediately - the frontend's polling (#434, {@code documentStore.ts}) has an explicit terminal
+   * state to key off of instead of {@code PENDING} forever with nothing to explain why.
    *
    * <p><b>The status transition is a conditional {@code UPDATE}, not an entity save (PR #589
    * review, finding 1).</b> {@link DocumentRepository#markIndexed} / {@link

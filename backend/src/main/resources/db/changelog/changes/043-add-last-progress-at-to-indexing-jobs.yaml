@@ -1,0 +1,56 @@
+databaseChangeLog:
+  # #501 review, finding 1: the stale-run sweep (IndexingJobRepository#failStaleRunningJobs) must
+  # not judge staleness by started_at - a genuinely active run older than staleJobTimeout (a large
+  # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED bestand can easily run for hours) would otherwise be failed
+  # out from under itself while its executor thread is still processing files. last_progress_at is
+  # a heartbeat: IndexingJobService#updateProgress touches it on every file/entry processed, so the
+  # sweep's cutoff only ever catches a run that has stopped making progress, not one that is merely
+  # long-running.
+  - changeSet:
+      id: 043-add-last-progress-at-to-indexing-jobs
+      author: opaa
+      comment: "Add last_progress_at heartbeat to indexing_jobs (#501)"
+      changes:
+        - addColumn:
+            tableName: indexing_jobs
+            columns:
+              - column:
+                  name: last_progress_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: indexing_jobs
+            columnName: last_progress_at
+
+  - changeSet:
+      id: 043-backfill-last-progress-at
+      author: opaa
+      comment: >
+        Backfills last_progress_at from started_at for every pre-existing row - started_at is the
+        best available estimate for a row this migration predates, and keeps the stale sweep's
+        NOT NULL comparison meaningful for it instead of silently never matching.
+      changes:
+        - sql:
+            comment: "Backfill last_progress_at from started_at for pre-existing rows"
+            sql: "UPDATE indexing_jobs SET last_progress_at = started_at WHERE last_progress_at IS NULL;"
+      rollback:
+        - sql:
+            comment: "Not reversible - deliberately a no-op, same reasoning as migration 030's backfill."
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 043-last-progress-at-not-null
+      author: opaa
+      comment: "Enforce last_progress_at NOT NULL now that every row has a value (#501)"
+      changes:
+        - addNotNullConstraint:
+            tableName: indexing_jobs
+            columnName: last_progress_at
+            columnDataType: timestamp with time zone
+      rollback:
+        - dropNotNullConstraint:
+            tableName: indexing_jobs
+            columnName: last_progress_at
+            columnDataType: timestamp with time zone

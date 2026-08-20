@@ -70,12 +70,18 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       @Param("errorMessage") String errorMessage, @Param("completedAt") Instant completedAt);
 
   /**
-   * Fails every {@link JobStatus#RUNNING} row older than {@code cutoff} (#501). Unlike {@link
-   * #failAllRunningJobs}, this runs periodically while the application keeps running, not only once
-   * at startup - it is the only guard against a run that is orphaned *without* a restart: a task
-   * silently dropped by a full queue before this issue's {@code AbortPolicy} change took effect, or
-   * one that hangs indefinitely (a slow/unreachable remote source, say) well past any run this
-   * library would normally take.
+   * Fails every {@link JobStatus#RUNNING} row whose {@link IndexingJob#getLastProgressAt()}
+   * heartbeat is older than {@code cutoff} (#501). Unlike {@link #failAllRunningJobs}, this runs
+   * periodically while the application keeps running, not only once at startup - it is the only
+   * guard against a run that is orphaned *without* a restart: a task silently dropped by a full
+   * queue before this issue's {@code AbortPolicy} change took effect, or one that hangs
+   * indefinitely (a slow/unreachable remote source, say).
+   *
+   * <p><b>#501 review, finding 1.</b> Filters on {@code lastProgressAt}, not {@code startedAt}: a
+   * genuinely active run of a large bestand can easily exceed {@code
+   * IndexingProperties#staleJobTimeout()} in wall-clock age alone, and {@code updateProgress}
+   * touches {@code lastProgressAt} on every file/entry it processes - so this only ever catches a
+   * run that has actually stopped making progress, never one that is merely long-running.
    *
    * @return the number of rows recovered, purely for logging - the caller does not otherwise act on
    *     it
@@ -85,9 +91,54 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   @Query(
       "update IndexingJob j set j.status = io.opaa.indexing.JobStatus.FAILED, j.errorMessage ="
           + " :errorMessage, j.completedAt = :completedAt where j.status ="
-          + " io.opaa.indexing.JobStatus.RUNNING and j.startedAt < :cutoff")
+          + " io.opaa.indexing.JobStatus.RUNNING and j.lastProgressAt < :cutoff")
   int failStaleRunningJobs(
       @Param("errorMessage") String errorMessage,
       @Param("cutoff") Instant cutoff,
+      @Param("completedAt") Instant completedAt);
+
+  /**
+   * Completes {@code id} only if it is still {@link JobStatus#RUNNING} (#501 review, finding 1).
+   * Without this guard, a job the stale-run sweep or startup recovery already failed - while its
+   * executor thread, unaware, kept running - would have that thread's eventual {@code completeJob}
+   * silently flip the row back from {@code FAILED} to {@code COMPLETED}, leaving the already-set
+   * {@code errorMessage} stranded on an otherwise-successful-looking row. Mirrors {@code
+   * DocumentRepository#markIndexed}'s same conditional-update shape and reasoning.
+   *
+   * @return the number of rows updated - 0 means the row was not {@code RUNNING} any more (already
+   *     recovered) or does not exist; the caller distinguishes the two via {@link #existsById}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.status = io.opaa.indexing.JobStatus.COMPLETED,"
+          + " j.documentsProcessed = :documentsProcessed, j.documentsFailed = :documentsFailed,"
+          + " j.documentsSkipped = :documentsSkipped, j.documentsIndexedTotal ="
+          + " :documentsIndexedTotal, j.completedAt = :completedAt where j.id = :id and j.status ="
+          + " io.opaa.indexing.JobStatus.RUNNING")
+  int completeIfRunning(
+      @Param("id") UUID id,
+      @Param("documentsProcessed") int documentsProcessed,
+      @Param("documentsFailed") int documentsFailed,
+      @Param("documentsSkipped") int documentsSkipped,
+      @Param("documentsIndexedTotal") int documentsIndexedTotal,
+      @Param("completedAt") Instant completedAt);
+
+  /**
+   * Fails {@code id} only if it is still {@link JobStatus#RUNNING} (#501 review, finding 1) - the
+   * same reasoning and shape as {@link #completeIfRunning}, for the failure path.
+   *
+   * @return the number of rows updated - 0 means the row was not {@code RUNNING} any more or does
+   *     not exist; the caller distinguishes the two via {@link #existsById}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.status = io.opaa.indexing.JobStatus.FAILED, j.errorMessage ="
+          + " :errorMessage, j.completedAt = :completedAt where j.id = :id and j.status ="
+          + " io.opaa.indexing.JobStatus.RUNNING")
+  int failIfRunning(
+      @Param("id") UUID id,
+      @Param("errorMessage") String errorMessage,
       @Param("completedAt") Instant completedAt);
 }

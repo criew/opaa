@@ -90,6 +90,14 @@ public class IndexingJobService {
     indexingJobRepository.deleteAllByIdInBatch(staleIds);
   }
 
+  /**
+   * Completes {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding
+   * 1). Without that guard, a job the stale-run sweep or startup recovery already failed - while its
+   * own executor thread, unaware of the recovery, kept running regardless - would have this call
+   * silently flip the row back from {@code FAILED} to {@code COMPLETED} once that thread finally
+   * finishes, stranding the already-set {@code errorMessage} on a row that now looks successful. See
+   * {@link IndexingJobRepository#completeIfRunning}'s Javadoc for the conditional-update mechanics.
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeJob(
       UUID jobId,
@@ -97,29 +105,35 @@ public class IndexingJobService {
       int documentsFailed,
       int documentsSkipped,
       int documentsIndexedTotal) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-    job.setStatus(JobStatus.COMPLETED);
-    job.setDocumentsProcessed(documentsProcessed);
-    job.setDocumentsFailed(documentsFailed);
-    job.setDocumentsSkipped(documentsSkipped);
-    job.setDocumentsIndexedTotal(documentsIndexedTotal);
-    job.setCompletedAt(Instant.now());
-    indexingJobRepository.save(job);
+    int updated =
+        indexingJobRepository.completeIfRunning(
+            jobId, documentsProcessed, documentsFailed, documentsSkipped, documentsIndexedTotal,
+            Instant.now());
+    requireJobExistedIfNoRowsUpdated(jobId, updated);
   }
 
+  /**
+   * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING} (#501 review, finding 1),
+   * the same reasoning and guard as {@link #completeJob}.
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-    job.setStatus(JobStatus.FAILED);
-    job.setErrorMessage(errorMessage);
-    job.setCompletedAt(Instant.now());
-    indexingJobRepository.save(job);
+    int updated = indexingJobRepository.failIfRunning(jobId, errorMessage, Instant.now());
+    requireJobExistedIfNoRowsUpdated(jobId, updated);
+  }
+
+  /**
+   * {@link #completeJob} and {@link #failJob} both use a conditional {@code UPDATE ... WHERE status
+   * = RUNNING}, so zero rows updated is ambiguous: either {@code jobId} does not exist at all (a
+   * genuine caller error, matching the {@link IllegalArgumentException} both methods have always
+   * thrown for it), or it exists but is no longer {@code RUNNING} (already recovered - a legitimate
+   * race this issue exists to handle silently, not an error). This distinguishes the two with one
+   * extra existence check, made only in the zero-rows case.
+   */
+  private void requireJobExistedIfNoRowsUpdated(UUID jobId, int updatedRows) {
+    if (updatedRows == 0 && !indexingJobRepository.existsById(jobId)) {
+      throw new IllegalArgumentException("Job not found: " + jobId);
+    }
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -132,6 +146,17 @@ public class IndexingJobService {
     indexingJobRepository.save(job);
   }
 
+  /**
+   * Reports progress and, since #501 (review finding 1), touches {@link
+   * IndexingJob#getLastProgressAt()} - the heartbeat {@link #recoverStaleJobs} compares against its
+   * cutoff. Called once per file/entry an active run processes ({@link IndexingRunProgress#report}),
+   * so a genuinely active run's heartbeat never falls behind, however long the run's total wall-clock
+   * age grows.
+   *
+   * <p>A no-op once the job is no longer {@link JobStatus#RUNNING} - mirrors {@link #completeJob}'s
+   * and {@link #failJob}'s conditional-update guard: a job the sweep already failed must not have its
+   * counters (or heartbeat) keep moving because its executor thread, unaware, is still running.
+   */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(
       UUID jobId,
@@ -143,10 +168,14 @@ public class IndexingJobService {
         indexingJobRepository
             .findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
     job.setDocumentsProcessed(documentsProcessed);
     job.setDocumentsFailed(documentsFailed);
     job.setDocumentsSkipped(documentsSkipped);
     job.setDocumentsIndexedTotal(documentsIndexedTotal);
+    job.setLastProgressAt(Instant.now());
     indexingJobRepository.save(job);
   }
 
@@ -214,12 +243,16 @@ public class IndexingJobService {
   }
 
   /**
-   * Fails every row still {@link JobStatus#RUNNING} whose {@link IndexingJob#getStartedAt()} is
-   * older than {@code staleAfter} (#501). Called periodically while the application keeps running
-   * ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard against a run
-   * orphaned without a restart, e.g. a task a full queue silently dropped before this issue's
-   * {@code AbortPolicy} change, or one truly hung well past any run this library would normally
-   * take.
+   * Fails every row still {@link JobStatus#RUNNING} whose {@link IndexingJob#getLastProgressAt()}
+   * heartbeat is older than {@code staleAfter} (#501). Called periodically while the application
+   * keeps running ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard
+   * against a run orphaned without a restart, e.g. a task a full queue silently dropped before this
+   * issue's {@code AbortPolicy} change, or one truly hung well past its last recorded progress.
+   *
+   * <p><b>#501 review, finding 1.</b> Compares against {@code lastProgressAt}, not {@code
+   * startedAt}: a large FILESYSTEM/HTTP_DIRECTORY/RSS_FEED bestand can genuinely take longer than
+   * {@code staleAfter} in total wall-clock age while still actively processing files - {@code
+   * startedAt} alone cannot tell that apart from a run that has actually stopped.
    *
    * @return the number of rows recovered
    */
