@@ -155,6 +155,53 @@ class QueryServiceTest {
     assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
   }
 
+  /**
+   * #666 review: {@code mapSources}/{@code mergeSourceReferences} dedupe by {@code fileName}, not
+   * {@code document_id} - two distinct RSS-sourced documents can share a file name while carrying
+   * different {@code sourceEntryUrl} values. Asserting either one for the merged citation would be
+   * a checkable falsehood about where the other, merged-away chunk came from, so the merged source
+   * carries no origin link at all rather than an arbitrarily-picked, possibly wrong one.
+   */
+  @Test
+  void queryDropsSourceEntryUrlWhenTwoDocumentsShareAFileNameWithDifferentUrls() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID firstDocumentId = UUID.randomUUID();
+    UUID secondDocumentId = UUID.randomUUID();
+    var firstChunk =
+        Document.builder()
+            .text("From the first feed entry")
+            .metadata(
+                Map.of("file_name", "attachment.pdf", "document_id", firstDocumentId.toString()))
+            .score(0.9)
+            .build();
+    var secondChunk =
+        Document.builder()
+            .text("From the second feed entry")
+            .metadata(
+                Map.of("file_name", "attachment.pdf", "document_id", secondDocumentId.toString()))
+            .score(0.7)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(firstChunk, secondChunk));
+
+    var firstDocument =
+        new io.opaa.indexing.Document("attachment.pdf", "/path1", "application/pdf", 100L);
+    firstDocument.setSourceEntryUrl("https://example.com/feed/entry-1");
+    var secondDocument =
+        new io.opaa.indexing.Document("attachment.pdf", "/path2", "application/pdf", 100L);
+    secondDocument.setSourceEntryUrl("https://example.com/feed/entry-2");
+    when(documentRepository.findById(firstDocumentId)).thenReturn(Optional.of(firstDocument));
+    when(documentRepository.findById(secondDocumentId)).thenReturn(Optional.of(secondDocument));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources()).hasSize(1);
+    assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
+  }
+
   @Test
   void queryMarksCitedSourcesCorrectly() {
     when(chatMemory.get(any())).thenReturn(List.of());
@@ -819,12 +866,45 @@ class QueryServiceTest {
       var citedLow =
           sourceReference("report.pdf", 0.3, 1, INDEXED_AT, true, "https://example.com/entry-1");
       var uncitedHigh =
-          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-2");
+          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
 
       var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
 
       assertThat(result.getCited()).isTrue();
-      assertThat(result.getSourceEntryUrl()).isEqualTo("https://example.com/entry-2");
+      assertThat(result.getSourceEntryUrl()).isEqualTo("https://example.com/entry-1");
+    }
+
+    /**
+     * #666 review: two distinct documents can share a file name, each with its own {@code
+     * sourceEntryUrl} - picking either side's URL for the merged citation would be an unverifiable,
+     * potentially wrong claim about where the other chunk actually came from. The merge must drop
+     * to {@code null} rather than assert one of two disagreeing URLs.
+     */
+    @Test
+    void dropsSourceEntryUrlWhenMergedSourcesDisagree() {
+      var a =
+          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
+      var b =
+          sourceReference("report.pdf", 0.5, 1, INDEXED_AT, false, "https://example.com/entry-2");
+
+      var result = QueryService.mergeSourceReferences(a, b);
+
+      assertThat(result.getSourceEntryUrl()).isNull();
+    }
+
+    /**
+     * #666 review: one side carrying no {@code sourceEntryUrl} at all (not merely a different one)
+     * is also a disagreement - a document with a URL and one without do not corroborate each other.
+     */
+    @Test
+    void dropsSourceEntryUrlWhenOnlyOneSourceHasOne() {
+      var withUrl =
+          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-1");
+      var withoutUrl = sourceReference("report.pdf", 0.5, 1, INDEXED_AT, false, null);
+
+      var result = QueryService.mergeSourceReferences(withUrl, withoutUrl);
+
+      assertThat(result.getSourceEntryUrl()).isNull();
     }
   }
 

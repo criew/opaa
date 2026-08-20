@@ -1989,10 +1989,10 @@ components:
           type: string
           nullable: true
           description: >
-            The URL of the feed entry an RSS-sourced asset was fetched from (#468), resolved via
-            QueryService#lookupSourceDocuments, the same DocumentRepository lookup by document_id
-            that already resolves indexedAt (#639). Null for a document that carries no source
-            entry URL (anything not sourced from an RSS feed).
+            For a citation of an attachment discovered on an RSS entry's detail page (#468), the
+            URL of the entry it was found on - lets the citation trace the attachment back to the
+            feed entry it belongs to. Null for every other document, and for a citation merged from
+            chunks whose underlying documents disagree on this value.
           example: https://example.com/feed/entry-123
         cited:
           type: boolean
