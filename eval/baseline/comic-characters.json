@@ -105,15 +105,6 @@
       "recallAt10": 0.555,
       "recallAt10Ceiling": 0.9725,
       "distinctExpectedDocumentSets": 85
-    },
-    "language:de": {
-      "n": 34,
-      "hitRateAt5": 0.382,
-      "mrr": 0.337,
-      "ndcgAt10": 0.302,
-      "recallAt10": 0.322,
-      "recallAt10Ceiling": 0.9666,
-      "distinctExpectedDocumentSets": 33
     }
   },
   "measuredAt": "2026-08-03",
@@ -121,5 +112,5 @@
     "sourceReportRunStartedAt": "2026-08-03T00:00:00Z",
     "sourcePullRequest": "#299"
   },
-  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Toleranzpolitik gemäß ADR-0013 (überarbeitet aus dem Review zu PR #301): tolerance = min(2/n_eff, 0.25*Baselinewert), harte Untergrenze der Gesamtmetriken = 80% des jeweils committeten Baselinewerts. distinctExpectedDocumentSets je Gruppe wurde am 2026-08-03 direkt aus eval/golden/comic-characters.json nachgerechnet (Korrektur: 94 statt der zuvor genannten 75 für 'overall' — die Zahl 75 aus einer früheren, ungeprüften Angabe war falsch). Aktualisierungsverfahren: eval/baseline/README.md."
+  "notes": "Baseline aus PR #299 (Issue #228), gemessen mit dem gepinnten Modell nomic-embed-text:v1.5 (Digest siehe fixedPoints), Laufzeit 1004 s. Drei unabhängige Läufe (zwei des Autors, einer des Reviewers auf fremder Hardware) lieferten byte-identische Metriken — die HNSW-Approximationsschwankung, die ADR-0011 als Risiko benennt, tritt bei dieser Korpusgröße nicht auf. Frühere Berichte nannten einen Gesamt-nDCG@10 von 0.463; die stammen vom ungepinnten nomic-embed-text:latest und sind hinfällig — die Verschiebung durch das Pinning ist der empirische Beleg dafür, warum das Pinning nötig war. Toleranzpolitik gemäß ADR-0013 (überarbeitet aus dem Review zu PR #301): tolerance = min(2/n_eff, 0.25*Baselinewert), harte Untergrenze der Gesamtmetriken = 80% des jeweils committeten Baselinewerts. distinctExpectedDocumentSets je Gruppe wurde am 2026-08-03 direkt aus eval/golden/comic-characters.json nachgerechnet (Korrektur: 94 statt der zuvor genannten 75 für 'overall' — die Zahl 75 aus einer früheren, ungeprüften Angabe war falsch). Aktualisierungsverfahren: eval/baseline/README.md. Nachtrag (Issue #304, 2026-08-20): die Gruppe 'language:de' wurde entfernt — sie ist konstruktionsbedingt exakt dieselbe Fallmenge wie 'category:crosslingual' (34 Fälle, 33 unterschiedliche Erwartungsmengen) und lieferte denselben Wert doppelt; siehe eval/baseline/README.md und ADR-0013 für die Begründung."
 }

@@ -95,6 +95,26 @@ import java.util.TreeSet;
  */
 public final class BaselineComparator {
 
+  /**
+   * The golden dataset's {@code crosslingual} category is, by construction, exactly the set of
+   * {@code language:de} cases (issue #304): every {@code crosslingual} case is a German question
+   * against the English corpus, and there is no other source of German cases. The two groups are
+   * therefore never independent observations — comparing both doubles the number of checks over
+   * identical data without adding coverage. ADR-0013 ("Offen") and {@code eval/baseline/README.md}
+   * record the consolidation decision: keep {@code category:crosslingual} (it names the property
+   * under test), drop {@code language:de} as a baseline/comparison group. The report still computes
+   * a {@code language:de} entry from the (unchanged) golden dataset — this constant lets {@link
+   * #compare} skip just that one redundant group instead of requiring a golden-dataset or harness
+   * change.
+   *
+   * <p><b>Self-healing (PR #673 review):</b> {@link #compare} only skips {@code language:de} while
+   * the baseline actually lacks an entry for it. If a future baseline re-measurement legitimately
+   * reintroduces a {@code language:de} group (e.g. once the golden dataset gains German cases that
+   * are not simply {@code crosslingual}'s twins), the skip stops applying on its own and the group
+   * is compared like any other — it is never silently discarded once the baseline tracks it again.
+   */
+  static final String REDUNDANT_LANGUAGE_GROUP = Baseline.language("de");
+
   /** Two independent cases flipping is treated as noise; a third is a finding (ADR-0013). */
   static final double K_MIN = 2.0;
 
@@ -233,6 +253,17 @@ public final class BaselineComparator {
           .forEach(
               (name, agg) -> {
                 String key = Baseline.language(name);
+                // Issue #304: language:de is the redundant twin of category:crosslingual (see
+                // REDUNDANT_LANGUAGE_GROUP's Javadoc) and, today, has no baseline entry — skip it
+                // rather than comparing against a group the baseline deliberately no longer
+                // carries. Self-healing (PR #673 review): only skip while the baseline actually
+                // lacks the entry. Should a future baseline re-measurement add a genuine
+                // language:de group back (e.g. once the golden dataset gains German cases that are
+                // not simply the crosslingual twins), this check falls through to the normal
+                // comparison instead of silently discarding it.
+                if (key.equals(REDUNDANT_LANGUAGE_GROUP) && !baseline.groups().containsKey(key)) {
+                  return;
+                }
                 checkGroup(checks, key, agg, baseline.groups(), false);
                 visitedGroups.add(key);
               });
@@ -243,7 +274,8 @@ public final class BaselineComparator {
       // measurement — would otherwise silently run only the four overall checks and pass. Since
       // group names come from golden-dataset content and the golden dataset's hash is itself a
       // fixed point checked above, a mismatch here is only possible via a bug, never a legitimate
-      // corpus/dataset change — so it is a hard failure, not a tolerance case.
+      // corpus/dataset change — so it is a hard failure, not a tolerance case. language:de is
+      // deliberately excluded above (issue #304) and must not trip this check.
       Set<String> missingFromReport = new TreeSet<>(baseline.groups().keySet());
       missingFromReport.removeAll(visitedGroups);
       if (!missingFromReport.isEmpty()) {
