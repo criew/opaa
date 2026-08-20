@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { useChatStore } from './chatStore'
+import { clearSettingsPersistenceCache, useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
 
 const SPACE_ID = 'space-personal'
@@ -26,6 +26,9 @@ function resetChatStore() {
 describe('chatStore', () => {
   beforeEach(() => {
     resetChatStore()
+    // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state (#573) -
+    // they survive resetChatStore() above and would otherwise leak between test cases.
+    clearSettingsPersistenceCache()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
@@ -826,6 +829,89 @@ describe('chatStore', () => {
       expect(state.scope).toBe('libraries')
       expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
       expect(state.error).toBeNull()
+    })
+
+    // #573: a settings PATCH that finally succeeds after the user navigated away and back to the
+    // *same* chat must not leave the chip bar showing the stale server value a concurrent loadChat
+    // read while the PATCH was still in flight - the late success is, at the moment it lands, the
+    // more authoritative source and must win. The chatId guard alone cannot catch this case (unlike
+    // the "navigate to a *different* chat" tests above): navigating back to the same chat makes
+    // get().chatId === requestChatId true again, so only a sequence guard mirroring the failure
+    // handler's can tell this success apart from one that has since been superseded.
+    it('applies a late-succeeding PATCH result even after loadChat re-read the still-old server value for the same chat in between', async () => {
+      let resolveExistingChatPatch: (() => void) | undefined
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            // Every GET for this chat - including the one loadChat fires from B back to A below -
+            // keeps returning the pre-change settings: the server has not applied the still-in-
+            // flight PATCH yet.
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          if (params.chatId !== EXISTING_CHAT_ID) {
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: body.useKnowledge,
+              referencedLibraryIds: body.referencedLibraryIds ?? [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }
+          // Deliberately held open until this test resolves it itself - deterministic, unlike a
+          // fixed delay racing the loadChat round-trips below.
+          await new Promise<void>((resolve) => {
+            resolveExistingChatPatch = resolve
+          })
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // chat A, scope 'all'
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // scope -> 'none' optimistically, PATCH held open
+      const stalePatch = useChatStore.getState().pendingSettingsUpdate
+
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID) // navigate away to chat B
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // navigate back to chat A
+      // The server still has not applied the in-flight PATCH - loadChat's snapshot is stale.
+      expect(useChatStore.getState().scope).toBe('all')
+
+      resolveExistingChatPatch?.()
+      await stalePatch
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe(EXISTING_CHAT_ID)
+      expect(state.scope).toBe('none')
+      expect(state.referencedLibraryIds).toEqual([])
     })
 
     // #565 review, finding 1: two rapid scope changes on the same chat used to fire two PATCHes in

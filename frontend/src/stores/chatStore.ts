@@ -61,6 +61,30 @@ const confirmedSettingsByChatId = new Map<
   { scope: SearchScope; referencedLibraryIds: string[] }
 >()
 
+/**
+ * Clears both module-level settings-persistence maps (#573 review of #570). Used by the store's
+ * own reset() action (logout, #440 review point 3) and exported for chatStore.test.ts's
+ * beforeEach, since these maps are module state, not store state, and so survive across test
+ * cases unless cleared explicitly.
+ */
+export function clearSettingsPersistenceCache(): void {
+  settingsUpdateChains.clear()
+  confirmedSettingsByChatId.clear()
+}
+
+/**
+ * Drops chatId's entries from both module-level settings-persistence maps (#573): a deleted chat
+ * can never again be the target of a queued PATCH or a rollback base, so leaving its entries
+ * behind would just grow both maps for the rest of the session. Unlike clearSettingsPersistenceCache
+ * above, this must not be reused for the per-chain cleanup in applyScopeChange's finally handler
+ * below - confirmedSettingsByChatId must survive a chain settling, only a chat's actual deletion
+ * may drop it (see the warning on confirmedSettingsByChatId's declaration above).
+ */
+export function dropChatSettingsCache(chatId: string): void {
+  settingsUpdateChains.delete(chatId)
+  confirmedSettingsByChatId.delete(chatId)
+}
+
 // The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
 // chip (backend useKnowledge=true), 'libraries' shows the sticky concrete-library chips
 // (useKnowledge=false + referencedLibraryIds), 'none' is an emptied bar (useKnowledge=false, no
@@ -381,8 +405,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // particular user - a stale entry for a chat the previous user had open would otherwise
     // survive into the next user's session in the same tab, e.g. letting a late PATCH failure
     // for that old chat roll back to settings the new user never saw (#565's rollback base).
-    settingsUpdateChains.clear()
-    confirmedSettingsByChatId.clear()
+    clearSettingsPersistenceCache()
     set({
       spaceId: null,
       chatId: null,
@@ -454,6 +477,17 @@ function applyScopeChange(
           scope: nextScope,
           referencedLibraryIds: nextReferencedLibraryIds,
         })
+        // #573: a late-succeeding PATCH is, at the moment it resolves, the most authoritative
+        // source for this chat's settings - more so than a loadChat that raced it and read the
+        // server before this PATCH committed (Chat A, slow PATCH -> navigate to B -> back to A,
+        // loadChat still sees the old value -> this PATCH then lands). Without applying it here
+        // too, the chip bar is left showing loadChat's stale snapshot even though the server (and
+        // confirmedSettingsByChatId above) has already moved on. Same two guards as the failure
+        // handler below: only the chat this call was made for, and only the most recently
+        // requested change for it, may still update local state once its response arrives.
+        if (get().chatId !== requestChatId) return
+        if (requestId !== settingsUpdateSequence) return
+        set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
       },
       (err: unknown) => {
         // A stale failure must not roll back a chat the user has since navigated away from
@@ -483,6 +517,14 @@ function applyScopeChange(
   void promise.finally(() => {
     if (get().pendingSettingsUpdate === promise) {
       set({ pendingSettingsUpdate: null })
+    }
+    // Deterministic cleanup of settingsUpdateChains (#573): only drop this chat's entry if it is
+    // still the tail, i.e. no newer applyScopeChange call for the same chat has already queued
+    // behind (and thus overwritten) it - deleting unconditionally here could rip out a newer
+    // call's own chain entry out from under it. confirmedSettingsByChatId is deliberately left
+    // untouched: it must survive this chain settling, see the warning on its declaration above.
+    if (settingsUpdateChains.get(chatId) === promise) {
+      settingsUpdateChains.delete(chatId)
     }
   })
 }
