@@ -33,10 +33,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,6 +54,14 @@ import org.testcontainers.utility.DockerImageName;
  */
 @SpringBootTest
 @ActiveProfiles("dev")
+// #616: lets TestConfig#chatTitleTaskExecutor below replace ChatConfiguration's real,
+// @Async-backed bean of the same name - see that bean's Javadoc for why this must stay a
+// same-name override rather than a differently named @Primary bean (Spring's @Async(value)
+// resolves the executor by that exact bean name, not by @Primary/type). Must be a
+// @TestPropertySource, not a @DynamicPropertySource: Boot reads
+// spring.main.allow-bean-definition-overriding while preparing the SpringApplication, before a
+// @DynamicPropertySource registry (populated only once the context already exists) is consulted.
+@TestPropertySource(properties = "spring.main.allow-bean-definition-overriding=true")
 @Testcontainers(disabledWithoutDocker = true)
 class QueryIntegrationTest {
 
@@ -72,6 +83,27 @@ class QueryIntegrationTest {
     @Primary
     EmbeddingModel testEmbeddingModel() {
       return new FakeEmbeddingModel();
+    }
+
+    /**
+     * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
+     * synchronous executor for this test class only - the real one runs #557's chat-title LLM call
+     * on a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see
+     * promptCaptor usages below) against that async call landing on the very same
+     * {@code @MockitoBean chatModel} it stubs. Mockito's stubbing API is not thread-safe against a
+     * concurrent invocation of the mock being stubbed, which is exactly what corrupted CI runs with
+     * {@code MockitoException at QueryIntegrationTest.java:562} (#616) - a still-in-flight title
+     * job from an earlier {@code queryService.query(...)} call (in this test or, since {@code
+     * chatModel} is reused across every test method in this class's shared Spring context, an
+     * earlier test) invoking the mock exactly while a later {@code when(...)} call was mid-setup.
+     * {@link SyncTaskExecutor} runs the title job on the calling thread instead, so by the time
+     * {@code queryService.query(...)} returns, the title generation call has already completed (or
+     * failed) - never racing anything that runs after it.
+     */
+    @Bean(name = "chatTitleTaskExecutor")
+    @Primary
+    TaskExecutor testChatTitleTaskExecutor() {
+      return new SyncTaskExecutor();
     }
   }
 
