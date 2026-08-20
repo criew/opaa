@@ -386,7 +386,7 @@ public class SourceConnectionTestService {
         // reporting the same "0 gefunden" it always did.
         if (linkedDocuments == 0 && !crawlerService.looksLikeDirectoryListing(html)) {
           return unreachable(
-              "Die Seite ist erreichbar, enthält aber kein erkennbares Verzeichnislisting.");
+              "Die Adresse antwortet, liefert aber kein erkennbares Verzeichnislisting.");
         }
         return reachable(
             "Webverzeichnis erreichbar, "

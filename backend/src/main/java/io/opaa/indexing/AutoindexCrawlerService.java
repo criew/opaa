@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -134,7 +136,12 @@ public class AutoindexCrawlerService {
    * understands (see the class Javadoc). The Apache {@code HTMLTable} layout is tried first since
    * it carries date/size in dedicated columns the other layouts only approximate from trailing
    * text; if it finds no rows, the page is re-parsed as a link-based layout ({@code <pre>} or
-   * {@code <ul>}), which covers everything else.
+   * {@code <ul>}) - but only if {@link #looksLikeDirectoryListing(Document)} recognizes the page as
+   * a listing at all (#550 review). Without that gate, an ordinary homepage would be crawled as a
+   * directory too: every link with a trailing {@code /} becomes a {@code DIR} entry {@link #crawl}
+   * then recurses into, with no bound on depth or visited URLs - a same-origin navigation cycle
+   * (say, a calendar page linking {@code .../2026/} which links back to itself) would recurse
+   * forever.
    */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     if (html == null) {
@@ -145,6 +152,9 @@ public class AutoindexCrawlerService {
     List<CrawledFileEntry> tableEntries = parseHtmlTableLayout(doc, baseUrl, depth);
     if (!tableEntries.isEmpty()) {
       return tableEntries;
+    }
+    if (!looksLikeDirectoryListing(doc)) {
+      return List.of();
     }
     return parseLinkBasedLayout(doc, baseUrl, depth);
   }
@@ -160,17 +170,35 @@ public class AutoindexCrawlerService {
     if (html == null) {
       return false;
     }
-    Document doc = Jsoup.parse(html);
-    // A <table> or <pre> full of links is specific enough on its own - real websites rarely use
-    // either for navigation. A plain <ul> of links, however, is exactly what an ordinary page's
-    // <nav> looks like too, so that signal only counts together with the page title both Apache
-    // and nginx (and Python's http.server) always set on a real listing.
+    return looksLikeDirectoryListing(Jsoup.parse(html));
+  }
+
+  /**
+   * See {@link #looksLikeDirectoryListing(String)}; also gates {@link #parseDirectory} itself (#550
+   * review) so the link-based fallback never runs on a page this heuristic wouldn't call a listing.
+   */
+  private boolean looksLikeDirectoryListing(Document doc) {
+    // A <table> is specific enough on its own - real websites rarely use one for navigation.
     boolean hasTable = !doc.select("tr td").isEmpty();
-    boolean hasPreLinks = !doc.select("pre a[href]").isEmpty();
+    // A single link inside a <pre> proves nothing (a code sample can contain one), but a real
+    // Apache/nginx pre-listing always has at least the parent-directory link plus one entry, or an
+    // entry whose trailing text actually looks like a date/size column (#550 review, nit a).
+    Elements preLinks = doc.select("pre a[href]");
+    boolean hasPreLinks =
+        preLinks.size() >= 2
+            || preLinks.stream().anyMatch(AutoindexCrawlerService::hasDateSizeMeta);
+    // A plain <ul> of links, however, is exactly what an ordinary page's <nav> looks like too, so
+    // that signal only counts together with the page title both Apache and nginx (and Python's
+    // http.server) always set on a real listing.
     String title = doc.title() == null ? "" : doc.title().toLowerCase(Locale.ROOT);
     boolean titleMatchesListing =
         title.contains("index of") || title.contains("directory listing for");
     return hasTable || hasPreLinks || titleMatchesListing;
+  }
+
+  private static boolean hasDateSizeMeta(Element link) {
+    String[] meta = extractTrailingLineMeta(link);
+    return !meta[0].isEmpty();
   }
 
   /**
@@ -221,6 +249,14 @@ public class AutoindexCrawlerService {
 
       String fullUrl;
       if (href.startsWith("http://") || href.startsWith("https://")) {
+        // #550 review: an absolute href pointing at a foreign origin must never be followed - the
+        // caller's Authorization header (built from this source configuration's own credentials)
+        // would otherwise be sent to a host that configuration was never meant for. This mirrors
+        // #538's redirect hardening (sendFollowingRedirects/sameOrigin), which only ever covered
+        // redirect targets, not a link the listing page itself points elsewhere with.
+        if (!isSameOriginAsBase(baseUrl, href)) {
+          continue;
+        }
         fullUrl = href;
       } else {
         fullUrl = resolveUrl(baseUrl, href);
@@ -246,6 +282,7 @@ public class AutoindexCrawlerService {
   private List<CrawledFileEntry> parseLinkBasedLayout(Document doc, String baseUrl, int depth) {
     List<CrawledFileEntry> entries = new ArrayList<>();
     Elements links = doc.select("a[href]");
+    String normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 
     for (Element link : links) {
       String href = link.attr("href");
@@ -269,16 +306,28 @@ public class AutoindexCrawlerService {
 
       String fullUrl;
       if (href.startsWith("http://") || href.startsWith("https://")) {
+        // #550 review: same reasoning as parseHtmlTableLayout - never leak credentials to a
+        // foreign origin. The fallback also requires the resolved URL to stay *underneath*
+        // baseUrl (not just same-origin) - this is the layout guessed purely from the presence of
+        // links, so it must not wander off into unrelated same-origin pages a listing happens to
+        // link to (a "back to homepage" link, a stylesheet), which is exactly what caused the
+        // uncontrolled recursion this review flagged in the first place.
+        if (!isSameOriginAsBase(baseUrl, href) || !href.startsWith(normalizedBaseUrl)) {
+          continue;
+        }
         fullUrl = href;
       } else {
         fullUrl = resolveUrl(baseUrl, href);
+        if (!fullUrl.startsWith(normalizedBaseUrl)) {
+          continue;
+        }
       }
 
       String type = href.endsWith("/") ? "DIR" : "";
       String[] trailingMeta = extractTrailingLineMeta(link);
+      String entryName = deriveEntryName(href, name);
       entries.add(
-          new CrawledFileEntry(
-              stripTrailingSlash(name), fullUrl, trailingMeta[0], trailingMeta[1], type, depth));
+          new CrawledFileEntry(entryName, fullUrl, trailingMeta[0], trailingMeta[1], type, depth));
     }
 
     return entries;
@@ -297,12 +346,90 @@ public class AutoindexCrawlerService {
   }
 
   /**
+   * Derives an entry's display name from its {@code href} rather than its link text (#550 review,
+   * finding 4): Apache's {@code IndexOptions NameWidth} truncates the *displayed* name to a fixed
+   * column width (rendered as {@code some-long-file-na..&gt;}) while the {@code href} itself always
+   * carries the untruncated, URL-encoded file name - using the link text as the name would lose the
+   * file extension for any name long enough to be truncated, silently dropping it from {@link
+   * SupportedDocumentFormats#isSupported}. Falls back to the (trailing-slash-stripped) link text
+   * only when the href's last path segment cannot be recovered at all (an empty path, or a href
+   * like {@code "/"}).
+   */
+  private static String deriveEntryName(String href, String linkText) {
+    String fromHref = extractLastPathSegment(href);
+    if (fromHref != null && !fromHref.isEmpty()) {
+      return fromHref;
+    }
+    return stripTrailingSlash(linkText);
+  }
+
+  private static String extractLastPathSegment(String href) {
+    String path = href;
+    int query = path.indexOf('?');
+    if (query >= 0) {
+      path = path.substring(0, query);
+    }
+    int fragment = path.indexOf('#');
+    if (fragment >= 0) {
+      path = path.substring(0, fragment);
+    }
+    if (path.endsWith("/")) {
+      path = path.substring(0, path.length() - 1);
+    }
+    int lastSlash = path.lastIndexOf('/');
+    String lastSegment = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+    if (lastSegment.isEmpty()) {
+      return null;
+    }
+    try {
+      return URLDecoder.decode(lastSegment, StandardCharsets.UTF_8);
+    } catch (IllegalArgumentException e) {
+      return lastSegment;
+    }
+  }
+
+  /**
+   * Whether {@code absoluteHref} (an already-absolute {@code http://}/{@code https://} link found
+   * on the page fetched from {@code baseUrl}) targets the same origin as {@code baseUrl} (#550
+   * review, finding 2) - mirrors {@link #sameOrigin}'s own reasoning for redirect targets (#538),
+   * applied here to links the listing page itself contains rather than a {@code 3xx} response.
+   */
+  private static boolean isSameOriginAsBase(String baseUrl, String absoluteHref) {
+    try {
+      return sameOrigin(URI.create(baseUrl), URI.create(absoluteHref));
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Matches the two common date formats these pre-listings use: Apache's {@code dd-Mon-yyyy} and
+   * nginx's {@code yyyy-mm-dd}.
+   */
+  private static final Pattern DATE_TOKEN =
+      Pattern.compile("^\\d{2}-[A-Za-z]{3}-\\d{4}$|^\\d{4}-\\d{2}-\\d{2}$");
+
+  /** Matches an {@code hh:mm} time-of-day token. */
+  private static final Pattern TIME_TOKEN = Pattern.compile("^\\d{2}:\\d{2}$");
+
+  /**
+   * Matches a size token: Apache's {@code -} placeholder, a plain byte count, or a unit-suffixed
+   * number.
+   */
+  private static final Pattern SIZE_TOKEN = Pattern.compile("^-$|^\\d+(?:\\.\\d+)?[KMGTP]?$");
+
+  /**
    * Reconstructs the "date size" trailing text that both {@code <pre>}-based layouts (Apache
    * without {@code HTMLTable}, nginx) print after each link on the same line, e.g. {@code <a
    * href="report.pdf">report.pdf</a> 10-Jun-2025 14:22 4.5M}. The {@code <ul>}-based layouts never
    * have this trailing text, so this simply returns two empty strings for those - date/size are
    * informational only (used for change-detection, see {@code UrlIndexingExecutor#isUnchanged}),
    * never for deciding what gets indexed.
+   *
+   * <p>The last three whitespace-separated tokens are only accepted as "date time size" if they
+   * actually look like one (#550 review, nit d) - Apache's optional {@code IndexOptions
+   * Description} column would otherwise be blindly picked up as a fabricated date/size whenever it
+   * happens to end in three space-separated words.
    */
   private static String[] extractTrailingLineMeta(Element link) {
     StringBuilder line = new StringBuilder();
@@ -319,10 +446,16 @@ public class AutoindexCrawlerService {
     }
 
     String[] parts = line.toString().trim().split("\\s+");
-    if (parts.length >= 3) {
-      String size = parts[parts.length - 1];
-      String date = parts[parts.length - 3] + " " + parts[parts.length - 2];
-      return new String[] {date, size};
+    if (parts.length < 3) {
+      return new String[] {"", ""};
+    }
+    String datePart = parts[parts.length - 3];
+    String timePart = parts[parts.length - 2];
+    String sizePart = parts[parts.length - 1];
+    if (DATE_TOKEN.matcher(datePart).matches()
+        && TIME_TOKEN.matcher(timePart).matches()
+        && SIZE_TOKEN.matcher(sizePart).matches()) {
+      return new String[] {datePart + " " + timePart, sizePart};
     }
     return new String[] {"", ""};
   }
