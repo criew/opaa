@@ -90,11 +90,13 @@ export default function ChatList({ spaceId }: ChatListProps) {
       >
         <span>
           <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
+            variant="text"
+            size="small"
+            startIcon={<AddIcon sx={{ fontSize: 14 }} />}
             onClick={handleNewChat}
             disabled={Boolean(isArchived)}
-            sx={{ mb: 1.5, borderRadius: 2, textTransform: 'none' }}
+            // Mockup 1a renders "+ Neu" as a quiet small link, not a boxed button (#658).
+            sx={{ mb: 0.5, minHeight: 0, px: 1, py: 0.25, fontSize: 12.5 }}
           >
             Neuer Chat
           </Button>
@@ -124,6 +126,16 @@ export default function ChatList({ spaceId }: ChatListProps) {
               <ListItem
                 key={chat.id}
                 disablePadding
+                // Mockup 1a keeps chat rows quiet - the actions only surface on hover or
+                // keyboard focus (#658). They stay in the tab order either way.
+                sx={{
+                  '& .MuiListItemSecondaryAction-root': {
+                    opacity: 0,
+                    transition: 'opacity 120ms',
+                  },
+                  '&:hover .MuiListItemSecondaryAction-root, &:focus-within .MuiListItemSecondaryAction-root':
+                    { opacity: 1 },
+                }}
                 secondaryAction={
                   !isRenaming && (
                     <>
@@ -131,15 +143,17 @@ export default function ChatList({ spaceId }: ChatListProps) {
                         size="small"
                         aria-label={`Chat „${chatTitle(chat)}“ umbenennen`}
                         onClick={() => startRename(chat)}
+                        sx={{ p: 0.5 }}
                       >
-                        <EditIcon fontSize="small" />
+                        <EditIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                       <IconButton
                         size="small"
                         aria-label={`Chat „${chatTitle(chat)}“ löschen`}
                         onClick={() => void handleDelete(chat)}
+                        sx={{ p: 0.5 }}
                       >
-                        <DeleteIcon fontSize="small" />
+                        <DeleteIcon sx={{ fontSize: 15 }} />
                       </IconButton>
                     </>
                   )
@@ -150,7 +164,7 @@ export default function ChatList({ spaceId }: ChatListProps) {
                   onClick={
                     isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)
                   }
-                  sx={{ borderRadius: 2, mb: 0.5, pr: 9 }}
+                  sx={{ borderRadius: '6px', mb: 0.25, pr: 8, py: 0.5 }}
                 >
                   {isRenaming ? (
                     <TextField
@@ -179,7 +193,10 @@ export default function ChatList({ spaceId }: ChatListProps) {
                     <ListItemText
                       primary={chatTitle(chat)}
                       secondary={formatUpdatedAt(chat.updatedAt)}
-                      slotProps={{ primary: { noWrap: true } }}
+                      slotProps={{
+                        primary: { noWrap: true, variant: 'body2' },
+                        secondary: { variant: 'caption' },
+                      }}
                     />
                   )}
                 </ListItemButton>
