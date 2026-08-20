@@ -48,6 +48,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
     when(grantRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    AssetGrantService grantService = mock(AssetGrantService.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
@@ -62,6 +63,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             membershipResolver,
             documentRepository,
             grantRepository,
+            grantService,
             accessService,
             permissionHistoryService,
             auditEventRecorder,
