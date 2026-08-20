@@ -1520,9 +1520,11 @@ paths:
       tags: [branding]
       summary: >
         The branding configuration in effect (#582): product name, claim, accent colour, default
-        colour scheme and - if one is configured - the path the logo is served from. Readable by
-        every signed-in user, not just administrators: every rendered page needs it. Never fails
-        for want of configuration - a deployment that has never configured anything gets the OPAA
+        colour scheme and - if one is configured - the path the logo is served from. Readable
+        without authentication (#583): the sign-in page renders before there is a session and still
+        has to carry the operator's own name and logo. What that exposes is bounded to exactly
+        these fields - which Behörde runs the deployment, which anyone reaching its sign-in page
+        can already tell. Never fails for want of configuration - a deployment that has never configured anything gets the OPAA
         defaults, each field resolved individually, so an operator who only sets a logo keeps the
         standard product name.
       responses:
@@ -1540,7 +1542,8 @@ paths:
       summary: >
         The configured logo's bytes, served with the content type the server itself detected at
         upload time - never one the uploader declared (#582: "Content-Type beim Ausliefern
-        erzwingen"). Answered with 404 while no logo is configured; clients read
+        erzwingen"). Readable without authentication, for the same reason and with the same bounds
+        as GET /api/v1/branding above. Answered with 404 while no logo is configured; clients read
         BrandingResponse.logoUrl rather than calling this unconditionally. The response carries
         X-Content-Type-Options and a restrictive Content-Security-Policy so a browser can never
         be talked into treating the bytes as anything but an image.
@@ -2970,6 +2973,14 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+        sourceEntryUrl:
+          type: string
+          nullable: true
+          description: >
+            For an attachment discovered on an RSS entry's detail page (#468), the URL of the entry
+            it was found on - lets a citation trace an attachment back to the feed entry it belongs
+            to. Null for every other document.
+          example: https://example.gov/aktuelles/dienstanweisung-2024
         errorMessage:
           type: string
           nullable: true

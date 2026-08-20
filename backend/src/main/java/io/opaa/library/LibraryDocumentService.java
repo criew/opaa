@@ -53,12 +53,23 @@ import org.springframework.web.server.ResponseStatusException;
  * <p><b>Processing is asynchronous (#434).</b> {@link #uploadDocument} returns as soon as the file
  * is stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
  * FileProcessingService#processUploadedFileAsync} to finish parsing/embedding on {@code
- * indexingTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
+ * uploadTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
  * for the full duration of Tika parsing and embedding on every upload, with no rate limit covering
  * this endpoint (#434 supersedes #420's synchronous design for exactly this reason). The caller
  * observes the eventual {@code INDEXED}/{@code FAILED} transition by polling {@code GET
  * /libraries/{libraryId}/documents}, the same way the frontend's {@code documentStore.ts} already
  * polls a directory/URL indexing run in progress.
+ *
+ * <p><b>{@link #deleteDocument} deletes the row before the chunks, not the chunks before the row
+ * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
+ * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
+ * thread. Deleting the row first closes that race: {@link
+ * io.opaa.indexing.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates that
+ * only ever affect a row that still exists, so once this method's transaction commits, a racing
+ * task's status update is guaranteed to see the row gone and clean up any chunks it just wrote
+ * itself (see {@code FileProcessingService#processUploadedFileAsync}). The vector store delete here
+ * only has to handle documents that already had chunks before this call, deferred to after commit
+ * (next paragraph) alongside the file, for the same reason.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
  * never used to build a filesystem path. The stored file always lives at {@code
@@ -293,16 +304,57 @@ public class LibraryDocumentService {
     }
 
     Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
+    UUID chunkFilterDocumentId = document.getId();
 
-    vectorStore.delete("document_id == '" + document.getId() + "'");
+    // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
+    // this method used before #614. A concurrent uploadTaskExecutor task finishing the very same
+    // document races this method: FileProcessingService#processUploadedFileAsync re-reads the row,
+    // writes its chunks, and only then calls DocumentRepository#markIndexed, which affects a row
+    // only if it is still there. Deleting the chunks here *before* the row let that task's
+    // markIndexed still see (and update) the row while its own transaction was still in-flight,
+    // leaving its freshly-written chunks behind after this method's own vectorStore.delete had
+    // already run and would never run again - a document gone from the list but still returned by
+    // /api/v1/query. Deleting the row first closes that window: by the time this transaction
+    // commits, the row is unconditionally gone, so a racing markIndexed (which blocks on the same
+    // row until this commits) is guaranteed to affect zero rows and clean up its own chunks itself
+    // (see FileProcessingService#processUploadedFileAsync). The vector store delete below then only
+    // has to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
 
-    // Deferred to after commit (#420 code review, nit 7): if the row/chunk deletion above rolls
-    // back for any reason, the file must still be there afterwards - deleting it eagerly here
-    // would leave a document that is still listed and still searchable pointing at nothing.
-    if (fileManagedByThisService != null) {
-      deleteAfterCommit(fileManagedByThisService);
-    }
+    // Both deferred to after commit (#420 code review, nit 7, extended to the chunk deletion by
+    // #614): if the row deletion above rolls back for any reason, the file and its chunks must
+    // still be there afterwards - deleting either eagerly here would leave a document that is still
+    // listed and still searchable pointing at nothing, or a file/chunks gone despite the row
+    // surviving.
+    //
+    // Both steps below are individually guarded (PR #631 review, finding 1). By the time this
+    // callback runs, the row deletion has already committed - the caller's request has already
+    // succeeded from the database's point of view. Letting a vectorStore.delete failure propagate
+    // from here (afterCommit synchronizations run outside the original request's exception
+    // handling) would turn that success into a 500 the caller never asked for, and - since the
+    // callback would never reach the line below - skip the file deletion entirely for a reason that
+    // has nothing to do with the file. Each step is therefore its own try/catch: a pgvector outage
+    // during the chunk delete must not stop the file from being removed, and vice versa. Accepted
+    // residual risk: a chunk delete that fails this way leaves orphaned chunks in the vector store,
+    // still returned by /api/v1/query, with no automatic retry - the same already-accepted risk
+    // #614's own reasoning above describes for the concurrent-upload race, now also reachable via a
+    // genuine vectorStore failure. Recovering from that is out of scope here; see #614's follow-up
+    // discussion.
+    deleteAfterCommit(
+        () -> {
+          try {
+            vectorStore.delete("document_id == '" + chunkFilterDocumentId + "'");
+          } catch (RuntimeException e) {
+            log.error(
+                "Failed to remove vector store chunks for deleted document {} - orphaned chunks may"
+                    + " remain",
+                chunkFilterDocumentId,
+                e);
+          }
+          if (fileManagedByThisService != null) {
+            deleteQuietly(fileManagedByThisService);
+          }
+        });
   }
 
   /**
@@ -327,22 +379,23 @@ public class LibraryDocumentService {
   }
 
   /**
-   * Registers the actual file deletion to run only once the enclosing transaction has committed -
-   * mirrors {@code AssetGrantService#invalidateAfterCommit}'s reasoning, except this uses {@code
+   * Registers {@code cleanup} to run only once the enclosing transaction has committed - mirrors
+   * {@code AssetGrantService#invalidateAfterCommit}'s reasoning, except this uses {@code
    * afterCommit} rather than {@code afterCompletion}: a cache eviction is harmless to run after a
-   * rollback too, but deleting a file whose row deletion just rolled back would destroy data the
-   * database still considers live. Falls back to running immediately when no transaction is active.
+   * rollback too, but removing data (a file, a vector store's chunks) whose owning row deletion
+   * just rolled back would destroy data the database still considers live. Falls back to running
+   * immediately when no transaction is active.
    */
-  private void deleteAfterCommit(Path path) {
+  private void deleteAfterCommit(Runnable cleanup) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      deleteQuietly(path);
+      cleanup.run();
       return;
     }
     TransactionSynchronizationManager.registerSynchronization(
         new TransactionSynchronization() {
           @Override
           public void afterCommit() {
-            deleteQuietly(path);
+            cleanup.run();
           }
         });
   }

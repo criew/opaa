@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
-      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L));
+      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L, null, 0));
 
   @Test
   void handleGenericExceptionReturnsInternalServerError() {

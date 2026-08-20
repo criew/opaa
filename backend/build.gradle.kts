@@ -118,6 +118,35 @@ tasks.named("check") {
     dependsOn("evalUnitTest")
 }
 
+// The OpenAI end-to-end tests (io.opaa.integration.*) need a real API key and a network
+// round-trip per run. Keeping them inside `test` meant every `./gradlew build` — locally with
+// OPAA_OPENAI_API_KEY set, and in the CI `backend-integration` job — recompiled and re-ran the
+// whole suite around them (issue #644). They get their own task instead: `test` (and thus
+// `build`) never touches them, and CI's backend-integration job invokes only this task.
+tasks.named<Test>("test") {
+    filter {
+        excludeTestsMatching("io.opaa.integration.*")
+    }
+}
+
+tasks.register<Test>("openAiIntegrationTest") {
+    description = "End-to-end tests against the real OpenAI API (io.opaa.integration.*). " +
+        "Needs OPAA_OPENAI_API_KEY and Docker; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.integration.*")
+    }
+    // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
+    // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and
+    // on the live OpenAI API. A cached "success" from a key-less run would otherwise satisfy a
+    // later keyed run without ever contacting OpenAI. Same pattern as evaluateRetrieval.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // Compares the report produced by evaluateRetrieval against the committed baseline
 // (eval/baseline/comic-characters.json, issue #228). Depends on evaluateRetrieval so a single
 // `./gradlew checkRetrievalBaseline` invocation (as used by the nightly/manual/label-triggered CI
@@ -285,12 +314,17 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
+    // Local copy inside the configure block on purpose: the doLast action must not reference
+    // script-level members (layout, file(...), top-level vals — those are fields of the script
+    // class), or the closure drags the whole build script into the configuration cache, which
+    // Gradle rejects ("cannot serialize Gradle script object references").
+    val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
     doLast {
         // Remove generated enum files that are mapped to existing domain enums via typeMappings.
         // The generator still creates these files even with typeMappings configured.
-        val generatedDir = layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto").get().asFile
+        val generatedDir = generatedDtoDir.get().asFile
         listOf("SpaceRole.java", "SpaceKind.java", "SpaceVisibility.java", "SystemRole.java", "GroupKind.java", "DirectorySyncOutcome.java", "LibraryOwnerType.java", "LibraryVisibility.java", "DocumentStatus.java", "DocumentSourceType.java", "AssetRole.java", "PermissionSubjectType.java", "ActorKind.java", "AuditSubjectKind.java", "AuditOutcome.java", "AuditObjectType.java", "AuditEventType.java", "AuditIncidentScopePurpose.java", "AuditIncidentScopeStatus.java", "ChatStatus.java", "ChatRole.java", "ColorScheme.java").forEach { fileName ->
-            file("$generatedDir/$fileName").delete()
+            File(generatedDir, fileName).delete()
         }
     }
 }

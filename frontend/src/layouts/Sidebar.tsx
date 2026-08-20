@@ -6,6 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
@@ -16,10 +17,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupsIcon from '@mui/icons-material/Groups'
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'
 import LogoutIcon from '@mui/icons-material/Logout'
+import PaletteIcon from '@mui/icons-material/Palette'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
+import BrandMark from '../components/BrandMark'
 import CreateSpaceDialog from '../components/CreateSpaceDialog'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
@@ -77,12 +80,7 @@ export default function Sidebar() {
       }}
     >
       <Box sx={{ p: 2.5 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          OPAA
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          KI-Projektassistent
-        </Typography>
+        <BrandMark showClaim />
       </Box>
 
       <Divider />
@@ -123,27 +121,32 @@ export default function Sidebar() {
               {spaces.map((space) => {
                 const active = location.pathname === `/spaces/${space.id}`
                 return (
-                  <ListItemButton
-                    key={space.id}
-                    onClick={() => navigate(`/spaces/${space.id}`)}
-                    selected={active}
-                    sx={{ borderRadius: 2, mb: 0.5 }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      {space.isDefault ? (
-                        <PersonIcon color="primary" fontSize="small" />
-                      ) : (
-                        <WorkspacesIcon fontSize="small" />
-                      )}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={space.name}
-                      secondary={`${space.memberCount} ${space.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
-                      slotProps={{ primary: { noWrap: true } }}
-                    />
-                    {space.archived && <Chip label="Archiviert" size="small" sx={{ mr: 0.5 }} />}
-                    <Chip label={spaceRoleLabel(space.userRole)} size="small" variant="outlined" />
-                  </ListItemButton>
+                  <ListItem key={space.id} disablePadding>
+                    <ListItemButton
+                      onClick={() => navigate(`/spaces/${space.id}`)}
+                      selected={active}
+                      sx={{ borderRadius: 2, mb: 0.5 }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        {space.isDefault ? (
+                          <PersonIcon color="primary" fontSize="small" />
+                        ) : (
+                          <WorkspacesIcon fontSize="small" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={space.name}
+                        secondary={`${space.memberCount} ${space.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}`}
+                        slotProps={{ primary: { noWrap: true } }}
+                      />
+                      {space.archived && <Chip label="Archiviert" size="small" sx={{ mr: 0.5 }} />}
+                      <Chip
+                        label={spaceRoleLabel(space.userRole)}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </ListItemButton>
+                  </ListItem>
                 )
               })}
             </List>
@@ -179,39 +182,58 @@ export default function Sidebar() {
 
       <Divider />
       <List sx={{ px: 1.5, py: 1 }}>
-        <ListItemButton
-          component={NavLink}
-          to="/settings"
-          selected={location.pathname === '/settings'}
-          sx={{ borderRadius: 2 }}
-        >
-          <ListItemIcon sx={{ minWidth: 36 }}>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Einstellungen" />
-        </ListItemButton>
-        <ListItemButton
-          component={NavLink}
-          to="/libraries"
-          selected={location.pathname === '/libraries'}
-          sx={{ borderRadius: 2 }}
-        >
-          <ListItemIcon sx={{ minWidth: 36 }}>
-            <LibraryBooksIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Wissensbibliotheken" />
-        </ListItemButton>
-        {user?.systemRole === 'SYSTEM_ADMIN' && (
+        <ListItem disablePadding>
           <ListItemButton
             component={NavLink}
-            to="/admin/groups"
-            selected={location.pathname === '/admin/groups'}
+            to="/settings"
+            selected={location.pathname === '/settings'}
             sx={{ borderRadius: 2 }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}>
-              <GroupsIcon fontSize="small" />
+              <SettingsIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText primary="Gruppen" />
+            <ListItemText primary="Einstellungen" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            component={NavLink}
+            to="/libraries"
+            selected={location.pathname === '/libraries'}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <LibraryBooksIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Wissensbibliotheken" />
+          </ListItemButton>
+        </ListItem>
+        {user?.systemRole === 'SYSTEM_ADMIN' && (
+          <ListItem disablePadding>
+            <ListItemButton
+              component={NavLink}
+              to="/admin/groups"
+              selected={location.pathname === '/admin/groups'}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <GroupsIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Gruppen" />
+            </ListItemButton>
+          </ListItem>
+        )}
+        {user?.systemRole === 'SYSTEM_ADMIN' && (
+          <ListItemButton
+            component={NavLink}
+            to="/admin/branding"
+            selected={location.pathname === '/admin/branding'}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <PaletteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Branding" />
           </ListItemButton>
         )}
       </List>

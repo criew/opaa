@@ -2,8 +2,8 @@ import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
 import MenuIcon from '@mui/icons-material/Menu'
+import BrandMark from '../components/BrandMark'
 import { useUiStore } from '../stores/uiStore'
 
 export default function MobileHeader() {
@@ -24,9 +24,9 @@ export default function MobileHeader() {
         <IconButton edge="start" color="inherit" aria-label="Menü öffnen" onClick={toggleSidebar}>
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>
-          OPAA
-        </Typography>
+        <Box sx={{ ml: 1 }}>
+          <BrandMark logoHeight={24} />
+        </Box>
         <Box sx={{ flexGrow: 1 }} />
       </Toolbar>
     </AppBar>

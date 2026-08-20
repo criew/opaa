@@ -117,6 +117,15 @@ opaa:
   upload:
     storage-path: ${OPAA_UPLOAD_STORAGE_PATH:./uploads}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
+    # #614: own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
+    thread-pool:
+      core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
+      max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
+      queue-capacity: ${OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY:20}
+    # #614: threshold, in minutes, after which a PENDING upload row is considered abandoned by a
+    # dead process and set to FAILED at the next application startup - see
+    # UploadPendingRecoveryRunner.
+    pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

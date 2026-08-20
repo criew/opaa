@@ -68,7 +68,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * different library is not; deleting removes the row, the chunks and the file.
  *
  * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now (#434) - parsing and
- * embedding run asynchronously on {@code indexingTaskExecutor}, the real thread pool this test's
+ * embedding run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's
  * Spring context wires up (unlike the unit tests in {@code LibraryDocumentServiceTest}, which mock
  * {@code FileProcessingService} outright). {@link #awaitDocumentStatus} polls the row via
  * Awaitility the same way {@code DocumentIndexingIntegrationTest#awaitJobCompletion} already does
@@ -172,7 +172,7 @@ class LibraryDocumentServiceIntegrationTest {
             false);
 
     // #434: uploadDocument itself only ever returns PENDING - parsing/embedding still run on
-    // indexingTaskExecutor after this call has already returned.
+    // uploadTaskExecutor after this call has already returned.
     assertThat(response.getStatus()).isEqualTo(DocumentStatus.PENDING);
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     assertThat(response.getUploadedByUserId()).isEqualTo(editor.getId());

@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.util.List;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -191,10 +192,11 @@ public class IndexingConfiguration {
 
   /**
    * Backs {@code FileProcessingService#processUploadedFileAsync} (#434) - deliberately a separate
-   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2), so a
-   * burst of uploads can never itself exhaust the pool a directory/URL/RSS run depends on, or vice
-   * versa. Both executors share the same rejection handling since #501: {@code
-   * ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws {@link
+   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2), with its
+   * own property block ({@link UploadProperties#threadPool}, #614) rather than reusing {@link
+   * IndexingProperties#threadPool()} - see that property's Javadoc for why sharing the same values
+   * would let one pool's sizing silently affect the other. Both executors share the same rejection
+   * handling since #501: {@code ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws {@link
    * org.springframework.core.task.TaskRejectedException} synchronously back to the caller on a full
    * queue - {@code LibraryDocumentService#uploadDocument} turns it into an immediate {@code FAILED}
    * document row, {@code DocumentIndexingService#triggerIndexing} into an immediate {@code FAILED}
@@ -205,8 +207,8 @@ public class IndexingConfiguration {
    * library out of every future trigger.
    */
   @Bean
-  TaskExecutor uploadTaskExecutor(IndexingProperties properties) {
-    IndexingProperties.ThreadPool pool = properties.threadPool();
+  TaskExecutor uploadTaskExecutor(UploadProperties properties) {
+    UploadProperties.ThreadPool pool = properties.threadPool();
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setCorePoolSize(pool.coreSize());
     executor.setMaxPoolSize(pool.maxSize());

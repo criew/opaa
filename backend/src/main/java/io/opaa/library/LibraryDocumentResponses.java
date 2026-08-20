@@ -23,6 +23,7 @@ final class LibraryDocumentResponses {
         .fileSize(document.getFileSize())
         .indexedAt(document.getIndexedAt())
         .uploadedByUserId(document.getUploadedByUserId())
+        .sourceEntryUrl(document.getSourceEntryUrl())
         .errorMessage(document.getErrorMessage());
   }
 }

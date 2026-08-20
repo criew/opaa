@@ -302,11 +302,11 @@ public class FileProcessingService {
    * Parses, chunks and embeds a document already stored on disk and already persisted as a {@code
    * PENDING} row by the REST upload endpoint (#434, {@code
    * io.opaa.library.LibraryDocumentService#uploadDocument}). Runs asynchronously on {@code
-   * indexingTaskExecutor} - the same pool the directory/URL indexing executors use ({@link
-   * IndexingConfiguration}) - so the upload request itself returns as soon as the file is stored
-   * and the row created, without blocking a request thread for the duration of Tika parsing and
-   * embedding (#434, superseding the synchronous design #420 originally shipped with, see the git
-   * history of this method for that version).
+   * uploadTaskExecutor} - its own pool, separate from {@code indexingTaskExecutor} (see the third
+   * paragraph below and {@link IndexingConfiguration}) - so the upload request itself returns as
+   * soon as the file is stored and the row created, without blocking a request thread for the
+   * duration of Tika parsing and embedding (#434, superseding the synchronous design #420
+   * originally shipped with, see the git history of this method for that version).
    *
    * <p>Takes the document's id, not the entity itself: by the time this runs on a worker thread,
    * the caller's own transaction (creating the {@code PENDING} row) has long committed, and a
@@ -417,6 +417,19 @@ public class FileProcessingService {
     // model (see docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Both are the
     // library and organization chosen for this indexing run (#419) - see
     // DocumentIndexingService#requireEditableLibrary for where that choice is validated.
+    //
+    // #493 decision: Document#getSourceEntryUrl is deliberately NOT duplicated into chunk
+    // metadata here. document_id already rides on every chunk and is used exactly this way in
+    // QueryService#lookupIndexedAt - resolving indexedAt via a DocumentRepository lookup by that
+    // id rather than carrying it on each chunk. sourceEntryUrl only needs the document_id filter
+    // axis (library_id/organization_id) for permission enforcement, not for its own value, so it
+    // is meant to follow the same lookup-by-document_id pattern instead of a second copy per
+    // chunk that would (a) need a re-index to backfill onto chunks written before this decision
+    // and (b) could drift from the document row if either copy is ever updated independently.
+    // That lookup is not implemented yet - QueryService#mapSources does not populate a
+    // sourceEntryUrl on SourceReference, so a citation still cannot point back to the feed entry
+    // an RSS attachment came from. Tracked as its own follow-up: #639.
+
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
             .map(

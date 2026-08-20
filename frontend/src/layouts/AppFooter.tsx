@@ -1,10 +1,14 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { useBrandingStore } from '../stores/brandingStore'
 
-export const APP_VERSION = 'OPAA v0.1.0'
+/** The version alone; the product name in front of it comes from the branding (#583). */
+export const APP_VERSION = 'v0.1.0'
 
 /** Slim `contentinfo` landmark; the visual treatment belongs to the shell redesign (#587). */
 export default function AppFooter() {
+  const productName = useBrandingStore((s) => s.branding.productName)
+
   return (
     <Box
       component="footer"
@@ -18,7 +22,7 @@ export default function AppFooter() {
       }}
     >
       <Typography variant="caption" color="text.secondary">
-        {APP_VERSION}
+        {productName} {APP_VERSION}
       </Typography>
     </Box>
   )
