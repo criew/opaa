@@ -16,6 +16,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.RssFeedStateRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,6 +59,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     VectorStore vectorStore = mock(VectorStore.class);
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
+    RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -73,7 +75,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             auditEventRecorder,
             vectorStore,
             filesystemAllowlist,
-            indexingJobRepository);
+            indexingJobRepository,
+            rssFeedStateRepository);
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

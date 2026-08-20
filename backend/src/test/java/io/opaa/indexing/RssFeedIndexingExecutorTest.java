@@ -77,7 +77,8 @@ class RssFeedIndexingExecutorTest {
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
-    when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
+        .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     executor =
@@ -288,8 +289,10 @@ class RssFeedIndexingExecutorTest {
     // #490 review, finding 6: the previous 304 test never actually exercised sending
     // If-None-Match/If-Modified-Since, because the repository stub returned empty.
     RssFeedState state =
-        new RssFeedState(baseUrl + "/feed.xml", "\"abc123\"", "Mon, 01 Jan 2024 00:00:00 GMT");
-    when(feedStateRepository.findByFeedUrl(baseUrl + "/feed.xml")).thenReturn(Optional.of(state));
+        new RssFeedState(
+            library.getId(), baseUrl + "/feed.xml", "\"abc123\"", "Mon, 01 Jan 2024 00:00:00 GMT");
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), baseUrl + "/feed.xml"))
+        .thenReturn(Optional.of(state));
     AtomicReference<String> ifNoneMatch = new AtomicReference<>();
     AtomicReference<String> ifModifiedSince = new AtomicReference<>();
     server.createContext(
@@ -306,6 +309,57 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     assertThat(ifNoneMatch.get()).isEqualTo("\"abc123\"");
     assertThat(ifModifiedSince.get()).isEqualTo("Mon, 01 Jan 2024 00:00:00 GMT");
+  }
+
+  @Test
+  void aStateSavedForAnotherLibraryIsNeverSentAsConditionalHeadersForThisOne() {
+    // #646, PR #665 review "should" finding 2: the actual regression guard for the read path this
+    // issue fixed - RssFeedState is now looked up by (libraryId, feedUrl), not feedUrl alone.
+    // feedStateRepository is a plain mock here, so stubbing findByLibraryIdAndFeedUrl for a
+    // *different* UUID than library.getId() (the setUp() stub for library.getId() itself still
+    // returns Optional.empty()) is exactly what a real, library-scoped repository would also
+    // return: no row for this library, regardless of what another library's row holds for the
+    // same feedUrl. Before #646 this executor called the equivalent of
+    // feedStateRepository.findByFeedUrl(feedUrl) - unaware of *which* library was running - so it
+    // would have found the foreign library's ETag here and sent it, ending the run with a false
+    // 304 instead of processing the entry below.
+    RssFeedState foreignLibraryState =
+        new RssFeedState(
+            UUID.randomUUID(),
+            baseUrl + "/feed.xml",
+            "\"etag-from-another-library\"",
+            "Mon, 01 Jan 2024 00:00:00 GMT");
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), eq(baseUrl + "/feed.xml")))
+        .thenAnswer(
+            invocation ->
+                invocation.getArgument(0, UUID.class).equals(foreignLibraryState.getLibraryId())
+                    ? Optional.of(foreignLibraryState)
+                    : Optional.empty());
+    AtomicReference<String> ifNoneMatch = new AtomicReference<>();
+    AtomicReference<String> ifModifiedSince = new AtomicReference<>();
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          ifNoneMatch.set(exchange.getRequestHeaders().getFirst("If-None-Match"));
+          ifModifiedSince.set(exchange.getRequestHeaders().getFirst("If-Modified-Since"));
+          byte[] bytes = feedXml(baseUrl + "/a.html").getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/rss+xml");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    assertThat(ifNoneMatch.get()).isNull();
+    assertThat(ifModifiedSince.get()).isNull();
+    verify(fileProcessingService)
+        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
   }
 
   @Test
@@ -726,6 +780,30 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(feedStateRepository, timeout(2000))
         .save(argThat(state -> "\"etag-success\"".equals(state.getEtag())));
+  }
+
+  @Test
+  void aTargetLibraryDeletedDuringTheRunSurfacesAsAGermanRunFailureNotARawJdbcMessage() {
+    // #646, PR #665 review, optional finding 6: fk_rss_feed_state_library (migration 045) turns
+    // the delete-during-run race into a DataIntegrityViolationException the moment saveFeedState
+    // tries to write - simulated here by making the repository throw exactly that, since actually
+    // racing KnowledgeLibraryService#deleteLibrary against this executor would need a second,
+    // real Spring context.
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-race\"");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.processRssEntry(
+            anyString(), anyString(), anyString(), any(), eq(library)))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(feedStateRepository.save(any()))
+        .thenThrow(
+            new org.springframework.dao.DataIntegrityViolationException(
+                "insert or update on table \"rss_feed_state\" violates foreign key constraint"
+                    + " \"fk_rss_feed_state_library\""));
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000))
+        .failJob(any(), eq("Die Bibliothek wurde während des Laufs gelöscht."));
   }
 
   // --- #468: attachments ---

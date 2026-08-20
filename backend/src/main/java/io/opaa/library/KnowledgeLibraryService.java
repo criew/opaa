@@ -22,6 +22,7 @@ import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.RssFeedStateRepository;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -100,6 +101,7 @@ public class KnowledgeLibraryService {
   private final VectorStore vectorStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingJobRepository indexingJobRepository;
+  private final RssFeedStateRepository rssFeedStateRepository;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -114,7 +116,8 @@ public class KnowledgeLibraryService {
       AuditEventRecorder auditEventRecorder,
       VectorStore vectorStore,
       FilesystemPathAllowlist filesystemAllowlist,
-      IndexingJobRepository indexingJobRepository) {
+      IndexingJobRepository indexingJobRepository,
+      RssFeedStateRepository rssFeedStateRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -128,6 +131,7 @@ public class KnowledgeLibraryService {
     this.vectorStore = vectorStore;
     this.filesystemAllowlist = filesystemAllowlist;
     this.indexingJobRepository = indexingJobRepository;
+    this.rssFeedStateRepository = rssFeedStateRepository;
   }
 
   @Transactional
@@ -512,8 +516,22 @@ public class KnowledgeLibraryService {
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
         changedSourceFields.add("sourcePath");
       }
-      if (!Objects.equals(previousSourceUrl, updated.getSourceUrl())) {
+      boolean sourceUrlChanged = !Objects.equals(previousSourceUrl, updated.getSourceUrl());
+      if (sourceUrlChanged) {
         changedSourceFields.add("sourceUrl");
+      }
+      // #646, PR #665 review "should" finding 3: fk_rss_feed_state_library's ON DELETE CASCADE
+      // (migration 045) only clears a library's rss_feed_state row when the library itself is
+      // deleted - a sourceUrl change on an otherwise-surviving RSS_FEED library leaves that row
+      // behind under the library's own id. Reconfiguring the library back to the same address
+      // later would otherwise find its own stale ETag/Last-Modified again and end that run in a
+      // false 304, the same defect #646 fixed for a *different* library reusing an address - just
+      // one level down, for the same library reusing its own former address. Deleting the row
+      // outright (rather than trying to update it) mirrors 045-clear-rss-feed-state: the next run
+      // simply costs one full fetch instead of a conditional GET, never a lost document. A no-op
+      // for every sourceType other than RSS_FEED, since no such row exists for them.
+      if (sourceUrlChanged) {
+        rssFeedStateRepository.deleteByLibraryId(updated.getId());
       }
       if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
         changedSourceFields.add("sourceProxy");
