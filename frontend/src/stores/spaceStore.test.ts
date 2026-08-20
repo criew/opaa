@@ -116,9 +116,9 @@ describe('spaceStore', () => {
       updatedAt: '2026-03-01T10:00:00Z',
     })
 
-    const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc')
+    const id = await useSpaceStore.getState().createNewSpace('New Space', 'desc', 'DISCOVERABLE')
     expect(id).toBe('space-new')
-    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc')
+    expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', 'DISCOVERABLE')
     expect(useSpaceStore.getState().selectedSpaceId).toBe('space-new')
   })
 

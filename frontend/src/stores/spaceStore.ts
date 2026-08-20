@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SpaceListResponse, SpaceRole, SpaceResponse } from '../types/api'
+import type { SpaceListResponse, SpaceRole, SpaceResponse, SpaceVisibility } from '../types/api'
 import {
   addSpaceMember,
   archiveSpace,
@@ -28,10 +28,19 @@ interface SpaceState {
   updateMemberRole: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>
   removeMember: (spaceId: string, userId: string) => Promise<void>
   transferOwnership: (spaceId: string, userId: string) => Promise<void>
-  updateDetails: (spaceId: string, name: string, description: string) => Promise<void>
+  updateDetails: (
+    spaceId: string,
+    name: string,
+    description: string,
+    visibility?: SpaceVisibility,
+  ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
   archiveSelectedSpace: (spaceId: string) => Promise<void>
-  createNewSpace: (name: string, description: string) => Promise<string>
+  createNewSpace: (
+    name: string,
+    description: string,
+    visibility?: SpaceVisibility,
+  ) => Promise<string>
 }
 
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
@@ -128,8 +137,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await get().selectSpace(spaceId)
   },
 
-  updateDetails: async (spaceId, name, description) => {
-    await updateSpaceDetails(spaceId, name, description)
+  updateDetails: async (spaceId, name, description, visibility) => {
+    await updateSpaceDetails(spaceId, name, description, visibility)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId)])
   },
 
@@ -156,8 +165,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId)])
   },
 
-  createNewSpace: async (name, description) => {
-    const space = await createSpace(name, description)
+  createNewSpace: async (name, description, visibility) => {
+    const space = await createSpace(name, description, visibility)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id

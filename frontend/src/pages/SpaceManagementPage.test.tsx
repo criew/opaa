@@ -144,8 +144,12 @@ describe('SpaceManagementPage', () => {
     expect(screen.queryByRole('button', { name: /space löschen/i })).not.toBeInTheDocument()
   })
 
-  it('saves settings by calling updateSpaceDetails with name and description only', async () => {
-    setSpaceState(teamSpace)
+  it('saves settings by calling updateSpaceDetails with name, description and the unchanged visibility', async () => {
+    // #671 review: OPEN here (not PRIVATE, which is both the draft's initial value and the
+    // fallback for a missing space.visibility) - only this way can the test actually catch a page
+    // that fails to read the space's own visibility and silently sends PRIVATE instead, which
+    // would downgrade an OPEN space on a plain rename.
+    setSpaceState({ ...teamSpace, visibility: 'OPEN' })
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
@@ -154,7 +158,28 @@ describe('SpaceManagementPage', () => {
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team Renamed', 'Team docs')
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team Renamed',
+        'Team docs',
+        'OPEN',
+      )
+    })
+  })
+
+  // #272: the visibility axis (docs/features/spaces-and-assets.md#space-sichtbarkeit) must be
+  // changeable in space management, not just at creation time.
+  it('saves the chosen visibility when it is changed', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(await screen.findByRole('option', { name: /^offen$/i }))
+    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', 'OPEN')
     })
   })
 

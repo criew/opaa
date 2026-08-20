@@ -26,6 +26,7 @@ import type {
   SourceConnectionTestResponse,
   SpaceListResponse,
   SpaceMemberResponse,
+  SpaceRequest,
   SpaceRole,
   SpaceResponse,
   SpaceUpdateRequest,
@@ -244,15 +245,21 @@ export async function updateSpaceDetails(
   }
 }
 
-export async function createSpace(name: string, description: string): Promise<SpaceResponse> {
+export async function createSpace(
+  name: string,
+  description: string,
+  visibility?: SpaceVisibility,
+): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
-    const { data } = await client.post<SpaceResponse>('/v1/spaces', {
+    const body: SpaceRequest = {
       name,
       description,
+      visibility,
       ownerId: currentUserId,
       initialMembers: [],
-    })
+    }
+    const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
     return data
   } catch (err) {
     normalizeError(err)
