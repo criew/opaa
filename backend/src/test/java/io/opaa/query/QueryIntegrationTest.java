@@ -7,11 +7,13 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.dto.QueryResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,11 +31,14 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -85,6 +90,10 @@ class QueryIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatMemory chatMemory;
 
+  @Autowired
+  @Qualifier("chatTitleTaskExecutor")
+  private TaskExecutor chatTitleTaskExecutor;
+
   private UUID userId;
   private UUID libraryId;
 
@@ -125,6 +134,10 @@ class QueryIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    // #616: @MockitoBean resets the shared ChatModel between test methods - a title task still
+    // inside chatModel.call at that moment corrupts the next test's stubbing state. Draining
+    // here guarantees the reset never overlaps an in-flight title generation.
+    awaitTitleGenerationQuiescence();
     jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     // #525: chats/spaces the persisted-chat tests below create for userId - fk_chats_author and
@@ -455,6 +468,10 @@ class QueryIntegrationTest {
     // conversation-cache key format this reconstructs.
     chatMemory.clear(userId + ":" + chatId);
 
+    // #616: the first query above fired an async title task at the shared mock - never stub
+    // again while it may still be in flight.
+    awaitTitleGenerationQuiescence();
+
     ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
     var secondResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Zweite Antwort"))));
@@ -548,6 +565,10 @@ class QueryIntegrationTest {
         "stranger@example.com",
         "Stranger",
         DEFAULT_ORGANIZATION_ID);
+
+    // #616: the owner's query above fired an async title task at the shared mock - never stub
+    // again while it may still be in flight.
+    awaitTitleGenerationQuiescence();
 
     ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
     var strangerAnswer =
@@ -649,6 +670,59 @@ class QueryIntegrationTest {
         spaceId,
         DEFAULT_ORGANIZATION_ID);
     return spaceId;
+  }
+
+  /**
+   * #616: every first turn of a chat fires {@code ChatTitleGenerationService#generateTitleAsync} on
+   * the chat-title executor, and that background thread calls the very {@code ChatModel} this class
+   * mocks. A title task still in flight while the test thread sets up the next {@code
+   * when(chatModel.call(captor.capture()))} corrupts the shared mock's stubbing state and surfaces
+   * as a {@link org.mockito.exceptions.base.MockitoException} on the following query - the exact
+   * pattern behind the flaky CI failures. This test repeats that pattern often enough to hit the
+   * race reliably; it must stay green once every stubbing waits for title quiescence.
+   */
+  @Test
+  void restubbingRightAfterAQueryNeverCorruptsTheSharedChatModelMock() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+
+    for (int round = 0; round < 10; round++) {
+      var answer =
+          new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort " + round))));
+      when(chatModel.call(any(Prompt.class))).thenReturn(answer);
+
+      // Two fresh chats per round - each first turn fires a title task at the shared mock.
+      queryService.query("Frage A" + round, insertChat(spaceId, userId), userId, true, List.of());
+      queryService.query("Frage B" + round, insertChat(spaceId, userId), userId, true, List.of());
+
+      // The fix under test: no reset/restub while a title task is in flight.
+      awaitTitleGenerationQuiescence();
+
+      // What @MockitoBean does between two test methods, condensed: reset the shared mock and
+      // stub anew. A title task entering the mock inside this window attaches the new answer to
+      // the wrong invocation and the stubbing state is corrupted (#616).
+      for (int i = 0; i < 10; i++) {
+        org.mockito.Mockito.reset(chatModel);
+        when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+        ArgumentCaptor<Prompt> captor = ArgumentCaptor.forClass(Prompt.class);
+        when(chatModel.call(captor.capture())).thenReturn(answer);
+      }
+      queryService.query(
+          "Folgefrage " + round, insertChat(spaceId, userId), userId, true, List.of());
+      // The follow-up query fired a title task of its own - drain it before the next round
+      // (and the final one before tearDown's reset).
+      awaitTitleGenerationQuiescence();
+    }
+  }
+
+  /**
+   * #616: waits until every async title task has left the shared {@code ChatModel} mock. Every
+   * first turn of a chat fires {@code ChatTitleGenerationService#generateTitleAsync}; stubbing (or
+   * resetting) the shared mock while such a task is mid-invocation corrupts Mockito's stubbing
+   * state. Call this after a query whenever the test stubs the mock again afterwards.
+   */
+  private void awaitTitleGenerationQuiescence() {
+    ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) chatTitleTaskExecutor;
+    Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> executor.getActiveCount() == 0);
   }
 
   private UUID insertChat(UUID spaceId, UUID authorId) {
