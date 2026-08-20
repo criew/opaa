@@ -23,6 +23,8 @@ import io.opaa.indexing.FilesystemPathAllowlist;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -325,6 +327,7 @@ public class KnowledgeLibraryService {
                 Collectors.toMap(
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
+    Map<UUID, String> ownerNames = resolveOwnerNames(libraries);
 
     return libraries.stream()
         .map(
@@ -332,8 +335,37 @@ public class KnowledgeLibraryService {
                 toLibraryListResponse(
                     library,
                     roles.get(library.getId()),
-                    documentCounts.getOrDefault(library.getId(), 0L)))
+                    documentCounts.getOrDefault(library.getId(), 0L),
+                    ownerNames.get(library.getOwnerId())))
         .toList();
+  }
+
+  /**
+   * Resolves each library's owner display name in two batched queries (one per owner kind) instead
+   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
+   * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
+   * ownerName} {@code null} on the response, matching {@code LibraryListResponse}'s optional field.
+   */
+  private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
+    Set<UUID> userOwnerIds = new HashSet<>();
+    Set<UUID> groupOwnerIds = new HashSet<>();
+    for (KnowledgeLibrary library : libraries) {
+      if (library.getOwnerType() == LibraryOwnerType.USER) {
+        userOwnerIds.add(library.getOwnerId());
+      } else {
+        groupOwnerIds.add(library.getOwnerId());
+      }
+    }
+    Map<UUID, String> ownerNames = new HashMap<>();
+    for (User user : userRepository.findAllById(userOwnerIds)) {
+      // #446: displayName is nullable, same fallback AssetGrantService#toResponses uses.
+      String name = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
+      ownerNames.put(user.getId(), name);
+    }
+    for (Group group : groupRepository.findAllById(groupOwnerIds)) {
+      ownerNames.put(group.getId(), group.getName());
+    }
+    return ownerNames;
   }
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
@@ -841,7 +873,7 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryListResponse toLibraryListResponse(
-      KnowledgeLibrary library, AssetRole myRole, long documentCount) {
+      KnowledgeLibrary library, AssetRole myRole, long documentCount, String ownerName) {
     return new LibraryListResponse(
             library.getId(),
             library.getName(),
@@ -853,7 +885,8 @@ public class KnowledgeLibraryService {
             documentCount,
             library.getCreatedAt(),
             library.getUpdatedAt())
-        .description(library.getDescription());
+        .description(library.getDescription())
+        .ownerName(ownerName);
   }
 
   private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {

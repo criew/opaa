@@ -1609,6 +1609,35 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void listLibrariesReportsOwnerNamePerLibraryForUserAndGroupOwners() {
+    // #438: the overview shows a resolved owner name instead of a generic "Gruppen-Bibliothek"
+    // label - a group-owned library resolves to the group's name, a user-owned library to the
+    // owner's display name, batched (not one lookup per row, mirroring the documentCount
+    // coverage above).
+    UUID owner = createUser(organizationA, "Erika Musterfrau");
+    Group group = createGroup(organizationA, owner);
+    LibraryResponse userOwned =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+    LibraryResponse groupOwned =
+        libraryService.createLibrary(
+            new LibraryRequest("Mango", DocumentSourceType.UPLOAD)
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId()),
+            owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(userOwned.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsExactly("Erika Musterfrau");
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(groupOwned.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsExactly(group.getName());
+  }
+
+  @Test
   void listLibrariesNeverBypassesToOwnerForASystemAdminUnlikeGetLibrary() {
     // #425 review, nit 2 and 3 (orchestrator decision): unlike getLibrary/updateLibrary/
     // deleteLibrary, myRole in listLibraries never bypasses to OWNER for a system admin, and

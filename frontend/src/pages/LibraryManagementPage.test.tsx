@@ -73,6 +73,7 @@ const managerLibrary: LibraryListResponse = {
   name: 'Rechtsquellen Soziales',
   description: 'SGB II, SGB XII',
   ownerType: 'GROUP',
+  ownerName: 'Referat 50',
   visibility: 'SHARED',
   listed: true,
   myRole: 'MANAGER',
@@ -127,6 +128,25 @@ describe('LibraryManagementPage', () => {
     expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
     expect(screen.getByText('Dateisystem')).toBeInTheDocument()
     expect(screen.getByText('Hochgeladen')).toBeInTheDocument()
+  })
+
+  it('shows the resolved owner name instead of a generic group label', async () => {
+    // #438: the overview previously showed a generic "Gruppen-Bibliothek" label for every
+    // group-owned library instead of e.g. "Referat 50" - ownerName lets it show the actual name.
+    setLibraryState([managerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Referat 50/)).toBeInTheDocument()
+    expect(screen.queryByText(/Gruppen-Bibliothek/)).not.toBeInTheDocument()
+  })
+
+  it('falls back to the generic group label when ownerName is missing', async () => {
+    // ownerName is optional (owner deleted, or an org the backend could not resolve a name for) -
+    // the row must still render something sensible instead of a blank owner summary.
+    setLibraryState([{ ...viewerLibrary, ownerName: undefined }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Gruppen-Bibliothek/)).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no libraries', async () => {
