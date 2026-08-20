@@ -99,7 +99,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      documentRepository.markFailed(doc.getId(), null);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -207,7 +207,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      documentRepository.markFailed(doc.getId(), null);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -280,7 +280,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      documentRepository.markFailed(doc.getId(), null);
+      markConnectorFailedAfterException(doc.getId());
       metrics.recordFailed();
       throw e;
     }
@@ -398,7 +398,8 @@ public class FileProcessingService {
    *
    * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
    *     {@link #storeChunks}, are removed again here and nothing is marked failed - the document
-   *     was deliberately deleted, not a processing failure), otherwise {@link
+   *     was deliberately deleted, not a processing failure - {@link IndexingMetrics#recordSkipped}
+   *     accounts for it the same way an unchanged-content skip is), otherwise {@link
    *     FileProcessingResult#PROCESSED}
    */
   private FileProcessingResult markConnectorIndexed(
@@ -411,6 +412,7 @@ public class FileProcessingService {
           "Document {} was deleted while its chunks were being written; removing them again",
           documentId);
       vectorStore.delete("document_id == '" + documentId + "'");
+      metrics.recordSkipped();
       return FileProcessingResult.SKIPPED;
     }
     return FileProcessingResult.PROCESSED;
@@ -422,15 +424,35 @@ public class FileProcessingService {
    * be extracted (#632). Called before {@link #storeChunks} ever runs on this code path, so unlike
    * {@link #markConnectorIndexed} there are no chunks to clean up on a zero-rows result - the row
    * was simply deleted concurrently, and this quietly reports {@link FileProcessingResult#SKIPPED}
-   * instead of the usual {@link FileProcessingResult#PROCESSED}.
+   * (counted via {@link IndexingMetrics#recordSkipped}) instead of the usual {@link
+   * FileProcessingResult#PROCESSED}.
    */
   private FileProcessingResult markConnectorFailed(UUID documentId) {
     int updated = documentRepository.markFailed(documentId, null);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
+      metrics.recordSkipped();
       return FileProcessingResult.SKIPPED;
     }
     return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The catch-block counterpart to {@link #markConnectorFailed}, used when parsing, chunking or
+   * embedding throws instead of returning empty (#636 review, item 2). Unlike {@link
+   * #markConnectorFailed}, {@link #storeChunks} may already have written chunks for {@code
+   * documentId} into the vector store by the time this runs - {@code processFile}/{@code
+   * processUrlFile}/{@code processRssEntry} each throw from inside the same {@code try} block
+   * {@link #storeChunks} is called in, so anything after it (chunking succeeding but the final
+   * {@code markConnectorIndexed} update itself throwing, for instance) can leave written chunks
+   * behind a row that ends up {@code FAILED}. Deletes unconditionally, the same way {@link
+   * #processUploadedFileAsync}'s own catch block does (its Javadoc has the fuller reasoning) -
+   * cheaper than tracking whether {@link #storeChunks} was actually reached on this particular
+   * call, and a no-op if it was not.
+   */
+  private void markConnectorFailedAfterException(UUID documentId) {
+    vectorStore.delete("document_id == '" + documentId + "'");
+    documentRepository.markFailed(documentId, null);
   }
 
   /**

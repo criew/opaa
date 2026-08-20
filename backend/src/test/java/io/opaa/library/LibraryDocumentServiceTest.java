@@ -544,6 +544,61 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void failingAnAlreadyPersistedUploadUsesAConditionalUpdateNotASecondSave() throws IOException {
+    // #636 review, item 3: failAlreadyPersistedUpload used to call documentRepository.save on the
+    // row it had just committed a moment earlier - the same zombie-row failure mode #632 fixed for
+    // the connector paths, just narrower here (the window between that commit and this call, e.g.
+    // while handing off to processUploadedFileAsync). It must go through the same conditional
+    // markFailed(id, errorMessage) UPDATE the asynchronous path already uses, not a second save.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-conditional-update");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-conditional-update"))
+        .thenReturn(Optional.empty());
+    doThrow(new IllegalStateException("submission blew up unexpectedly"))
+        .when(fileProcessingService)
+        .processUploadedFileAsync(any(), any());
+    when(documentRepository.markFailed(any(), any())).thenReturn(1);
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(response.getErrorMessage())
+        .isEqualTo("Die Verarbeitung konnte nicht gestartet werden");
+    verify(documentRepository)
+        .markFailed(response.getId(), "Die Verarbeitung konnte nicht gestartet werden");
+    // Exactly the one save from the PENDING row's own creation - never a second one for the FAILED
+    // transition.
+    verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
+  }
+
+  @Test
+  void failingAnAlreadyPersistedUploadStillRespondsWhenTheRowWasDeletedConcurrently()
+      throws IOException {
+    // Reproduces the window itself: a concurrent deleteDocument (or a whole library delete)
+    // removes the row between uploadDocument's own commit and this call - markFailed then affects
+    // zero rows, the same zero-rows-means-gone contract every other conditional UPDATE in this
+    // codebase already follows. The caller's HTTP request still gets an answer describing its own
+    // upload attempt; nothing is silently re-inserted.
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-deleted-mid-flight");
+    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-deleted-mid-flight"))
+        .thenReturn(Optional.empty());
+    doThrow(new IllegalStateException("submission blew up unexpectedly"))
+        .when(fileProcessingService)
+        .processUploadedFileAsync(any(), any());
+    when(documentRepository.markFailed(any(), any())).thenReturn(0);
+
+    LibraryDocumentResponse response =
+        service.uploadDocument(
+            libraryId, pdfFile("report.pdf", "pdf content"), currentUserId, false);
+
+    assertThat(response.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
+  }
+
+  @Test
   void aViewerCannotDelete() {
     grantViewerOnly();
 

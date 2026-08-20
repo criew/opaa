@@ -586,8 +586,24 @@ public class KnowledgeLibraryService {
       // Bulk deletion via the library_id filter, not per document (#479): a connector library can
       // hold many documents, and this is the same axis the permission-aware vector search already
       // filters on (see KnowledgeLibraryService's own class Javadoc and QueryService).
-      vectorStore.delete("library_id == '" + libraryId + "'");
+      //
+      // Rows deleted first, chunks second (#636, the deleteLibrary counterpart to #631's
+      // deleteDocument fix) - the reverse order left a window: the bulk vectorStore.delete below
+      // only removes chunks that already exist when it runs. If a concurrently RUNNING indexing
+      // job for this same library writes new chunks (FileProcessingService#storeChunks) and its
+      // conditional status-transition UPDATE (DocumentRepository#markIndexedFromSource, #632)
+      // still finds the row - because this method had not deleted it yet - after this deletion
+      // finally removes the row, those freshly-written chunks are never caught by the already-run
+      // bulk chunk delete and survive as orphans, still returned by /api/v1/query. Deleting the
+      // rows first closes the window: the same document row is now either already gone (the
+      // conditional UPDATE sees zero rows and self-cleans its own chunks, exactly the case #632
+      // added) or still locked by this still-open transaction (the UPDATE blocks until this
+      // transaction commits, then re-evaluates against the now-deleted row and sees zero rows
+      // too) - either way, no UPDATE can succeed against a row this method is in the middle of
+      // removing, so the bulk chunk delete that follows only ever has to catch chunks that existed
+      // before this method started.
       documentsRemoved = documentRepository.deleteByLibraryId(libraryId);
+      vectorStore.delete("library_id == '" + libraryId + "'");
     }
 
     // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables

@@ -618,6 +618,141 @@ class FileProcessingServiceTest {
     verify(documentService).parseDocument(file);
   }
 
+  @Test
+  void processUrlFileRemovesOrphanedChunksWhenTheDocumentIsDeletedWhileItRuns() throws IOException {
+    // Review of PR #633: FileProcessingServiceIntegrationTest exercises this window end-to-end
+    // for processFile, but processUrlFile's own conditional UPDATE - DocumentRepository
+    // #markIndexedFromSource - never had a unit test simulating a concurrent delete via a
+    // zero-rows-updated result, the same way processUploadedFileAsync's tests do for the upload
+    // path (see processUploadedFileAsyncRemovesOrphanedChunksWhenTheDocumentIsDeletedWhileItRuns
+    // below).
+    Path file = tempDir.resolve("deleted-mid-flight.pdf");
+    Files.writeString(file, "content that outlives its own document row");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-pdf");
+    when(documentRepository.findByFilePath("https://example.com/docs/deleted-mid-flight.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
+        .thenReturn(0);
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("deleted-mid-flight.pdf"), eq(parsed)))
+        .thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "deleted-mid-flight.pdf",
+            "https://example.com/docs/deleted-mid-flight.pdf",
+            "2025-06-15 10:30",
+            1024,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    verify(vectorStore).add(any());
+    ArgumentCaptor<String> deleteFilterCaptor = ArgumentCaptor.forClass(String.class);
+    verify(vectorStore).delete(deleteFilterCaptor.capture());
+    assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
+    // The initial insert is the only save() call - the final transition never falls back to one.
+    verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
+  }
+
+  @Test
+  void processUrlFileReturnsSkippedWhenTheDocumentIsDeletedBeforeNoContentCouldBeMarkedFailed()
+      throws IOException {
+    Path file = tempDir.resolve("empty-url-doc.pdf");
+    Files.writeString(file, "");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-empty");
+    when(documentRepository.findByFilePath("https://example.com/docs/empty-url-doc.pdf"))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentRepository.markFailed(any(), any())).thenReturn(0);
+    when(documentService.parseDocument(file)).thenReturn(List.of());
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "empty-url-doc.pdf",
+            "https://example.com/docs/empty-url-doc.pdf",
+            null,
+            0,
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    // No chunks were ever written on this path - nothing to remove from the vector store.
+    verify(vectorStore, never()).delete(anyString());
+    verify(chunkingService, never()).chunkDocuments(anyString(), any());
+  }
+
+  @Test
+  void processRssEntryRemovesOrphanedChunksWhenTheDocumentIsDeletedWhileItRuns() {
+    String entryUrl = "https://example.gov/artikel/deleted-mid-flight";
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByFilePath(entryUrl)).thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
+        .thenReturn(0);
+
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processRssEntry(
+            "entry main text", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    verify(vectorStore).add(any());
+    ArgumentCaptor<String> deleteFilterCaptor = ArgumentCaptor.forClass(String.class);
+    verify(vectorStore).delete(deleteFilterCaptor.capture());
+    assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
+  }
+
+  @Test
+  void processFileRemovesWrittenChunksWhenTheFinalUpdateThrows() throws IOException {
+    // #636 review, item 2: the connector paths' own catch block used to mark the row FAILED
+    // without ever removing chunks storeChunks had already written - the upload path's own catch
+    // block (processUploadedFileAsyncMarksTheDocumentFailedAndRemovesAnyWrittenChunksWhenTheFinal
+    // UpdateThrows below) already got this right; the connector paths did not.
+    Path file = tempDir.resolve("fails-on-final-update.txt");
+    Files.writeString(file, "content that makes it all the way to the final update");
+
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-final-update-failure");
+    when(documentRepository.findByFilePath(file.toAbsolutePath().toString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    when(chunkingService.chunkDocuments(eq("fails-on-final-update.txt"), eq(parsed)))
+        .thenReturn(chunks);
+    when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
+        .thenThrow(new RuntimeException("final update blew up"));
+    when(documentRepository.markFailed(any(), any())).thenReturn(1);
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.processFile(file, targetLibrary))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("final update blew up");
+
+    // storeChunks already ran (vectorStore.add was called) before the final update failed - the
+    // catch block must remove exactly those chunks, keyed by this document's id, or they become
+    // orphaned.
+    verify(vectorStore).add(any());
+    ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
+    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(docCaptor.capture());
+    verify(vectorStore).delete("document_id == '" + docCaptor.getValue().getId() + "'");
+    verify(documentRepository)
+        .markFailed(eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
+  }
+
   // #434/#589: processUploadedFile is now processUploadedFileAsync - it no longer creates or
   // deletes the document row itself. LibraryDocumentService creates the PENDING row synchronously
   // and hands this method only the row's id and the already-stored file; this method re-reads the
