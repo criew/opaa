@@ -1,17 +1,26 @@
 databaseChangeLog:
   # #543: SPACE_ARCHIVED (io.opaa.audit.AuditEventType) widens chk_audit_log_event_type (migration
-  # 017, last widened by 022) so SpaceService#archiveSpace can record the event. Same widen-only
-  # shape and SET ROLE dance as 022 - see that migration's changeSet comment for why the temporary
-  # opaa_audit_owner membership grant/revoke around the DDL is needed.
+  # 017, last widened by 035 on main - LIBRARY_SOURCE_UPDATED, #545) so SpaceService#archiveSpace
+  # can record the event. Same widen-only shape and SET ROLE dance as 022/035 - see 022's changeSet
+  # comment for why the temporary opaa_audit_owner membership grant/revoke around the DDL is
+  # needed.
+  #
+  # #613 review, finding 1: an earlier version of this changeSet rebuilt the CHECK list from the
+  # 022 state instead of the current one, silently dropping LIBRARY_SOURCE_UPDATED (added by 035)
+  # - every source-configuration change would have started failing with a raw constraint violation
+  # the moment this migration ran, because AuditEventRecorder does not catch that exception. The
+  # list below is now the complete AuditEventType.values() set plus SPACE_ARCHIVED, verified
+  # against the enum by Migration040SpaceArchivedEventTypeTest, which checks every single value
+  # instead of a spot-check sample - see that test's Javadoc.
   - changeSet:
-      id: 038-widen-audit-event-type-space-archived
+      id: 040-widen-audit-event-type-space-archived
       author: opaa
       comment: >
         Widens chk_audit_log_event_type to also accept SPACE_ARCHIVED
         (io.opaa.audit.AuditEventType#SPACE_ARCHIVED) - the event SpaceService#archiveSpace writes
         when a space owner or system admin archives a space that cannot be deleted because it still
-        contains chats authored by other members (docs/features/spaces-and-assets.md#archivieren-
-        statt-löschen).
+        contains chats authored by other members (docs/features/spaces-and-assets.md#einen-space-
+        stilllegen-archivieren-statt-löschen).
       changes:
         - sql:
             comment: >
@@ -31,7 +40,7 @@ databaseChangeLog:
                 'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
                 'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
                 'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED', 'SPACE_ARCHIVED',
-                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED', 'LIBRARY_SOURCE_UPDATED',
                 'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
                 'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
                 'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',
@@ -67,7 +76,7 @@ databaseChangeLog:
                 'ASSET_GRANT_GRANTED', 'ASSET_GRANT_CHANGED', 'ASSET_GRANT_REVOKED',
                 'ASSET_GRANT_EXPIRED', 'ASSET_VISIBILITY_CHANGED', 'ASSET_GRANT_SUSPENDED',
                 'SPACE_CREATED', 'SPACE_CHANGED', 'SPACE_DELETED',
-                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED',
+                'LIBRARY_CREATED', 'LIBRARY_CHANGED', 'LIBRARY_DELETED', 'LIBRARY_SOURCE_UPDATED',
                 'GROUP_CREATED', 'GROUP_CHANGED', 'GROUP_DELETED',
                 'SPACE_MEMBER_ADDED', 'SPACE_MEMBER_ROLE_CHANGED', 'SPACE_MEMBER_REMOVED',
                 'GROUP_MEMBER_ADDED', 'GROUP_MEMBER_REMOVED',

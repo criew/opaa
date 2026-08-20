@@ -1,10 +1,10 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 034 - i.e. the schema exactly as it existed immediately before migration 037.
+# changeSet 034 - i.e. the schema exactly as it existed immediately before migration 039.
 #
 # Used by:
-# - Migration037AddArchivedToSpacesTest, to build a realistic pre-migration database (via the
-#   real, versioned changelog files, not a hand-rolled schema) and then apply 037 in isolation.
-#   037 only touches the spaces table, but is chained here through 034 for the same
+# - Migration039AddArchivedToSpacesTest, to build a realistic pre-migration database (via the
+#   real, versioned changelog files, not a hand-rolled schema) and then apply 039 in isolation.
+#   039 only touches the spaces table, but is chained here through 034 for the same
 #   keep-the-fixture-chain-contiguous reason test-master-through-033.yaml gives for 034.
 #
 # See test-master-through-033.yaml for the pattern this fixture follows.

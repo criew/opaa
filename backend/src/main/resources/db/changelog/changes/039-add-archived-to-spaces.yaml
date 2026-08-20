@@ -1,9 +1,10 @@
 databaseChangeLog:
   - changeSet:
-      id: 037-add-archived-to-spaces
+      id: 039-add-archived-to-spaces
       author: opaa
       comment: >
-        Add spaces.archived (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen).
+        Add spaces.archived (#543, docs/features/spaces-and-assets.md#einen-space-stilllegen-
+        archivieren-statt-löschen).
         A Space with fk_chats_space (ON DELETE RESTRICT, migration 032) referencing a chat authored
         by someone other than the space owner was permanently undeletable - the owner cannot even
         see the foreign chat, let alone remove it, so deleteSpace's existing 409 check on

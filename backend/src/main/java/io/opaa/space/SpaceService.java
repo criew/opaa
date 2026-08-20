@@ -114,16 +114,20 @@ public class SpaceService {
     return payload;
   }
 
-  public List<SpaceListResponse> listSpaces(UUID currentUserId) {
+  public List<SpaceListResponse> listSpaces(UUID currentUserId, boolean systemAdmin) {
     User currentUser = requireUser(currentUserId);
     return spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
         .filter(space -> space.getOrganizationId().equals(currentUser.getOrganizationId()))
         // #543: an archived space is left out of this list unless the caller has a chat of their
-        // own in it - otherwise their own, still fully readable chat would become unreachable
-        // through the normal listing path the moment the space is archived.
+        // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
+        // case where the owner has no chat of their own in the space they archived, the space
+        // would vanish from their own list with no way back (#613 review, finding 3: no unarchive
+        // endpoint exists, so this is the only way the owner ever sees it again).
         .filter(
             space ->
                 !space.isArchived()
+                    || systemAdmin
+                    || space.getOwnerId().equals(currentUserId)
                     || chatRepository.existsBySpaceIdAndAuthorId(space.getId(), currentUserId))
         .map(space -> toSpaceListResponse(space, currentUserId))
         .toList();
@@ -163,6 +167,11 @@ public class SpaceService {
       UUID spaceId, UUID memberUserId, SpaceRole requestedRole, UUID currentUserId) {
     Space space = loadSpace(spaceId, currentUserId);
     requireManager(space, currentUserId);
+    // #613 review, finding 2: an archived space accepts no new content, and a new member is new
+    // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
+    // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
+    // oder Mitglieder").
+    requireNotArchived(space);
     // Resolving the target user first also turns a non-existent userId into a clean 404 instead
     // of a raw foreign-key violation from the membership insert below.
     requireUserInOrganization(memberUserId, space.getOrganizationId());
@@ -410,15 +419,19 @@ public class SpaceService {
   }
 
   /**
-   * Archives a space (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen) - the
-   * maintainer-decided way out of a space that {@code fk_chats_space} (ON DELETE RESTRICT,
-   * migration 032) makes permanently undeletable because it still contains a chat authored by
-   * someone other than the space owner, who cannot even see - let alone delete - that chat
-   * themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s behaviour: a
-   * real delete remains possible once every chat is actually gone. What it does instead is stop the
-   * space from accepting new content ({@code ChatService#createChat} rejects with 409) and hide it
-   * from {@link #listSpaces} for members without a chat of their own in it, while every chat -
-   * including ones the owner cannot see - stays fully readable for its author.
+   * Archives a space (#543, docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-
+   * statt-löschen) - the maintainer-decided way out of a space that {@code fk_chats_space} (ON
+   * DELETE RESTRICT, migration 032) makes permanently undeletable because it still contains a chat
+   * authored by someone other than the space owner, who cannot even see - let alone delete - that
+   * chat themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s
+   * behaviour: a real delete remains possible once every chat is actually gone. What it does
+   * instead is stop the space from accepting new content ({@code ChatService#createChat}, {@code
+   * ChatService#appendTurn}, {@code ChatService#updateChat} and {@link #addMember} all reject with
+   * 409) and hide it from {@link #listSpaces} for members without a chat of their own in it - but
+   * never for the owner or a system admin, since there is no unarchive endpoint and the typical
+   * case (#613 review, finding 3) is exactly an owner with no chat of their own in the space they
+   * just archived - while every chat, including ones the owner cannot see, stays fully readable for
+   * its author.
    *
    * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
    * cannot be archived either, for the same reason it cannot be deleted (#333 - it is not this
@@ -622,6 +635,19 @@ public class SpaceService {
           HttpStatus.FORBIDDEN, "Nur Administratoren können Mitglieder verwalten");
     }
     return membership;
+  }
+
+  /**
+   * #613 review, finding 2: "kein neuer Inhalt" is not only "no new chats" (already enforced by
+   * {@code ChatService#createChat}) - it also covers adding a new member, which is why this is
+   * called from {@link #addMember} too. See docs/features/spaces-and-assets.md#einen-space-
+   * stilllegen-archivieren-statt-löschen.
+   */
+  private void requireNotArchived(Space space) {
+    if (space.isArchived()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Mitglieder mehr zu");
+    }
   }
 
   private String resolveDisplayName(UUID userId) {

@@ -56,7 +56,8 @@ public class SpaceController {
   @GetMapping
   public List<SpaceListResponse> listSpaces(@AuthenticationPrincipal Jwt jwt) {
     User currentUser = currentUser(jwt);
-    return spaceService.listSpaces(currentUser.getId());
+    return spaceService.listSpaces(
+        currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @GetMapping("/{spaceId}")

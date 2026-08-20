@@ -73,3 +73,7 @@ databaseChangeLog:
       file: db/changelog/changes/037-create-indexing-run-events.yaml
   - include:
       file: db/changelog/changes/038-add-events-truncated-count-to-indexing-jobs.yaml
+  - include:
+      file: db/changelog/changes/039-add-archived-to-spaces.yaml
+  - include:
+      file: db/changelog/changes/040-widen-audit-event-type-space-archived.yaml

@@ -25,7 +25,10 @@ paths:
     post:
       operationId: submitQuery
       tags: [query]
-      summary: Ask a question against indexed documents
+      summary: >
+        Ask a question against indexed documents. If chatId resolves to an owned, persisted chat
+        whose space is archived (#543), the turn is rejected with 409 and not persisted - an
+        archived space accepts no new turns in an existing chat either.
       requestBody:
         required: true
         content:
@@ -41,6 +44,8 @@ paths:
                 $ref: "#/components/schemas/QueryResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -560,7 +565,9 @@ paths:
     post:
       operationId: addSpaceMember
       tags: [space]
-      summary: Add a member to a space (admin only)
+      summary: >
+        Add a member to a space (admin only). Rejected with 409 if the space is archived (#543) -
+        an archived space accepts no new members.
       requestBody:
         required: true
         content:
@@ -761,7 +768,10 @@ paths:
     patch:
       operationId: updateChat
       tags: [chat]
-      summary: Update a chat's title, useKnowledge switch or sticky library references - author only
+      summary: >
+        Update a chat's title, useKnowledge switch or sticky library references - author only.
+        Rejected with 409 if the chat's space is archived (#543) - an archived space accepts no
+        changes to existing chats either.
       requestBody:
         required: true
         content:
@@ -779,6 +789,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
     delete:
       operationId: deleteChat
@@ -1961,9 +1973,10 @@ components:
         archived:
           type: boolean
           description: >
-            #543: an archived space accepts no new chats and is left out of this list for members
-            who have no chat of their own in it - see
-            docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+            #543: an archived space accepts no new content (chats, messages, renames, members) and
+            is left out of this list for members who have no chat of their own in it and are
+            neither the owner nor a system admin - see
+            docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
           example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
@@ -2018,8 +2031,9 @@ components:
         archived:
           type: boolean
           description: >
-            #543: an archived space accepts no new chats. See
-            docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+            #543: an archived space accepts no new content (chats, messages, renames, members).
+            See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
+            löschen.
           example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"

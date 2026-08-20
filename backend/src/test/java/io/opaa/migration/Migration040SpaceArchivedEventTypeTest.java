@@ -3,6 +3,7 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.audit.AuditEventType;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -12,16 +13,28 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies Liquibase changelog 038 in isolation, on top of 017 and 022 - the same restricted-role
- * pattern {@code Migration022AuditorRoleEventTypesTest} establishes (see that class's Javadoc for
- * the full reasoning why a non-superuser {@code AUDIT_APP_ROLE} is required to actually exercise
- * 038's own {@code SET ROLE opaa_audit_owner} step).
+ * Applies Liquibase changelog 040 in isolation, on top of the real changelog chain 017 -&gt; 022
+ * -&gt; 035 - the newest widen already merged to main at the time this migration was written
+ * (#545's {@code LIBRARY_SOURCE_UPDATED}) - the same restricted-role pattern {@code
+ * Migration022AuditorRoleEventTypesTest} establishes (see that class's Javadoc for the full
+ * reasoning why a non-superuser {@code AUDIT_APP_ROLE} is required to actually exercise 040's own
+ * {@code SET ROLE opaa_audit_owner} step).
+ *
+ * <p>#613 review, finding 1: an earlier version of this test applied only 017 and 022, skipping 035
+ * - the exact gap that let 040's own CHECK list silently drop {@code LIBRARY_SOURCE_UPDATED}
+ * (rebuilt from the 022 state instead of the current one) without any test catching it. This class
+ * now chains through every migration that has actually widened the constraint before 040, and
+ * {@link #everyCurrentEventTypeIsAcceptedAfterTheWideningMigration()} inserts <em>every</em> {@link
+ * AuditEventType} value - not a representative sample - so a future rebuild-from-a-stale- base
+ * mistake fails on the very value it drops, rather than possibly missing it if that value is not
+ * among the ones a sample happens to cover.
  *
  * <p>Proves, against a real database rather than only the Java enum, that {@code
- * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 038 runs, and that every value
- * accepted before 038 is still accepted afterwards (a widen must never accidentally narrow).
+ * chk_audit_log_event_type} accepts {@code SPACE_ARCHIVED} after 040 runs, and that every value
+ * accepted before 040 - the complete {@link AuditEventType} set minus {@code SPACE_ARCHIVED} itself
+ * - is still accepted afterwards (a widen must never accidentally narrow).
  */
-class Migration038SpaceArchivedEventTypeTest extends AbstractMigrationTest {
+class Migration040SpaceArchivedEventTypeTest extends AbstractMigrationTest {
 
   private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
   private static final String AUDIT_APP_ROLE = "audit_app_role";
@@ -47,7 +60,10 @@ class Migration038SpaceArchivedEventTypeTest extends AbstractMigrationTest {
     applyChangelog(
         appConnection, "db/changelog/changes/022-widen-audit-event-type-auditor-role.yaml");
     applyChangelog(
-        appConnection, "db/changelog/changes/038-widen-audit-event-type-space-archived.yaml");
+        appConnection,
+        "db/changelog/changes/035-widen-audit-event-type-library-source-updated.yaml");
+    applyChangelog(
+        appConnection, "db/changelog/changes/040-widen-audit-event-type-space-archived.yaml");
   }
 
   @AfterEach
@@ -86,30 +102,19 @@ class Migration038SpaceArchivedEventTypeTest extends AbstractMigrationTest {
     }
   }
 
+  /**
+   * #613 review, finding 1: exhaustive, not a sample - every {@link AuditEventType} value,
+   * including {@code SPACE_ARCHIVED} itself, must round-trip through the widened constraint.
+   * Deliberately not restricted to "pre-existing" values: the whole point is that nothing in the
+   * current enum may be missing from the CHECK list 040 installs.
+   */
   @Test
-  void spaceArchivedIsAcceptedAfterTheWideningMigration() throws Exception {
-    UUID eventId = insertEntry("SPACE_ARCHIVED");
-
-    assertThat(eventExists(eventId)).isTrue();
-  }
-
-  @Test
-  void everyPreExistingEventTypeIsStillAcceptedAfterTheWideningMigration() throws Exception {
-    // A widen must never accidentally narrow - spot-checks one representative value from each of
-    // the pre-038 categories the constraint's comment groups them into.
-    for (String eventType :
-        new String[] {
-          "ASSET_GRANT_GRANTED",
-          "SPACE_CREATED",
-          "SPACE_DELETED",
-          "AUDITOR_ROLE_GRANTED",
-          "SYSTEM_ADMIN_ROLE_GRANTED",
-          "DIRECTORY_SYNC_RUN_COMPLETED",
-          "GOVERNANCE_SETTINGS_CHANGED",
-          "AUDIT_LOG_ACCESSED"
-        }) {
-      UUID eventId = insertEntry(eventType);
-      assertThat(eventExists(eventId)).as("event_type %s still accepted", eventType).isTrue();
+  void everyCurrentEventTypeIsAcceptedAfterTheWideningMigration() throws Exception {
+    for (AuditEventType eventType : AuditEventType.values()) {
+      UUID eventId = insertEntry(eventType.name());
+      assertThat(eventExists(eventId))
+          .as("event_type %s accepted after 040", eventType.name())
+          .isTrue();
     }
   }
 

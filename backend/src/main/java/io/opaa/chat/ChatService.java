@@ -105,8 +105,8 @@ public class ChatService {
   @Transactional
   public ChatDetail createChat(UUID spaceId, UUID authorId, ChatCreateRequest request) {
     Space space = requireMembership(spaceId, authorId);
-    // #543: an archived space accepts no new content - see
-    // docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+    // #543: an archived space accepts no new content - see docs/features/spaces-and-assets.md#
+    // einen-space-stilllegen-archivieren-statt-löschen.
     if (space.isArchived()) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
@@ -145,6 +145,11 @@ public class ChatService {
   @Transactional
   public ChatDetail updateChat(UUID chatId, UUID authorId, ChatUpdateRequest request) {
     Chat chat = getOwnedChat(chatId, authorId);
+    // #613 review, finding 2: an archived space accepts no new content - not only no new chats,
+    // but also no renaming, useKnowledge toggling or reference changes on an existing one. The
+    // chat itself stays readable (getChat/deleteChat are deliberately not gated here - reading and
+    // withdrawing are not "new content"), just frozen.
+    requireSpaceNotArchived(chat.getSpaceId());
     Set<UUID> referencedLibraryIds =
         request.getReferencedLibraryIds() == null
             ? null
@@ -287,6 +292,13 @@ public class ChatService {
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(
       Chat chat, String question, String answer, List<SourceReference> sources) {
+    // #613 review, finding 2: an archived space accepts no new content - including a new turn in
+    // an existing chat, or the space could keep gaining fresh content forever and never actually
+    // empty out into a state deleteSpace would accept. Checked here rather than only earlier in
+    // QueryService#query so every appendTurn caller is covered, present and future - the cost is
+    // that by this point QueryService has already spent an LLM call on the now-discarded answer;
+    // restructuring the call order to check before generation is outside this fix's scope.
+    requireSpaceNotArchived(chat.getSpaceId());
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
       try {
@@ -428,6 +440,23 @@ public class ChatService {
           HttpStatus.FORBIDDEN, "Sie sind kein Mitglied dieses Space");
     }
     return space;
+  }
+
+  /**
+   * #613 review, finding 2: the shared guard {@link #updateChat} and {@link #appendTurn} both use -
+   * a chat's space always exists (fk_chats_space is ON DELETE RESTRICT, migration 032), so this
+   * never needs to reason about a missing space the way {@link #requireMembership} does.
+   */
+  private void requireSpaceNotArchived(UUID spaceId) {
+    Space space =
+        spaceRepository
+            .findById(spaceId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Space nicht gefunden"));
+    if (space.isArchived()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Der Space ist archiviert und lässt keine neuen Inhalte mehr zu");
+    }
   }
 
   /**
