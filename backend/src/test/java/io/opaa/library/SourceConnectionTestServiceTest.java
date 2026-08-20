@@ -766,7 +766,13 @@ class SourceConnectionTestServiceTest {
           if (!expectedAuth.equals(actualAuth)) {
             exchange.sendResponseHeaders(401, -1);
           } else {
-            byte[] body = "<table></table>".getBytes(StandardCharsets.UTF_8);
+            // #550: an empty <table> alone no longer counts as a recognized listing (needed so
+            // the connection test can tell a genuinely empty directory apart from a page that
+            // isn't a listing at all) - the title marks this fixture as one without adding any
+            // linked entries, which is all this test cares about (the Authorization header).
+            byte[] body =
+                "<html><head><title>Index of /dir/</title></head><body><table></table></body>"
+                    .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
           }

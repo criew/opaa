@@ -16,7 +16,8 @@ class UrlIndexingExecutorTest {
           mock(UrlFileDownloader.class),
           mock(FileProcessingService.class),
           mock(IndexingJobService.class),
-          documentRepository);
+          documentRepository,
+          mock(IndexingRunEventRepository.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 
