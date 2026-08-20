@@ -5,8 +5,38 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-08-19T01:59:51Z</updated>
+  <updated>2026-08-20T01:58:31Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 19. August 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-08-19.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-08-19.html</id>
+    <updated>2026-08-20T01:58:31Z</updated>
+    <summary type="text">Epic: Nacharbeiten Wissensbibliotheken und Upload:
+— E2E-Abdeckung für Upload-Limit und Quellkonfig-Bearbeitung
+— Audit-Einträge für Quellkonfigurationsänderungen
+— Verbindungstest im Bearbeiten-Dialog der Quellkonfiguration
+— HTTP-Client sendet Authorization-Header bei Redirects weiter
+feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek:
+— Quellentyp und Quellkonfiguration an der Bibliothek umgesetzt
+— Bibliotheksanlage mit Typauswahl aus Templates
+— Bibliotheksdetailseite mit typspezifischem Bereich
+— Indizierungsanstoß aus gespeicherter Konfiguration
+Epic: Chats im Space und Suchbereich per @-Bibliotheksreferenzen:
+— E2E-Abdeckung für Chat im Space und @-Referenzen
+— @-Bibliotheksreferenzen und Schalter Wissen nutzen
+— Chats unterhalb von Spaces mit persistentem Verlauf
+— Suchbereich über Bibliotheksreferenzen im Query-Endpunkt
+Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen:
+— E2E-Test für RSS-Quelle über Admin-Oberfläche
+— Feed-Quellen in der Spezifikation nachgeführt
+— Quellentyp im Indizierungsformular wählbar
+— Anlagen an Detailseiten mit Profilen indizieren
+Sonstiges:
+— Space mit fremden privaten Chats unlöschbar
+— Veraltete Space-Arten in CONCEPTS.md bereinigt
+— Übersprungene Dokumente mit Grund in Oberfläche anzeigen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 18. August 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-08-18.html"/>
