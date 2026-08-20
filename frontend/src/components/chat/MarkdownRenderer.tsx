@@ -30,6 +30,65 @@ const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
  * Fundstellen row below the answer. Markers without a resolved number (no citations passed, or
  * an unknown key) are stripped rather than shown raw.
  */
+interface ResolvedCitation {
+  number: number
+  docIndex: number | undefined
+  fileName: string
+}
+
+/** Adjacent citations render as one superscript group; contiguous number runs compress to a
+ *  range ("1–3", mockup 1a/1i) so back-to-back markers stay readable (#590 Nachbesserung). */
+function renderCitationGroup(
+  group: ResolvedCitation[],
+  messageId: string | undefined,
+  key: string,
+): React.ReactNode {
+  const segments: { first: ResolvedCitation; last: ResolvedCitation }[] = []
+  for (const citation of group) {
+    const current = segments[segments.length - 1]
+    if (current && citation.number === current.last.number + 1) {
+      current.last = citation
+    } else {
+      segments.push({ first: citation, last: citation })
+    }
+  }
+  return (
+    <Box
+      component="sup"
+      key={key}
+      sx={{ lineHeight: 0, fontSize: 10.5, fontWeight: 600, mx: 0.125 }}
+    >
+      {segments.map((segment, i) => {
+        const label =
+          segment.first.number === segment.last.number
+            ? `${segment.first.number}`
+            : `${segment.first.number}–${segment.last.number}`
+        const ariaLabel =
+          segment.first.number === segment.last.number
+            ? `Fundstelle ${segment.first.number}: ${segment.first.fileName}`
+            : `Fundstellen ${segment.first.number} bis ${segment.last.number}`
+        return (
+          <span key={segment.first.number}>
+            {i > 0 && '·'}
+            <Link
+              href={
+                messageId !== undefined && segment.first.docIndex !== undefined
+                  ? `#${citationRowId(messageId, segment.first.docIndex)}`
+                  : undefined
+              }
+              underline="none"
+              aria-label={ariaLabel}
+              sx={{ fontWeight: 600 }}
+            >
+              {label}
+            </Link>
+          </span>
+        )
+      })}
+    </Box>
+  )
+}
+
 function renderWithCitations(
   text: string,
   citations: CitationIndex | undefined,
@@ -37,40 +96,34 @@ function renderWithCitations(
 ): React.ReactNode[] {
   const parts: React.ReactNode[] = []
   let lastIndex = 0
+  let group: ResolvedCitation[] = []
   let match: RegExpExecArray | null
+
+  const flushGroup = (key: string) => {
+    if (group.length > 0) {
+      parts.push(renderCitationGroup(group, messageId, key))
+      group = []
+    }
+  }
 
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
   while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index))
+    const between = text.slice(lastIndex, match.index)
+    if (between.trim().length > 0 || (group.length === 0 && between.length > 0)) {
+      flushGroup(`citation-${match.index}`)
+      parts.push(between)
     }
     const number = citations?.numberByKey.get(match[1])
-    const docIndex = number !== undefined ? citations?.docIndexByNumber.get(number) : undefined
-    const fileName = match[2].trim()
     if (number !== undefined) {
-      parts.push(
-        <Box
-          component="sup"
-          key={`citation-${match.index}`}
-          sx={{ lineHeight: 0, fontSize: 10.5, fontWeight: 600, ml: 0.125 }}
-        >
-          <Link
-            href={
-              messageId !== undefined && docIndex !== undefined
-                ? `#${citationRowId(messageId, docIndex)}`
-                : undefined
-            }
-            underline="none"
-            aria-label={`Fundstelle ${number}: ${fileName}`}
-            sx={{ fontWeight: 600 }}
-          >
-            {number}
-          </Link>
-        </Box>,
-      )
+      group.push({
+        number,
+        docIndex: citations?.docIndexByNumber.get(number),
+        fileName: match[2].trim(),
+      })
     }
     lastIndex = regex.lastIndex
   }
+  flushGroup('citation-tail')
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex))
   }
