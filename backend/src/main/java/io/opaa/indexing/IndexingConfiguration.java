@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -182,19 +183,22 @@ public class IndexingConfiguration {
 
   /**
    * Backs {@code FileProcessingService#processUploadedFileAsync} (#434) - deliberately a separate
-   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2).
-   * Directory/URL indexing discards a task outright when its queue is full ({@code
-   * ThreadPoolExecutor.DiscardPolicy} above) - fine there, since the next scheduled run picks up
-   * whatever was skipped. An interactively uploaded document has no such follow-up run: a silently
-   * discarded task would leave its row stuck at {@code PENDING} forever, polled endlessly by the
-   * frontend with nothing to explain why. This executor keeps {@code ThreadPoolTaskExecutor}'s own
-   * default rejection handler ({@code AbortPolicy}) instead, so a full queue throws {@link
-   * org.springframework.core.task.TaskRejectedException} synchronously back to {@code
-   * LibraryDocumentService#uploadDocument}, which turns it into an immediate {@code FAILED} row.
+   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2), with its
+   * own property block ({@link UploadProperties#threadPool}, #614) rather than reusing {@link
+   * IndexingProperties#threadPool()} - see that property's Javadoc for why sharing the same values
+   * would let one pool's sizing silently affect the other. Directory/URL indexing discards a task
+   * outright when its queue is full ({@code ThreadPoolExecutor.DiscardPolicy} above) - fine there,
+   * since the next scheduled run picks up whatever was skipped. An interactively uploaded document
+   * has no such follow-up run: a silently discarded task would leave its row stuck at {@code
+   * PENDING} forever, polled endlessly by the frontend with nothing to explain why. This executor
+   * keeps {@code ThreadPoolTaskExecutor}'s own default rejection handler ({@code AbortPolicy})
+   * instead, so a full queue throws {@link org.springframework.core.task.TaskRejectedException}
+   * synchronously back to {@code LibraryDocumentService#uploadDocument}, which turns it into an
+   * immediate {@code FAILED} row.
    */
   @Bean
-  TaskExecutor uploadTaskExecutor(IndexingProperties properties) {
-    IndexingProperties.ThreadPool pool = properties.threadPool();
+  TaskExecutor uploadTaskExecutor(UploadProperties properties) {
+    UploadProperties.ThreadPool pool = properties.threadPool();
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setCorePoolSize(pool.coreSize());
     executor.setMaxPoolSize(pool.maxSize());

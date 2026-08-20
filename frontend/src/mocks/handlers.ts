@@ -8,6 +8,8 @@ import {
   getRandomMockResponse,
   mockErrorResponse,
   mockAuthConfig,
+  mockBranding,
+  setMockBranding,
   mockUser,
   mockUsers,
   mockSpaces,
@@ -27,6 +29,7 @@ import {
 } from './fixtures'
 import type {
   AssetGrantRequest,
+  BrandingUpdateRequest,
   AssetRole,
   ChatCreateRequest,
   ChatUpdateRequest,
@@ -43,9 +46,14 @@ import type {
 const SUPPORTED_DOCUMENT_EXTENSIONS = ['.doc', '.docx', '.md', '.pdf', '.pptx', '.txt']
 const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
 const documentPollCounts = new Map<string, number>()
+// Upload ids that should resolve to FAILED (#434/#614), not INDEXED, the next time the documents
+// GET handler below advances them past PENDING - see the POST handler's isEmptyContent check.
+const documentsPendingFailure = new Set<string>()
+const EMPTY_CONTENT_ERROR_MESSAGE = 'Aus der Datei konnte kein Text extrahiert werden'
 
 export function resetDocumentMockState() {
   documentPollCounts.clear()
+  documentsPendingFailure.clear()
   resetMockLibraryDocuments()
 }
 
@@ -833,9 +841,14 @@ export const handlers = [
       const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
       documentPollCounts.set(doc.id, pollCount)
       if (pollCount >= 2) {
-        doc.status = 'INDEXED'
-        doc.chunkCount = 12
-        doc.indexedAt = new Date().toISOString()
+        if (documentsPendingFailure.delete(doc.id)) {
+          doc.status = 'FAILED'
+          doc.errorMessage = EMPTY_CONTENT_ERROR_MESSAGE
+        } else {
+          doc.status = 'INDEXED'
+          doc.chunkCount = 12
+          doc.indexedAt = new Date().toISOString()
+        }
       }
     })
 
@@ -896,16 +909,13 @@ export const handlers = [
         { status: 400 },
       )
     }
-    // Mirrors LibraryDocumentService#uploadDocument catching EmptyDocumentContentException: a file
-    // whose text content is blank (e.g. a scanned image with no extractable text) is rejected after
-    // the format check passes, distinct from the "no file at all" 400 above.
+    // Mirrors FileProcessingService#processUploadedFileAsync finding no extractable content
+    // (#434/#614): since the upload endpoint moved off the request thread, this is no longer a
+    // synchronous 422 - the row is returned PENDING like any other upload and only turns FAILED
+    // once the (simulated) asynchronous processing below resolves it, with the same German
+    // errorMessage the real endpoint records.
     const textContent = await file.text()
-    if (textContent.trim() === '') {
-      return HttpResponse.json(
-        { error: 'Aus der Datei konnte kein Text extrahiert werden' },
-        { status: 422 },
-      )
-    }
+    const isEmptyContent = textContent.trim() === ''
     const existing = mockLibraryDocuments[libraryId] ?? []
     // Mirrors LibraryDocumentService#uploadDocument: dedup is scoped per library and keyed on
     // content, approximated here by file name since MSW fixtures do not carry a real checksum.
@@ -915,8 +925,9 @@ export const handlers = [
         { status: 409 },
       )
     }
+    const documentId = `document-${crypto.randomUUID().slice(0, 8)}`
     const document: (typeof existing)[number] = {
-      id: `document-${crypto.randomUUID().slice(0, 8)}`,
+      id: documentId,
       fileName: file.name,
       contentType: file.type || null,
       fileSize: file.size,
@@ -925,6 +936,12 @@ export const handlers = [
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
+    }
+    if (isEmptyContent) {
+      // Resolved to FAILED, not INDEXED, the next time this document is polled (see the
+      // documents GET handler below) - mirrors FileProcessingService#processUploadedFileAsync
+      // finding an empty parse result.
+      documentsPendingFailure.add(documentId)
     }
     mockLibraryDocuments[libraryId] = [document, ...existing]
     const detail = mockLibraryDetails[libraryId]
@@ -1116,6 +1133,57 @@ export const handlers = [
 
   http.get('/api/v1/auth/config', () => {
     return HttpResponse.json(mockAuthConfig)
+  }),
+
+  // #583: readable without authentication, like the real endpoint - the sign-in page renders
+  // before there is a session and still shows the operator's mark.
+  http.get('/api/v1/branding', () => {
+    return HttpResponse.json(mockBranding)
+  }),
+
+  // Mirrors the backend's replace-everything semantics (#582): a field that arrives empty or
+  // absent means "back to the OPAA default", not "leave the current value alone".
+  http.put('/api/v1/system/branding', async ({ request }) => {
+    const body = (await request.json()) as BrandingUpdateRequest
+    const primaryColor = body.primaryColor?.trim() ?? ''
+    if (primaryColor !== '' && !/^#[0-9A-Fa-f]{6}$/.test(primaryColor)) {
+      return HttpResponse.json(
+        {
+          error:
+            "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #1292EE",
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+    setMockBranding({
+      ...mockBranding,
+      productName: body.productName?.trim() || 'OPAA',
+      claim: body.claim?.trim() || 'Fragen. Belegen. Entscheiden.',
+      primaryColor: primaryColor || '#1292EE',
+      defaultColorScheme: body.defaultColorScheme ?? 'SYSTEM',
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.put('/api/v1/system/branding/logo', () => {
+    setMockBranding({
+      ...mockBranding,
+      logoUrl: '/api/v1/branding/logo?v=mocklogo',
+      logoContentType: 'image/png',
+      logoUpdatedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.delete('/api/v1/system/branding/logo', () => {
+    const { logoUrl, logoContentType, logoUpdatedAt, ...withoutLogo } = mockBranding
+    void logoUrl
+    void logoContentType
+    void logoUpdatedAt
+    setMockBranding(withoutLogo)
+    return HttpResponse.json(mockBranding)
   }),
 
   http.get('/api/v1/auth/me', () => {

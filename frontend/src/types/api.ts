@@ -72,6 +72,10 @@ export type ChatMessageResponse = components['schemas']['ChatMessageResponse']
 export type ChatCreateRequest = components['schemas']['ChatCreateRequest']
 export type ChatUpdateRequest = components['schemas']['ChatUpdateRequest']
 
+export type ColorScheme = components['schemas']['ColorScheme']
+export type BrandingResponse = components['schemas']['BrandingResponse']
+export type BrandingUpdateRequest = components['schemas']['BrandingUpdateRequest']
+
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (
     typeof data === 'object' &&

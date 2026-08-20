@@ -101,6 +101,16 @@ public class Document {
   @Column(name = "error_message", columnDefinition = "text")
   private String errorMessage;
 
+  /**
+   * When this row was first created (#614) - backs {@code UploadPendingRecoveryRunner}'s "how long
+   * has this been PENDING" check, since {@link #indexedAt} stays {@code null} for a row's entire
+   * {@code PENDING} lifetime and cannot serve that purpose. Set once in the constructor and never
+   * updated afterwards, the same {@code updatable = false} contract {@code
+   * KnowledgeLibrary#createdAt} uses.
+   */
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private Instant createdAt;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -110,6 +120,7 @@ public class Document {
     this.contentType = contentType;
     this.fileSize = fileSize;
     this.status = DocumentStatus.PENDING;
+    this.createdAt = Instant.now();
   }
 
   public Document(
@@ -228,5 +239,9 @@ public class Document {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
   }
 }

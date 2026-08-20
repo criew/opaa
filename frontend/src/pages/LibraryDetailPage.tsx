@@ -664,6 +664,21 @@ function LibraryDocumentsSection({
                   {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
                   {formatIndexedAt(document.indexedAt)}
                 </Typography>
+                {/* #493: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag
+                    stammt (#468) - der Link macht sichtbar, aus welchem Eintrag sie gefunden
+                    wurde, statt sie im Index kontextlos stehen zu lassen. */}
+                {document.sourceEntryUrl && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ wordBreak: 'break-word' }}
+                  >
+                    Herkunft:{' '}
+                    <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
+                      {document.sourceEntryUrl}
+                    </Link>
+                  </Typography>
+                )}
               </Stack>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
                 {/* #434: a FAILED document's asynchronous processing failure is only visible to

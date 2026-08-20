@@ -806,6 +806,62 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
+  // #493: eine RSS-Anlage (#468) trägt ihren Herkunfts-Eintrag über sourceEntryUrl - die
+  // Detailseite muss ihn sichtbar machen, statt ihn nur zu speichern.
+  it('shows the source entry URL for an RSS attachment, but not for a document without one', async () => {
+    mockGetLibraryDocuments.mockResolvedValueOnce(
+      pageOf([
+        {
+          // The RSS entry's own document row (its detail page's main text) - sourceEntryUrl is
+          // null here (Document#getSourceEntryUrl's Javadoc: "null ... including the RSS entry's
+          // own row"), only an attachment discovered on it carries one.
+          id: 'doc-1',
+          fileName: 'rundschreiben.pdf',
+          contentType: 'application/pdf',
+          fileSize: 2048,
+          status: 'INDEXED',
+          sourceType: 'RSS_FEED',
+          chunkCount: 5,
+          indexedAt: '2026-03-01T10:00:00Z',
+          uploadedByUserId: null,
+        },
+        {
+          id: 'doc-2',
+          fileName: 'dienstanweisung-anlage.pdf',
+          contentType: 'application/pdf',
+          fileSize: 4096,
+          status: 'INDEXED',
+          sourceType: 'RSS_FEED',
+          chunkCount: 8,
+          indexedAt: '2026-03-01T10:05:00Z',
+          uploadedByUserId: null,
+          sourceEntryUrl: 'https://example.gov/aktuelles/dienstanweisung-2024',
+        },
+      ]),
+    )
+    setLibraryState(
+      { ...managerLibrary, myRole: 'OWNER' },
+      detailsOf(
+        { ...managerLibrary, myRole: 'OWNER' },
+        // #493 review, finding 3: an RSS attachment (sourceType RSS_FEED, sourceEntryUrl set)
+        // can only exist in an RSS_FEED library - a FILESYSTEM library here would be an
+        // impossible state the backend never produces.
+        { sourceType: 'RSS_FEED', sourceUrl: 'https://example.gov/feed.xml' },
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText('dienstanweisung-anlage.pdf')).toBeInTheDocument()
+    const link = screen.getByRole('link', {
+      name: 'https://example.gov/aktuelles/dienstanweisung-2024',
+    })
+    expect(link).toHaveAttribute('href', 'https://example.gov/aktuelles/dienstanweisung-2024')
+
+    // Nur die Anlage trägt sourceEntryUrl - kein zweiter "Herkunft:"-Hinweis für das
+    // FILESYSTEM-Dokument ohne diesen Wert.
+    expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
+  })
+
   it('searches documents server-side, debounced, resetting to the first page', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     setLibraryState(managerLibrary, detailsOf(managerLibrary))

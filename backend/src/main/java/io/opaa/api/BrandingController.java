@@ -20,13 +20,16 @@ import org.springframework.web.server.ResponseStatusException;
  * SystemBrandingController} under {@code /api/v1/system}, restricted to {@code
  * SystemRole.SYSTEM_ADMIN}.
  *
- * <p><b>Not reachable without authentication</b>, matching #582's own wording ("lesbar für alle
- * angemeldeten Nutzer"): both security chains ({@code DevSecurityConfig}/{@code
- * OidcSecurityConfig}) authenticate everything under {@code /api/**} except the handful of paths
- * they list explicitly, and this is not one of them. The consequence is worth naming: the sign-in
- * page (#588) renders before there is a session, so it cannot brand itself from this endpoint - see
- * the pull request for why widening that is a deliberate decision for the maintainer rather than
- * one folded in here.
+ * <p><b>Reachable without authentication at all</b> - both security chains ({@code
+ * DevSecurityConfig}/{@code OidcSecurityConfig}) list these two paths among their {@code permitAll}
+ * exceptions. #582 wrote "lesbar für alle angemeldeten Nutzer", which turned out to be one notch
+ * too narrow once #583 came to build the sign-in page: it renders before there is a session and
+ * still has to carry the operator's product name, claim and logo, so an authenticated-only endpoint
+ * could not brand the one screen that most needs it. What this exposes is deliberate and bounded -
+ * the name, claim, accent colour and logo of the deployment, i.e. which Behörde runs it, which
+ * anyone reaching its sign-in page can already tell. No user, space, library or configuration data
+ * is reachable through either path, and every write still requires {@code SYSTEM_ADMIN} ({@link
+ * SystemBrandingController}). {@code BrandingPublicAccessTest} proves both halves.
  */
 @RestController
 @RequestMapping("/api/v1/branding")

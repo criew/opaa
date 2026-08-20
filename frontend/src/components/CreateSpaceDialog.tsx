@@ -58,6 +58,9 @@ export default function CreateSpaceDialog({ open, onClose, onCreated }: CreateSp
           </Alert>
         )}
         <TextField
+          // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG dialog
+          // pattern); re-verified with a screenreader in the closing audit, see #598.
+          // eslint-disable-next-line jsx-a11y-x/no-autofocus
           autoFocus
           label="Name"
           fullWidth

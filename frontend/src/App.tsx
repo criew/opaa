@@ -16,19 +16,36 @@ import GroupManagementPage from './pages/GroupManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
 import { useAuthStore } from './stores/authStore'
+import { useBrandingStore } from './stores/brandingStore'
 import { useUiStore } from './stores/uiStore'
+import { resolveThemeMode } from './theme/colorScheme'
+import BrandingSettingsPage from './pages/BrandingSettingsPage'
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const themeMode = useUiStore((s) => s.themeMode)
+  const branding = useBrandingStore((s) => s.branding)
+  const loadBranding = useBrandingStore((s) => s.loadBranding)
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)')
 
-  const effectiveMode = themeMode === 'system' ? (prefersDark ? 'dark' : 'light') : themeMode
-  const theme = useMemo(() => createAppTheme(effectiveMode), [effectiveMode])
+  // The operator's default applies only where the user has made no choice of their own - see
+  // resolveThemeMode. `system` then still follows the browser, as it always has.
+  const preferredMode = resolveThemeMode(themeMode, branding.defaultColorScheme)
+  const effectiveMode =
+    preferredMode === 'system' ? (prefersDark ? 'dark' : 'light') : preferredMode
+  // The accent is the only branding value the theme itself consumes; product name, claim and logo
+  // are read from the store by the components that render them (#583, guidelines 7).
+  const theme = useMemo(
+    () => createAppTheme(effectiveMode, { primaryColor: branding.primaryColor }),
+    [effectiveMode, branding.primaryColor],
+  )
 
   useEffect(() => {
     initialize()
-  }, [initialize])
+    // Deliberately not awaited and deliberately outside any auth gate: the sign-in page needs the
+    // branding too, and the store falls back to the OPAA standard if the request fails (#583).
+    void loadBranding()
+  }, [initialize, loadBranding])
 
   return (
     <ThemeProvider theme={theme}>
@@ -54,6 +71,7 @@ export default function App() {
               <Route path="libraries" element={<LibraryManagementPage />} />
               <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
               <Route path="admin/groups" element={<GroupManagementPage />} />
+              <Route path="admin/branding" element={<BrandingSettingsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/chat" replace />} />
             </Route>

@@ -107,10 +107,18 @@ Ausschnitt.
 
 ### 3.1 Automatisiert (jeder PR)
 
-- `eslint-plugin-jsx-a11y` im Frontend-Lint und **axe-core** in der Playwright-E2E-Suite
-  (Issue #586). Verstöße der Stufen „serious" und „critical" lassen die Prüfung fehlschlagen.
+- `eslint-plugin-jsx-a11y-x` (ESLint-10-kompatibler Fork von `eslint-plugin-jsx-a11y`,
+  Rückwechsel: #635) im Frontend-Lint, Regelset `recommended`, jeder Verstoß ein Lint-Fehler.
+- **axe-core** (`@axe-core/playwright`) in der Playwright-E2E-Suite
+  (`e2e/tests/accessibility.spec.ts`, eingeführt mit #586): Anmeldung, Chat in beiden
+  Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich. Verstöße der Stufen
+  „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
+  Annotation im Report.
 - Ausnahmen werden einzeln im Code begründet und mit einem Issue verknüpft — nie pauschal
-  abgeschaltet.
+  abgeschaltet: im Lint als `// eslint-disable-next-line jsx-a11y-x/<regel>` mit Begründung und
+  Issue direkt darüber, in der E2E-Suite als Eintrag in `KNOWN_EXCEPTIONS` der Spec
+  (`exclude` für eine Komponente, `disableRules` für eine Regel). Wer eine Ausnahme hinzufügt,
+  legt das Issue an, das sie wieder entfernt.
 
 ### 3.2 Tastatur-Durchgang (jeder PR mit UI-Änderung)
 

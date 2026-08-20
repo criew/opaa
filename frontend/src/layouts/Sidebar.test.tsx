@@ -10,6 +10,7 @@ import Sidebar from './Sidebar'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
 
 const mockNavigate = vi.fn()
 
@@ -52,6 +53,7 @@ function renderSidebarAtRoute(initialPath: string) {
 describe('Sidebar', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
+    useBrandingStore.setState({ branding: OPAA_BRANDING })
     useChatStore.setState({
       spaceId: null,
       chatId: null,
@@ -100,10 +102,30 @@ describe('Sidebar', () => {
     expect(screen.getByText('Einstellungen')).toBeInTheDocument()
   })
 
-  it('renders OPAA branding', () => {
+  it('renders the configured product name and claim rather than a hardcoded one', () => {
+    // #583: the sidebar head is no longer literal text - it comes from the branding store, which
+    // starts on the OPAA standard. The next test proves it actually follows a change.
     renderSidebarAtRoute('/settings')
     expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.getByText('KI-Projektassistent')).toBeInTheDocument()
+    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+  })
+
+  it('follows a configured branding', () => {
+    useBrandingStore.setState({
+      branding: {
+        productName: 'Landesamt-Assistent',
+        claim: 'Kurz und klar',
+        primaryColor: '#7A1FA2',
+        defaultColorScheme: 'LIGHT',
+        logoUrl: '/api/v1/branding/logo?v=abc',
+      },
+    })
+
+    renderSidebarAtRoute('/settings')
+
+    expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
+    expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
+    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
   })
 
   it('renders New Chat button for the default space', async () => {

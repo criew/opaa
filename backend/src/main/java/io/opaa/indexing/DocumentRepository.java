@@ -116,4 +116,34 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("id") UUID id,
       @Param("chunkCount") int chunkCount,
       @Param("indexedAt") Instant indexedAt);
+
+  /**
+   * Backs {@code UploadPendingRecoveryRunner} (#614): every {@code PENDING} upload created before
+   * {@code threshold} is stuck for good, not merely queued - the process that would have finished
+   * it (via {@code uploadTaskExecutor}) died before {@link #markIndexed}/{@link #markFailed} could
+   * run, and a fresh JVM start has no in-memory record of that task to wait for. A bulk {@code
+   * UPDATE}, not a load-then-save loop, mirrors {@link #deleteByLibraryId}'s reasoning: one round
+   * trip regardless of how many rows are affected.
+   *
+   * <p>Scoped to {@code sourceType = UPLOAD} (PR #631 review, finding 2) - #614 deliberately covers
+   * only the upload path (see its own issue text: "NUR den Upload-PENDING-Teil umsetzen, nicht #501
+   * selbst"). A connector run ({@code FILESYSTEM}/{@code HTTP_DIRECTORY}/{@code RSS_FEED}) also
+   * passes through a transient {@code PENDING} row (see {@code FileProcessingService# processFile}
+   * et al.), and a crash mid-run could in principle leave one stuck the same way - but that failure
+   * mode belongs to {@code indexing_jobs} and #501's still-open {@code RUNNING} recovery, not to
+   * this upload-specific runner and its upload-specific error message. Without this filter, a stuck
+   * connector row would be marked {@code FAILED} with a message that falsely claims it went through
+   * the upload endpoint.
+   *
+   * @return the number of rows transitioned to {@code FAILED}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.indexing.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.indexing.DocumentStatus.PENDING and"
+          + " d.sourceType = io.opaa.indexing.DocumentSourceType.UPLOAD and d.createdAt <"
+          + " :threshold")
+  int failStalePending(
+      @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 }

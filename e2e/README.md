@@ -169,6 +169,18 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 ## Szenarien
 
 - `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
+- `tests/accessibility.spec.ts` (#586) — automatisierte Barrierefreiheitsprüfung mit axe-core
+  (`@axe-core/playwright`, Helfer in `fixtures/a11y.ts`): Anmeldeseite, Chat in beiden
+  Farbschemata, Space-Seite, Wissensbibliotheken und Verwaltungsbereich (Gruppen) werden im
+  Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
+  lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
+  Ausnahmen stehen als `KNOWN_EXCEPTIONS` in der Spec, jede mit Begründung und Issue
+  (derzeit: Kontrast der Akzentfarbe, #634). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
+  wenn `/api/v1/auth/config` per `page.route` eine OIDC-Konfiguration zurückgibt — die
+  erfundene Authority wird dabei nie kontaktiert. Das dunkle Farbschema wird über
+  `page.emulateMedia({ colorScheme: 'dark' })` aktiviert (die Voreinstellung „System" folgt
+  `prefers-color-scheme`). Die Szenarien verändern keinen geteilten Zustand und sind daher von
+  der Reihenfolge der Suite unabhängig.
 - `tests/knowledge-libraries.spec.ts` (#424) — Wissensbibliotheken über den vollen Stack: Nutzer A
   legt eine Bibliothek an und lädt ein Dokument hoch, sieht es nach der Verarbeitung als indiziert,
   und die Suche findet den eigenen Inhalt mit Quellenangabe. A gibt die Bibliothek an Nutzer B frei
