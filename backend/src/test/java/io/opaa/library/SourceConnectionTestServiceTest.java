@@ -316,7 +316,7 @@ class SourceConnectionTestServiceTest {
                 .sourceUrl(URI.create(baseUrl + "/dir/")));
 
     assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Groesse");
+    assertThat(response.getMessage()).contains("Größe");
   }
 
   @Test
@@ -502,7 +502,7 @@ class SourceConnectionTestServiceTest {
                 .sourceUrl(URI.create(baseUrl + "/feed.xml")));
 
     assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Groesse");
+    assertThat(response.getMessage()).contains("Größe");
   }
 
   @Test
