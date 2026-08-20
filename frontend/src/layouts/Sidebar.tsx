@@ -242,6 +242,7 @@ export default function Sidebar() {
             <Box sx={{ mt: 0.5 }}>
               <ChatList
                 spaceId={activeChatSpaceId}
+                menuTheme={appTheme}
                 header={
                   <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
                     Chats

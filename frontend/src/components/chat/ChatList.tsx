@@ -4,6 +4,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
+import Divider from '@mui/material/Divider'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -14,6 +18,9 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
+import { ThemeProvider } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
 import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
@@ -28,9 +35,14 @@ interface ChatListProps {
   spaceId: string
   /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
   header?: ReactNode
+  /**
+   * Theme for the context menu. Mockup 1a shows light panels even over the navy sidebar, so
+   * the Sidebar passes the app theme in here - the list itself stays on the sidebar theme.
+   */
+  menuTheme?: Theme
 }
 
-export default function ChatList({ spaceId, header }: ChatListProps) {
+export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -46,6 +58,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
 
   useEffect(() => {
     if (chats === undefined) {
@@ -139,7 +152,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                 // keyboard focus (#658). They stay in the tab order either way.
                 sx={{
                   '& .MuiListItemSecondaryAction-root': {
-                    opacity: 0,
+                    opacity: menuAnchor?.chatId === chat.id ? 1 : 0,
                     transition: 'opacity 120ms',
                   },
                   '&:hover .MuiListItemSecondaryAction-root, &:focus-within .MuiListItemSecondaryAction-root':
@@ -147,24 +160,20 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                 }}
                 secondaryAction={
                   !isRenaming && (
-                    <>
-                      <IconButton
-                        size="small"
-                        aria-label={`Chat „${chatTitle(chat)}“ umbenennen`}
-                        onClick={() => startRename(chat)}
-                        sx={{ p: 0.5 }}
-                      >
-                        <EditIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        aria-label={`Chat „${chatTitle(chat)}“ löschen`}
-                        onClick={() => void handleDelete(chat)}
-                        sx={{ p: 0.5 }}
-                      >
-                        <DeleteIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </>
+                    // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
+                    // light dropdown (#658 Nachbesserung).
+                    <IconButton
+                      size="small"
+                      aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
+                      aria-haspopup="menu"
+                      aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
+                      onClick={(event) =>
+                        setMenuAnchor({ chatId: chat.id, el: event.currentTarget })
+                      }
+                      sx={{ p: 0.5, borderRadius: '4px' }}
+                    >
+                      <MoreVertIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
                   )
                 }
               >
@@ -173,7 +182,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                   onClick={
                     isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)
                   }
-                  sx={{ borderRadius: '6px', mb: 0.25, pr: 8, py: 0.5 }}
+                  sx={{ borderRadius: '6px', mb: 0.25, pr: 5.5, py: 0.5 }}
                 >
                   {isRenaming ? (
                     <TextField
@@ -210,6 +219,46 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           })}
         </List>
       )}
+
+      {(() => {
+        const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)
+        const menu = (
+          <Menu
+            anchorEl={menuAnchor?.el ?? null}
+            open={Boolean(menuAnchor && menuChat)}
+            onClose={() => setMenuAnchor(null)}
+            slotProps={{ paper: { sx: { width: 190 } }, list: { 'aria-label': 'Chat-Aktionen' } }}
+          >
+            <MenuItem
+              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ umbenennen` : undefined}
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) startRename(menuChat)
+              }}
+            >
+              <ListItemIcon>
+                <EditIcon sx={{ fontSize: 15 }} />
+              </ListItemIcon>
+              Umbenennen
+            </MenuItem>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ löschen` : undefined}
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) void handleDelete(menuChat)
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon>
+                <DeleteIcon sx={{ fontSize: 15, color: 'error.main' }} />
+              </ListItemIcon>
+              Löschen
+            </MenuItem>
+          </Menu>
+        )
+        return menuTheme ? <ThemeProvider theme={menuTheme}>{menu}</ThemeProvider> : menu
+      })()}
     </Box>
   )
 }
