@@ -82,7 +82,7 @@ function uniqueId(testInfo: TestInfo): string {
  * this reason.
  */
 async function referenceLibrary(page: Page, libraryName: string) {
-  const input = page.getByPlaceholder('Stellen Sie eine Frage …')
+  const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
 }
@@ -215,12 +215,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // mention feature itself is broken" - only the contrast between adminPage and bPage below
     // makes the absence a real, permission-specific finding.
     await startFreshChat(adminPage)
-    const adminInput = adminPage.getByPlaceholder('Stellen Sie eine Frage …')
+    const adminInput = adminPage.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
     await adminInput.fill(`@${privateLibraryName}`)
     await expect(adminPage.getByRole('option', { name: privateLibraryName })).toBeVisible()
 
     await startFreshChat(bPage)
-    const input = bPage.getByPlaceholder('Stellen Sie eine Frage …')
+    const input = bPage.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
     await input.fill(`@${sharedLibraryName}`)
     await expect(bPage.getByRole('option', { name: sharedLibraryName })).toBeVisible()
 
