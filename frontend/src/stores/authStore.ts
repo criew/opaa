@@ -117,13 +117,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     const { userManager, mode } = get()
+    // Resets every store that caches data scoped to the signed-in user's session (#440) - see
+    // resettableStores.ts for which stores that covers and why. Must run before
+    // signoutRedirect below: that call navigates the browser away in OIDC mode, so anything
+    // after it would practically never run.
+    resetAllStores()
     if (mode === 'oidc' && userManager) {
       await userManager.signoutRedirect()
     }
     clearDevUser()
-    // Resets every store that caches data scoped to the signed-in user's session (#440) - see
-    // resettableStores.ts for which stores that covers and why.
-    resetAllStores()
     set({
       token: null,
       user: null,

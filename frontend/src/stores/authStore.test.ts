@@ -7,6 +7,9 @@ import { useGroupStore } from './groupStore'
 import { useLibraryStore } from './libraryStore'
 import { useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
+import { useDocumentStore } from './documentStore'
+import { useGrantStore } from './grantStore'
+import { useIndexingStore } from './indexingStore'
 
 describe('authStore', () => {
   beforeEach(() => {
@@ -127,6 +130,56 @@ describe('authStore', () => {
     })
     useChatStore.setState({ spaceId: 'space-1', chatId: 'chat-1', title: 'Test' })
     useChatListStore.setState({ chatsBySpaceId: { 'space-1': [] } })
+    // #440 review: documentStore, grantStore and indexingStore cache data scoped to the
+    // signed-in user's session just like the stores above.
+    useDocumentStore.setState({
+      documentsByLibrary: {
+        'library-1': [
+          {
+            id: 'document-1',
+            fileName: 'test.pdf',
+            contentType: 'application/pdf',
+            fileSize: 1000,
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+            indexedAt: '2026-03-01T10:00:00Z',
+            uploadedByUserId: 'mock-user-id',
+          },
+        ],
+      },
+    })
+    useGrantStore.setState({
+      grantsByLibrary: {
+        'library-1': [
+          {
+            id: 'grant-1',
+            subjectType: 'USER',
+            subjectId: 'user-1',
+            subjectDisplayName: 'Test',
+            role: 'VIEWER',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+      },
+    })
+    useIndexingStore.setState({
+      runsByLibrary: {
+        'library-1': {
+          status: 'RUNNING',
+          documentCount: 1,
+          totalDocuments: 5,
+          documentsSkipped: 0,
+          documentsFailed: 0,
+          documentsIndexedTotal: 1,
+          message: null,
+          timestamp: '2026-03-01T10:00:00Z',
+          isPolling: true,
+          sourceType: 'FILESYSTEM',
+        },
+      },
+    })
 
     await useAuthStore.getState().logout()
 
@@ -145,6 +198,9 @@ describe('authStore', () => {
     expect(useChatStore.getState().spaceId).toBeNull()
     expect(useChatStore.getState().chatId).toBeNull()
     expect(useChatListStore.getState().chatsBySpaceId).toEqual({})
+    expect(useDocumentStore.getState().documentsByLibrary).toEqual({})
+    expect(useGrantStore.getState().grantsByLibrary).toEqual({})
+    expect(useIndexingStore.getState().runsByLibrary).toEqual({})
   })
 
   it('returns access token via getAccessToken', () => {
