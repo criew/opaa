@@ -15,7 +15,7 @@ import ListSubheader from '@mui/material/ListSubheader'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
-import { ThemeProvider } from '@mui/material/styles'
+import { ThemeProvider, useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import GridViewIcon from '@mui/icons-material/GridView'
 import GroupsIcon from '@mui/icons-material/Groups'
@@ -33,7 +33,7 @@ import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useBrandingStore } from '../stores/brandingStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { createAppTheme } from '../theme/theme'
+import { createSidebarTheme } from '../theme/theme'
 
 const SIDEBAR_WIDTH = 300
 
@@ -66,13 +66,14 @@ export default function Sidebar() {
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
-  // The sidebar stays navy in both color schemes (guidelines 2.3) - it always renders on the
-  // dark scheme's roles, carrying the same branding accent as the rest of the app. The nested
-  // provider also covers the menus below: they portal to <body>, but MUI's theme context follows
-  // the React tree, not the DOM.
+  // Light app: the sidebar keeps the mockup's navy block; dark app: it follows the carbon dark
+  // scheme (guidelines 2.3, #654) - always with the same branding accent as the rest of the app.
+  // The nested provider also covers the menus below: they portal to <body>, but MUI's theme
+  // context follows the React tree, not the DOM.
+  const appMode = useTheme().palette.mode
   const sidebarTheme = useMemo(
-    () => createAppTheme('dark', { primaryColor: branding.primaryColor }),
-    [branding.primaryColor],
+    () => createSidebarTheme(appMode, { primaryColor: branding.primaryColor }),
+    [appMode, branding.primaryColor],
   )
 
   useEffect(() => {
