@@ -45,7 +45,7 @@ test.describe('Barrierefreiheit (axe-core, #586)', () => {
 
   test('Chat in beiden Farbschemata', async ({ authenticatedPage: page }) => {
     await startFreshChat(page)
-    const input = page.getByPlaceholder('Stellen Sie eine Frage …')
+    const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
     await expect(input).toBeVisible()
 
     // The theme preference defaults to "system" (uiStore.themeMode), so emulating the media

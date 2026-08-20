@@ -51,7 +51,7 @@ describe('ChatPage', () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Stellen Sie eine Frage …')
+    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
     fireEvent.change(input, { target: { value: 'What is the architecture?' } })
     fireEvent.click(screen.getByLabelText('Nachricht senden'))
 
@@ -64,7 +64,7 @@ describe('ChatPage', () => {
       { timeout: 10000 },
     )
 
-    expect(screen.getAllByText(/% relevant/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Fundstellen').length).toBeGreaterThanOrEqual(1)
     expect(useChatStore.getState().chatId).toBeTruthy()
     // The URL is replaced to point at the now-persisted chat, so a reload restores it.
     expect(mockNavigate).toHaveBeenCalledWith(

@@ -6,7 +6,7 @@ test.describe('Rauchtest', () => {
     // placeholder is a stable, user-visible marker that the app shell rendered
     // successfully.
     await expect(
-      authenticatedPage.getByPlaceholder('Stellen Sie eine Frage …'),
+      authenticatedPage.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen'),
     ).toBeVisible()
   })
 })

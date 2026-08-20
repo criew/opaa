@@ -149,9 +149,9 @@ public class SpaceService {
     Space space = loadSpace(spaceId, currentUserId);
     // #144: the member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
-    // checks membership, this is restricted to ADMIN (the owner's membership is always ADMIN, see
-    // appendInitialMemberships and updateMemberRole's guard against changing it away) and system
-    // admins.
+    // checks membership, this is restricted to ADMIN, the owner (checked explicitly by
+    // requireMemberListViewer - transferOwnership never changes the new owner's membership role,
+    // so the owner is not always ADMIN) and system admins.
     if (!systemAdmin) {
       requireMemberListViewer(space, currentUserId);
     }
@@ -643,13 +643,15 @@ public class SpaceService {
   }
 
   /**
-   * #144: the member list is restricted to ADMIN and system admins - the owner's membership is
-   * always ADMIN (see {@link #appendInitialMemberships} and {@link #updateMemberRole}'s guard
-   * against changing it away), so a separate owner check is unnecessary here.
+   * #144: the member list is restricted to ADMIN, the owner and system admins. The owner check is
+   * explicit and not folded into "owner's membership is always ADMIN" - {@link #transferOwnership}
+   * only reassigns {@code Space.ownerId} and never touches the new owner's {@link SpaceMembership}
+   * role (review finding on #674), so a space can genuinely have an owner whose own membership is
+   * MEMBER or CURATOR.
    */
   private SpaceMembership requireMemberListViewer(Space space, UUID userId) {
     SpaceMembership membership = requireMembership(space, userId);
-    if (membership.getRole() != SpaceRole.ADMIN) {
+    if (membership.getRole() != SpaceRole.ADMIN && !space.getOwnerId().equals(userId)) {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN,
           "Nur Administratoren oder der Eigentümer können die Mitgliederliste einsehen");

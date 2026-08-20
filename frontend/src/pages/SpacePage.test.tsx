@@ -71,4 +71,33 @@ describe('SpacePage', () => {
     expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
     expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
   })
+
+  // #674 review, nit e: the non-admin path - a MEMBER must see only the aggregated roleCounts,
+  // never an identity or display name, and must not even trigger the members request (#144).
+  it('shows only the aggregated role counts, not names, for a non-admin member', () => {
+    useSpaceStore.setState({
+      selectedSpace: {
+        id: 'space-personal',
+        name: 'Meine Dokumente',
+        description: 'Private Dokumente',
+        isDefault: true,
+        archived: false,
+        visibility: 'PRIVATE',
+        ownerId: 'owner-1',
+        memberCount: 2,
+        userRole: 'MEMBER',
+        roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+      members: [],
+    })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    expect(screen.getByText('Mitglied: 1')).toBeInTheDocument()
+    expect(screen.getByText('Administrator: 1')).toBeInTheDocument()
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /space verwalten/i })).not.toBeInTheDocument()
+  })
 })

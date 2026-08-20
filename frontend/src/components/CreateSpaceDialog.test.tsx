@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import CreateSpaceDialog from './CreateSpaceDialog'
 import { useSpaceStore } from '../stores/spaceStore'
+import type { createSpace } from '../services/api'
 
-vi.mock('../services/api', () => ({
-  getSpaces: vi.fn(async () => []),
-  getSpace: vi.fn(async () => ({})),
-  createSpace: vi.fn(async () => ({
+// Typed as the real createSpace so the mock wiring below can hand it straight to vi.mock without a
+// spreading wrapper (which would otherwise need a named, and therefore "unused", rest parameter).
+const { mockCreateSpace } = vi.hoisted(() => ({
+  mockCreateSpace: vi.fn(async () => ({
     id: 'space-new',
     name: 'Test',
     description: '',
@@ -21,7 +22,13 @@ vi.mock('../services/api', () => ({
     members: [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
-  })),
+  })) as unknown as typeof createSpace,
+}))
+
+vi.mock('../services/api', () => ({
+  getSpaces: vi.fn(async () => []),
+  getSpace: vi.fn(async () => ({})),
+  createSpace: mockCreateSpace,
 }))
 
 describe('CreateSpaceDialog', () => {
@@ -60,6 +67,34 @@ describe('CreateSpaceDialog', () => {
 
     await waitFor(() => {
       expect(onCreated).toHaveBeenCalledWith('space-new')
+    })
+  })
+
+  // #272: PRIVATE is the visibility default for a newly created space
+  // (docs/features/spaces-and-assets.md#space-sichtbarkeit).
+  it('defaults to PRIVATE visibility when the user submits without changing it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CreateSpaceDialog open={true} onClose={onClose} onCreated={onCreated} />)
+
+    await user.type(screen.getByLabelText(/name/i), 'My New Space')
+    await user.click(screen.getByRole('button', { name: /erstellen/i }))
+
+    await waitFor(() => {
+      expect(mockCreateSpace).toHaveBeenCalledWith('My New Space', '', 'PRIVATE')
+    })
+  })
+
+  it('sends the chosen visibility when the user changes it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CreateSpaceDialog open={true} onClose={onClose} onCreated={onCreated} />)
+
+    await user.type(screen.getByLabelText(/name/i), 'My New Space')
+    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(await screen.findByRole('option', { name: /^offen$/i }))
+    await user.click(screen.getByRole('button', { name: /erstellen/i }))
+
+    await waitFor(() => {
+      expect(mockCreateSpace).toHaveBeenCalledWith('My New Space', '', 'OPEN')
     })
   })
 

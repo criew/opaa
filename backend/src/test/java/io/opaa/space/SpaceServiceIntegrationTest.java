@@ -637,9 +637,9 @@ class SpaceServiceIntegrationTest {
   }
 
   // #144: the full member list (identities and display names) is restricted to ADMIN, the owner
-  // (whose own membership is always ADMIN) and system admins - a MEMBER or CURATOR must not be
-  // able to enumerate their fellow members via either getSpace or listMembers, even though they
-  // already know they themselves are a member of this space.
+  // and system admins - a MEMBER or CURATOR must not be able to enumerate their fellow members via
+  // either getSpace or listMembers, even though they already know they themselves are a member of
+  // this space.
 
   @Test
   void ownerCanListMembersIncludingDisplayNames() {
@@ -691,6 +691,25 @@ class SpaceServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void newOwnerCanListMembersEvenWithoutAnAdminMembership() {
+    // #674 review, blocker 2: transferOwnership only reassigns Space.ownerId - it never touches
+    // the new owner's own SpaceMembership role. A space can therefore genuinely have an owner
+    // whose own membership is MEMBER, and requireMemberListViewer must check the owner explicitly
+    // rather than assume "owner implies ADMIN".
+    UUID owner = createUser(organizationA);
+    UUID newOwner = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(newOwner, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    spaceService.transferOwnership(saved.getId(), newOwner, owner, false);
+
+    assertThat(spaceService.listMembers(saved.getId(), newOwner, false)).hasSize(2);
   }
 
   @Test

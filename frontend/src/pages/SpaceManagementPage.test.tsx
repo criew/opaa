@@ -107,6 +107,26 @@ const teamSpace: SpaceResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
+// #674 review, nit e: a MEMBER who is neither ADMIN nor owner, reached this page directly by URL
+// (not via SpacePage's "Space verwalten" button, which is hidden from them). Reuses 'space-team's
+// id - the mocked useParams above is hardcoded to it - and the test below overrides
+// mockListSpaceMembers for a single call to return [], mirroring listSpaceMembers's
+// silent-empty-list handling of the backend's 403 for this caller.
+const nonAdminSpace: SpaceResponse = {
+  id: 'space-team',
+  name: 'Fremdverwaltet',
+  description: 'Team docs',
+  isDefault: false,
+  archived: false,
+  visibility: 'PRIVATE',
+  ownerId: 'someone-else',
+  memberCount: 2,
+  userRole: 'MEMBER',
+  roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+  createdAt: '2026-03-01T10:00:00Z',
+  updatedAt: '2026-03-01T10:00:00Z',
+}
+
 function setSpaceState(space: SpaceResponse) {
   useSpaceStore.setState({
     spaces: [],
@@ -156,6 +176,15 @@ describe('SpaceManagementPage', () => {
     expect(screen.getByRole('button', { name: /zum eigentümer machen/i })).toBeInTheDocument()
   })
 
+  it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([])
+    setSpaceState(nonAdminSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/nicht die erforderliche rolle/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
+  })
+
   it('shows the delete button only for the owner of a non-personal space', () => {
     setSpaceState(teamSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
@@ -168,8 +197,12 @@ describe('SpaceManagementPage', () => {
     expect(screen.queryByRole('button', { name: /space löschen/i })).not.toBeInTheDocument()
   })
 
-  it('saves settings by calling updateSpaceDetails with name and description only', async () => {
-    setSpaceState(teamSpace)
+  it('saves settings by calling updateSpaceDetails with name, description and the unchanged visibility', async () => {
+    // #671 review: OPEN here (not PRIVATE, which is both the draft's initial value and the
+    // fallback for a missing space.visibility) - only this way can the test actually catch a page
+    // that fails to read the space's own visibility and silently sends PRIVATE instead, which
+    // would downgrade an OPEN space on a plain rename.
+    setSpaceState({ ...teamSpace, visibility: 'OPEN' })
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
@@ -178,7 +211,28 @@ describe('SpaceManagementPage', () => {
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team Renamed', 'Team docs')
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team Renamed',
+        'Team docs',
+        'OPEN',
+      )
+    })
+  })
+
+  // #272: the visibility axis (docs/features/spaces-and-assets.md#space-sichtbarkeit) must be
+  // changeable in space management, not just at creation time.
+  it('saves the chosen visibility when it is changed', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
+    await user.click(await screen.findByRole('option', { name: /^offen$/i }))
+    await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', 'OPEN')
     })
   })
 

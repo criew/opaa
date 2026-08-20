@@ -26,6 +26,7 @@ import type {
   SourceConnectionTestResponse,
   SpaceListResponse,
   SpaceMemberResponse,
+  SpaceRequest,
   SpaceRole,
   SpaceResponse,
   SpaceUpdateRequest,
@@ -183,11 +184,18 @@ export async function getSpace(spaceId: string): Promise<SpaceResponse> {
 
 // #144: the full member list (identities and display names) is only reachable here - SpaceResponse
 // no longer carries it, and the backend restricts this endpoint to ADMIN, owner and system admins.
+// #674 review, nit a: a 403 here is an expected, silent "not allowed to see this" for a caller
+// without the role - it resolves to an empty list rather than an error, but every other failure
+// (network error, 404, 500, ...) still throws through normalizeError so the store can tell the two
+// apart instead of treating every failure alike.
 export async function listSpaceMembers(spaceId: string): Promise<SpaceMemberResponse[]> {
   try {
     const { data } = await client.get<SpaceMemberResponse[]>(`/v1/spaces/${spaceId}/members`)
     return data
   } catch (err) {
+    if (err instanceof AxiosError && err.response?.status === 403) {
+      return []
+    }
     normalizeError(err)
   }
 }
@@ -255,15 +263,21 @@ export async function updateSpaceDetails(
   }
 }
 
-export async function createSpace(name: string, description: string): Promise<SpaceResponse> {
+export async function createSpace(
+  name: string,
+  description: string,
+  visibility?: SpaceVisibility,
+): Promise<SpaceResponse> {
   try {
     const currentUserId = useAuthStore.getState().user?.id ?? null
-    const { data } = await client.post<SpaceResponse>('/v1/spaces', {
+    const body: SpaceRequest = {
       name,
       description,
+      visibility,
       ownerId: currentUserId,
       initialMembers: [],
-    })
+    }
+    const { data } = await client.post<SpaceResponse>('/v1/spaces', body)
     return data
   } catch (err) {
     normalizeError(err)

@@ -492,7 +492,7 @@ Warum drei statt der bisherigen vier Rollen:
 
 **Grenze der Admin-Rechte:** Ein Space-Admin kann geteilte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann die privaten Inhalte anderer Mitglieder **nicht sehen** — auch nicht als Admin.
 
-**Die Mitgliederliste ist nicht jedem Mitglied zugänglich.** Wer namentlich in einem Space steht, ist selbst eine Information — welcher Sachbearbeiter an einem „Disziplinarverfahren" oder einer „Umstrukturierung Abteilung 3" mitarbeitet, sagt etwas über die betroffenen Personen aus. Deshalb sehen `ADMIN`, der Eigentümer (dessen Mitgliedschaft stets `ADMIN` ist) und System-Admins die vollständige Liste mit Kennungen und Anzeigenamen; `MEMBER` und `CURATOR` erhalten nur die aggregierte Zählung je Rolle (`roleCounts`), die „wie groß ist dieser Raum" beantwortet, ohne jemanden zu benennen.
+**Die Mitgliederliste ist nicht jedem Mitglied zugänglich.** Wer namentlich in einem Space steht, ist selbst eine Information — welcher Sachbearbeiter an einem „Disziplinarverfahren" oder einer „Umstrukturierung Abteilung 3" mitarbeitet, sagt etwas über die betroffenen Personen aus. Deshalb sehen `ADMIN`, der Eigentümer und System-Admins die vollständige Liste mit Kennungen und Anzeigenamen; `MEMBER` und `CURATOR` erhalten nur die aggregierte Zählung je Rolle (`roleCounts`), die „wie groß ist dieser Raum" beantwortet, ohne jemanden zu benennen. Die Eigentümer-Berechtigung wird dabei **eigenständig** geprüft, nicht über die Rolle abgeleitet: Eine Verantwortungsübertragung (siehe unten) ändert nur `ownerId`, nie die eigene Mitgliedschaftsrolle des neuen Eigentümers — ein Eigentümer mit der Rolle `MEMBER` ist deshalb ein regulärer, vorgesehener Zustand, keine Ausnahme.
 
 ### Assets in einen Space assoziieren
 
@@ -587,7 +587,7 @@ Der erste konkrete Bibliotheks-Chip **ersetzt** @Alles-Wissen; weitere Chips erg
 
 **Konsequenz für die Nutzerführung.** Verbindlich:
 
-- Der Chat zeigt dauerhaft seinen Status und, sobald geteilt, **wer mitliest** — im Kopfbereich mit Zugriff auf die Mitgliederliste, nicht in einem Untermenü.
+- Der Chat zeigt dauerhaft seinen Status und, sobald geteilt, **wer mitliest** — im Kopfbereich, nicht in einem Untermenü. Der Zugriff auf die volle, namentliche Mitgliederliste richtet sich dabei nach der Space-Rolle (siehe [Space-Rollen](#space-rollen)): `MEMBER` und `CURATOR` sehen dort nur, wie viele mitlesen könnten (die aggregierte Zählung), nicht wer.
 - Beim Teilen wird der Leserkreis benannt, **bevor** es wirksam wird.
 - Enthält der Chat Treffer aus Bibliotheken, die nicht alle Space-Mitglieder lesen dürfen, steht das als Hinweis **im Teilen-Dialog**. Kein zusätzlicher Dialog: die Information erscheint dort, wo die Entscheidung ohnehin getroffen wird.
 - Der Hinweis nennt **den Eigentümer der betroffenen Bibliothek**, nicht aber Anzahlen oder Inhalte. Ohne diese Angabe kann der Teilende nicht abwägen, ob die Weitergabe vertretbar ist — er weiß sonst nur, dass „irgendetwas eingeschränkt" ist, und klickt den Hinweis weg. Der Name der verantwortlichen Stelle ist, anders als der Inhalt, kein schützenswertes Geheimnis; er erlaubt im Zweifel eine kurze Rückfrage statt einer Entscheidung in Unkenntnis.

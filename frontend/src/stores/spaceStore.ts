@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import type { SpaceListResponse, SpaceMemberResponse, SpaceRole, SpaceResponse } from '../types/api'
+import type {
+  SpaceListResponse,
+  SpaceMemberResponse,
+  SpaceRole,
+  SpaceResponse,
+  SpaceVisibility,
+} from '../types/api'
 import {
   addSpaceMember,
   archiveSpace,
@@ -34,10 +40,19 @@ interface SpaceState {
   updateMemberRole: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>
   removeMember: (spaceId: string, userId: string) => Promise<void>
   transferOwnership: (spaceId: string, userId: string) => Promise<void>
-  updateDetails: (spaceId: string, name: string, description: string) => Promise<void>
+  updateDetails: (
+    spaceId: string,
+    name: string,
+    description: string,
+    visibility?: SpaceVisibility,
+  ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
   archiveSelectedSpace: (spaceId: string) => Promise<void>
-  createNewSpace: (name: string, description: string) => Promise<string>
+  createNewSpace: (
+    name: string,
+    description: string,
+    visibility?: SpaceVisibility,
+  ) => Promise<string>
 }
 
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
@@ -121,19 +136,23 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 
-  // #144: only ADMIN, the owner (whose membership is always ADMIN) and system admins may call
-  // this - anyone else gets a 403, which is treated as "no members to show" rather than an error
-  // banner, since the caller already knows they lack the role to see the list.
+  // #144: only ADMIN, the owner and system admins may call this - listSpaceMembers already turns
+  // a 403 for anyone else into a silent empty list (the caller already knows they lack the role),
+  // so any error still reaching this catch is a real failure (network, 404, 500, ...) and gets the
+  // same error-state treatment as every other loader here (#674 review, nit a: it must not be
+  // folded into "no members to show" alongside the expected 403 case).
   loadMembers: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    set({ isLoadingMembers: true })
+    set({ isLoadingMembers: true, error: null })
     try {
       const members = await listSpaceMembers(spaceId)
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ members, isLoadingMembers: false })
-    } catch {
+    } catch (err) {
       if (isStaleSessionEpoch(sessionEpoch)) return
-      set({ members: [], isLoadingMembers: false })
+      const message =
+        err instanceof Error ? err.message : 'Mitgliederliste konnte nicht geladen werden'
+      set({ error: message, members: [], isLoadingMembers: false })
     }
   },
 
@@ -157,8 +176,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  updateDetails: async (spaceId, name, description) => {
-    await updateSpaceDetails(spaceId, name, description)
+  updateDetails: async (spaceId, name, description, visibility) => {
+    await updateSpaceDetails(spaceId, name, description, visibility)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
@@ -185,8 +204,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  createNewSpace: async (name, description) => {
-    const space = await createSpace(name, description)
+  createNewSpace: async (name, description, visibility) => {
+    const space = await createSpace(name, description, visibility)
     await get().loadSpaces()
     await get().selectSpace(space.id)
     return space.id
