@@ -412,7 +412,7 @@ Aussage, dass es noch nichts gibt, wogegen zu prüfen wäre; #216 muss nur eine 
 registrieren, ohne dass sich an dieser Stelle etwas ändert.
 
 Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
-(`fk_audit_actor_pseudonyms_user`, `ON DELETE CASCADE`) und lässt das Protokoll selbst unverändert — das
+(`fk_audit_actor_pseudonyms_user_organization`, `ON DELETE CASCADE`, zusammengesetzt seit Migration 047) und lässt das Protokoll selbst unverändert — das
 war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungsebene (siehe
 `AuditActorPseudonymServiceIntegrationTest`, zusätzlich zum bereits bestehenden Nachweis auf
 Datenbankebene in `Migration017AuditLogTest`).

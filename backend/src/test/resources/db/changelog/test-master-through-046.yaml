@@ -1,20 +1,17 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 046 - i.e. the schema exactly as it existed immediately before migration 048.
-#
-# Named test-master-through-046.yaml, not test-master-through-047.yaml, because migration 047 was
-# being developed in parallel, in a separate issue (PR #678), and had not been merged to main at
-# the time 048 was written (migration numbers 047 and 049 are reserved for that other work and a
-# further one; see 048-bind-chat-library-references-to-organization.yaml). 048 does not depend on
-# anything 047 introduces, so this fixture simply stops at 046 instead - the usual "through the
-# changeSet immediately preceding the one under test" rule, just one migration earlier than the
-# convention would otherwise suggest. If 047 has been merged by the time this branch is rebased
-# onto main, switch Migration048ChatLibraryReferencesOrganizationBindingTest over to the regular
-# test-master-through-047.yaml fixture and delete this file.
+# changeSet 046 - i.e. the schema exactly as it existed immediately before migrations 047 and 048.
+# Both apply their own changelog on top of this fixture themselves, in isolation, rather than
+# needing a test-master-through-047.yaml: neither depends on anything the other introduces (047
+# rebinds fk_chats_author/fk_chats_space and 14 other user-referencing foreign keys to composite
+# keys, and adds uk_users_id_organization; 048 adds organization_id to chat_library_references and
+# a separate uk_chats_id_organization unique index), so both simply stop at 046 instead of chaining
+# off each other.
 #
 # Used by:
-# - Migration048ChatLibraryReferencesOrganizationBindingTest, to build a realistic pre-migration
-#   database (via the real, versioned changelog files, not a hand-rolled schema) and then apply
-#   048 in isolation.
+# - Migration047UserReferencesOrganizationBindingTest, to build a realistic pre-migration database
+#   (via the real, versioned changelog files, not a hand-rolled schema) and then apply 047 in
+#   isolation.
+# - Migration048ChatLibraryReferencesOrganizationBindingTest, likewise, applying 048 in isolation.
 #
 # See test-master-through-045.yaml for the pattern this fixture follows.
 databaseChangeLog:

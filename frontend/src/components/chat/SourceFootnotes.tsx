@@ -13,6 +13,8 @@ interface SourceFootnotesProps {
   citations: CitationIndex
   /** Rows to light up after a footnote click - covers ranges the URL hash cannot (#590). */
   highlightedDocIndexes?: number[]
+  /** Opens the Belegfenster with every source of this answer (#592, mockup 1i). */
+  onOpenEvidence?: () => void
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string | null {
@@ -111,6 +113,7 @@ export default function SourceFootnotes({
   messageId,
   citations,
   highlightedDocIndexes = [],
+  onOpenEvidence,
 }: SourceFootnotesProps) {
   const [uncitedOpen, setUncitedOpen] = useState(false)
   const [foldedOpen, setFoldedOpen] = useState(false)
@@ -205,7 +208,7 @@ export default function SourceFootnotes({
           })}
       </Box>
 
-      {(foldedDocs.length > 0 || uncited.length > 0) && (
+      {(foldedDocs.length > 0 || uncited.length > 0 || onOpenEvidence) && (
         <Box sx={{ mt: 0.75, display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
           {foldedDocs.length > 0 && (
             <Link
@@ -233,6 +236,22 @@ export default function SourceFootnotes({
             >
               Weitere geprüfte, nicht zitierte Treffer ({uncited.length}){' '}
               {uncitedOpen ? 'ausblenden' : 'anzeigen'}
+            </Link>
+          )}
+          {onOpenEvidence && (foldedDocs.length > 0 || uncited.length > 0) && (
+            <Typography component="span" sx={{ fontSize: 11, color: 'text.disabled' }}>
+              ·
+            </Typography>
+          )}
+          {onOpenEvidence && (
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              onClick={onOpenEvidence}
+              sx={{ fontSize: 11, color: 'text.disabled' }}
+            >
+              Alle als Liste im Belegfenster öffnen
             </Link>
           )}
         </Box>

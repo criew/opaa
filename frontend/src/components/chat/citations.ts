@@ -39,7 +39,9 @@ export function buildCitationIndex(
   const docs: CitationDoc[] = []
   const docIndexByFileName = new Map<string, number>()
   const citedSources = (sources ?? []).filter((s) => s.cited)
-  const sourceByFileName = new Map(citedSources.map((s) => [s.fileName, s]))
+  // The text is the truth (#592): a marker's file counts as cited even when the source list
+  // still flags it uncited, so one document never shows up in both groups.
+  const sourceByFileName = new Map((sources ?? []).map((s) => [s.fileName, s]))
 
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
   let match: RegExpExecArray | null
@@ -72,7 +74,7 @@ export function buildCitationIndex(
     numberByKey,
     docIndexByNumber,
     docs,
-    uncited: (sources ?? []).filter((s) => !s.cited),
+    uncited: (sources ?? []).filter((s) => !s.cited && !docIndexByFileName.has(s.fileName)),
     markerCount: numberByKey.size,
   }
 }
