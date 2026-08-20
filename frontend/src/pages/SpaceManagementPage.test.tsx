@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
@@ -22,12 +22,16 @@ const {
   mockRemoveSpaceMember,
   mockTransferSpaceOwnership,
   mockAddSpaceMember,
+  mockDeleteSpace,
+  mockArchiveSpace,
 } = vi.hoisted(() => ({
   mockUpdateSpaceDetails: vi.fn(async () => ({}) as SpaceResponse),
   mockUpdateSpaceMemberRole: vi.fn(async () => ({})),
   mockRemoveSpaceMember: vi.fn(async () => undefined),
   mockTransferSpaceOwnership: vi.fn(async () => undefined),
   mockAddSpaceMember: vi.fn(async () => ({})),
+  mockDeleteSpace: vi.fn(async () => undefined),
+  mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
 }))
 
 vi.mock('../services/api', async () => {
@@ -44,6 +48,8 @@ vi.mock('../services/api', async () => {
     removeSpaceMember: mockRemoveSpaceMember,
     transferSpaceOwnership: mockTransferSpaceOwnership,
     addSpaceMember: mockAddSpaceMember,
+    deleteSpace: mockDeleteSpace,
+    archiveSpace: mockArchiveSpace,
   }
 })
 
@@ -52,6 +58,7 @@ const personalSpace: SpaceResponse = {
   name: 'Meine Dokumente',
   description: 'Private docs',
   isDefault: true,
+  archived: false,
   visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 1,
@@ -67,6 +74,7 @@ const teamSpace: SpaceResponse = {
   name: 'Team',
   description: 'Team docs',
   isDefault: false,
+  archived: false,
   visibility: 'PRIVATE',
   ownerId: 'u1',
   memberCount: 2,
@@ -148,5 +156,58 @@ describe('SpaceManagementPage', () => {
     await waitFor(() => {
       expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team Renamed', 'Team docs')
     })
+  })
+
+  // #543: Space mit fremden privaten Chats ist dauerhaft unlöschbar - Archivieren ist der Ausweg.
+
+  it('shows the archive button for the owner of a non-personal, non-archived space', () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    expect(screen.getByRole('button', { name: /space archivieren/i })).toBeInTheDocument()
+  })
+
+  it('hides the archive button once the space is already archived and shows the badge', () => {
+    setSpaceState({ ...teamSpace, archived: true })
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    expect(screen.queryByRole('button', { name: /space archivieren/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Archiviert')).toBeInTheDocument()
+  })
+
+  it('archives the space via the store when the owner confirms', async () => {
+    setSpaceState(teamSpace)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /space archivieren/i }))
+
+    await waitFor(() => {
+      expect(mockArchiveSpace).toHaveBeenCalledWith('space-team')
+    })
+    expect(screen.getByText('Space archiviert')).toBeInTheDocument()
+  })
+
+  it('offers to archive directly when deleteSpace is rejected because chats remain', async () => {
+    mockDeleteSpace.mockRejectedValueOnce(
+      new Error(
+        'Der Space enthält noch Chats und kann deshalb nicht gelöscht werden. Archivieren Sie' +
+          ' den Space stattdessen.',
+      ),
+    )
+    setSpaceState(teamSpace)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /^space löschen$/i }))
+
+    const alertRegion = await screen.findByRole('alert')
+    const archiveAction = within(alertRegion).getByRole('button', { name: /space archivieren/i })
+    await user.click(archiveAction)
+
+    await waitFor(() => {
+      expect(mockArchiveSpace).toHaveBeenCalledWith('space-team')
+    })
+    expect(screen.getByText('Space archiviert')).toBeInTheDocument()
   })
 })
