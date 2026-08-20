@@ -79,11 +79,11 @@ import org.springframework.web.server.ResponseStatusException;
  * SourceConnectionTestRequest#getLibraryId()} lets {@code EditLibrarySourceDialog} test a
  * password-protected source without forcing the caller to re-type a credential the library already
  * has stored - reachable only with at least {@link AssetRole#MANAGER} on that library (see {@link
- * #requireManagedLibrary}), the same not-found/forbidden split every other library endpoint uses
- * ({@link KnowledgeLibraryService}'s own {@code loadLibrary}). The library's own {@code sourceType}
- * must match this request's (otherwise 400 - #544 acceptance criterion), and a missing {@code
- * sourceCredentials} falls back to the library's stored one only when {@code sourceUrl} still names
- * the same origin as the library's own stored {@code sourceUrl} - the identical {@link
+ * #requireManagedLibrary}), via {@link LibraryAccessService#requireRole} (#436), the same
+ * not-found/forbidden split every other library-scoped endpoint now uses. The library's own {@code
+ * sourceType} must match this request's (otherwise 400 - #544 acceptance criterion), and a missing
+ * {@code sourceCredentials} falls back to the library's stored one only when {@code sourceUrl}
+ * still names the same origin as the library's own stored {@code sourceUrl} - the identical {@link
  * SourceOriginMatcher} rule {@link KnowledgeLibraryService#validateSourceConfigurationForUpdate}
  * already applies when saving, so a caller pointed at a different host cannot silently reuse a
  * credential it never entered.
@@ -173,10 +173,12 @@ public class SourceConnectionTestService {
 
   /**
    * Resolves {@code libraryId} and enforces both the organization boundary and the {@link
-   * AssetRole#MANAGER} bar (#544) - 404 if the library does not exist or belongs to another
-   * organization (indistinguishable from "does not exist" - the org boundary must not leak even
-   * that much), 403 if it exists but the caller's role is below MANAGER, mirroring {@code
-   * KnowledgeLibraryService#loadLibrary}/{@code DocumentIndexingService#loadLibraryInOrganization}.
+   * AssetRole#MANAGER} bar (#544) via {@link LibraryAccessService#requireRole} (#436) - 404 if the
+   * library does not exist, belongs to another organization, or the caller holds no role on it at
+   * all (indistinguishable from "does not exist" - the org boundary/lack of any grant must not leak
+   * even that much), 403 if the caller's role is below MANAGER, the same distinction every other
+   * library-scoped endpoint now makes (e.g. {@code KnowledgeLibraryService#updateLibrary}, {@code
+   * DocumentIndexingService#requireEditableLibrary}).
    */
   private KnowledgeLibrary requireManagedLibrary(UUID libraryId, UUID currentUserId) {
     User currentUser =
@@ -196,9 +198,7 @@ public class SourceConnectionTestService {
     // No system-admin bypass here (systemAdmin always false), mirroring
     // DocumentIndexingService#requireEditableLibrary - the real grant/visibility formula decides,
     // unconditionally, same as every other library-scoped write action.
-    if (!libraryAccessService.canManage(library, currentUserId, false)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
-    }
+    libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER);
     return library;
   }
 

@@ -667,7 +667,8 @@ class SourceConnectionTestServiceTest {
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, currentUserId, false)).thenReturn(true);
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
     server.createContext(
         "/dir/",
         exchange -> {
@@ -713,7 +714,9 @@ class SourceConnectionTestServiceTest {
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, currentUserId, false)).thenReturn(false);
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenThrow(
+            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
 
     assertThatThrownBy(
             () ->
@@ -768,7 +771,8 @@ class SourceConnectionTestServiceTest {
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    when(libraryAccessService.canManage(library, currentUserId, false)).thenReturn(true);
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
 
     assertThatThrownBy(
             () ->
