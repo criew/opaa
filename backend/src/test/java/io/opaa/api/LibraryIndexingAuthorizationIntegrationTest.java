@@ -120,8 +120,8 @@ class LibraryIndexingAuthorizationIntegrationTest {
         .untilAsserted(
             () ->
                 org.assertj.core.api.Assertions.assertThat(
-                        indexingJobRepository.existsByStatusAndLibraryId(
-                            JobStatus.RUNNING, libraryId))
+                        indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+                            JobStatus.RUNNING, libraryId, Organization.DEFAULT_ID))
                     .isFalse());
   }
 

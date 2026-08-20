@@ -106,7 +106,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
 
   @Test
   void deleteLibraryRejectsWithConflictWhileAnIndexingRunIsRunning() {
-    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, library.getId()))
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, library.getId(), library.getOrganizationId()))
         .thenReturn(true);
 
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), ownerId, false))
@@ -121,7 +122,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
 
   @Test
   void deleteLibrarySucceedsWithoutARunningIndexingJob() {
-    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, library.getId()))
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, library.getId(), library.getOrganizationId()))
         .thenReturn(false);
 
     libraryService.deleteLibrary(library.getId(), ownerId, false);

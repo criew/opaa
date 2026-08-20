@@ -110,7 +110,7 @@ class DocumentIndexingServiceTest {
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(403)));
-    verify(indexingJobService, never()).startJob(any());
+    verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
   }
 
@@ -138,7 +138,7 @@ class DocumentIndexingServiceTest {
               assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404));
               assertThat(ex.getReason()).isEqualTo("Bibliothek nicht gefunden");
             });
-    verify(indexingJobService, never()).startJob(any());
+    verify(indexingJobService, never()).startJob(any(), any());
   }
 
   @Test
@@ -157,7 +157,7 @@ class DocumentIndexingServiceTest {
   void triggerIndexingWithAnEditorGrantStartsTheJobAgainstTheLibrarysOwnConfiguration() {
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
 
@@ -185,7 +185,7 @@ class DocumentIndexingServiceTest {
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(404)));
-    verify(indexingJobService, never()).startJob(any());
+    verify(indexingJobService, never()).startJob(any(), any());
     verify(libraryAccessService).requireRole(library, currentUser.getId(), false, AssetRole.EDITOR);
     verify(libraryAccessService, never())
         .requireRole(library, currentUser.getId(), true, AssetRole.EDITOR);
@@ -194,13 +194,13 @@ class DocumentIndexingServiceTest {
   @Test
   void triggerIndexingThrowsConflictWhenAJobIsAlreadyRunningForThisLibrary() {
     stubEditableLibrary();
-    when(indexingJobService.isJobRunning(library.getId())).thenReturn(true);
+    when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(true);
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
-    verify(indexingJobService, never()).startJob(any());
+    verify(indexingJobService, never()).startJob(any(), any());
   }
 
   /**
@@ -213,7 +213,7 @@ class DocumentIndexingServiceTest {
   void triggerIndexingRejectedByAFullQueueFailsTheJobAndReturnsServiceUnavailable() {
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
     doThrow(new TaskRejectedException("queue is full"))
         .when(asyncIndexingExecutor)
         .execute(job.getId(), library);
@@ -231,8 +231,8 @@ class DocumentIndexingServiceTest {
     // *this* library's id, never a global flag.
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId())).thenReturn(job);
-    when(indexingJobService.isJobRunning(library.getId())).thenReturn(false);
+    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
+    when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(false);
 
     IndexingJob result = service.triggerIndexing(library.getId(), currentUser.getId(), false);
 
@@ -260,7 +260,7 @@ class DocumentIndexingServiceTest {
         .isInstanceOfSatisfying(
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
-    verify(indexingJobService, never()).startJob(any());
+    verify(indexingJobService, never()).startJob(any(), any());
     verify(asyncIndexingExecutor, never()).execute(any(), any());
   }
 
@@ -286,7 +286,7 @@ class DocumentIndexingServiceTest {
             httpLibrary, currentUser.getId(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(httpLibrary.getId())).thenReturn(job);
+    when(indexingJobService.startJob(httpLibrary.getId(), organizationId)).thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(httpLibrary.getId(), currentUser.getId(), false);
 
@@ -316,7 +316,7 @@ class DocumentIndexingServiceTest {
     when(libraryAccessService.requireRole(rssLibrary, currentUser.getId(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(rssLibrary.getId())).thenReturn(job);
+    when(indexingJobService.startJob(rssLibrary.getId(), organizationId)).thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(rssLibrary.getId(), currentUser.getId(), false);
 
@@ -344,7 +344,8 @@ class DocumentIndexingServiceTest {
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
     when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
-    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.empty());
+    when(indexingJobService.getLatestJob(library.getId(), organizationId))
+        .thenReturn(Optional.empty());
 
     assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).isEmpty();
   }
@@ -357,7 +358,8 @@ class DocumentIndexingServiceTest {
         .thenReturn(AssetRole.VIEWER);
     when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
     var job = new IndexingJob(JobStatus.COMPLETED);
-    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.of(job));
+    when(indexingJobService.getLatestJob(library.getId(), organizationId))
+        .thenReturn(Optional.of(job));
 
     assertThat(service.getStatus(library.getId(), currentUser.getId(), false).job()).contains(job);
   }
@@ -371,7 +373,8 @@ class DocumentIndexingServiceTest {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUser.getId(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
-    when(indexingJobService.getLatestJob(library.getId())).thenReturn(Optional.empty());
+    when(indexingJobService.getLatestJob(library.getId(), organizationId))
+        .thenReturn(Optional.empty());
 
     when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(false);
     assertThat(service.getStatus(library.getId(), currentUser.getId(), false).canSeeErrorDetail())
@@ -425,7 +428,8 @@ class DocumentIndexingServiceTest {
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.canManage(library, currentUser.getId(), false)).thenReturn(true);
     var job = new IndexingJob(JobStatus.COMPLETED);
-    when(indexingJobService.getRecentJobs(library.getId())).thenReturn(List.of(job));
+    when(indexingJobService.getRecentJobs(library.getId(), organizationId))
+        .thenReturn(List.of(job));
     when(indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId()))
         .thenReturn(List.of());
 

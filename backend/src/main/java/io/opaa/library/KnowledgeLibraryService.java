@@ -582,7 +582,8 @@ public class KnowledgeLibraryService {
     // separate
     // concern - this guard becomes more useful once that is fixed, since a stuck RUNNING job could
     // otherwise block deletion indefinitely.
-    if (indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId)) {
+    if (indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+        JobStatus.RUNNING, libraryId, library.getOrganizationId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
           "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs gelöscht"
