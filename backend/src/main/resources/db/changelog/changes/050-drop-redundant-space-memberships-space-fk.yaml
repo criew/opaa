@@ -1,0 +1,45 @@
+databaseChangeLog:
+  # #390: OrganizationBoundarySchemaTest (the structural, schema-wide check #390 introduces) found
+  # that space_memberships carries TWO foreign keys onto spaces: the single-column
+  # fk_space_memberships_space (migration 008, changeSet
+  # 008-rename-workspace-memberships-to-space-memberships) and the composite
+  # fk_space_memberships_space_organization (migration 008, changeSet
+  # 008-add-space-memberships-organization, referencing spaces(id, organization_id)). The later
+  # changeSet added the composite key but never dropped the original single-column one - both have
+  # coexisted, unnoticed, ever since.
+  #
+  # Functionally harmless: the composite key is strictly stronger, so it alone already rejects any
+  # space_membership row whose space belongs to a different organization than the membership itself -
+  # the single-column key never had anything left to enforce that the composite one did not already
+  # cover. But it does violate the #390 rule at face value ("every foreign key from an
+  # organization_id-carrying table to another must be composite"), and OrganizationBoundarySchemaTest
+  # is deliberately strict about that, not just about live security exposure - a redundant, dead
+  # single-column key is exactly the kind of leftover that makes a schema harder to reason about, and
+  # the class of defect #390 exists to catch does not care that this particular instance happened to
+  # be harmless.
+  #
+  # Drops fk_space_memberships_space; fk_space_memberships_space_organization keeps carrying the
+  # organization boundary for this column pair, exactly as it has since migration 008.
+  - changeSet:
+      id: 050-drop-redundant-space-memberships-space-fk
+      author: opaa
+      comment: >
+        Drops the redundant single-column fk_space_memberships_space (#390) - the composite
+        fk_space_memberships_space_organization added later in migration 008 already enforces the
+        same reference plus the organization boundary, so this key never rejected anything the
+        composite one did not already reject. Rollback restores it exactly as migration 008 first
+        created it (ON DELETE CASCADE, single column space_id -> spaces(id)); the rollback always
+        succeeds because the composite constraint that remains in place is strictly stronger, so no
+        row can violate the weaker one being restored.
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: space_memberships
+            constraintName: fk_space_memberships_space
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: space_memberships
+            baseColumnNames: space_id
+            referencedTableName: spaces
+            referencedColumnNames: id
+            constraintName: fk_space_memberships_space
+            onDelete: CASCADE
