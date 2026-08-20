@@ -6,6 +6,7 @@ import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -36,18 +37,21 @@ public class DocumentIndexingService {
   private final UserRepository userRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
       IndexingSourceExecutorRegistry executorRegistry,
       UserRepository userRepository,
       KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService libraryAccessService) {
+      LibraryAccessService libraryAccessService,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
     this.userRepository = userRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   /**
@@ -88,6 +92,36 @@ public class DocumentIndexingService {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     return indexingJobService.getLatestJob(libraryId);
+  }
+
+  /**
+   * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
+   * newest first, each with its own protocol (#513) - unlike {@link #getStatus}, this requires
+   * {@link io.opaa.library.AssetRole#MANAGER}, not just {@code canRead}.
+   *
+   * <p><b>PR #604 review, finding 1.</b> An {@link IndexingRunEvent#getReference()} routinely
+   * carries the library's own {@code sourcePath}/{@code sourceUrl} (a rejected file's absolute
+   * server path, a skipped entry's source URL) - exactly the internal-path leak #507 exists to
+   * close for the source configuration display itself. Gating this at {@code canRead} (the same bar
+   * as the harmless counters {@link #getStatus} exposes) would reopen that leak through a different
+   * endpoint: a {@code VIEWER} on an organization-wide connector library would see the server's
+   * internal filesystem layout or upstream URLs it was never granted access to. {@code canManage}
+   * mirrors {@code KnowledgeLibraryService#updateLibrary}'s own bar for touching the source
+   * configuration - one level above {@link #requireEditableLibrary}'s {@code EDITOR}, deliberately:
+   * triggering a run is not the same right as reading where it reads from.
+   */
+  public List<IndexingRunDetail> getRecentRuns(
+      UUID libraryId, UUID currentUserId, boolean systemAdmin) {
+    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
+    if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    }
+    return indexingJobService.getRecentJobs(libraryId).stream()
+        .map(
+            job ->
+                new IndexingRunDetail(
+                    job, indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(job.getId())))
+        .toList();
   }
 
   /**

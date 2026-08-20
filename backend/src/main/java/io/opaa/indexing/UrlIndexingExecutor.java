@@ -27,18 +27,21 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
+  private final IndexingRunEventRepository indexingRunEventRepository;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
       UrlFileDownloader downloader,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      IndexingRunEventRepository indexingRunEventRepository) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
+    this.indexingRunEventRepository = indexingRunEventRepository;
   }
 
   @Override
@@ -51,6 +54,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
     UrlIndexingRequest request = toUrlIndexingRequest(targetLibrary);
     var progress = new IndexingRunProgress(indexingJobService, jobId);
+    var events =
+        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
 
     try {
       // Parse proxy config
@@ -104,7 +109,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
       // Issue #375: rejected documents are part of the job, not invisible. They count towards the
       // total and are reported as skipped, so nobody has to guess why the number of indexed
-      // documents is lower than the number of files behind the URL.
+      // documents is lower than the number of files behind the URL. #513: each one now also
+      // becomes its own UNSUPPORTED_FORMAT event.
+      for (AutoindexCrawlerService.CrawledFileEntry rejected : rejectedFiles) {
+        events.record(
+            IndexingEventCategory.UNSUPPORTED_FORMAT,
+            "Dateiformat wird nicht unterstuetzt",
+            rejected.url());
+      }
       progress.addSkipped(
           RejectedDocumentReporter.reportRejected(
               IndexingSourceType.HTTP_DIRECTORY,
@@ -152,10 +164,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           }
         } catch (Exception e) {
           log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
+          events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
           progress.recordFailed();
         } catch (Error e) {
           log.error(
               "Fatal error while processing URL document: {} ({})", entry.name(), entry.url(), e);
+          events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
           progress.recordFailed();
         } finally {
           if (tempFile != null) {
@@ -169,15 +183,18 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
+      events.finalizeRun();
       progress.complete();
     } catch (IOException | InterruptedException e) {
       log.error("URL indexing failed", e);
+      events.finalizeRun();
       progress.fail(e.getMessage());
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
     } catch (Exception e) {
       log.error("URL indexing failed unexpectedly", e);
+      events.finalizeRun();
       progress.fail(e.getMessage());
     }
   }

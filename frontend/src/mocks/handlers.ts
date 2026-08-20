@@ -4,6 +4,7 @@ import {
   mockHealthResponse,
   mockIndexingIdle,
   mockIndexingCompleted,
+  mockIndexingRuns,
   getRandomMockResponse,
   mockErrorResponse,
   mockAuthConfig,
@@ -219,6 +220,10 @@ export const handlers = [
     }
 
     return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
+    return HttpResponse.json(mockIndexingRuns)
   }),
 
   http.post('/api/v1/query', async ({ request }) => {
