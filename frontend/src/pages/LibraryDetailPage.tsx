@@ -801,35 +801,55 @@ function LibraryIndexingSection({
         )}
       </Stack>
 
-      <Stack spacing={0.75} sx={{ mb: 2 }}>
-        {configKind === 'path' && (
-          <Typography variant="body2">
-            <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
-          </Typography>
-        )}
-        {configKind === 'url' && (
-          <Typography variant="body2">
-            <strong>Adresse (URL):</strong> {library.sourceUrl ?? '—'}
-          </Typography>
-        )}
-        {configKind === 'url' && (
-          <Typography variant="body2">
-            <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
-          </Typography>
-        )}
-        {configKind === 'url' && (
-          <Typography variant="body2">
-            <strong>Zertifikatsprüfung aussetzen:</strong>{' '}
-            {library.sourceInsecureSsl ? 'ja' : 'nein'}
-          </Typography>
-        )}
-        {configKind === 'url' && (
-          <Typography variant="caption" color="text.secondary">
-            Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht
-            zeigt sie deshalb weder ein noch aus.
-          </Typography>
-        )}
-      </Stack>
+      {/* #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and
+          proxy hosts - the backend now only serves them to a caller with at least MANAGER
+          (canEditSource, the same threshold "Bearbeiten" above uses), so a VIEWER's library
+          object simply carries none of these fields. This block mirrors that on the display side
+          rather than rendering a misleading "—"/"nicht konfiguriert" for data that was never
+          sent. */}
+      {canEditSource ? (
+        <Stack spacing={0.75} sx={{ mb: 2 }}>
+          {configKind === 'path' && (
+            <Typography variant="body2">
+              <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
+            </Typography>
+          )}
+          {configKind === 'url' && (
+            <Typography variant="body2">
+              <strong>Adresse (URL):</strong> {library.sourceUrl ?? '—'}
+            </Typography>
+          )}
+          {configKind === 'url' && (
+            <Typography variant="body2">
+              <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
+            </Typography>
+          )}
+          {configKind === 'url' && (
+            <Typography variant="body2">
+              <strong>Zertifikatsprüfung aussetzen:</strong>{' '}
+              {library.sourceInsecureSsl ? 'ja' : 'nein'}
+            </Typography>
+          )}
+          {configKind === 'url' && (
+            <Typography variant="caption" color="text.secondary">
+              Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht
+              zeigt sie deshalb weder ein noch aus.
+            </Typography>
+          )}
+        </Stack>
+      ) : (
+        // Deliberately avoids the word "Quellkonfiguration" itself - several other tests on this
+        // page match the section heading with the loose /quellkonfiguration/i and would otherwise
+        // ambiguously match this hint too.
+        //
+        // #507 code review, finding 3: "Bearbeitende" reads as EDITOR in this app's own role
+        // vocabulary (assetRoleLabel maps EDITOR to "Bearbeiter") - the exact role this hint's
+        // gate (canEditSource, the MANAGER/OWNER bar) excludes. "Verwaltende" mirrors MANAGER's
+        // own label ("Verwalter") instead.
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Die Verbindungsdaten sind nur für Verwaltende (Verwalter oder Eigentümer) sichtbar.
+        </Alert>
+      )}
 
       {canEditSource && (
         <EditLibrarySourceDialog

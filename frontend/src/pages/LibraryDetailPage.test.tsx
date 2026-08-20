@@ -473,6 +473,32 @@ describe('LibraryDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/
+  // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
+  // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
+  // prove the frontend itself withholds the display rather than merely reflecting an already
+  // absent field.
+  it('shows the source configuration detail for a MANAGER but hides it behind an info hint for a VIEWER', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
+    expect(screen.queryByText(/verbindungsdaten sind nur für verwaltende/i)).not.toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(
+      await screen.findByText(/verbindungsdaten sind nur für verwaltende/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
+  })
+
   it('edits the source configuration through the dialog, resending the unrelated Stammdaten fields untouched', async () => {
     const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
     setLibraryState(

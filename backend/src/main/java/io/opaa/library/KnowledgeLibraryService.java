@@ -999,27 +999,38 @@ public class KnowledgeLibraryService {
   private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {
     // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
     // that appears in no API response, not even for the library's own owner.
-    return new LibraryResponse(
-            library.getId(),
-            library.getName(),
-            library.getOwnerType(),
-            library.getOwnerId(),
-            library.getVisibility(),
-            library.isListed(),
-            myRole,
-            library.getSourceType(),
-            library.getCreatedAt(),
-            library.getUpdatedAt())
-        .description(library.getDescription())
-        .documentCount(documentRepository.countByLibraryId(library.getId()))
-        .sourcePath(library.getSourcePath())
-        .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
-        .sourceProxy(library.getSourceProxy())
-        .sourceInsecureSsl(library.isSourceInsecureSsl())
-        // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
-        // a client phrase an accurate "leave blank to keep the current credential" hint only when
-        // one is actually stored.
-        .sourceCredentialsSet(library.getSourceCredentials() != null);
+    LibraryResponse response =
+        new LibraryResponse(
+                library.getId(),
+                library.getName(),
+                library.getOwnerType(),
+                library.getOwnerId(),
+                library.getVisibility(),
+                library.isListed(),
+                myRole,
+                library.getSourceType(),
+                library.getCreatedAt(),
+                library.getUpdatedAt())
+            .description(library.getDescription())
+            .documentCount(documentRepository.countByLibraryId(library.getId()));
+    // #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and proxy
+    // hosts - fine to hand to whoever may change them (the MANAGER bar updateLibrary above already
+    // enforces), a leak of internal infrastructure detail to a mere VIEWER (or even EDITOR) of an
+    // organization-wide library. sourceType alone stays visible to everyone above - it reveals the
+    // connector kind, never *where* it points. sourceCredentials was already write-only for
+    // everyone regardless of role (ADR-0018).
+    if (myRole.atLeast(AssetRole.MANAGER)) {
+      response
+          .sourcePath(library.getSourcePath())
+          .sourceUrl(library.getSourceUrl() == null ? null : URI.create(library.getSourceUrl()))
+          .sourceProxy(library.getSourceProxy())
+          .sourceInsecureSsl(library.isSourceInsecureSsl())
+          // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) -
+          // lets a client phrase an accurate "leave blank to keep the current credential" hint
+          // only when one is actually stored.
+          .sourceCredentialsSet(library.getSourceCredentials() != null);
+    }
+    return response;
   }
 
   private LibraryDocumentResponse toLibraryDocumentResponse(Document document) {

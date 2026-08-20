@@ -994,6 +994,74 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void getLibraryHidesSourceConfigurationFromAViewerButNotFromAManagerOrAbove() {
+    // #507: sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/sourceCredentialsSet expose
+    // internal server infrastructure (a filesystem path here) - fine for whoever may change it
+    // (MANAGER+, the same bar updateLibrary enforces), a leak for a mere VIEWER of an
+    // organization-wide connector library.
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    UUID editorGrantee = createUser(organizationA);
+    UUID managerGrantee = createUser(organizationA);
+    LibraryResponse created =
+        libraryService.createLibrary(
+            new LibraryRequest("Verzeichnis", DocumentSourceType.FILESYSTEM)
+                .sourcePath("/data/documents")
+                .visibility(LibraryVisibility.ORGANIZATION),
+            owner);
+    // #507 code review, finding 2: an explicit EDITOR grant (one rank below the MANAGER bar) and
+    // an explicit MANAGER grant, so an accidental weakening to atLeast(EDITOR) - a plausible typo
+    // given AssetRole's general Javadoc calls EDITOR the "changes configuration" rank - fails this
+    // test, not just the coarser OWNER/VIEWER pairing above.
+    grantService.upsertGrant(
+        created.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, editorGrantee, AssetRole.EDITOR),
+        owner,
+        false);
+    grantService.upsertGrant(
+        created.getId(),
+        new AssetGrantRequest(PermissionSubjectType.USER, managerGrantee, AssetRole.MANAGER),
+        owner,
+        false);
+
+    // The owner holds OWNER (at least MANAGER) and sees the full source configuration.
+    LibraryResponse asOwner = libraryService.getLibrary(created.getId(), owner, false);
+    assertThat(asOwner.getMyRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(asOwner.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(asOwner.getSourceInsecureSsl()).isNotNull();
+    assertThat(asOwner.getSourceCredentialsSet()).isNotNull();
+
+    // A direct MANAGER grantee sees it too - the bar is MANAGER, not OWNER specifically.
+    LibraryResponse asManager = libraryService.getLibrary(created.getId(), managerGrantee, false);
+    assertThat(asManager.getMyRole()).isEqualTo(AssetRole.MANAGER);
+    assertThat(asManager.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(asManager.getSourceInsecureSsl()).isNotNull();
+    assertThat(asManager.getSourceCredentialsSet()).isNotNull();
+
+    // An EDITOR grantee - one rank above VIEWER, one below the MANAGER bar - must not receive the
+    // source configuration fields either.
+    LibraryResponse asEditor = libraryService.getLibrary(created.getId(), editorGrantee, false);
+    assertThat(asEditor.getMyRole()).isEqualTo(AssetRole.EDITOR);
+    assertThat(asEditor.getSourcePath()).isNull();
+    assertThat(asEditor.getSourceUrl()).isNull();
+    assertThat(asEditor.getSourceProxy()).isNull();
+    assertThat(asEditor.getSourceInsecureSsl()).isNull();
+    assertThat(asEditor.getSourceCredentialsSet()).isNull();
+
+    // Another organization member only reaches VIEWER through the ORGANIZATION-wide visibility
+    // and must not receive the source configuration fields at all.
+    LibraryResponse asViewer = libraryService.getLibrary(created.getId(), otherMember, false);
+    assertThat(asViewer.getMyRole()).isEqualTo(AssetRole.VIEWER);
+    assertThat(asViewer.getSourcePath()).isNull();
+    assertThat(asViewer.getSourceUrl()).isNull();
+    assertThat(asViewer.getSourceProxy()).isNull();
+    assertThat(asViewer.getSourceInsecureSsl()).isNull();
+    assertThat(asViewer.getSourceCredentialsSet()).isNull();
+    // sourceType itself (the connector kind, not where it points) stays visible to everyone.
+    assertThat(asViewer.getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
+  }
+
+  @Test
   void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
     // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
     // #420 introduced for the two upload endpoints, unified across the rest of the library API -
