@@ -116,8 +116,16 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
               startIcon={<AddIcon sx={{ fontSize: 13 }} />}
               onClick={handleNewChat}
               disabled={Boolean(isArchived)}
-              // Mockup 1a: a quiet small link in blue-300 on the navy block, not a boxed button.
-              sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5, color: blue[300] }}
+              // Mockup 1a: a quiet small link, not a boxed button. Blue-300 on the navy/carbon
+              // sidebar; on light surfaces (SpacePage renders this list on white) blue-700 keeps
+              // the 4.5:1 contrast the a11y suite enforces (#586).
+              sx={{
+                minHeight: 0,
+                px: 0.75,
+                py: 0.25,
+                fontSize: 11.5,
+                color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+              }}
             >
               Neu
             </Button>

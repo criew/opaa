@@ -141,7 +141,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // AppShell.tsx renders the chat itself inside <main> and the space's chat list inside <nav>
     // (Sidebar). <main> still shows the question verbatim (#557 only ever rewrites the sidebar
     // title, never the message history).
-    await expect(page.getByRole('main').getByText(question)).toBeVisible()
+    await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
     await expectAnyCitedSource(page)
     // The chat list (sidebar) reloads from the backend on a fresh page load - its entry is what
     // proves the chat itself, not just this one still-open tab, was actually persisted. #557
@@ -236,7 +236,8 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const libraryName = `E2E-Chat-Zweitchat-${id}`
     const questionChat1 = `Frage im ersten Chat (${id})`
     const questionChat2 = `Frage im zweiten Chat (${id})`
-    const main = page.getByRole('main')
+    // The message history, not <main>: the chat header repeats the fallback title (#658).
+    const main = page.getByTestId('message-list')
 
     // #557 review follow-up: captured before either chat exists, so the count-based assertions
     // below (chat titles are no longer a reliable per-chat anchor, see the module doc comment) can
