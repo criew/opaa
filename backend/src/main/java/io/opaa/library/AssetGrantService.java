@@ -163,7 +163,9 @@ public class AssetGrantService {
       requireCallerRoleAtLeast(
           callerRole,
           request.getRole(),
-          "Die eigene Rolle reicht nicht aus, um die Rolle " + request.getRole() + " zu vergeben");
+          "Die eigene Rolle reicht nicht aus, um die Rolle "
+              + roleLabel(request.getRole())
+              + " zu vergeben");
     } catch (ResponseStatusException denied) {
       // #392: the rejected attempt to grant a role higher than the caller's own is itself
       // protocol-worthy - "der zurueckgewiesene Versuch, sich eine hoehere Rolle zu geben, ist fuer
@@ -209,7 +211,7 @@ public class AssetGrantService {
                 request.getExpiresAt(),
                 currentUser.getId());
       } else {
-        requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
+        requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
             library.getId(), grant, request.getRole(), request.getExpiresAt());
         previousRole = grant.getRole();
@@ -233,7 +235,7 @@ public class AssetGrantService {
                 request.getExpiresAt(),
                 currentUser.getId());
       } else {
-        requireCallerCanTouchExistingGrant(callerRole, grant, "aendern");
+        requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
             library.getId(), grant, request.getRole(), request.getExpiresAt());
         previousRole = grant.getRole();
@@ -360,7 +362,7 @@ public class AssetGrantService {
   /**
    * Escalation guard, half 2 (see the class Javadoc): whether {@code callerRole} is at least as
    * privileged as the role an existing grant already carries, before that grant may be changed or
-   * removed. {@code action} is the German verb ("aendern"/"entfernen") for the resulting message.
+   * removed. {@code action} is the German verb ("ändern"/"entfernen") for the resulting message.
    */
   private void requireCallerCanTouchExistingGrant(
       AssetRole callerRole, AssetGrant existingGrant, String action) {
@@ -368,9 +370,25 @@ public class AssetGrantService {
         callerRole,
         existingGrant.getRole(),
         "Die eigene Rolle reicht nicht aus, um eine bestehende "
-            + existingGrant.getRole()
+            + roleLabel(existingGrant.getRole())
             + "-Berechtigung zu "
             + action);
+  }
+
+  /**
+   * The German role label shown in user-facing messages, analogous to {@code assetRoleLabel} in
+   * {@code frontend/src/utils/labels.ts} - kept separate rather than shared, since frontend and
+   * backend are distinct build artifacts (#448). Every {@link AssetRole} value must be mapped here;
+   * an unmapped value would otherwise leak the raw English enum name into a German-language
+   * message.
+   */
+  private static String roleLabel(AssetRole role) {
+    return switch (role) {
+      case VIEWER -> "Betrachter";
+      case EDITOR -> "Bearbeiter";
+      case MANAGER -> "Verwalter";
+      case OWNER -> "Eigentümer";
+    };
   }
 
   /**
@@ -478,7 +496,7 @@ public class AssetGrantService {
     if (group.isDissolved()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Die Gruppe ist aufgeloest und kann keine neuen Berechtigungen mehr erhalten");
+          "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr erhalten");
     }
   }
 
