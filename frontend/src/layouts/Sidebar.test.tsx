@@ -8,18 +8,21 @@ import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
 
 const mockNavigate = vi.fn()
+let mockRouteSpaceId: string | undefined
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useParams: () => ({ spaceId: mockRouteSpaceId }),
   }
 })
 
 describe('Sidebar', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
+    mockRouteSpaceId = undefined
     useChatStore.setState({
       spaceId: null,
       chatId: null,
@@ -38,6 +41,17 @@ describe('Sidebar', () => {
           isDefault: true,
           visibility: 'PRIVATE',
           memberCount: 1,
+          userRole: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+        {
+          id: 'space-engineering',
+          name: 'Engineering',
+          description: 'Dokumente der Entwicklung',
+          isDefault: false,
+          visibility: 'PRIVATE',
+          memberCount: 3,
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -85,5 +99,18 @@ describe('Sidebar', () => {
     renderWithProviders(<Sidebar />, { withRouter: true })
     expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
     expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
+  })
+
+  it('follows the space selected in the space overview, not the space of the still-open chat (#556)', async () => {
+    // The user has an open chat in the personal space (chatStore.spaceId), but has just clicked a
+    // different space in the Spaces overview - the route now points at that other space.
+    useChatStore.setState({ spaceId: 'space-personal' })
+    mockRouteSpaceId = 'space-engineering'
+
+    renderWithProviders(<Sidebar />, { withRouter: true })
+
+    expect(await screen.findByText('Unbenannter Chat')).toBeInTheDocument()
+    expect(screen.queryByText('Architektur des Projekts')).not.toBeInTheDocument()
+    expect(screen.queryByText('Deployment-Fragen')).not.toBeInTheDocument()
   })
 })
