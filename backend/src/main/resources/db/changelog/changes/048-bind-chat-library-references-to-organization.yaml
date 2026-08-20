@@ -1,0 +1,254 @@
+databaseChangeLog:
+  # #677: chat_library_references (migration 032) links a chat to a knowledge library via two
+  # single-column foreign keys - chat_id -> chats(id) and library_id -> knowledge_libraries(id) -
+  # carrying no organization_id of its own. Nothing on the database side stops a chat in
+  # organization A from referencing a library in organization B; the boundary (ADR-0008,
+  # docs/features/spaces-and-assets.md#wie-die-grenze-gehalten-wird) is held only by
+  # ChatService#requireReadableLibraries at the application layer. Same defect class as #289/#400:
+  # the application-layer guard is closed and tested, the database is not. #390's schema-wide check
+  # did not yet cover this table because it carried no organization_id to find at analysis time.
+  #
+  # Six changeSets, in dependency order:
+  #   1. 048-add-uk-chats-id-organization       - prerequisite: chats needs (id, organization_id)
+  #                                                 as a composite foreign key target, the same
+  #                                                 uk_knowledge_libraries_id_organization pattern
+  #                                                 (migration 012) already used on the other side.
+  #   2. 048-add-organization-id-to-chat-library-references - nullable column first, so the
+  #                                                 backfill below has somewhere to write.
+  #   3. 048-add-chat-library-references-organization-trigger - a BEFORE INSERT trigger that
+  #                                                 derives organization_id from the referencing
+  #                                                 chat, unconditionally overwriting whatever the
+  #                                                 caller supplied (including nothing at all).
+  #                                                 Chat#referencedLibraryIds is a plain
+  #                                                 @ElementCollection<UUID> (Chat.java) - Hibernate
+  #                                                 only ever writes (chat_id, library_id) to this
+  #                                                 table, with no notion of organization_id. Rather
+  #                                                 than widen that mapping to a second column just
+  #                                                 to satisfy a constraint the application never
+  #                                                 needs to think about, the trigger keeps
+  #                                                 organization_id a derived, always-correct fact
+  #                                                 about the row - it can never drift from the
+  #                                                 owning chat's own organization_id, which is
+  #                                                 exactly the invariant the composite foreign keys
+  #                                                 below enforce. Installed before the backfill and
+  #                                                 enforcement steps so it is already the single
+  #                                                 source of truth once organization_id becomes
+  #                                                 mandatory.
+  #   4. 048-backfill-chat-library-references-organization-id - assigns every existing row its
+  #                                                 chat's organization_id in a single UPDATE (the
+  #                                                 trigger only fires on INSERT, not on rows that
+  #                                                 already exist).
+  #   5. 048-clear-cross-organization-chat-library-references - deletes any row whose chat and
+  #                                                 library belong to different organizations, so
+  #                                                 the constraint swap below cannot fail on
+  #                                                 pre-existing data. chat_library_references is a
+  #                                                 pure many-to-many reference table (migration 032:
+  #                                                 "used as the search scope when use_knowledge is
+  #                                                 false"), not a record of anything that happened -
+  #                                                 dropping such a row only narrows a chat's sticky
+  #                                                 reference set back to what it should always have
+  #                                                 been; it destroys no message, no chat, no
+  #                                                 library. ChatService never let this happen
+  #                                                 through the application, so this is expected to
+  #                                                 be a no-op against real data, exactly like
+  #                                                 046-clear-cross-organization-parent-groups.
+  #   6. 048-enforce-chat-library-references-organization - NOT NULL on organization_id, drops
+  #                                                 both single-column foreign keys, replaces them
+  #                                                 with composite ones that also match
+  #                                                 organization_id, keeping each foreign key's
+  #                                                 existing ON DELETE CASCADE semantics from
+  #                                                 migration 032 unchanged.
+  #
+  # Rollback order (reverse of apply order):
+  # 048-enforce-chat-library-references-organization
+  # 048-clear-cross-organization-chat-library-references (irreversible no-op, see its rollback block)
+  # 048-backfill-chat-library-references-organization-id (irreversible no-op, see its rollback block)
+  # 048-add-chat-library-references-organization-trigger
+  # 048-add-organization-id-to-chat-library-references
+  # 048-add-uk-chats-id-organization
+
+  - changeSet:
+      id: 048-add-uk-chats-id-organization
+      author: opaa
+      comment: >
+        Prerequisite for the composite foreign key added below: a unique index on
+        chats (id, organization_id), the same pattern uk_knowledge_libraries_id_organization
+        (migration 012) already provides on the other side of chat_library_references.
+      changes:
+        - addUniqueConstraint:
+            tableName: chats
+            columnNames: id, organization_id
+            constraintName: uk_chats_id_organization
+      rollback:
+        - dropUniqueConstraint:
+            tableName: chats
+            constraintName: uk_chats_id_organization
+
+  - changeSet:
+      id: 048-add-organization-id-to-chat-library-references
+      author: opaa
+      comment: >
+        Adds organization_id to chat_library_references (#677), nullable for now so the backfill
+        below has somewhere to write before it becomes mandatory.
+      changes:
+        - addColumn:
+            tableName: chat_library_references
+            columns:
+              - column:
+                  name: organization_id
+                  type: uuid
+      rollback:
+        - dropColumn:
+            tableName: chat_library_references
+            columnName: organization_id
+
+  - changeSet:
+      id: 048-add-chat-library-references-organization-trigger
+      author: opaa
+      comment: >
+        Installs a BEFORE INSERT trigger that always sets chat_library_references.organization_id
+        to the organization_id of the row's own chat (#677) - the application layer
+        (Chat#referencedLibraryIds, a plain @ElementCollection<UUID>) never supplies this column
+        itself, so it must come from somewhere else. Deriving it from the chat rather than widening
+        the entity mapping keeps organization_id an always-correct, unforgeable fact of the row:
+        it cannot be set to anything but the true organization of chat_id, which is exactly what
+        the composite foreign keys added in 048-enforce-chat-library-references-organization rely
+        on downstream. SECURITY INVOKER (the default) is correct here, unlike
+        opaa_audit_delete_expired_partitions (migration 023): this function only reads chats, a
+        table every caller of ChatService already has access to.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: >
+              CREATE FUNCTION chat_library_references_set_organization()
+              RETURNS trigger
+              LANGUAGE plpgsql
+              SET search_path = pg_catalog, public, pg_temp
+              AS $fn$
+              BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END;
+              $fn$;
+        - sql:
+            sql: >
+              CREATE TRIGGER trg_chat_library_references_set_organization
+              BEFORE INSERT ON chat_library_references
+              FOR EACH ROW
+              EXECUTE FUNCTION chat_library_references_set_organization();
+      rollback:
+        - sql:
+            sql: >
+              DROP TRIGGER IF EXISTS trg_chat_library_references_set_organization
+              ON chat_library_references;
+        - sql:
+            sql: "DROP FUNCTION IF EXISTS chat_library_references_set_organization();"
+
+  - changeSet:
+      id: 048-backfill-chat-library-references-organization-id
+      author: opaa
+      comment: >
+        Assigns every existing chat_library_references row the organization_id of its own chat
+        (#677) - chats.organization_id is NOT NULL (migration 032), so every row gets a value.
+      changes:
+        - sql:
+            sql: >
+              UPDATE chat_library_references AS reference
+              SET organization_id = chat.organization_id
+              FROM chats AS chat
+              WHERE reference.chat_id = chat.id;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: the backfilled value cannot be distinguished from a value that was
+              already there, and the column itself is dropped by an earlier rollback step anyway.
+              Deliberate no-op, same reasoning as 045-clear-rss-feed-state.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 048-clear-cross-organization-chat-library-references
+      author: opaa
+      comment: >
+        Deletes any chat_library_references row whose chat and library belong to different
+        organizations (#677) - the exact condition the composite foreign keys below are about to
+        forbid. chat_library_references is a pure reference table (migration 032), not a historical
+        record, so removing such a row only narrows a chat's sticky library references back to what
+        ChatService#requireReadableLibraries already required them to be; it never happened through
+        the application, so this is expected to affect no real row.
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM chat_library_references AS reference
+              USING chats AS chat, knowledge_libraries AS library
+              WHERE reference.chat_id = chat.id
+                AND reference.library_id = library.id
+                AND chat.organization_id <> library.organization_id;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: which rows were deleted is not recorded. Deliberate no-op, same
+              reasoning as 046-clear-cross-organization-parent-groups.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 048-enforce-chat-library-references-organization
+      author: opaa
+      comment: >
+        Makes organization_id mandatory on chat_library_references and replaces both single-column
+        foreign keys with composite ones that also match organization_id (#677) - a chat can no
+        longer reference a library from another organization, at the database level. Both new
+        foreign keys keep the exact ON DELETE CASCADE semantics their single-column predecessors had
+        in migration 032 - deleting a chat or a library still cascades the same way, this changeSet
+        only narrows which target rows are eligible in the first place.
+      changes:
+        - addNotNullConstraint:
+            tableName: chat_library_references
+            columnName: organization_id
+            columnDataType: uuid
+        - dropForeignKeyConstraint:
+            baseTableName: chat_library_references
+            constraintName: fk_chat_library_references_chat
+        - dropForeignKeyConstraint:
+            baseTableName: chat_library_references
+            constraintName: fk_chat_library_references_library
+        - addForeignKeyConstraint:
+            baseTableName: chat_library_references
+            baseColumnNames: chat_id, organization_id
+            referencedTableName: chats
+            referencedColumnNames: id, organization_id
+            constraintName: fk_chat_library_references_chat_organization
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: chat_library_references
+            baseColumnNames: library_id, organization_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id, organization_id
+            constraintName: fk_chat_library_references_library_organization
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: chat_library_references
+            constraintName: fk_chat_library_references_library_organization
+        - dropForeignKeyConstraint:
+            baseTableName: chat_library_references
+            constraintName: fk_chat_library_references_chat_organization
+        - addForeignKeyConstraint:
+            baseTableName: chat_library_references
+            baseColumnNames: chat_id
+            referencedTableName: chats
+            referencedColumnNames: id
+            constraintName: fk_chat_library_references_chat
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: chat_library_references
+            baseColumnNames: library_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id
+            constraintName: fk_chat_library_references_library
+            onDelete: CASCADE
+        - dropNotNullConstraint:
+            tableName: chat_library_references
+            columnName: organization_id
+            columnDataType: uuid
