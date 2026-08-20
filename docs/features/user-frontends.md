@@ -50,9 +50,9 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | Bereich | Zweck | Heute gebaut |
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
-| **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | teilweise — der Verlauf besteht nur innerhalb der geöffneten Sitzung |
-| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | ja — die Space-Auswahl ist entfernt; Schalter, @-Autocomplete und sticky Chips sind gebaut (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
-| **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen und Eigentumsübergabe sind vorhanden |
+| **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527) |
+| **Suchfilter** | den Suchbereich einer Anfrage über den Schalter „Wissen nutzen" und @-Bibliotheksreferenzen steuern, nicht mehr über eine Space-Auswahl | ja — die Space-Auswahl ist entfernt; Schalter, @-Autocomplete und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten). Die Space↔Bibliothek-Assoziation (#203) ist weiterhin Zielbild |
+| **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Assets** | Agenten, Prompt-Bibliotheken und Wissensbibliotheken anlegen, beschreiben, freigeben, finden | nein — Zielbild |
 | **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | teilweise — Bedienelement vorhanden, ohne Wirkung (siehe unten) |
@@ -62,18 +62,23 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 ### Dokumentenübersicht, Gesprächsverwaltung und Suchfilter
 
 Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die hier mit dem
-tatsächlichen Stand abgeglichen sind. Gesprächsverwaltung ist **Zielbild** und heute nicht gebaut.
-Die Dokumentenübersicht ist inzwischen gebaut — die Bibliotheksdetailseite (`LibraryDetailPage.tsx`)
-zeigt den Bestand einer Wissensbibliothek mit Indizierungsstand je Dokument; das Öffnen eines
-Dokuments im Original bleibt Zielbild.
+tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen gebaut — die
+Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
+Indizierungsstand je Dokument; das Öffnen eines Dokuments im Original bleibt Zielbild.
 
-**Gesprächsverwaltung.** Ein Gespräch überlebt heute das Neuladen der Seite nicht. Im Zielbild ist
-ein Gespräch ein persistentes Objekt, das **von Anfang an in genau einem Arbeitsraum** liegt — dort
-erstellt, dort gelistet, nicht verschiebbar (siehe [Chats](./spaces-and-assets.md#chats)). Es entsteht
-als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des Arbeitsraums erst sichtbar,
-sobald der Autor es dort teilt. Dazu gehören das Löschen des eigenen Verlaufs und ein Export des
-Gesprächs samt Fundstellen, weil ein Gesprächsergebnis in der Verwaltung regelmäßig in einen Vorgang
-übernommen wird.
+**Gesprächsverwaltung.** Ein Gespräch ist ein persistentes Objekt, das **von Anfang an in genau einem
+Arbeitsraum** liegt — dort erstellt (`POST /api/v1/spaces/{spaceId}/chats`), dort unter
+`/spaces/:spaceId/chats/:chatId` gelistet und geöffnet, nicht verschiebbar (siehe
+[Chats](./spaces-and-assets.md#chats)). Die Arbeitsraum-Seite und die Seitenleiste zeigen die eigenen
+Gespräche eines Arbeitsraums mit Titel und letztem Nutzungszeitpunkt, sortiert nach letzter Nutzung;
+von dort lassen sie sich umbenennen und löschen (mit Bestätigung). Die frühere globale Route `/chat`
+führt auf den Standard-Arbeitsraum und dessen zuletzt genutztes Gespräch, oder auf ein neues Gespräch,
+falls dort noch keines existiert — nie auf eine Sackgasse. Ein Neuladen der Seite stellt Verlauf und
+Liste wieder her. Es entsteht als Entwurf, sichtbar nur für den Autor, und wird für die Mitglieder des
+Arbeitsraums erst sichtbar, sobald der Autor es dort teilt (`SHARED`/`WITHDRAWN`, Zielbild — siehe
+[Chats](./spaces-and-assets.md#chats)). Ebenfalls Zielbild: das Löschen des eigenen Verlaufs im
+Sinne einer Aufbewahrungsfrist und ein Export des Gesprächs samt Fundstellen, weil ein
+Gesprächsergebnis in der Verwaltung regelmäßig in einen Vorgang übernommen wird.
 
 Die Aufbewahrungsdauer abgelegter Gespräche ist eine Betriebs- und Mitbestimmungsfrage, keine
 Voreinstellung des Produkts.
@@ -91,7 +96,8 @@ anfragebezogene Steuerung (siehe [Suchbereich je Chatart](./spaces-and-assets.md
 - **@-Bibliotheksreferenzen** direkt im Eingabefeld: Tippen von `@` schlägt alle Bibliotheken vor, die
   der Nutzer lesen darf, unabhängig vom Arbeitsraum, per Tastatur oder Maus auswählbar. Gesetzte
   Referenzen bleiben als entfernbare Chips **sticky am Gespräch** erhalten, nicht nur für eine einzelne
-  Anfrage — bis zur Chat-Persistenz (#525/#527) nur für die geöffnete Sitzung.
+  Anfrage — beide Steuerungen werden mit dem Gespräch persistiert (`PATCH /api/v1/chats/{chatId}`,
+  #527) und überleben damit ein Neuladen der Seite.
 
 Im Zielbild kommen dazu die Eingrenzung auf den Dokumenttyp und auf den Stand der Indizierung. Ein
 Filter, der die Rechteprüfung ersetzen würde, ist ausgeschlossen: Filter verengen die Sicht, sie

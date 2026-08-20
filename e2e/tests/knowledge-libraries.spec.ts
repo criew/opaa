@@ -50,8 +50,31 @@ const GROUP_NAME = `E2E Gruppe ${runId}`
 const OWN_LIBRARY_NAME_OUTSIDER = `E2E Eigene Bibliothek Outsider ${runId}`
 const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 
+// Chats are persisted server-side (#525/#527) and keyed per user, not per browser session: a
+// fresh Playwright context (a new browser context per fixture, see fixtures/auth.ts) still talks
+// to the same backend account, so `/chat` now restores whatever chat that account last used - not
+// necessarily an empty one. `expectCitedSource`/`expectOwnFoundForeignNotFound` below assert
+// page-wide, which is only correct on a chat that holds exactly the one turn just asked; without
+// this, a later scenario reusing the same account (dev-user in scenarios 3 and 5, dev-outsider in
+// scenarios 4 and 6) would see source cards from an earlier scenario's turn still in the DOM
+// alongside the new one. Every scenario below explicitly starts a fresh, not-yet-persisted chat
+// before asking its question instead, so "the page shows exactly this one turn" is a fact, not an
+// assumption that happened to hold by scenario order (CI fix following PR #548's review).
+async function startFreshChat(page: Page) {
+  await page.goto('/chat')
+  await page.getByRole('button', { name: 'Neuer Chat' }).click()
+  await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
+  // The route change can briefly leave ChatPage showing its loading spinner instead of the input -
+  // a stale loadChat for the previously active chat racing the reset to "new", or simply the
+  // moment before the freshly emptied chat has rendered. Waiting here explicitly, instead of
+  // trusting the URL alone, is what askQuestion below actually needs (CI fix following PR #548's
+  // review, nit 3).
+  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
+}
+
 async function askQuestion(page: Page, question: string) {
   const input = page.getByPlaceholder('Stellen Sie eine Frage …')
+  await expect(input).toBeVisible()
   await input.fill(question)
   await page.getByRole('button', { name: 'Nachricht senden' }).click()
 }
@@ -115,7 +138,9 @@ async function uploadOwnDocument(page: Page, libraryName: string) {
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 
   await page.getByLabel('Dateien auswählen').setInputFiles(OWN_DOCUMENT_PATH)
-  await expect(page.getByText(OWN_DOCUMENT_NAME)).toBeVisible()
+  // exact: true - a non-exact match risks a strict-mode violation once anything else on the page
+  // (e.g. a status hint) also happens to contain this filename as a substring.
+  await expect(page.getByText(OWN_DOCUMENT_NAME, { exact: true })).toBeVisible()
   await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
 }
 
@@ -162,7 +187,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('2. Suche findet das eigene Dokument', async ({ authenticatedPage: page }) => {
-    await page.goto('/chat')
+    await startFreshChat(page)
     await askQuestion(page, QUESTION)
     await expectCitedSource(page, TEST_DOCUMENT_NAME)
   })
@@ -189,7 +214,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(bPage)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
-    await bPage.goto('/chat')
+    await startFreshChat(bPage)
     await askQuestion(bPage, QUESTION)
     await expectCitedSource(bPage, TEST_DOCUMENT_NAME)
   })
@@ -200,7 +225,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
-    await cPage.goto('/chat')
+    await startFreshChat(cPage)
     await askQuestion(cPage, QUESTION)
     await expectOwnFoundForeignNotFound(cPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
@@ -222,7 +247,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(bPage)
     await expect(bPage.getByText(LIBRARY_NAME, { exact: true })).toHaveCount(0)
 
-    await bPage.goto('/chat')
+    await startFreshChat(bPage)
     await askQuestion(bPage, QUESTION)
     await expectOwnFoundForeignNotFound(bPage, OWN_DOCUMENT_NAME, TEST_DOCUMENT_NAME)
   })
@@ -274,7 +299,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
 
-    await cPage.goto('/chat')
+    await startFreshChat(cPage)
     await askQuestion(cPage, QUESTION)
     await expectCitedSource(cPage, TEST_DOCUMENT_NAME)
   })

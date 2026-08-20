@@ -1,5 +1,7 @@
 import type {
   AssetGrantResponse,
+  ChatDetail,
+  ChatSummary,
   HealthResponse,
   IndexingStatusResponse,
   LibraryListResponse,
@@ -696,6 +698,106 @@ export let mockLibraryGrants: Record<string, AssetGrantResponse[]> =
 
 export function resetMockLibraryGrants() {
   mockLibraryGrants = structuredClone(INITIAL_LIBRARY_GRANTS)
+}
+
+const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
+  'chat-personal-1': {
+    id: 'chat-personal-1',
+    spaceId: 'space-personal',
+    authorId: 'mock-user-id',
+    title: 'Architektur des Projekts',
+    useKnowledge: true,
+    referencedLibraryIds: [],
+    status: 'PRIVATE',
+    messages: [
+      {
+        id: 'message-personal-1-1',
+        chatId: 'chat-personal-1',
+        role: 'USER',
+        content: 'Wie ist das Projekt aufgebaut?',
+        createdAt: '2026-03-05T09:00:00Z',
+      },
+      {
+        id: 'message-personal-1-2',
+        chatId: 'chat-personal-1',
+        role: 'ASSISTANT',
+        content: mockQueryResponses[0].answer,
+        sources: mockQueryResponses[0].sources,
+        createdAt: '2026-03-05T09:00:05Z',
+      },
+    ],
+    createdAt: '2026-03-05T09:00:00Z',
+    updatedAt: '2026-03-05T09:00:05Z',
+  },
+  'chat-personal-2': {
+    id: 'chat-personal-2',
+    spaceId: 'space-personal',
+    authorId: 'mock-user-id',
+    title: 'Deployment-Fragen',
+    useKnowledge: false,
+    referencedLibraryIds: ['library-referat-50'],
+    status: 'PRIVATE',
+    messages: [
+      {
+        id: 'message-personal-2-1',
+        chatId: 'chat-personal-2',
+        role: 'USER',
+        content: 'Wie läuft das Deployment ab?',
+        createdAt: '2026-03-06T11:00:00Z',
+      },
+      {
+        id: 'message-personal-2-2',
+        chatId: 'chat-personal-2',
+        role: 'ASSISTANT',
+        content: mockQueryResponses[2].answer,
+        sources: mockQueryResponses[2].sources,
+        createdAt: '2026-03-06T11:00:05Z',
+      },
+    ],
+    createdAt: '2026-03-06T11:00:00Z',
+    updatedAt: '2026-03-06T11:00:05Z',
+  },
+  'chat-engineering-1': {
+    id: 'chat-engineering-1',
+    spaceId: 'space-engineering',
+    authorId: 'mock-user-id',
+    title: null,
+    useKnowledge: true,
+    referencedLibraryIds: [],
+    status: 'PRIVATE',
+    messages: [],
+    createdAt: '2026-03-07T08:00:00Z',
+    updatedAt: '2026-03-07T08:00:00Z',
+  },
+}
+
+function toChatSummary(detail: ChatDetail): ChatSummary {
+  return {
+    id: detail.id,
+    spaceId: detail.spaceId,
+    authorId: detail.authorId,
+    title: detail.title,
+    useKnowledge: detail.useKnowledge,
+    referencedLibraryIds: detail.referencedLibraryIds,
+    status: detail.status,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+  }
+}
+
+// Mutable copies, mirroring the mockLibraryDocuments pattern above - handlers.ts reads and writes
+// these on GET/POST/PATCH/DELETE, reset between tests via resetMockChats().
+export let mockChatDetails: Record<string, ChatDetail> = structuredClone(INITIAL_CHAT_DETAILS)
+
+export function mockChatsForSpace(spaceId: string): ChatSummary[] {
+  return Object.values(mockChatDetails)
+    .filter((chat) => chat.spaceId === spaceId)
+    .map(toChatSummary)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export function resetMockChats() {
+  mockChatDetails = structuredClone(INITIAL_CHAT_DETAILS)
 }
 
 export const mockUsers: UserInfo[] = [

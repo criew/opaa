@@ -2,17 +2,31 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '../mocks/server'
 import { useChatStore } from './chatStore'
+import { useChatListStore } from './chatListStore'
+
+const SPACE_ID = 'space-personal'
+const EXISTING_CHAT_ID = 'chat-personal-1'
+const EMPTY_CHAT_ID = 'chat-engineering-1'
+
+function resetChatStore() {
+  useChatStore.setState({
+    spaceId: null,
+    chatId: null,
+    title: null,
+    messages: [],
+    isLoading: false,
+    isLoadingChat: false,
+    error: null,
+    useKnowledge: true,
+    referencedLibraryIds: [],
+    pendingSettingsUpdate: null,
+  })
+}
 
 describe('chatStore', () => {
   beforeEach(() => {
-    useChatStore.setState({
-      messages: [],
-      isLoading: false,
-      error: null,
-      chatId: null,
-      useKnowledge: true,
-      referencedLibraryIds: [],
-    })
+    resetChatStore()
+    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
   it('starts with empty state', () => {
@@ -21,141 +35,437 @@ describe('chatStore', () => {
     expect(state.isLoading).toBe(false)
     expect(state.error).toBeNull()
     expect(state.chatId).toBeNull()
+    expect(state.spaceId).toBeNull()
   })
 
-  it('sends a message and receives a response with chatId', async () => {
-    await useChatStore.getState().sendMessage('What is the architecture?')
+  describe('startNewChat', () => {
+    it('resets to a blank, not-yet-persisted chat in the given space', () => {
+      useChatStore.setState({
+        chatId: 'chat-personal-1',
+        messages: [{ id: '1', role: 'user', content: 'Hallo', timestamp: new Date() }],
+        useKnowledge: false,
+        referencedLibraryIds: ['library-a'],
+      })
 
-    const state = useChatStore.getState()
-    expect(state.messages).toHaveLength(2)
-    expect(state.messages[0].role).toBe('user')
-    expect(state.messages[0].content).toBe('What is the architecture?')
-    expect(state.messages[1].role).toBe('assistant')
-    expect(state.messages[1].sources!.length).toBeGreaterThanOrEqual(1)
-    expect(state.isLoading).toBe(false)
-    expect(state.chatId).toBeTruthy()
+      useChatStore.getState().startNewChat(SPACE_ID)
+
+      const state = useChatStore.getState()
+      expect(state.spaceId).toBe(SPACE_ID)
+      expect(state.chatId).toBeNull()
+      expect(state.messages).toHaveLength(0)
+      expect(state.useKnowledge).toBe(true)
+      expect(state.referencedLibraryIds).toEqual([])
+    })
   })
 
-  it('preserves chatId across messages', async () => {
-    await useChatStore.getState().sendMessage('First question')
-    const firstConvId = useChatStore.getState().chatId
+  describe('loadChat', () => {
+    it('loads an existing chat with its message history', async () => {
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
 
-    await useChatStore.getState().sendMessage('Follow-up question')
-    const secondConvId = useChatStore.getState().chatId
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe(EXISTING_CHAT_ID)
+      expect(state.spaceId).toBe(SPACE_ID)
+      expect(state.title).toBe('Architektur des Projekts')
+      expect(state.messages).toHaveLength(2)
+      expect(state.messages[0].role).toBe('user')
+      expect(state.messages[1].role).toBe('assistant')
+      expect(state.isLoadingChat).toBe(false)
+    })
 
-    expect(firstConvId).toBeTruthy()
-    expect(secondConvId).toBeTruthy()
-    // The mock echoes back the chatId we send, so it should be the same
-    expect(secondConvId).toBe(firstConvId)
+    it('restores the chat-level useKnowledge and referencedLibraryIds settings', async () => {
+      await useChatStore.getState().loadChat('chat-personal-2')
+
+      const state = useChatStore.getState()
+      expect(state.useKnowledge).toBe(false)
+      expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
+    })
+
+    it('sets an error when the chat cannot be found', async () => {
+      await useChatStore.getState().loadChat('chat-unknown')
+
+      const state = useChatStore.getState()
+      expect(state.error).toBeTruthy()
+      expect(state.isLoadingChat).toBe(false)
+    })
+
+    // #548 review, finding 2: a failed load used to leave the previously active chat (id, space,
+    // history) in place, so the next message would silently go to a chat the user is no longer
+    // looking at, even though the error alert is shown.
+    it('clears the previously active chat when loading a different chat fails', async () => {
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().chatId).toBe(EXISTING_CHAT_ID)
+
+      await useChatStore.getState().loadChat('chat-unknown')
+
+      const state = useChatStore.getState()
+      expect(state.error).toBeTruthy()
+      expect(state.chatId).toBeNull()
+      expect(state.spaceId).toBeNull()
+      expect(state.messages).toEqual([])
+      expect(state.title).toBeNull()
+    })
+
+    // #548 review, finding d: a slower-arriving response for an earlier loadChat call must not
+    // overwrite a faster, later one - only the most recently requested chat may end up active.
+    it('ignores a stale loadChat response that arrives after a newer one resolved', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          if (params.chatId === EXISTING_CHAT_ID) {
+            // Slow response for the chat requested first.
+            await new Promise((resolve) => setTimeout(resolve, 30))
+          }
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: `Titel ${params.chatId}`,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      const slowLoad = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      const fastLoad = useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      await Promise.all([slowLoad, fastLoad])
+
+      expect(useChatStore.getState().chatId).toBe(EMPTY_CHAT_ID)
+    })
+
+    // #548 review, finding d: a synchronous startNewChat while a loadChat is still in flight must
+    // not be clobbered once that stale response eventually arrives.
+    it('does not let a stale loadChat response overwrite a subsequent startNewChat', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          await new Promise((resolve) => setTimeout(resolve, 30))
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      const pendingLoad = useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      useChatStore.getState().startNewChat(SPACE_ID)
+      await pendingLoad
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBeNull()
+      expect(state.messages).toEqual([])
+    })
   })
 
-  it('shows rate limit error when server returns 429', async () => {
-    server.use(
-      http.post('/api/v1/query', () => {
-        return HttpResponse.json(
-          {
-            error: 'Rate limit exceeded. Please try again later.',
-            status: 429,
-            timestamp: new Date().toISOString(),
-          },
-          { status: 429 },
-        )
-      }),
-    )
+  describe('sendMessage', () => {
+    it('implicitly creates a chat in the current space on the first message', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
 
-    await useChatStore.getState().sendMessage('Hello')
+      await useChatStore.getState().sendMessage('Erste Frage')
 
-    const state = useChatStore.getState()
-    expect(state.error).toBe('Rate limit exceeded. Please try again later.')
-    expect(state.isLoading).toBe(false)
-    expect(state.messages).toHaveLength(1)
-    expect(state.messages[0].role).toBe('user')
+      const state = useChatStore.getState()
+      expect(state.chatId).toBeTruthy()
+      expect(state.messages).toHaveLength(2)
+      expect(state.messages[0].role).toBe('user')
+      expect(state.messages[1].role).toBe('assistant')
+      expect(state.isLoading).toBe(false)
+    })
+
+    it('reuses the existing chat id for follow-up messages instead of creating a new chat', async () => {
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      await useChatStore.getState().sendMessage('Frage eins')
+      const firstChatId = useChatStore.getState().chatId
+
+      await useChatStore.getState().sendMessage('Frage zwei')
+      const secondChatId = useChatStore.getState().chatId
+
+      expect(firstChatId).toBe(EMPTY_CHAT_ID)
+      expect(secondChatId).toBe(EMPTY_CHAT_ID)
+    })
+
+    it('sets an error and does not create a chat when no space is known', async () => {
+      await useChatStore.getState().sendMessage('Hallo')
+
+      const state = useChatStore.getState()
+      expect(state.error).toBeTruthy()
+      expect(state.chatId).toBeNull()
+    })
+
+    it('shows rate limit error when the server returns 429', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      server.use(
+        http.post('/api/v1/query', () => {
+          return HttpResponse.json(
+            {
+              error: 'Rate limit exceeded. Please try again later.',
+              status: 429,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429 },
+          )
+        }),
+      )
+
+      await useChatStore.getState().sendMessage('Hello')
+
+      const state = useChatStore.getState()
+      expect(state.error).toBe('Rate limit exceeded. Please try again later.')
+      expect(state.isLoading).toBe(false)
+      expect(state.messages).toHaveLength(1)
+      expect(state.messages[0].role).toBe('user')
+    })
+
+    it('sends useKnowledge=false with the referenced libraryIds when the switch is off', async () => {
+      let capturedBody: Record<string, unknown> | undefined
+      server.use(
+        http.post('/api/v1/query', async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: {
+              model: 'gpt-4o',
+              tokenCount: 10,
+              durationMs: 5,
+              answeredWithoutKnowledge: true,
+            },
+            chatId: EMPTY_CHAT_ID,
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      useChatStore.setState({
+        useKnowledge: false,
+        referencedLibraryIds: ['library-a', 'library-b'],
+      })
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(capturedBody?.useKnowledge).toBe(false)
+      expect(capturedBody?.libraryIds).toEqual(['library-a', 'library-b'])
+      expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
+    })
+
+    // #548 review, finding 4: an implicitly created chat must show up in its space's chat list
+    // right away, not only after a manual reload of the list.
+    it('adds the implicitly created chat to chatListStore', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+
+      const chatId = useChatStore.getState().chatId
+      const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
+      expect(chats?.some((chat) => chat.id === chatId)).toBe(true)
+    })
+
+    // #548 review, finding 4: every turn should bump the chat to the top of its space's list, the
+    // same way the backend's own updatedAt bump would once the list is reloaded.
+    it('touches the chat in chatListStore after every turn', async () => {
+      useChatListStore.setState({
+        chatsBySpaceId: {
+          [SPACE_ID]: [
+            {
+              id: EMPTY_CHAT_ID,
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              createdAt: '2020-01-01T00:00:00Z',
+              updatedAt: '2020-01-01T00:00:00Z',
+            },
+            {
+              id: 'chat-personal-2',
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: 'Neuer als der Ziel-Chat',
+              useKnowledge: true,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              createdAt: '2027-01-01T00:00:00Z',
+              updatedAt: '2027-01-01T00:00:00Z',
+            },
+          ],
+        },
+      })
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
+      expect(chats?.[0].id).toBe(EMPTY_CHAT_ID)
+    })
   })
 
-  it('clears messages and resets chatId', async () => {
-    await useChatStore.getState().sendMessage('Hello')
-    expect(useChatStore.getState().chatId).toBeTruthy()
+  describe('setUseKnowledge / addReferencedLibrary / removeReferencedLibrary', () => {
+    it('updates local state without persisting when no chat exists yet', () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
 
-    useChatStore.getState().clearMessages()
+      useChatStore.getState().setUseKnowledge(false)
+      useChatStore.getState().addReferencedLibrary('library-a')
 
-    const state = useChatStore.getState()
-    expect(state.messages).toHaveLength(0)
-    expect(state.error).toBeNull()
-    expect(state.chatId).toBeNull()
-  })
+      expect(useChatStore.getState().useKnowledge).toBe(false)
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
+    })
 
-  it('clearMessages also resets the sticky knowledge-scope controls', () => {
-    useChatStore.setState({ useKnowledge: false, referencedLibraryIds: ['library-a'] })
+    it('persists useKnowledge via PATCH once a chat is active', async () => {
+      let patchedBody: Record<string, unknown> | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          patchedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: patchedBody.useKnowledge,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
 
-    useChatStore.getState().clearMessages()
+      useChatStore.getState().setUseKnowledge(false)
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
-    const state = useChatStore.getState()
-    expect(state.useKnowledge).toBe(true)
-    expect(state.referencedLibraryIds).toEqual([])
-  })
+      expect(useChatStore.getState().useKnowledge).toBe(false)
+      expect(patchedBody?.useKnowledge).toBe(false)
+    })
 
-  it('adds and removes referenced libraries without duplicates', () => {
-    useChatStore.getState().addReferencedLibrary('library-a')
-    useChatStore.getState().addReferencedLibrary('library-b')
-    useChatStore.getState().addReferencedLibrary('library-a')
+    it('persists referencedLibraryIds via PATCH once a chat is active', async () => {
+      let patchedBody: Record<string, unknown> | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          patchedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: patchedBody.referencedLibraryIds,
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
 
-    expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a', 'library-b'])
+      useChatStore.getState().addReferencedLibrary('library-a')
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
-    useChatStore.getState().removeReferencedLibrary('library-a')
+      expect(patchedBody?.referencedLibraryIds).toEqual(['library-a'])
 
-    expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-b'])
-  })
+      useChatStore.getState().removeReferencedLibrary('library-a')
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
-  it('sends useKnowledge=true without libraryIds when the switch is on', async () => {
-    let capturedBody: Record<string, unknown> | undefined
-    server.use(
-      http.post('/api/v1/query', async ({ request }) => {
-        capturedBody = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({
-          answer: 'Antwort',
-          sources: [],
-          metadata: {
-            model: 'gpt-4o',
-            tokenCount: 10,
-            durationMs: 5,
-            answeredWithoutKnowledge: false,
-          },
-          chatId: 'conv-1',
-        })
-      }),
-    )
-    useChatStore.setState({ useKnowledge: true, referencedLibraryIds: ['library-a'] })
+      expect(patchedBody?.referencedLibraryIds).toEqual([])
+    })
 
-    await useChatStore.getState().sendMessage('Frage')
+    // #548 review, finding 3: a failed PATCH used to leave the UI showing a setting the server
+    // never applied (chat settings take precedence server-side) - it must roll back and surface
+    // the error instead.
+    it('rolls back useKnowledge and shows an error when the PATCH fails', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () => {
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().useKnowledge).toBe(true)
 
-    expect(capturedBody?.useKnowledge).toBe(true)
-    expect(capturedBody?.libraryIds).toBeUndefined()
-  })
+      useChatStore.getState().setUseKnowledge(false)
+      // Immediately after the call, the switch already reflects the optimistic value.
+      expect(useChatStore.getState().useKnowledge).toBe(false)
 
-  it('sends useKnowledge=false with the referenced libraryIds when the switch is off', async () => {
-    let capturedBody: Record<string, unknown> | undefined
-    server.use(
-      http.post('/api/v1/query', async ({ request }) => {
-        capturedBody = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({
-          answer: 'Antwort',
-          sources: [],
-          metadata: {
-            model: 'gpt-4o',
-            tokenCount: 10,
-            durationMs: 5,
-            answeredWithoutKnowledge: true,
-          },
-          chatId: 'conv-1',
-        })
-      }),
-    )
-    useChatStore.setState({ useKnowledge: false, referencedLibraryIds: ['library-a', 'library-b'] })
+      await useChatStore.getState().pendingSettingsUpdate
 
-    await useChatStore.getState().sendMessage('Frage')
+      const state = useChatStore.getState()
+      expect(state.useKnowledge).toBe(true)
+      expect(state.error).toBeTruthy()
+    })
 
-    expect(capturedBody?.useKnowledge).toBe(false)
-    expect(capturedBody?.libraryIds).toEqual(['library-a', 'library-b'])
-    expect(useChatStore.getState().messages[1].answeredWithoutKnowledge).toBe(true)
+    it('rolls back referencedLibraryIds and shows an error when the PATCH fails', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () => {
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      useChatStore.getState().addReferencedLibrary('library-a')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
+
+      await useChatStore.getState().pendingSettingsUpdate
+
+      const state = useChatStore.getState()
+      expect(state.referencedLibraryIds).toEqual([])
+      expect(state.error).toBeTruthy()
+    })
+
+    // #548 review, finding 3: sendMessage must await a still-in-flight settings PATCH before
+    // querying, or the query could reach the server (and be answered using the chat's persisted
+    // settings) before the PATCH that was meant to change them.
+    it('awaits a pending settings PATCH before sending the query', async () => {
+      const events: string[] = []
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async () => {
+          events.push('patch-start')
+          await new Promise((resolve) => setTimeout(resolve, 30))
+          events.push('patch-end')
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+        http.post('/api/v1/query', async ({ request }) => {
+          events.push('query-start')
+          const body = (await request.json()) as { chatId?: string }
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: {
+              model: 'gpt-4o',
+              tokenCount: 5,
+              durationMs: 1,
+              answeredWithoutKnowledge: false,
+            },
+            chatId: body.chatId,
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+
+      useChatStore.getState().setUseKnowledge(false)
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(events).toEqual(['patch-start', 'patch-end', 'query-start'])
+    })
   })
 })

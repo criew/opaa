@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router'
+import ChatList from '../components/chat/ChatList'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
 
@@ -32,6 +33,7 @@ export default function SpacePage() {
   const error = useSpaceStore((s) => s.error)
 
   const [membersExpanded, setMembersExpanded] = useState(true)
+  const [chatsExpanded, setChatsExpanded] = useState(true)
 
   useEffect(() => {
     if (spaces.length === 0) {
@@ -103,6 +105,21 @@ export default function SpacePage() {
             </Stack>
           </Stack>
         </Paper>
+
+        <Accordion
+          expanded={chatsExpanded}
+          onChange={(_, expanded) => setChatsExpanded(expanded)}
+          variant="outlined"
+          disableGutters
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+            <Typography variant="h6">Chats</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            <ChatList spaceId={space.id} />
+          </AccordionDetails>
+        </Accordion>
 
         <Accordion
           expanded={membersExpanded}

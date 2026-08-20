@@ -17,12 +17,17 @@ import {
   mockLibraryDocuments,
   mockLibraryGrants,
   mockMyGroups,
+  mockChatDetails,
+  mockChatsForSpace,
   resetMockLibraryDocuments,
   resetMockLibraryGrants,
+  resetMockChats,
 } from './fixtures'
 import type {
   AssetGrantRequest,
   AssetRole,
+  ChatCreateRequest,
+  ChatUpdateRequest,
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
@@ -44,6 +49,10 @@ export function resetDocumentMockState() {
 
 export function resetGrantMockState() {
   resetMockLibraryGrants()
+}
+
+export function resetChatMockState() {
+  resetMockChats()
 }
 
 const ASSET_ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
@@ -224,6 +233,75 @@ export const handlers = [
       ...mockResponse,
       chatId: body.chatId ?? crypto.randomUUID(),
     })
+  }),
+
+  // Mirrors ChatController/ChatService (#525): chats are author-exclusive, listed per space and
+  // sorted by last use - mockChatsForSpace already returns them sorted by updatedAt desc.
+  http.get('/api/v1/spaces/:spaceId/chats', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(mockChatsForSpace(spaceId))
+  }),
+
+  http.post('/api/v1/spaces/:spaceId/chats', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const body = ((await request.json().catch(() => null)) ?? {}) as ChatCreateRequest
+    const id = `chat-${crypto.randomUUID().slice(0, 8)}`
+    const now = new Date().toISOString()
+    mockChatDetails[id] = {
+      id,
+      spaceId,
+      authorId: mockUser.id,
+      title: body.title ?? null,
+      useKnowledge: body.useKnowledge ?? true,
+      referencedLibraryIds: body.referencedLibraryIds ?? [],
+      status: 'PRIVATE',
+      messages: [],
+      createdAt: now,
+      updatedAt: now,
+    }
+    return HttpResponse.json(mockChatDetails[id], { status: 201 })
+  }),
+
+  http.get('/api/v1/chats/:chatId', ({ params }) => {
+    const chatId = String(params.chatId)
+    const chat = mockChatDetails[chatId]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(chat)
+  }),
+
+  http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
+    const chatId = String(params.chatId)
+    const chat = mockChatDetails[chatId]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as ChatUpdateRequest
+    if (body.title !== undefined) chat.title = body.title
+    if (body.useKnowledge !== undefined && body.useKnowledge !== null) {
+      chat.useKnowledge = body.useKnowledge
+    }
+    if (body.referencedLibraryIds !== undefined && body.referencedLibraryIds !== null) {
+      chat.referencedLibraryIds = body.referencedLibraryIds
+    }
+    chat.updatedAt = new Date().toISOString()
+    return HttpResponse.json(chat)
+  }),
+
+  http.delete('/api/v1/chats/:chatId', ({ params }) => {
+    const chatId = String(params.chatId)
+    if (!mockChatDetails[chatId]) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    delete mockChatDetails[chatId]
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.post('/api/v1/spaces', async ({ request }) => {

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
@@ -12,7 +11,6 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
-import ChatIcon from '@mui/icons-material/Chat'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupsIcon from '@mui/icons-material/Groups'
@@ -23,6 +21,7 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import WorkspacesIcon from '@mui/icons-material/Workspaces'
 import { NavLink, useLocation, useNavigate } from 'react-router'
 import CreateSpaceDialog from '../components/CreateSpaceDialog'
+import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -36,7 +35,7 @@ export { SIDEBAR_WIDTH }
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const clearMessages = useChatStore((state) => state.clearMessages)
+  const chatSpaceId = useChatStore((s) => s.spaceId)
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const spaces = useSpaceStore((s) => s.spaces)
@@ -52,10 +51,10 @@ export default function Sidebar() {
     }
   }, [loadSpaces, spaces.length])
 
-  function handleNewChat() {
-    clearMessages()
-    navigate('/chat')
-  }
+  // The chats section follows the space the currently open chat lives in, falling back to the
+  // user's default space (or their first space) before any chat has been opened.
+  const defaultSpace = spaces.find((space) => space.isDefault) ?? spaces[0]
+  const activeChatSpaceId = chatSpaceId ?? defaultSpace?.id ?? null
 
   return (
     <Box
@@ -157,31 +156,16 @@ export default function Sidebar() {
             {chatsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
           </IconButton>
         </Box>
-        {chatsOpen && (
-          <>
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              fullWidth
-              onClick={handleNewChat}
-              sx={{ mt: 1, borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }}
-            >
-              Neuer Chat
-            </Button>
-            <List sx={{ px: 0, pt: 1 }}>
-              <ListItemButton
-                onClick={() => navigate('/chat')}
-                selected={location.pathname === '/chat'}
-                sx={{ borderRadius: 2 }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <ChatIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Aktueller Chat" />
-              </ListItemButton>
-            </List>
-          </>
-        )}
+        {chatsOpen &&
+          (activeChatSpaceId ? (
+            <Box sx={{ mt: 1 }}>
+              <ChatList spaceId={activeChatSpaceId} />
+            </Box>
+          ) : (
+            <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+              Kein Space verfügbar.
+            </Typography>
+          ))}
       </Box>
 
       <Divider />

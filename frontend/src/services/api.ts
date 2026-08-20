@@ -2,6 +2,10 @@ import axios, { AxiosError } from 'axios'
 import type {
   AssetGrantRequest,
   AssetGrantResponse,
+  ChatCreateRequest,
+  ChatDetail,
+  ChatSummary,
+  ChatUpdateRequest,
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
@@ -104,6 +108,53 @@ export async function sendQuery(
     }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function listSpaceChats(spaceId: string): Promise<ChatSummary[]> {
+  try {
+    const { data } = await client.get<ChatSummary[]>(`/v1/spaces/${spaceId}/chats`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createChat(
+  spaceId: string,
+  request?: ChatCreateRequest,
+): Promise<ChatDetail> {
+  try {
+    const { data } = await client.post<ChatDetail>(`/v1/spaces/${spaceId}/chats`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getChat(chatId: string): Promise<ChatDetail> {
+  try {
+    const { data } = await client.get<ChatDetail>(`/v1/chats/${chatId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateChat(chatId: string, request: ChatUpdateRequest): Promise<ChatDetail> {
+  try {
+    const { data } = await client.patch<ChatDetail>(`/v1/chats/${chatId}`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteChat(chatId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/chats/${chatId}`)
   } catch (err) {
     normalizeError(err)
   }
