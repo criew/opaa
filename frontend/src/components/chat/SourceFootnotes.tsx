@@ -120,12 +120,17 @@ export default function SourceFootnotes({
   const foldedDocs = docs.slice(VISIBLE_DOCS)
   const foldedStellen = foldedDocs.reduce((sum, doc) => sum + doc.numbers.length, 0)
 
-  // A clicked range may cover folded rows - unfold so the highlight is actually visible.
-  useEffect(() => {
-    if (highlightedDocIndexes.some((i) => i >= VISIBLE_DOCS)) {
+  // A clicked range may cover folded rows - unfold so the highlight is actually visible, and
+  // stay unfolded after the flash fades. State adjustment during render (the React-documented
+  // pattern) instead of an effect, so no cascading render frame is needed.
+  const highlightNeedsUnfold = highlightedDocIndexes.some((i) => i >= VISIBLE_DOCS)
+  const [prevHighlightNeedsUnfold, setPrevHighlightNeedsUnfold] = useState(false)
+  if (highlightNeedsUnfold !== prevHighlightNeedsUnfold) {
+    setPrevHighlightNeedsUnfold(highlightNeedsUnfold)
+    if (highlightNeedsUnfold && !foldedOpen) {
       setFoldedOpen(true)
     }
-  }, [highlightedDocIndexes])
+  }
 
   // A footnote in the text may target a folded row - unfold before the browser scrolls there,
   // so the anchor jump never lands on a collapsed element.
@@ -141,9 +146,14 @@ export default function SourceFootnotes({
         )
       }
     }
-    openIfFoldedTarget()
+    // Deferred initial check (deep link onto a folded row) - synchronous setState in an
+    // effect body would cascade renders; the subscription callback itself is exempt.
+    const initialCheck = requestAnimationFrame(openIfFoldedTarget)
     window.addEventListener('hashchange', openIfFoldedTarget)
-    return () => window.removeEventListener('hashchange', openIfFoldedTarget)
+    return () => {
+      cancelAnimationFrame(initialCheck)
+      window.removeEventListener('hashchange', openIfFoldedTarget)
+    }
   }, [docs, foldedDocs.length, messageId])
 
   if (docs.length === 0 && uncited.length === 0) {
