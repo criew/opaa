@@ -1,7 +1,6 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -11,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +37,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -54,14 +52,6 @@ import org.testcontainers.utility.DockerImageName;
  */
 @SpringBootTest
 @ActiveProfiles("dev")
-// #616: lets TestConfig#chatTitleTaskExecutor below replace ChatConfiguration's real,
-// @Async-backed bean of the same name - see that bean's Javadoc for why this must stay a
-// same-name override rather than a differently named @Primary bean (Spring's @Async(value)
-// resolves the executor by that exact bean name, not by @Primary/type). Must be a
-// @TestPropertySource, not a @DynamicPropertySource: Boot reads
-// spring.main.allow-bean-definition-overriding while preparing the SpringApplication, before a
-// @DynamicPropertySource registry (populated only once the context already exists) is consulted.
-@TestPropertySource(properties = "spring.main.allow-bean-definition-overriding=true")
 @Testcontainers(disabledWithoutDocker = true)
 class QueryIntegrationTest {
 
@@ -84,33 +74,44 @@ class QueryIntegrationTest {
     EmbeddingModel testEmbeddingModel() {
       return new FakeEmbeddingModel();
     }
-
-    /**
-     * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
-     * synchronous executor for this test class only - the real one runs #557's chat-title LLM call
-     * on a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see
-     * promptCaptor usages below) against that async call landing on the very same
-     * {@code @MockitoBean chatModel} it stubs. Mockito's stubbing API is not thread-safe against a
-     * concurrent invocation of the mock being stubbed, which is exactly what corrupted CI runs with
-     * {@code MockitoException at QueryIntegrationTest.java:562} (#616) - a still-in-flight title
-     * job from an earlier {@code queryService.query(...)} call (in this test or, since {@code
-     * chatModel} is reused across every test method in this class's shared Spring context, an
-     * earlier test) invoking the mock exactly while a later {@code when(...)} call was mid-setup.
-     * {@link SyncTaskExecutor} runs the title job on the calling thread instead, so by the time
-     * {@code queryService.query(...)} returns, the title generation call has already completed (or
-     * failed) - never racing anything that runs after it.
-     */
-    @Bean(name = "chatTitleTaskExecutor")
-    @Primary
-    TaskExecutor testChatTitleTaskExecutor() {
-      return new SyncTaskExecutor();
-    }
   }
 
   private static final UUID DEFAULT_ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
   @MockitoBean private ChatModel chatModel;
+
+  /**
+   * #616: replaces {@code ChatConfiguration#chatTitleTaskExecutor} with a same-name, fully
+   * synchronous executor for this test class only - the real one runs #557's chat-title LLM call on
+   * a separate thread, racing this class's {@code when(chatModel...)} re-stubbing (see the {@code
+   * promptCaptor} usages below) against that async call landing on the very same
+   * {@code @MockitoBean chatModel} it stubs. Mockito's stubbing API is not thread-safe against a
+   * concurrent invocation of the mock being stubbed, which is exactly what corrupted CI runs with
+   * {@code MockitoException at QueryIntegrationTest.java:562} (#616) - a still-in-flight title job
+   * from an earlier {@code queryService.query(...)} call (in this test or, since {@code chatModel}
+   * is reused across every test method in this class's shared Spring context, an earlier test)
+   * invoking the mock exactly while a later {@code when(...)} call was mid-setup. {@link
+   * SyncTaskExecutor} runs the title job on the calling thread instead, so by the time {@code
+   * queryService.query(...)} returns, the title generation call has already completed (or failed) -
+   * never racing anything that runs after it.
+   *
+   * <p>{@code @TestBean(enforceOverride = true)}, not a same-name {@code @Bean} in {@link
+   * TestConfig}: a plain {@code @Bean} with a name that no longer matches - after, say, a rename of
+   * {@code ChatConfiguration#chatTitleTaskExecutor} - would silently become an *additional* bean
+   * instead of replacing anything, and the flake this class exists to prevent would come back
+   * without a single test here failing loudly to say why. {@code enforceOverride = true} instead
+   * makes context startup itself fail if no bean named {@code chatTitleTaskExecutor} exists to
+   * replace. Not {@code @MockitoBean}: a mocked {@code TaskExecutor} would never actually run the
+   * submitted title-generation task at all, which would hide the very call this class stubs {@code
+   * chatModel} for instead of making it deterministic.
+   */
+  @TestBean(name = "chatTitleTaskExecutor", enforceOverride = true)
+  private TaskExecutor chatTitleTaskExecutor;
+
+  private static TaskExecutor chatTitleTaskExecutor() {
+    return new SyncTaskExecutor();
+  }
 
   @Autowired private VectorStore vectorStore;
   @Autowired private QueryService queryService;
@@ -584,11 +585,31 @@ class QueryIntegrationTest {
     ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
     var strangerAnswer =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort für den Fremden"))));
-    when(chatModel.call(promptCaptor.capture())).thenReturn(strangerAnswer);
+    // #616 positive proof: recording the invoking thread's name here, rather than a plain
+    // thenReturn, directly demonstrates the #616 fix rather than merely relying on it. This is
+    // the exact when(chatModel.call(promptCaptor.capture())) whose setup a still-in-flight #557
+    // title job from the owner's query above raced against, corrupting CI with a
+    // MockitoException at this line before the fix. If #557's title job (or this stranger
+    // query's own answer call) ever reaches this stub from any thread but this JUnit test
+    // thread - i.e. the real, ChatConfiguration-backed chatTitleTaskExecutor pool, not the
+    // synchronous TestBean override at the top of this class - callThreadNames below fails.
+    List<String> callThreadNames = new ArrayList<>();
+    when(chatModel.call(promptCaptor.capture()))
+        .thenAnswer(
+            invocation -> {
+              callThreadNames.add(Thread.currentThread().getName());
+              return strangerAnswer;
+            });
 
     try {
       // Stranger queries with the owner's real chatId - not an unresolvable random one.
       queryService.query("Fremde Frage", chatId, strangerId, true, List.of());
+
+      assertThat(callThreadNames)
+          .as(
+              "every chatModel.call() reaching this stub - including #557's async title job, if"
+                  + " still in flight - must run on this test's own thread (#616)")
+          .containsOnly(Thread.currentThread().getName());
 
       boolean ownerQuestionLeakedIntoStrangersPrompt =
           promptCaptor.getValue().getInstructions().stream()
@@ -626,10 +647,14 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #557 acceptance criterion 3, end to end: a chat's very first turn triggers a second,
-   * asynchronous LLM call (title generation) after the answer is already built - mocked here to
-   * fail, proving the answer {@code query()} returns is entirely unaffected and the chat keeps its
-   * synchronous prefix-derived fallback title rather than surfacing the failure.
+   * #557 acceptance criterion 3, end to end: a chat's very first turn triggers a second LLM call
+   * (title generation) after the answer is already built - mocked here to fail, proving the answer
+   * {@code query()} returns is entirely unaffected and the chat keeps its synchronous
+   * prefix-derived fallback title rather than surfacing the failure. In production this second call
+   * genuinely runs off the request thread (#557); in this test class it runs synchronously instead
+   * (see {@link #chatTitleTaskExecutor}'s Javadoc, #616), so no {@code await()} is needed below -
+   * by the time {@code queryService.query(...)} returns, the failing title generation call has
+   * already happened.
    */
   @Test
   void queryAnswerSucceedsEvenWhenTitleGenerationFailsAfterwards() {
@@ -649,19 +674,11 @@ class QueryIntegrationTest {
     assertThat(response.getAnswer()).isEqualTo("Antwort trotz Fehler");
     assertThat(response.getChatTitle()).isEqualTo("Erste Frage");
 
-    // Gives the failing async title generation call time to run and confirms it left the
-    // synchronous fallback title untouched instead of throwing it away or leaving the chat
-    // without any title at all.
-    await()
-        .pollDelay(500, TimeUnit.MILLISECONDS)
-        .atMost(5, TimeUnit.SECONDS)
-        .untilAsserted(
-            () -> {
-              String title =
-                  jdbcTemplate.queryForObject(
-                      "SELECT title FROM chats WHERE id = ?", String.class, chatId);
-              assertThat(title).isEqualTo("Erste Frage");
-            });
+    // The (synchronous, #616) title generation call above already failed and left the fallback
+    // title untouched instead of throwing it away or leaving the chat without any title at all.
+    String title =
+        jdbcTemplate.queryForObject("SELECT title FROM chats WHERE id = ?", String.class, chatId);
+    assertThat(title).isEqualTo("Erste Frage");
   }
 
   private UUID insertSpaceWithMembership(UUID memberId) {
