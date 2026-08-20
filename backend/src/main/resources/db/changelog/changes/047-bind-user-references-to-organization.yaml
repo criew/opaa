@@ -1,0 +1,578 @@
+databaseChangeLog:
+  # #289 (see #356, #390): every table that carries organization_id and also references users(id)
+  # through a single-column foreign key can point at a user from a *different* organization without
+  # the database ever noticing - the same class of gap migration 046 closed for
+  # groups.parent_group_id, but users(id) has never carried the composite unique key a composite
+  # foreign key needs to reference. Solving that is this migration's first changeSet; everything
+  # else in this file only becomes possible once it exists.
+  #
+  # The 20.08.2026 inventory (see #289's third comment) counted 17 such user-referencing foreign
+  # keys, plus one non-user case that is possible without any prerequisite because
+  # uk_spaces_id_organization already exists (migration 008, the same pattern #400/migration 046
+  # used for groups): fk_chats_space. 18 foreign keys total, four changeSets, in dependency order:
+  #   1. 047-add-users-id-organization-unique-index - the prerequisite: uk_users_id_organization on
+  #      users (id, organization_id). Technically redundant (id alone is already unique as the
+  #      primary key) - it exists purely as a composite foreign key's referenced-columns target,
+  #      the same role uk_groups_id_organization and uk_spaces_id_organization already play.
+  #   2. 047-clear-cross-organization-user-references - defensive pre-cleanup, see below.
+  #   3. 047-bind-user-references-to-organization - the 14 foreign keys whose ON DELETE clause
+  #      (RESTRICT or CASCADE) survives an ordinary Liquibase addForeignKeyConstraint composite key
+  #      unchanged.
+  #   4. 047-bind-user-references-to-organization-set-null - the 4 foreign keys whose ON DELETE SET
+  #      NULL clause needs Postgres 15+'s column-list syntax via raw SQL, exactly like migration 046
+  #      did for fk_groups_parent_group_organization - see that changeSet's comment for why a plain
+  #      (whole-row) SET NULL is not an option once organization_id (NOT NULL) joins the key.
+  #
+  # --- Defensive pre-cleanup (changeSet 2) ---
+  #
+  # Only one organization exists in production today (see #356/#289), so none of the following is
+  # expected to touch any row - it exists so that a genuine violation, if one ever crept in through
+  # a path this feature's tests do not cover, fails the migration with a clear, deliberate outcome
+  # instead of an opaque constraint-violation error mid-ALTER. Three different treatments, chosen
+  # per column, mirroring 046-clear-cross-organization-parent-groups:
+  #
+  #   - Membership/grant rows (space_memberships.user_id, group_memberships.user_id,
+  #     asset_grants.subject_user_id, audit_incident_scope_grants.*, audit_actor_pseudonyms.user_id):
+  #     the row IS the cross-organization violation - a membership, a direct grant, an incident-scope
+  #     grant, or a pseudonym mapping naming a foreign user is not a fact worth keeping in any form,
+  #     so the row is deleted outright. This matches 046's own instinct (though 046 nulled a column
+  #     because groups.parent_group_id is optional; these rows have no such "keep the row, drop the
+  #     link" option since the user reference *is* the row's entire content).
+  #   - Nullable, non-check-constrained attribution columns (documents.uploaded_by_user_id,
+  #     asset_grants.granted_by_user_id, asset_grant_history.actor_user_id,
+  #     group_membership_history.actor_user_id, library_visibility_history.actor_user_id): these
+  #     record *who did something*, not *what was done* - nulling them loses only the "by whom"
+  #     metadata, exactly the same reasoning fk_documents_uploaded_by_user's own ON DELETE SET NULL
+  #     already applies at delete time (see migration 020's comment). None of the five is tied to a
+  #     CHECK constraint that would reject NULL.
+  #   - Everything else (spaces.owner_id, knowledge_libraries.owner_user_id,
+  #     asset_grant_history.subject_user_id, group_membership_history.user_id, chats.author_id,
+  #     chats.space_id) gets no defensive treatment at all. Each is either a NOT NULL identity column
+  #     with no safe substitute value (a space or a chat cannot lose its owner/author), tied to a
+  #     CHECK constraint that would reject NULL (asset_grant_history.subject_user_id, via
+  #     chk_asset_grant_history_subject), or - group_membership_history.user_id and
+  #     asset_grant_history.subject_user_id both - an append-only Nachweisbarkeit row (#238,
+  #     docs/decisions/0016-loeschschicksal-rechtehistorie.md) that must never be deleted or altered
+  #     to fix a data problem, the same principle migration 018's own comment states for these two
+  #     columns staying RESTRICT rather than CASCADE. If a genuine violation exists in any of these
+  #     six, changeSet 3/4 below fails loudly, which is the correct outcome - it is not this
+  #     migration's job to invent a safe repair for that case.
+
+  - changeSet:
+      id: 047-add-users-id-organization-unique-index
+      author: opaa
+      comment: >
+        Composite unique key on users (id, organization_id), technically redundant given the
+        existing primary key on id alone - it exists solely so the 18 foreign keys below have a
+        (id, organization_id) target to reference, the same role uk_groups_id_organization
+        (migration 009) and uk_spaces_id_organization (migration 008) already play for groups and
+        spaces.
+      changes:
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: id, organization_id
+            constraintName: uk_users_id_organization
+      rollback:
+        - dropUniqueConstraint:
+            tableName: users
+            constraintName: uk_users_id_organization
+
+  - changeSet:
+      id: 047-clear-cross-organization-user-references
+      author: opaa
+      comment: >
+        Defensive pre-cleanup ahead of the composite foreign keys below - see this file's top-level
+        comment for the reasoning behind each of the three treatments. Expected to be a no-op in
+        production today (#289/#356: exactly one organization exists).
+      changes:
+        - sql:
+            comment: "Membership row IS the violation: delete it (space_memberships.user_id)."
+            sql: >
+              DELETE FROM space_memberships sm
+              USING users u
+              WHERE sm.user_id = u.id AND sm.organization_id <> u.organization_id;
+        - sql:
+            comment: "Membership row IS the violation: delete it (group_memberships.user_id)."
+            sql: >
+              DELETE FROM group_memberships gm
+              USING users u
+              WHERE gm.user_id = u.id AND gm.organization_id <> u.organization_id;
+        - sql:
+            comment: >
+              A direct USER grant naming a foreign-organization subject is not a right worth
+              keeping in any form: delete it (asset_grants.subject_user_id). subject_group_id rows
+              are untouched - fk_asset_grants_subject_group_organization (migration 013) already
+              binds them to the organization.
+            sql: >
+              DELETE FROM asset_grants ag
+              USING users u
+              WHERE ag.subject_type = 'USER'
+                AND ag.subject_user_id = u.id
+                AND ag.organization_id <> u.organization_id;
+        - sql:
+            comment: >
+              An incident-scope grant naming a foreign-organization subject, requester or approver
+              has no valid technical bound left: delete it
+              (audit_incident_scope_grants.subject_user_id/requested_by_user_id/approved_by_user_id).
+            sql: >
+              DELETE FROM audit_incident_scope_grants g
+              WHERE EXISTS (
+                      SELECT 1 FROM users u
+                      WHERE u.id = g.subject_user_id AND u.organization_id <> g.organization_id)
+                 OR EXISTS (
+                      SELECT 1 FROM users u
+                      WHERE u.id = g.requested_by_user_id AND u.organization_id <> g.organization_id)
+                 OR (g.approved_by_user_id IS NOT NULL AND EXISTS (
+                      SELECT 1 FROM users u
+                      WHERE u.id = g.approved_by_user_id AND u.organization_id <> g.organization_id));
+        - sql:
+            comment: >
+              A pseudonym mapping naming a foreign-organization user is not a fact worth keeping:
+              delete it (audit_actor_pseudonyms.user_id). audit_log itself is untouched - it has no
+              foreign key to this table (migration 017).
+            sql: >
+              DELETE FROM audit_actor_pseudonyms p
+              USING users u
+              WHERE p.user_id = u.id AND p.organization_id <> u.organization_id;
+        - sql:
+            comment: "Attribution metadata, not identity: null it (documents.uploaded_by_user_id)."
+            sql: >
+              UPDATE documents d
+              SET uploaded_by_user_id = NULL
+              FROM users u
+              WHERE d.uploaded_by_user_id = u.id AND d.organization_id <> u.organization_id;
+        - sql:
+            comment: "Attribution metadata, not identity: null it (asset_grants.granted_by_user_id)."
+            sql: >
+              UPDATE asset_grants ag
+              SET granted_by_user_id = NULL
+              FROM users u
+              WHERE ag.granted_by_user_id = u.id AND ag.organization_id <> u.organization_id;
+        - sql:
+            comment: >
+              Attribution metadata, not identity: null it (asset_grant_history.actor_user_id).
+            sql: >
+              UPDATE asset_grant_history h
+              SET actor_user_id = NULL
+              FROM users u
+              WHERE h.actor_user_id = u.id AND h.organization_id <> u.organization_id;
+        - sql:
+            comment: >
+              Attribution metadata, not identity: null it (group_membership_history.actor_user_id).
+            sql: >
+              UPDATE group_membership_history h
+              SET actor_user_id = NULL
+              FROM users u
+              WHERE h.actor_user_id = u.id AND h.organization_id <> u.organization_id;
+        - sql:
+            comment: >
+              Attribution metadata, not identity: null it (library_visibility_history.actor_user_id).
+            sql: >
+              UPDATE library_visibility_history h
+              SET actor_user_id = NULL
+              FROM users u
+              WHERE h.actor_user_id = u.id AND h.organization_id <> u.organization_id;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: which rows were cleared/nulled, and their original values, are not
+              recorded. Deliberate no-op, same reasoning as 046-clear-cross-organization-parent-groups
+              and 045-clear-rss-feed-state.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 047-bind-user-references-to-organization
+      author: opaa
+      comment: >
+        The 14 of the 18 foreign keys from this file's top-level comment whose ON DELETE clause
+        (RESTRICT or CASCADE) is unaffected by the composite key - an ordinary Liquibase
+        addForeignKeyConstraint step suffices for each, no raw SQL needed (unlike changeSet 4
+        below).
+      changes:
+        # spaces.owner_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: spaces
+            constraintName: fk_spaces_owner
+        - addForeignKeyConstraint:
+            baseTableName: spaces
+            baseColumnNames: owner_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_spaces_owner_organization
+            onDelete: RESTRICT
+        # space_memberships.user_id (CASCADE)
+        - dropForeignKeyConstraint:
+            baseTableName: space_memberships
+            constraintName: fk_space_memberships_user
+        - addForeignKeyConstraint:
+            baseTableName: space_memberships
+            baseColumnNames: user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_space_memberships_user_organization
+            onDelete: CASCADE
+        # group_memberships.user_id (CASCADE)
+        - dropForeignKeyConstraint:
+            baseTableName: group_memberships
+            constraintName: fk_group_memberships_user
+        - addForeignKeyConstraint:
+            baseTableName: group_memberships
+            baseColumnNames: user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_group_memberships_user_organization
+            onDelete: CASCADE
+        # knowledge_libraries.owner_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            constraintName: fk_knowledge_libraries_owner_user
+        - addForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            baseColumnNames: owner_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_knowledge_libraries_owner_user_organization
+            onDelete: RESTRICT
+        # asset_grants.subject_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_subject_user
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: subject_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_asset_grants_subject_user_organization
+            onDelete: RESTRICT
+        # asset_grants.granted_by_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_granted_by_user
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: granted_by_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_asset_grants_granted_by_user_organization
+            onDelete: RESTRICT
+        # audit_actor_pseudonyms.user_id (CASCADE)
+        - dropForeignKeyConstraint:
+            baseTableName: audit_actor_pseudonyms
+            constraintName: fk_audit_actor_pseudonyms_user
+        - addForeignKeyConstraint:
+            baseTableName: audit_actor_pseudonyms
+            baseColumnNames: user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_audit_actor_pseudonyms_user_organization
+            onDelete: CASCADE
+        # audit_incident_scope_grants.subject_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_subject
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: subject_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_audit_incident_scope_grants_subject_organization
+            onDelete: RESTRICT
+        # audit_incident_scope_grants.requested_by_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_requester
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: requested_by_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_audit_incident_scope_grants_requester_organization
+            onDelete: RESTRICT
+        # audit_incident_scope_grants.approved_by_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_approver
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: approved_by_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_audit_incident_scope_grants_approver_organization
+            onDelete: RESTRICT
+        # asset_grant_history.subject_user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            constraintName: fk_asset_grant_history_subject_user
+        - addForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            baseColumnNames: subject_user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_asset_grant_history_subject_user_organization
+            onDelete: RESTRICT
+        # group_membership_history.user_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: group_membership_history
+            constraintName: fk_group_membership_history_user
+        - addForeignKeyConstraint:
+            baseTableName: group_membership_history
+            baseColumnNames: user_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_group_membership_history_user_organization
+            onDelete: RESTRICT
+        # chats.author_id (RESTRICT)
+        - dropForeignKeyConstraint:
+            baseTableName: chats
+            constraintName: fk_chats_author
+        - addForeignKeyConstraint:
+            baseTableName: chats
+            baseColumnNames: author_id, organization_id
+            referencedTableName: users
+            referencedColumnNames: id, organization_id
+            constraintName: fk_chats_author_organization
+            onDelete: RESTRICT
+        # chats.space_id (RESTRICT) - not user-referencing, but possible without any prerequisite
+        # since uk_spaces_id_organization already exists (migration 008); see this file's
+        # top-level comment.
+        - dropForeignKeyConstraint:
+            baseTableName: chats
+            constraintName: fk_chats_space
+        - addForeignKeyConstraint:
+            baseTableName: chats
+            baseColumnNames: space_id, organization_id
+            referencedTableName: spaces
+            referencedColumnNames: id, organization_id
+            constraintName: fk_chats_space_organization
+            onDelete: RESTRICT
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: chats
+            constraintName: fk_chats_space_organization
+        - addForeignKeyConstraint:
+            baseTableName: chats
+            baseColumnNames: space_id
+            referencedTableName: spaces
+            referencedColumnNames: id
+            constraintName: fk_chats_space
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: chats
+            constraintName: fk_chats_author_organization
+        - addForeignKeyConstraint:
+            baseTableName: chats
+            baseColumnNames: author_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_chats_author
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: group_membership_history
+            constraintName: fk_group_membership_history_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: group_membership_history
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_group_membership_history_user
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            constraintName: fk_asset_grant_history_subject_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: asset_grant_history
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grant_history_subject_user
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_approver_organization
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: approved_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_approver
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_requester_organization
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: requested_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_requester
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            constraintName: fk_audit_incident_scope_grants_subject_organization
+        - addForeignKeyConstraint:
+            baseTableName: audit_incident_scope_grants
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_incident_scope_grants_subject
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: audit_actor_pseudonyms
+            constraintName: fk_audit_actor_pseudonyms_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: audit_actor_pseudonyms
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_audit_actor_pseudonyms_user
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_granted_by_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: granted_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grants_granted_by_user
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: asset_grants
+            constraintName: fk_asset_grants_subject_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: asset_grants
+            baseColumnNames: subject_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_asset_grants_subject_user
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            constraintName: fk_knowledge_libraries_owner_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: knowledge_libraries
+            baseColumnNames: owner_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_knowledge_libraries_owner_user
+            onDelete: RESTRICT
+        - dropForeignKeyConstraint:
+            baseTableName: group_memberships
+            constraintName: fk_group_memberships_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: group_memberships
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_group_memberships_user
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
+            baseTableName: space_memberships
+            constraintName: fk_space_memberships_user_organization
+        - addForeignKeyConstraint:
+            baseTableName: space_memberships
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_space_memberships_user
+            onDelete: CASCADE
+        - dropForeignKeyConstraint:
+            baseTableName: spaces
+            constraintName: fk_spaces_owner_organization
+        - addForeignKeyConstraint:
+            baseTableName: spaces
+            baseColumnNames: owner_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_spaces_owner
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: 047-bind-user-references-to-organization-set-null
+      author: opaa
+      comment: >
+        The remaining 4 of the 18 foreign keys from this file's top-level comment: ON DELETE SET
+        NULL composite keys need Postgres 15+'s column-list syntax
+        ("ON DELETE SET NULL (<column>)"), the same reasoning migration 046's own bind changeSet
+        documents in full - organization_id is NOT NULL and belongs to the row itself, not to the
+        deleted user, so the plain (whole-row) SET NULL that addForeignKeyConstraint would generate
+        for a composite key is not an option: it would try to null organization_id too and fail
+        that NOT NULL constraint on every referenced user's deletion. Each rollback restores the
+        original single-column foreign key; it always succeeds because the composite constraint it
+        replaces is strictly stronger, so no row can violate the weaker one.
+      changes:
+        - sql:
+            comment: "documents.uploaded_by_user_id (migration 020)"
+            sql: >
+              ALTER TABLE documents DROP CONSTRAINT fk_documents_uploaded_by_user;
+              ALTER TABLE documents
+              ADD CONSTRAINT fk_documents_uploaded_by_user_organization
+              FOREIGN KEY (uploaded_by_user_id, organization_id)
+              REFERENCES users (id, organization_id)
+              ON DELETE SET NULL (uploaded_by_user_id);
+        - sql:
+            comment: "asset_grant_history.actor_user_id (migration 018)"
+            sql: >
+              ALTER TABLE asset_grant_history DROP CONSTRAINT fk_asset_grant_history_actor_user;
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT fk_asset_grant_history_actor_user_organization
+              FOREIGN KEY (actor_user_id, organization_id)
+              REFERENCES users (id, organization_id)
+              ON DELETE SET NULL (actor_user_id);
+        - sql:
+            comment: "group_membership_history.actor_user_id (migration 018)"
+            sql: >
+              ALTER TABLE group_membership_history
+              DROP CONSTRAINT fk_group_membership_history_actor_user;
+              ALTER TABLE group_membership_history
+              ADD CONSTRAINT fk_group_membership_history_actor_user_organization
+              FOREIGN KEY (actor_user_id, organization_id)
+              REFERENCES users (id, organization_id)
+              ON DELETE SET NULL (actor_user_id);
+        - sql:
+            comment: "library_visibility_history.actor_user_id (migration 018)"
+            sql: >
+              ALTER TABLE library_visibility_history
+              DROP CONSTRAINT fk_library_visibility_history_actor_user;
+              ALTER TABLE library_visibility_history
+              ADD CONSTRAINT fk_library_visibility_history_actor_user_organization
+              FOREIGN KEY (actor_user_id, organization_id)
+              REFERENCES users (id, organization_id)
+              ON DELETE SET NULL (actor_user_id);
+      rollback:
+        - sql:
+            sql: >
+              ALTER TABLE library_visibility_history
+              DROP CONSTRAINT fk_library_visibility_history_actor_user_organization;
+              ALTER TABLE library_visibility_history
+              ADD CONSTRAINT fk_library_visibility_history_actor_user
+              FOREIGN KEY (actor_user_id)
+              REFERENCES users (id)
+              ON DELETE SET NULL;
+        - sql:
+            sql: >
+              ALTER TABLE group_membership_history
+              DROP CONSTRAINT fk_group_membership_history_actor_user_organization;
+              ALTER TABLE group_membership_history
+              ADD CONSTRAINT fk_group_membership_history_actor_user
+              FOREIGN KEY (actor_user_id)
+              REFERENCES users (id)
+              ON DELETE SET NULL;
+        - sql:
+            sql: >
+              ALTER TABLE asset_grant_history
+              DROP CONSTRAINT fk_asset_grant_history_actor_user_organization;
+              ALTER TABLE asset_grant_history
+              ADD CONSTRAINT fk_asset_grant_history_actor_user
+              FOREIGN KEY (actor_user_id)
+              REFERENCES users (id)
+              ON DELETE SET NULL;
+        - sql:
+            sql: >
+              ALTER TABLE documents
+              DROP CONSTRAINT fk_documents_uploaded_by_user_organization;
+              ALTER TABLE documents
+              ADD CONSTRAINT fk_documents_uploaded_by_user
+              FOREIGN KEY (uploaded_by_user_id)
+              REFERENCES users (id)
+              ON DELETE SET NULL;
