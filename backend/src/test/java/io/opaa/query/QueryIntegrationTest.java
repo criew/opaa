@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -589,6 +591,45 @@ class QueryIntegrationTest {
                         ((org.springframework.web.server.ResponseStatusException) ex)
                             .getStatusCode())
                     .isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN));
+  }
+
+  /**
+   * #557 acceptance criterion 3, end to end: a chat's very first turn triggers a second,
+   * asynchronous LLM call (title generation) after the answer is already built - mocked here to
+   * fail, proving the answer {@code query()} returns is entirely unaffected and the chat keeps its
+   * synchronous prefix-derived fallback title rather than surfacing the failure.
+   */
+  @Test
+  void queryAnswerSucceedsEvenWhenTitleGenerationFailsAfterwards() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+
+    var answerResponse =
+        new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort trotz Fehler"))));
+    // First call answers the question; every call after that (title generation) fails.
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answerResponse)
+        .thenThrow(new RuntimeException("Titelmodell nicht erreichbar"));
+
+    QueryResponse response =
+        queryService.query("Erste Frage", chatId, userId, true, java.util.List.of());
+
+    assertThat(response.getAnswer()).isEqualTo("Antwort trotz Fehler");
+    assertThat(response.getChatTitle()).isEqualTo("Erste Frage");
+
+    // Gives the failing async title generation call time to run and confirms it left the
+    // synchronous fallback title untouched instead of throwing it away or leaving the chat
+    // without any title at all.
+    await()
+        .pollDelay(500, TimeUnit.MILLISECONDS)
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String title =
+                  jdbcTemplate.queryForObject(
+                      "SELECT title FROM chats WHERE id = ?", String.class, chatId);
+              assertThat(title).isEqualTo("Erste Frage");
+            });
   }
 
   private UUID insertSpaceWithMembership(UUID memberId) {

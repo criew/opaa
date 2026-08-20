@@ -3,6 +3,9 @@ package io.opaa.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.ChatCreateRequest;
@@ -26,15 +29,24 @@ import io.opaa.space.SpaceVisibility;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -69,10 +81,17 @@ class ChatServiceIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  // #557: ChatService#appendTurn now triggers ChatTitleGenerationService's real, Spring-managed
+  // LLM call on a chat's first turn - without this mock, every appendTurn test in this class would
+  // attempt a genuine call against whichever provider the active profile configures.
+  @MockitoBean private ChatModel chatModel;
+
   private UUID organizationA;
 
   @BeforeEach
   void setUp() {
+    // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null.
+    when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     chatMessageRepository.deleteAll();
     chatRepository.deleteAll();
     spaceMembershipRepository.deleteAll();
@@ -357,6 +376,146 @@ class ChatServiceIntegrationTest {
     assertThat(detail.getTitle()).isEqualTo("Mein Titel");
   }
 
+  /** #557 acceptance criterion 1: the first answer in a new chat gets an LLM-generated title. */
+  @Test
+  void appendTurnAsynchronouslyAppliesAnLlmGeneratedTitleOnTheFirstTurn() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            new ChatResponse(
+                List.of(new Generation(new AssistantMessage("Rückstellung Altlastensanierung")))));
+
+    chatService.appendTurn(
+        chat,
+        "Wie hoch ist die Rückstellung für Altlastensanierung?",
+        "Die Rückstellung beträgt 42.000 EUR.",
+        List.of());
+
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(chatService.getChat(chat.getId(), author).getTitle())
+                    .isEqualTo("Rückstellung Altlastensanierung"));
+  }
+
+  /**
+   * #557 acceptance criterion 2 / #561 review nit: a title the user set - even in the narrow window
+   * between the question being asked and the async title generation actually completing - always
+   * wins. Synchronized on an observable event, not a fixed wait: the mocked LLM call signals {@code
+   * llmCallStarted} the instant it is invoked, then blocks on {@code renameApplied} until this test
+   * explicitly releases it - so the rename below is deterministically guaranteed to commit while
+   * {@link ChatTitleGenerationService#generateTitleAsync} is genuinely still in flight, not merely
+   * "probably, if the machine isn't too slow today" the way a fixed {@code pollDelay} against a
+   * fixed {@code Thread.sleep} would only probabilistically guarantee.
+   */
+  @Test
+  void appendTurnNeverOverwritesATitleRenamedWhileGenerationIsStillInFlight() throws Exception {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    CountDownLatch llmCallStarted = new CountDownLatch(1);
+    CountDownLatch renameApplied = new CountDownLatch(1);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            invocation -> {
+              llmCallStarted.countDown();
+              assertThat(renameApplied.await(5, TimeUnit.SECONDS))
+                  .as("the test must release the blocked LLM call within the timeout")
+                  .isTrue();
+              return new ChatResponse(List.of(new Generation(new AssistantMessage("LLM-Titel"))));
+            });
+
+    chatService.appendTurn(chat, "Frage", "Antwort", List.of());
+    assertThat(llmCallStarted.await(5, TimeUnit.SECONDS))
+        .as("generateTitleAsync must have called the LLM by now")
+        .isTrue();
+
+    chatService.updateChat(
+        chat.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+    renameApplied.countDown();
+
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(chatService.getChat(chat.getId(), author).getTitle())
+                    .isEqualTo("Mein eigener Titel"));
+  }
+
+  /**
+   * #561 review, finding 2, Interleaving (a): {@code findById -> PATCH sets CUSTOM -> save writes
+   * the title AND title_source=GENERATED back}. Deterministic, no timing involved at all - the
+   * atomic {@link ChatRepository#applyGeneratedTitleIfGenerated} update itself is the fix, so
+   * simply performing the rename (fully committed) before attempting the generated-title write
+   * reproduces the exact interleaving regardless of when either would happen to run in production.
+   */
+  @Test
+  void applyGeneratedTitleIfGeneratedNeverOverwritesATitleThatBecameCustomInTheMeantime() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.updateChat(
+        chat.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+
+    int updated = chatRepository.applyGeneratedTitleIfGenerated(chat.getId(), "LLM-Titel");
+
+    assertThat(updated).isZero();
+    Chat reloaded = chatRepository.findById(chat.getId()).orElseThrow();
+    assertThat(reloaded.getTitle()).isEqualTo("Mein eigener Titel");
+    assertThat(reloaded.getTitleSource()).isEqualTo(TitleSource.CUSTOM);
+  }
+
+  /**
+   * #561 review, finding 2, Interleaving (b): {@code QueryService#query} loads a {@link Chat}
+   * before retrieval and LLM answer generation (which can take seconds); a concurrent {@code PATCH}
+   * renaming the chat in that window used to be clobbered when {@code appendTurn} wrote that stale
+   * in-memory snapshot back via a full merge {@code save()}. {@code staleSnapshot} here plays
+   * exactly that role: it is handed to {@code appendTurn} still carrying {@code title = null}, even
+   * though the chat was already renamed (and is CUSTOM) in the database by the time this call
+   * happens - deterministic, no timing involved, since {@code appendTurn}'s targeted, atomic
+   * updates (see {@link ChatRepository}'s Javadoc) never read anything from the {@code Chat}
+   * argument's own title/titleSource fields in the first place.
+   */
+  @Test
+  void appendTurnNeverClobbersAConcurrentRenameEvenGivenAStaleInMemoryChatSnapshot() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat staleSnapshot =
+        chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    chatService.updateChat(
+        staleSnapshot.getId(), author, new ChatUpdateRequest().title("Mein eigener Titel"));
+
+    chatService.appendTurn(staleSnapshot, "Frage", "Antwort", List.of());
+
+    ChatDetail detail = chatService.getChat(staleSnapshot.getId(), author);
+    assertThat(detail.getTitle()).isEqualTo("Mein eigener Titel");
+  }
+
+  /**
+   * #557 acceptance criterion 3: an LLM failure during title generation never surfaces - the
+   * synchronous prefix-derived fallback {@code appendTurn} already committed stands unchanged.
+   */
+  @Test
+  void appendTurnKeepsTheFallbackTitleWhenLlmTitleGenerationFails() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("LLM nicht erreichbar"));
+
+    chatService.appendTurn(chat, "Wie hoch ist die Rückstellung?", "42.000 EUR.", List.of());
+
+    await()
+        .pollDelay(500, TimeUnit.MILLISECONDS)
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(chatService.getChat(chat.getId(), author).getTitle())
+                    .isEqualTo("Wie hoch ist die Rückstellung?"));
+  }
+
   @Test
   void appendTurnOrdersMessagesBySequenceAndTouchesUpdatedAt() {
     UUID author = createUser();
@@ -366,10 +525,10 @@ class ChatServiceIntegrationTest {
 
     chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
     // #525 review round 2, finding/nit 1: the first turn's title-set already produces an UPDATE
-    // by itself (deriveTitleFromFirstQuestionIfAbsent), so comparing against the pre-turn
-    // updatedAt would pass even without touch() - the assertion that actually exercises touch()
-    // must compare against the state *after* a turn that changes nothing else, i.e. the second
-    // one, whose only field-level change is touch()'s own timestamp.
+    // by itself (ChatRepository#deriveTitleFromFirstQuestionIfAbsent), so comparing against the
+    // pre-turn updatedAt would pass even without the separate touch() UPDATE - the assertion that
+    // actually exercises touch() must compare against the state *after* a turn that changes
+    // nothing else, i.e. the second one, whose only field-level change is that timestamp.
     Chat afterFirstTurn = chatRepository.findById(chat.getId()).orElseThrow();
     java.time.Instant updatedAtAfterFirstTurn = afterFirstTurn.getUpdatedAt();
 

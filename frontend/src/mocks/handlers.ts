@@ -47,6 +47,22 @@ export function resetDocumentMockState() {
   resetMockLibraryDocuments()
 }
 
+/**
+ * Mirrors Chat#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitle (#557): if the chat
+ * exists and has no title yet, derives one (mock stand-in for the real LLM title) and persists it
+ * on the mock chat; an existing title - whether user-set or already derived - is never
+ * overwritten. Returns null for a chatId with no matching mock chat (an ephemeral query).
+ */
+function applyMockChatTitle(chatId: string, question: string): string | null {
+  const chat = mockChatDetails[chatId]
+  if (!chat) return null
+  if (chat.title) return chat.title
+  const generated = question.trim().split(/\s+/).slice(0, 6).join(' ')
+  chat.title = generated
+  chat.updatedAt = new Date().toISOString()
+  return generated
+}
+
 export function resetGrantMockState() {
   resetMockLibraryGrants()
 }
@@ -212,6 +228,11 @@ export const handlers = [
         { status: 400 },
       )
     }
+    const chatId = body.chatId ?? crypto.randomUUID()
+    // Mirrors ChatService#appendTurn (#557): a title is only ever derived once - never overwriting
+    // one already present, whether that is a CUSTOM title the user set or a title a previous turn
+    // already derived.
+    const chatTitle = applyMockChatTitle(chatId, body.question)
     // Mirrors QueryService (#526): useKnowledge=false with no (or only unreadable) libraryIds
     // performs no retrieval - without this branch, mock/dev mode could never show the "answered
     // without knowledge" hint that #528 added to the chat UI.
@@ -225,13 +246,15 @@ export const handlers = [
           durationMs: 120,
           answeredWithoutKnowledge: true,
         },
-        chatId: body.chatId ?? crypto.randomUUID(),
+        chatId,
+        chatTitle,
       })
     }
     const mockResponse = getRandomMockResponse()
     return HttpResponse.json({
       ...mockResponse,
-      chatId: body.chatId ?? crypto.randomUUID(),
+      chatId,
+      chatTitle,
     })
   }),
 

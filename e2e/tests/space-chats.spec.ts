@@ -3,9 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from '../fixtures/auth'
 import {
   askQuestion,
+  chatSidebarEntries,
   createLibraryWithDocument,
   expectAnyCitedSource,
   expectCitedExclusively,
+  expectTopSidebarChatToBeNamed,
   shareLibraryWithPerson,
   startFreshChat,
 } from '../fixtures/chat'
@@ -49,22 +51,27 @@ const DOCUMENT_B_NAME = 'chatdokument-b.txt'
 // collide with a leftover library/chat of the same name.
 const runId = Date.now()
 
-// Every name/question that a test persists (a library, a chat and its title-deriving first
-// question) is additionally suffixed with the attempt's retry count via uniqueId below - not just
-// runId. playwright.config.ts retries once in CI; a retried test re-runs from scratch, but
-// whatever the *previous*, failed attempt already persisted (a chat with the same title, a
-// library with the same name) is still sitting in the database - a plain runId suffix, computed
-// once at module load and shared across every attempt, would not tell those apart, and assertions
-// that require exactly one match (e.g. an exact chat title in the sidebar list) would then find
-// two. Including testInfo.retry makes every attempt's data distinct instead.
+// Every name/question that a test persists (a library, a chat and its first question) is
+// additionally suffixed with the attempt's retry count via uniqueId below - not just runId.
+// playwright.config.ts retries once in CI; a retried test re-runs from scratch, but whatever the
+// *previous*, failed attempt already persisted (a chat with the same question, a library with the
+// same name) is still sitting in the database - a plain runId suffix, computed once at module load
+// and shared across every attempt, would not tell those apart, and assertions that require exactly
+// one match (e.g. an exact question in the message list) would then find two. Including
+// testInfo.retry makes every attempt's data distinct instead.
 function uniqueId(testInfo: TestInfo): string {
   return `${runId}-${testInfo.retry}`
 }
 
-// io.opaa.chat.ChatService#deriveTitle sets a chat's title from its first question verbatim
-// whenever that question is under 80 characters (truncated with an ellipsis above that) - every
-// question below stays comfortably under that, and unique per attempt (see uniqueId), so the
-// chat's title in the chat list is exactly the question text, no truncation to account for.
+// #557 review follow-up (PR #561): a chat's title in the sidebar is no longer its first question
+// verbatim - io.opaa.chat.ChatService#deriveTitle still sets that as a synchronous fallback, but
+// io.opaa.chat.ChatTitleGenerationService then asynchronously replaces it with an LLM-generated
+// one. The deterministic KI stub this suite runs against (ai-stub/server.mjs) answers every
+// title-generation prompt with the exact same fixed text, so - unlike the question text, which
+// uniqueId above keeps unique per chat - the *sidebar's* title can no longer identify one specific
+// chat among several; see chatSidebarEntryCount/expectTopSidebarChatToBeNamed in fixtures/chat.ts
+// for the position/count-based assertions used below instead. The question text itself remains a
+// reliable anchor for the chat's own message history in <main>, which the frontend never rewrites.
 
 /**
  * Opens the '@' mention popup for query and selects the suggestion matching libraryName exactly.
@@ -132,14 +139,18 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     await expect(page).toHaveURL(chatUrl)
     // AppShell.tsx renders the chat itself inside <main> and the space's chat list inside <nav>
-    // (Sidebar) - once the chat has a title, both show the same question text (see the module doc
-    // comment on deriveTitle), so every assertion below scopes to one or the other rather than the
-    // whole page, to stay a single, unambiguous match.
+    // (Sidebar). <main> still shows the question verbatim (#557 only ever rewrites the sidebar
+    // title, never the message history).
     await expect(page.getByRole('main').getByText(question)).toBeVisible()
     await expectAnyCitedSource(page)
     // The chat list (sidebar) reloads from the backend on a fresh page load - its entry is what
-    // proves the chat itself, not just this one still-open tab, was actually persisted.
-    await expect(page.getByRole('navigation').getByText(question, { exact: true })).toBeVisible()
+    // proves the chat itself, not just this one still-open tab, was actually persisted. #557
+    // review follow-up: no longer asserted via the question text (see the module doc comment on
+    // uniqueId/title generation) - this chat is the one most recently interacted with, so it is
+    // topmost in the sidebar (chatListStore's sortByLastUse); asserting that entry has a real,
+    // non-placeholder title proves both that it is listed at all and that title generation
+    // completed.
+    await expectTopSidebarChatToBeNamed(page)
   })
 
   test('2. @-Referenz schränkt die Suche auf die referenzierte Bibliothek ein', async (
@@ -226,7 +237,11 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const questionChat1 = `Frage im ersten Chat (${id})`
     const questionChat2 = `Frage im zweiten Chat (${id})`
     const main = page.getByRole('main')
-    const sidebar = page.getByRole('navigation')
+
+    // #557 review follow-up: captured before either chat exists, so the count-based assertions
+    // below (chat titles are no longer a reliable per-chat anchor, see the module doc comment) can
+    // check "exactly two more entries appeared" without needing an absolute baseline of zero.
+    const chatCountBefore = await chatSidebarEntries(page).count()
 
     await createLibraryWithDocument(page, libraryName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
 
@@ -251,11 +266,16 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat2)).toBeVisible()
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 
-    // Back to chat 1 via the sidebar list, then a reload (review finding on PR #554, nit 5): the
-    // list navigation alone would only prove in-memory Zustand-store state survives switching
-    // chats, not that chat 1's own history and (lack of) reference are actually persisted server-
-    // side, independent of chat 2's.
-    await sidebar.getByText(questionChat1, { exact: true }).click()
+    // Both chats are listed in the sidebar as two distinct entries (#557 review follow-up: no
+    // longer asserted via their title text, which - unlike the question text above - can end up
+    // identical for both, see the module doc comment on uniqueId/title generation).
+    await expect(chatSidebarEntries(page)).toHaveCount(chatCountBefore + 2)
+
+    // Back to chat 1 directly by URL (#557 review follow-up: a sidebar click keyed on chat 1's
+    // title text is no longer reliable, same reasoning as above), then a reload (review finding on
+    // PR #554, nit 5): the reload is what actually proves chat 1's own history and (lack of)
+    // reference are persisted server-side, independent of chat 2's - not the navigation method.
+    await page.goto(chat1Url)
     await expect(page).toHaveURL(chat1Url)
     await page.reload()
     await expect(page).toHaveURL(chat1Url)

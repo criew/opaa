@@ -10,6 +10,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -78,6 +79,7 @@ public class ChatService {
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final TransactionTemplate requiresNewTransactionTemplate;
+  private final ChatTitleGenerationService chatTitleGenerationService;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -86,7 +88,8 @@ public class ChatService {
       SpaceMembershipRepository spaceMembershipRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      ChatTitleGenerationService chatTitleGenerationService) {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
@@ -96,6 +99,7 @@ public class ChatService {
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.chatTitleGenerationService = chatTitleGenerationService;
   }
 
   @Transactional
@@ -253,14 +257,37 @@ public class ChatService {
    * on this method, precisely so a failed attempt's rollback cannot poison a subsequent one) and
    * recomputes the sequence from scratch, so a retry after losing the race simply picks the number
    * the winner just took.
+   *
+   * <p><b>#557 - asynchronous LLM title generation.</b> Once the retry loop above has committed the
+   * turn and the synchronous prefix-derived fallback title, this method triggers {@link
+   * ChatTitleGenerationService#generateTitleAsync} - but only when this turn was the chat's very
+   * first ({@code nextSequence == 0} on the attempt that finally succeeded) and a fresh read (see
+   * below) confirms the title is still {@link TitleSource#GENERATED} <em>right now</em>, not merely
+   * trusted from the possibly seconds-stale {@code chat} parameter (#561 review, finding 1/2 - see
+   * {@link ChatRepository}'s Javadoc on its {@code @Modifying} methods for the full staleness
+   * story). The trigger happens after the retry loop, i.e. after the writing transaction has
+   * already committed - {@code @Async} dispatches to a genuinely separate thread with no ambient
+   * transaction of its own regardless of where it is called from, but calling it only once the turn
+   * is durably persisted keeps the ordering easy to reason about.
+   *
+   * <p><b>Return value</b> (#561 review, finding 2): the chat's title exactly as this method itself
+   * committed it - {@code chat.getTitle()} would not do, since {@code appendTurnOnce} below no
+   * longer mutates {@code chat} in place (see its Javadoc); a plain, read-only {@code findById}
+   * after the write is the only way to see what was actually written, and carries none of the
+   * merge-clobber risk a write via that same read would.
+   *
+   * @return the chat's current title after this turn, or {@code null} if it no longer exists
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  public void appendTurn(Chat chat, String question, String answer, List<SourceReference> sources) {
+  public String appendTurn(
+      Chat chat, String question, String answer, List<SourceReference> sources) {
+    boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
       try {
-        requiresNewTransactionTemplate.executeWithoutResult(
-            status -> appendTurnOnce(chat, question, answer, sources));
-        return;
+        firstTurn =
+            requiresNewTransactionTemplate.execute(
+                status -> appendTurnOnce(chat.getId(), question, answer, sources));
+        break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
           throw e;
@@ -273,22 +300,34 @@ public class ChatService {
             e);
       }
     }
+    Chat current = chatRepository.findById(chat.getId()).orElse(null);
+    if (firstTurn && current != null && current.getTitleSource() == TitleSource.GENERATED) {
+      chatTitleGenerationService.generateTitleAsync(chat.getId(), question, answer);
+    }
+    return current != null ? current.getTitle() : null;
   }
 
-  private void appendTurnOnce(
-      Chat chat, String question, String answer, List<SourceReference> sources) {
-    int nextSequence = nextSequenceFor(chat.getId());
+  /**
+   * @return true if this turn was the chat's very first ({@code nextSequence == 0})
+   */
+  private boolean appendTurnOnce(
+      UUID chatId, String question, String answer, List<SourceReference> sources) {
+    int nextSequence = nextSequenceFor(chatId);
     chatMessageRepository.save(
-        new ChatMessage(chat.getId(), nextSequence, ChatRole.USER, question, null));
+        new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null));
     chatMessageRepository.save(
         new ChatMessage(
-            chat.getId(), nextSequence + 1, ChatRole.ASSISTANT, answer, serializeSources(sources)));
-    chat.deriveTitleFromFirstQuestionIfAbsent(deriveTitle(question));
-    // #525 review, finding/nit d: touch() forces updated_at even when neither the title nor any
-    // other chat field actually changed this turn - without it, the chat list's "sorted by last
-    // use" ordering (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
-    chat.touch();
-    chatRepository.save(chat);
+            chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializeSources(sources)));
+    // #561 review, finding 2: atomic, targeted UPDATEs (see ChatRepository's Javadoc) instead of a
+    // full-entity merge save() of the Chat instance QueryService#query loaded before retrieval and
+    // LLM answer generation - that would write back a stale title/title_source/every-other-column
+    // snapshot and clobber a concurrent PATCH rename landing in between.
+    chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, deriveTitle(question));
+    // #525 review, finding/nit d: bumps updated_at even when the title update above was a no-op
+    // (title already set) - without it, the chat list's "sorted by last use" ordering
+    // (findBySpaceIdAndAuthorIdOrderByUpdatedAtDesc) goes stale after the first turn.
+    chatRepository.touch(chatId, Instant.now());
+    return nextSequence == 0;
   }
 
   private int nextSequenceFor(UUID chatId) {

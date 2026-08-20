@@ -43,6 +43,38 @@ let chatLoadSequence = 0
 // intentionally not a fourth state yet - it lands with #203.
 export type SearchScope = 'all' | 'libraries' | 'none'
 
+// #557: the backend generates an LLM title asynchronously, after the answer is already returned
+// (see QueryResponse#chatTitle's Javadoc) - it is never present on the very turn that triggers it.
+// This is the frontend half of "Zuschnitt frei: nachgeladen": a single delayed reload of the chat
+// after a first turn's answer arrives, giving the backend's async generation a realistic window to
+// finish. Best-effort only - if it is not done yet, or the reload fails, the fallback title already
+// shown (from QueryResponse#chatTitle) simply stays.
+const TITLE_RELOAD_DELAY_MS = 2500
+
+function scheduleTitleReload(
+  get: () => ChatState,
+  set: (partial: Partial<ChatState>) => void,
+  chatId: string,
+  spaceId: string | null,
+): void {
+  setTimeout(() => {
+    // The user may have navigated to a different chat by the time this fires - applying a reload
+    // for a chat that is no longer active would silently resurrect stale state.
+    if (get().chatId !== chatId) return
+    getChat(chatId)
+      .then((detail) => {
+        if (get().chatId !== chatId) return
+        set({ title: detail.title ?? null })
+        if (spaceId) {
+          useChatListStore.getState().updateChatTitle(spaceId, chatId, detail.title ?? null)
+        }
+      })
+      .catch(() => {
+        // Best-effort refresh only - the fallback title already shown is left as is.
+      })
+  }, TITLE_RELOAD_DELAY_MS)
+}
+
 interface ChatState {
   /** The space the active (or about-to-be-created) chat lives in - null before any space is
    * known, e.g. right after login before ChatRedirect has resolved a default space. */
@@ -170,6 +202,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (question: string) => {
+    // #557: whether this is the chat's first-ever turn - captured before the optimistic user
+    // message below is pushed, since that would make messages.length always >= 1. Only a first
+    // turn triggers the backend's asynchronous LLM title generation, so only a first turn
+    // schedules the delayed reload that picks it up.
+    const isFirstTurn = get().messages.length === 0
+
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -236,11 +274,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [...state.messages, assistantMessage],
         isLoading: false,
         chatId: response.chatId,
+        // #557: the chat's current title right after this turn - still the mechanical prefix
+        // fallback on a first turn, see scheduleTitleReload above for how the LLM-derived title
+        // eventually replaces it.
+        title: response.chatTitle ?? state.title,
       }))
       if (spaceId) {
         // Moves the chat to the top of its space's list after every turn, mirroring the backend's
         // own updatedAt bump (#548 review, finding 4).
         useChatListStore.getState().touchChat(spaceId, response.chatId, new Date().toISOString())
+        if (response.chatTitle) {
+          useChatListStore.getState().updateChatTitle(spaceId, response.chatId, response.chatTitle)
+        }
+        if (isFirstTurn) {
+          scheduleTitleReload(get, set, response.chatId, spaceId)
+        }
       }
     } catch (err) {
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)

@@ -1,3 +1,14 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 033 - i.e. the schema exactly as it existed immediately before migration 034.
+#
+# Used by:
+# - Migration034AddChatTitleSourceTest, to build a realistic pre-migration database (via the real,
+#   versioned changelog files, not a hand-rolled schema) and then apply 034 in isolation. 034 needs
+#   the chats/chat_messages tables (032) it backfills against, but not knowledge_libraries' personal
+#   column (033, unrelated) - included here purely to keep the fixture chain contiguous, not because
+#   034 depends on it.
+#
+# See test-master-through-032.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -65,5 +76,3 @@ databaseChangeLog:
       file: db/changelog/changes/032-create-chats.yaml
   - include:
       file: db/changelog/changes/033-drop-knowledge-libraries-personal-flag.yaml
-  - include:
-      file: db/changelog/changes/034-add-chat-title-source.yaml

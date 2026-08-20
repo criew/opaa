@@ -166,6 +166,46 @@ class QueryServiceTest {
     verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
   }
 
+  /**
+   * #561: {@code ChatService#appendTurn} now returns the chat's title after the turn (rather than
+   * QueryService reading it back off the possibly-mutated {@link Chat} instance, which appendTurn
+   * no longer mutates - see that method's Javadoc) - QueryService simply forwards whatever the
+   * (here fully mocked) {@code chatService} returns.
+   */
+  @Test
+  void queryIncludesTheChatsCurrentTitleInTheResponse() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(conversationKey)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey)))
+        .thenReturn(chatResponse);
+    when(chatService.appendTurn(eq(chat), any(), any(), any())).thenReturn("Frage zur Frist");
+
+    QueryResponse response =
+        queryService.query("Frage zur Frist", chatId, currentUserId, true, List.of());
+
+    assertThat(response.getChatTitle()).isEqualTo("Frage zur Frist");
+  }
+
+  @Test
+  void queryLeavesChatTitleNullForAnEphemeralQuery() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getChatTitle()).isNull();
+  }
+
   @Test
   void queryUsesTheChatsRestrictedScopeWhenUseKnowledgeIsOff() {
     UUID otherReadableLibraryId = UUID.randomUUID();

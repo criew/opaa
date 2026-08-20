@@ -259,12 +259,22 @@ public class QueryService {
 
                 metrics.recordSuccess(tokenCount);
 
-                chat.ifPresent(c -> chatService.appendTurn(c, question, answer, sources));
+                // #561 review, finding 2: appendTurn no longer mutates the `chat` instance loaded
+                // above in place - its title/title_source writes go through atomic, targeted
+                // ChatRepository updates instead (see that method's Javadoc), so this `chat`
+                // reference would otherwise be stale here. appendTurn returns the chat's title as
+                // committed by its own atomic update - the fallback title on a first turn, never
+                // the LLM-derived title, which (deliberately, see ChatTitleGenerationService's
+                // Javadoc) generates asynchronously after this response is built.
+                String chatTitle =
+                    chat.map(c -> chatService.appendTurn(c, question, answer, sources))
+                        .orElse(null);
 
                 QueryMetadata metadata =
                     new QueryMetadata(model, tokenCount, durationMs)
                         .answeredWithoutKnowledge(answeredWithoutKnowledge);
-                return new QueryResponse(answer, sources, metadata, effectiveChatId);
+                return new QueryResponse(answer, sources, metadata, effectiveChatId)
+                    .chatTitle(chatTitle);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;

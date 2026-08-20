@@ -1,0 +1,84 @@
+databaseChangeLog:
+  # #557: distinguishes an LLM-derived chat title from one the user set explicitly (at creation or
+  # via PATCH), so ChatTitleGenerationService's post-answer title generation never overwrites a
+  # title the user chose - not even one set in the narrow window between a question being asked and
+  # its answer/title generation completing (see ChatService#appendTurn and
+  # ChatTitleGenerationService's Javadoc). GENERATED is the default: a brand-new chat and the
+  # prefix-derived fallback (ChatRepository#deriveTitleFromFirstQuestionIfAbsent) are both GENERATED
+  # until something more authoritative supersedes them - the LLM-derived title (still GENERATED,
+  # since it remains a system-derived title, not a user choice) or an explicit user title (CUSTOM,
+  # set by Chat#applyUpdate whenever a PATCH supplies a title, and by the constructor whenever
+  # ChatCreateRequest supplies one, including an explicit blank string).
+  #
+  # Two changeSets:
+  #   1. 034-add-chat-title-source          - the column itself, defaulting every row to GENERATED
+  #   2. 034-add-chat-title-source-backfill - #561 review nit: a *targeted* backfill for the one
+  #                                            pre-#557 case the column's default alone gets wrong
+  #
+  # Backfill reasoning: a chat with no messages yet cannot have had a title *derived* - the prefix
+  # fallback only ever runs from ChatService#appendTurn's first turn, and no LLM title generation
+  # existed before this feature. So a messageless chat that nonetheless already has a non-null title
+  # can only have gotten it explicitly, at creation - CUSTOM. A chat with messages and a non-null
+  # title is ambiguous (the title could be the pre-#557 prefix-derived default, or one set
+  # explicitly before or after the first turn) and is left GENERATED, the same one-time,
+  # forward-looking limitation the previous version of this migration accepted for every row: there
+  # is no data before this column existed to resolve that ambiguity, and leaving it GENERATED is the
+  # conservative choice - a wrongly-GENERATED title only risks being replaced by a nicer LLM title
+  # once (never again, since it becomes GENERATED-but-already-titled, exactly like every other
+  # chat this application creates from here on), while wrongly-CUSTOM would just as it always did
+  # before this feature.
+
+  - changeSet:
+      id: 034-add-chat-title-source
+      author: opaa
+      comment: >
+        Adds chats.title_source (#557) - GENERATED (default) or CUSTOM. See this file's top-level
+        comment for the full rationale and the historical-data caveat.
+      changes:
+        - addColumn:
+            tableName: chats
+            columns:
+              - column:
+                  name: title_source
+                  type: varchar(20)
+                  defaultValue: "GENERATED"
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: "Add check constraint for chat title_source values"
+            sql: >
+              ALTER TABLE chats
+              ADD CONSTRAINT chk_chats_title_source
+              CHECK (title_source IN ('GENERATED', 'CUSTOM'));
+      rollback:
+        - sql:
+            comment: "Drop check constraint for chat title_source values"
+            sql: >
+              ALTER TABLE chats
+              DROP CONSTRAINT IF EXISTS chk_chats_title_source;
+        - dropColumn:
+            tableName: chats
+            columnName: title_source
+
+  - changeSet:
+      id: 034-add-chat-title-source-backfill
+      author: opaa
+      comment: >
+        #561 review nit: a chat with a title but no messages yet cannot have gotten that title from
+        the (message-triggered) prefix fallback - it must have been set explicitly, at creation. See
+        this file's top-level comment for the full reasoning, including why a titled chat that
+        already has messages is deliberately left GENERATED.
+      changes:
+        - sql:
+            comment: "Backfill title_source=CUSTOM for messageless chats that already have a title"
+            sql: >
+              UPDATE chats
+              SET title_source = 'CUSTOM'
+              WHERE title IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM chat_messages WHERE chat_messages.chat_id = chats.id
+              );
+      rollback:
+        - sql:
+            comment: "Reset every chat back to the column's own GENERATED default"
+            sql: "UPDATE chats SET title_source = 'GENERATED';"

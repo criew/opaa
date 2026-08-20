@@ -1588,6 +1588,17 @@ components:
             The chat this turn was appended to, or - for an ephemeral query that supplied no
             chatId - a freshly generated id identifying only the in-memory conversation cache
             entry, not a persisted chat.
+        chatTitle:
+          type: string
+          nullable: true
+          description: >
+            The persisted chat's current title immediately after this turn (#557), or null for an
+            ephemeral query. On the very first turn this is still the mechanical prefix-of-the-
+            question fallback, never the LLM-derived title: title generation runs asynchronously
+            after the answer is returned, precisely so it can never delay this response - the
+            frontend picks up the LLM-derived title (if generation succeeds) on a later reload of
+            the chat, e.g. GET /chats/{chatId}.
+          example: Rückstellung für Altlastensanierung
 
     SourceReference:
       type: object
