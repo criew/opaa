@@ -61,11 +61,11 @@ public class DocumentIndexingService {
    * trigger while a run for this same library is still in progress (409). Only once all three pass
    * does a job actually start.
    *
-   * <p>The {@link IndexingJobService#isJobRunning(UUID)} check above is an optimization, not the
-   * only guard - two concurrent triggers can both pass it before either has inserted its row.
-   * {@link IndexingJobService#startJob(UUID)} closes that TOCTOU gap at the database level (#500
-   * review, finding 3, see that method's Javadoc), so the second of two racing triggers still gets
-   * 409, just from the database constraint instead of this in-memory check.
+   * <p>The {@link IndexingJobService#isJobRunning(UUID, UUID)} check above is an optimization, not
+   * the only guard - two concurrent triggers can both pass it before either has inserted its row.
+   * {@link IndexingJobService#startJob(UUID, UUID)} closes that TOCTOU gap at the database level
+   * (#500 review, finding 3, see that method's Javadoc), so the second of two racing triggers still
+   * gets 409, just from the database constraint instead of this in-memory check.
    *
    * <p><b>A full {@code indexingTaskExecutor} queue must not leave the just-inserted row {@code
    * RUNNING} forever (#501).</b> {@code executor.execute} is an {@code @Async} void method; when
@@ -82,12 +82,12 @@ public class DocumentIndexingService {
   public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId);
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
-    if (indexingJobService.isJobRunning(targetLibrary.getId())) {
+    if (indexingJobService.isJobRunning(targetLibrary.getId(), targetLibrary.getOrganizationId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf");
     }
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
-    var job = indexingJobService.startJob(targetLibrary.getId());
+    var job = indexingJobService.startJob(targetLibrary.getId(), targetLibrary.getOrganizationId());
     try {
       executor.execute(job.getId(), targetLibrary);
     } catch (TaskRejectedException e) {
@@ -119,7 +119,8 @@ public class DocumentIndexingService {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, currentUserId);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     boolean canSeeErrorDetail = libraryAccessService.canManage(library, currentUserId, systemAdmin);
-    return new IndexingStatusView(indexingJobService.getLatestJob(libraryId), canSeeErrorDetail);
+    return new IndexingStatusView(
+        indexingJobService.getLatestJob(libraryId, library.getOrganizationId()), canSeeErrorDetail);
   }
 
   /**
@@ -144,7 +145,7 @@ public class DocumentIndexingService {
     if (!libraryAccessService.canManage(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
     }
-    return indexingJobService.getRecentJobs(libraryId).stream()
+    return indexingJobService.getRecentJobs(libraryId, library.getOrganizationId()).stream()
         .map(
             job ->
                 new IndexingRunDetail(

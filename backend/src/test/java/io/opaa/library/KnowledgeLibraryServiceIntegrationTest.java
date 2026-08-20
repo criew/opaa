@@ -1258,6 +1258,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             new LibraryRequest("Laufende Indizierung", DocumentSourceType.UPLOAD), owner);
     IndexingJob job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(library.getId());
+    job.setOrganizationId(organizationA);
     indexingJobRepository.save(job);
 
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), owner, false))

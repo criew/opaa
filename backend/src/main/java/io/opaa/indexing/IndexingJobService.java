@@ -41,12 +41,15 @@ public class IndexingJobService {
   }
 
   /**
-   * Starts a new {@link JobStatus#RUNNING} run for {@code libraryId}.
+   * Starts a new {@link JobStatus#RUNNING} run for {@code libraryId}, recording {@code
+   * organizationId} on the job itself (#401) - the caller (currently only {@link
+   * DocumentIndexingService#triggerIndexing}) has already resolved and authorized {@code libraryId}
+   * within that organization, so this simply carries the fact forward onto the row.
    *
    * <p><b>#500 review, finding 3 (TOCTOU).</b> {@code DocumentIndexingService#triggerIndexing}'s
-   * own {@link #isJobRunning(UUID)} check and this insert are two separate statements with no lock
-   * between them, so two concurrent triggers for the same library can both pass that check before
-   * either has inserted its row. The database closes that gap: {@code
+   * own {@link #isJobRunning(UUID, UUID)} check and this insert are two separate statements with no
+   * lock between them, so two concurrent triggers for the same library can both pass that check
+   * before either has inserted its row. The database closes that gap: {@code
    * uk_indexing_jobs_library_running} (migration 028) is a partial unique index on {@code
    * (library_id) WHERE status = 'RUNNING'}, so at most one RUNNING row per library can ever exist.
    * {@link IndexingJobRepository#saveAndFlush} - not plain {@code save} - forces the insert (and
@@ -56,9 +59,10 @@ public class IndexingJobService {
    * case, so callers cannot tell which of the two guards actually caught it.
    */
   @Transactional
-  public IndexingJob startJob(UUID libraryId) {
+  public IndexingJob startJob(UUID libraryId, UUID organizationId) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
+    job.setOrganizationId(organizationId);
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -201,12 +205,16 @@ public class IndexingJobService {
   }
 
   /**
-   * The most recent run for {@code libraryId}, or empty if it never ran. Used both to answer the
-   * per-library status endpoint and, indirectly, by {@link #isJobRunning(UUID)} (#478).
+   * The most recent run for {@code libraryId} within {@code organizationId}, or empty if it never
+   * ran. Used both to answer the per-library status endpoint and, indirectly, by {@link
+   * #isJobRunning(UUID, UUID)} (#478). {@code organizationId} is a second, independent guard on top
+   * of {@code libraryId} (#401) - see {@link
+   * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
    */
   @Transactional(readOnly = true)
-  public Optional<IndexingJob> getLatestJob(UUID libraryId) {
-    return indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId);
+  public Optional<IndexingJob> getLatestJob(UUID libraryId, UUID organizationId) {
+    return indexingJobRepository.findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+        libraryId, organizationId);
   }
 
   /**
@@ -216,21 +224,27 @@ public class IndexingJobService {
    * pruning until its next run prunes them - {@link
    * IndexingJobRepository#findTop10ByLibraryIdOrderByStartedAtDesc}, not the unbounded {@code
    * findByLibraryIdOrderByStartedAtDesc} {@link #pruneOldRuns} itself uses, is what actually bounds
-   * this query (PR #604 review, finding 3).
+   * this query (PR #604 review, finding 3). {@code organizationId} is a second, independent guard
+   * on top of {@code libraryId} (#401) - see {@link
+   * IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
    */
   @Transactional(readOnly = true)
-  public List<IndexingJob> getRecentJobs(UUID libraryId) {
-    return indexingJobRepository.findTop10ByLibraryIdOrderByStartedAtDesc(libraryId);
+  public List<IndexingJob> getRecentJobs(UUID libraryId, UUID organizationId) {
+    return indexingJobRepository.findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+        libraryId, organizationId);
   }
 
   /**
-   * Whether a run for {@code libraryId} is currently in progress (#478: one running job per
-   * library, not one running job for the whole application - runs of different libraries no longer
-   * block each other).
+   * Whether a run for {@code libraryId} within {@code organizationId} is currently in progress
+   * (#478: one running job per library, not one running job for the whole application - runs of
+   * different libraries no longer block each other). {@code organizationId} is a second,
+   * independent guard on top of {@code libraryId} (#401) - see {@link
+   * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}'s Javadoc.
    */
   @Transactional(readOnly = true)
-  public boolean isJobRunning(UUID libraryId) {
-    return indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId);
+  public boolean isJobRunning(UUID libraryId, UUID organizationId) {
+    return indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+        JobStatus.RUNNING, libraryId, organizationId);
   }
 
   /**

@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -40,11 +41,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -93,6 +96,7 @@ class DocumentIndexingIntegrationTest {
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private IndexingJobRepository indexingJobRepository;
+  @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private QueryService queryService;
@@ -624,6 +628,153 @@ class DocumentIndexingIntegrationTest {
     assertThat(documentRepository.findByLibraryId(outsideAllowlistLibrary.getId())).isEmpty();
 
     libraryRepository.deleteById(outsideAllowlistLibrary.getId());
+  }
+
+  // --- #401: indexing_jobs organization boundary, exercised against two real organizations ---
+
+  /**
+   * #401 acceptance criteria: the status query answers only with the caller's own organization's
+   * runs. Proven at two independent layers against a real, two-organization database - not just the
+   * pre-existing library-ownership check ({@code
+   * DocumentIndexingService#loadLibraryInOrganization}, which already 404s a foreign library) but
+   * the {@code indexing_jobs} row's own {@code organization_id} (migration 049): {@link
+   * IndexingJobService#getLatestJob} for organization B asking about organization A's library must
+   * come back empty, exactly as if that library had never run at all - not merely blocked one layer
+   * up.
+   */
+  @Test
+  void statusQueryOnlyEverReturnsRunsBelongingToTheCallersOwnOrganization() throws IOException {
+    UUID organizationA = insertOrganization("Org A 401");
+    UUID organizationB = insertOrganization("Org B 401");
+    UUID userInOrganizationA = insertUser(organizationA, "401-user-a@example.com");
+    UUID userInOrganizationB = insertUser(organizationB, "401-user-b@example.com");
+    KnowledgeLibrary libraryInOrganizationA =
+        createLibraryAndGrantEditor(organizationA, userInOrganizationA, "401-org-a");
+
+    IndexingJob job = indexingJobService.startJob(libraryInOrganizationA.getId(), organizationA);
+
+    assertThat(
+            documentIndexingService
+                .getStatus(libraryInOrganizationA.getId(), userInOrganizationA, false)
+                .job()
+                .map(IndexingJob::getId))
+        .contains(job.getId());
+    // The same library, asked about by a user of a genuinely different organization: 404, not
+    // merely a different (empty) status - #436's "no grant at all looks like not found" applies
+    // here too, since organization B never held any grant on organization A's library.
+    assertThatThrownBy(
+            () ->
+                documentIndexingService.getStatus(
+                    libraryInOrganizationA.getId(), userInOrganizationB, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
+
+    // The second, independent guard this issue adds at the indexing_jobs row itself (#401): even
+    // asked directly, bypassing the library-ownership check above entirely, the same libraryId
+    // under the wrong organizationId comes back empty rather than leaking organization A's job.
+    assertThat(indexingJobService.getLatestJob(libraryInOrganizationA.getId(), organizationB))
+        .isEmpty();
+    assertThat(
+            indexingJobService
+                .getLatestJob(libraryInOrganizationA.getId(), organizationA)
+                .map(IndexingJob::getId))
+        .contains(job.getId());
+    assertThat(
+            indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+                JobStatus.RUNNING, libraryInOrganizationA.getId(), organizationB))
+        .isFalse();
+    assertThat(
+            indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+                JobStatus.RUNNING, libraryInOrganizationA.getId(), organizationA))
+        .isTrue();
+  }
+
+  /**
+   * #401 acceptance criteria: a running indexing job in one organization must not block a trigger
+   * in a different organization. #478 already scoped concurrency per library rather than globally,
+   * but that guarantee was previously only ever exercised with two libraries in the *same*
+   * organization (see {@code
+   * LibraryIndexingAuthorizationIntegrationTest#aSecondTriggerOfTheSameLibraryWhileRunningIsRejectedButAnotherLibraryRunsInParallel}).
+   * This proves it holds across a genuine organization boundary too.
+   */
+  @Test
+  void aRunningJobInOneOrganizationDoesNotBlockATriggerInAnotherOrganization() throws IOException {
+    UUID organizationA = insertOrganization("Org A 401 Concurrency");
+    UUID organizationB = insertOrganization("Org B 401 Concurrency");
+    UUID userInOrganizationA = insertUser(organizationA, "401-conc-user-a@example.com");
+    UUID userInOrganizationB = insertUser(organizationB, "401-conc-user-b@example.com");
+    KnowledgeLibrary libraryInOrganizationA =
+        createLibraryAndGrantEditor(organizationA, userInOrganizationA, "401-conc-org-a");
+    KnowledgeLibrary libraryInOrganizationB =
+        createLibraryAndGrantEditor(organizationB, userInOrganizationB, "401-conc-org-b");
+
+    // Seeds a RUNNING row directly (mirrors IndexingJobRecoveryIntegrationTest's
+    // seedOrphanedRunningJob) instead of relying on timing a real async run's RUNNING window -
+    // deterministic, and it is uk_indexing_jobs_library_running (migration 028) plus
+    // IndexingJobService#isJobRunning that this test actually needs held RUNNING, not a real
+    // completed indexing pass.
+    indexingJobService.startJob(libraryInOrganizationA.getId(), organizationA);
+
+    IndexingJob jobInOrganizationB =
+        documentIndexingService.triggerIndexing(
+            libraryInOrganizationB.getId(), userInOrganizationB, false);
+
+    assertThat(jobInOrganizationB.getStatus()).isEqualTo(JobStatus.RUNNING);
+    awaitJobCompletion(jobInOrganizationB);
+  }
+
+  private UUID insertOrganization(String name) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO organizations (id, name, created_at) VALUES (?, ?, now())", id, name);
+    return id;
+  }
+
+  private UUID insertUser(UUID organizationId, String email) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'test-issuer', ?, 'Test-Nutzer', now(), ?, ?)",
+        id,
+        "401-" + id,
+        email,
+        SystemRole.USER.name(),
+        organizationId);
+    return id;
+  }
+
+  private KnowledgeLibrary createLibraryAndGrantEditor(
+      UUID organizationId, UUID ownerId, String subdirectoryName) throws IOException {
+    Path libraryDir = sharedTempDir.resolve(subdirectoryName);
+    Files.createDirectories(libraryDir);
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                organizationId,
+                "Bibliothek " + subdirectoryName,
+                null,
+                ownerId,
+                LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                libraryDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    grantOwner(library.getId(), ownerId, organizationId);
+    return library;
+  }
+
+  private void grantOwner(UUID libraryId, UUID granteeId, UUID organizationId) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+            + " 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        libraryId,
+        organizationId,
+        granteeId);
   }
 
   private void awaitJobCompletion(IndexingJob job) {

@@ -39,7 +39,7 @@ class IndexingJobServiceTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class))).thenReturn(job);
 
-    IndexingJob result = service.startJob(UUID.randomUUID());
+    IndexingJob result = service.startJob(UUID.randomUUID(), UUID.randomUUID());
 
     assertThat(result.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(result.getStartedAt()).isNotNull();
@@ -52,9 +52,21 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
-    IndexingJob result = service.startJob(libraryId);
+    IndexingJob result = service.startJob(libraryId, UUID.randomUUID());
 
     assertThat(result.getLibraryId()).isEqualTo(libraryId);
+  }
+
+  @Test
+  void startJobRecordsTheOrganization() {
+    // #401 acceptance criteria: the indexing job records the organization it belongs to.
+    UUID organizationId = UUID.randomUUID();
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+
+    IndexingJob result = service.startJob(UUID.randomUUID(), organizationId);
+
+    assertThat(result.getOrganizationId()).isEqualTo(organizationId);
   }
 
   @Test
@@ -67,7 +79,7 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-    assertThatThrownBy(() -> service.startJob(libraryId))
+    assertThatThrownBy(() -> service.startJob(libraryId, UUID.randomUUID()))
         .isInstanceOf(ResponseStatusException.class)
         .hasFieldOrPropertyWithValue("statusCode", HttpStatus.CONFLICT)
         .hasMessageContaining("Für diese Bibliothek läuft bereits ein Indizierungslauf");
@@ -209,39 +221,100 @@ class IndexingJobServiceTest {
   @Test
   void getLatestJobReturnsEmptyWhenTheLibraryNeverRan() {
     UUID libraryId = UUID.randomUUID();
-    when(indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId))
+    UUID organizationId = UUID.randomUUID();
+    when(indexingJobRepository.findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+            libraryId, organizationId))
         .thenReturn(Optional.empty());
 
-    assertThat(service.getLatestJob(libraryId)).isEmpty();
+    assertThat(service.getLatestJob(libraryId, organizationId)).isEmpty();
   }
 
   @Test
   void getLatestJobReturnsTheLibrarysMostRecentJob() {
     UUID libraryId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.COMPLETED);
-    when(indexingJobRepository.findTopByLibraryIdOrderByStartedAtDesc(libraryId))
+    when(indexingJobRepository.findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+            libraryId, organizationId))
         .thenReturn(Optional.of(job));
 
-    assertThat(service.getLatestJob(libraryId)).contains(job);
+    assertThat(service.getLatestJob(libraryId, organizationId)).contains(job);
+  }
+
+  /**
+   * #401: reproduces the leak the issue describes at the service layer, independently of {@code
+   * DocumentIndexingService}'s own library-ownership check. Before the fix (see this test's own
+   * two-argument {@code startJob}/{@code getLatestJob} calls being reduced to one argument, and
+   * {@code IndexingJobRepository#findTopByLibraryIdOrderByStartedAtDesc} being called without
+   * {@code organizationId}), a caller who somehow obtained {@code libraryId} - e.g. through a
+   * future code path that does not itself re-check the library's organization - could read
+   * organization A's job for organization A's library while asking as organization B: {@code
+   * getLatestJob} would answer the same regardless of which organization asked, since {@code
+   * libraryId} alone determined the result. With the fix, the repository query is scoped to {@code
+   * (libraryId, organizationId)} together, so a mismatched organization id returns nothing, exactly
+   * like the library never having run at all.
+   */
+  @Test
+  void getLatestJobDoesNotLeakAJobToACallerFromADifferentOrganization() {
+    UUID libraryId = UUID.randomUUID();
+    UUID organizationOfTheJob = UUID.randomUUID();
+    UUID aDifferentOrganization = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobRepository.findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+            libraryId, organizationOfTheJob))
+        .thenReturn(Optional.of(job));
+    when(indexingJobRepository.findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+            libraryId, aDifferentOrganization))
+        .thenReturn(Optional.empty());
+
+    assertThat(service.getLatestJob(libraryId, organizationOfTheJob)).contains(job);
+    assertThat(service.getLatestJob(libraryId, aDifferentOrganization)).isEmpty();
   }
 
   @Test
-  void isJobRunningReflectsOnlyTheGivenLibrary() {
+  void isJobRunningReflectsOnlyTheGivenLibraryAndOrganization() {
     // #478: concurrency is per library - this must never ask about the whole indexing_jobs table.
     UUID libraryId = UUID.randomUUID();
-    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId))
+    UUID organizationId = UUID.randomUUID();
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, libraryId, organizationId))
         .thenReturn(true);
 
-    assertThat(service.isJobRunning(libraryId)).isTrue();
+    assertThat(service.isJobRunning(libraryId, organizationId)).isTrue();
   }
 
   @Test
   void isJobRunningReturnsFalseWhenTheLibraryHasNoRunningJob() {
     UUID libraryId = UUID.randomUUID();
-    when(indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId))
+    UUID organizationId = UUID.randomUUID();
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, libraryId, organizationId))
         .thenReturn(false);
 
-    assertThat(service.isJobRunning(libraryId)).isFalse();
+    assertThat(service.isJobRunning(libraryId, organizationId)).isFalse();
+  }
+
+  /**
+   * #401: the same defense-in-depth boundary as {@link
+   * #getLatestJobDoesNotLeakAJobToACallerFromADifferentOrganization}, applied to the concurrency
+   * check - a run genuinely {@code RUNNING} for {@code libraryId} under one organization must not
+   * report as running (and therefore block a trigger) for a different organization asking about the
+   * same {@code libraryId}.
+   */
+  @Test
+  void isJobRunningReturnsFalseForTheSameLibraryUnderADifferentOrganization() {
+    UUID libraryId = UUID.randomUUID();
+    UUID organizationOfTheRunningJob = UUID.randomUUID();
+    UUID aDifferentOrganization = UUID.randomUUID();
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, libraryId, organizationOfTheRunningJob))
+        .thenReturn(true);
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            JobStatus.RUNNING, libraryId, aDifferentOrganization))
+        .thenReturn(false);
+
+    assertThat(service.isJobRunning(libraryId, organizationOfTheRunningJob)).isTrue();
+    assertThat(service.isJobRunning(libraryId, aDifferentOrganization)).isFalse();
   }
 
   // --- #501: recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---

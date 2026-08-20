@@ -83,6 +83,17 @@ public class IndexingJob {
   @Column(name = "events_truncated_count")
   private int eventsTruncatedCount;
 
+  /**
+   * The organization this run belongs to (#401) - set once at {@link
+   * io.opaa.indexing.IndexingJobService#startJob}, mirroring {@link #libraryId} but never left
+   * unset going forward: unlike {@code libraryId} (nullable since migration 019's {@code ON DELETE
+   * SET NULL}), {@code organization_id} is {@code NOT NULL} at the database level (migration 049) -
+   * a run's organization must stay reconstructable even after its target library is deleted, which
+   * is exactly the case that made deriving it from {@link #libraryId} at query time insufficient.
+   */
+  @Column(name = "organization_id", nullable = false, updatable = false)
+  private UUID organizationId;
+
   protected IndexingJob() {}
 
   public IndexingJob(JobStatus status) {
@@ -186,5 +197,13 @@ public class IndexingJob {
 
   public void setEventsTruncatedCount(int eventsTruncatedCount) {
     this.eventsTruncatedCount = eventsTruncatedCount;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(UUID organizationId) {
+    this.organizationId = organizationId;
   }
 }

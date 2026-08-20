@@ -78,7 +78,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     vectorStore = mock(VectorStore.class);
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
-    when(indexingJobRepository.existsByStatusAndLibraryId(eq(JobStatus.RUNNING), any()))
+    when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+            eq(JobStatus.RUNNING), any(), any()))
         .thenReturn(false);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
 

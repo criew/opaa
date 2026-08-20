@@ -95,3 +95,5 @@ databaseChangeLog:
       file: db/changelog/changes/047-bind-user-references-to-organization.yaml
   - include:
       file: db/changelog/changes/048-bind-chat-library-references-to-organization.yaml
+  - include:
+      file: db/changelog/changes/049-bind-indexing-jobs-to-organization.yaml

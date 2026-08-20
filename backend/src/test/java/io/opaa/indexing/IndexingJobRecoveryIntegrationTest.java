@@ -120,6 +120,7 @@ class IndexingJobRecoveryIntegrationTest {
   private IndexingJob seedOrphanedRunningJob(UUID libraryId) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
+    job.setOrganizationId(Organization.DEFAULT_ID);
     return indexingJobRepository.saveAndFlush(job);
   }
 
@@ -132,6 +133,7 @@ class IndexingJobRecoveryIntegrationTest {
   private IndexingJob seedRunningJobWithHeartbeat(UUID libraryId, Duration heartbeatAge) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
+    job.setOrganizationId(Organization.DEFAULT_ID);
     job.setLastProgressAt(Instant.now().minus(heartbeatAge));
     return indexingJobRepository.saveAndFlush(job);
   }
@@ -163,8 +165,8 @@ class IndexingJobRecoveryIntegrationTest {
         .untilAsserted(
             () ->
                 assertThat(
-                        indexingJobRepository.existsByStatusAndLibraryId(
-                            JobStatus.RUNNING, library.getId()))
+                        indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+                            JobStatus.RUNNING, library.getId(), Organization.DEFAULT_ID))
                     .isFalse());
   }
 

@@ -13,36 +13,51 @@ import org.springframework.transaction.annotation.Transactional;
 public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> {
 
   /**
-   * The most recent run for {@code libraryId}, or empty if it never ran (#478: concurrency and
-   * status are per library, not global - see {@link IndexingJobService}).
+   * The most recent run for {@code libraryId} within {@code organizationId}, or empty if none
+   * matches (#478: concurrency and status are per library, not global - see {@link
+   * IndexingJobService}). {@code organizationId} is a second, independent guard on top of {@code
+   * libraryId} (#401): {@code libraryId} alone cannot name a library from a different organization
+   * (the composite foreign key from migration 049 forbids that at the database level for every row
+   * this method could possibly return), but this still requires the caller's own organization to
+   * match, rather than relying solely on whatever authorized {@code libraryId} in the first place.
    */
-  Optional<IndexingJob> findTopByLibraryIdOrderByStartedAtDesc(UUID libraryId);
+  Optional<IndexingJob> findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+      UUID libraryId, UUID organizationId);
 
   /**
-   * Whether a run for {@code libraryId} is currently {@link JobStatus#RUNNING} (#478): runs of
-   * different libraries never block each other any more, so this is scoped to one library rather
-   * than the whole {@code indexing_jobs} table.
+   * Whether a run for {@code libraryId} within {@code organizationId} is currently {@link
+   * JobStatus#RUNNING} (#478): runs of different libraries never block each other any more, so this
+   * is scoped to one library rather than the whole {@code indexing_jobs} table. {@code
+   * organizationId} is the same second guard {@link
+   * #findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc} documents (#401).
    */
-  boolean existsByStatusAndLibraryId(JobStatus status, UUID libraryId);
+  boolean existsByStatusAndLibraryIdAndOrganizationId(
+      JobStatus status, UUID libraryId, UUID organizationId);
 
   /**
    * Every run for {@code libraryId}, newest first (#513) - used only by {@code
    * IndexingJobService#pruneOldRuns}, which must see every row beyond the retained last 10 to
    * delete them. Never used to answer the run-history endpoint - see {@link
-   * #findTop10ByLibraryIdOrderByStartedAtDesc} for that (PR #604 review, finding 3): a
-   * Bestandsbibliothek with hundreds of historical rows predating this issue's retention pruning
-   * (older rows are only pruned going forward, on the next {@code startJob}) would otherwise load
-   * every one of them, plus one {@code IndexingRunEventRepository} query per row.
+   * #findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc} for that (PR #604 review, finding
+   * 3): a Bestandsbibliothek with hundreds of historical rows predating this issue's retention
+   * pruning (older rows are only pruned going forward, on the next {@code startJob}) would
+   * otherwise load every one of them, plus one {@code IndexingRunEventRepository} query per row.
+   * Not organization-scoped: {@code pruneOldRuns} is only ever called right after {@code startJob}
+   * inserted a row for a {@code libraryId} the caller already resolved and authorized, so every row
+   * this returns for that {@code libraryId} necessarily shares its organization already (#401).
    */
   List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
 
   /**
-   * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
-   * newest first (#513, PR #604 review finding 3) - bounded at the query itself rather than by
-   * truncating an unbounded list in Java, so a library with far more historical rows than the
-   * current retention limit never loads more of them than the endpoint actually returns.
+   * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}
+   * within {@code organizationId}, newest first (#513, PR #604 review finding 3) - bounded at the
+   * query itself rather than by truncating an unbounded list in Java, so a library with far more
+   * historical rows than the current retention limit never loads more of them than the endpoint
+   * actually returns. {@code organizationId} is the same second guard {@link
+   * #findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc} documents (#401).
    */
-  List<IndexingJob> findTop10ByLibraryIdOrderByStartedAtDesc(UUID libraryId);
+  List<IndexingJob> findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
+      UUID libraryId, UUID organizationId);
 
   /**
    * Fails every currently {@link JobStatus#RUNNING} row, unconditionally (#501). Called once, right
