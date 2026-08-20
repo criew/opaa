@@ -1,0 +1,325 @@
+# Design-Guidelines
+
+Verbindliche Gestaltungsregeln der OPAA-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
+Frontend-PR; Abweichungen werden im PR begründet. Quelle der Werte sind die Zielbild-Mockups
+([OPAA Mockups.html](<./OPAA Mockups.html>), Seiten 1a–1i) und die Zielbild-Beschreibung
+([redesign-prompt.md](./redesign-prompt.md)). Die technische Umsetzung als Token-Ebene und
+MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie entsteht mit Issue #584
+und ergänzt dieses Dokument um die verbindliche Prüfliste.
+
+**Beide Farbschemata sind gleichrangig.** Jede Regel in diesem Dokument definiert das helle und
+das dunkle Schema. Ein PR, der nur eines von beiden gestaltet, ist unvollständig.
+
+---
+
+## 1 · Grundhaltung
+
+**Ruhig und wertig.** Sachlich, mit Sorgfalt in Typografie, Weißraum und Detail — ein gut
+gemachtes Werkzeug, kein verordnetes Fachverfahren. Daraus folgen vier Grundsätze:
+
+1. **Rahmen statt Schatten.** Flächen trennen sich durch 1-px-Rahmen und abgestufte
+   Flächenfarben, nicht durch Schlagschatten. Schatten sind schwebenden Ebenen vorbehalten
+   (Menüs, Dialoge, Belegfenster).
+2. **Farbe ist Bedeutung.** Blau markiert Handlung und Bezug (Schaltflächen, Links,
+   Fußnoten-Ziffern, aktive Zustände). Die Semantikfarben stehen ausschließlich für Erfolg,
+   Warnung und Gefahr. Nichts davon wird dekorativ eingesetzt.
+3. **Hierarchie durch Größe und Gewicht,** nicht durch zusätzliche Farben oder Kästen.
+4. **Bewegung erklärt, sie schmückt nicht.** Kurz, gerichtet, abschaltbar
+   (`prefers-reduced-motion`).
+
+---
+
+## 2 · Farben
+
+### 2.1 Skalen
+
+Die Skalen sind der Vorrat, aus dem die semantischen Rollen (2.2) schöpfen. **Komponenten greifen
+nie direkt auf Skalenwerte zu** — sie verwenden Rollen. Ausnahmen sind in 2.3 abschließend
+aufgezählt.
+
+**Blau** — Akzent- und Handlungsfarbe:
+
+| Stufe | Wert | Stufe | Wert |
+|---|---|---|---|
+| 50 | `#E7F4FE` | 500 | `#1292EE` *(Basis)* |
+| 100 | `#C6E3FC` | 600 | `#0F80D6` *(Hover, −8 % Helligkeit)* |
+| 200 | `#9BCEFA` | 700 | `#0B6FBC` *(Aktiv/Gedrückt, −16 %)* |
+| 300 | `#61B5F6` | 800 | `#085B9C` |
+| 400 | `#349EF2` | 900 | `#05447A` |
+
+**Navy** — Struktur- und Textfarbe:
+
+| Name | Wert | Verwendung |
+|---|---|---|
+| Navy | `#012142` | Primärtext (hell), Seitenleiste, dunkle Grundfläche |
+| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche |
+| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema |
+| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema |
+| Navy-500 | `#055396` | Grenzfälle, Diagramme |
+
+**Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
+`#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
+
+**Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF2F7`
+(gedämpfte Fläche, Trennlinien).
+
+**Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D` · Gefahr `#E5484D`. In beiden Schemata
+identisch; Text auf diesen Flächen muss die Kontrastanforderung (2.4) erfüllen.
+
+### 2.2 Semantische Rollen
+
+Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
+
+| Rolle | Bedeutung | Hell | Dunkel |
+|---|---|---|---|
+| `bg-1` | Seitengrund | Weiß `#FFFFFF` | Navy `#012142` |
+| `bg-2` | erhöhte Fläche (Karte, Kopfzeile) | Off-White `#F6F8FB` | Navy-700 `#02305E` |
+| `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Navy-600 `#034079` |
+| `fg-1` | Primärtext | Navy `#012142` | Weiß `#FFFFFF` |
+| `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#B9C6D4` |
+| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#7A8BA0` |
+| `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
+| `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
+| `border` | Standardrahmen | Grau-100 `#E6EBF1` | `rgba(255,255,255,0.08)` |
+| `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | `rgba(255,255,255,0.14)` |
+
+### 2.3 Regeln
+
+- **Nur Rollen in Komponenten.** Kein Hex-Wert und kein Skalenwert in Komponenten-Code; alles
+  läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite und die
+  Seitenleiste (siehe nächster Punkt), Diagramm-Farbreihen, Hover-/Aktiv-Stufen von Blau in
+  Schaltflächen-Definitionen.
+- **Die Seitenleiste bleibt Navy — in beiden Schemata.** Im hellen Schema ist sie der bewusste
+  Kontrastblock der App, im dunklen fügt sie sich in die Grundfläche. Inhalte der Seitenleiste
+  verwenden die Dunkel-Werte der Rollen.
+- **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
+  ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
+  Icon mischen) — sie verlässt sich auf die Rolle.
+- **Semantikfarben tragen Bedeutung, keine Stimmung.** Eine Verweigerungs-Antwort im Zitierzwang
+  ist keine Warnung und erhält keine Signalfarbe (siehe redesign-prompt.md §4).
+
+### 2.4 Kontrast
+
+Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px fett) und
+UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
+den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent`); wer andere
+Kombinationen bildet, weist den Kontrast im PR nach. Details regelt die
+Barrierefreiheits-Richtlinie (Issue #584).
+
+---
+
+## 3 · Typografie
+
+### 3.1 Schriftentscheidung
+
+| Rolle | Schrift | Lizenz |
+|---|---|---|
+| Fließtext & Überschriften | **Inter** | SIL Open Font License — im Repo via `@fontsource/inter` |
+| Mono (Aktenzeichen, Werte, Code) | **JetBrains Mono** | SIL Open Font License |
+
+Die Zielbild-Mockups verwenden „Sklow", eine Firmenschrift ohne freie Lizenz. **Sie wird nicht
+ins Repository aufgenommen.** Inter ist der Standard der offenen Codebasis; die Mockup-Werte
+(Skala, Gewichte, Laufweiten) sind auf Inter übertragen. Eine Firmenschrift kann ein Betreiber
+später über die Branding-Konfiguration nachladen; die Schriftstapel enden deshalb immer in
+`system-ui, sans-serif`.
+
+### 3.2 Skala
+
+Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehören Markenmomenten
+(Anmeldeseite, Leerzustände):
+
+| Stufe | Größe | Typische Verwendung |
+|---|---|---|
+| 2xs | 11 px | Versal-Etiketten, Tabellen-Metadaten |
+| xs | 12 px | Metadaten, Chips, Eyebrow |
+| sm | 14 px | Sekundärtext, Tabellen, Seitenleiste |
+| base | 16 px | Fließtext, Chat-Antworten |
+| md | 18 px | Chat-Titel, hervorgehobener Text |
+| lg | 20 px | h4-Äquivalent |
+| xl | 24 px | Abschnittsüberschriften (h3) |
+| 2xl | 30 px | Seitenüberschriften (h2) |
+| 3xl | 36 px | große Seitenköpfe |
+| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI |
+
+### 3.3 Gewichte, Zeilenhöhen, Laufweiten
+
+- **Gewichte:** 400 (Regular, Fließtext) · 500 (Medium, Betonung, Schaltflächen,
+  Tabellenköpfe) · 600 (SemiBold, Überschriften in Arbeitsflächen) · 700 (Bold, Seitentitel,
+  Markenblock). Keine Gewichte über 700. Das Sklow-Zwischengewicht 450 wird mit Inter 500
+  wiedergegeben.
+- **Zeilenhöhen:** 1.1 (Überschriften ab 2xl) · 1.25 (Überschriften bis xl, mehrzeilige
+  UI-Texte) · 1.5 (Fließtext) · 1.7 (lange Lesetexte, z. B. Chat-Antworten).
+- **Laufweiten:** −0.02em (Überschriften ab xl) · −0.005em (Fließtext) · +0.08em
+  (Versal-Etiketten).
+- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten): 11–12 px, Versalien,
+  +0.08em, Gewicht 500, Farbe `accent` über Überschriften bzw. `fg-3` in Tabellen.
+
+---
+
+## 4 · Abstände, Radien, Ebenen, Bewegung
+
+### 4.1 Abstände
+
+4-px-Raster, verbindliche Stufen: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128.
+Zwischenwerte sind unzulässig. Rhythmus statt Gleichmaß: Zusammengehöriges eng (4–12),
+Gruppen deutlich getrennt (24–48).
+
+### 4.2 Radien
+
+| Stufe | Wert | Verwendung |
+|---|---|---|
+| xs | 4 px | kleine Chips, Tastenkürzel |
+| sm | 6 px | Menüeinträge, kleine Schaltflächen |
+| **md** | **10 px** | **Standard: Karten, Eingaben, Schaltflächen, Dialoge** |
+| lg | 16 px | große Karten, Nachrichtenblasen |
+| xl | 24 px | Bühnenflächen |
+| pill | 999 px | Rollen- und Statuschips |
+
+### 4.3 Ebenen: Rahmen statt Schatten
+
+- Ebene 0/1 (Seite, Karte): Trennung ausschließlich über `border` und `bg`-Abstufung. **Kein
+  Schatten auf ruhenden Karten.**
+- Ebene 2 (schwebend: Menü, Popover, @-Vorschlagsliste): Rahmen **plus** dezenter Schatten
+  `0 2px 6px rgba(1,32,66,0.08)`.
+- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`.
+- Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
+  helleren Flächenstufen.
+
+### 4.4 Fokus
+
+Sichtbarer Fokusring für jedes interaktive Element: 3 px in `accent` mit 32 % Deckung
+(`0 0 0 3px rgba(18,144,239,0.32)`) zusätzlich zum Rahmen, in beiden Schemata deutlich.
+Fokus wird nie unterdrückt, nur gestaltet. Umsetzung und Prüfung: Issues #585/#584.
+
+### 4.5 Bewegung
+
+Dauern 120 ms (klein: Hover, Chips), 200 ms (Standard: Menüs, Einblendungen), 360 ms (groß:
+Belegfenster, Drawer); Kurve `cubic-bezier(0.22, 1, 0.36, 1)` (ease-out). Nur `transform` und
+`opacity` animieren. Unter `prefers-reduced-motion` entfallen Bewegungen bzw. schrumpfen auf
+Zustandswechsel.
+
+---
+
+## 5 · Komponentenregeln
+
+### 5.1 Schaltflächen
+
+| Variante | Ruhe | Hover | Aktiv |
+|---|---|---|---|
+| Primär | `accent`-Fläche, `accent-fg`-Text | Blau-600 (−8 % Helligkeit) | Blau-700 (−16 %) |
+| Sekundär | `bg-1` mit `border-strong` | `bg-2` | `bg-3` |
+| Still (Text/Ghost) | transparent, `accent`-Text | `bg-2` | `bg-3` |
+
+Radius md, Gewicht 500, Höhe 40 px (kompakt 32 px), Beschriftung als Verb („Fragen",
+„Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
+Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
+rote Primärfläche als Standardaktion.
+
+### 5.2 Formularfelder
+
+Beschriftung oberhalb (14 px, Gewicht 500), Feld auf `bg-3` mit `border-strong`, Radius md,
+Höhe 40 px; Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
+Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet (Details #584).
+Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
+Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
+
+### 5.3 Tabellen
+
+Spaltenköpfe im Eyebrow-Muster (`fg-3`), Zeilen durch `border` getrennt, keine Zebrastreifen.
+Zeilen-Hover `bg-2`; ist die Zeile Navigationsziel (z. B. Wissensbibliotheken → Detailseite),
+ist die **ganze Zeile ein Link** mit einer Tab-Position. Zahlen rechtsbündig in Mono, Stände
+und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
+(Muster: Mockup 1d, Issue #595).
+
+### 5.4 Karten
+
+`bg-1` oder `bg-2` mit `border`, Radius md–lg, Innenabstand 16–24 px, kein Schatten. Klickbare
+Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
+Skalierung.
+
+### 5.5 Chips und Etiketten
+
+Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) oder stille
+Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
+
+- **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
+- **Verteilungsstufen:** privat · geteilt · organisationsweit
+- **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed
+- **Space-Art:** Persönlich · Team
+
+Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
+farbiger Chip.
+
+### 5.6 Menüs und Overlays
+
+`bg-1`, `border`, Radius md, Schatten der Ebene 2/3, Einträge 14 px mit 8–12 px Innenabstand,
+Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie abgesetzt.
+Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
+
+### 5.7 Leer-, Lade- und Fehlerzustände
+
+- **Leer:** ein Satz, was hier stünde, plus die eine Handlung, die ihn füllt. Keine
+  Illustrationsfriedhöfe.
+- **Laden:** Skeleton in `bg-3` ohne Layoutsprung; laufende Hintergrundvorgänge bleiben über
+  Seitenwechsel sichtbar (Muster Indizierung).
+- **Fehler:** deutsch, ruhig, mit nächstem Schritt. Signalfarbe nur am betroffenen Element,
+  nicht flächig.
+
+### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
+
+Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3");
+unter der Antwort folgt der Fundstellen-Block: Eyebrow „Fundstellen", Zeile „n Stellen in
+m Dokumenten", je Dokument Ziffern + Titel (Gewicht 500) + Fundort und Stand in `fg-3`.
+Die Verweigerung im Zitierzwang ist eine vollwertige Auskunft in normaler Antwort-Typografie —
+kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592, Mockups 1a/1i).
+
+---
+
+## 6 · Sprache und Begriffe
+
+UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begriffe:
+
+| Begriff | Bedeutung / Regel |
+|---|---|
+| **Space** | Arbeitsraum mit Datenquellen, Chats, Mitgliedern. Bleibt unübersetzt. |
+| **Chat** | in sich geschlossene Unterhaltung in einem Space; benennbar |
+| **Wissensbibliothek** | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand" |
+| **Datenquellen** | die einem Space zugeordneten Bibliotheken |
+| **Herkunft** | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed) |
+| **Verteilungsstufe** | privat · geteilt · organisationsweit |
+| **Rolle** | Leser · Bearbeiter · Verwalter · Eigentümer |
+| **Fundstellen** | Belegblock unter einer Antwort |
+| **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste |
+| **Systemverwaltung** | Admin-Bereich und -Rolle |
+| **Anmeldung / Kennung** | nie „Login"/„Username" in Nutzertexten |
+| Claim | „Fragen. Belegen. Entscheiden." |
+
+Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
+„User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben
+englisch (Projektsprache, siehe AGENTS.md).
+
+---
+
+## 7 · Branding-Überschreibbarkeit
+
+Von Anfang an gilt: **Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe sind
+Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponente:
+
+- Name, Claim und Logo werden nie hart eingebettet, sondern aus der Branding-Quelle bezogen
+  (mit OPAA-Standard als Fallback).
+- Akzentfarbe nur über die Rolle `accent`; abgeleitete Zustände (Hover −8 %, Aktiv −16 %,
+  Fokusring 32 % Deckung) werden aus der konfigurierten Farbe berechnet, nicht aus Blau-600/700
+  fest verdrahtet.
+- Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583).
+
+---
+
+## 8 · Geltung und Pflege
+
+- Diese Guidelines sind Prüfmaßstab für jedes Frontend-Review; das PR-Template verweist auf die
+  Barrierefreiheits-Prüfliste (#584).
+- Änderungen an den Guidelines laufen als eigener PR mit Begründung; Wertänderungen werden mit
+  der Token-Ebene (#581) synchron gehalten — die Token-Datei setzt um, dieses Dokument
+  entscheidet.
+- Die abgelösten Stitch-Entwürfe (`chat-interface.html`, `document-browser.html`,
+  `system-settings.html`) sind historisch und keine Gestaltungsreferenz mehr.
