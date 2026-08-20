@@ -201,7 +201,7 @@ class SpaceServiceIntegrationTest {
     hr.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, organizationA));
     spaceRepository.saveAll(List.of(eng, hr));
 
-    List<SpaceListResponse> userASpaces = spaceService.listSpaces(userA);
+    List<SpaceListResponse> userASpaces = spaceService.listSpaces(userA, false);
 
     assertThat(userASpaces).hasSize(1);
     assertThat(userASpaces.getFirst().getName()).isEqualTo("Engineering");
@@ -527,6 +527,28 @@ class SpaceServiceIntegrationTest {
   }
 
   @Test
+  void addMemberRejectsAddingToAnArchivedSpace() {
+    // #613 review, finding 2: an archived space accepts no new content, and a new member counts
+    // as new content in the specification's sense.
+    UUID owner = createUser(organizationA);
+    UUID newMember = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    assertThatThrownBy(
+            () -> spaceService.addMember(saved.getId(), newMember, SpaceRole.MEMBER, owner))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(membershipRepository.findBySpaceId(saved.getId())).hasSize(1);
+  }
+
+  @Test
   void createSpaceRejectsAnOwnerFromAnotherOrganizationEvenForSystemAdmin() {
     UUID admin = createUser(organizationA);
     UUID outsider = createUser(organizationB);
@@ -656,5 +678,176 @@ class SpaceServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  // #543: archiving a space with a foreign chat - a Space mit fremden privaten Chats ist dauerhaft
+  // unlöschbar.
+
+  @Test
+  void deletingSpaceWithAForeignChatMentionsArchivingInTheConflictMessage() {
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    // The owner cannot see, let alone remove, a chat authored by a fellow member - the exact
+    // situation that makes the space permanently undeletable without archiving.
+    chatRepository.save(
+        new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
+
+    assertThatThrownBy(() -> spaceService.deleteSpace(saved.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException statusException = (ResponseStatusException) ex;
+              assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              assertThat(statusException.getReason()).contains("Archivieren");
+            });
+  }
+
+  @Test
+  void ownerCanArchiveASpaceThatCannotBeDeletedBecauseOfAForeignChat() {
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    Chat foreignChat =
+        chatRepository.save(
+            new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
+
+    SpaceResponse archived = spaceService.archiveSpace(saved.getId(), owner, false);
+
+    assertThat(archived.getArchived()).isTrue();
+    assertThat(spaceRepository.findById(saved.getId())).isPresent();
+    // The foreign chat is untouched - archiving never deletes content.
+    assertThat(chatRepository.findById(foreignChat.getId())).isPresent();
+  }
+
+  @Test
+  void archivingAnAlreadyArchivedSpaceIsIdempotent() {
+    UUID owner = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(space);
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    SpaceResponse secondCall = spaceService.archiveSpace(saved.getId(), owner, false);
+
+    assertThat(secondCall.getArchived()).isTrue();
+  }
+
+  @Test
+  void onlyOwnerOrSystemAdminCanArchiveASpace() {
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), otherMember, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void theDefaultSpaceCannotBeArchived() {
+    UUID owner = createUser(organizationA);
+    Space defaultSpace =
+        new Space("My Documents", "Private", true, SpaceVisibility.PRIVATE, owner, organizationA);
+    defaultSpace.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(defaultSpace);
+
+    assertThatThrownBy(() -> spaceService.archiveSpace(saved.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void listSpacesHidesAnArchivedSpaceFromAMemberWithoutAChatOfTheirOwnInIt() {
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    assertThat(spaceService.listSpaces(otherMember, false)).isEmpty();
+  }
+
+  @Test
+  void listSpacesKeepsAnArchivedSpaceVisibleForAMemberWithAChatOfTheirOwnInIt() {
+    // The whole point of archiving (#543): the space stays reachable for the author of a chat
+    // nobody else - not even the owner - can see or remove.
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    chatRepository.save(
+        new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    List<SpaceListResponse> visibleToAuthor = spaceService.listSpaces(otherMember, false);
+
+    assertThat(visibleToAuthor).hasSize(1);
+    assertThat(visibleToAuthor.getFirst().getArchived()).isTrue();
+  }
+
+  @Test
+  void listSpacesKeepsAnArchivedSpaceVisibleForItsOwnerEvenWithoutAChatOfTheirOwnInIt() {
+    // #613 review, finding 3: the typical #543 case is exactly this - the owner archives a space
+    // because of a foreign chat they cannot see, and has no chat of their own in it either. There
+    // is no unarchive endpoint, so if the space vanished from the owner's own list here, it would
+    // become unreachable except by guessing its URL.
+    UUID owner = createUser(organizationA);
+    UUID otherMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    chatRepository.save(
+        new Chat(saved.getId(), otherMember, organizationA, "Fremde Frage", true, Set.of()));
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    List<SpaceListResponse> visibleToOwner = spaceService.listSpaces(owner, false);
+
+    assertThat(visibleToOwner).hasSize(1);
+    assertThat(visibleToOwner.getFirst().getArchived()).isTrue();
+  }
+
+  @Test
+  void listSpacesKeepsAnArchivedSpaceVisibleForASystemAdminMember() {
+    UUID owner = createUser(organizationA);
+    UUID adminMember = createUser(organizationA);
+    Space space =
+        new Space("Company", "Company docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(adminMember, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+    spaceService.archiveSpace(saved.getId(), owner, false);
+
+    List<SpaceListResponse> visibleToSystemAdmin = spaceService.listSpaces(adminMember, true);
+
+    assertThat(visibleToSystemAdmin).hasSize(1);
+    assertThat(visibleToSystemAdmin.getFirst().getArchived()).isTrue();
   }
 }

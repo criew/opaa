@@ -129,11 +129,10 @@ public class AssetGrantService {
     User currentUser = requireUser(currentUserId);
 
     if (request.getSubjectType() == null || request.getSubjectId() == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "subjectType und subjectId sind erforderlich");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empfänger ist erforderlich");
     }
     if (request.getRole() == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role ist erforderlich");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rolle ist erforderlich");
     }
     // #392 code review, finding 2: subject validation moved ahead of the escalation guard below.
     // The guard's catch block pseudonymises request.getSubjectId() as the DENIED entry's

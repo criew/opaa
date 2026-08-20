@@ -25,7 +25,10 @@ paths:
     post:
       operationId: submitQuery
       tags: [query]
-      summary: Ask a question against indexed documents
+      summary: >
+        Ask a question against indexed documents. If chatId resolves to an owned, persisted chat
+        whose space is archived (#543), the turn is rejected with 409 and not persisted - an
+        archived space accepts no new turns in an existing chat either.
       requestBody:
         required: true
         content:
@@ -41,6 +44,8 @@ paths:
                 $ref: "#/components/schemas/QueryResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -482,10 +487,47 @@ paths:
     delete:
       operationId: deleteSpace
       tags: [space]
-      summary: Delete a space (owner or system admin only)
+      summary: >
+        Delete a space (owner or system admin only). Rejected with 409 while the space still
+        contains any chat, including one a fellow member authored and the caller cannot see or
+        remove themselves (#543) - archiveSpace is the way out of that situation.
       responses:
         "204":
           description: Space deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/archive:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: archiveSpace
+      tags: [space]
+      summary: >
+        Archive a space (owner or system admin only) - #543. An archived space accepts no new
+        chats, is hidden from listSpaces for members without a chat of their own in it, and stays
+        fully readable for its members' own chats. Idempotent: archiving an already-archived space
+        just returns its current state. See docs/features/spaces-and-assets.md#archivieren-statt-
+        löschen.
+      responses:
+        "200":
+          description: Space archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -523,7 +565,9 @@ paths:
     post:
       operationId: addSpaceMember
       tags: [space]
-      summary: Add a member to a space (admin only)
+      summary: >
+        Add a member to a space (admin only). Rejected with 409 if the space is archived (#543) -
+        an archived space accepts no new members.
       requestBody:
         required: true
         content:
@@ -673,7 +717,9 @@ paths:
     post:
       operationId: createChat
       tags: [chat]
-      summary: Create a new chat in this space (requires space membership)
+      summary: >
+        Create a new chat in this space (requires space membership). Rejected with 409 if the
+        space is archived (#543) - an archived space accepts no new content.
       requestBody:
         required: false
         content:
@@ -693,6 +739,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/chats/{chatId}:
     parameters:
@@ -720,7 +768,10 @@ paths:
     patch:
       operationId: updateChat
       tags: [chat]
-      summary: Update a chat's title, useKnowledge switch or sticky library references - author only
+      summary: >
+        Update a chat's title, useKnowledge switch or sticky library references - author only.
+        Rejected with 409 if the chat's space is archived (#543) - an archived space accepts no
+        changes to existing chats either.
       requestBody:
         required: true
         content:
@@ -738,6 +789,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
     delete:
       operationId: deleteChat
@@ -1907,7 +1960,7 @@ components:
 
     SpaceListResponse:
       type: object
-      required: [id, name, isDefault, memberCount, createdAt, updatedAt]
+      required: [id, name, isDefault, archived, memberCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1921,6 +1974,14 @@ components:
         isDefault:
           type: boolean
           description: True for the space created automatically on first login.
+          example: false
+        archived:
+          type: boolean
+          description: >
+            #543: an archived space accepts no new content (chats, messages, renames, members) and
+            is left out of this list for members who have no chat of their own in it and are
+            neither the owner nor a system admin - see
+            docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
           example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
@@ -1954,7 +2015,8 @@ components:
 
     SpaceResponse:
       type: object
-      required: [id, name, isDefault, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
+      required:
+        [id, name, isDefault, archived, ownerId, memberCount, roleCounts, members, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1970,6 +2032,13 @@ components:
           description: >
             True for the space created automatically on first login. Exactly one per user and not
             deletable; an ordinary space in every other respect.
+          example: false
+        archived:
+          type: boolean
+          description: >
+            #543: an archived space accepts no new content (chats, messages, renames, members).
+            See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
+            löschen.
           example: false
         visibility:
           $ref: "#/components/schemas/SpaceVisibility"
@@ -2201,7 +2270,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupUpdateRequest:
       type: object
@@ -2216,7 +2285,7 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          example: Ad-hoc-Gruppe fuer das Projekt Phoenix
+          example: Ad-hoc-Gruppe für das Projekt Phoenix
 
     GroupMemberResponse:
       type: object
@@ -2481,7 +2550,7 @@ components:
         Structured result of a source connection test (#514). message is always German and
         always safe to show to the caller verbatim - both on success ("Verzeichnis erreichbar,
         42 Dokumente gefunden") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
-        gueltiges XML."); no exception text or stack trace ever reaches it.
+        gültiges XML."); no exception text or stack trace ever reaches it.
       properties:
         reachable:
           type: boolean

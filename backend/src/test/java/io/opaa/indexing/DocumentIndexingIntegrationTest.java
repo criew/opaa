@@ -620,7 +620,7 @@ class DocumentIndexingIntegrationTest {
 
     var failedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(failedJob.getStatus()).isEqualTo(JobStatus.FAILED);
-    assertThat(failedJob.getErrorMessage()).contains("ausserhalb");
+    assertThat(failedJob.getErrorMessage()).contains("außerhalb");
     assertThat(documentRepository.findByLibraryId(outsideAllowlistLibrary.getId())).isEmpty();
 
     libraryRepository.deleteById(outsideAllowlistLibrary.getId());

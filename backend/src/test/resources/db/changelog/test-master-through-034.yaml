@@ -1,3 +1,13 @@
+# Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
+# changeSet 034 - i.e. the schema exactly as it existed immediately before migration 039.
+#
+# Used by:
+# - Migration039AddArchivedToSpacesTest, to build a realistic pre-migration database (via the
+#   real, versioned changelog files, not a hand-rolled schema) and then apply 039 in isolation.
+#   039 only touches the spaces table, but is chained here through 034 for the same
+#   keep-the-fixture-chain-contiguous reason test-master-through-033.yaml gives for 034.
+#
+# See test-master-through-033.yaml for the pattern this fixture follows.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-enable-pgvector-extension.yaml
@@ -67,15 +77,3 @@ databaseChangeLog:
       file: db/changelog/changes/033-drop-knowledge-libraries-personal-flag.yaml
   - include:
       file: db/changelog/changes/034-add-chat-title-source.yaml
-  - include:
-      file: db/changelog/changes/035-widen-audit-event-type-library-source-updated.yaml
-  - include:
-      file: db/changelog/changes/036-add-error-message-to-documents.yaml
-  - include:
-      file: db/changelog/changes/037-create-indexing-run-events.yaml
-  - include:
-      file: db/changelog/changes/038-add-events-truncated-count-to-indexing-jobs.yaml
-  - include:
-      file: db/changelog/changes/039-add-archived-to-spaces.yaml
-  - include:
-      file: db/changelog/changes/040-widen-audit-event-type-space-archived.yaml

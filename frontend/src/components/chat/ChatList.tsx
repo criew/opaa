@@ -8,6 +8,7 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction'
 import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -15,6 +16,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import { useLocation, useNavigate } from 'react-router'
 import type { ChatSummary } from '../../types/api'
 import { useChatListStore } from '../../stores/chatListStore'
+import { useSpaceStore } from '../../stores/spaceStore'
 
 function chatTitle(chat: ChatSummary): string {
   return chat.title?.trim() || 'Unbenannter Chat'
@@ -37,6 +39,10 @@ export default function ChatList({ spaceId }: ChatListProps) {
   const loadChats = useChatListStore((s) => s.loadChats)
   const renameChat = useChatListStore((s) => s.renameChat)
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
+  // #543/#613 review, nit c: an archived space accepts no new chats - the "Neuer Chat" button is
+  // disabled rather than hidden, so it stays a stable click target and the reason is explained via
+  // its tooltip instead of the button silently vanishing.
+  const isArchived = useSpaceStore((s) => s.spaces.find((space) => space.id === spaceId)?.archived)
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -79,14 +85,21 @@ export default function ChatList({ spaceId }: ChatListProps) {
 
   return (
     <Box>
-      <Button
-        variant="outlined"
-        startIcon={<AddIcon />}
-        onClick={handleNewChat}
-        sx={{ mb: 1.5, borderRadius: 2, textTransform: 'none' }}
+      <Tooltip
+        title={isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''}
       >
-        Neuer Chat
-      </Button>
+        <span>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={handleNewChat}
+            disabled={Boolean(isArchived)}
+            sx={{ mb: 1.5, borderRadius: 2, textTransform: 'none' }}
+          >
+            Neuer Chat
+          </Button>
+        </span>
+      </Tooltip>
 
       {error && (
         <Typography color="error.main" variant="body2" sx={{ mb: 1 }}>

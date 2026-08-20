@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { SpaceListResponse, SpaceRole, SpaceResponse } from '../types/api'
 import {
   addSpaceMember,
+  archiveSpace,
   createSpace,
   deleteSpace,
   getSpace,
@@ -28,6 +29,7 @@ interface SpaceState {
   transferOwnership: (spaceId: string, userId: string) => Promise<void>
   updateDetails: (spaceId: string, name: string, description: string) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
+  archiveSelectedSpace: (spaceId: string) => Promise<void>
   createNewSpace: (name: string, description: string) => Promise<string>
 }
 
@@ -130,6 +132,13 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     } else {
       set({ selectedSpace: null, selectedSpaceId: null })
     }
+  },
+
+  archiveSelectedSpace: async (spaceId) => {
+    await archiveSpace(spaceId)
+    // The space itself stays selectable - archiving stops new content, it does not remove the
+    // space or navigate away from it (#543).
+    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId)])
   },
 
   createNewSpace: async (name, description) => {

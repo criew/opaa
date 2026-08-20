@@ -53,7 +53,7 @@ class IndexingRunEventRecorderTest {
 
     int total = IndexingRunEventRecorder.MAX_EVENTS_PER_RUN + 7;
     for (int i = 0; i < total; i++) {
-      recorder.record(IndexingEventCategory.UNSUPPORTED_FORMAT, "Format nicht unterstuetzt", null);
+      recorder.record(IndexingEventCategory.UNSUPPORTED_FORMAT, "Format nicht unterstützt", null);
     }
 
     verify(repository, times(IndexingRunEventRecorder.MAX_EVENTS_PER_RUN))

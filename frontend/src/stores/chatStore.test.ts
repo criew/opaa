@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { useChatStore } from './chatStore'
+import { clearSettingsPersistenceCache, dropChatSettingsCache, useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
 
 const SPACE_ID = 'space-personal'
@@ -26,6 +26,9 @@ function resetChatStore() {
 describe('chatStore', () => {
   beforeEach(() => {
     resetChatStore()
+    // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state (#573) -
+    // they survive resetChatStore() above and would otherwise leak between test cases.
+    clearSettingsPersistenceCache()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
@@ -828,6 +831,195 @@ describe('chatStore', () => {
       expect(state.error).toBeNull()
     })
 
+    // #573: a settings PATCH that finally succeeds after the user navigated away and back to the
+    // *same* chat must not leave the chip bar showing the stale server value a concurrent loadChat
+    // read while the PATCH was still in flight - the late success is, at the moment it lands, the
+    // more authoritative source and must win. The chatId guard alone cannot catch this case (unlike
+    // the "navigate to a *different* chat" tests above): navigating back to the same chat makes
+    // get().chatId === requestChatId true again, so only a sequence guard mirroring the failure
+    // handler's can tell this success apart from one that has since been superseded.
+    it('applies a late-succeeding PATCH result even after loadChat re-read the still-old server value for the same chat in between', async () => {
+      let resolveExistingChatPatch: (() => void) | undefined
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            // Every GET for this chat - including the one loadChat fires from B back to A below -
+            // keeps returning the pre-change settings: the server has not applied the still-in-
+            // flight PATCH yet.
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          if (params.chatId !== EXISTING_CHAT_ID) {
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: body.useKnowledge,
+              referencedLibraryIds: body.referencedLibraryIds ?? [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }
+          // Deliberately held open until this test resolves it itself - deterministic, unlike a
+          // fixed delay racing the loadChat round-trips below.
+          await new Promise<void>((resolve) => {
+            resolveExistingChatPatch = resolve
+          })
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // chat A, scope 'all'
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // scope -> 'none' optimistically, PATCH held open
+      const stalePatch = useChatStore.getState().pendingSettingsUpdate
+
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID) // navigate away to chat B
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // navigate back to chat A
+      // The server still has not applied the in-flight PATCH - loadChat's snapshot is stale.
+      expect(useChatStore.getState().scope).toBe('all')
+
+      resolveExistingChatPatch?.()
+      await stalePatch
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe(EXISTING_CHAT_ID)
+      expect(state.scope).toBe('none')
+      expect(state.referencedLibraryIds).toEqual([])
+    })
+
+    // #618 review: mirrors "does not inherit an error or rolled-back state..." above, but for the
+    // success handler's chatId guard - a settings PATCH for chat A that only ends up succeeding
+    // after the user has since navigated to chat B (with no further settings change of their own)
+    // must not overwrite B's own settings with A's. No further settings change happens on B, so
+    // settingsUpdateSequence still points at A's own request and cannot itself block this -
+    // removing just the chatId guard (keeping the sequence guard) turns this test red.
+    it("does not overwrite a different chat's settings with a stale settings PATCH that only succeeds after simply navigating away", async () => {
+      let resolveExistingChatPatch: (() => void) | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params }) => {
+          if (params.chatId !== EXISTING_CHAT_ID) {
+            throw new Error(`unexpected PATCH for ${String(params.chatId)}`)
+          }
+          // Deliberately held open until this test resolves it itself - deterministic, unlike a
+          // fixed delay racing the loadChat round-trip below.
+          await new Promise<void>((resolve) => {
+            resolveExistingChatPatch = resolve
+          })
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // scope -> 'none', PATCH in flight (slow, will succeed)
+      const stalePatch = useChatStore.getState().pendingSettingsUpdate
+
+      // User simply navigates away - to a chat with a different scope of its own - without any
+      // further settings change.
+      await useChatStore.getState().loadChat('chat-personal-2')
+      expect(useChatStore.getState().scope).toBe('libraries')
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
+
+      // The stale success from the chat that's no longer active arrives.
+      resolveExistingChatPatch?.()
+      await stalePatch
+
+      const state = useChatStore.getState()
+      expect(state.chatId).toBe('chat-personal-2')
+      expect(state.scope).toBe('libraries')
+      expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
+    })
+
+    // #618 review: mirrors "lets the last requested settings change win over an earlier,
+    // slower-failing PATCH on the same chat" below, but for the success handler's sequence guard -
+    // here the *earlier* action's PATCH also succeeds, just later than the newer action's own
+    // optimistic update. The chatId never changes in this test, so removing just the sequence guard
+    // (keeping the chatId guard) turns this test red.
+    it('does not let an earlier, slower-succeeding settings PATCH on the same chat overwrite a newer, already-applied change', async () => {
+      let callIndex = 0
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async () => {
+          callIndex++
+          const isFirstCall = callIndex === 1
+          // Action 1's PATCH settles first (it is, after all, first in the per-chat queue), but
+          // action 2's own PATCH - queued behind it - is slower still, leaving a window after
+          // action 1 has settled but before action 2 has, in which action 1's late-but-successful
+          // response must not be allowed to revert the chip bar.
+          await new Promise((resolve) => setTimeout(resolve, isFirstCall ? 20 : 40))
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      expect(useChatStore.getState().scope).toBe('all')
+
+      useChatStore.getState().clearScope() // action 1 (older): 'all' -> 'none'
+      useChatStore.getState().setScopeAll() // action 2 (last action): 'none' -> 'all'
+
+      // Action 1 has settled (~20ms) but action 2, queued behind it and only starting once action 1
+      // settles, has not (~20ms + 40ms).
+      await new Promise((resolve) => setTimeout(resolve, 35))
+
+      // Action 1's late success must not revert the chip bar back to its own ('none') value - only
+      // action 2, the most recently requested change, may still update local state once its own
+      // response lands.
+      expect(useChatStore.getState().scope).toBe('all')
+
+      await useChatStore.getState().pendingSettingsUpdate
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('all')
+      expect(state.error).toBeNull()
+    })
+
     // #565 review, finding 1: two rapid scope changes on the same chat used to fire two PATCHes in
     // parallel - the network, not the order the user clicked in, decided which request the server
     // saw last. This test catches the *overlap* itself (not just its eventual symptom): the second
@@ -1151,6 +1343,128 @@ describe('chatStore', () => {
 
       expect(useChatStore.getState().scope).toBe('all')
       expect(useChatStore.getState().referencedLibraryIds).toEqual([])
+    })
+
+    // #618 review (nit 3): dropChatSettingsCache is what chatListStore.deleteChatFromList calls
+    // once a chat is actually deleted server-side (#573) - it must drop that chat's
+    // settingsUpdateChains entry immediately, so a later sendMessage for the same (now-deleted)
+    // chat id never queues/awaits behind a chain that can no longer matter.
+    it('dropChatSettingsCache clears the per-chat settings PATCH queue so a later sendMessage does not await it', async () => {
+      const events: string[] = []
+      let resolveHeldPatch: (() => void) | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async () => {
+          events.push('patch-start')
+          // Deliberately held open for the rest of the test - dropChatSettingsCache must not make
+          // sendMessage wait for this to ever resolve.
+          await new Promise<void>((resolve) => {
+            resolveHeldPatch = resolve
+          })
+          events.push('patch-end')
+          return HttpResponse.json({
+            id: EXISTING_CHAT_ID,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: false,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+        http.post('/api/v1/query', async ({ request }) => {
+          events.push('query-start')
+          const body = (await request.json()) as { chatId?: string }
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: { model: 'gpt-4o', tokenCount: 5, durationMs: 1 },
+            chatId: body.chatId,
+          })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+      useChatStore.getState().clearScope() // PATCH #1 fires and stays open
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(events).toEqual(['patch-start'])
+
+      dropChatSettingsCache(EXISTING_CHAT_ID) // simulates chatListStore.deleteChatFromList's cleanup
+
+      // sendMessage on the same chat id (e.g. an in-flight send that was already under way when the
+      // delete completed) must proceed straight to the query, without ever awaiting PATCH #1, which
+      // is still deliberately held open.
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(events).toEqual(['patch-start', 'query-start'])
+
+      resolveHeldPatch?.()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // #618 review (nit 2): confirmedSettingsByChatId must not be dropped out from under a still
+    // in-flight PATCH's own failure handler just because the chat was deleted in the meantime - the
+    // deferred cleanup in dropChatSettingsCache must still apply it once that PATCH itself settles.
+    it('dropChatSettingsCache defers the confirmedSettingsByChatId cleanup until the in-flight PATCH for the deleted chat settles', async () => {
+      let callIndex = 0
+      let resolveSecondPatch: (() => void) | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
+          callIndex++
+          if (callIndex === 1) {
+            // The first change succeeds, so confirmedSettingsByChatId records 'libraries' +
+            // ['library-a'] as this chat's last-confirmed settings - deliberately different from
+            // applyScopeChange's hardcoded rollback default ({scope:'all', referencedLibraryIds:[]}),
+            // so the assertion below can actually tell a premature wipe apart from a correct one.
+            const body = (await request.json()) as Record<string, unknown>
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: body.useKnowledge,
+              referencedLibraryIds: body.referencedLibraryIds ?? [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }
+          // The second change is held open until this test resolves it itself, then fails.
+          await new Promise<void>((resolve) => {
+            resolveSecondPatch = resolve
+          })
+          return HttpResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
+        }),
+      )
+
+      await useChatStore.getState().loadChat(EXISTING_CHAT_ID) // confirmed baseline: 'all'
+      useChatStore.getState().addReferencedLibrary('library-a') // succeeds, confirmed: 'libraries', ['library-a']
+      await useChatStore.getState().pendingSettingsUpdate
+      expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
+
+      useChatStore.getState().addReferencedLibrary('library-b') // optimistic -> ['library-a', 'library-b'], held open
+
+      dropChatSettingsCache(EXISTING_CHAT_ID) // chat deleted while this second PATCH is still in flight
+
+      // Gives the chained call's own request a tick to actually reach the mock handler (and
+      // register resolveSecondPatch) before this test tries to resolve it - the chain only starts
+      // its own updateChat() call once action 1's already-settled promise resolves, which is itself
+      // asynchronous.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      resolveSecondPatch?.()
+      await useChatStore.getState().pendingSettingsUpdate
+
+      // The still-in-flight PATCH's own failure handler reads confirmedSettingsByChatId as its
+      // rollback base (e.g. the user deleted the chat they were currently viewing without
+      // navigating away first) - it must see the real last-confirmed baseline ('libraries',
+      // ['library-a']), not applyScopeChange's hardcoded default, which a premature wipe by
+      // dropChatSettingsCache would otherwise have forced it to fall back to.
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('libraries')
+      expect(state.referencedLibraryIds).toEqual(['library-a'])
     })
   })
 })
