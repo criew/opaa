@@ -188,6 +188,24 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
+  void creatingAChatInAnArchivedSpaceIsRejected() {
+    // #543: an archived space accepts no new content -
+    // docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Space space = spaceRepository.findById(spaceId).orElseThrow();
+    space.archive();
+    spaceRepository.save(space);
+
+    assertThatThrownBy(() -> chatService.createChat(spaceId, author, new ChatCreateRequest()))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+  }
+
+  @Test
   void creatingAChatInANonExistentSpaceReturnsNotFound() {
     UUID author = createUser();
 

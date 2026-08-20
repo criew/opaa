@@ -88,6 +88,14 @@ public class SpaceController {
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/{spaceId}/archive")
+  public SpaceResponse archiveSpace(
+      @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {
+    User currentUser = currentUser(jwt);
+    return spaceService.archiveSpace(
+        spaceId, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
+  }
+
   @GetMapping("/{spaceId}/members")
   public List<SpaceMemberResponse> listMembers(
       @PathVariable UUID spaceId, @AuthenticationPrincipal Jwt jwt) {

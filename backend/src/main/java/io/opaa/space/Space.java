@@ -31,6 +31,9 @@ public class Space {
   @Column(name = "is_default", nullable = false)
   private boolean isDefault;
 
+  @Column(name = "archived", nullable = false)
+  private boolean archived;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "visibility", nullable = false, length = 20)
   private SpaceVisibility visibility;
@@ -100,6 +103,18 @@ public class Space {
 
   public void transferOwnershipTo(UUID newOwnerId) {
     this.ownerId = newOwnerId;
+  }
+
+  /**
+   * Marks the space archived (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen)
+   * - idempotent, since re-archiving an already archived space is not an error.
+   */
+  public void archive() {
+    this.archived = true;
+  }
+
+  public boolean isArchived() {
+    return archived;
   }
 
   /**

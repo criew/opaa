@@ -118,6 +118,13 @@ public class SpaceService {
     User currentUser = requireUser(currentUserId);
     return spaceRepository.findDistinctByMembershipsUserIdWithMemberships(currentUserId).stream()
         .filter(space -> space.getOrganizationId().equals(currentUser.getOrganizationId()))
+        // #543: an archived space is left out of this list unless the caller has a chat of their
+        // own in it - otherwise their own, still fully readable chat would become unreachable
+        // through the normal listing path the moment the space is archived.
+        .filter(
+            space ->
+                !space.isArchived()
+                    || chatRepository.existsBySpaceIdAndAuthorId(space.getId(), currentUserId))
         .map(space -> toSpaceListResponse(space, currentUserId))
         .toList();
   }
@@ -384,7 +391,8 @@ public class SpaceService {
     if (chatRepository.existsBySpaceId(spaceId)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Der Space enthält noch Chats und kann deshalb nicht gelöscht werden");
+          "Der Space enthält noch Chats und kann deshalb nicht gelöscht werden. Archivieren Sie"
+              + " den Space stattdessen.");
     }
 
     auditEventRecorder.recordUserAction(
@@ -399,6 +407,58 @@ public class SpaceService {
         AuditOutcome.SUCCESS,
         null);
     spaceRepository.delete(space);
+  }
+
+  /**
+   * Archives a space (#543, docs/features/spaces-and-assets.md#archivieren-statt-löschen) - the
+   * maintainer-decided way out of a space that {@code fk_chats_space} (ON DELETE RESTRICT,
+   * migration 032) makes permanently undeletable because it still contains a chat authored by
+   * someone other than the space owner, who cannot even see - let alone delete - that chat
+   * themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s behaviour: a
+   * real delete remains possible once every chat is actually gone. What it does instead is stop
+   * the space from accepting new content ({@code ChatService#createChat} rejects with 409) and
+   * hide it from {@link #listSpaces} for members without a chat of their own in it, while every
+   * chat - including ones the owner cannot see - stays fully readable for its author.
+   *
+   * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
+   * cannot be archived either, for the same reason it cannot be deleted (#333 - it is not this
+   * user's to retire). Idempotent: archiving an already archived space is a no-op that simply
+   * returns its current state, not an error.
+   */
+  @Transactional
+  public SpaceResponse archiveSpace(UUID spaceId, UUID currentUserId, boolean systemAdmin) {
+    Space space = loadSpace(spaceId, currentUserId);
+
+    if (space.isDefault()) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Der Standard-Space kann nicht archiviert werden");
+    }
+
+    boolean owner = space.getOwnerId().equals(currentUserId);
+    if (!systemAdmin && !owner) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN,
+          "Nur der Eigentümer oder ein Systemadministrator kann einen Space archivieren");
+    }
+
+    if (space.isArchived()) {
+      return toSpaceResponse(space, currentUserId);
+    }
+
+    space.archive();
+    Space archived = spaceRepository.save(space);
+    auditEventRecorder.recordUserAction(
+        archived.getOrganizationId(),
+        currentUserId,
+        AuditEventType.SPACE_ARCHIVED,
+        AuditObjectType.SPACE,
+        archived.getId(),
+        archived.getName(),
+        spaceAuditPayload(archived),
+        null,
+        AuditOutcome.SUCCESS,
+        null);
+    return toSpaceResponse(archived, currentUserId);
   }
 
   /**
@@ -616,6 +676,7 @@ public class SpaceService {
             space.getId(),
             space.getName(),
             space.isDefault(),
+            space.isArchived(),
             space.getMemberships().size(),
             space.getCreatedAt(),
             space.getUpdatedAt())
@@ -647,6 +708,7 @@ public class SpaceService {
             space.getId(),
             space.getName(),
             space.isDefault(),
+            space.isArchived(),
             space.getOwnerId(),
             members.size(),
             roleCounts,

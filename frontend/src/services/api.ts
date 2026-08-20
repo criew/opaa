@@ -265,6 +265,18 @@ export async function deleteSpace(spaceId: string): Promise<void> {
   }
 }
 
+// #543: the way out of a space fk_chats_space makes permanently undeletable because it still
+// contains a chat authored by someone other than the space owner - see
+// docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
+  try {
+    const { data } = await client.post<SpaceResponse>(`/v1/spaces/${spaceId}/archive`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 // #478: the trigger reduces to "index this library" - sourceType and every typed configuration
 // field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
 // longer sent from the frontend.

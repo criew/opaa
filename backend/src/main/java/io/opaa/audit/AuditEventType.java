@@ -30,6 +30,12 @@ public enum AuditEventType {
   SPACE_CREATED,
   SPACE_CHANGED,
   SPACE_DELETED,
+  /**
+   * #543: a space stopped instead of deleted, chiefly because it still contains a chat authored
+   * by someone other than the space owner - fk_chats_space (ON DELETE RESTRICT, migration 032)
+   * makes such a space permanently undeletable otherwise.
+   */
+  SPACE_ARCHIVED,
   LIBRARY_CREATED,
   LIBRARY_CHANGED,
   LIBRARY_DELETED,

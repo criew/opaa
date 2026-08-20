@@ -105,6 +105,13 @@ public class ChatService {
   @Transactional
   public ChatDetail createChat(UUID spaceId, UUID authorId, ChatCreateRequest request) {
     Space space = requireMembership(spaceId, authorId);
+    // #543: an archived space accepts no new content - see
+    // docs/features/spaces-and-assets.md#archivieren-statt-löschen.
+    if (space.isArchived()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Der Space ist archiviert und lässt keine neuen Chats mehr zu");
+    }
     Boolean useKnowledge = request == null ? null : request.getUseKnowledge();
     String title = request == null ? null : request.getTitle();
     Set<UUID> referencedLibraryIds =
