@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 
@@ -94,6 +94,46 @@ describe('MessageBubble', () => {
       'data-highlighted',
       'true',
     )
+  })
+
+  it('fades both rows of a range together - no row stays lit via the URL hash', async () => {
+    vi.useFakeTimers()
+    try {
+      const msg: ChatMessage = {
+        id: 'r3',
+        role: 'assistant',
+        content: 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.',
+        sources: [
+          {
+            fileName: 'erste.md',
+            relevanceScore: 0.9,
+            matchCount: 1,
+            cited: true,
+            indexedAt: null,
+          },
+          {
+            fileName: 'zweite.md',
+            relevanceScore: 0.8,
+            matchCount: 1,
+            cited: true,
+            indexedAt: null,
+          },
+        ],
+        timestamp: new Date(),
+      }
+      render(<MessageBubble message={msg} />)
+
+      fireEvent.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 2' }))
+      expect(document.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+
+      expect(document.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('unfolds the block when a clicked range covers a folded row (#590 Nachbesserung)', async () => {

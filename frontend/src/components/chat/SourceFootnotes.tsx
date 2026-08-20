@@ -54,9 +54,10 @@ function renderDocRow(
         fontSize: 12,
         lineHeight: 1.5,
         borderRadius: '4px',
-        // The in-text footnote anchors land here - :target covers direct hash navigation,
-        // data-highlighted the click-driven ranges (#590 Nachbesserung).
-        '&:target, &[data-highlighted="true"]': {
+        // One mechanism, one truth (#590 Nachbesserung): the anchor only scrolls, the
+        // click-driven transient highlight marks every covered row. A parallel :target rule
+        // would keep the first row lit after the others faded - the hash stays in the URL.
+        '&[data-highlighted="true"]': {
           bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
         },
         transition: 'background-color 200ms',
