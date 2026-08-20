@@ -47,20 +47,21 @@ describe('SpacePage', () => {
         memberCount: 1,
         userRole: 'ADMIN',
         roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
-        members: [
-          {
-            userId: 'mock-user-id',
-            displayName: 'Admin',
-            role: 'ADMIN',
-            createdAt: '2026-03-01T10:00:00Z',
-          },
-        ],
         createdAt: '2026-03-01T10:00:00Z',
         updatedAt: '2026-03-01T10:00:00Z',
       },
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
+      members: [
+        {
+          userId: 'mock-user-id',
+          displayName: 'Admin',
+          role: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+      isLoadingMembers: false,
     })
   })
 

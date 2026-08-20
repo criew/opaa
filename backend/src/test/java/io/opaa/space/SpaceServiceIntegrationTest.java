@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberRequest;
+import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceRequest;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceUpdateRequest;
@@ -633,6 +634,84 @@ class SpaceServiceIntegrationTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  // #144: the full member list (identities and display names) is restricted to ADMIN, the owner
+  // (whose own membership is always ADMIN) and system admins - a MEMBER or CURATOR must not be
+  // able to enumerate their fellow members via either getSpace or listMembers, even though they
+  // already know they themselves are a member of this space.
+
+  @Test
+  void ownerCanListMembersIncludingDisplayNames() {
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    List<SpaceMemberResponse> members = spaceService.listMembers(saved.getId(), owner, false);
+
+    assertThat(members).hasSize(2);
+    assertThat(members).extracting(SpaceMemberResponse::getDisplayName).containsOnly("Test User");
+  }
+
+  @Test
+  void memberCannotListMembers() {
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), member, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void curatorCannotListMembers() {
+    UUID owner = createUser(organizationA);
+    UUID curator = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(curator, SpaceRole.CURATOR, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), curator, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void getSpaceNeverIncludesTheFullMemberListRegardlessOfRole() {
+    // #144: SpaceResponse dropped the members field entirely - the aggregated roleCounts remain
+    // for every member, but identities and display names are only reachable via listMembers.
+    UUID owner = createUser(organizationA);
+    UUID member = createUser(organizationA);
+    Space space =
+        new Space("Team", "Team docs", false, SpaceVisibility.PRIVATE, owner, organizationA);
+    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationA));
+    space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationA));
+    Space saved = spaceRepository.save(space);
+
+    SpaceResponse asMember = spaceService.getSpace(saved.getId(), member, false);
+    SpaceResponse asOwner = spaceService.getSpace(saved.getId(), owner, false);
+
+    assertThat(asMember.getRoleCounts().get("ADMIN")).isEqualTo(1);
+    assertThat(asMember.getRoleCounts().get("MEMBER")).isEqualTo(1);
+    assertThat(asOwner.getRoleCounts().get("ADMIN")).isEqualTo(1);
+    assertThat(asOwner.getRoleCounts().get("MEMBER")).isEqualTo(1);
   }
 
   @Test

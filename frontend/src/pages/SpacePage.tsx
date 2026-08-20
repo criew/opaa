@@ -28,8 +28,10 @@ export default function SpacePage() {
   const navigate = useNavigate()
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const selectSpace = useSpaceStore((s) => s.selectSpace)
+  const loadMembers = useSpaceStore((s) => s.loadMembers)
   const spaces = useSpaceStore((s) => s.spaces)
   const space = useSpaceStore((s) => s.selectedSpace)
+  const members = useSpaceStore((s) => s.members)
   const isLoadingDetails = useSpaceStore((s) => s.isLoadingDetails)
   const error = useSpaceStore((s) => s.error)
 
@@ -51,6 +53,15 @@ export default function SpacePage() {
       }
     }
   }, [navigate, selectSpace, spaceId, spaces])
+
+  // #144: the full member list is only fetched for ADMIN (the owner's membership is always ADMIN)
+  // - anyone else would just get a 403 from listSpaceMembers, so the accordion below shows the
+  // aggregated roleCounts to them instead of an empty-looking list.
+  useEffect(() => {
+    if (space && canManage(space.userRole)) {
+      void loadMembers(space.id)
+    }
+  }, [loadMembers, space])
 
   if (isLoadingDetails && !space) {
     return (
@@ -137,21 +148,33 @@ export default function SpacePage() {
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
-            {space.members.length === 0 ? (
-              <Typography color="text.secondary">Keine Mitglieder gefunden.</Typography>
+            {canManage(space.userRole) ? (
+              members.length === 0 ? (
+                <Typography color="text.secondary">Keine Mitglieder gefunden.</Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {members.map((member) => (
+                    <Box
+                      key={member.userId}
+                      sx={{ display: 'flex', justifyContent: 'space-between' }}
+                    >
+                      <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
+                        {member.displayName ?? member.userId}
+                      </Typography>
+                      <Chip label={spaceRoleLabel(member.role)} size="small" />
+                    </Box>
+                  ))}
+                </Stack>
+              )
             ) : (
-              <Stack spacing={1}>
-                {space.members.map((member) => (
-                  <Box
-                    key={member.userId}
-                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                  >
-                    <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
-                      {member.displayName ?? member.userId}
-                    </Typography>
-                    <Chip label={spaceRoleLabel(member.role)} size="small" />
-                  </Box>
-                ))}
+              // #144: non-admins no longer receive the full member list - only the aggregated
+              // count per role, which does not name anyone.
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                {Object.entries(space.roleCounts ?? {})
+                  .filter(([, count]) => count > 0)
+                  .map(([role, count]) => (
+                    <Chip key={role} label={`${spaceRoleLabel(role)}: ${count}`} size="small" />
+                  ))}
               </Stack>
             )}
           </AccordionDetails>

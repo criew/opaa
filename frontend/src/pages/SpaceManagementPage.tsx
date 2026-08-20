@@ -31,7 +31,9 @@ export default function SpaceManagementPage() {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const selectSpace = useSpaceStore((s) => s.selectSpace)
+  const loadMembers = useSpaceStore((s) => s.loadMembers)
   const space = useSpaceStore((s) => s.selectedSpace)
+  const members = useSpaceStore((s) => s.members)
   const error = useSpaceStore((s) => s.error)
   const addMember = useSpaceStore((s) => s.addMember)
   const updateMemberRole = useSpaceStore((s) => s.updateMemberRole)
@@ -66,6 +68,15 @@ export default function SpaceManagementPage() {
     }
   }, [loadSpaces, selectSpace, spaceId])
 
+  // #144: this page is only linked to for ADMIN (see SpacePage's "Space verwalten" button), but a
+  // MEMBER or CURATOR reaching it directly via URL simply gets an empty list from the 403 below
+  // instead of any identities or display names.
+  useEffect(() => {
+    if (spaceId) {
+      void loadMembers(spaceId)
+    }
+  }, [loadMembers, spaceId])
+
   useEffect(() => {
     void getUsers()
       .then(setAllUsers)
@@ -74,9 +85,9 @@ export default function SpaceManagementPage() {
 
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
   const availableUsers = useMemo(() => {
-    const memberIds = new Set(space?.members.map((m) => m.userId) ?? [])
+    const memberIds = new Set(members.map((m) => m.userId))
     return allUsers.filter((u) => !memberIds.has(u.id))
-  }, [allUsers, space?.members])
+  }, [allUsers, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const activeSpaceId = space?.id ?? null
   const name = draft.spaceId === activeSpaceId ? draft.name : (space?.name ?? '')
@@ -254,7 +265,7 @@ export default function SpaceManagementPage() {
             </Alert>
           ) : (
             <Stack spacing={1.5}>
-              {space.members.map((member) => {
+              {members.map((member) => {
                 const memberIsOwner = member.userId === space.ownerId
                 return (
                   <Box

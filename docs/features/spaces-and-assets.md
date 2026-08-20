@@ -492,6 +492,8 @@ Warum drei statt der bisherigen vier Rollen:
 
 **Grenze der Admin-Rechte:** Ein Space-Admin kann geteilte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann die privaten Inhalte anderer Mitglieder **nicht sehen** — auch nicht als Admin.
 
+**Die Mitgliederliste ist nicht jedem Mitglied zugänglich.** Wer namentlich in einem Space steht, ist selbst eine Information — welcher Sachbearbeiter an einem „Disziplinarverfahren" oder einer „Umstrukturierung Abteilung 3" mitarbeitet, sagt etwas über die betroffenen Personen aus. Deshalb sehen `ADMIN`, der Eigentümer (dessen Mitgliedschaft stets `ADMIN` ist) und System-Admins die vollständige Liste mit Kennungen und Anzeigenamen; `MEMBER` und `CURATOR` erhalten nur die aggregierte Zählung je Rolle (`roleCounts`), die „wie groß ist dieser Raum" beantwortet, ohne jemanden zu benennen.
+
 ### Assets in einen Space assoziieren
 
 Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.

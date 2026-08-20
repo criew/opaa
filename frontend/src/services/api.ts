@@ -181,6 +181,17 @@ export async function getSpace(spaceId: string): Promise<SpaceResponse> {
   }
 }
 
+// #144: the full member list (identities and display names) is only reachable here - SpaceResponse
+// no longer carries it, and the backend restricts this endpoint to ADMIN, owner and system admins.
+export async function listSpaceMembers(spaceId: string): Promise<SpaceMemberResponse[]> {
+  try {
+    const { data } = await client.get<SpaceMemberResponse[]>(`/v1/spaces/${spaceId}/members`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function addSpaceMember(
   spaceId: string,
   userId: string,

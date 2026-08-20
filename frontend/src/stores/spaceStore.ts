@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SpaceListResponse, SpaceRole, SpaceResponse } from '../types/api'
+import type { SpaceListResponse, SpaceMemberResponse, SpaceRole, SpaceResponse } from '../types/api'
 import {
   addSpaceMember,
   archiveSpace,
@@ -7,6 +7,7 @@ import {
   deleteSpace,
   getSpace,
   getSpaces,
+  listSpaceMembers,
   removeSpaceMember,
   transferSpaceOwnership,
   updateSpaceDetails,
@@ -21,9 +22,14 @@ interface SpaceState {
   isLoadingList: boolean
   isLoadingDetails: boolean
   error: string | null
+  // #144: SpaceResponse no longer carries the full member list - it is loaded separately, and only
+  // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
+  members: SpaceMemberResponse[]
+  isLoadingMembers: boolean
   reset: () => void
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
+  loadMembers: (spaceId: string) => Promise<void>
   addMember: (spaceId: string, userId: string, role?: SpaceRole) => Promise<void>
   updateMemberRole: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>
   removeMember: (spaceId: string, userId: string) => Promise<void>
@@ -49,6 +55,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   isLoadingList: false,
   isLoadingDetails: false,
   error: null,
+  members: [],
+  isLoadingMembers: false,
 
   reset: () =>
     set({
@@ -58,6 +66,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       isLoadingList: false,
       isLoadingDetails: false,
       error: null,
+      members: [],
+      isLoadingMembers: false,
     }),
 
   loadSpaces: async () => {
@@ -88,7 +98,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   selectSpace: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    set({ selectedSpaceId: spaceId, isLoadingDetails: true, error: null })
+    // #144: members belongs to whichever space was selected before - clearing it here prevents it
+    // from briefly appearing to belong to the newly selected space while the new list (or a 403
+    // for a non-admin) is still in flight.
+    set({ selectedSpaceId: spaceId, isLoadingDetails: true, error: null, members: [] })
     try {
       const space = await getSpace(spaceId)
       if (isStaleSessionEpoch(sessionEpoch)) return
@@ -108,29 +121,45 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 
+  // #144: only ADMIN, the owner (whose membership is always ADMIN) and system admins may call
+  // this - anyone else gets a 403, which is treated as "no members to show" rather than an error
+  // banner, since the caller already knows they lack the role to see the list.
+  loadMembers: async (spaceId: string) => {
+    const sessionEpoch = currentSessionEpoch()
+    set({ isLoadingMembers: true })
+    try {
+      const members = await listSpaceMembers(spaceId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ members, isLoadingMembers: false })
+    } catch {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ members: [], isLoadingMembers: false })
+    }
+  },
+
   addMember: async (spaceId, userId, role) => {
     await addSpaceMember(spaceId, userId, role)
-    await get().selectSpace(spaceId)
+    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   updateMemberRole: async (spaceId, userId, role) => {
     await updateSpaceMemberRole(spaceId, userId, role)
-    await get().selectSpace(spaceId)
+    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   removeMember: async (spaceId, userId) => {
     await removeSpaceMember(spaceId, userId)
-    await get().selectSpace(spaceId)
+    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   transferOwnership: async (spaceId, userId) => {
     await transferSpaceOwnership(spaceId, userId)
-    await get().selectSpace(spaceId)
+    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   updateDetails: async (spaceId, name, description) => {
     await updateSpaceDetails(spaceId, name, description)
-    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId)])
+    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   deleteSelectedSpace: async (spaceId) => {
@@ -153,7 +182,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await archiveSpace(spaceId)
     // The space itself stays selectable - archiving stops new content, it does not remove the
     // space or navigate away from it (#543).
-    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId)])
+    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   createNewSpace: async (name, description) => {
