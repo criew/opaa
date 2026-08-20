@@ -43,9 +43,14 @@ import type {
 const SUPPORTED_DOCUMENT_EXTENSIONS = ['.doc', '.docx', '.md', '.pdf', '.pptx', '.txt']
 const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
 const documentPollCounts = new Map<string, number>()
+// Upload ids that should resolve to FAILED (#434/#614), not INDEXED, the next time the documents
+// GET handler below advances them past PENDING - see the POST handler's isEmptyContent check.
+const documentsPendingFailure = new Set<string>()
+const EMPTY_CONTENT_ERROR_MESSAGE = 'Aus der Datei konnte kein Text extrahiert werden'
 
 export function resetDocumentMockState() {
   documentPollCounts.clear()
+  documentsPendingFailure.clear()
   resetMockLibraryDocuments()
 }
 
@@ -833,9 +838,14 @@ export const handlers = [
       const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
       documentPollCounts.set(doc.id, pollCount)
       if (pollCount >= 2) {
-        doc.status = 'INDEXED'
-        doc.chunkCount = 12
-        doc.indexedAt = new Date().toISOString()
+        if (documentsPendingFailure.delete(doc.id)) {
+          doc.status = 'FAILED'
+          doc.errorMessage = EMPTY_CONTENT_ERROR_MESSAGE
+        } else {
+          doc.status = 'INDEXED'
+          doc.chunkCount = 12
+          doc.indexedAt = new Date().toISOString()
+        }
       }
     })
 
@@ -896,16 +906,13 @@ export const handlers = [
         { status: 400 },
       )
     }
-    // Mirrors LibraryDocumentService#uploadDocument catching EmptyDocumentContentException: a file
-    // whose text content is blank (e.g. a scanned image with no extractable text) is rejected after
-    // the format check passes, distinct from the "no file at all" 400 above.
+    // Mirrors FileProcessingService#processUploadedFileAsync finding no extractable content
+    // (#434/#614): since the upload endpoint moved off the request thread, this is no longer a
+    // synchronous 422 - the row is returned PENDING like any other upload and only turns FAILED
+    // once the (simulated) asynchronous processing below resolves it, with the same German
+    // errorMessage the real endpoint records.
     const textContent = await file.text()
-    if (textContent.trim() === '') {
-      return HttpResponse.json(
-        { error: 'Aus der Datei konnte kein Text extrahiert werden' },
-        { status: 422 },
-      )
-    }
+    const isEmptyContent = textContent.trim() === ''
     const existing = mockLibraryDocuments[libraryId] ?? []
     // Mirrors LibraryDocumentService#uploadDocument: dedup is scoped per library and keyed on
     // content, approximated here by file name since MSW fixtures do not carry a real checksum.
@@ -915,8 +922,9 @@ export const handlers = [
         { status: 409 },
       )
     }
+    const documentId = `document-${crypto.randomUUID().slice(0, 8)}`
     const document: (typeof existing)[number] = {
-      id: `document-${crypto.randomUUID().slice(0, 8)}`,
+      id: documentId,
       fileName: file.name,
       contentType: file.type || null,
       fileSize: file.size,
@@ -925,6 +933,12 @@ export const handlers = [
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
+    }
+    if (isEmptyContent) {
+      // Resolved to FAILED, not INDEXED, the next time this document is polled (see the
+      // documents GET handler below) - mirrors FileProcessingService#processUploadedFileAsync
+      // finding an empty parse result.
+      documentsPendingFailure.add(documentId)
     }
     mockLibraryDocuments[libraryId] = [document, ...existing]
     const detail = mockLibraryDetails[libraryId]
