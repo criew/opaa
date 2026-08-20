@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -244,9 +245,11 @@ public class QueryService {
                 String answer = extractAnswer(chatResponse);
                 Set<String> citedDocumentIds = citationParser.extractCitedDocumentIds(answer);
                 Map<String, Integer> matchCounts = countMatchesPerFile(relevantChunks);
-                Map<String, Instant> indexedAtByDocId = lookupIndexedAt(relevantChunks);
+                Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
+                    lookupSourceDocuments(relevantChunks);
                 List<SourceReference> sources =
-                    mapSources(relevantChunks, citedDocumentIds, matchCounts, indexedAtByDocId);
+                    mapSources(
+                        relevantChunks, citedDocumentIds, matchCounts, sourceDocumentsByDocId);
 
                 log.debug(
                     "Citations found: {} cited, {} total sources",
@@ -374,19 +377,28 @@ public class QueryService {
                 Collectors.summingInt(e -> 1)));
   }
 
-  private Map<String, Instant> lookupIndexedAt(List<Document> chunks) {
+  /**
+   * Resolves each cited chunk's {@code document_id} to its persisted {@link
+   * io.opaa.indexing.Document} - the single {@link DocumentRepository} lookup {@link #mapSources}
+   * draws both {@code indexedAt} and {@code sourceEntryUrl} from (#639), rather than a second,
+   * duplicate lookup per field. {@code sourceEntryUrl} follows the same document_id-lookup pattern
+   * this method already used for {@code indexedAt} alone - see the comment in {@code
+   * FileProcessingService#storeChunks} for why the value is not instead duplicated onto every chunk
+   * in the vector store.
+   */
+  private Map<String, io.opaa.indexing.Document> lookupSourceDocuments(List<Document> chunks) {
     Set<String> documentIds =
         chunks.stream()
             .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
             .filter(id -> !id.isEmpty())
             .collect(Collectors.toSet());
 
-    Map<String, Instant> result = new LinkedHashMap<>();
+    Map<String, io.opaa.indexing.Document> result = new LinkedHashMap<>();
     for (String docId : documentIds) {
       try {
         documentRepository
             .findById(UUID.fromString(docId))
-            .ifPresent(doc -> result.put(docId, doc.getIndexedAt()));
+            .ifPresent(doc -> result.put(docId, doc));
       } catch (IllegalArgumentException e) {
         log.debug("Invalid document ID format: {}", docId);
       }
@@ -398,7 +410,7 @@ public class QueryService {
       List<Document> chunks,
       Set<String> citedDocumentIds,
       Map<String, Integer> matchCounts,
-      Map<String, Instant> indexedAtByDocId) {
+      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
     return chunks.stream()
         .map(
             chunk -> {
@@ -407,8 +419,13 @@ public class QueryService {
               double score = chunk.getScore() != null ? chunk.getScore() : 0.0;
               boolean cited = citedDocumentIds.contains(documentId);
               int matches = matchCounts.getOrDefault(fileName, 1);
-              Instant indexedAt = indexedAtByDocId.get(documentId);
-              return new SourceReference(fileName, score, matches, cited).indexedAt(indexedAt);
+              io.opaa.indexing.Document sourceDocument = sourceDocumentsByDocId.get(documentId);
+              Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
+              String sourceEntryUrl =
+                  sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
+              return new SourceReference(fileName, score, matches, cited)
+                  .indexedAt(indexedAt)
+                  .sourceEntryUrl(sourceEntryUrl);
             })
         .collect(
             toMap(
@@ -426,10 +443,23 @@ public class QueryService {
    * relevance score while preserving citation status. If either reference was cited in the answer,
    * the merged result is marked as cited — because any chunk from that document being cited means
    * the document as a whole contributed to the answer.
+   *
+   * <p>#639 review: the dedupe key is {@code fileName}, not {@code document_id} - two distinct
+   * documents can share a file name (e.g. two RSS entries both attaching a same-named PDF), each
+   * with its own, different {@code sourceEntryUrl}. Asserting the preferred chunk's URL as the
+   * merged citation's origin would then be an unverifiable, potentially wrong claim about where the
+   * other, merged-away chunk actually came from - a checkable falsehood in the citation. A merge
+   * where {@code a} and {@code b} disagree on {@code sourceEntryUrl} therefore drops the field to
+   * {@code null} rather than picking either side; only an unambiguous agreement (both null, or both
+   * the same URL) survives the merge.
    */
   static SourceReference mergeSourceReferences(SourceReference a, SourceReference b) {
     SourceReference preferred = a.getRelevanceScore() >= b.getRelevanceScore() ? a : b;
     boolean shouldBeCited = a.getCited() || b.getCited();
+    String mergedSourceEntryUrl =
+        Objects.equals(a.getSourceEntryUrl(), b.getSourceEntryUrl())
+            ? preferred.getSourceEntryUrl()
+            : null;
 
     if (shouldBeCited && !preferred.getCited()) {
       return new SourceReference(
@@ -437,9 +467,11 @@ public class QueryService {
               preferred.getRelevanceScore(),
               preferred.getMatchCount(),
               true)
-          .indexedAt(preferred.getIndexedAt());
+          .indexedAt(preferred.getIndexedAt())
+          .sourceEntryUrl(mergedSourceEntryUrl);
     }
 
+    preferred.setSourceEntryUrl(mergedSourceEntryUrl);
     return preferred;
   }
 
