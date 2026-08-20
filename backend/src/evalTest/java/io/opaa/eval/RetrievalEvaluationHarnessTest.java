@@ -14,6 +14,7 @@ import io.opaa.eval.EvaluationReport.WorstQuery;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
@@ -295,6 +296,14 @@ class RetrievalEvaluationHarnessTest {
     registry.add("spring.ai.ollama.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
     registry.add("opaa.indexing.document-path", () -> corpusWorkingDir.toAbsolutePath().toString());
+    // #478/ADR-0018: a FILESYSTEM library now reads its own sourcePath instead of the
+    // application-wide document-path above (kept only because IndexingProperties still binds it,
+    // see its own Javadoc) - the eval library created in setUpIndexingTarget() below points
+    // sourcePath at this same corpusWorkingDir, so the allowlist must cover it or
+    // AsyncIndexingExecutor refuses the run outright (empty allowlist disables FILESYSTEM
+    // entirely, see FilesystemPathAllowlist).
+    registry.add(
+        "opaa.indexing.filesystem-allowlist", () -> corpusWorkingDir.toAbsolutePath().toString());
     // Deliberately NOT overriding opaa.indexing.chunk-size here — see
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
@@ -325,6 +334,14 @@ class RetrievalEvaluationHarnessTest {
   // measurements themselves are unaffected: this harness reads via vectorStore.similaritySearch
   // (see the class Javadoc), not through the permission-aware query path, so which library the
   // corpus lands in does not change what is measured.
+  //
+  // #552: the library must be a FILESYSTEM library whose sourcePath is corpusWorkingDir, not the
+  // no-config default DocumentSourceType.UPLOAD KnowledgeLibrary#ownedByUser's six-argument
+  // overload defaults to (#478/ADR-0018 introduced per-library quellentyp after this harness's own
+  // #536 library-model fix landed) - triggerIndexing() rejects an UPLOAD library with 409 before a
+  // single document is indexed (DocumentIndexingService#toIndexingSourceType), which is exactly the
+  // ResponseStatusException the nightly run
+  // (https://github.com/criew/opaa/actions/runs/32327052407) failed with.
   private UUID evalUserId;
   private UUID evalLibraryId;
 
@@ -349,6 +366,12 @@ class RetrievalEvaluationHarnessTest {
                 null,
                 evalUserId,
                 LibraryVisibility.PRIVATE,
+                false,
+                DocumentSourceType.FILESYSTEM,
+                corpusWorkingDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
                 false));
     evalLibraryId = library.getId();
 
