@@ -98,6 +98,63 @@ class QueryServiceTest {
     lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
   }
 
+  /**
+   * #639: {@code sourceEntryUrl} is resolved via the same {@code document_id} -> DocumentRepository
+   * lookup {@code indexedAt} already uses ({@link QueryService#lookupSourceDocuments}), not carried
+   * on the chunk metadata itself.
+   */
+  @Test
+  void queryPopulatesSourceEntryUrlFromDocumentLookup() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    var chunk =
+        Document.builder()
+            .text("Feed entry content")
+            .metadata(Map.of("file_name", "entry.html", "document_id", documentId.toString()))
+            .score(0.8)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var indexedDocument = new io.opaa.indexing.Document("entry.html", "/path", "text/html", 100L);
+    indexedDocument.setSourceEntryUrl("https://example.com/feed/entry-123");
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getSourceEntryUrl())
+        .isEqualTo("https://example.com/feed/entry-123");
+  }
+
+  /**
+   * #639 acceptance criterion: a source referencing any other document (no source entry URL, e.g.
+   * not RSS-sourced) still carries {@code sourceEntryUrl: null}.
+   */
+  @Test
+  void queryLeavesSourceEntryUrlNullWhenDocumentHasNone() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    var chunk =
+        Document.builder()
+            .text("Uploaded content")
+            .metadata(Map.of("file_name", "upload.pdf", "document_id", documentId.toString()))
+            .score(0.8)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var indexedDocument = new io.opaa.indexing.Document("entry.html", "/path", "text/html", 100L);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
+
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResponse response = queryService.query("Question", null, currentUserId, true, List.of());
+
+    assertThat(response.getSources().getFirst().getSourceEntryUrl()).isNull();
+  }
+
   @Test
   void queryMarksCitedSourcesCorrectly() {
     when(chatMemory.get(any())).thenReturn(List.of());
@@ -751,13 +808,42 @@ class QueryServiceTest {
       assertThat(result.getIndexedAt()).isEqualTo(indexedLate);
       assertThat(result.getCited()).isTrue();
     }
+
+    /**
+     * #639: the branch that builds a fresh {@code SourceReference} to force {@code cited = true}
+     * (because a lower-scoring duplicate was cited but the higher-scoring one is preferred) carries
+     * {@code sourceEntryUrl} over from the preferred source, same as {@code indexedAt}.
+     */
+    @Test
+    void preservesSourceEntryUrlWhenForcingCited() {
+      var citedLow =
+          sourceReference("report.pdf", 0.3, 1, INDEXED_AT, true, "https://example.com/entry-1");
+      var uncitedHigh =
+          sourceReference("report.pdf", 0.9, 1, INDEXED_AT, false, "https://example.com/entry-2");
+
+      var result = QueryService.mergeSourceReferences(citedLow, uncitedHigh);
+
+      assertThat(result.getCited()).isTrue();
+      assertThat(result.getSourceEntryUrl()).isEqualTo("https://example.com/entry-2");
+    }
   }
 
   private static SourceReference sourceReference(
       String fileName, double relevanceScore, int matchCount, Instant indexedAt, boolean cited) {
+    return sourceReference(fileName, relevanceScore, matchCount, indexedAt, cited, null);
+  }
+
+  private static SourceReference sourceReference(
+      String fileName,
+      double relevanceScore,
+      int matchCount,
+      Instant indexedAt,
+      boolean cited,
+      String sourceEntryUrl) {
     SourceReference sourceReference =
         new SourceReference(fileName, relevanceScore, matchCount, cited);
     sourceReference.setIndexedAt(indexedAt);
+    sourceReference.setSourceEntryUrl(sourceEntryUrl);
     return sourceReference;
   }
 
