@@ -214,6 +214,10 @@ class SourceConnectionTestServiceTest {
     assertThat(response.getReachable()).isTrue();
     // 2 linked documents - the subdir entry is a directory, not a linked document.
     assertThat(response.getDocumentCount()).isEqualTo(2L);
+    // #551: exact wording, incl. plural adjective agreement ("unterstützte Dokumente").
+    assertThat(response.getMessage())
+        .isEqualTo(
+            "Webverzeichnis erreichbar, 2 unterstützte Dokumente auf oberster Ebene gefunden.");
   }
 
   @Test
@@ -286,7 +290,11 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.getReachable()).isTrue();
     assertThat(response.getDocumentCount()).isEqualTo(1L);
-    assertThat(response.getMessage()).contains("oberster Ebene");
+    // #551: the singular defect the issue is named after - "unterstütztes Dokument", not
+    // "unterstuetzte Dokument".
+    assertThat(response.getMessage())
+        .isEqualTo(
+            "Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.");
   }
 
   @Test
@@ -357,7 +365,7 @@ class SourceConnectionTestServiceTest {
                 .sourceUrl(URI.create(baseUrl + "/dir/")));
 
     assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Groesse");
+    assertThat(response.getMessage()).contains("Größe");
   }
 
   @Test
@@ -503,7 +511,11 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.getReachable()).isTrue();
     assertThat(response.getDocumentCount()).isEqualTo(1L);
-    assertThat(response.getMessage()).contains("insgesamt 2");
+    // #551: exact wording, incl. correct umlauts ("enthält", "Einträge", "höchstens").
+    assertThat(response.getMessage())
+        .isEqualTo(
+            "RSS-Feed erreichbar, 1 Eintrag gefunden. Der Feed enthält insgesamt 2 Einträge; ein"
+                + " Lauf verarbeitet davon höchstens 1.");
   }
 
   @Test
@@ -543,7 +555,7 @@ class SourceConnectionTestServiceTest {
                 .sourceUrl(URI.create(baseUrl + "/feed.xml")));
 
     assertThat(response.getReachable()).isFalse();
-    assertThat(response.getMessage()).contains("Groesse");
+    assertThat(response.getMessage()).contains("Größe");
   }
 
   @Test

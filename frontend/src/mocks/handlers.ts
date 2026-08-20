@@ -722,7 +722,7 @@ export const handlers = [
     }
     if (body.sourceType === 'UPLOAD') {
       return HttpResponse.json(
-        { error: 'sourceType UPLOAD unterstuetzt keinen Verbindungstest' },
+        { error: 'sourceType UPLOAD unterstützt keinen Verbindungstest' },
         { status: 400 },
       )
     }
@@ -743,14 +743,13 @@ export const handlers = [
       return HttpResponse.json({
         reachable: true,
         documentCount: 5,
-        message:
-          'Webverzeichnis erreichbar, 5 unterstuetzte Dokumente auf oberster Ebene gefunden.',
+        message: 'Webverzeichnis erreichbar, 5 unterstützte Dokumente auf oberster Ebene gefunden.',
       })
     }
     return HttpResponse.json({
       reachable: true,
       documentCount: 12,
-      message: 'RSS-Feed erreichbar, 12 Eintraege gefunden.',
+      message: 'RSS-Feed erreichbar, 12 Einträge gefunden.',
     })
   }),
 

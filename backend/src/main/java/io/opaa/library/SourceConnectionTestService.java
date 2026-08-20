@@ -113,7 +113,7 @@ public class SourceConnectionTestService {
     return switch (sourceType) {
       case UPLOAD ->
           throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourceType UPLOAD unterstuetzt keinen Verbindungstest");
+              HttpStatus.BAD_REQUEST, "sourceType UPLOAD unterstützt keinen Verbindungstest");
       case FILESYSTEM -> testFilesystem(request);
       case HTTP_DIRECTORY -> testHttpDirectory(request);
       case RSS_FEED -> testRssFeed(request);
@@ -136,13 +136,12 @@ public class SourceConnectionTestService {
     if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht"
-              + " zulaessig");
+          "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
+              + " zulässig");
     }
     if (Boolean.TRUE.equals(request.getSourceInsecureSsl())) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
+          HttpStatus.BAD_REQUEST, "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
     }
     // Path.of(...).isAbsolute() rather than a literal startsWith("/") (unlike
     // KnowledgeLibraryService's identical-looking check): this method actually touches the
@@ -160,13 +159,13 @@ public class SourceConnectionTestService {
     if (!filesystemAllowlist.isConfigured()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse fuer"
+          "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"
               + " Dateisystem-Bibliotheken freigegeben");
     }
     if (!filesystemAllowlist.isAllowed(sourcePath)) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
+          "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
               + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
     }
 
@@ -178,7 +177,7 @@ public class SourceConnectionTestService {
       return unreachable("Der angegebene Pfad ist kein Verzeichnis.");
     }
     if (!Files.isReadable(directory)) {
-      return unreachable("Das Verzeichnis ist fuer den Server nicht lesbar.");
+      return unreachable("Das Verzeichnis ist für den Server nicht lesbar.");
     }
 
     try {
@@ -240,7 +239,7 @@ public class SourceConnectionTestService {
           bytes = readBounded(body, maxPageSizeBytes);
         } catch (ResponseTooLargeException e) {
           return unreachable(
-              "Die Verzeichnisseite ueberschreitet die zulaessige Groesse von "
+              "Die Verzeichnisseite überschreitet die zulässige Größe von "
                   + maxPageSizeBytes
                   + " Byte.");
         }
@@ -263,9 +262,7 @@ public class SourceConnectionTestService {
                 .count();
         return reachable(
             "Webverzeichnis erreichbar, "
-                + linkedDocuments
-                + " unterstuetzte "
-                + documentWord(linkedDocuments)
+                + supportedDocumentPhrase(linkedDocuments)
                 + " auf oberster Ebene gefunden.",
             linkedDocuments);
       }
@@ -312,9 +309,7 @@ public class SourceConnectionTestService {
           bytes = readBounded(body, maxFeedSizeBytes);
         } catch (ResponseTooLargeException e) {
           return unreachable(
-              "Der RSS-Feed ueberschreitet die zulaessige Groesse von "
-                  + maxFeedSizeBytes
-                  + " Byte.");
+              "Der RSS-Feed überschreitet die zulässige Größe von " + maxFeedSizeBytes + " Byte.");
         }
         List<RssFeedEntry> entries;
         try {
@@ -332,14 +327,14 @@ public class SourceConnectionTestService {
             "RSS-Feed erreichbar, "
                 + countedEntries
                 + " "
-                + (countedEntries == 1 ? "Eintrag" : "Eintraege")
+                + (countedEntries == 1 ? "Eintrag" : "Einträge")
                 + " gefunden.";
         if (totalEntries > countedEntries) {
           message +=
-              " Der Feed enthaelt insgesamt "
+              " Der Feed enthält insgesamt "
                   + totalEntries
-                  + " Eintraege; ein Lauf verarbeitet"
-                  + " davon hoechstens "
+                  + " Einträge; ein Lauf verarbeitet"
+                  + " davon höchstens "
                   + maxFeedEntries
                   + ".";
         }
@@ -367,13 +362,13 @@ public class SourceConnectionTestService {
     if (blankToNull(request.getSourcePath()) != null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourcePath ist fuer sourceType " + request.getSourceType() + " nicht zulaessig");
+          "sourcePath ist für sourceType " + request.getSourceType() + " nicht zulässig");
     }
     URI uri;
     try {
       uri = URI.create(sourceUrl);
     } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gueltige URL");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gültige URL");
     }
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
@@ -385,6 +380,19 @@ public class SourceConnectionTestService {
 
   private static String documentWord(long count) {
     return count == 1 ? "Dokument" : "Dokumente";
+  }
+
+  /**
+   * Formats {@code count} together with a grammatically correct singular/plural German phrase
+   * (#551: "1 unterstütztes Dokument" vs. "N unterstützte Dokumente" - the adjective ending must
+   * agree with the noun, not just the noun itself).
+   */
+  private static String supportedDocumentPhrase(long count) {
+    return count
+        + " "
+        + (count == 1 ? "unterstütztes" : "unterstützte")
+        + " "
+        + documentWord(count);
   }
 
   private static SourceConnectionTestResponse reachable(String message, long documentCount) {
@@ -402,7 +410,7 @@ public class SourceConnectionTestService {
    */
   private static String translateConnectionError(IOException e) {
     if (e instanceof UnknownHostException) {
-      return "Der Host konnte nicht gefunden werden (DNS-Aufloesung fehlgeschlagen).";
+      return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";
     }
     if (e instanceof ConnectException) {
       return "Die Verbindung wurde vom Server abgelehnt.";
@@ -411,8 +419,8 @@ public class SourceConnectionTestService {
       return "Die Verbindung ist in ein Zeitlimit gelaufen.";
     }
     if (e instanceof SSLException) {
-      return "Das Zertifikat des Servers konnte nicht geprueft werden. Bei einem bekannten,"
-          + " selbstsignierten Zertifikat kann die Zertifikatspruefung ausgesetzt werden.";
+      return "Das Zertifikat des Servers konnte nicht geprüft werden. Bei einem bekannten,"
+          + " selbstsignierten Zertifikat kann die Zertifikatsprüfung ausgesetzt werden.";
     }
     return "Die Adresse ist nicht erreichbar.";
   }
