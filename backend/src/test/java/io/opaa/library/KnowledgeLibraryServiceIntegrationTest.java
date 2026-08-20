@@ -789,6 +789,68 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void
+      updateLibraryWritesNoLibrarySourceUpdatedEntryWhenTheDialogResendsTheSourceFieldsUnchanged() {
+    // Code review finding 2 (PR #578): the real EditLibrarySourceDialog case - it resends
+    // sourceUrl unchanged and leaves sourceCredentials blank (relying on the same-origin
+    // fallback in validateSourceConfigurationForUpdate). This walks the new #545 block all the
+    // way to the empty-changedSourceFields guard, unlike the rename-only test above, which never
+    // enters replacesSourceConfiguration at all.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .sourceUrl(URI.create("https://files.example.com/documents/"));
+
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE object_id = ? AND event_type = ?",
+            Integer.class,
+            library.getId().toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(count).isZero();
+  }
+
+  @Test
+  void updateLibraryRecordsBothLibraryChangedAndLibrarySourceUpdatedWhenNameAndSourceBothChange() {
+    // Code review finding 3 (PR #578): a rename combined with a source configuration change
+    // must write both events, not just one - pinning the same "independent events" guarantee
+    // #392's ASSET_VISIBILITY_CHANGED/LIBRARY_CHANGED pairing already has, now for
+    // LIBRARY_CHANGED/LIBRARY_SOURCE_UPDATED.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://old.example.com/documents/"))
+                .sourceCredentials("admin:old-secret"),
+            owner);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", library.getId().toString());
+
+    LibraryUpdateRequest request =
+        new LibraryUpdateRequest("Web-Verzeichnis umbenannt")
+            .sourceUrl(URI.create("https://new.example.com/documents/"))
+            .sourceCredentials("admin:new-secret");
+
+    libraryService.updateLibrary(library.getId(), request, owner, false);
+
+    List<String> eventTypes =
+        jdbcTemplate.queryForList(
+            "SELECT event_type FROM audit_log WHERE object_id = ?",
+            String.class,
+            library.getId().toString());
+    assertThat(eventTypes).containsExactlyInAnyOrder("LIBRARY_CHANGED", "LIBRARY_SOURCE_UPDATED");
+  }
+
+  @Test
   void updateLibraryLeavesTheSourceConfigurationUntouchedWhenTheRequestCarriesNoConfigField() {
     // A request that only renames the library - every caller today, e.g.
     // LibraryManagementPage's rename/visibility form - must not null out an existing
