@@ -149,7 +149,7 @@ Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`
 - Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
 - Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass ein Maintainer des Projekts den PR merged, sobald CI grün ist
 - **Auto-Merge nutzen:** `gh pr merge --auto --squash` merged den PR automatisch, sobald die Required Checks grün sind. Ein PR muss dafür nicht up to date mit `main` sein (nur konfliktfrei) — manuelles „Branch aktualisieren und CI abwarten" entfällt. Der Push auf `main` lässt die CI anschließend den kombinierten Stand prüfen
-- Kein Agent merged jemals einen PR
+- Auto-Merge setzen dürfen nur Maintainer und der Koordinator mit ausdrücklicher Maintainer-Freigabe; Entwickler- und Review-Agenten mergen nie (siehe [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md), Schritt 6)
 - Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
 - PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
 - IMMER das PR-Template (Zusammenfassung, Zugehörige Issues, Art der Änderung, Checkliste, KI-Agenten-Offenlegung) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) für neue Pull Requests verwenden

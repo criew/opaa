@@ -139,6 +139,12 @@ tasks.register<Test>("openAiIntegrationTest") {
     filter {
         includeTestsMatching("io.opaa.integration.*")
     }
+    // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
+    // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and
+    // on the live OpenAI API. A cached "success" from a key-less run would otherwise satisfy a
+    // later keyed run without ever contacting OpenAI. Same pattern as evaluateRetrieval.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
 }
 
 // Compares the report produced by evaluateRetrieval against the committed baseline

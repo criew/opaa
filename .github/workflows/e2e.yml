@@ -20,10 +20,11 @@ on:
     - cron: '17 3 * * *'
 
 # A new push to a PR branch makes the previous run's result irrelevant —
-# cancel it instead of blocking a runner (issue #644). Runs on main and the
-# nightly schedule are never cancelled.
+# cancel it instead of blocking a runner (issue #644). Non-PR events (main
+# pushes, the nightly schedule) get the SHA in the group so GitHub never
+# discards a pending main/schedule run when the next merge lands.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:

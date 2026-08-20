@@ -92,9 +92,9 @@ flowchart TD
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
 4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
 5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.
-6. **Merge** — **Nur Menschen mergen**, und zwar ein Maintainer des Projekts. Kein Agent mergt jemals einen PR. (Diese Richtlinie kann schrittweise gelockert werden, wenn Vertrauen aufgebaut ist — jede Änderung daran muss hier festgehalten werden.)
+6. **Merge** — Gemergt wird von einem Maintainer des Projekts — oder, seit der Lockerung vom 20.08.2026, vom **Koordinator mit ausdrücklicher Maintainer-Freigabe**: Er darf reviewte PRs per `gh pr merge --auto --squash` zum Auto-Merge freigeben; GitHub merged dann selbst, sobald die Required Checks grün sind. Entwickler- und Review-Agenten mergen weiterhin nie. (Jede weitere Änderung dieser Richtlinie muss hier festgehalten werden.)
 
-Technisch durchgesetzt sind auf `main` die Status-Checks `backend`, `backend-integration` und `frontend`, das Auflösen offener Konversationen sowie der Schutz gegen Force-Push und Löschen. Schreibzugriff haben ausschließlich die Maintainer; dass niemand sonst mergen kann, folgt daraus und braucht keine zusätzliche Regel.
+Technisch durchgesetzt sind auf `main` die Status-Checks `changes`, `backend`, `backend-integration` und `frontend` (`changes` ist der Pfadfilter-Job aus `ci.yml`; als Required Check verhindert er, dass sein Fehlschlag die abhängigen Jobs stillschweigend als „skipped = bestanden" durchwinkt), das Auflösen offener Konversationen sowie der Schutz gegen Force-Push und Löschen. Ein PR muss nicht up to date mit `main` sein (seit 20.08.2026, Issue #644) — der CI-Lauf auf `main` nach dem Merge prüft den kombinierten Stand. Schreibzugriff haben ausschließlich die Maintainer; dass niemand sonst mergen kann, folgt daraus und braucht keine zusätzliche Regel.
 
 ### Wo QA passt: zwei Qualitätsschleifen
 
@@ -129,4 +129,4 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 
 - Subagenten interagieren nie direkt mit dem Maintainer; Fragen werden gebündelt und vom Orchestrator weitergeleitet, vorzugsweise während des Definitionsschritts statt mitten in der Implementierung.
 - Qualitätsgates sind deterministisch (CI, Hooks), keine Versprechen in Prompts: Tests müssen bestehen, bevor ein Agent ein Issue als erledigt melden darf.
-- Agenten arbeiten unter einer Allow/Deny-Berechtigungsrichtlinie (`.claude/settings.json`); destruktive Befehle und `gh pr merge` sind für Agenten verweigert.
+- Agenten arbeiten unter einer Allow/Deny-Berechtigungsrichtlinie (`.claude/settings.json`); destruktive Befehle sind für Agenten verweigert. `gh pr merge` ist Subagenten verweigert; der Koordinator nutzt es im Rahmen der Merge-Freigabe (siehe Schritt 6).
