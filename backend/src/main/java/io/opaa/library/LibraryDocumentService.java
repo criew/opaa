@@ -326,9 +326,31 @@ public class LibraryDocumentService {
     // still be there afterwards - deleting either eagerly here would leave a document that is still
     // listed and still searchable pointing at nothing, or a file/chunks gone despite the row
     // surviving.
+    //
+    // Both steps below are individually guarded (PR #631 review, finding 1). By the time this
+    // callback runs, the row deletion has already committed - the caller's request has already
+    // succeeded from the database's point of view. Letting a vectorStore.delete failure propagate
+    // from here (afterCommit synchronizations run outside the original request's exception
+    // handling) would turn that success into a 500 the caller never asked for, and - since the
+    // callback would never reach the line below - skip the file deletion entirely for a reason that
+    // has nothing to do with the file. Each step is therefore its own try/catch: a pgvector outage
+    // during the chunk delete must not stop the file from being removed, and vice versa. Accepted
+    // residual risk: a chunk delete that fails this way leaves orphaned chunks in the vector store,
+    // still returned by /api/v1/query, with no automatic retry - the same already-accepted risk
+    // #614's own reasoning above describes for the concurrent-upload race, now also reachable via a
+    // genuine vectorStore failure. Recovering from that is out of scope here; see #614's follow-up
+    // discussion.
     deleteAfterCommit(
         () -> {
-          vectorStore.delete("document_id == '" + chunkFilterDocumentId + "'");
+          try {
+            vectorStore.delete("document_id == '" + chunkFilterDocumentId + "'");
+          } catch (RuntimeException e) {
+            log.error(
+                "Failed to remove vector store chunks for deleted document {} - orphaned chunks may"
+                    + " remain",
+                chunkFilterDocumentId,
+                e);
+          }
           if (fileManagedByThisService != null) {
             deleteQuietly(fileManagedByThisService);
           }

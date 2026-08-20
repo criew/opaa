@@ -640,6 +640,35 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
+      throws IOException {
+    // PR #631 review, finding 1: by the time this afterCommit callback runs, the row deletion has
+    // already committed - the caller's request has already succeeded. A vectorStore.delete failure
+    // here must neither turn that success into a 500 the caller never asked for, nor skip the file
+    // deletion for a reason that has nothing to do with the file.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve("stored.pdf");
+    Files.writeString(storedFile, "content");
+
+    Document doc = new Document("report.pdf", storedFile.toString(), "application/pdf", 7L);
+    doc.setLibraryId(libraryId);
+    doc.setSourceType(DocumentSourceType.UPLOAD);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+    doThrow(new RuntimeException("pgvector unavailable"))
+        .when(vectorStore)
+        .delete("document_id == '" + doc.getId() + "'");
+
+    service.deleteDocument(libraryId, documentId, currentUserId, false);
+
+    verify(documentRepository).delete(doc);
+    assertThat(Files.exists(storedFile))
+        .as("The file must still be deleted even though the vector store cleanup failed")
+        .isFalse();
+  }
+
+  @Test
   void deletingAFilesystemSourcedDocumentNeverTouchesItsFile() throws IOException {
     // #420 code review, finding 1 (blocking): a FILESYSTEM document's file_path points at the
     // operator-managed indexing directory, not at anything this service is allowed to remove -

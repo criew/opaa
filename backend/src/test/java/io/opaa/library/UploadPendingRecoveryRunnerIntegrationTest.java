@@ -101,6 +101,11 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     UUID freshPendingId = savePendingDocument("freshUpload.pdf", Instant.now());
     UUID staleIndexedId =
         saveIndexedDocument("staleIndexed.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
+    UUID staleConnectorPendingId =
+        savePendingDocument(
+            "staleConnector.pdf",
+            Instant.now().minus(2, ChronoUnit.HOURS),
+            DocumentSourceType.FILESYSTEM);
 
     runner.run(NO_ARGS);
 
@@ -117,27 +122,39 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     assertThat(staleIndexed.getStatus())
         .as("Recovery only ever touches PENDING rows, never a row that already finished")
         .isEqualTo(DocumentStatus.INDEXED);
+
+    Document staleConnectorPending =
+        documentRepository.findById(staleConnectorPendingId).orElseThrow();
+    assertThat(staleConnectorPending.getStatus())
+        .as(
+            "#614 covers only the upload path (PR #631 review, finding 2) - a stuck connector row"
+                + " is #501's still-open RUNNING recovery to fix, not this runner's")
+        .isEqualTo(DocumentStatus.PENDING);
   }
 
   private UUID savePendingDocument(String fileName, Instant createdAt) {
-    Document document = newUploadDocument(fileName);
+    return savePendingDocument(fileName, createdAt, DocumentSourceType.UPLOAD);
+  }
+
+  private UUID savePendingDocument(
+      String fileName, Instant createdAt, DocumentSourceType sourceType) {
+    Document document = newDocument(fileName, sourceType);
     document = documentRepository.save(document);
     backdateCreatedAt(document.getId(), createdAt);
     return document.getId();
   }
 
   private UUID saveIndexedDocument(String fileName, Instant createdAt) {
-    Document document = newUploadDocument(fileName);
+    Document document = newDocument(fileName, DocumentSourceType.UPLOAD);
     document.setStatus(DocumentStatus.INDEXED);
     document = documentRepository.save(document);
     backdateCreatedAt(document.getId(), createdAt);
     return document.getId();
   }
 
-  private Document newUploadDocument(String fileName) {
+  private Document newDocument(String fileName, DocumentSourceType sourceType) {
     Document document =
-        new Document(
-            fileName, "/uploads/" + fileName, "application/pdf", 10L, DocumentSourceType.UPLOAD);
+        new Document(fileName, "/uploads/" + fileName, "application/pdf", 10L, sourceType);
     document.setLibraryId(libraryId);
     document.setOrganizationId(organizationId);
     document.setUploadedByUserId(editor.getId());

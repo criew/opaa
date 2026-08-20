@@ -2,11 +2,7 @@ databaseChangeLog:
   # #614: startup recovery for uploads stuck at PENDING (see UploadPendingRecoveryRunner) needs to
   # tell a genuinely stale row from one a currently-running uploadTaskExecutor task is still working
   # on - indexed_at stays null for the entire PENDING lifetime and is therefore useless for that, so
-  # this adds the row's own creation time instead. DEFAULT CURRENT_TIMESTAMP on the ADD COLUMN
-  # populates every pre-existing row in the same statement (Postgres evaluates the default for
-  # existing rows on an ALTER TABLE ADD COLUMN, unlike a plain INSERT default) - close enough for
-  # startup recovery's purpose, since any row that already existed before this migration ran is, by
-  # construction, older than the recovery threshold the very next time the application starts.
+  # this adds the row's own creation time instead.
   - changeSet:
       id: 043-add-created-at-to-documents
       author: opaa
@@ -27,3 +23,36 @@ databaseChangeLog:
         - dropColumn:
             tableName: documents
             columnName: created_at
+
+  # PR #631 review, finding 3: DEFAULT CURRENT_TIMESTAMP on the ADD COLUMN above evaluates to the
+  # moment *this migration* runs, not each row's actual (long-past) creation time - Postgres has no
+  # way to know that. Liquibase runs this whole changelog, including this migration, as part of the
+  # very same application startup that then runs UploadPendingRecoveryRunner - so on an existing
+  # deployment being upgraded, a genuinely stuck PENDING upload from weeks ago would get a
+  # brand-new created_at and look freshly-created, exactly the row this recovery exists to catch.
+  # Backdated far enough (1970-01-01, i.e. epoch) that it is always older than any sane
+  # opaa.upload.pending-recovery-threshold-minutes, on the first startup after this migration only -
+  # every UPLOAD row inserted from here on gets a real created_at from the ADD COLUMN default/the
+  # entity's own constructor and is never touched by this backfill again.
+  - changeSet:
+      id: 043-backfill-created-at-for-existing-pending-uploads
+      author: opaa
+      comment: >
+        Backdates documents.created_at for pre-existing PENDING UPLOAD rows so
+        UploadPendingRecoveryRunner catches them on the very first startup after this migration,
+        instead of treating a migration-time created_at as "just created" (#614, PR #631 review,
+        finding 3).
+      changes:
+        - sql:
+            sql: >
+              UPDATE documents
+              SET created_at = TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'
+              WHERE status = 'PENDING' AND source_type = 'UPLOAD';
+      rollback:
+        - sql:
+            comment: >
+              Irreversible, same reasoning as 012-backfill-document-library-id's rollback: there is
+              no way to tell a row this changeSet backdated apart from one that already had this
+              exact timestamp for some other reason. A no-op so the rollback of the surrounding,
+              lossless changeSets is not blocked.
+            sql: "SELECT 1;"
