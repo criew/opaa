@@ -99,6 +99,10 @@ services:
   # RssFeedIndexingExecutor fetches the feed URL and each entry's own link directly - it never
   # parses a directory listing - so a plain httpd with no FancyIndexing config is enough; no
   # Dockerfile, no build, matching the read-only, already-official-image style ai-stub uses above.
+  # Since #547, this same docroot also backs the HTTP_DIRECTORY connection-test happy path (#514,
+  # test(e2e) knowledge-library-nacharbeiten.spec.ts) via .../webverzeichnis/, a hand-crafted
+  # directory-listing page - see that file's own docroot for why a real autoindex response from
+  # this image's stock config would not do.
   rss-feed:
     image: httpd:2.4-alpine
     volumes:
