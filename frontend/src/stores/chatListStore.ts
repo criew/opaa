@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatSummary } from '../types/api'
 import { createChat, deleteChat, listSpaceChats, updateChat } from '../services/api'
+import { dropChatSettingsCache } from './chatStore'
 
 interface ChatListState {
   /** Chats per space, sorted by last use (most recently updated first). Undefined means "not
@@ -117,6 +118,10 @@ export const useChatListStore = create<ChatListState>((set) => ({
   deleteChatFromList: async (spaceId: string, chatId: string) => {
     try {
       await deleteChat(chatId)
+      // #573: a deleted chat can never again be the target of a queued settings PATCH or a
+      // rollback base - dropping its entries from chatStore's module-level maps here keeps them
+      // from growing unbounded for the rest of the session.
+      dropChatSettingsCache(chatId)
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
