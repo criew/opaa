@@ -184,10 +184,10 @@ public class AuditQueryService {
           validateTimeRange(from, to);
           if (objectType == AuditObjectType.USER_ACCOUNT) {
             throw new IllegalArgumentException(
-                "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id waere"
+                "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id wäre"
                     + " hier dieselbe Pseudonymkennung, die anderswo actor_ref ist; die"
-                    + " anlassbezogene Klaerung oder die Rechtehistorie (#238) sind der zulaessige"
-                    + " Weg fuer diese Frage");
+                    + " anlassbezogene Klärung oder die Rechtehistorie (#238) sind der zulässige"
+                    + " Weg für diese Frage");
           }
           return auditLogRepository
               .findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
@@ -394,7 +394,7 @@ public class AuditQueryService {
   private void requireReason(String reason) {
     if (reason == null || reason.isBlank()) {
       throw new IllegalArgumentException(
-          "reason ist ein Pflichtfeld fuer den Zugriff auf Protokolldaten - eine Abfrage ohne"
+          "reason ist ein Pflichtfeld für den Zugriff auf Protokolldaten - eine Abfrage ohne"
               + " Anlass wird abgewiesen");
     }
     if (reason.length() > MAX_REASON_LENGTH) {
@@ -414,7 +414,7 @@ public class AuditQueryService {
       throw new IllegalArgumentException(
           "Der Zeitraum ist zu weit gefasst - maximal "
               + MAX_TIME_RANGE_DAYS
-              + " Tage je Abfrage; ein groesserer Bedarf wird durch mehrere aufeinanderfolgende"
+              + " Tage je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"
               + " Abfragen abgedeckt, nicht durch eine einzelne unbegrenzte");
     }
   }
@@ -427,7 +427,7 @@ public class AuditQueryService {
       throw new IllegalArgumentException(
           "page ist zu tief - maximal Seite "
               + MAX_PAGE_INDEX
-              + " je Abfrage; ein groesserer Bedarf wird durch mehrere aufeinanderfolgende"
+              + " je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"
               + " Abfragen mit engerem Zeitraum abgedeckt, nicht durch eine einzelne Seite ohne"
               + " Tiefenbegrenzung");
     }

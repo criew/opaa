@@ -174,7 +174,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
       MaxUploadSizeExceededException ex) {
     String message =
-        "Die Datei ist zu gross. Erlaubt sind hoechstens "
+        "Die Datei ist zu groß. Erlaubt sind höchstens "
             + (uploadProperties.maxFileSize() / (1024 * 1024))
             + " MB.";
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)

@@ -72,7 +72,7 @@ public class DocumentIndexingService {
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
     if (indexingJobService.isJobRunning(targetLibrary.getId())) {
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Fuer diese Bibliothek laeuft bereits ein Indizierungslauf");
+          HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf");
     }
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
     var job = indexingJobService.startJob(targetLibrary.getId());
@@ -138,7 +138,7 @@ public class DocumentIndexingService {
       case RSS_FEED -> IndexingSourceType.RSS_FEED;
       case UPLOAD ->
           throw new ResponseStatusException(
-              HttpStatus.CONFLICT, "Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
+              HttpStatus.CONFLICT, "Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
     };
   }
 

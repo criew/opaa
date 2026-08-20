@@ -214,14 +214,14 @@ public class GroupService {
     if (libraryRepository.existsByOwnerGroupId(groupId)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Die Gruppe besitzt noch Bibliotheken und kann nicht geloescht werden");
+          "Die Gruppe besitzt noch Bibliotheken und kann nicht gelöscht werden");
     }
     // #202 code review: a group that merely holds a grant (never owns anything) hits the same
     // RESTRICT constraint via fk_asset_grants_subject_group_organization - see the class Javadoc.
     if (grantRepository.existsBySubjectGroupId(groupId)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht geloescht werden");
+          "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
     }
 
     List<UUID> affectedUserIds =
@@ -350,7 +350,7 @@ public class GroupService {
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf hoechstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
   }
@@ -359,7 +359,7 @@ public class GroupService {
     if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "description darf hoechstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
+          "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
   }
 
@@ -397,7 +397,7 @@ public class GroupService {
     if (group.isOrgUnit()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Organisationseinheiten werden aus dem Verzeichnis synchronisiert und koennen hier"
+          "Organisationseinheiten werden aus dem Verzeichnis synchronisiert und können hier"
               + " nicht bearbeitet werden");
     }
   }

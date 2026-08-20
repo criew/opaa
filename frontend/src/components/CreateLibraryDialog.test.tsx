@@ -268,7 +268,7 @@ describe('CreateLibraryDialog', () => {
 
     it('shows a German backend error when the test call itself fails', async () => {
       mockTestLibrarySource.mockRejectedValueOnce(
-        new Error('sourcePath liegt ausserhalb der freigegebenen Verzeichnisse'),
+        new Error('sourcePath liegt außerhalb der freigegebenen Verzeichnisse'),
       )
       renderWithProviders(<CreateLibraryDialog open onClose={vi.fn()} onCreated={vi.fn()} />)
       const user = userEvent.setup()
@@ -278,7 +278,7 @@ describe('CreateLibraryDialog', () => {
       await user.click(screen.getByRole('button', { name: /verbindung testen/i }))
 
       expect(
-        await screen.findByText('sourcePath liegt ausserhalb der freigegebenen Verzeichnisse'),
+        await screen.findByText('sourcePath liegt außerhalb der freigegebenen Verzeichnisse'),
       ).toBeInTheDocument()
     })
 

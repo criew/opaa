@@ -111,13 +111,13 @@ describe('api service', () => {
 
     it('still surfaces the backend JSON ErrorResponse message for a 413 on an upload call', () => {
       const err = axiosErrorWithResponse(413, {
-        error: 'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+        error: 'Die Datei ist zu groß. Erlaubt sind höchstens 50 MB.',
         status: 413,
         timestamp: new Date().toISOString(),
       })
 
       expect(() => normalizeError(err, 'upload')).toThrow(
-        'Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.',
+        'Die Datei ist zu groß. Erlaubt sind höchstens 50 MB.',
       )
     })
 

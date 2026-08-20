@@ -127,7 +127,7 @@ const TOTAL_DOCUMENTS = 42
 // library (no run type at all). Duplicated as a literal - rather than imported from
 // stores/indexingStore.ts, which defines the same constant for triggerIndexing's own message
 // handling - to keep this mock module independent of application/store code.
-const UPLOAD_LIBRARY_INDEXING_ERROR = 'Fuer UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
+const UPLOAD_LIBRARY_INDEXING_ERROR = 'Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
 
 function recalculateRoleCounts(spaceId: string) {
   const space = mockSpaceDetails[spaceId]
@@ -604,7 +604,7 @@ export const handlers = [
     // in its name.
     if (body.ownerType === 'GROUP' && !mockMyGroups.some((group) => group.id === body.ownerId)) {
       return HttpResponse.json(
-        { error: 'Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen' },
+        { error: 'Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen' },
         { status: 403 },
       )
     }
@@ -641,15 +641,15 @@ export const handlers = [
         return HttpResponse.json(
           {
             error:
-              'sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht' +
-              ' zulaessig',
+              'sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht' +
+              ' zulässig',
           },
           { status: 400 },
         )
       }
       if (body.sourceInsecureSsl) {
         return HttpResponse.json(
-          { error: 'sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig' },
+          { error: 'sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig' },
           { status: 400 },
         )
       }
@@ -663,7 +663,7 @@ export const handlers = [
       }
       if (body.sourcePath) {
         return HttpResponse.json(
-          { error: `sourcePath ist fuer sourceType ${body.sourceType} nicht zulaessig` },
+          { error: `sourcePath ist für sourceType ${body.sourceType} nicht zulässig` },
           { status: 400 },
         )
       }
@@ -868,7 +868,7 @@ export const handlers = [
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       return HttpResponse.json(
         {
-          error: `Die Datei ist zu gross. Erlaubt sind hoechstens ${MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB`,
+          error: `Die Datei ist zu groß. Erlaubt sind höchstens ${MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB`,
         },
         { status: 413 },
       )
@@ -877,7 +877,7 @@ export const handlers = [
     if (!SUPPORTED_DOCUMENT_EXTENSIONS.some((ext) => lowerCasedName.endsWith(ext))) {
       return HttpResponse.json(
         {
-          error: `Das Dateiformat wird nicht unterstuetzt. Erlaubt sind: ${SUPPORTED_DOCUMENT_EXTENSIONS.join(', ')}`,
+          error: `Das Dateiformat wird nicht unterstützt. Erlaubt sind: ${SUPPORTED_DOCUMENT_EXTENSIONS.join(', ')}`,
         },
         { status: 400 },
       )

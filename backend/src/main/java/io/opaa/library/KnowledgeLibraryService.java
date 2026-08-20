@@ -150,7 +150,7 @@ public class KnowledgeLibraryService {
       if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
         throw new ResponseStatusException(
             HttpStatus.FORBIDDEN,
-            "Nur Mitglieder der Gruppe koennen eine Bibliothek in ihrem Namen anlegen");
+            "Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen");
       }
       // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
       // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
@@ -408,7 +408,7 @@ public class KnowledgeLibraryService {
     if (request.getSourceType() != null && request.getSourceType() != library.getSourceType()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geaendert werden");
+          "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
     // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
     // updated (credential rotation, moving a crawl target) without deleting and recreating the
@@ -561,7 +561,7 @@ public class KnowledgeLibraryService {
     if (indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs geloescht"
+          "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs gelöscht"
               + " werden");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
@@ -580,7 +580,7 @@ public class KnowledgeLibraryService {
       if (documentCount > 0) {
         throw new ResponseStatusException(
             HttpStatus.CONFLICT,
-            "Die Bibliothek enthaelt noch Dokumente und kann nicht geloescht werden");
+            "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
       }
     } else if (documentCount > 0) {
       // Bulk deletion via the library_id filter, not per document (#479): a connector library can
@@ -654,7 +654,7 @@ public class KnowledgeLibraryService {
     String trimmed = name.trim();
     if (trimmed.length() > MAX_NAME_LENGTH) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "name darf hoechstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
+          HttpStatus.BAD_REQUEST, "name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
   }
@@ -663,7 +663,7 @@ public class KnowledgeLibraryService {
     if (description != null && description.length() > MAX_DESCRIPTION_LENGTH) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "description darf hoechstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
+          "description darf höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen umfassen");
     }
   }
 
@@ -795,13 +795,13 @@ public class KnowledgeLibraryService {
         if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
-              "sourceUrl, sourceProxy und sourceCredentials sind fuer sourceType FILESYSTEM nicht"
-                  + " zulaessig");
+              "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
+                  + " zulässig");
         }
         if (sourceInsecureSsl) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
-              "sourceInsecureSsl ist fuer sourceType FILESYSTEM nicht zulaessig");
+              "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
         }
         // #484/ADR-0018 Entscheidung 6: the actual security boundary for FILESYSTEM - anlage-recht
         // alone no longer gates which sourcePath a caller may configure, the operator-controlled
@@ -811,13 +811,13 @@ public class KnowledgeLibraryService {
         if (!filesystemAllowlist.isConfigured()) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
-              "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse fuer"
+              "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"
                   + " Dateisystem-Bibliotheken freigegeben");
         }
         if (!filesystemAllowlist.isAllowed(sourcePath)) {
           throw new ResponseStatusException(
               HttpStatus.BAD_REQUEST,
-              "sourcePath liegt ausserhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
+              "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
                   + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
         }
       }
@@ -825,7 +825,7 @@ public class KnowledgeLibraryService {
       case RSS_FEED -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
       default ->
           throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST, "sourceType " + sourceType + " wird nicht unterstuetzt");
+              HttpStatus.BAD_REQUEST, "sourceType " + sourceType + " wird nicht unterstützt");
     }
   }
 
@@ -840,13 +840,13 @@ public class KnowledgeLibraryService {
     if (sourcePath != null) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "sourcePath ist fuer sourceType " + sourceType + " nicht zulaessig");
+          "sourcePath ist für sourceType " + sourceType + " nicht zulässig");
     }
     URI uri;
     try {
       uri = URI.create(sourceUrl);
     } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gueltige URL");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceUrl ist keine gültige URL");
     }
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {

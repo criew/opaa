@@ -175,7 +175,7 @@ class GlobalExceptionHandlerTest {
     ErrorResponse body = response.getBody();
     assertNotNull(body);
     assertEquals(413, body.getStatus());
-    assertEquals("Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.", body.getError());
+    assertEquals("Die Datei ist zu groß. Erlaubt sind höchstens 50 MB.", body.getError());
   }
 
   @Test
@@ -189,7 +189,7 @@ class GlobalExceptionHandlerTest {
     assertEquals(413, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("Die Datei ist zu gross. Erlaubt sind hoechstens 50 MB.", body.getError());
+    assertEquals("Die Datei ist zu groß. Erlaubt sind höchstens 50 MB.", body.getError());
   }
 
   @Test

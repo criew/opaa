@@ -196,9 +196,9 @@ class DirectorySyncPlanExecutor {
       String message =
           String.format(
               Locale.ROOT,
-              "Der Lauf wuerde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
-                  + " einfrieren und damit die konfigurierte Schwelle von %s ueberschreiten."
-                  + " Abgebrochen ohne Aenderungen.",
+              "Der Lauf würde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
+                  + " einfrieren und damit die konfigurierte Schwelle von %s überschreiten."
+                  + " Abgebrochen ohne Änderungen.",
               changedPercent,
               thresholdPercent);
       log.warn(

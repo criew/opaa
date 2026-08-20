@@ -49,7 +49,7 @@ public class IndexingJobService {
       saved = indexingJobRepository.saveAndFlush(job);
     } catch (DataIntegrityViolationException ex) {
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Fuer diese Bibliothek laeuft bereits ein Indizierungslauf", ex);
+          HttpStatus.CONFLICT, "Für diese Bibliothek läuft bereits ein Indizierungslauf", ex);
     }
     pruneOldRuns(libraryId);
     return saved;
