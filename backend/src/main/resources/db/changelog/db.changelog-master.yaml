@@ -85,3 +85,5 @@ databaseChangeLog:
       file: db/changelog/changes/042-widen-audit-event-type-branding-settings-changed.yaml
   - include:
       file: db/changelog/changes/043-add-created-at-to-documents.yaml
+  - include:
+      file: db/changelog/changes/044-add-last-progress-at-to-indexing-jobs.yaml

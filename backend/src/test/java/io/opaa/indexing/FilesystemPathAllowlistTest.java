@@ -20,7 +20,7 @@ class FilesystemPathAllowlistTest {
   }
 
   private static IndexingProperties properties(List<String> filesystemAllowlist) {
-    return new IndexingProperties(null, 0, 0, 0, 0, null, null, filesystemAllowlist);
+    return new IndexingProperties(null, 0, 0, 0, 0, null, null, filesystemAllowlist, null);
   }
 
   @Test

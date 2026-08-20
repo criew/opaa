@@ -1205,7 +1205,9 @@ paths:
         above on the library is required (the former SYSTEM_ADMIN requirement is gone -
         ADR-0018, Entscheidung 2). A library whose sourceType is UPLOAD has no run at all
         and is rejected with 409, as is a second trigger while a run for this same library is
-        still in progress - concurrency is per library, not global (#478).
+        still in progress - concurrency is per library, not global (#478). A full
+        indexingTaskExecutor queue is rejected with 503 (#501) - the just-inserted job row is
+        failed immediately rather than left RUNNING with nothing left to ever complete it.
       responses:
         "202":
           description: Indexing triggered successfully
@@ -1221,6 +1223,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/libraries/{libraryId}/indexing/status:
     parameters:
@@ -3689,6 +3693,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     PayloadTooLarge:
       description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Service temporarily unavailable
       content:
         application/json:
           schema:

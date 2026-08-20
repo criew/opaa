@@ -3,6 +3,8 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.server.ResponseStatusException;
@@ -198,6 +201,28 @@ class DocumentIndexingServiceTest {
             ResponseStatusException.class,
             ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(409)));
     verify(indexingJobService, never()).startJob(any());
+  }
+
+  /**
+   * #501: a full {@code indexingTaskExecutor} queue must not leave the job row this call just
+   * inserted stuck at {@code RUNNING} forever - {@code AbortPolicy} throws {@link
+   * TaskRejectedException} synchronously from {@code executor.execute}, and this asserts the job is
+   * failed (not left {@code RUNNING}) and the caller gets a 503, not a misleading 202/500.
+   */
+  @Test
+  void triggerIndexingRejectedByAFullQueueFailsTheJobAndReturnsServiceUnavailable() {
+    stubEditableLibrary();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(library.getId())).thenReturn(job);
+    doThrow(new TaskRejectedException("queue is full"))
+        .when(asyncIndexingExecutor)
+        .execute(job.getId(), library);
+
+    assertThatThrownBy(() -> service.triggerIndexing(library.getId(), currentUser.getId(), false))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(503)));
+    verify(indexingJobService).failJob(eq(job.getId()), any());
   }
 
   @Test

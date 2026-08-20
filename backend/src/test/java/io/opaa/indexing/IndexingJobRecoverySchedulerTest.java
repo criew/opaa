@@ -1,0 +1,51 @@
+package io.opaa.indexing;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/**
+ * #501: {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s two recovery
+ * methods to the right trigger (application startup vs. a periodic sweep) - the actual recovery
+ * logic (which rows get failed, with what message) is {@link IndexingJobServiceTest}'s
+ * responsibility.
+ */
+@ExtendWith(MockitoExtension.class)
+class IndexingJobRecoverySchedulerTest {
+
+  @Mock private IndexingJobService indexingJobService;
+
+  private IndexingJobRecoveryScheduler scheduler;
+
+  @BeforeEach
+  void setUp() {
+    var properties =
+        new IndexingProperties(null, 1000, 0, 50, 3, null, null, List.of(), Duration.ofHours(4));
+    scheduler = new IndexingJobRecoveryScheduler(indexingJobService, properties);
+  }
+
+  @Test
+  void recoverOnStartupDelegatesToTheRestartRecovery() {
+    when(indexingJobService.recoverJobsOrphanedByRestart()).thenReturn(1);
+
+    scheduler.recoverOnStartup();
+
+    verify(indexingJobService).recoverJobsOrphanedByRestart();
+  }
+
+  @Test
+  void recoverStaleRunningJobsDelegatesToTheConfiguredStaleTimeout() {
+    when(indexingJobService.recoverStaleJobs(Duration.ofHours(4))).thenReturn(1);
+
+    scheduler.recoverStaleRunningJobs();
+
+    verify(indexingJobService).recoverStaleJobs(Duration.ofHours(4));
+  }
+}

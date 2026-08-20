@@ -46,6 +46,17 @@ public class IndexingJob {
   @Column(name = "started_at", nullable = false, updatable = false)
   private Instant startedAt;
 
+  /**
+   * Heartbeat for the stale-run sweep (#501, migration 043): {@code
+   * IndexingJobService#updateProgress} touches this on every file/entry an active run processes, so
+   * {@code IndexingJobRepository#failStaleRunningJobs} can tell a merely long-running job (a large
+   * bestand can take hours) apart from one that has genuinely stopped making progress - {@link
+   * #startedAt} alone cannot make that distinction. Initialized to {@link #startedAt} so a run that
+   * fails before its first progress report is still comparable against the sweep's cutoff.
+   */
+  @Column(name = "last_progress_at", nullable = false)
+  private Instant lastProgressAt;
+
   @Column(name = "completed_at")
   private Instant completedAt;
 
@@ -78,6 +89,7 @@ public class IndexingJob {
     this.id = UUID.randomUUID();
     this.status = status;
     this.startedAt = Instant.now();
+    this.lastProgressAt = this.startedAt;
   }
 
   public UUID getId() {
@@ -134,6 +146,14 @@ public class IndexingJob {
 
   public Instant getStartedAt() {
     return startedAt;
+  }
+
+  public Instant getLastProgressAt() {
+    return lastProgressAt;
+  }
+
+  public void setLastProgressAt(Instant lastProgressAt) {
+    this.lastProgressAt = lastProgressAt;
   }
 
   public Instant getCompletedAt() {

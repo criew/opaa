@@ -227,11 +227,11 @@ public class LibraryDocumentService {
         // returns the PENDING row without waiting for that to finish.
         fileProcessingService.processUploadedFileAsync(document.getId(), storedFile);
       } catch (TaskRejectedException e) {
-        // #589 review, item 2: uploadTaskExecutor's queue is full - unlike indexingTaskExecutor,
-        // it does not silently discard the task (see IndexingConfiguration#uploadTaskExecutor), so
-        // this is the one place that ever has to react to it. The row is already visible to the
-        // caller as PENDING; leaving it there would have it poll forever for a job nothing will
-        // ever run.
+        // #589 review, item 2: uploadTaskExecutor's queue is full - it never silently discards the
+        // task (see IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor
+        // the same AbortPolicy for the same reason), so this is the one place that ever has to
+        // react to it here. The row is already visible to the caller as PENDING; leaving it there
+        // would have it poll forever for a job nothing will ever run.
         log.warn(
             "Upload processing queue is full; marking document {} as FAILED immediately",
             document.getId(),

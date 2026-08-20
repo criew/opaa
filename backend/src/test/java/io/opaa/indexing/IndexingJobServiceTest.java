@@ -3,8 +3,15 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,43 +74,83 @@ class IndexingJobServiceTest {
   }
 
   @Test
-  void completeJobSetsStatusAndCounts() {
+  void completeJobUpdatesTheRowConditionallyOnStillBeingRunning() {
     UUID jobId = UUID.randomUUID();
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), eq(10), eq(2), eq(5), eq(12), any(Instant.class)))
+        .thenReturn(1);
 
     service.completeJob(jobId, 10, 2, 5, 12);
 
-    assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    assertThat(job.getDocumentsProcessed()).isEqualTo(10);
-    assertThat(job.getDocumentsFailed()).isEqualTo(2);
-    assertThat(job.getDocumentsSkipped()).isEqualTo(5);
-    assertThat(job.getDocumentsIndexedTotal()).isEqualTo(12);
-    assertThat(job.getCompletedAt()).isNotNull();
+    verify(indexingJobRepository)
+        .completeIfRunning(eq(jobId), eq(10), eq(2), eq(5), eq(12), any(Instant.class));
+    verify(indexingJobRepository, never()).existsById(any());
   }
 
   @Test
-  void failJobSetsStatusAndMessage() {
+  void failJobUpdatesTheRowConditionallyOnStillBeingRunning() {
     UUID jobId = UUID.randomUUID();
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+    when(indexingJobRepository.failIfRunning(
+            eq(jobId), eq("Something went wrong"), any(Instant.class)))
+        .thenReturn(1);
 
     service.failJob(jobId, "Something went wrong");
 
-    assertThat(job.getStatus()).isEqualTo(JobStatus.FAILED);
-    assertThat(job.getErrorMessage()).isEqualTo("Something went wrong");
-    assertThat(job.getCompletedAt()).isNotNull();
+    verify(indexingJobRepository)
+        .failIfRunning(eq(jobId), eq("Something went wrong"), any(Instant.class));
+    verify(indexingJobRepository, never()).existsById(any());
   }
 
   @Test
   void completeJobThrowsForUnknownJob() {
     UUID jobId = UUID.randomUUID();
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.empty());
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(false);
 
     assertThatThrownBy(() -> service.completeJob(jobId, 0, 0, 0, 0))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void failJobThrowsForUnknownJob() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.failJob(jobId, "boom"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  /**
+   * #501 review, finding 1: a job the stale-run sweep already failed must not have its status
+   * flipped back to COMPLETED once its (unaware) executor thread finally calls this - the
+   * conditional {@code UPDATE ... WHERE status = RUNNING} in {@code
+   * IndexingJobRepository#completeIfRunning} affects 0 rows in that case, and the row still exists
+   * (just no longer RUNNING), so this must complete silently instead of throwing.
+   */
+  @Test
+  void completeJobDoesNothingWhenTheJobIsNoLongerRunning() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.completeIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(true);
+
+    service.completeJob(jobId, 1, 0, 0, 1);
+  }
+
+  /** Same guard as {@link #completeJobDoesNothingWhenTheJobIsNoLongerRunning}, failure path. */
+  @Test
+  void failJobDoesNothingWhenTheJobIsNoLongerRunning() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.failIfRunning(eq(jobId), anyString(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(true);
+
+    service.failJob(jobId, "boom");
   }
 
   @Test
@@ -122,6 +169,7 @@ class IndexingJobServiceTest {
   void updateProgressSetsCountsWithoutCompletingJob() {
     UUID jobId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
+    Instant previousHeartbeat = job.getLastProgressAt();
     when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
     when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
 
@@ -133,6 +181,29 @@ class IndexingJobServiceTest {
     assertThat(job.getDocumentsIndexedTotal()).isEqualTo(6);
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(job.getCompletedAt()).isNull();
+    // #501 review, finding 1: every progress report is also the heartbeat the stale-run sweep
+    // compares against its cutoff.
+    assertThat(job.getLastProgressAt()).isNotNull().isAfterOrEqualTo(previousHeartbeat);
+  }
+
+  /**
+   * #501 review, finding 1: once the sweep has already failed a job, its executor thread's further
+   * progress reports (it is unaware of the recovery) must not resurrect its counters or heartbeat.
+   */
+  @Test
+  void updateProgressDoesNothingWhenTheJobIsNoLongerRunning() {
+    UUID jobId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.FAILED);
+    job.setErrorMessage("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)");
+    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+
+    service.updateProgress(jobId, 5, 1, 3, 6);
+
+    assertThat(job.getDocumentsProcessed()).isZero();
+    assertThat(job.getErrorMessage())
+        .isEqualTo("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)");
+    verify(indexingJobRepository, never()).save(any());
   }
 
   @Test
@@ -171,5 +242,34 @@ class IndexingJobServiceTest {
         .thenReturn(false);
 
     assertThat(service.isJobRunning(libraryId)).isFalse();
+  }
+
+  // --- #501: recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
+
+  @Test
+  void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {
+    when(indexingJobRepository.failAllRunningJobs(anyString(), any(Instant.class))).thenReturn(3);
+
+    int recovered = service.recoverJobsOrphanedByRestart();
+
+    assertThat(recovered).isEqualTo(3);
+    verify(indexingJobRepository)
+        .failAllRunningJobs(eq("Durch Neustart abgebrochen"), any(Instant.class));
+  }
+
+  @Test
+  void recoverStaleJobsFailsRunningRowsOlderThanTheGivenDuration() {
+    when(indexingJobRepository.failStaleRunningJobs(
+            anyString(), any(Instant.class), any(Instant.class)))
+        .thenReturn(2);
+
+    int recovered = service.recoverStaleJobs(Duration.ofHours(4));
+
+    assertThat(recovered).isEqualTo(2);
+    verify(indexingJobRepository)
+        .failStaleRunningJobs(
+            eq("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"),
+            any(Instant.class),
+            any(Instant.class));
   }
 }
