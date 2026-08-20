@@ -424,9 +424,12 @@ public class FileProcessingService {
     // QueryService#lookupIndexedAt - resolving indexedAt via a DocumentRepository lookup by that
     // id rather than carrying it on each chunk. sourceEntryUrl only needs the document_id filter
     // axis (library_id/organization_id) for permission enforcement, not for its own value, so it
-    // follows the same lookup-by-document_id pattern instead of a second copy per chunk that
-    // would (a) need a re-index to backfill onto chunks written before this decision and (b)
-    // could drift from the document row if either copy is ever updated independently.
+    // is meant to follow the same lookup-by-document_id pattern instead of a second copy per
+    // chunk that would (a) need a re-index to backfill onto chunks written before this decision
+    // and (b) could drift from the document row if either copy is ever updated independently.
+    // That lookup is not implemented yet - QueryService#mapSources does not populate a
+    // sourceEntryUrl on SourceReference, so a citation still cannot point back to the feed entry
+    // an RSS attachment came from. Tracked as its own follow-up: #639.
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()

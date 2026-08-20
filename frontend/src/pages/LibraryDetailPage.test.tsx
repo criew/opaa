@@ -784,12 +784,15 @@ describe('LibraryDetailPage', () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
       pageOf([
         {
+          // The RSS entry's own document row (its detail page's main text) - sourceEntryUrl is
+          // null here (Document#getSourceEntryUrl's Javadoc: "null ... including the RSS entry's
+          // own row"), only an attachment discovered on it carries one.
           id: 'doc-1',
           fileName: 'rundschreiben.pdf',
           contentType: 'application/pdf',
           fileSize: 2048,
           status: 'INDEXED',
-          sourceType: 'FILESYSTEM',
+          sourceType: 'RSS_FEED',
           chunkCount: 5,
           indexedAt: '2026-03-01T10:00:00Z',
           uploadedByUserId: null,
@@ -812,7 +815,10 @@ describe('LibraryDetailPage', () => {
       { ...managerLibrary, myRole: 'OWNER' },
       detailsOf(
         { ...managerLibrary, myRole: 'OWNER' },
-        { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' },
+        // #493 review, finding 3: an RSS attachment (sourceType RSS_FEED, sourceEntryUrl set)
+        // can only exist in an RSS_FEED library - a FILESYSTEM library here would be an
+        // impossible state the backend never produces.
+        { sourceType: 'RSS_FEED', sourceUrl: 'https://example.gov/feed.xml' },
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
