@@ -6,7 +6,6 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.IndexingMetrics;
 import java.util.List;
-import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -167,6 +166,17 @@ public class IndexingConfiguration {
         indexingRunEventRepository);
   }
 
+  /**
+   * Backs every {@link SourceIndexingExecutor} (directory/URL/RSS indexing runs). Used to reject a
+   * full queue with {@code AbortPolicy} (this class' default), not {@code
+   * ThreadPoolExecutor.DiscardPolicy} (#501): a silently discarded task left its already-inserted
+   * {@code indexing_jobs} row stuck at {@code RUNNING} forever - since #478 that locks the row's
+   * one library out of every future trigger (409), with nothing in the UI to resolve it. {@code
+   * AbortPolicy} throws {@link org.springframework.core.task.TaskRejectedException} synchronously
+   * back to {@code DocumentIndexingService#triggerIndexing}, which catches it and fails the job
+   * immediately instead of leaving it to rot - mirroring {@link #uploadTaskExecutor}'s own
+   * reasoning for the same rejection handler.
+   */
   @Bean
   TaskExecutor indexingTaskExecutor(IndexingProperties properties) {
     IndexingProperties.ThreadPool pool = properties.threadPool();
@@ -175,22 +185,24 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(pool.maxSize());
     executor.setQueueCapacity(pool.queueCapacity());
     executor.setThreadNamePrefix("indexing-");
-    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
     executor.initialize();
     return executor;
   }
 
   /**
    * Backs {@code FileProcessingService#processUploadedFileAsync} (#434) - deliberately a separate
-   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2).
-   * Directory/URL indexing discards a task outright when its queue is full ({@code
-   * ThreadPoolExecutor.DiscardPolicy} above) - fine there, since the next scheduled run picks up
-   * whatever was skipped. An interactively uploaded document has no such follow-up run: a silently
-   * discarded task would leave its row stuck at {@code PENDING} forever, polled endlessly by the
-   * frontend with nothing to explain why. This executor keeps {@code ThreadPoolTaskExecutor}'s own
-   * default rejection handler ({@code AbortPolicy}) instead, so a full queue throws {@link
-   * org.springframework.core.task.TaskRejectedException} synchronously back to {@code
-   * LibraryDocumentService#uploadDocument}, which turns it into an immediate {@code FAILED} row.
+   * pool from {@link #indexingTaskExecutor}, not a shared one (PR #589 review, finding 2), so a
+   * burst of uploads can never itself exhaust the pool a directory/URL/RSS run depends on, or vice
+   * versa. Both executors share the same rejection handling since #501: {@code
+   * ThreadPoolTaskExecutor}'s default {@code AbortPolicy} throws {@link
+   * org.springframework.core.task.TaskRejectedException} synchronously back to the caller on a full
+   * queue - {@code LibraryDocumentService#uploadDocument} turns it into an immediate {@code FAILED}
+   * document row, {@code DocumentIndexingService#triggerIndexing} into an immediate {@code FAILED}
+   * job row. Before #501, {@link #indexingTaskExecutor} used {@code
+   * ThreadPoolExecutor.DiscardPolicy} instead, reasoning that a discarded run would simply be
+   * retried by the next scheduled run - that silently left the already-inserted {@code
+   * indexing_jobs} row stuck at {@code RUNNING} forever, which (since #478) locks the row's one
+   * library out of every future trigger.
    */
   @Bean
   TaskExecutor uploadTaskExecutor(IndexingProperties properties) {

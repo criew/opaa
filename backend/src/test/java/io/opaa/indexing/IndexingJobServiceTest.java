@@ -3,8 +3,13 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,5 +176,34 @@ class IndexingJobServiceTest {
         .thenReturn(false);
 
     assertThat(service.isJobRunning(libraryId)).isFalse();
+  }
+
+  // --- #501: recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
+
+  @Test
+  void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {
+    when(indexingJobRepository.failAllRunningJobs(anyString(), any(Instant.class))).thenReturn(3);
+
+    int recovered = service.recoverJobsOrphanedByRestart();
+
+    assertThat(recovered).isEqualTo(3);
+    verify(indexingJobRepository)
+        .failAllRunningJobs(eq("Durch Neustart abgebrochen"), any(Instant.class));
+  }
+
+  @Test
+  void recoverStaleJobsFailsRunningRowsOlderThanTheGivenDuration() {
+    when(indexingJobRepository.failStaleRunningJobs(
+            anyString(), any(Instant.class), any(Instant.class)))
+        .thenReturn(2);
+
+    int recovered = service.recoverStaleJobs(Duration.ofHours(4));
+
+    assertThat(recovered).isEqualTo(2);
+    verify(indexingJobRepository)
+        .failStaleRunningJobs(
+            eq("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"),
+            any(Instant.class),
+            any(Instant.class));
   }
 }

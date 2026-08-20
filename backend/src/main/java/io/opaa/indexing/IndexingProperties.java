@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -37,6 +38,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     ({@link AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was
  *     created. Bound from a comma-separated environment variable ({@code
  *     OPAA_INDEXING_FILESYSTEM_ALLOWLIST}) like any other {@code List<String>} property.
+ * @param staleJobTimeout how long a run may stay {@link JobStatus#RUNNING} before {@code
+ *     IndexingJobRecoveryScheduler} treats it as orphaned and fails it, even without an application
+ *     restart (#501) - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous
+ *     enough for a large FILESYSTEM/HTTP_DIRECTORY/RSS_FEED run to finish normally, short enough
+ *     that a genuinely stuck run does not lock its library out for days.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -47,7 +53,8 @@ public record IndexingProperties(
     int retryAttempts,
     ThreadPool threadPool,
     Rss rss,
-    List<String> filesystemAllowlist) {
+    List<String> filesystemAllowlist,
+    Duration staleJobTimeout) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -92,6 +99,13 @@ public record IndexingProperties(
     }
     if (filesystemAllowlist == null) {
       filesystemAllowlist = List.of();
+    }
+    if (staleJobTimeout == null) {
+      staleJobTimeout = Duration.ofHours(4);
+    }
+    if (staleJobTimeout.isNegative() || staleJobTimeout.isZero()) {
+      throw new IllegalArgumentException(
+          "staleJobTimeout must be positive, got " + staleJobTimeout);
     }
   }
 

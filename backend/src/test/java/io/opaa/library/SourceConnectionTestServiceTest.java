@@ -75,7 +75,7 @@ class SourceConnectionTestServiceTest {
             userRepository,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null));
+            new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null));
   }
 
   @AfterEach
@@ -461,6 +461,7 @@ class SourceConnectionTestServiceTest {
                 3,
                 null,
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                null,
                 null));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
@@ -601,6 +602,7 @@ class SourceConnectionTestServiceTest {
                 3,
                 null,
                 new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
+                null,
                 null));
     String rss =
         """
@@ -654,6 +656,7 @@ class SourceConnectionTestServiceTest {
                 3,
                 null,
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                null,
                 null));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"

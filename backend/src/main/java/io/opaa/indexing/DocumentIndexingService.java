@@ -9,6 +9,7 @@ import io.opaa.library.LibraryAccessService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -66,6 +67,18 @@ public class DocumentIndexingService {
    * {@link IndexingJobService#startJob(UUID)} closes that TOCTOU gap at the database level (#500
    * review, finding 3, see that method's Javadoc), so the second of two racing triggers still gets
    * 409, just from the database constraint instead of this in-memory check.
+   *
+   * <p><b>A full {@code indexingTaskExecutor} queue must not leave the just-inserted row {@code
+   * RUNNING} forever (#501).</b> {@code executor.execute} is an {@code @Async} void method; when
+   * the pool's queue is full, {@code AbortPolicy} (see {@code
+   * IndexingConfiguration#indexingTaskExecutor} javadoc) makes the submission throw {@link
+   * TaskRejectedException} synchronously, on this thread, before the run ever starts. Left
+   * uncaught, the row {@link IndexingJobService#startJob} just committed would stay {@code RUNNING}
+   * with nothing left to ever complete it - exactly the permanently locked library this issue
+   * exists to prevent. Catching it here and failing the job immediately keeps that row's lifecycle
+   * intact and answers the caller with 503 instead of the misleading 202 an uncaught exception
+   * would otherwise still produce (the row was already committed by the time {@code execute} is
+   * called).
    */
   public IndexingJob triggerIndexing(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, currentUserId);
@@ -76,7 +89,16 @@ public class DocumentIndexingService {
     }
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
     var job = indexingJobService.startJob(targetLibrary.getId());
-    executor.execute(job.getId(), targetLibrary);
+    try {
+      executor.execute(job.getId(), targetLibrary);
+    } catch (TaskRejectedException e) {
+      indexingJobService.failJob(
+          job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
+      throw new ResponseStatusException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "Indizierung derzeit nicht möglich, bitte später erneut versuchen",
+          e);
+    }
     return job;
   }
 

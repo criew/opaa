@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 public class IndexingJobService {
+
+  /**
+   * Error message a run that was still {@link JobStatus#RUNNING} at the previous application
+   * startup gets (#501) - see {@link #recoverJobsOrphanedByRestart}.
+   */
+  static final String RESTART_ABORTED_MESSAGE = "Durch Neustart abgebrochen";
+
+  /**
+   * Error message a run gets when it is still {@link JobStatus#RUNNING} well past {@code
+   * IndexingProperties#staleJobTimeout} while the application keeps running (#501) - see {@link
+   * #recoverStaleJobs}.
+   */
+  static final String STALE_RUN_MESSAGE =
+      "Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)";
 
   /**
    * How many runs are kept per library (#513, Umfangserweiterung - Maintainer-Ergaenzung
@@ -182,5 +197,35 @@ public class IndexingJobService {
   @Transactional(readOnly = true)
   public boolean isJobRunning(UUID libraryId) {
     return indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId);
+  }
+
+  /**
+   * Fails every row still {@link JobStatus#RUNNING} from a previous application run (#501). Called
+   * once at startup ({@code IndexingJobRecoveryScheduler#recoverOnStartup}): a fresh JVM cannot be
+   * running the {@code @Async} task any such row refers to, so every one of them is orphaned by
+   * definition, not merely suspected of it - unlike {@link #recoverStaleJobs}, no age threshold
+   * applies here.
+   *
+   * @return the number of rows recovered
+   */
+  @Transactional
+  public int recoverJobsOrphanedByRestart() {
+    return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now());
+  }
+
+  /**
+   * Fails every row still {@link JobStatus#RUNNING} whose {@link IndexingJob#getStartedAt()} is
+   * older than {@code staleAfter} (#501). Called periodically while the application keeps running
+   * ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard against a run
+   * orphaned without a restart, e.g. a task a full queue silently dropped before this issue's
+   * {@code AbortPolicy} change, or one truly hung well past any run this library would normally
+   * take.
+   *
+   * @return the number of rows recovered
+   */
+  @Transactional
+  public int recoverStaleJobs(Duration staleAfter) {
+    Instant cutoff = Instant.now().minus(staleAfter);
+    return indexingJobRepository.failStaleRunningJobs(STALE_RUN_MESSAGE, cutoff, Instant.now());
   }
 }
