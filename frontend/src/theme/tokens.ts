@@ -42,6 +42,19 @@ export const gray = {
   800: '#162231',
 } as const
 
+/**
+ * Neutral dark scale of the dark scheme (#654) - aligned with the dark scheme of the Claude
+ * docs site (code.claude.com, sampled 2026-08-20): a near-black, neutral gray with clear
+ * surface steps instead of navy-on-navy. Navy remains the sidebar's block in the light scheme.
+ */
+export const carbon = {
+  950: '#09090B',
+  900: '#171717',
+  850: '#1F1F1F',
+  800: '#252525',
+  700: '#333333',
+} as const
+
 export const white = '#FFFFFF'
 /** Light raised surface. */
 export const offWhite = '#F6F8FB'
@@ -102,6 +115,26 @@ export const lightRoles: SchemeRoles = {
 }
 
 export const darkRoles: SchemeRoles = {
+  bg1: carbon[950],
+  bg2: carbon[900],
+  bg3: carbon[850],
+  fg1: '#DEDEDE',
+  fg2: '#9E9E9E',
+  fg3: '#8A8A8A',
+  accent: blue[500],
+  accentFg: white,
+  accentHover: blue[600],
+  accentPress: blue[700],
+  border: carbon[800],
+  borderStrong: carbon[700],
+}
+
+/**
+ * The navy block the sidebar keeps in the light scheme (mockup 1a) - the former dark-scheme
+ * values, now scoped to that one surface. In the dark scheme the sidebar follows
+ * {@link darkRoles} instead (#654).
+ */
+export const navyRoles: SchemeRoles = {
   bg1: navy[800],
   bg2: navy[700],
   bg3: navy[600],

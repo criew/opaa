@@ -3,18 +3,19 @@ import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import type { BrandingOverrides, SchemeRoles } from './tokens'
 import {
+  carbon,
   darkRoles,
   focusRingAlpha,
   focusRingWidthPx,
   fontFamily,
   fontSize,
   fontWeight,
-  gray,
   letterSpacing,
   lightRoles,
   lineHeight,
   motion,
   navy,
+  navyRoles,
   radius,
   semanticColors,
   shadow,
@@ -54,8 +55,20 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
  * borders and surface steps, shadows are reserved for floating layers.
  */
 export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides): Theme {
+  return buildTheme(mode, mode === 'dark' ? darkRoles : lightRoles, branding)
+}
+
+/**
+ * The sidebar's own theme (#587/#654): while the app is light it keeps the mockup's navy block
+ * ({@link navyRoles}, guidelines 2.3); while the app is dark it follows the carbon dark scheme
+ * like the rest of the interface. Always dark-mode MUI semantics, since both surfaces are dark.
+ */
+export function createSidebarTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
+  return buildTheme('dark', appMode === 'light' ? navyRoles : darkRoles, branding)
+}
+
+function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
-  const roles = isDark ? darkRoles : lightRoles
   const { accent, accentHover, accentPress } = resolveAccent(roles, branding)
   const focusRing = alpha(accent, focusRingAlpha)
   // One focus ring for everything interactive, in both schemes (guidelines 4.4). Shared between
@@ -375,8 +388,8 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            backgroundColor: isDark ? gray[100] : navy[700],
-            color: isDark ? navy[800] : white,
+            backgroundColor: isDark ? carbon[700] : navy[700],
+            color: isDark ? roles.fg1 : white,
             fontSize: fontSize.xs,
             borderRadius: radius.sm,
           },

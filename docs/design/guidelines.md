@@ -63,6 +63,18 @@ aufgezählt.
 **Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF2F7`
 (gedämpfte Fläche, Trennlinien).
 
+**Carbon** — neutrale Dunkel-Skala des dunklen Schemas (#654, angelehnt an das dunkle Schema
+der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Seitenleisten-Block des
+hellen Schemas:
+
+| Name | Wert | Verwendung |
+|---|---|---|
+| Carbon-950 | `#09090B` | Seitengrund dunkel |
+| Carbon-900 | `#171717` | erhöhte Fläche dunkel |
+| Carbon-850 | `#1F1F1F` | gedämpfte Fläche dunkel |
+| Carbon-800 | `#252525` | Standardrahmen dunkel |
+| Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
+
 **Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D` · Gefahr `#E5484D`. In beiden Schemata
 identisch; Text auf diesen Flächen muss die Kontrastanforderung (2.4) erfüllen.
 
@@ -72,16 +84,21 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 
 | Rolle | Bedeutung | Hell | Dunkel |
 |---|---|---|---|
-| `bg-1` | Seitengrund | Weiß `#FFFFFF` | Navy `#012142` |
-| `bg-2` | erhöhte Fläche (Karte, Kopfzeile) | Off-White `#F6F8FB` | Navy-700 `#02305E` |
-| `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Navy-600 `#034079` |
-| `fg-1` | Primärtext | Navy `#012142` | Weiß `#FFFFFF` |
-| `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#B9C6D4` |
-| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#7A8BA0` |
+| `bg-1` | Seitengrund | Weiß `#FFFFFF` | Carbon-950 `#09090B` |
+| `bg-2` | erhöhte Fläche (Karte, Kopfzeile) | Off-White `#F6F8FB` | Carbon-900 `#171717` |
+| `bg-3` | gedämpfte Fläche (Eingabefeld, Tabellenkopf) | Smoke `#EEF2F7` | Carbon-850 `#1F1F1F` |
+| `fg-1` | Primärtext | Navy `#012142` | `#DEDEDE` |
+| `fg-2` | Sekundärtext | Grau-600 `#3B4958` | `#9E9E9E` |
+| `fg-3` | Tertiärtext, Metadaten | Grau-400 `#778797` | `#8A8A8A` |
 | `accent` | Handlung, Bezug, aktiver Zustand | Blau-500 `#1292EE` | Blau-500 `#1292EE` |
 | `accent-fg` | Text auf Akzentfläche | Weiß | Weiß |
-| `border` | Standardrahmen | Grau-100 `#E6EBF1` | `rgba(255,255,255,0.08)` |
-| `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | `rgba(255,255,255,0.14)` |
+| `border` | Standardrahmen | Grau-100 `#E6EBF1` | Carbon-800 `#252525` |
+| `border-strong` | betonter Rahmen (Eingaben, Tabellen) | Grau-200 `#CBD4DF` | Carbon-700 `#333333` |
+
+Die Seitenleiste im hellen Schema verwendet ein eigenes Rollenset auf Navy-Basis
+(`navyRoles`: Flächen Navy-800/700/600, Text Weiß/`#B9C6D4`/`#7A8BA0`, Ränder
+`rgba(255,255,255,0.08/0.14)`) — die Werte des früheren dunklen Schemas, jetzt auf diese eine
+Fläche begrenzt (#654).
 
 ### 2.3 Regeln
 
@@ -89,9 +106,10 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
   läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite und die
   Seitenleiste (siehe nächster Punkt), Diagramm-Farbreihen, Hover-/Aktiv-Stufen von Blau in
   Schaltflächen-Definitionen.
-- **Die Seitenleiste bleibt Navy — in beiden Schemata.** Im hellen Schema ist sie der bewusste
-  Kontrastblock der App, im dunklen fügt sie sich in die Grundfläche. Inhalte der Seitenleiste
-  verwenden die Dunkel-Werte der Rollen.
+- **Die Seitenleiste ist im hellen Schema Navy, im dunklen folgt sie dem dunklen Schema**
+  (#654). Hell ist sie der bewusste Kontrastblock der App (Rollenset `navyRoles`); dunkel
+  verschmilzt sie wie bei den Claude-Docs mit der Carbon-Grundfläche, getrennt durch den
+  Standardrahmen.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.

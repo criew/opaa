@@ -1,6 +1,17 @@
 import { describe, expect, test } from 'vitest'
-import { createAppTheme } from './theme'
-import { blue, darkRoles, gray, lightRoles, navy, radius, semanticColors, white } from './tokens'
+import { createAppTheme, createSidebarTheme } from './theme'
+import {
+  blue,
+  carbon,
+  darkRoles,
+  gray,
+  lightRoles,
+  navy,
+  navyRoles,
+  radius,
+  semanticColors,
+  white,
+} from './tokens'
 
 describe('tokens', () => {
   test('light and dark schemes define the identical set of roles', () => {
@@ -30,14 +41,20 @@ describe('createAppTheme', () => {
     expect(theme.palette.error.main).toBe(semanticColors.danger)
   })
 
-  test('dark scheme maps the semantic roles onto the MUI palette', () => {
+  test('dark scheme maps the neutral carbon roles onto the MUI palette (#654)', () => {
     const theme = createAppTheme('dark')
 
-    expect(theme.palette.background.default).toBe(navy[800])
-    expect(theme.palette.text.primary).toBe(white)
+    expect(theme.palette.background.default).toBe(carbon[950])
+    expect(theme.palette.text.primary).toBe(darkRoles.fg1)
     expect(theme.palette.text.secondary).toBe(darkRoles.fg2)
     expect(theme.palette.primary.main).toBe(blue[500])
     expect(theme.palette.divider).toBe(darkRoles.border)
+  })
+
+  test('the navy roles keep the mockup sidebar values for the light scheme (#654)', () => {
+    expect(navyRoles.bg1).toBe(navy[800])
+    expect(navyRoles.fg1).toBe(white)
+    expect(Object.keys(navyRoles).sort()).toEqual(Object.keys(darkRoles).sort())
   })
 
   test('shape and typography come from the token layer', () => {
@@ -62,6 +79,25 @@ describe('createAppTheme', () => {
     const theme = createAppTheme('light')
 
     expect(theme.palette.primary.dark).toBe(blue[700])
+  })
+
+  test('the sidebar theme stays navy while the app is light (#654, mockup 1a)', () => {
+    const theme = createSidebarTheme('light')
+
+    expect(theme.palette.mode).toBe('dark')
+    expect(theme.palette.background.default).toBe(navy[800])
+  })
+
+  test('the sidebar theme follows the carbon dark scheme while the app is dark (#654)', () => {
+    const theme = createSidebarTheme('dark')
+
+    expect(theme.palette.background.default).toBe(carbon[950])
+  })
+
+  test('the sidebar theme derives its accent from a branding color like the app theme', () => {
+    const theme = createSidebarTheme('light', { primaryColor: '#7A1FA2' })
+
+    expect(theme.palette.primary.main).toBe('#7A1FA2')
   })
 
   test('an empty branding object behaves exactly like no branding', () => {
