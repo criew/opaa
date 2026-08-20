@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useSpaceStore } from './spaceStore'
+import { resetAllStores } from './resettableStores'
+import { getSpaces } from '../services/api'
 
 const mockCreateSpace = vi.fn()
 
@@ -46,6 +48,17 @@ const mockArchiveSpace = vi.fn(async (spaceId: string) => {
   }
   return target
 })
+
+/** Resolves once resolve() is called - lets a test hold loadSpaces()'s request open until it
+ * explicitly wants the response to arrive, so it can trigger resetAllStores() while the request
+ * is still in flight (#575). */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 
 vi.mock('../services/api', () => ({
   getSpaces: vi.fn(async () => mutableSpaces.map((space) => ({ ...space }))),
@@ -122,5 +135,23 @@ describe('spaceStore', () => {
     // it was in the list from the start, but would not see archived: true.
     const refreshed = useSpaceStore.getState().spaces.find((space) => space.id === 'space-project')
     expect(refreshed?.archived).toBe(true)
+  })
+
+  // #575: loadSpaces is one of the explicitly named unguarded write paths (Issue #575) - a
+  // response arriving after resetAllStores() must not resurrect the previous user's spaces into
+  // the now-emptied store.
+  it('a loadSpaces response arriving after a session reset does not resurrect spaces', async () => {
+    const gate = deferred<(typeof initialSpaces)[number][]>()
+    vi.mocked(getSpaces).mockReturnValueOnce(gate.promise as never)
+
+    const loadPromise = useSpaceStore.getState().loadSpaces()
+    resetAllStores()
+    gate.resolve(mutableSpaces.map((space) => ({ ...space })))
+    await loadPromise
+
+    const state = useSpaceStore.getState()
+    expect(state.spaces).toEqual([])
+    expect(state.selectedSpaceId).toBeNull()
+    expect(state.isLoadingList).toBe(false)
   })
 })

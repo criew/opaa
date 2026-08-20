@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
+import { resetAllStores } from './resettableStores'
 import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
 
 const { mockGetLibraryDocuments, mockUploadDocument, mockDeleteLibraryDocument } = vi.hoisted(
@@ -275,5 +276,38 @@ describe('documentStore', () => {
     mockGetLibraryDocuments.mockClear()
     await vi.advanceTimersByTimeAsync(10000)
     expect(mockGetLibraryDocuments).not.toHaveBeenCalled()
+  })
+
+  // #575: found while systematically checking the resettableStores registry for further
+  // unguarded async set() paths beyond the ones the issue named explicitly.
+  it('a loadDocuments response arriving after a session reset does not resurrect documents', async () => {
+    mockGetLibraryDocuments.mockImplementationOnce(async () => {
+      resetAllStores()
+      return page([indexedDocument])
+    })
+
+    await useDocumentStore.getState().loadDocuments('library-1')
+
+    expect(useDocumentStore.getState().documentsByLibrary['library-1']).toBeUndefined()
+    expect(useDocumentStore.getState().isLoading).toBe(false)
+  })
+
+  it('a poll tick response arriving after a session reset does not resurrect documents', async () => {
+    vi.useFakeTimers()
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+    await useDocumentStore.getState().loadDocuments('library-1')
+    expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([pendingDocument])
+
+    // The reset happens *inside* the tick's own request - by the time it resolves and the tick's
+    // continuation runs, resetAllStores() has already bumped the session epoch. clearInterval (via
+    // reset()'s stopPolling loop) only stops *future* ticks, so this proves the in-flight one is
+    // still guarded.
+    mockGetLibraryDocuments.mockImplementationOnce(async () => {
+      resetAllStores()
+      return page([indexedDocument])
+    })
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(useDocumentStore.getState().documentsByLibrary['library-1']).toBeUndefined()
   })
 })

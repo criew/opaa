@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AssetGrantRequest, AssetGrantResponse } from '../types/api'
 import { getLibraryGrants, revokeLibraryGrant, upsertLibraryGrant } from '../services/api'
+import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface GrantState {
   grantsByLibrary: Record<string, AssetGrantResponse[]>
@@ -37,14 +38,20 @@ export const useGrantStore = create<GrantState>((set, get) => ({
   reset: () => set({ grantsByLibrary: {}, isLoading: false, error: null }),
 
   loadGrants: async (libraryId: string) => {
+    // #575: captured before the await below - checked again once it resolves, so a response
+    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+    // previous user's grants into the now-emptied store.
+    const sessionEpoch = currentSessionEpoch()
     set({ isLoading: true, error: null })
     try {
       const grants = await getLibraryGrants(libraryId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         grantsByLibrary: { ...get().grantsByLibrary, [libraryId]: grants },
         isLoading: false,
       })
     } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Berechtigungen konnten nicht geladen werden'
       set({ error: message, isLoading: false })
@@ -52,7 +59,9 @@ export const useGrantStore = create<GrantState>((set, get) => ({
   },
 
   upsertExistingGrant: async (libraryId: string, request: AssetGrantRequest) => {
+    const sessionEpoch = currentSessionEpoch()
     const updated = await upsertLibraryGrant(libraryId, request)
+    if (isStaleSessionEpoch(sessionEpoch)) return
     const existing = get().grantsByLibrary[libraryId] ?? []
     set({
       grantsByLibrary: { ...get().grantsByLibrary, [libraryId]: mergeGrant(existing, updated) },
@@ -60,7 +69,9 @@ export const useGrantStore = create<GrantState>((set, get) => ({
   },
 
   revokeExistingGrant: async (libraryId: string, grantId: string) => {
+    const sessionEpoch = currentSessionEpoch()
     await revokeLibraryGrant(libraryId, grantId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
     const existing = get().grantsByLibrary[libraryId] ?? []
     set({
       grantsByLibrary: {

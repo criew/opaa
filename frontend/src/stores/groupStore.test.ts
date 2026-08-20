@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useGroupStore } from './groupStore'
+import { resetAllStores } from './resettableStores'
+import { getGroups } from '../services/api'
 
 const mockCreateGroup = vi.fn()
 const mockAddGroupMember = vi.fn()
@@ -118,5 +120,31 @@ describe('groupStore', () => {
     mockUpdateGroup.mockResolvedValueOnce({})
     await useGroupStore.getState().renameGroup('group-a', 'Renamed', 'desc')
     expect(mockUpdateGroup).toHaveBeenCalledWith('group-a', 'Renamed', 'desc')
+  })
+
+  // #575: found while systematically checking the resettableStores registry for further
+  // unguarded async set() paths beyond the ones the issue named explicitly.
+  it('a loadGroups response arriving after a session reset does not resurrect groups', async () => {
+    vi.mocked(getGroups).mockImplementationOnce(async () => {
+      resetAllStores()
+      return [
+        {
+          id: 'group-a',
+          name: 'Team A',
+          description: null,
+          kind: 'AD_HOC',
+          externalId: null,
+          parentGroupId: null,
+          memberCount: 2,
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ]
+    })
+
+    await useGroupStore.getState().loadGroups()
+
+    expect(useGroupStore.getState().groups).toEqual([])
+    expect(useGroupStore.getState().isLoading).toBe(false)
   })
 })

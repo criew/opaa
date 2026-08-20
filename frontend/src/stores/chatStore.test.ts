@@ -1,8 +1,30 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { clearSettingsPersistenceCache, dropChatSettingsCache, useChatStore } from './chatStore'
+// #575 review: this import's position relative to chatStore/chatListStore below no longer
+// matters - resettableStores.ts builds its store list inside resetAllStores() itself now, not in
+// a top-level array literal, so it no longer depends on how far chatStore.ts/chatListStore.ts's
+// own circular import (chatStore needs useChatListStore, chatListStore needs
+// dropChatSettingsCache) has resolved by the time this file's imports run.
+import { resetAllStores } from './resettableStores'
+import {
+  clearSettingsPersistenceCache,
+  dropChatSettingsCache,
+  getConfirmedSettingsForTesting,
+  useChatStore,
+} from './chatStore'
 import { useChatListStore } from './chatListStore'
+
+/** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
+ * wants the response to arrive, so it can trigger resetAllStores() while the request is still in
+ * flight (#575). */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
 
 const SPACE_ID = 'space-personal'
 const EXISTING_CHAT_ID = 'chat-personal-1'
@@ -319,6 +341,129 @@ describe('chatStore', () => {
       expect(state.isLoading).toBe(false)
       expect(state.messages).toHaveLength(1)
       expect(state.messages[0].role).toBe('user')
+    })
+
+    // #575, #618 review: sendMessage has two write-back paths after an await - the implicit chat
+    // creation (chatId) and the final answer (messages/chatId) - both must skip their set() call
+    // once a logout (resetAllStores) ran while the request was still in flight, instead of
+    // resurrecting the previous user's chat into the store logout just emptied.
+    describe('does not resurrect state after a session reset (#575)', () => {
+      it('an implicit chat creation resolving after reset() does not resurrect chatId', async () => {
+        useChatStore.getState().startNewChat(SPACE_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/spaces/:spaceId/chats', async ({ params, request }) => {
+            await gate.promise
+            const spaceId = String(params.spaceId)
+            const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+            return HttpResponse.json(
+              {
+                id: 'chat-resurrected',
+                spaceId,
+                authorId: 'mock-user-id',
+                title: null,
+                useKnowledge: body?.useKnowledge ?? true,
+                referencedLibraryIds: body?.referencedLibraryIds ?? [],
+                status: 'PRIVATE',
+                messages: [],
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-01T00:00:00Z',
+              },
+              { status: 201 },
+            )
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Erste Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.chatId).toBeNull()
+        expect(state.spaceId).toBeNull()
+        expect(state.messages).toHaveLength(0)
+      })
+
+      it('a query answer resolving after reset() does not resurrect messages/chatId', async () => {
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json({
+              answer: 'Antwort, die nach dem Logout eintrifft',
+              sources: [],
+              metadata: { model: 'gpt-4o', tokenCount: 10, durationMs: 5 },
+              chatId: EMPTY_CHAT_ID,
+              chatTitle: null,
+            })
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.messages).toHaveLength(0)
+        expect(state.chatId).toBeNull()
+      })
+
+      it('a query failure resolving after reset() does not write error/isLoading back', async () => {
+        await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.post('/api/v1/query', async () => {
+            await gate.promise
+            return HttpResponse.json({ error: 'Serverfehler' }, { status: 500 })
+          }),
+        )
+
+        const sendPromise = useChatStore.getState().sendMessage('Frage')
+        resetAllStores()
+        gate.resolve()
+        await sendPromise
+
+        const state = useChatStore.getState()
+        expect(state.error).toBeNull()
+        expect(state.isLoading).toBe(false)
+      })
+
+      // #575 review: a third write-back path, missed by the first pass - applyScopeChange's own
+      // PATCH success handler wrote to the module-level confirmedSettingsByChatId map before any
+      // guard ran, so a logout in between did not stop it from repopulating a map reset() had just
+      // cleared via clearSettingsPersistenceCache().
+      it('a settings PATCH resolving after reset() does not repopulate confirmedSettingsByChatId', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.patch('/api/v1/chats/:chatId', async ({ params }) => {
+            await gate.promise
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: false,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }),
+        )
+
+        useChatStore.getState().clearScope() // triggers applyScopeChange, PATCH held open by gate
+        const pending = useChatStore.getState().pendingSettingsUpdate
+        resetAllStores()
+        gate.resolve()
+        await pending
+
+        expect(getConfirmedSettingsForTesting(EXISTING_CHAT_ID)).toBeUndefined()
+      })
     })
 
     // Payload mapping for all three chip-bar states (#560): @Alles-Wissen -> useKnowledge=true (no
