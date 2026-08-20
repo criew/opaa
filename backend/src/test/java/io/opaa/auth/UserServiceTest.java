@@ -99,25 +99,75 @@ class UserServiceTest {
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
   }
 
+  private User actorInOrganization(UUID organizationId) {
+    User actor = new User("admin-sub", "issuer1", "admin@example.com", "Admin");
+    actor.setOrganizationId(organizationId);
+    return actor;
+  }
+
   @Test
   void updateRoleChangesUserRole() {
+    UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test");
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    user.setOrganizationId(organizationId);
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    User updated = userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, UUID.randomUUID());
+    User updated =
+        userService.updateRole(
+            userId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId));
 
     assertThat(updated.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
   }
 
   @Test
   void updateRoleThrowsForNonexistentUser() {
+    UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    when(userRepository.findById(userId)).thenReturn(Optional.empty());
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, UUID.randomUUID()))
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId)))
+        .isInstanceOf(UserNotFoundException.class);
+  }
+
+  /**
+   * #271: reproduces the exact organization-boundary gap the issue names - a target user existing,
+   * but in a different organization than the acting SYSTEM_ADMIN. Before the fix, {@code
+   * updateRole} looked the target up by id alone ({@code userRepository.findById}), so it would
+   * find and change this user's role regardless of organization; the {@code
+   * findByIdAndOrganizationId} stub below (scoped to the actor's organization, not the target
+   * user's) never matches, exactly reproducing that gap. Consistent with {@code
+   * SpaceService#requireUserInOrganization}, the rejection is a 404-mapped {@link
+   * UserNotFoundException}, not a 403, so a caller cannot distinguish "no such user" from "user in
+   * another organization".
+   */
+  @Test
+  void updateRoleRejectsATargetUserFromAnotherOrganization() {
+    UUID actorOrganizationId = UUID.randomUUID();
+    UUID targetOrganizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User targetUser = new User("sub1", "issuer1", "test@example.com", "Test");
+    targetUser.setOrganizationId(targetOrganizationId);
+    // The target user exists under its own organization - stubbing the pre-fix lookup
+    // (findById(userId) alone) to find it too is what makes this test actually distinguish the
+    // fix from the bug: with the pre-#271 code, which looked the target up by id alone, this stub
+    // is exactly what let it find and change a foreign-organization user's role regardless of the
+    // actor's own organization. The fixed code never calls findById(userId) alone for this lookup,
+    // only the org-scoped findByIdAndOrganizationId (deliberately left unstubbed for the actor's
+    // organization, so it returns empty).
+    when(userRepository.findById(userId)).thenReturn(Optional.of(targetUser));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.SYSTEM_ADMIN, actorInOrganization(actorOrganizationId)))
         .isInstanceOf(UserNotFoundException.class);
   }
 
@@ -130,15 +180,17 @@ class UserServiceTest {
    */
   @Test
   void grantingAuditorToAPlainUserRecordsOnlyAuditorGrantedNeverSystemAdminRevoked() {
+    UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    UUID actorId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setOrganizationId(organizationId);
     user.setSystemRole(SystemRole.USER);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
-    userService.updateRole(userId, SystemRole.AUDITOR, actorId);
+    userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
@@ -172,15 +224,17 @@ class UserServiceTest {
 
   @Test
   void revokingAuditorFromAPlainUserRecordsAuditorRevoked() {
+    UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    UUID actorId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setOrganizationId(organizationId);
     user.setSystemRole(SystemRole.AUDITOR);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
-    userService.updateRole(userId, SystemRole.USER, actorId);
+    userService.updateRole(userId, SystemRole.USER, actorInOrganization(organizationId));
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(
@@ -204,15 +258,17 @@ class UserServiceTest {
    */
   @Test
   void movingDirectlyFromSystemAdminToAuditorRecordsBothARevokeAndAGrant() {
+    UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
-    UUID actorId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test");
+    user.setOrganizationId(organizationId);
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
-    userService.updateRole(userId, SystemRole.AUDITOR, actorId);
+    userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
     verify(auditEventRecorder, times(1))
         .recordUserActionOnSubject(

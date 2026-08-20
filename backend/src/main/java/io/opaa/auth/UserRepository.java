@@ -27,4 +27,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * force the directory sync to carry issuer configuration that duplicates what auth already knows.
    */
   List<User> findByOrganizationIdAndSubjectIn(UUID organizationId, Collection<String> subjects);
+
+  /**
+   * Used by {@code AdminController#listUsers} (#271) to scope the user list to the caller's own
+   * organization - {@code findAll()} used to return every organization's users, including to a
+   * SYSTEM_ADMIN, whose reach must stop at their own organization's boundary just like every other
+   * role (#199).
+   */
+  List<User> findByOrganizationId(UUID organizationId);
 }

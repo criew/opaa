@@ -35,6 +35,7 @@ class AdminControllerTest {
   @MockitoBean private UserService userService;
 
   private final UUID actingAdminId = UUID.randomUUID();
+  private final UUID actingAdminOrganizationId = UUID.randomUUID();
 
   /**
    * #392 code review, finding 3: {@code AdminController#changeRole} now resolves the acting person
@@ -59,10 +60,13 @@ class AdminControllerTest {
         .authorities(new SimpleGrantedAuthority("ROLE_USER"));
   }
 
+  private User actingAdmin;
+
   @BeforeEach
   void setUp() {
-    User actingAdmin = new User(TEST_SUBJECT, TEST_ISSUER, "admin@example.com", "Admin");
+    actingAdmin = new User(TEST_SUBJECT, TEST_ISSUER, "admin@example.com", "Admin");
     actingAdmin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    actingAdmin.setOrganizationId(actingAdminOrganizationId);
     setId(actingAdmin, actingAdminId);
     when(userService.findBySubjectAndIssuer(TEST_SUBJECT, TEST_ISSUER))
         .thenReturn(Optional.of(actingAdmin));
@@ -81,7 +85,7 @@ class AdminControllerTest {
   @Test
   void listUsersAsAdminReturnsUsers() throws Exception {
     User user = new User("sub1", "issuer1", "test@example.com", "Test User");
-    when(userService.findAll()).thenReturn(List.of(user));
+    when(userService.findAllInOrganization(actingAdminOrganizationId)).thenReturn(List.of(user));
 
     mockMvc
         .perform(get("/api/v1/admin/users").with(asAdmin()))
@@ -103,7 +107,7 @@ class AdminControllerTest {
     UUID userId = UUID.randomUUID();
     User user = new User("sub1", "issuer1", "test@example.com", "Test User");
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    when(userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, actingAdminId)).thenReturn(user);
+    when(userService.updateRole(userId, SystemRole.SYSTEM_ADMIN, actingAdmin)).thenReturn(user);
 
     mockMvc
         .perform(
