@@ -1217,4 +1217,178 @@ class RssFeedIndexingExecutorTest {
     // that the run actually failed, not what it says.
     verify(indexingJobService, timeout(2000)).failJob(any(), any());
   }
+
+  // --- PR #642 review, finding 1: the feed's own origin, not just the redirect chain ---
+
+  @Test
+  void aFeedEntryOnAForeignHostNeverReceivesTheAuthorizationHeader() throws IOException {
+    // Unlike every foreign-host-redirect test above, nothing here goes through a redirect at all -
+    // the feed's own <link> names a foreign address directly (127.0.0.2, not 127.0.0.1 - see
+    // UrlFileDownloaderTest's identical comment), the way a malicious or careless feed operator
+    // could write <link>https://angreifer.example/x</link>. Credentials configured for the feed's
+    // own host (baseUrl) must never reach it - the entry itself is still processed normally, only
+    // the header is withheld, so an aggregator feed without its own credentials keeps working.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    foreignServer.start();
+    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
+    try {
+      foreignServer.createContext(
+          "/a.html",
+          exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] bytes =
+                "<html><body><main>Text</main></body></html>".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+      serve("/feed.xml", 200, "application/rss+xml", feedXml(foreignBaseUrl + "/a.html"));
+      when(fileProcessingService.processRssEntry(
+              anyString(), anyString(), anyString(), any(), eq(library)))
+          .thenReturn(FileProcessingResult.PROCESSED);
+
+      execute(baseUrl + "/feed.xml", null, "admin:secret");
+
+      verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+      assertThat(authorization.get()).isNull();
+    } finally {
+      foreignServer.stop(0);
+    }
+  }
+
+  @Test
+  void anAttachmentOnAForeignHostNeverReceivesTheAuthorizationHeader() throws IOException {
+    // The entry's own detail page and its attachment both live on the feed's foreign host here -
+    // AttachmentProfile.GENERIC only ever proposes candidates same-origin to the detail page (see
+    // aLinkToAForeignHostIsNeverTreatedAsAnAttachment above), so an attachment foreign to the
+    // *feed*
+    // but same-origin to a foreign *detail page* is exactly the gap PR #642 review finding 1
+    // describes one level down from the entry itself.
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    foreignServer.start();
+    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
+    try {
+      String detailHtml =
+          "<html><body><main>Text"
+              + "<a href=\""
+              + foreignBaseUrl
+              + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+      foreignServer.createContext(
+          "/a.html",
+          exchange -> {
+            byte[] bytes = detailHtml.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+      foreignServer.createContext(
+          "/downloads/anlage.pdf",
+          exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] bytes = "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+      serve("/feed.xml", 200, "application/rss+xml", feedXml(foreignBaseUrl + "/a.html"));
+      when(fileProcessingService.processRssEntry(
+              anyString(), anyString(), anyString(), any(), eq(library)))
+          .thenReturn(FileProcessingResult.PROCESSED);
+      when(fileProcessingService.processUrlFile(
+              any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString()))
+          .thenReturn(FileProcessingResult.PROCESSED);
+
+      execute(baseUrl + "/feed.xml", null, "attachment:credentials");
+
+      verify(fileProcessingService, timeout(2000))
+          .processUrlFile(
+              any(), anyString(), anyString(), any(), anyLong(), eq(library), any(), anyString());
+      assertThat(authorization.get()).isNull();
+    } finally {
+      foreignServer.stop(0);
+    }
+  }
+
+  // --- PR #642 review, finding 2: a cross-origin redirect never leaks a *configured* header ---
+
+  @Test
+  void anAttachmentRedirectedToAForeignHostWithCredentialsConfiguredNeverLeaksTheHeader()
+      throws IOException {
+    // Mirrors anAttachmentRedirectedToAForeignHostIsSkipped above, but with sourceCredentials
+    // actually configured this time (every foreign-host-redirect test until now ran with no
+    // authHeader at all, so none of them could have caught a leak here even if one existed). The
+    // redirect to the foreign host is rejected outright before it is ever followed (ADR-0017), so
+    // the foreign server is never contacted at all - the strongest possible proof that no header
+    // (or anything else) reaches it.
+    HttpServer foreignServer = HttpServer.create(new InetSocketAddress("127.0.0.2", 0), 0);
+    foreignServer.start();
+    String foreignBaseUrl = "http://127.0.0.2:" + foreignServer.getAddress().getPort();
+    AtomicReference<String> authorization = new AtomicReference<>("(never contacted)");
+    try {
+      foreignServer.createContext(
+          "/anlage.pdf",
+          exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] bytes = "fremd".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+          });
+
+      executor =
+          newExecutor(
+              new IndexingProperties.Rss(
+                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+      String detailHtml =
+          "<html><body><main>Text"
+              + "<a href=\""
+              + baseUrl
+              + "/downloads/anlage.pdf\">Anlage</a></main></body></html>";
+      serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+      serve("/a.html", 200, "text/html", detailHtml);
+      server.createContext(
+          "/downloads/anlage.pdf",
+          exchange -> {
+            exchange.getResponseHeaders().set("Location", foreignBaseUrl + "/anlage.pdf");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+          });
+      when(fileProcessingService.processRssEntry(
+              anyString(), anyString(), anyString(), any(), eq(library)))
+          .thenReturn(FileProcessingResult.PROCESSED);
+
+      execute(baseUrl + "/feed.xml", null, "admin:secret");
+
+      verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+      verify(fileProcessingService, never())
+          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any());
+      assertThat(authorization.get()).isEqualTo("(never contacted)");
+    } finally {
+      foreignServer.stop(0);
+    }
+  }
+
+  @Test
+  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() {
+    // PR #642 review, finding 4: reusing the shared ProxyAndCredentials.parse means an invalid
+    // port now fails with the same German message SourceConnectionTestService already gave,
+    // instead of the JDK's own NumberFormatException text leaking into progress.fail via the
+    // outer catch (Exception e) this used to fall through to.
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+
+    execute(baseUrl + "/feed.xml", "127.0.0.1:not-a-port", null);
+
+    verify(indexingJobService, timeout(2000))
+        .failJob(any(), eq("sourceProxy muss dem Format host:port entsprechen"));
+  }
 }

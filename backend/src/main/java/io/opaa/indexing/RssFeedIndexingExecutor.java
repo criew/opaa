@@ -84,6 +84,17 @@ import org.springframework.scheduling.annotation.Async;
  * ever continues to a hop {@link #isForeignHostRedirect} has already cleared, and attachment
  * downloads go through {@link UrlFileDownloader#downloadBounded}, which rejects a foreign-host
  * redirect outright before a further request is ever sent.
+ *
+ * <p><b>The feed's own origin, not just the redirect chain (PR #642 review, finding 1).</b> None of
+ * the above protects against the <em>starting</em> address: a feed entry's own {@code <link>} and
+ * an attachment candidate's URL are both content the feed operator controls, checked only for an
+ * {@code http(s)} scheme before this fix - a feed carrying {@code
+ * <link>https://angreifer.example/x</link>} would have sent the feed's own Basic Auth credentials
+ * straight to that address on hop 0, before any redirect-chain check ever ran. {@link
+ * #authHeaderForTarget} withholds the header (never the entry or attachment itself) whenever a
+ * detail page or attachment target is not the feed's own origin ({@link
+ * AutoindexCrawlerService#sameOrigin}) - an aggregator feed with no credentials of its own keeps
+ * working exactly as before.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -133,31 +144,24 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     try {
       // #505: sourceProxy/sourceCredentials, mirroring UrlIndexingExecutor#toUrlIndexingRequest -
-      // the library's persisted quellkonfiguration, not a per-request field.
-      String proxyHost = null;
-      int proxyPort = -1;
-      String proxy = targetLibrary.getSourceProxy();
-      if (proxy != null && !proxy.isBlank()) {
-        int colonIdx = proxy.lastIndexOf(':');
-        if (colonIdx > 0) {
-          proxyHost = proxy.substring(0, colonIdx);
-          proxyPort = Integer.parseInt(proxy.substring(colonIdx + 1));
-        }
+      // the library's persisted quellkonfiguration, not a per-request field. PR #642 review,
+      // finding 4: parsing itself now goes through the shared ProxyAndCredentials rather than a
+      // third inline copy, which also fixes an invalid sourceProxy port surfacing as the JDK's raw
+      // NumberFormatException message in progress.fail below.
+      ProxyAndCredentials config;
+      try {
+        config =
+            ProxyAndCredentials.parse(
+                targetLibrary.getSourceProxy(), targetLibrary.getSourceCredentials());
+      } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+        progress.fail(e.getMessage());
+        return;
       }
+      String authHeader =
+          AutoindexCrawlerService.buildAuthHeader(config.username(), config.password());
 
-      String username = null;
-      String password = null;
-      String credentials = targetLibrary.getSourceCredentials();
-      if (credentials != null && !credentials.isBlank()) {
-        int colonIdx = credentials.indexOf(':');
-        if (colonIdx > 0) {
-          username = credentials.substring(0, colonIdx);
-          password = credentials.substring(colonIdx + 1);
-        }
-      }
-      String authHeader = AutoindexCrawlerService.buildAuthHeader(username, password);
-
-      HttpClient httpClient = AutoindexCrawlerService.buildHttpClient(proxyHost, proxyPort, false);
+      HttpClient httpClient =
+          AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
 
       Optional<RssFeedState> feedState = feedStateRepository.findByFeedUrl(feedUrl);
       HttpResponse<InputStream> feedResponse =
@@ -215,7 +219,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       var anyEntryDeferred = new AtomicBoolean(truncated);
       for (RssFeedEntry entry : entries) {
         processEntry(
-            httpClient, entry, targetLibrary, progress, events, anyEntryDeferred, authHeader);
+            httpClient,
+            entry,
+            targetLibrary,
+            progress,
+            events,
+            anyEntryDeferred,
+            authHeader,
+            feedUrl);
         progress.report();
       }
 
@@ -255,7 +266,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
       AtomicBoolean anyEntryDeferred,
-      String authHeader) {
+      String authHeader,
+      String feedUrl) {
     String entryUrl = entry.link();
 
     if (!isHttpOrHttps(entryUrl)) {
@@ -273,7 +285,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
-          httpClient, entryUrl, progress, events, anyEntryDeferred, targetLibrary, authHeader);
+          httpClient,
+          entryUrl,
+          progress,
+          events,
+          anyEntryDeferred,
+          targetLibrary,
+          authHeader,
+          feedUrl);
       return;
     }
 
@@ -281,7 +300,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     DetailPage detailPage;
     try {
-      detailPage = fetchDetailPage(httpClient, entryUrl, authHeader);
+      detailPage =
+          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       // Deliberately kept apart from the catch below (ADR-0017): a 403/429/redirect to a
       // foreign host is the *other side* declining to hand over the page, not a failure of
@@ -353,7 +373,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             anyEntryDeferred,
             progress,
             events,
-            authHeader);
+            authHeader,
+            feedUrl);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -385,7 +406,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunEventRecorder events,
       AtomicBoolean anyEntryDeferred,
       KnowledgeLibrary targetLibrary,
-      String authHeader) {
+      String authHeader,
+      String feedUrl) {
     progress.recordSkipped();
     if (documentRepository.existsBySourceEntryUrl(entryUrl)) {
       log.info("Skipping unchanged RSS entry (unchanged pubDate): {}", entryUrl);
@@ -399,7 +421,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     delayBeforeRequest();
     DetailPage detailPage;
     try {
-      detailPage = fetchDetailPage(httpClient, entryUrl, authHeader);
+      detailPage =
+          fetchDetailPage(httpClient, entryUrl, authHeaderForTarget(authHeader, feedUrl, entryUrl));
     } catch (RejectedByRemoteException e) {
       log.warn(
           "Could not fetch RSS detail page to backfill attachments, will retry on a future run:"
@@ -450,7 +473,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         anyEntryDeferred,
         progress,
         events,
-        authHeader);
+        authHeader,
+        feedUrl);
   }
 
   /**
@@ -476,7 +500,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       AtomicBoolean anyEntryDeferred,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
-      String authHeader) {
+      String authHeader,
+      String feedUrl) {
     int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
     if (candidates.size() > limit) {
       log.info(
@@ -497,7 +522,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           anyEntryDeferred,
           progress,
           events,
-          authHeader);
+          authHeader,
+          feedUrl);
     }
   }
 
@@ -516,7 +542,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       AtomicBoolean anyEntryDeferred,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
-      String authHeader) {
+      String authHeader,
+      String feedUrl) {
     UrlFileDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -526,7 +553,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               candidate.suggestedFileName(),
               properties.maxAttachmentSizeBytes(),
               properties.userAgent(),
-              authHeader);
+              authHeaderForTarget(authHeader, feedUrl, candidate.url()));
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {
@@ -911,6 +938,32 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     } catch (URISyntaxException e) {
       return false;
     }
+  }
+
+  /**
+   * Restricts {@code authHeader} to a request whose target shares the feed's own origin ({@link
+   * AutoindexCrawlerService#sameOrigin}) - PR #642 review, finding 1. Neither {@code
+   * sendDetailPageRequest} nor {@code UrlFileDownloader#downloadBounded}'s own foreign-host checks
+   * protect against the <em>starting</em> address of a detail-page or attachment request: both only
+   * ever compare a redirect hop against the previous one, never against the feed itself. An entry's
+   * own {@code <link>} or an attachment candidate's URL is content the feed operator controls, so a
+   * request to an address outside the feed's origin must never carry credentials configured for the
+   * feed's own host - the entry (or attachment) is still processed, only the header is withheld, so
+   * an aggregator feed without its own credentials keeps working. An unparseable {@code targetUrl}
+   * is treated as foreign (no header) rather than trusted by default.
+   */
+  private static String authHeaderForTarget(String authHeader, String feedUrl, String targetUrl) {
+    if (authHeader == null) {
+      return null;
+    }
+    try {
+      if (AutoindexCrawlerService.sameOrigin(URI.create(feedUrl), URI.create(targetUrl))) {
+        return authHeader;
+      }
+    } catch (IllegalArgumentException e) {
+      // Falls through - an unparseable target URL is never trusted with the feed's credentials.
+    }
+    return null;
   }
 
   private void delayBeforeRequest() {
