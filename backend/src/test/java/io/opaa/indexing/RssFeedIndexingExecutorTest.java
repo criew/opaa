@@ -77,7 +77,8 @@ class RssFeedIndexingExecutorTest {
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     feedStateRepository = mock(RssFeedStateRepository.class);
-    when(feedStateRepository.findByFeedUrl(anyString())).thenReturn(Optional.empty());
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
+        .thenReturn(Optional.empty());
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     executor =
@@ -288,8 +289,10 @@ class RssFeedIndexingExecutorTest {
     // #490 review, finding 6: the previous 304 test never actually exercised sending
     // If-None-Match/If-Modified-Since, because the repository stub returned empty.
     RssFeedState state =
-        new RssFeedState(baseUrl + "/feed.xml", "\"abc123\"", "Mon, 01 Jan 2024 00:00:00 GMT");
-    when(feedStateRepository.findByFeedUrl(baseUrl + "/feed.xml")).thenReturn(Optional.of(state));
+        new RssFeedState(
+            library.getId(), baseUrl + "/feed.xml", "\"abc123\"", "Mon, 01 Jan 2024 00:00:00 GMT");
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), baseUrl + "/feed.xml"))
+        .thenReturn(Optional.of(state));
     AtomicReference<String> ifNoneMatch = new AtomicReference<>();
     AtomicReference<String> ifModifiedSince = new AtomicReference<>();
     server.createContext(

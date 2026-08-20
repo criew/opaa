@@ -33,8 +33,9 @@ import org.springframework.scheduling.annotation.Async;
  * - into the shared processing chain via {@link FileProcessingService#processRssEntry}.
  *
  * <p><b>Two-stage change detection (ADR-0017).</b> The feed itself is fetched with a conditional
- * {@code GET} (ETag/{@code If-Modified-Since}, tracked per feed URL in {@link RssFeedState}) - an
- * unchanged feed ends the run after a single {@code 304} response. Every entry is then checked
+ * {@code GET} (ETag/{@code If-Modified-Since}, tracked per library and feed URL in {@link
+ * RssFeedState} - #646, see that class's Javadoc for why per-library rather than per-URL alone) -
+ * an unchanged feed ends the run after a single {@code 304} response. Every entry is then checked
  * against its stored {@code pubDate} <em>before</em> its detail page is ever requested (mirroring
  * {@link UrlIndexingExecutor#isUnchanged}), so an unchanged entry costs nothing beyond the already-
  * downloaded feed. The SHA-256 checksum computed inside {@link
@@ -163,7 +164,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       HttpClient httpClient =
           AutoindexCrawlerService.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
 
-      Optional<RssFeedState> feedState = feedStateRepository.findByFeedUrl(feedUrl);
+      // #646: keyed by (libraryId, feedUrl), not feedUrl alone - see RssFeedState's Javadoc for
+      // why a lookup by feedUrl alone let a new library inherit a previously deleted or
+      // reconfigured library's stale ETag/Last-Modified state and end its first run with a false
+      // 304.
+      Optional<RssFeedState> feedState =
+          feedStateRepository.findByLibraryIdAndFeedUrl(targetLibrary.getId(), feedUrl);
       HttpResponse<InputStream> feedResponse =
           fetchFeed(httpClient, feedUrl, feedState, authHeader);
 
@@ -236,7 +242,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       // (e.g. a bot-protection challenge) stops rejecting them. The feed's conditional-GET state
       // is therefore only advanced once a run has actually accounted for every entry it saw.
       if (!anyEntryDeferred.get() && progress.failedCount() == 0) {
-        saveFeedState(feedUrl, feedResponse);
+        saveFeedState(targetLibrary.getId(), feedUrl, feedResponse);
       } else {
         log.info(
             "Not persisting RSS feed state for {} - this run deferred or failed at least one"
@@ -740,7 +746,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         httpClient, feedUrl, Duration.ofSeconds(60), headers);
   }
 
-  private void saveFeedState(String feedUrl, HttpResponse<InputStream> feedResponse) {
+  private void saveFeedState(
+      UUID libraryId, String feedUrl, HttpResponse<InputStream> feedResponse) {
     String etag = feedResponse.headers().firstValue("ETag").orElse(null);
     String lastModified = feedResponse.headers().firstValue("Last-Modified").orElse(null);
     if (etag == null && lastModified == null) {
@@ -748,8 +755,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     RssFeedState state =
         feedStateRepository
-            .findByFeedUrl(feedUrl)
-            .orElseGet(() -> new RssFeedState(feedUrl, null, null));
+            .findByLibraryIdAndFeedUrl(libraryId, feedUrl)
+            .orElseGet(() -> new RssFeedState(libraryId, feedUrl, null, null));
     state.setEtag(etag);
     state.setLastModified(lastModified);
     state.setUpdatedAt(Instant.now());

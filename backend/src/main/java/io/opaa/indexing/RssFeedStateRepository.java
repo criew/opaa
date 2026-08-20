@@ -6,5 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RssFeedStateRepository extends JpaRepository<RssFeedState, UUID> {
 
-  Optional<RssFeedState> findByFeedUrl(String feedUrl);
+  // #646: keyed per library, not per feed URL alone - see RssFeedState's Javadoc for why.
+  Optional<RssFeedState> findByLibraryIdAndFeedUrl(UUID libraryId, String feedUrl);
 }

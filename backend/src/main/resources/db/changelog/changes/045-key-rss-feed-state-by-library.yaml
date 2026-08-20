@@ -1,0 +1,162 @@
+databaseChangeLog:
+  # #646: rss_feed_state was keyed by feed_url alone (unique constraint uk_rss_feed_state_feed_url,
+  # migration 025), not by the library that owns the feed. A library deleted or reconfigured to a
+  # different sourceUrl left its ETag/Last-Modified row behind; a *new* library later pointed at the
+  # same feed address found that stale row via RssFeedStateRepository#findByFeedUrl, sent a
+  # conditional GET, got a 304 "unchanged" from the feed's own perspective, and ended its very first
+  # run with zero documents - reported as success, not failure, so the outage stayed silent. Four
+  # changeSets, in dependency order:
+  #   1. 045-add-library-id-to-rss-feed-state       - nullable column first, so the ALTER TABLE does
+  #                                                    not require a value for existing rows
+  #   2. 045-backfill-rss-feed-state-library-id     - matches each pre-existing row to the (at most
+  #                                                    one, since feed_url was globally unique)
+  #                                                    RSS_FEED library currently configured with
+  #                                                    that exact sourceUrl
+  #   3. 045-delete-orphaned-rss-feed-state          - a row no live library claims (the library was
+  #                                                    deleted, or moved to a different sourceUrl)
+  #                                                    carries state for nothing that exists any more
+  #                                                    - removing it is lossless: the next run for
+  #                                                    that address, whichever library it belongs to,
+  #                                                    simply starts as "never indexed", exactly the
+  #                                                    outcome #646 asks for
+  #   4. 045-enforce-rss-feed-state-library-id       - NOT NULL, replaces the feed_url-only unique
+  #                                                     constraint with one on (library_id, feed_url),
+  #                                                     and adds the foreign key with ON DELETE
+  #                                                     CASCADE - a library's own deletion now takes
+  #                                                     its rss_feed_state row with it at the database
+  #                                                     level, closing the gap
+  #                                                     KnowledgeLibraryService#deleteLibrary left
+  #                                                     open, the same way fk_documents_library_
+  #                                                     organization (migration 012) already does for
+  #                                                     documents (RESTRICT there only because a
+  #                                                     document without its library would be
+  #                                                     meaningless - a leftover rss_feed_state row
+  #                                                     is instead simply unwanted, so CASCADE is the
+  #                                                     right semantics here, not RESTRICT)
+  #
+  # A library that changes its sourceUrl without being deleted (RSS_FEED#updateLibrary) needs no
+  # extra cleanup step of its own: RssFeedIndexingExecutor now looks state up by (libraryId,
+  # feedUrl), so a changed feedUrl simply finds no row for the new address and starts fresh, exactly
+  # like a brand new library would - see RssFeedIndexingExecutor's Javadoc.
+  #
+  # Rollback order (reverse of apply order):
+  # 045-enforce-rss-feed-state-library-id
+  # 045-delete-orphaned-rss-feed-state (irreversible no-op, see its rollback block)
+  # 045-backfill-rss-feed-state-library-id (irreversible no-op, see its rollback block)
+  # 045-add-library-id-to-rss-feed-state
+
+  - changeSet:
+      id: 045-add-library-id-to-rss-feed-state
+      author: opaa
+      comment: >
+        Adds library_id to rss_feed_state (#646), nullable for now so the ALTER TABLE does not
+        require a value for existing rows - the backfill changeSet below fills it in, then
+        045-enforce-rss-feed-state-library-id makes it NOT NULL.
+      changes:
+        - addColumn:
+            tableName: rss_feed_state
+            columns:
+              - column:
+                  name: library_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: rss_feed_state
+            columnName: library_id
+
+  - changeSet:
+      id: 045-backfill-rss-feed-state-library-id
+      author: opaa
+      comment: >
+        Assigns every pre-existing rss_feed_state row to the RSS_FEED library currently configured
+        with that exact feed_url as its sourceUrl, if one exists - feed_url was globally unique
+        (uk_rss_feed_state_feed_url), so at most one row can match any given library. A single
+        UPDATE, the same reasoning as 012-backfill-document-library-id: one transaction, all rows or
+        none, resumability comes from Liquibase's own DATABASECHANGELOG bookkeeping at the
+        changeSet level, not from batch-level commits - safe at the current, pre-1.0 data volume.
+      changes:
+        - sql:
+            sql: >
+              UPDATE rss_feed_state
+              SET library_id = kl.id
+              FROM knowledge_libraries kl
+              WHERE kl.source_type = 'RSS_FEED'
+                AND kl.source_url = rss_feed_state.feed_url
+                AND rss_feed_state.library_id IS NULL;
+      rollback:
+        - sql:
+            comment: >
+              Irreversible, same reasoning as 012-backfill-document-library-id's rollback: a
+              rolled-back application code path could still write new rss_feed_state rows with
+              library_id already set, indistinguishable here from rows this changeSet touched.
+              Deliberate no-op so the rollback of the surrounding, lossless changeSets is not
+              blocked.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 045-delete-orphaned-rss-feed-state
+      author: opaa
+      comment: >
+        Removes every row the backfill above could not match to a live RSS_FEED library (#646) - the
+        library that once owned it was deleted, or has since been reconfigured to a different
+        sourceUrl. Lossless: such a row is exactly #646's bug frozen in the table (stale
+        ETag/Last-Modified for an address no current library will ever look up by its own
+        library_id), and deleting it simply means the next run for that address - whichever library
+        it belongs to - starts as "never indexed", the correct outcome.
+      changes:
+        - sql:
+            sql: "DELETE FROM rss_feed_state WHERE library_id IS NULL;"
+      rollback:
+        - sql:
+            comment: >
+              Irreversible: the deleted rows carried no information any surviving library needs, and
+              are gone for good. Deliberate no-op, same reasoning as
+              010-cleanup-duplicate-personal-spaces.
+            sql: "SELECT 1;"
+
+  - changeSet:
+      id: 045-enforce-rss-feed-state-library-id
+      author: opaa
+      comment: >
+        library_id is now NOT NULL - every rss_feed_state row belongs to exactly one library (#646)
+        - the feed_url-only unique constraint (uk_rss_feed_state_feed_url, migration 025) is
+        replaced by one on (library_id, feed_url), and library_id carries a real foreign key with
+        ON DELETE CASCADE: deleting a library now takes its rss_feed_state row with it at the
+        database level, so a future library configured with a previously-used feed_url can never
+        again find another library's leftover ETag/Last-Modified state.
+      changes:
+        - addNotNullConstraint:
+            tableName: rss_feed_state
+            columnName: library_id
+            columnDataType: uuid
+        - dropUniqueConstraint:
+            tableName: rss_feed_state
+            constraintName: uk_rss_feed_state_feed_url
+        - addForeignKeyConstraint:
+            baseTableName: rss_feed_state
+            baseColumnNames: library_id
+            referencedTableName: knowledge_libraries
+            referencedColumnNames: id
+            constraintName: fk_rss_feed_state_library
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: rss_feed_state
+            columnNames: library_id, feed_url
+            constraintName: uk_rss_feed_state_library_feed_url
+      rollback:
+        - dropUniqueConstraint:
+            tableName: rss_feed_state
+            constraintName: uk_rss_feed_state_library_feed_url
+        - dropForeignKeyConstraint:
+            baseTableName: rss_feed_state
+            constraintName: fk_rss_feed_state_library
+        - addUniqueConstraint:
+            tableName: rss_feed_state
+            columnNames: feed_url
+            constraintName: uk_rss_feed_state_feed_url
+        - dropNotNullConstraint:
+            tableName: rss_feed_state
+            columnName: library_id
+            columnDataType: uuid

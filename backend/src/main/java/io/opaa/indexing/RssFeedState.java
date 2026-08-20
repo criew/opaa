@@ -4,22 +4,41 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * The {@code ETag}/{@code Last-Modified} pair {@link RssFeedIndexingExecutor} last saw for a given
- * feed URL (#467, ADR-0017), keyed by that URL - lets a run send a conditional GET and end in a
- * single request when the feed itself has not changed. See migration {@code
+ * feed URL (#467, ADR-0017), keyed by {@code (libraryId, feedUrl)} - lets a run send a conditional
+ * GET and end in a single request when the feed itself has not changed. See migration {@code
  * 025-create-rss-feed-state} for why this is its own table rather than a {@link Document} row.
+ *
+ * <p><b>Keyed per library, not per URL alone (#646).</b> Before migration {@code
+ * 045-key-rss-feed-state-by-library}, {@code feed_url} alone was unique: a library deleted or
+ * reconfigured to a different {@code sourceUrl} left its row behind, and a *new* library later
+ * pointed at the same feed address found that stale row, sent a conditional GET, got a {@code 304}
+ * from the feed's own perspective, and ended its very first run with zero documents - reported as
+ * success, not failure. {@code libraryId} plus {@code onDelete: CASCADE} on {@code
+ * fk_rss_feed_state_library} means a library's own deletion now takes its state row with it, and a
+ * library that changes its {@code sourceUrl} simply finds no row for the new address (see {@link
+ * RssFeedIndexingExecutor}).
  */
 @Entity
-@Table(name = "rss_feed_state")
+@Table(
+    name = "rss_feed_state",
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uk_rss_feed_state_library_feed_url",
+            columnNames = {"library_id", "feed_url"}))
 public class RssFeedState {
 
   @Id private UUID id;
 
-  @Column(name = "feed_url", nullable = false, length = 2000, unique = true)
+  @Column(name = "library_id", nullable = false)
+  private UUID libraryId;
+
+  @Column(name = "feed_url", nullable = false, length = 2000)
   private String feedUrl;
 
   @Column(name = "etag", length = 500)
@@ -33,8 +52,9 @@ public class RssFeedState {
 
   protected RssFeedState() {}
 
-  public RssFeedState(String feedUrl, String etag, String lastModified) {
+  public RssFeedState(UUID libraryId, String feedUrl, String etag, String lastModified) {
     this.id = UUID.randomUUID();
+    this.libraryId = libraryId;
     this.feedUrl = feedUrl;
     this.etag = etag;
     this.lastModified = lastModified;
@@ -43,6 +63,10 @@ public class RssFeedState {
 
   public UUID getId() {
     return id;
+  }
+
+  public UUID getLibraryId() {
+    return libraryId;
   }
 
   public String getFeedUrl() {
