@@ -1,10 +1,21 @@
 # Test-only fixture: the real changelog (db.changelog-master.yaml) up to and including
-# changeSet 046 - i.e. the schema exactly as it existed immediately before migration 047.
+# changeSet 046 - i.e. the schema exactly as it existed immediately before migrations 047, 048 and
+# 049. All three apply their own changelog on top of this fixture themselves, in isolation, rather
+# than each needing their own "-through-04N.yaml": none of the three depends on anything the others
+# introduce (047 rebinds fk_chats_author/fk_chats_space and 14 other user-referencing foreign keys
+# to composite keys, and adds uk_users_id_organization; 048 adds organization_id to
+# chat_library_references and a separate uk_chats_id_organization unique index; 049 adds
+# organization_id to indexing_jobs and rebinds fk_indexing_jobs_library to a composite key against
+# knowledge_libraries(id, organization_id), which only needs uk_knowledge_libraries_id_organization
+# from migration 012 - nothing from 047 or 048), so all three simply stop at 046 instead of
+# chaining off each other or off one another's changesets.
 #
 # Used by:
-# - Migration047UserReferencesOrganizationBindingTest, to build a realistic pre-migration
-#   database (via the real, versioned changelog files, not a hand-rolled schema) and then apply
-#   047 in isolation.
+# - Migration047UserReferencesOrganizationBindingTest, to build a realistic pre-migration database
+#   (via the real, versioned changelog files, not a hand-rolled schema) and then apply 047 in
+#   isolation.
+# - Migration048ChatLibraryReferencesOrganizationBindingTest, likewise, applying 048 in isolation.
+# - Migration049BindIndexingJobsToOrganizationTest, likewise, applying 049 in isolation.
 #
 # See test-master-through-045.yaml for the pattern this fixture follows.
 databaseChangeLog:

@@ -16,15 +16,20 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Applies Liquibase changelog 049 in isolation against a database built from {@code
- * test-master-through-047.yaml} - the real changelog through changeSet 047 (#678, merged), the same
- * pattern as {@code Migration046GroupsParentGroupOrganizationBindingTest} and {@code
- * Migration047UserReferencesOrganizationBindingTest}. 048 (#680) is not yet merged at the time this
- * class was rebased onto that fixture (#401 review follow-up, 20.08.2026) - see the fixture's own
- * comment for the rebase note once it lands.
+ * test-master-through-046.yaml} - the real changelog through changeSet 046, the same fixture (and
+ * for the same reason) {@code Migration047UserReferencesOrganizationBindingTest} and {@code
+ * Migration048ChatLibraryReferencesOrganizationBindingTest} already use: 049 needs nothing from 047
+ * (rebinds user-referencing foreign keys) or 048 (adds organization_id to
+ * chat_library_references) - only {@code uk_knowledge_libraries_id_organization} from migration
+ * 012 - so it applies directly on top of 046 rather than chaining off either sibling migration.
+ * #401 review follow-up (20.08.2026): originally used a dedicated {@code test-master-for-049.yaml}
+ * (001-046) while 047/048 were still in flight, then briefly {@code test-master-through-047.yaml}
+ * once 047 landed; both are gone now in favor of the shared {@code through-046} fixture, once 048
+ * also landed and made the "siblings stop at 046, independently" convention explicit.
  *
  * <p><b>#401: reproduces the bug at the schema level before proving the fix.</b> {@link
  * #beforeTheMigrationIndexingJobsCarriesNoOrganizationIdAtAll} runs against the pre-migration
- * ({@code through-047}) fixture alone, without applying 049 - the exact defect the issue describes:
+ * ({@code through-046}) fixture alone, without applying 049 - the exact defect the issue describes:
  * {@code indexing_jobs} has no {@code organization_id} column at all, so nothing on the database
  * (or application) side can attribute a run to an organization, and a composite foreign key on
  * {@code library_id} referencing {@code knowledge_libraries(id, organization_id)} is not even
@@ -39,7 +44,7 @@ class Migration049BindIndexingJobsToOrganizationTest extends AbstractMigrationTe
 
   @Override
   protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-047.yaml";
+    return "db/changelog/test-master-through-046.yaml";
   }
 
   @BeforeEach
