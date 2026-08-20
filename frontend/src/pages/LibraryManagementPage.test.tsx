@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryManagementPage from './LibraryManagementPage'
 import { useLibraryStore } from '../stores/libraryStore'
+import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import type {
   GroupListResponse,
   LibraryListResponse,
@@ -109,6 +110,47 @@ function setLibraryState(libraries: LibraryListResponse[]) {
 describe('LibraryManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // jsdom hat kein matchMedia - ohne Desktop-Stub rendert die Seite die mobile Kartenliste
+    // statt der Zielbild-Tabelle (Mockup 1d).
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query.includes('min-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList
+  })
+
+  it('renders the mockup table with its six column heads (#595)', async () => {
+    setLibraryState([managerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    await screen.findByRole('table')
+    for (const head of ['Name', 'Herkunft', 'Umfang', 'Verteilungsstufe', 'Ihre Rolle', 'Stand']) {
+      expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
+    }
+    expect(screen.getByText(/Bestände ohne Leserecht erscheinen hier nicht/)).toBeInTheDocument()
+  })
+
+  it('shows a running indexing state with progress in the Stand column (#595)', async () => {
+    setLibraryState([managerLibrary])
+    useIndexingStore.setState({
+      runsByLibrary: {
+        [managerLibrary.id]: {
+          ...IDLE_RUN_STATE,
+          status: 'RUNNING',
+          documentCount: 62,
+          totalDocuments: 100,
+        },
+      },
+    })
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Lauf läuft · 62 %/)).toBeInTheDocument()
   })
 
   it('lists libraries sorted alphabetically by name', async () => {
@@ -124,8 +166,8 @@ describe('LibraryManagementPage', () => {
     setLibraryState([managerLibrary, viewerLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    expect(await screen.findByText(/431 dokumente/i)).toBeInTheDocument()
-    expect(await screen.findByText(/87 dokumente/i)).toBeInTheDocument()
+    expect(await screen.findByText('431 Dok.')).toBeInTheDocument()
+    expect(await screen.findByText('87 Dok.')).toBeInTheDocument()
     expect(screen.getByText('Dateisystem')).toBeInTheDocument()
     expect(screen.getByText('Hochgeladen')).toBeInTheDocument()
   })
