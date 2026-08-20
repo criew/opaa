@@ -227,6 +227,8 @@ Zweck, nicht nach Pfad.
 | Benutzende auflisten und die Systemrolle einer Person setzen | `/api/v1/admin/users` | ja |
 | Abgleich mit dem Verzeichnisdienst des Hauses — zuerst als Probelauf ohne Wirkung, dann scharf, dazu der Stand des letzten Laufs | `/api/v1/admin/directory-sync` | ja |
 | Anmeldeverfahren der Installation erfragen, bevor eine Anmeldung beginnt | `GET /api/v1/auth/config` | ja |
+| Branding des Hauses erfragen — Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe; ohne Konfiguration gilt der OPAA-Standard, jedes Feld für sich | `GET /api/v1/branding`, `GET /api/v1/branding/logo` | ja (#582) |
+| Branding des Hauses setzen — nur Systemverwaltung; das Logo wird auf Format, Größe und tatsächlichen Inhalt geprüft, SVG bewusst abgelehnt | `PUT /api/v1/system/branding`, `PUT`/`DELETE /api/v1/system/branding/logo` | ja (#582) |
 | Eigene Identität, Rollen und Zugehörigkeiten erfragen | `GET /api/v1/auth/me` | ja |
 | Betriebsbereitschaft prüfen — für Lastverteiler und Betriebsüberwachung | `GET /api/health` | ja |
 
