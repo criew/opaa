@@ -891,9 +891,11 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), owner, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              assertThat(responseStatusException.getReason()).contains("indiziert");
+            });
     assertThat(libraryRepository.findById(library.getId())).isPresent();
 
     // Once the run leaves RUNNING, deletion succeeds - the check is a live guard against the

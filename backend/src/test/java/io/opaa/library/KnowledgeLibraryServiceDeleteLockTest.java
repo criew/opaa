@@ -106,9 +106,11 @@ class KnowledgeLibraryServiceDeleteLockTest {
     assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), ownerId, false))
         .isInstanceOf(ResponseStatusException.class)
         .satisfies(
-            ex ->
-                assertThat(((ResponseStatusException) ex).getStatusCode())
-                    .isEqualTo(HttpStatus.CONFLICT));
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+              assertThat(responseStatusException.getReason()).contains("indiziert");
+            });
   }
 
   @Test
