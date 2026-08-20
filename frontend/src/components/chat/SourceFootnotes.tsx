@@ -11,6 +11,8 @@ import { fontFamily } from '../../theme/tokens'
 interface SourceFootnotesProps {
   messageId: string
   citations: CitationIndex
+  /** Rows to light up after a footnote click - covers ranges the URL hash cannot (#590). */
+  highlightedDocIndexes?: number[]
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string | null {
@@ -31,13 +33,19 @@ function sourceMeta(doc: CitationIndex['docs'][number]): string | null {
  * line, one row per document with its footnote numbers, and the checked-but-uncited tail behind
  * a toggle. Replaces the former SourceCard strip.
  */
-function renderDocRow(doc: CitationIndex['docs'][number], docIndex: number, messageId: string) {
+function renderDocRow(
+  doc: CitationIndex['docs'][number],
+  docIndex: number,
+  messageId: string,
+  highlighted: boolean,
+) {
   return (
     <Box
       key={doc.fileName}
       id={citationRowId(messageId, docIndex)}
       data-testid="source-card"
       data-cited="true"
+      data-highlighted={highlighted ? 'true' : undefined}
       sx={{
         display: 'flex',
         alignItems: 'baseline',
@@ -46,10 +54,12 @@ function renderDocRow(doc: CitationIndex['docs'][number], docIndex: number, mess
         fontSize: 12,
         lineHeight: 1.5,
         borderRadius: '4px',
-        // The in-text footnote anchors land here - :target lights the row up.
-        '&:target': {
+        // The in-text footnote anchors land here - :target covers direct hash navigation,
+        // data-highlighted the click-driven ranges (#590 Nachbesserung).
+        '&:target, &[data-highlighted="true"]': {
           bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
         },
+        transition: 'background-color 200ms',
       }}
     >
       {doc.numbers.length > 0 && (
@@ -96,7 +106,11 @@ function renderDocRow(doc: CitationIndex['docs'][number], docIndex: number, mess
  *  everything else is one quiet interaction away (#590 Nachbesserung). */
 const VISIBLE_DOCS = 3
 
-export default function SourceFootnotes({ messageId, citations }: SourceFootnotesProps) {
+export default function SourceFootnotes({
+  messageId,
+  citations,
+  highlightedDocIndexes = [],
+}: SourceFootnotesProps) {
   const [uncitedOpen, setUncitedOpen] = useState(false)
   const [foldedOpen, setFoldedOpen] = useState(false)
   const { docs, uncited, markerCount } = citations
@@ -104,6 +118,13 @@ export default function SourceFootnotes({ messageId, citations }: SourceFootnote
   const visibleDocs = docs.slice(0, VISIBLE_DOCS)
   const foldedDocs = docs.slice(VISIBLE_DOCS)
   const foldedStellen = foldedDocs.reduce((sum, doc) => sum + doc.numbers.length, 0)
+
+  // A clicked range may cover folded rows - unfold so the highlight is actually visible.
+  useEffect(() => {
+    if (highlightedDocIndexes.some((i) => i >= VISIBLE_DOCS)) {
+      setFoldedOpen(true)
+    }
+  }, [highlightedDocIndexes])
 
   // A footnote in the text may target a folded row - unfold before the browser scrolls there,
   // so the anchor jump never lands on a collapsed element.
@@ -163,11 +184,13 @@ export default function SourceFootnotes({ messageId, citations }: SourceFootnote
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        {visibleDocs.map((doc, docIndex) => renderDocRow(doc, docIndex, messageId))}
+        {visibleDocs.map((doc, docIndex) =>
+          renderDocRow(doc, docIndex, messageId, highlightedDocIndexes.includes(docIndex)),
+        )}
         {foldedOpen &&
           foldedDocs.map((doc, i) => {
             const docIndex = i + VISIBLE_DOCS
-            return renderDocRow(doc, docIndex, messageId)
+            return renderDocRow(doc, docIndex, messageId, highlightedDocIndexes.includes(docIndex))
           })}
       </Box>
 

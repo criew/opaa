@@ -21,6 +21,9 @@ interface MarkdownRendererProps {
   citations?: CitationIndex
   /** Needed for the footnote anchors' target ids; only used together with `citations`. */
   messageId?: string
+  /** Fires with every footnote number a clicked anchor covers - a range like "3–4" covers two
+   *  rows, which the URL hash alone cannot highlight (#590 Nachbesserung). */
+  onCitationClick?: (numbers: number[]) => void
 }
 
 const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
@@ -42,6 +45,7 @@ function renderCitationGroup(
   group: ResolvedCitation[],
   messageId: string | undefined,
   key: string,
+  onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode {
   const segments: { first: ResolvedCitation; last: ResolvedCitation }[] = []
   for (const citation of group) {
@@ -67,6 +71,10 @@ function renderCitationGroup(
           segment.first.number === segment.last.number
             ? `Fundstelle ${segment.first.number}: ${segment.first.fileName}`
             : `Fundstellen ${segment.first.number} bis ${segment.last.number}`
+        const segmentNumbers = Array.from(
+          { length: segment.last.number - segment.first.number + 1 },
+          (_, offset) => segment.first.number + offset,
+        )
         return (
           <span key={segment.first.number}>
             {i > 0 && '·'}
@@ -76,6 +84,7 @@ function renderCitationGroup(
                   ? `#${citationRowId(messageId, segment.first.docIndex)}`
                   : undefined
               }
+              onClick={() => onCitationClick?.(segmentNumbers)}
               underline="none"
               aria-label={ariaLabel}
               sx={{ fontWeight: 600 }}
@@ -93,6 +102,7 @@ function renderWithCitations(
   text: string,
   citations: CitationIndex | undefined,
   messageId: string | undefined,
+  onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode[] {
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -101,7 +111,7 @@ function renderWithCitations(
 
   const flushGroup = (key: string) => {
     if (group.length > 0) {
-      parts.push(renderCitationGroup(group, messageId, key))
+      parts.push(renderCitationGroup(group, messageId, key, onCitationClick))
       group = []
     }
   }
@@ -130,18 +140,24 @@ function renderWithCitations(
   return parts
 }
 
-function makeProcessChildren(citations: CitationIndex | undefined, messageId: string | undefined) {
+function makeProcessChildren(
+  citations: CitationIndex | undefined,
+  messageId: string | undefined,
+  onCitationClick: ((numbers: number[]) => void) | undefined,
+) {
   return function processChildren(children: React.ReactNode): React.ReactNode {
     if (typeof children === 'string') {
       if (CITATION_RE.test(children)) {
-        return renderWithCitations(children, citations, messageId)
+        return renderWithCitations(children, citations, messageId, onCitationClick)
       }
       return children
     }
     if (Array.isArray(children)) {
       return children.map((child, i) => {
         if (typeof child === 'string' && CITATION_RE.test(child)) {
-          return <span key={i}>{renderWithCitations(child, citations, messageId)}</span>
+          return (
+            <span key={i}>{renderWithCitations(child, citations, messageId, onCitationClick)}</span>
+          )
         }
         return child
       })
@@ -248,10 +264,15 @@ function makeComponents(
   }
 }
 
-export default function MarkdownRenderer({ content, citations, messageId }: MarkdownRendererProps) {
+export default function MarkdownRenderer({
+  content,
+  citations,
+  messageId,
+  onCitationClick,
+}: MarkdownRendererProps) {
   const components = useMemo(
-    () => makeComponents(makeProcessChildren(citations, messageId)),
-    [citations, messageId],
+    () => makeComponents(makeProcessChildren(citations, messageId, onCitationClick)),
+    [citations, messageId, onCitationClick],
   )
   return (
     <ReactMarkdown

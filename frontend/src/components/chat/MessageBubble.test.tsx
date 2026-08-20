@@ -70,6 +70,60 @@ describe('MessageBubble', () => {
     expect(screen.queryByText('not bold')?.tagName).not.toBe('STRONG')
   })
 
+  it('highlights every row of a combined footnote range on click (#590 Nachbesserung)', async () => {
+    const user = userEvent.setup()
+    const msg: ChatMessage = {
+      id: 'r1',
+      role: 'assistant',
+      content: 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.',
+      sources: [
+        { fileName: 'erste.md', relevanceScore: 0.9, matchCount: 1, cited: true, indexedAt: null },
+        { fileName: 'zweite.md', relevanceScore: 0.8, matchCount: 1, cited: true, indexedAt: null },
+      ],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+
+    await user.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 2' }))
+
+    expect(screen.getByText('erste.md').closest('[data-testid="source-card"]')).toHaveAttribute(
+      'data-highlighted',
+      'true',
+    )
+    expect(screen.getByText('zweite.md').closest('[data-testid="source-card"]')).toHaveAttribute(
+      'data-highlighted',
+      'true',
+    )
+  })
+
+  it('unfolds the block when a clicked range covers a folded row (#590 Nachbesserung)', async () => {
+    const user = userEvent.setup()
+    const files = ['d1.md', 'd2.md', 'd3.md', 'd4.md', 'd5.md']
+    const msg: ChatMessage = {
+      id: 'r2',
+      role: 'assistant',
+      content: 'Beleg' + files.map((f, i) => `【source: k${i}#0 | ${f}】`).join('') + '.',
+      sources: files.map((fileName) => ({
+        fileName,
+        relevanceScore: 0.9,
+        matchCount: 1,
+        cited: true,
+        indexedAt: null,
+      })),
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.queryByText('d5.md')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 5' }))
+
+    expect(await screen.findByText('d5.md')).toBeVisible()
+    expect(screen.getByText('d5.md').closest('[data-testid="source-card"]')).toHaveAttribute(
+      'data-highlighted',
+      'true',
+    )
+  })
+
   it('lists cited sources in the Fundstellen block (#590)', () => {
     const msg: ChatMessage = {
       id: '3',

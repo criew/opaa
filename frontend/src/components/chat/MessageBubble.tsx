@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
@@ -22,6 +22,27 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   const citations = useMemo(
     () => buildCitationIndex(message.content, message.sources),
     [message.content, message.sources],
+  )
+
+  // A clicked footnote highlights every row it covers - the URL hash can only carry one target,
+  // a range like "3–4" covers several (#590 Nachbesserung). Transient, so the flash reads as a
+  // pointer rather than a persistent selection.
+  const [highlightedDocIndexes, setHighlightedDocIndexes] = useState<number[]>([])
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleCitationClick = useCallback(
+    (numbers: number[]) => {
+      const docIndexes = [
+        ...new Set(
+          numbers
+            .map((n) => citations.docIndexByNumber.get(n))
+            .filter((i): i is number => i !== undefined),
+        ),
+      ]
+      setHighlightedDocIndexes(docIndexes)
+      if (highlightTimer.current) clearTimeout(highlightTimer.current)
+      highlightTimer.current = setTimeout(() => setHighlightedDocIndexes([]), 2400)
+    },
+    [citations],
   )
 
   return (
@@ -71,6 +92,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               content={message.content}
               citations={citations}
               messageId={message.id}
+              onCitationClick={handleCitationClick}
             />
           )}
 
@@ -80,7 +102,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
-          {!isUser && <SourceFootnotes messageId={message.id} citations={citations} />}
+          {!isUser && (
+            <SourceFootnotes
+              messageId={message.id}
+              citations={citations}
+              highlightedDocIndexes={highlightedDocIndexes}
+            />
+          )}
 
           {!isUser && (
             <Box sx={{ mt: 0.5 }}>
