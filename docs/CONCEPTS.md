@@ -262,10 +262,10 @@ eine Beschränkung an den **Daten** hängt und nicht am Arbeitsraum: Eine Biblio
 lokale Modelle" selbst mit sich, und ein Wechsel des Space umgeht sie nicht.
 
 **Persönliche Ablage:**
-- Jede Person hat einen persönlichen Space; eine eigene Wissensbibliothek legt sie bei Bedarf selbst
+- Jede Person hat einen Standard-Space; eine eigene Wissensbibliothek legt sie bei Bedarf selbst
   an — es gibt keine automatisch angelegte, nicht löschbare Vorgabebibliothek mehr
 - Geteilt wird über die Bibliothek, nicht über den Raum: Eine direkte Berechtigung für eine andere Person
-  genügt, der persönliche Space bleibt privat
+  genügt, ein Space, in dem niemand sonst Mitglied ist, bleibt privat
 
 - **Beispiel:** Die Bibliothek „Rechtsquellen Soziales" gehört dem Rechtsreferat, ist für die Gruppe
   „Amt 50" lesbar und in mehreren Spaces assoziiert. Wer nicht in der Gruppe ist, bekommt daraus keinen
@@ -302,9 +302,10 @@ Ein Bündel von Rechten, das Personen oder Gruppen zugewiesen wird.
   **nicht automatisch leseberechtigt** für Inhalte.
 
 **Space-Rollen (je Mitgliedschaft) — regeln Mitarbeit und Kuratierung, nicht den Dokumentenzugriff:**
-- **Member** — Space betreten, Chats führen, alle Chats und Artefakte des Space lesen
+- **Member** — Space betreten, Chats führen, alle **geteilten** Chats und Artefakte des Space lesen
 - **Curator** — zusätzlich Assets assoziieren und lösen
-- **Admin** — zusätzlich Mitglieder, Einstellungen und Modell-Obergrenze verwalten, Inhalte moderieren
+- **Admin** — zusätzlich Mitglieder, Einstellungen und Modell-Obergrenze verwalten, geteilte Inhalte
+  **zurückziehen** (nicht löschen)
 
 Dazu trägt jeder Space einen **Verantwortlichen** als Attribut; nur er oder ein System-Admin darf den Space
 löschen.
