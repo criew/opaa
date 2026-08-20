@@ -92,11 +92,7 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
   void everyOrganizationScopedForeignKeyIsComposite() throws SQLException {
     List<Violation> violations = findViolations(connection);
 
-    List<String> staleExceptions =
-        DOCUMENTED_EXCEPTIONS.stream()
-            .filter(exception -> violations.stream().noneMatch(exception::matches))
-            .map(BoundaryException::describe)
-            .toList();
+    List<String> staleExceptions = staleExceptionDescriptions(violations, DOCUMENTED_EXCEPTIONS);
     assertThat(staleExceptions)
         .as(
             "Documented exceptions that no longer describe an actual violation - remove them from"
@@ -104,13 +100,7 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
                 + String.join("\n", staleExceptions))
         .isEmpty();
 
-    List<Violation> undocumented =
-        violations.stream()
-            .filter(
-                violation ->
-                    DOCUMENTED_EXCEPTIONS.stream()
-                        .noneMatch(exception -> exception.matches(violation)))
-            .toList();
+    List<Violation> undocumented = undocumentedViolations(violations, DOCUMENTED_EXCEPTIONS);
     assertThat(undocumented)
         .as(
             "Organization boundary violation(s) found. Every foreign key from a table that carries"
@@ -142,6 +132,25 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
   }
 
   /**
+   * #390 review, Befund 4: {@code organizations} (migration 008 - {@code id}, {@code name}, {@code
+   * created_at}) is the tenant root and carries no {@code organization_id} column of its own, so it
+   * never enters {@link #tablesWithOrganizationId(Connection)} and a plain single-column {@code
+   * fk_*_organization} onto it is correctly outside the composite-key rule's scope. That followed
+   * only implicitly from the column being absent; this test makes it an explicit, checked fact
+   * instead, the same way {@link
+   * #usersIsPartOfTheOrganizationScopedTargetSetAndIsActuallyReferenced()} makes the {@code users}
+   * side of the target set explicit.
+   */
+  @Test
+  void organizationsIsNeverPartOfTheOrganizationScopedTargetSet() throws SQLException {
+    Set<String> organizationScopedTables = tablesWithOrganizationId(connection);
+
+    assertThat(organizationScopedTables)
+        .as("organizations is the tenant root and carries no organization_id column of its own")
+        .doesNotContain("organizations");
+  }
+
+  /**
    * Permanent negative test (#390 review requirement): proves the check itself catches a single-
    * column foreign key between two organization-scoped tables, in a pair of tables created here for
    * exactly this purpose - not by relying on today's schema happening to contain a violation (it
@@ -168,6 +177,84 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
     assertThat(violation.referencedColumns()).containsExactly("id");
   }
 
+  /**
+   * #390 review, Befund 2: {@link #DOCUMENTED_EXCEPTIONS} is empty in production, so without this
+   * test neither {@link BoundaryException#matches(Violation)} nor the staleness check in {@link
+   * #everyOrganizationScopedForeignKeyIsComposite()} would ever actually run against a real
+   * violation - an assertion that is never exercised is exactly the kind of untested "fix" {@code
+   * AGENTS.md}'s Reproduktionsnachweis section warns against. Reuses the same artificial violation
+   * as {@link #aSingleColumnForeignKeyBetweenTwoOrganizationScopedTablesIsDetectedAsAViolation()}:
+   * a documented exception that names it must remove it from {@link #undocumentedViolations(List,
+   * List)} and must not appear in {@link #staleExceptionDescriptions(List, List)}.
+   */
+  @Test
+  void aDocumentedExceptionCoversTheMatchingViolationAndIsNotStale() throws SQLException {
+    createArtificialOrganizationScopedTablesWithASingleColumnForeignKey();
+    List<Violation> violations = findViolations(connection);
+    List<BoundaryException> matchingException =
+        List.of(
+            new BoundaryException(
+                "test_boundary_child",
+                "fk_test_boundary_child_parent",
+                "artificial violation created by this test, not a real exception",
+                "#390"));
+
+    assertThat(undocumentedViolations(violations, matchingException))
+        .as("a documented exception naming exactly this violation must suppress it")
+        .isEmpty();
+    assertThat(staleExceptionDescriptions(violations, matchingException))
+        .as("the exception still matches an actual violation, so it must not be reported as stale")
+        .isEmpty();
+  }
+
+  /**
+   * The complement of {@link #aDocumentedExceptionCoversTheMatchingViolationAndIsNotStale()}: an
+   * exception that names a constraint no violation currently has must be reported as stale, not
+   * silently accepted - see this class's Javadoc, "Exception list".
+   */
+  @Test
+  void aDocumentedExceptionThatMatchesNoViolationIsReportedAsStale() throws SQLException {
+    List<Violation> violations = findViolations(connection);
+    List<BoundaryException> staleException =
+        List.of(
+            new BoundaryException(
+                "space_memberships",
+                "fk_space_memberships_space",
+                "no longer needed - migration 050 removed the redundant constraint this exception"
+                    + " once covered",
+                "#390"));
+
+    assertThat(staleExceptionDescriptions(violations, staleException))
+        .as(
+            "an exception naming a constraint that is not among today's violations must be flagged"
+                + " as stale, since today's schema (after migration 050) no longer has this"
+                + " violation")
+        .hasSize(1);
+  }
+
+  /**
+   * #390 review, Befund 5: a foreign key whose only base column is {@code organization_id} itself -
+   * (organization_id) -> (organization_id) - would satisfy the naive "organization_id is present at
+   * a matching index" check without actually binding any real, object-identifying column. {@link
+   * #findViolations(Connection)} requires at least one non-organization_id column alongside it, so
+   * this degenerate shape must still be reported as a violation, not accepted as composite.
+   */
+  @Test
+  void aForeignKeyThatIsOnlyOrganizationIdIsNotAcceptedAsComposite() throws SQLException {
+    createArtificialOrganizationScopedTablesWithADegenerateOrganizationIdOnlyForeignKey();
+
+    List<Violation> violations = findViolations(connection);
+
+    assertThat(violations)
+        .as("the only violation must be the artificial degenerate one this test just created")
+        .hasSize(1);
+    Violation violation = violations.get(0);
+    assertThat(violation.table()).isEqualTo("test_org_only_child");
+    assertThat(violation.constraintName()).isEqualTo("fk_test_org_only_child_degenerate");
+    assertThat(violation.baseColumns()).containsExactly("organization_id");
+    assertThat(violation.referencedColumns()).containsExactly("organization_id");
+  }
+
   private void createArtificialOrganizationScopedTablesWithASingleColumnForeignKey()
       throws SQLException {
     try (Statement statement = connection.createStatement()) {
@@ -183,10 +270,60 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
   }
 
   /**
+   * A parent/child pair where the child's only foreign key column *is* {@code organization_id},
+   * referencing the parent's own {@code organization_id} (which needs its own unique constraint to
+   * be a valid FK target) - the degenerate case {@link
+   * #aForeignKeyThatIsOnlyOrganizationIdIsNotAcceptedAsComposite()} proves is still rejected.
+   */
+  private void createArtificialOrganizationScopedTablesWithADegenerateOrganizationIdOnlyForeignKey()
+      throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TABLE test_org_only_parent (id uuid PRIMARY KEY, organization_id uuid NOT NULL"
+              + " REFERENCES organizations(id),"
+              + " CONSTRAINT uk_test_org_only_parent_organization UNIQUE (organization_id))");
+      statement.execute(
+          "CREATE TABLE test_org_only_child (id uuid PRIMARY KEY, organization_id uuid NOT NULL,"
+              + " CONSTRAINT fk_test_org_only_child_degenerate FOREIGN KEY (organization_id)"
+              + " REFERENCES test_org_only_parent(organization_id))");
+    }
+  }
+
+  /**
+   * The undocumented subset of {@code violations}: those with no matching entry in {@code
+   * exceptions}. A pure, static function of both lists (#390 review, Befund 2) so both {@link
+   * #everyOrganizationScopedForeignKeyIsComposite()} and the exception-mechanics tests exercise the
+   * exact same logic.
+   */
+  private static List<Violation> undocumentedViolations(
+      List<Violation> violations, List<BoundaryException> exceptions) {
+    return violations.stream()
+        .filter(
+            violation -> exceptions.stream().noneMatch(exception -> exception.matches(violation)))
+        .toList();
+  }
+
+  /**
+   * The subset of {@code exceptions} that no longer matches any entry in {@code violations} - see
+   * {@link #undocumentedViolations(List, List)}.
+   */
+  private static List<String> staleExceptionDescriptions(
+      List<Violation> violations, List<BoundaryException> exceptions) {
+    return exceptions.stream()
+        .filter(exception -> violations.stream().noneMatch(exception::matches))
+        .map(BoundaryException::describe)
+        .toList();
+  }
+
+  /**
    * The rule itself: every foreign key whose base table and referenced table both carry {@code
    * organization_id} must include {@code organization_id} in its own column list, matched with
-   * {@code organization_id} on the referenced side at the same position. Collects every violation
-   * instead of stopping at the first, so a migration author sees the complete list in one run.
+   * {@code organization_id} on the referenced side at the same position, AND carry at least one
+   * further column besides {@code organization_id} (#390 review, Befund 5) - a degenerate
+   * single-column {@code (organization_id) -> (organization_id)} foreign key would satisfy the
+   * index check without binding any actual object, so it must not count as composite. Collects
+   * every violation instead of stopping at the first, so a migration author sees the complete list
+   * in one run.
    */
   private List<Violation> findViolations(Connection connection) throws SQLException {
     Set<String> organizationScopedTables = tablesWithOrganizationId(connection);
@@ -197,14 +334,15 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
         continue;
       }
       List<String> baseColumns =
-          resolvedColumns(connection, foreignKey.constraintName(), "conkey", "conrelid");
+          resolvedColumns(connection, foreignKey.oid(), "conkey", "conrelid");
       List<String> referencedColumns =
-          resolvedColumns(connection, foreignKey.constraintName(), "confkey", "confrelid");
+          resolvedColumns(connection, foreignKey.oid(), "confkey", "confrelid");
       int organizationIdIndex = baseColumns.indexOf("organization_id");
       boolean isComposite =
           organizationIdIndex >= 0
               && organizationIdIndex < referencedColumns.size()
-              && "organization_id".equals(referencedColumns.get(organizationIdIndex));
+              && "organization_id".equals(referencedColumns.get(organizationIdIndex))
+              && baseColumns.size() >= 2;
       if (!isComposite) {
         violations.add(
             new Violation(
@@ -222,6 +360,15 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
    * Every base table in {@code public} that has a (non-dropped) {@code organization_id} column -
    * both the set of tables this check must examine and the set of targets the composite-key rule
    * applies to, determined from the schema itself, never hand-maintained (#390 issue body).
+   *
+   * <p>{@code organizations} itself (the tenant root, migration 008) is never part of this set: it
+   * carries no {@code organization_id} column of its own, so it never satisfies the {@code
+   * c.column_name = 'organization_id'} predicate below - a plain single-column {@code
+   * fk_*_organization} onto {@code organizations} is therefore correctly out of scope for the
+   * composite-key rule (#390 review, Befund 4). {@code <> 'organizations'} makes that explicit
+   * rather than relying solely on the column being absent; see {@link
+   * #usersIsPartOfTheOrganizationScopedTargetSetAndIsActuallyReferenced()} for the analogous
+   * explicit assertion on the {@code users} side of the target set.
    */
   private Set<String> tablesWithOrganizationId(Connection connection) throws SQLException {
     Set<String> tables = new LinkedHashSet<>();
@@ -233,6 +380,7 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
                     + "   ON t.table_schema = c.table_schema AND t.table_name = c.table_name"
                     + " WHERE c.table_schema = 'public' AND c.column_name = 'organization_id'"
                     + "   AND t.table_type = 'BASE TABLE'"
+                    + "   AND c.table_name <> 'organizations'"
                     + " ORDER BY c.table_name")) {
       while (result.next()) {
         tables.add(result.getString("table_name"));
@@ -247,14 +395,18 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
    * schema-qualified name depending on {@code search_path}). {@code conparentid = 0} excludes the
    * per-partition clones Postgres creates for a foreign key declared on a partitioned table's
    * parent (e.g. {@code audit_log}, migration 017) - without it, one constraint on a partitioned
-   * table would appear once per partition here.
+   * table would appear once per partition here. {@code c.oid} is carried through {@link
+   * ForeignKeyRow} and used by {@link #resolvedColumns(Connection, long, String, String)} instead
+   * of the constraint name (#390 review, Befund 1): a constraint name is only unique per table in
+   * Postgres, not per schema, so looking columns up by name alone could silently interleave the
+   * columns of two same-named constraints on different tables.
    */
   private List<ForeignKeyRow> foreignKeys(Connection connection) throws SQLException {
     List<ForeignKeyRow> foreignKeys = new ArrayList<>();
     try (Statement statement = connection.createStatement();
         ResultSet result =
             statement.executeQuery(
-                "SELECT c.conname, bc.relname AS base_table, rc.relname AS referenced_table"
+                "SELECT c.oid, c.conname, bc.relname AS base_table, rc.relname AS referenced_table"
                     + " FROM pg_constraint c"
                     + " JOIN pg_class bc ON bc.oid = c.conrelid"
                     + " JOIN pg_namespace bn ON bn.oid = bc.relnamespace"
@@ -264,6 +416,7 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
       while (result.next()) {
         foreignKeys.add(
             new ForeignKeyRow(
+                result.getLong("oid"),
                 result.getString("conname"),
                 result.getString("base_table"),
                 result.getString("referenced_table")));
@@ -272,9 +425,13 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
     return foreignKeys;
   }
 
-  /** Resolves an {@code int2vector}/{@code smallint[]} attribute-number column to column names. */
+  /**
+   * Resolves an {@code int2vector}/{@code smallint[]} attribute-number column to column names, for
+   * one specific constraint identified by its {@code pg_constraint.oid} - not its name, which is
+   * only unique per table (#390 review, Befund 1).
+   */
   private List<String> resolvedColumns(
-      Connection connection, String constraintName, String keyColumn, String relIdColumn)
+      Connection connection, long constraintOid, String keyColumn, String relIdColumn)
       throws SQLException {
     List<String> columns = new ArrayList<>();
     try (PreparedStatement statement =
@@ -286,8 +443,8 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
                 + " JOIN pg_attribute a ON a.attrelid = c."
                 + relIdColumn
                 + " AND a.attnum = k.attnum"
-                + " WHERE c.conname = ? AND c.conparentid = 0 ORDER BY k.ord")) {
-      statement.setString(1, constraintName);
+                + " WHERE c.oid = ? ORDER BY k.ord")) {
+      statement.setLong(1, constraintOid);
       try (ResultSet result = statement.executeQuery()) {
         while (result.next()) {
           columns.add(result.getString("attname"));
@@ -298,7 +455,8 @@ class OrganizationBoundarySchemaTest extends AbstractMigrationTest {
   }
 
   /** One foreign key constraint, as read from {@code pg_constraint} - not yet checked. */
-  private record ForeignKeyRow(String constraintName, String baseTable, String referencedTable) {}
+  private record ForeignKeyRow(
+      long oid, String constraintName, String baseTable, String referencedTable) {}
 
   /** One foreign key that fails the organization-boundary composite-key rule. */
   private record Violation(
