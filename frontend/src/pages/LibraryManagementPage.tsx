@@ -12,6 +12,7 @@ import type { LibraryListResponse } from '../types/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from '../utils/labels'
 import CreateLibraryDialog from '../components/CreateLibraryDialog'
+import PageHeading from '../components/a11y/PageHeading'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.ownerName) return library.ownerName
@@ -77,7 +78,7 @@ export default function LibraryManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, overflowY: 'auto' }}>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Wissensbibliotheken</Typography>
+        <PageHeading title="Wissensbibliotheken" variant="h6" />
         <Button variant="contained" onClick={() => setCreateDialogOpen(true)}>
           Neue Bibliothek
         </Button>

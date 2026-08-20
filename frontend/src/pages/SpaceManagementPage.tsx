@@ -17,6 +17,7 @@ import { getUsers } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
+import PageHeading from '../components/a11y/PageHeading'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -85,7 +86,7 @@ export default function SpaceManagementPage() {
   if (!spaceId || !space) {
     return (
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h6">Space nicht geladen</Typography>
+        <PageHeading title="Space nicht geladen" variant="h6" />
       </Box>
     )
   }

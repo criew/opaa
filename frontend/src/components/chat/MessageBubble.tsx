@@ -106,7 +106,10 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   sx={{
                     ml: 0.5,
                     transform: uncitedOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s',
+                    transition: (theme) =>
+                      theme.transitions.create('transform', {
+                        duration: theme.transitions.duration.shorter,
+                      }),
                   }}
                 >
                   <ExpandMoreIcon fontSize="small" />

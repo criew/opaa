@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
 import { useChatStore } from '../stores/chatStore'
+import PageHeading from '../components/a11y/PageHeading'
 
 export default function ChatPage() {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
@@ -20,6 +21,7 @@ export default function ChatPage() {
   const startNewChat = useChatStore((s) => s.startNewChat)
   const storeSpaceId = useChatStore((s) => s.spaceId)
   const storeChatId = useChatStore((s) => s.chatId)
+  const chatTitle = useChatStore((s) => s.title)
 
   // Read via a ref, not a reactive dependency: sendMessage sets the store's chatId as soon as it
   // implicitly creates a chat, well before the query itself resolves. If that update re-ran this
@@ -86,6 +88,7 @@ export default function ChatPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
+      <PageHeading title={chatTitle ?? (isNewChat ? 'Neuer Chat' : 'Chat')} visuallyHidden />
       {error && (
         <Alert severity="error" sx={{ m: 2 }}>
           {error}

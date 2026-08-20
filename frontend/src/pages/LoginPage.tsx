@@ -5,9 +5,11 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { Navigate, useLocation } from 'react-router'
 import { useAuthStore } from '../stores/authStore'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function LoginPage() {
   const location = useLocation()
+  usePageTitle('Anmelden')
   const mode = useAuthStore((s) => s.mode)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const error = useAuthStore((s) => s.error)
@@ -36,7 +38,7 @@ export default function LoginPage() {
       }}
     >
       <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
+        <Typography component="h1" variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
           OPAA
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

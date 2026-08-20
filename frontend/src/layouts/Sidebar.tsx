@@ -63,8 +63,11 @@ export default function Sidebar() {
 
   return (
     <Box
+      component="nav"
+      aria-label="Hauptnavigation"
       sx={{
         width: SIDEBAR_WIDTH,
+        flexShrink: 0,
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
@@ -233,13 +236,6 @@ export default function Sidebar() {
           </Box>
         </>
       )}
-
-      <Divider />
-      <Box sx={{ p: 2.5 }}>
-        <Typography variant="body2" color="text.secondary">
-          OPAA v0.1.0
-        </Typography>
-      </Box>
 
       <CreateSpaceDialog
         open={createDialogOpen}
