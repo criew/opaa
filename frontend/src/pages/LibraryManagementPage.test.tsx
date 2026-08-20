@@ -149,6 +149,24 @@ describe('LibraryManagementPage', () => {
     expect(await screen.findByText(/Gruppen-Bibliothek/)).toBeInTheDocument()
   })
 
+  it('shows the resolved owner name for a user-owned library too', async () => {
+    // PR #601 review, finding 3: both prior ownerName tests only used GROUP fixtures - USER
+    // owners take the same ownerName field (the backend deliberately never falls back to the
+    // owner's email address there, see KnowledgeLibraryService#resolveOwnerNames).
+    setLibraryState([{ ...ownLibrary, ownerName: 'Erika Musterfrau' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Erika Musterfrau/)).toBeInTheDocument()
+    expect(screen.queryByText(/^eigene/)).not.toBeInTheDocument()
+  })
+
+  it('falls back to the generic "eigene" label for a user-owned library without ownerName', async () => {
+    setLibraryState([{ ...ownLibrary, ownerName: undefined }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/eigene/)).toBeInTheDocument()
+  })
+
   it('shows an empty state when there are no libraries', async () => {
     setLibraryState([])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })

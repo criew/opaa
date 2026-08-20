@@ -345,6 +345,13 @@ public class KnowledgeLibraryService {
    * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
    * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
    * ownerName} {@code null} on the response, matching {@code LibraryListResponse}'s optional field.
+   *
+   * <p>Unlike {@link AssetGrantService#toResponses}, a {@code USER} owner with no {@code
+   * displayName} resolves to {@code null} here rather than falling back to their email address (PR
+   * #601 review, finding 1): that method's audience is limited to a library's own {@code MANAGER}s,
+   * but this list reaches every reader of an organization-wide or shared library - potentially the
+   * whole organization - so leaking an email address here has a materially larger blast radius. The
+   * frontend already falls back to a generic label when {@code ownerName} is absent.
    */
   private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
     Set<UUID> userOwnerIds = new HashSet<>();
@@ -358,9 +365,9 @@ public class KnowledgeLibraryService {
     }
     Map<UUID, String> ownerNames = new HashMap<>();
     for (User user : userRepository.findAllById(userOwnerIds)) {
-      // #446: displayName is nullable, same fallback AssetGrantService#toResponses uses.
-      String name = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-      ownerNames.put(user.getId(), name);
+      if (user.getDisplayName() != null) {
+        ownerNames.put(user.getId(), user.getDisplayName());
+      }
     }
     for (Group group : groupRepository.findAllById(groupOwnerIds)) {
       ownerNames.put(group.getId(), group.getName());

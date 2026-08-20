@@ -1556,7 +1556,11 @@ class KnowledgeLibraryServiceIntegrationTest {
     // countByLibraryId once per row - they only check the resulting numbers, not the query
     // shape. Prove the query count stays flat instead: Hibernate's own prepared-statement
     // counter for the same call must not grow when a third library (apple, with its own
-    // document) is added to the page.
+    // document) is added to the page. PR #601 review, finding 2: apple is owned by a *different*
+    // user than zebra/mango - the same user for all three would let the first-level persistence
+    // context cache a single owner lookup and mask a regression to one owner-name query per row
+    // (#438's own batching, resolveOwnerNames).
+    UUID appleOwner = createUser(organizationA);
     Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
     statistics.setStatisticsEnabled(true);
@@ -1567,7 +1571,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
       LibraryResponse apple =
           libraryService.createLibrary(
-              new LibraryRequest("Apple", DocumentSourceType.UPLOAD), owner);
+              new LibraryRequest("Apple", DocumentSourceType.UPLOAD)
+                  .visibility(LibraryVisibility.ORGANIZATION),
+              appleOwner);
       Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
       third.setLibraryId(apple.getId());
       third.setOrganizationId(organizationA);
@@ -1635,6 +1641,28 @@ class KnowledgeLibraryServiceIntegrationTest {
         .filteredOn(entry -> entry.getId().equals(groupOwned.getId()))
         .extracting(LibraryListResponse::getOwnerName)
         .containsExactly(group.getName());
+  }
+
+  @Test
+  void listLibrariesNeverFallsBackToTheOwnersEmailAddress() {
+    // PR #601 review, finding 1: unlike AssetGrantService#toResponses (audience limited to a
+    // library's MANAGERs), this list reaches every reader of an organization-wide or shared
+    // library - potentially the whole organization - so a USER owner with no displayName must
+    // resolve to null here, not fall back to their email address the way #446 does elsewhere.
+    User ownerWithoutDisplayName =
+        new User(UUID.randomUUID().toString(), "test-issuer", "owner@example.com", null);
+    ownerWithoutDisplayName.setOrganizationId(organizationA);
+    UUID owner = userRepository.save(ownerWithoutDisplayName).getId();
+    createdUserIds.add(owner);
+    LibraryResponse library =
+        libraryService.createLibrary(new LibraryRequest("Zebra", DocumentSourceType.UPLOAD), owner);
+
+    List<LibraryListResponse> listed = libraryService.listLibraries(owner, false);
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.getId().equals(library.getId()))
+        .extracting(LibraryListResponse::getOwnerName)
+        .containsOnlyNulls();
   }
 
   @Test
