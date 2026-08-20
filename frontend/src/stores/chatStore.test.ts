@@ -1,14 +1,18 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
-// #575: resettableStores.ts must be imported before chatStore/chatListStore here, not after -
-// chatStore.ts and chatListStore.ts import from each other (chatStore needs useChatListStore to
-// touch a space's chat list, chatListStore needs dropChatSettingsCache to clean up a deleted
-// chat's settings cache), and letting either of them start this test file's module graph first
-// leaves useChatListStore unresolved by the time resettableStores.ts's own top-level array
-// literal runs, silently dropping it from resetAllStores()'s loop.
+// #575 review: this import's position relative to chatStore/chatListStore below no longer
+// matters - resettableStores.ts builds its store list inside resetAllStores() itself now, not in
+// a top-level array literal, so it no longer depends on how far chatStore.ts/chatListStore.ts's
+// own circular import (chatStore needs useChatListStore, chatListStore needs
+// dropChatSettingsCache) has resolved by the time this file's imports run.
 import { resetAllStores } from './resettableStores'
-import { clearSettingsPersistenceCache, dropChatSettingsCache, useChatStore } from './chatStore'
+import {
+  clearSettingsPersistenceCache,
+  dropChatSettingsCache,
+  getConfirmedSettingsForTesting,
+  useChatStore,
+} from './chatStore'
 import { useChatListStore } from './chatListStore'
 
 /** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
@@ -425,6 +429,40 @@ describe('chatStore', () => {
         const state = useChatStore.getState()
         expect(state.error).toBeNull()
         expect(state.isLoading).toBe(false)
+      })
+
+      // #575 review: a third write-back path, missed by the first pass - applyScopeChange's own
+      // PATCH success handler wrote to the module-level confirmedSettingsByChatId map before any
+      // guard ran, so a logout in between did not stop it from repopulating a map reset() had just
+      // cleared via clearSettingsPersistenceCache().
+      it('a settings PATCH resolving after reset() does not repopulate confirmedSettingsByChatId', async () => {
+        await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
+        const gate = deferred<void>()
+        server.use(
+          http.patch('/api/v1/chats/:chatId', async ({ params }) => {
+            await gate.promise
+            return HttpResponse.json({
+              id: String(params.chatId),
+              spaceId: SPACE_ID,
+              authorId: 'mock-user-id',
+              title: null,
+              useKnowledge: false,
+              referencedLibraryIds: [],
+              status: 'PRIVATE',
+              messages: [],
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+            })
+          }),
+        )
+
+        useChatStore.getState().clearScope() // triggers applyScopeChange, PATCH held open by gate
+        const pending = useChatStore.getState().pendingSettingsUpdate
+        resetAllStores()
+        gate.resolve()
+        await pending
+
+        expect(getConfirmedSettingsForTesting(EXISTING_CHAT_ID)).toBeUndefined()
       })
     })
 

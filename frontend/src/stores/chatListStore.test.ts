@@ -1,8 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '../mocks/server'
-// #575: must be imported before chatListStore below - see the matching comment in
-// chatStore.test.ts for why the chatStore/chatListStore circular import makes this order matter.
+// #575 review: this import's position relative to chatListStore below no longer matters - see the
+// matching comment in chatStore.test.ts for why.
 import { resetAllStores } from './resettableStores'
 import { useChatListStore } from './chatListStore'
 

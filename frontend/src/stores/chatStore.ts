@@ -98,6 +98,17 @@ export function dropChatSettingsCache(chatId: string): void {
   confirmedSettingsByChatId.delete(chatId)
 }
 
+/**
+ * Test-only accessor for confirmedSettingsByChatId (#575 review) - lets chatStore.test.ts verify
+ * that a settings PATCH resolving after a logout does not repopulate this module-level map,
+ * which is otherwise entirely private to this module.
+ */
+export function getConfirmedSettingsForTesting(
+  chatId: string,
+): { scope: SearchScope; referencedLibraryIds: string[] } | undefined {
+  return confirmedSettingsByChatId.get(chatId)
+}
+
 // The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
 // chip (backend useKnowledge=true), 'libraries' shows the sticky concrete-library chips
 // (useKnowledge=false + referencedLibraryIds), 'none' is an emptied bar (useKnowledge=false, no
@@ -480,6 +491,12 @@ function applyScopeChange(
   // once the PATCH's response - possibly stale - actually arrives.
   const requestChatId = get().chatId
   const requestId = ++settingsUpdateSequence
+  // #575 review: this call's token in the session epoch, checked in the success handler below
+  // before confirmedSettingsByChatId.set() - a logout in the meantime clears that module-level
+  // map (see chatStore's own reset()), and without this guard a PATCH that was already in flight
+  // at that point still repopulates it once it resolves, resurrecting a rollback base for a chat
+  // the reset just discarded.
+  const sessionEpoch = currentSessionEpoch()
 
   set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
 
@@ -501,6 +518,10 @@ function applyScopeChange(
     .then(() => updateChat(chatId, patch))
     .then(
       () => {
+        // #575 review: a logout in the meantime already cleared confirmedSettingsByChatId (see
+        // reset()'s clearSettingsPersistenceCache() call) - writing to it here regardless would
+        // resurrect a rollback base for a chat that reset just discarded.
+        if (isStaleSessionEpoch(sessionEpoch)) return
         // This request's settings are now the server's own record - the rollback base for any
         // *later* PATCH on this chat that fails (#565 review).
         confirmedSettingsByChatId.set(chatId, {

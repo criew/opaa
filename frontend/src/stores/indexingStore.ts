@@ -238,6 +238,10 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
     set({
       runsByLibrary: {},
+      // #575 review: pre-existing gap from #513 - runHistoryByLibrary caches the previous user's
+      // last 10 runs per library and was never cleared here, leaving it visible to whichever user
+      // signs in next in the same tab until loadRunHistory happens to overwrite it.
+      runHistoryByLibrary: {},
       snackbar: { open: false, message: '', severity: 'success' },
     })
   },

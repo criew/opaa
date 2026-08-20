@@ -19,17 +19,30 @@ import { bumpSessionEpoch } from './sessionEpoch'
  *
  * Adding a new store that caches session-scoped data means adding it here too - a single place
  * rather than a growing list of individual imports/calls in authStore.
+ *
+ * A function, not a top-level array constant (#575 review): chatStore.ts and chatListStore.ts
+ * import from each other (chatStore needs useChatListStore to touch a space's chat list,
+ * chatListStore needs dropChatSettingsCache to clean up a deleted chat's settings cache), and a
+ * top-level `export const resettableStores = [...]` evaluates its array literal - including
+ * whichever of the two circularly-imported store hooks resolves first - at *this* module's own
+ * load time. Which of chatStore.ts/chatListStore.ts had already finished initializing by then
+ * depended on which module some other file (e.g. a test) happened to import first, silently
+ * dropping the not-yet-initialized one from the array as `undefined`. Building the array inside a
+ * function instead defers that read until resetAllStores() actually runs, by which point the
+ * whole module graph - circular or not - has always finished loading.
  */
-export const resettableStores = [
-  useSpaceStore,
-  useGroupStore,
-  useLibraryStore,
-  useChatStore,
-  useChatListStore,
-  useDocumentStore,
-  useIndexingStore,
-  useGrantStore,
-]
+function resettableStores() {
+  return [
+    useSpaceStore,
+    useGroupStore,
+    useLibraryStore,
+    useChatStore,
+    useChatListStore,
+    useDocumentStore,
+    useIndexingStore,
+    useGrantStore,
+  ]
+}
 
 export function resetAllStores(): void {
   // Bumped first, before any store's own reset() runs (#575): every async action across the
@@ -38,5 +51,5 @@ export function resetAllStores(): void {
   // instead of resurrecting the previous user's data into a store this function is about to empty.
   // See sessionEpoch.ts for the full rationale.
   bumpSessionEpoch()
-  resettableStores.forEach((store) => store.getState().reset())
+  resettableStores().forEach((store) => store.getState().reset())
 }

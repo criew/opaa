@@ -3,14 +3,16 @@ import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from 
 import { resetAllStores } from './resettableStores'
 import type { IndexingStatusResponse } from '../types/api'
 
-const { mockTriggerIndexing, mockGetIndexingStatus } = vi.hoisted(() => ({
+const { mockTriggerIndexing, mockGetIndexingStatus, mockGetIndexingRuns } = vi.hoisted(() => ({
   mockTriggerIndexing: vi.fn(),
   mockGetIndexingStatus: vi.fn(),
+  mockGetIndexingRuns: vi.fn(),
 }))
 
 vi.mock('../services/api', () => ({
   triggerIndexing: mockTriggerIndexing,
   getIndexingStatus: mockGetIndexingStatus,
+  getIndexingRuns: mockGetIndexingRuns,
 }))
 
 function runningStatus(overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse {
@@ -254,7 +256,7 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().snackbar.open).toBe(false)
   })
 
-  it('reset() stops every library poll interval so no further tick fires (#440)', async () => {
+  it('reset() stops every library poll interval and clears the run history too (#440, #575 review)', async () => {
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
     mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
@@ -263,9 +265,17 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
     expect(useIndexingStore.getState().runsByLibrary['library-b']?.isPolling).toBe(true)
 
+    // #575 review: reset() used to leave runHistoryByLibrary untouched (pre-existing gap from
+    // #513) - the previous user's last-10-runs protocol for a library stayed visible to whichever
+    // user signs in next in the same tab until loadRunHistory happened to overwrite it.
+    mockGetIndexingRuns.mockResolvedValueOnce({ runs: [{ id: 'run-1' }] })
+    await useIndexingStore.getState().loadRunHistory('library-a')
+    expect(useIndexingStore.getState().runHistoryByLibrary['library-a']).toHaveLength(1)
+
     mockGetIndexingStatus.mockClear()
     useIndexingStore.getState().reset()
     expect(useIndexingStore.getState().runsByLibrary).toEqual({})
+    expect(useIndexingStore.getState().runHistoryByLibrary).toEqual({})
 
     // Both intervals must actually be torn down, not just the cached run state cleared - a
     // lingering interval would still poll (and, if a different user's session started meanwhile,
