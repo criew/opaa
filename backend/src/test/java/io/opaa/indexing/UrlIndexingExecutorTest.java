@@ -28,12 +28,10 @@ class UrlIndexingExecutorTest {
     // The <ul>-based layouts (Apache -FancyIndexing, Python http.server) never report a
     // lastModified at all - two blank strings comparing equal would mean such a source is
     // fetched once and never again, no matter how the remote file changes.
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary targetLibrary = libraryWithId(libraryId);
+    KnowledgeLibrary targetLibrary = libraryWithId(UUID.randomUUID());
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn("");
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(existing.getLibraryId()).thenReturn(libraryId);
     when(documentRepository.findByFilePath("https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 
@@ -42,12 +40,10 @@ class UrlIndexingExecutorTest {
 
   @Test
   void isUnchanged_treatsNullLastModifiedAsUnknownAndAlwaysRefetches() {
-    UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary targetLibrary = libraryWithId(libraryId);
+    KnowledgeLibrary targetLibrary = libraryWithId(UUID.randomUUID());
     Document existing = mock(Document.class);
     when(existing.getLastModifiedRemote()).thenReturn(null);
     when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
-    when(existing.getLibraryId()).thenReturn(libraryId);
     when(documentRepository.findByFilePath("https://host/file.txt"))
         .thenReturn(Optional.of(existing));
 

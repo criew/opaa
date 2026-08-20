@@ -256,7 +256,9 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
    [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
 3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes
-   Dokument wird übersprungen, bevor Bandbreite anfällt.
+   Dokument wird übersprungen, bevor Bandbreite anfällt — sofern das Dokument bereits in derselben
+   Bibliothek liegt; zeigt die Quelle neu auf eine andere Zielbibliothek, wird auch ein unverändertes
+   Dokument neu geladen und wandert dorthin.
 4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
    gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
    Änderungszeitpunkt ab.
