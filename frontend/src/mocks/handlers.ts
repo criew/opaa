@@ -348,6 +348,7 @@ export const handlers = [
       name: body.name.trim(),
       description: body.description?.trim() ?? null,
       isDefault: false,
+      archived: false,
       visibility: 'PRIVATE',
       memberCount: 1,
       userRole: 'ADMIN',
@@ -470,6 +471,19 @@ export const handlers = [
       mockSpaces.splice(idx, 1)
     }
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  // #543: archives a space instead of deleting it - idempotent, same as SpaceService#archiveSpace.
+  http.post('/api/v1/spaces/:spaceId/archive', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    const listEntry = mockSpaces.find((item) => item.id === spaceId)
+    if (!space || !listEntry) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    space.archived = true
+    listEntry.archived = true
+    return HttpResponse.json(space)
   }),
 
   http.get('/api/v1/admin/users', () => {
