@@ -582,15 +582,34 @@ class FileProcessingServiceTest {
     verify(documentService).parseDocument(file);
   }
 
+  // #434: processUploadedFile is now processUploadedFileAsync - it no longer creates or deletes
+  // the document row itself. LibraryDocumentService creates the PENDING row synchronously and
+  // hands this method only the row's id and the already-stored file; this method re-reads the
+  // row, then updates it in place (INDEXED, or FAILED with a German errorMessage) - it never
+  // deletes it, unlike the synchronous #420 design this superseded (see git history).
+
+  private Document pendingUploadDocument(String fileName) {
+    Document doc =
+        new Document(
+            fileName,
+            tempDir.resolve(fileName).toString(),
+            "application/pdf",
+            5L,
+            DocumentSourceType.UPLOAD);
+    doc.setLibraryId(UUID.randomUUID());
+    doc.setOrganizationId(UUID.randomUUID());
+    doc.setUploadedByUserId(UUID.randomUUID());
+    doc.setChecksum("checksum-" + fileName);
+    return doc;
+  }
+
   @Test
-  void processUploadedFileIndexesDocumentWithLibraryAndUploaderMetadata() throws IOException {
+  void processUploadedFileAsyncIndexesDocumentWithLibraryAndUploaderMetadata() throws IOException {
     Path file = tempDir.resolve("upload.pdf");
     Files.writeString(file, "uploaded pdf content");
 
-    UUID libraryId = UUID.randomUUID();
-    UUID organizationId = UUID.randomUUID();
-    UUID uploaderId = UUID.randomUUID();
-
+    Document doc = pendingUploadDocument("upload.pdf");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
@@ -599,160 +618,111 @@ class FileProcessingServiceTest {
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("upload.pdf"), eq(parsed))).thenReturn(chunks);
 
-    Document result =
-        service.processUploadedFile(
-            file, "upload.pdf", "checksum-abc", libraryId, organizationId, uploaderId);
+    service.processUploadedFileAsync(doc.getId(), file);
 
-    assertThat(result.getStatus()).isEqualTo(DocumentStatus.INDEXED);
-    assertThat(result.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
-    assertThat(result.getLibraryId()).isEqualTo(libraryId);
-    assertThat(result.getOrganizationId()).isEqualTo(organizationId);
-    assertThat(result.getUploadedByUserId()).isEqualTo(uploaderId);
-    assertThat(result.getChecksum()).isEqualTo("checksum-abc");
-    assertThat(result.getChunkCount()).isEqualTo(1);
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(doc.getErrorMessage()).isNull();
+    assertThat(doc.getChunkCount()).isEqualTo(1);
     verify(vectorStore).add(any());
-    // The upload path never looks the document up by file path - dedup for uploads is scoped per
-    // library and already decided by the caller before this method runs (see the class Javadoc).
-    verify(documentRepository, never()).findByFilePath(anyString());
+    verify(documentRepository).save(doc);
   }
 
   @Test
-  void processUploadedFileThrowsWithoutPersistingARowWhenNoContentExtracted() throws IOException {
-    // #420 code review, nit 6: unlike processFile/processUrlFile, a failed upload leaves no row
-    // behind at all - nothing is gained by listing a FAILED document whose file the caller is
-    // about to delete.
+  void processUploadedFileAsyncMarksTheDocumentFailedWhenNoContentIsExtracted() throws IOException {
     Path file = tempDir.resolve("empty-upload.pdf");
     Files.writeString(file, "");
 
+    Document doc = pendingUploadDocument("empty-upload.pdf");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
     when(documentService.parseDocument(file)).thenReturn(List.of());
 
-    org.junit.jupiter.api.Assertions.assertThrows(
-        EmptyDocumentContentException.class,
-        () ->
-            service.processUploadedFile(
-                file,
-                "empty-upload.pdf",
-                "checksum-empty",
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()));
+    service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(documentRepository, never()).save(any(Document.class));
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(doc.getErrorMessage()).isEqualTo("Aus der Datei konnte kein Text extrahiert werden");
+    verify(documentRepository).save(doc);
     verify(vectorStore, never()).add(any());
+    // Nothing was ever written for this document, so there is nothing to remove from the vector
+    // store either - unlike the exception path below, which may have already written chunks.
+    verify(vectorStore, never()).delete(anyString());
   }
 
   @Test
-  void processUploadedFileDeletesTheRowAgainWhenChunkingFailsAfterAnInitialSave()
+  void processUploadedFileAsyncMarksTheDocumentFailedAndRemovesAnyWrittenChunksWhenChunkingThrows()
       throws IOException {
     Path file = tempDir.resolve("upload-that-fails-later.pdf");
     Files.writeString(file, "content that parses but fails to chunk");
 
+    Document doc = pendingUploadDocument("upload-that-fails-later.pdf");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
-    RuntimeException chunkingFailure = new RuntimeException("chunking blew up");
     when(chunkingService.chunkDocuments(eq("upload-that-fails-later.pdf"), eq(parsed)))
-        .thenThrow(chunkingFailure);
+        .thenThrow(new RuntimeException("chunking blew up"));
 
-    org.junit.jupiter.api.Assertions.assertThrows(
-        RuntimeException.class,
-        () ->
-            service.processUploadedFile(
-                file,
-                "upload-that-fails-later.pdf",
-                "checksum-xyz",
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()));
+    service.processUploadedFileAsync(doc.getId(), file);
 
-    // Persisted once (the initial PENDING row, since parsing did succeed), then removed again -
-    // no orphaned FAILED row with a dead file_path is left behind.
-    verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
-    verify(documentRepository).delete(any(Document.class));
-    // Nothing was ever written to the vector store here (chunkDocuments itself threw, before
-    // storeChunks could run) - the catch block's vectorStore.delete call is still made
-    // unconditionally, the same way processFile/processUrlFile's re-index paths always call it
-    // regardless of whether there was anything to remove.
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(doc.getErrorMessage()).isEqualTo("Die Datei konnte nicht verarbeitet werden");
+    // The catch block's vectorStore.delete call is made unconditionally, the same way
+    // processFile/processUrlFile's own re-index paths always do regardless of whether there was
+    // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
     verify(vectorStore, never()).add(any());
-    verify(vectorStore).delete(anyString());
+    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    // Unlike the synchronous #420 design, the row survives a failed upload - it is never deleted.
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
-  void processUploadedFileSettlesAConcurrentDuplicateAtTheFirstSaveBeforeAnyEmbeddingWork()
-      throws IOException {
-    // #420 second code review round, finding 1: the checksum must be set on the FIRST save, so a
-    // concurrent duplicate upload (uk_documents_library_checksum, migration 020) is rejected right
-    // there - before chunking or embedding ever starts, not after the loser has already written
-    // chunks to the vector store.
-    Path file = tempDir.resolve("racer.pdf");
-    Files.writeString(file, "raced content");
+  void processUploadedFileAsyncDoesNothingWhenTheDocumentNoLongerExists() throws IOException {
+    // #434: the row can be deleted (e.g. by the uploader) between the synchronous PENDING save
+    // and this method actually running on indexingTaskExecutor - nothing left to update.
+    Path file = tempDir.resolve("deleted-before-processing.pdf");
+    Files.writeString(file, "content");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
 
-    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
-    when(documentService.parseDocument(file)).thenReturn(parsed);
-    org.springframework.dao.DataIntegrityViolationException uniqueViolation =
-        new org.springframework.dao.DataIntegrityViolationException(
-            "uk_documents_library_checksum");
-    when(documentRepository.save(any(Document.class))).thenThrow(uniqueViolation);
+    service.processUploadedFileAsync(documentId, file);
 
-    org.junit.jupiter.api.Assertions.assertThrows(
-        org.springframework.dao.DataIntegrityViolationException.class,
-        () ->
-            service.processUploadedFile(
-                file,
-                "racer.pdf",
-                "checksum-race",
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()));
-
-    verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
-    // The first save's own failure is not caught locally (it happens before the try block) - the
-    // caller (LibraryDocumentService) maps the propagated exception straight to 409, and there is
-    // nothing here to clean up: the losing row never committed, and no chunks were ever written.
-    verify(vectorStore, never()).delete(anyString());
-    verify(documentRepository, never()).delete(any());
+    verify(documentService, never()).parseDocument(any());
+    verify(documentRepository, never()).save(any());
   }
 
   @Test
-  void processUploadedFileRemovesAlreadyWrittenChunksWhenTheFinalSaveFails() throws IOException {
-    // The rarer failure case the same catch block also has to cover (#420 second code review
-    // round, finding 1): parsing and chunking succeed, storeChunks has already written chunks to
-    // the vector store, and only the final save (chunkCount/indexedAt/status) fails.
+  void
+      processUploadedFileAsyncMarksTheDocumentFailedAndRemovesAnyWrittenChunksWhenTheFinalSaveFails()
+          throws IOException {
+    // The rarer failure case the same catch block also has to cover: parsing and chunking
+    // succeed, storeChunks has already written chunks to the vector store, and only the save that
+    // would have transitioned the row to INDEXED fails.
     Path file = tempDir.resolve("fails-on-final-save.pdf");
     Files.writeString(file, "content that makes it all the way to the final save");
 
+    Document doc = pendingUploadDocument("fails-on-final-save.pdf");
+    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
     var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
     when(chunkingService.chunkDocuments(eq("fails-on-final-save.pdf"), eq(parsed)))
         .thenReturn(chunks);
-    RuntimeException finalSaveFailure = new RuntimeException("final save blew up");
+    // First save() is the INDEXED transition (fails), second is failUpload's own save (succeeds).
     when(documentRepository.save(any(Document.class)))
-        .thenAnswer(inv -> inv.getArgument(0))
-        .thenThrow(finalSaveFailure);
+        .thenThrow(new RuntimeException("final save blew up"))
+        .thenAnswer(inv -> inv.getArgument(0));
 
-    org.junit.jupiter.api.Assertions.assertThrows(
-        RuntimeException.class,
-        () ->
-            service.processUploadedFile(
-                file,
-                "fails-on-final-save.pdf",
-                "checksum-final-save-fails",
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID()));
+    service.processUploadedFileAsync(doc.getId(), file);
 
     // storeChunks did run (vectorStore.add was called) before the final save failed - the catch
     // block must remove exactly those chunks, keyed by this document's id, or they become
-    // orphaned: still returned by /api/v1/query, unreachable through deleteDocument (which needs a
-    // row to key off of, and the row is gone).
+    // orphaned: still returned by /api/v1/query, unreachable through deleteDocument once nothing
+    // else points at them.
     verify(vectorStore).add(any());
-    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
-    verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
-    UUID documentId = docCaptor.getAllValues().getFirst().getId();
-    verify(vectorStore).delete("document_id == '" + documentId + "'");
-    verify(documentRepository).delete(any(Document.class));
+    verify(vectorStore).delete("document_id == '" + doc.getId() + "'");
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(doc.getErrorMessage()).isEqualTo("Die Datei konnte nicht verarbeitet werden");
+    verify(documentRepository, org.mockito.Mockito.times(2)).save(doc);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test

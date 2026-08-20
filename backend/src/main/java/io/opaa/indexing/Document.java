@@ -90,6 +90,17 @@ public class Document {
   @Column(name = "source_entry_url", length = 2000)
   private String sourceEntryUrl;
 
+  /**
+   * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} (#434) - set by
+   * {@code FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded
+   * file fails asynchronously, after the row has already been returned to the caller with {@code
+   * PENDING}. {@code null} for every other status; a document that later succeeds after a retry
+   * (there is none today, but nothing here prevents one) would have this cleared alongside {@link
+   * #status} moving back to {@link DocumentStatus#INDEXED}.
+   */
+  @Column(name = "error_message", columnDefinition = "text")
+  private String errorMessage;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -209,5 +220,13 @@ public class Document {
 
   public void setSourceEntryUrl(String sourceEntryUrl) {
     this.sourceEntryUrl = sourceEntryUrl;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
   }
 }

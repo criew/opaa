@@ -7,7 +7,6 @@ import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
-import io.opaa.indexing.EmptyDocumentContentException;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import java.io.IOException;
@@ -40,12 +39,23 @@ import org.springframework.web.server.ResponseStatusException;
  * content without being allowed to change who else can.
  *
  * <p>Reuses the existing indexing pipeline deliberately: {@link #uploadDocument} stores the
- * incoming bytes and computes their checksum itself (both are specific to how this endpoint decides
- * *where* a file goes and whether it is a duplicate *within its target library* - a different
- * question from what {@code FileProcessingService#processFile}'s file-path-keyed dedup answers),
- * then hands off to {@link FileProcessingService#processUploadedFile} for parsing, chunking and
- * vector storage - the same three steps every other ingestion path goes through, so a chat query
- * finds an uploaded document exactly the same way it finds a crawled one.
+ * incoming bytes, computes their checksum and creates the {@code Document} row itself (all three
+ * are specific to how this endpoint decides *where* a file goes and whether it is a duplicate
+ * *within its target library* - a different question from what {@code
+ * FileProcessingService#processFile}'s file-path-keyed dedup answers), then hands off to {@link
+ * FileProcessingService#processUploadedFileAsync} for parsing, chunking and vector storage - the
+ * same three steps every other ingestion path goes through, so a chat query finds an uploaded
+ * document exactly the same way it finds a crawled one.
+ *
+ * <p><b>Processing is asynchronous (#434).</b> {@link #uploadDocument} returns as soon as the file
+ * is stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
+ * FileProcessingService#processUploadedFileAsync} to finish parsing/embedding on {@code
+ * indexingTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
+ * for the full duration of Tika parsing and embedding on every upload, with no rate limit covering
+ * this endpoint (#434 supersedes #420's synchronous design for exactly this reason). The caller
+ * observes the eventual {@code INDEXED}/{@code FAILED} transition by polling {@code GET
+ * /libraries/{libraryId}/documents}, the same way the frontend's {@code documentStore.ts} already
+ * polls a directory/URL indexing run in progress.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
  * never used to build a filesystem path. The stored file always lives at {@code
@@ -153,19 +163,32 @@ public class LibraryDocumentService {
             HttpStatus.CONFLICT, "Diese Datei ist bereits in dieser Bibliothek vorhanden");
       }
 
+      // #434: the row is created - and returned - as PENDING here, before any parsing/embedding
+      // has happened. contentType/fileSize are read from the file this class itself just wrote,
+      // mirroring FileProcessingService#processFile's own stat-after-store approach.
+      String contentType = Files.probeContentType(storedFile);
+      long fileSize = Files.size(storedFile);
       Document document =
-          fileProcessingService.processUploadedFile(
-              storedFile,
+          new Document(
               displayFileName,
-              checksum,
-              libraryId,
-              library.getOrganizationId(),
-              currentUserId);
+              storedFile.toAbsolutePath().toString(),
+              contentType,
+              fileSize,
+              DocumentSourceType.UPLOAD);
+      document.setLibraryId(libraryId);
+      document.setOrganizationId(library.getOrganizationId());
+      document.setUploadedByUserId(currentUserId);
+      // Set on this first (and only synchronous) save: this is where a concurrent duplicate
+      // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
+      // before any embedding work starts, not after (#420 second code review round, finding 1,
+      // still true now that the embedding work itself has moved off this thread entirely).
+      document.setChecksum(checksum);
+      document = documentRepository.save(document);
+
+      // Parsing/chunking/embedding run on indexingTaskExecutor from here (#434) - this method
+      // returns the PENDING row without waiting for that to finish.
+      fileProcessingService.processUploadedFileAsync(document.getId(), storedFile);
       return LibraryDocumentResponses.from(document);
-    } catch (EmptyDocumentContentException e) {
-      deleteQuietly(storedFile);
-      throw new ResponseStatusException(
-          HttpStatus.UNPROCESSABLE_ENTITY, "Aus der Datei konnte kein Text extrahiert werden");
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee

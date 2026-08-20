@@ -982,8 +982,11 @@ paths:
       summary: >
         Upload a document into a library (EDITOR role or above required). Only accepted for
         libraries with sourceType UPLOAD - a connector library (FILESYSTEM/HTTP_DIRECTORY/
-        RSS_FEED) rejects the upload with 409 (ADR-0018, #479). Processed through the same
-        indexing pipeline (chunking, checksum, metadata) used by the other ingestion paths.
+        RSS_FEED) rejects the upload with 409 (ADR-0018, #479). The file is validated, stored and
+        the document row created with status PENDING before this call returns (#434) - parsing
+        (Tika) and embedding run afterwards, asynchronously, through the same executor
+        infrastructure the directory/URL indexing paths use. Poll GET on this library's document
+        list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
         Malware scanning is explicitly out of scope - see #420.
       requestBody:
         required: true
@@ -998,7 +1001,9 @@ paths:
                   format: binary
       responses:
         "201":
-          description: Document uploaded and indexed
+          description: >
+            Document row created with status PENDING - parsing and embedding are still running
+            asynchronously.
           content:
             application/json:
               schema:
@@ -2769,6 +2774,12 @@ components:
           format: uuid
           nullable: true
           description: The user who uploaded this document, null for non-UPLOAD source types
+        errorMessage:
+          type: string
+          nullable: true
+          description: >
+            A German, user-facing reason set only while status is FAILED (#434) - why parsing or
+            embedding could not complete. Always null for PENDING and INDEXED.
 
     LibraryDocumentPageResponse:
       type: object
