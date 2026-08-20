@@ -9,6 +9,7 @@ import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.ProxyAndCredentials;
 import io.opaa.indexing.RssFeedEntry;
 import io.opaa.indexing.RssFeedParseException;
 import io.opaa.indexing.RssFeedParser;
@@ -54,10 +55,11 @@ import org.springframework.web.server.ResponseStatusException;
  * UrlFileDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
  * for the HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
  * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
- * whole backend with a single request against an endless or multi-gigabyte response). Unlike {@code
- * RssFeedIndexingExecutor} (#505: it does not yet apply proxy/credentials to its feed fetch at
- * all), this test applies them for RSS_FEED too - the target behaviour, not the RSS executor's
- * current gap.
+ * whole backend with a single request against an endless or multi-gigabyte response). {@code
+ * RssFeedIndexingExecutor} applies proxy/credentials to its own feed, detail-page and attachment
+ * requests too (#505) - restricted to the feed's own origin for the latter two (PR #642 review,
+ * finding 1); this test, having no entries or attachments to consider, always applies them for the
+ * one address it was given.
  *
  * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3).</b> This endpoint lets any
  * caller with the right to create a library probe arbitrary server-local paths (FILESYSTEM) and
@@ -319,7 +321,7 @@ public class SourceConnectionTestService {
     if (!url.endsWith("/") && !UrlIndexingExecutor.hasFileExtension(url)) {
       url = url + "/";
     }
-    ProxyAndCredentials config = ProxyAndCredentials.from(request);
+    ProxyAndCredentials config = parseProxyAndCredentials(request);
     HttpClient httpClient =
         AutoindexCrawlerService.buildHttpClient(
             config.proxyHost(),
@@ -405,7 +407,7 @@ public class SourceConnectionTestService {
 
   private SourceConnectionTestResponse testRssFeed(SourceConnectionTestRequest request) {
     String url = requireHttpUrl(request);
-    ProxyAndCredentials config = ProxyAndCredentials.from(request);
+    ProxyAndCredentials config = parseProxyAndCredentials(request);
     HttpClient httpClient =
         AutoindexCrawlerService.buildHttpClient(
             config.proxyHost(),
@@ -575,41 +577,19 @@ public class SourceConnectionTestService {
   private static final class ResponseTooLargeException extends RuntimeException {}
 
   /**
-   * Parses {@code sourceProxy} (host:port) and {@code sourceCredentials} (user:password) the same
-   * way {@code UrlIndexingExecutor#execute} does for a real run.
+   * Parses {@code sourceProxy} (host:port) and {@code sourceCredentials} (user:password) via the
+   * shared {@link ProxyAndCredentials#parse} (PR #642 review, finding 4: this used to be a private
+   * copy of the identical parsing {@code UrlIndexingExecutor#execute} and {@code
+   * RssFeedIndexingExecutor#execute} each also carried) - an invalid {@code sourceProxy} port
+   * becomes this endpoint's usual {@code 400}, unlike the two indexing executors, which fail the
+   * asynchronous job instead of answering a synchronous HTTP request.
    */
-  private record ProxyAndCredentials(
-      String proxyHost, int proxyPort, String username, String password) {
-
-    static ProxyAndCredentials from(SourceConnectionTestRequest request) {
-      String proxyHost = null;
-      int proxyPort = -1;
-      String proxy = blankToNull(request.getSourceProxy());
-      if (proxy != null) {
-        int colonIdx = proxy.lastIndexOf(':');
-        if (colonIdx > 0) {
-          proxyHost = proxy.substring(0, colonIdx);
-          try {
-            proxyPort = Integer.parseInt(proxy.substring(colonIdx + 1));
-          } catch (NumberFormatException e) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, "sourceProxy muss dem Format host:port entsprechen");
-          }
-        }
-      }
-
-      String username = null;
-      String password = null;
-      String credentials = blankToNull(request.getSourceCredentials());
-      if (credentials != null) {
-        int colonIdx = credentials.indexOf(':');
-        if (colonIdx > 0) {
-          username = credentials.substring(0, colonIdx);
-          password = credentials.substring(colonIdx + 1);
-        }
-      }
-
-      return new ProxyAndCredentials(proxyHost, proxyPort, username, password);
+  private static ProxyAndCredentials parseProxyAndCredentials(SourceConnectionTestRequest request) {
+    try {
+      return ProxyAndCredentials.parse(
+          blankToNull(request.getSourceProxy()), blankToNull(request.getSourceCredentials()));
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
     }
   }
 }

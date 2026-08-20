@@ -210,6 +210,7 @@ class UrlFileDownloaderTest {
                       baseUrl + "/anlage.pdf",
                       "anlage.pdf",
                       10_000,
+                      null,
                       null))
           .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
     } finally {
@@ -243,6 +244,7 @@ class UrlFileDownloaderTest {
             baseUrl + "/anlage.pdf",
             "anlage.pdf",
             10_000,
+            null,
             null);
     try {
       assertThat(Files.readString(result.path())).isEqualTo("content");
@@ -265,7 +267,7 @@ class UrlFileDownloaderTest {
 
     UrlFileDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test");
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
 
     try {
       assertThat(result.contentType()).isEqualTo("application/pdf");
@@ -290,10 +292,33 @@ class UrlFileDownloaderTest {
 
     UrlFileDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test");
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
 
     Files.deleteIfExists(result.path());
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/test");
+  }
+
+  @Test
+  void downloadBoundedSendsTheGivenAuthorizationHeader() throws IOException, InterruptedException {
+    // #505: RssFeedIndexingExecutor now applies a library's own sourceCredentials to attachment
+    // downloads too, mirroring download()'s existing authHeader parameter.
+    AtomicReference<String> authorization = new AtomicReference<>();
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    UrlFileDownloader.DownloadedFile result =
+        downloader.downloadBounded(
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, "Basic dGVzdDp0ZXN0");
+
+    Files.deleteIfExists(result.path());
+    assertThat(authorization.get()).isEqualTo("Basic dGVzdDp0ZXN0");
   }
 
   @Test
@@ -308,7 +333,9 @@ class UrlFileDownloaderTest {
         });
 
     assertThatThrownBy(
-            () -> downloader.downloadBounded(httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null))
+            () ->
+                downloader.downloadBounded(
+                    httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null, null))
         .isInstanceOf(UrlFileDownloader.AttachmentTooLargeException.class);
   }
 
@@ -324,7 +351,7 @@ class UrlFileDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000, null))
+                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000, null, null))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("HTTP 404");
   }
@@ -360,7 +387,7 @@ class UrlFileDownloaderTest {
       assertThatThrownBy(
               () ->
                   downloader.downloadBounded(
-                      httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null))
+                      httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, null))
           .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class);
     } finally {
       foreignServer.stop(0);
@@ -459,7 +486,7 @@ class UrlFileDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null))
+                    httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null, null))
         .isInstanceOf(UrlFileDownloader.ForeignHostRedirectException.class)
         .hasMessageContaining("protocol downgrade");
   }
