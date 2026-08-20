@@ -231,6 +231,10 @@ class BaselineComparatorTest {
     // the skip in BaselineComparator.compare, this would throw "Baseline has no entry for group
     // 'language:de'" via checkGroup — proving the fix requires the report to still contain the
     // group despite the baseline dropping it.
+    //
+    // PR #673 review: the fixture also carries a second language group (language:en) with its own
+    // baseline entry, to prove the skip is specific to language:de and does not accidentally
+    // swallow every language group.
     Baseline baseline =
         new Baseline(
             1,
@@ -239,6 +243,8 @@ class BaselineComparatorTest {
                 Baseline.OVERALL,
                 overallMetrics(),
                 Baseline.category("crosslingual"),
+                overallMetrics(),
+                Baseline.language("en"),
                 overallMetrics()),
             "2026-08-03",
             null,
@@ -253,6 +259,45 @@ class BaselineComparatorTest {
             overallMetrics(),
             Map.of("crosslingual", overallMetrics()),
             Map.of(),
+            Map.of("de", overallMetrics(), "en", overallMetrics()),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isTrue();
+    assertThat(result.checks())
+        .extracting(BaselineComparator.MetricCheck::group)
+        .doesNotContain("language:de")
+        .contains("language:en");
+    assertThat(result.passed()).isTrue();
+  }
+
+  @Test
+  void comparesLanguageDeNormallyOnceTheBaselineCarriesItAgain() {
+    // PR #673 review: the skip in BaselineComparator.compare must be self-healing — it only fires
+    // while the baseline genuinely lacks a language:de entry. Should a future baseline
+    // re-measurement legitimately reintroduce the group (e.g. the golden dataset gains German
+    // cases that are not simply crosslingual's twins), it must be compared like any other group,
+    // not silently discarded.
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(Baseline.OVERALL, overallMetrics(), Baseline.language("de"), overallMetrics()),
+            "2026-08-03",
+            null,
+            "test fixture — language:de present again");
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            cfg,
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of(),
+            Map.of(),
             Map.of("de", overallMetrics()),
             List.of(),
             List.of());
@@ -262,7 +307,7 @@ class BaselineComparatorTest {
     assertThat(result.baselineValid()).isTrue();
     assertThat(result.checks())
         .extracting(BaselineComparator.MetricCheck::group)
-        .doesNotContain("language:de");
+        .contains("language:de");
     assertThat(result.passed()).isTrue();
   }
 

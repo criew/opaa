@@ -29,7 +29,15 @@ def load(path):
 
 
 def find_lowered(main_baseline, pr_baseline):
-    """Returns every (group, metric, main_value, pr_value) where pr_value < main_value."""
+    """Returns every (group, metric, main_value, pr_value) where pr_value < main_value, plus one
+    entry per metric for every group present on `main` but absent on the PR branch (pr_value is
+    `None` in that case).
+
+    Dropping a compared group entirely is itself a silent loss of coverage — a PR that removes a
+    group loses every check that group used to run, without any single metric ever showing up as
+    "lower". The original version of this function only ever iterated `pr_groups`, so a removed
+    group was invisible to it (issue #304 review finding: PR #673 removed the `language:de` group
+    without the diff reporting anything, even though four checks disappeared)."""
     lowered = []
     main_groups = main_baseline.get("groups", {})
     pr_groups = pr_baseline.get("groups", {})
@@ -46,6 +54,16 @@ def find_lowered(main_baseline, pr_baseline):
                 continue
             if pr_value < main_value:
                 lowered.append((group, metric, main_value, pr_value))
+
+    removed_groups = set(main_groups) - set(pr_groups)
+    for group in sorted(removed_groups):
+        main_metrics = main_groups[group]
+        for metric in METRICS:
+            main_value = main_metrics.get(metric)
+            if main_value is None:
+                continue
+            lowered.append((group, metric, main_value, None))
+
     return lowered
 
 
@@ -69,11 +87,16 @@ def render(lowered, main_ref, pr_ref):
         "|---|---|---|---|---|",
     ]
     for group, metric, main_value, pr_value in lowered:
-        lines.append(
-            "| {} | {} | {:.3f} | {:.3f} | {:+.3f} |".format(
-                group, metric, main_value, pr_value, pr_value - main_value
+        if pr_value is None:
+            lines.append(
+                "| {} | {} | {:.3f} | entfernt | entfernt |".format(group, metric, main_value)
             )
-        )
+        else:
+            lines.append(
+                "| {} | {} | {:.3f} | {:.3f} | {:+.3f} |".format(
+                    group, metric, main_value, pr_value, pr_value - main_value
+                )
+            )
     lines.append("")
     return "\n".join(lines)
 

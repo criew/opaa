@@ -106,6 +106,12 @@ public final class BaselineComparator {
    * a {@code language:de} entry from the (unchanged) golden dataset — this constant lets {@link
    * #compare} skip just that one redundant group instead of requiring a golden-dataset or harness
    * change.
+   *
+   * <p><b>Self-healing (PR #673 review):</b> {@link #compare} only skips {@code language:de} while
+   * the baseline actually lacks an entry for it. If a future baseline re-measurement legitimately
+   * reintroduces a {@code language:de} group (e.g. once the golden dataset gains German cases that
+   * are not simply {@code crosslingual}'s twins), the skip stops applying on its own and the group
+   * is compared like any other — it is never silently discarded once the baseline tracks it again.
    */
   static final String REDUNDANT_LANGUAGE_GROUP = Baseline.language("de");
 
@@ -248,9 +254,14 @@ public final class BaselineComparator {
               (name, agg) -> {
                 String key = Baseline.language(name);
                 // Issue #304: language:de is the redundant twin of category:crosslingual (see
-                // REDUNDANT_LANGUAGE_GROUP's Javadoc) and has no baseline entry — skip it rather
-                // than comparing against a group the baseline deliberately no longer carries.
-                if (key.equals(REDUNDANT_LANGUAGE_GROUP)) {
+                // REDUNDANT_LANGUAGE_GROUP's Javadoc) and, today, has no baseline entry — skip it
+                // rather than comparing against a group the baseline deliberately no longer
+                // carries. Self-healing (PR #673 review): only skip while the baseline actually
+                // lacks the entry. Should a future baseline re-measurement add a genuine
+                // language:de group back (e.g. once the golden dataset gains German cases that are
+                // not simply the crosslingual twins), this check falls through to the normal
+                // comparison instead of silently discarding it.
+                if (key.equals(REDUNDANT_LANGUAGE_GROUP) && !baseline.groups().containsKey(key)) {
                   return;
                 }
                 checkGroup(checks, key, agg, baseline.groups(), false);
