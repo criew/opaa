@@ -4,8 +4,8 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
-import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction'
 import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -121,66 +121,69 @@ export default function ChatList({ spaceId }: ChatListProps) {
             const active = location.pathname === `/spaces/${spaceId}/chats/${chat.id}`
             const isRenaming = renamingChatId === chat.id
             return (
-              <ListItemButton
+              <ListItem
                 key={chat.id}
-                selected={active}
-                onClick={
-                  isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)
+                disablePadding
+                secondaryAction={
+                  !isRenaming && (
+                    <>
+                      <IconButton
+                        size="small"
+                        aria-label={`Chat „${chatTitle(chat)}“ umbenennen`}
+                        onClick={() => startRename(chat)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label={`Chat „${chatTitle(chat)}“ löschen`}
+                        onClick={() => void handleDelete(chat)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  )
                 }
-                sx={{ borderRadius: 2, mb: 0.5, pr: 9 }}
               >
-                {isRenaming ? (
-                  <TextField
-                    autoFocus
-                    size="small"
-                    fullWidth
-                    value={renameValue}
-                    slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        void commitRename(chat.id)
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault()
-                        setRenamingChatId(null)
-                      }
-                    }}
-                    onBlur={() => void commitRename(chat.id)}
-                  />
-                ) : (
-                  <ListItemText
-                    primary={chatTitle(chat)}
-                    secondary={formatUpdatedAt(chat.updatedAt)}
-                    slotProps={{ primary: { noWrap: true } }}
-                  />
-                )}
-                {!isRenaming && (
-                  <ListItemSecondaryAction>
-                    <IconButton
+                <ListItemButton
+                  selected={active}
+                  onClick={
+                    isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)
+                  }
+                  sx={{ borderRadius: 2, mb: 0.5, pr: 9 }}
+                >
+                  {isRenaming ? (
+                    <TextField
+                      // The field appears only after the user chose "Umbenennen"; moving focus into it is
+                      // the expected inline-edit behaviour. Re-verified in the closing audit, see #598.
+                      // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                      autoFocus
                       size="small"
-                      aria-label={`Chat „${chatTitle(chat)}“ umbenennen`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        startRename(chat)
+                      fullWidth
+                      value={renameValue}
+                      slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          void commitRename(chat.id)
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault()
+                          setRenamingChatId(null)
+                        }
                       }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      aria-label={`Chat „${chatTitle(chat)}“ löschen`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void handleDelete(chat)
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                )}
-              </ListItemButton>
+                      onBlur={() => void commitRename(chat.id)}
+                    />
+                  ) : (
+                    <ListItemText
+                      primary={chatTitle(chat)}
+                      secondary={formatUpdatedAt(chat.updatedAt)}
+                      slotProps={{ primary: { noWrap: true } }}
+                    />
+                  )}
+                </ListItemButton>
+              </ListItem>
             )
           })}
         </List>
