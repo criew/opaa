@@ -171,19 +171,21 @@ dieser Arbeit liegen.
 - Standard-Suchbereich, Modell-Obergrenze und Zurechnung für Nutzung und Kosten
 
 **Flaches Modell:**
-Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt drei Arten:
+Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt **eine** Art von Space; zwei
+Attribute unterscheiden ihn:
 
-1. **Persönlicher Space** — automatisch je Nutzerin und Nutzer, nicht teilbar, nicht löschbar
-2. **Projekt-Space** — von jeder Person anlegbar, nicht im Verzeichnis gelistet, nur selbst eingeladene
-   Mitglieder
-3. **Team-Space** — von der Systemverwaltung angelegt, für Teams, Referate und hausweite Räume
+- `isDefault` — der beim ersten Login automatisch erzeugte, nicht löschbare Standard-Space je Nutzerin und
+  Nutzer. „Persönlich" ist kein eigener Typ, sondern ein Zustand: ein Space, in dem niemand sonst Mitglied
+  ist
+- `memberSource` — `MANUAL` (Mitglieder werden eingeladen) oder `GROUP` (die Mitgliedschaft folgt einer
+  Gruppe aus dem Verzeichnis)
 
 **Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber
-vollen Zugriff auf die **abgelegten** space-eigenen Inhalte. Chats und Artefakte entstehen als Entwurf bei
-der Person, die sie erzeugt, und werden erst durch Ablegen sichtbar. Siehe [Spaces, Assets &
-Zugangskontrolle](./features/spaces-and-assets.md).
+vollen Zugriff auf **geteilte** space-eigene Inhalte. Chats und Artefakte entstehen zunächst **privat** bei
+der Person, die sie erzeugt, und werden erst sichtbar, sobald sie sie **in den Space teilt**. Siehe
+[Spaces, Assets & Zugangskontrolle](./features/spaces-and-assets.md).
 
-- **Beispiel:** Der Team-Space „Bauleitplanung" bündelt die Chats zum laufenden Verfahren; die
+- **Beispiel:** Der Space „Bauleitplanung" bündelt die Chats zum laufenden Verfahren; die
   Rechtsquellen darin gehören dem Rechtsreferat und sind nur assoziiert.
 
 ---
@@ -209,7 +211,7 @@ Chat**, nicht nur für eine einzelne Anfrage.
 Eine Space-Auswahl, die den Suchbereich einer einzelnen Anfrage steuert, gibt es nicht mehr. Siehe
 [Suchbereich je Chatart](./features/spaces-and-assets.md#suchbereich-je-chatart).
 
-- **Beispiel:** Eine Sachbearbeiterin öffnet einen Chat im Team-Space „Bauleitplanung" zu einer Frage,
+- **Beispiel:** Eine Sachbearbeiterin öffnet einen Chat im Space „Bauleitplanung" zu einer Frage,
   die ausschließlich die Bibliothek „Rechtsquellen Denkmalschutz" betrifft. Sie referenziert die
   Bibliothek per `@Rechtsquellen-Denkmalschutz`, was den vorbelegten @Alles-Wissen-Chip ersetzt — die
   Antwort stützt sich dann nur auf diesen Bestand, nicht auf das gesamte lesbare Wissen.
@@ -243,7 +245,7 @@ darauf haben.
 
 **Merkregel:** Was im Space entsteht, gehört dem Space. Was assoziiert wird, behält seinen Eigentümer.
 
-- **Beispiel:** Der Agent „Vorprüfung Widerspruch" gehört dem Rechtsreferat, ist in vier Team-Spaces
+- **Beispiel:** Der Agent „Vorprüfung Widerspruch" gehört dem Rechtsreferat, ist in vier Spaces
   assoziiert und trägt die Fassung 3. Wird Fassung 4 freigegeben, arbeiten alle vier Räume damit — ohne dass
   irgendwo eine Kopie nachgezogen werden muss.
 
@@ -266,7 +268,7 @@ lokale Modelle" selbst mit sich, und ein Wechsel des Space umgeht sie nicht.
   genügt, der persönliche Space bleibt privat
 
 - **Beispiel:** Die Bibliothek „Rechtsquellen Soziales" gehört dem Rechtsreferat, ist für die Gruppe
-  „Amt 50" lesbar und in mehreren Team-Spaces assoziiert. Wer nicht in der Gruppe ist, bekommt daraus keinen
+  „Amt 50" lesbar und in mehreren Spaces assoziiert. Wer nicht in der Gruppe ist, bekommt daraus keinen
   Treffer — und erfährt auch nicht, dass es Treffer gäbe.
 
 ---
@@ -295,7 +297,7 @@ Stufe darüber.
 Ein Bündel von Rechten, das Personen oder Gruppen zugewiesen wird.
 
 **Systemweite Rolle:**
-- **System-Admin** — organisationsweite Verwaltung. Legt Team-Spaces an, richtet Konnektoren und
+- **System-Admin** — organisationsweite Verwaltung. Legt gruppengebundene Spaces an, richtet Konnektoren und
   Quellzuordnungen ein, verwaltet Gruppen und den Verzeichnisabgleich. Er verwaltet das System, ist aber
   **nicht automatisch leseberechtigt** für Inhalte.
 
@@ -975,14 +977,14 @@ Recherchegrundlage steht in [GraphRAG.md](./GraphRAG.md).
 | **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Alles-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage | `@Rechtsquellen-Denkmalschutz` ersetzt @Alles-Wissen und schränkt auf eine Bibliothek ein |
 | **KI-Asset** | Benanntes, teilbares Objekt mit Eigentümer und Rechten | Agent, Prompt-Bibliothek, Wissensbibliothek |
 | **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | „Rechtsquellen Soziales" |
-| **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Team-Spaces |
+| **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Spaces |
 | **Verteilungsstufe** | Reichweite der Freigabe | persönlich → Team → Fachbereich → organisationsweit |
 | **Aufgabenbeschreibung** | Was ein Agent tut und was nicht | „Prüft Frist, Form, Zuständigkeit; versendet nichts" |
 | **Agenten-Prüfstand** | Durchlauf an Testfällen vor der Freigabe | 30 Altfälle, 2 Abweichungen |
 | **Prüfagent** | Kontrolliert Ergebnisse gegen die Quellen | Findet fehlende Rechtsbehelfsbelehrung |
 | **Lokale Modelle** | Modelle auf eigener Hardware; Voreinstellung | Chat und Einbettung im eigenen Rechenzentrum |
 | **Modell-Policy** | Zentrale Obergrenze der zulässigen Modelle | Referat darf strenger sein, nie großzügiger |
-| **System-Admin** | Systemweite Rolle je Organisation | Konnektoren einrichten, Team-Spaces anlegen |
+| **System-Admin** | Systemweite Rolle je Organisation | Konnektoren einrichten, gruppengebundene Spaces anlegen |
 | **Space-Rolle** | Mitarbeit und Kuratierung im Raum | Member, Curator, Admin |
 | **Asset-Rolle** | Tatsächlicher Zugriff auf ein Asset | User, Viewer, Editor, Manager, Owner |
 | **Konnektor** | Anbindung an eine Wissensquelle | Netzlaufwerk → eine Wissensbibliothek |
