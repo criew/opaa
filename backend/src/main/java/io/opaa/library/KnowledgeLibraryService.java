@@ -741,7 +741,8 @@ public class KnowledgeLibraryService {
         blankToNull(request.getSourceUrl() == null ? null : request.getSourceUrl().toString());
     String sourceProxy = blankToNull(request.getSourceProxy());
     String sourceCredentials = blankToNull(request.getSourceCredentials());
-    if (sourceCredentials == null && sameSourceOrigin(library.getSourceUrl(), sourceUrl)) {
+    if (sourceCredentials == null
+        && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();
     }
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.getSourceInsecureSsl());
@@ -750,37 +751,6 @@ public class KnowledgeLibraryService {
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
     return new SourceConfiguration(
         sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
-  }
-
-  /**
-   * Whether {@code previousUrl} and {@code nextUrl} name the same origin - scheme, host and
-   * (explicit or scheme-default) port - the boundary the stored-credentials fallback in {@link
-   * #validateSourceConfigurationForUpdate} is restricted to (issue #516, PR #542 review finding 1).
-   * Either URL being {@code null} (FILESYSTEM carries no sourceUrl at all, or the request carries
-   * no sourceUrl of its own) or unparsable is treated conservatively as "different origin" - the
-   * caller then re-requires the credential rather than risking a false positive match.
-   */
-  private boolean sameSourceOrigin(String previousUrl, String nextUrl) {
-    if (previousUrl == null || nextUrl == null) {
-      return false;
-    }
-    try {
-      URI previous = URI.create(previousUrl);
-      URI next = URI.create(nextUrl);
-      return Objects.equals(previous.getScheme(), next.getScheme())
-          && Objects.equals(previous.getHost(), next.getHost())
-          && defaultedPort(previous) == defaultedPort(next);
-    } catch (IllegalArgumentException ex) {
-      return false;
-    }
-  }
-
-  /** Resolves the scheme's default port (http 80, https 443) when a URI carries no explicit one. */
-  private int defaultedPort(URI uri) {
-    if (uri.getPort() != -1) {
-      return uri.getPort();
-    }
-    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 
   /**

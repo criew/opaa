@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -9,7 +10,12 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
-import type { DocumentSourceType, LibraryVisibility } from '../types/api'
+import type {
+  DocumentSourceType,
+  LibraryVisibility,
+  SourceConnectionTestResponse,
+} from '../types/api'
+import { testLibrarySource } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import { documentSourceTypeConfigKind } from '../utils/labels'
 import {
@@ -71,6 +77,13 @@ export default function EditLibrarySourceDialog({
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(Boolean(library.sourceInsecureSsl))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // #544: mirrors CreateLibraryDialog's connection test - the result belongs to the currently
+  // entered configuration only, so any edit to a field the test itself depends on invalidates a
+  // previous result rather than leaving a stale "erreichbar" on screen for a since-changed
+  // address.
+  const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
+  const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
 
   // #542 review finding 1: KnowledgeLibraryService only carries a stored credential forward when
   // the new sourceUrl still names the same origin as the stored one - a host change drops it,
@@ -86,6 +99,55 @@ export default function EditLibrarySourceDialog({
   function handleClose() {
     if (submitting) return
     onClose()
+  }
+
+  // Shared by every onChange handler below (#544, mirroring CreateLibraryDialog's identical
+  // helper) - the functional updater form bails out of re-rendering on every keystroke before a
+  // test has ever run, by far the common case, rather than triggering an extra state update no
+  // one can see.
+  function clearTestResult() {
+    setTestResult((prev) => (prev === null ? prev : null))
+    setTestErrorMessage((prev) => (prev === null ? prev : null))
+  }
+
+  async function handleTest() {
+    const validationError = validateLibrarySourceFields(library.sourceType, {
+      sourcePath,
+      sourceUrl,
+    })
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    setError(null)
+    setTestResult(null)
+    setTestErrorMessage(null)
+    setTesting(true)
+    try {
+      const result = await testLibrarySource({
+        sourceType: library.sourceType,
+        ...deriveLibrarySourceConfigPayload(library.sourceType, {
+          sourcePath,
+          sourceUrl,
+          sourceProxy,
+          sourceCredentials,
+          sourceInsecureSsl,
+        }),
+        // #544: only sent when the credentials field is left blank - the backend then falls back
+        // to this library's own stored credentials (but only if sourceUrl still names the same
+        // origin as before, SourceConnectionTestService#withStoredCredentialsIfOmitted), so a
+        // password-protected source can be tested without forcing the caller to re-type it. A
+        // non-empty field always takes precedence, exactly like saving does.
+        libraryId: sourceCredentials.trim() === '' ? libraryId : undefined,
+      })
+      setTestResult(result)
+    } catch (err) {
+      setTestErrorMessage(
+        err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
+      )
+    } finally {
+      setTesting(false)
+    }
   }
 
   async function handleSave() {
@@ -158,7 +220,10 @@ export default function EditLibrarySourceDialog({
               fullWidth
               required
               value={sourcePath}
-              onChange={(e) => setSourcePath(e.target.value)}
+              onChange={(e) => {
+                setSourcePath(e.target.value)
+                clearTestResult()
+              }}
               placeholder="/data/dokumente"
               helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
               slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -172,7 +237,10 @@ export default function EditLibrarySourceDialog({
                 fullWidth
                 required
                 value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
+                onChange={(e) => {
+                  setSourceUrl(e.target.value)
+                  clearTestResult()
+                }}
                 placeholder="https://files.example.com/dokumente/"
                 helperText="http oder https."
                 slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -181,7 +249,10 @@ export default function EditLibrarySourceDialog({
                 label="Proxy"
                 fullWidth
                 value={sourceProxy}
-                onChange={(e) => setSourceProxy(e.target.value)}
+                onChange={(e) => {
+                  setSourceProxy(e.target.value)
+                  clearTestResult()
+                }}
                 placeholder="proxy.example.com:8080"
                 helperText="Optional."
                 autoComplete="off"
@@ -192,7 +263,10 @@ export default function EditLibrarySourceDialog({
                 type="password"
                 fullWidth
                 value={sourceCredentials}
-                onChange={(e) => setSourceCredentials(e.target.value)}
+                onChange={(e) => {
+                  setSourceCredentials(e.target.value)
+                  clearTestResult()
+                }}
                 placeholder="benutzer:passwort"
                 helperText={credentialsHelperText}
                 autoComplete="new-password"
@@ -202,12 +276,38 @@ export default function EditLibrarySourceDialog({
                 control={
                   <Switch
                     checked={sourceInsecureSsl}
-                    onChange={(e) => setSourceInsecureSsl(e.target.checked)}
+                    onChange={(e) => {
+                      setSourceInsecureSsl(e.target.checked)
+                      clearTestResult()
+                    }}
                   />
                 }
                 label="Zertifikatsprüfung aussetzen"
               />
             </>
+          )}
+
+          {configKind !== 'none' && (
+            <Box>
+              <Button
+                onClick={() => void handleTest()}
+                disabled={testing}
+                variant="outlined"
+                size="small"
+              >
+                {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
+              </Button>
+              {testErrorMessage && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {testErrorMessage}
+                </Alert>
+              )}
+              {testResult && (
+                <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
+                  {testResult.message}
+                </Alert>
+              )}
+            </Box>
           )}
         </Stack>
       </DialogContent>

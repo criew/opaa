@@ -4,12 +4,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import { useLibraryStore } from '../stores/libraryStore'
-import type { LibraryResponse, LibraryUpdateRequest } from '../types/api'
+import type {
+  LibraryResponse,
+  LibraryUpdateRequest,
+  SourceConnectionTestRequest,
+  SourceConnectionTestResponse,
+} from '../types/api'
 
-const { mockUpdateLibrary } = vi.hoisted(() => ({
+const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   mockUpdateLibrary: vi.fn(async (_id: string, request: LibraryUpdateRequest) => {
     return { id: _id, ...request } as unknown as LibraryResponse
   }),
+  // Typed via the explicit generic (rather than CreateLibraryDialog.test.tsx's parameterless
+  // implementation) so mockTestLibrarySource.mock.calls[0] below is typed as a tuple with an
+  // element at index 0, not `[]`.
+  mockTestLibrarySource: vi.fn<
+    (request: SourceConnectionTestRequest) => Promise<SourceConnectionTestResponse>
+  >(async () => ({
+    reachable: true,
+    documentCount: 3,
+    message: 'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
+  })),
 }))
 
 vi.mock('../services/api', async () => {
@@ -19,6 +34,7 @@ vi.mock('../services/api', async () => {
     updateLibrary: mockUpdateLibrary,
     getLibraries: vi.fn(async () => []),
     getLibrary: vi.fn(async () => undefined),
+    testLibrarySource: mockTestLibrarySource,
   }
 })
 
@@ -309,5 +325,164 @@ describe('EditLibrarySourceDialog', () => {
       await screen.findByText('sourceUrl muss mit http oder https beginnen'),
     ).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  describe('Verbindung testen (#544)', () => {
+    it('offers a test button for a connector library', async () => {
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+
+      expect(await screen.findByRole('button', { name: /verbindung testen/i })).toBeInTheDocument()
+    })
+
+    it('sends the libraryId together with the entered configuration when credentials are left blank, reusing the stored ones', async () => {
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /verbindung testen/i }))
+
+      await waitFor(() => {
+        expect(mockTestLibrarySource).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'HTTP_DIRECTORY',
+            sourceUrl: 'https://old.example.com/documents/',
+            sourceCredentials: undefined,
+            libraryId: 'library-2',
+          }),
+        )
+      })
+      expect(
+        await screen.findByText(
+          'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('omits the libraryId once new credentials are entered, since they take precedence over the stored ones', async () => {
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.type(await screen.findByLabelText(/neue zugangsdaten/i), 'admin:new-secret')
+      await user.click(screen.getByRole('button', { name: /verbindung testen/i }))
+
+      await waitFor(() => {
+        expect(mockTestLibrarySource).toHaveBeenCalledWith(
+          expect.objectContaining({ sourceCredentials: 'admin:new-secret' }),
+        )
+      })
+      // #615 review, nit c: objectContaining({ libraryId: undefined }) alone does not prove the
+      // key is actually absent from the network payload - an explicitly assigned `libraryId:
+      // undefined` property still exists on the JS object itself (toHaveProperty would find it
+      // too), it is only JSON.stringify (the real serialization the HTTP client performs) that
+      // drops an undefined-valued key. Asserting on the serialized form is what actually proves
+      // the backend never sees the key.
+      const [requestBody] = mockTestLibrarySource.mock.calls[0]
+      expect(JSON.stringify(requestBody)).not.toContain('libraryId')
+    })
+
+    it('shows an unreachable result as a warning, not an error, since the test itself succeeded', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: false,
+        documentCount: null,
+        message: 'Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).',
+      })
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /verbindung testen/i }))
+
+      const alert = await screen.findByText(
+        'Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).',
+      )
+      expect(alert.closest('[class*="colorWarning"]')).not.toBeNull()
+    })
+
+    it('shows a German backend error when the test call itself fails, e.g. missing MANAGER role', async () => {
+      mockTestLibrarySource.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Bibliothek'))
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /verbindung testen/i }))
+
+      expect(await screen.findByText('Kein Zugriff auf diese Bibliothek')).toBeInTheDocument()
+    })
+
+    it('invalidates a previous test result once a field the test depends on changes', async () => {
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /verbindung testen/i }))
+      expect(
+        await screen.findByText(
+          'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
+        ),
+      ).toBeInTheDocument()
+
+      await user.type(screen.getByLabelText(/^proxy/i), '1')
+
+      expect(
+        screen.queryByText(
+          'Webverzeichnis erreichbar, 3 unterstützte Dokumente auf oberster Ebene gefunden.',
+        ),
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not test the library before saving, keeping the two actions separate', async () => {
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={vi.fn()}
+          libraryId="library-2"
+          library={httpDirectoryLibrary}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /verbindung testen/i }))
+      await waitFor(() => expect(mockTestLibrarySource).toHaveBeenCalledTimes(1))
+
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    })
   })
 })

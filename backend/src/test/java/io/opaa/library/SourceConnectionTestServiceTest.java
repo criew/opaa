@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
 import io.opaa.indexing.AutoindexCrawlerService;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.DocumentSourceType;
@@ -20,6 +22,10 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +44,12 @@ class SourceConnectionTestServiceTest {
   private HttpServer server;
   private String baseUrl;
   private FilesystemPathAllowlist filesystemAllowlist;
+  private UserRepository userRepository;
+  private KnowledgeLibraryRepository libraryRepository;
+  private LibraryAccessService libraryAccessService;
   private SourceConnectionTestService service;
+  private UUID currentUserId;
+  private UUID organizationId;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -47,12 +58,23 @@ class SourceConnectionTestServiceTest {
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
 
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
+    userRepository = mock(UserRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryAccessService = mock(LibraryAccessService.class);
+    currentUserId = UUID.randomUUID();
+    organizationId = UUID.randomUUID();
+    User currentUser = new User("subject", "issuer", "caller@example.com", "Caller");
+    currentUser.setOrganizationId(organizationId);
+    when(userRepository.findById(currentUserId)).thenReturn(Optional.of(currentUser));
     service =
         new SourceConnectionTestService(
             new DocumentService(),
             new AutoindexCrawlerService(),
             new RssFeedParser(),
             filesystemAllowlist,
+            userRepository,
+            libraryRepository,
+            libraryAccessService,
             new IndexingProperties(null, 1000, 0, 50, 3, null, null, null));
   }
 
@@ -339,6 +361,9 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(),
             new RssFeedParser(),
             filesystemAllowlist,
+            userRepository,
+            libraryRepository,
+            libraryAccessService,
             new IndexingProperties(
                 null,
                 1000,
@@ -476,6 +501,9 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(),
             new RssFeedParser(),
             filesystemAllowlist,
+            userRepository,
+            libraryRepository,
+            libraryAccessService,
             new IndexingProperties(
                 null,
                 1000,
@@ -526,6 +554,9 @@ class SourceConnectionTestServiceTest {
             new AutoindexCrawlerService(),
             new RssFeedParser(),
             filesystemAllowlist,
+            userRepository,
+            libraryRepository,
+            libraryAccessService,
             new IndexingProperties(
                 null,
                 1000,
@@ -612,6 +643,261 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.getReachable()).isFalse();
     assertThat(response.getMessage()).contains("404");
+  }
+
+  // --- libraryId (#544) ---------------------------------------------------
+
+  @Test
+  void libraryIdFallsBackToStoredCredentialsWhenRequestOmitsThem() throws IOException {
+    UUID libraryId = UUID.randomUUID();
+    String expectedAuth =
+        "Basic "
+            + Base64.getEncoder().encodeToString("admin:secret".getBytes(StandardCharsets.UTF_8));
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            baseUrl + "/dir/",
+            null,
+            "admin:secret",
+            false);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+    server.createContext(
+        "/dir/",
+        exchange -> {
+          String actualAuth = exchange.getRequestHeaders().getFirst("Authorization");
+          if (!expectedAuth.equals(actualAuth)) {
+            exchange.sendResponseHeaders(401, -1);
+          } else {
+            byte[] body = "<table></table>".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+          }
+          exchange.close();
+        });
+
+    // No sourceCredentials on the request - #544 falls back to the library's stored one because
+    // sourceUrl still names the same origin as the library's own stored sourceUrl.
+    SourceConnectionTestResponse response =
+        service.test(
+            new SourceConnectionTestRequest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dir/"))
+                .libraryId(libraryId),
+            currentUserId,
+            false);
+
+    assertThat(response.getReachable()).isTrue();
+  }
+
+  @Test
+  void libraryIdDoesNotFallBackToStoredCredentialsForADifferentOrigin() throws IOException {
+    // #615 review, finding 2: the central security promise - a request whose sourceUrl no longer
+    // names the library's stored origin must never see the stored credentials, even with
+    // libraryId set - was previously untested. A second HttpServer instance stands in for a
+    // foreign host; only the port differs from baseUrl, which SourceOriginMatcher's port
+    // normalization must still catch (#542 review finding 1's same-origin rule, delegated to
+    // AutoindexCrawlerService#sameOrigin).
+    UUID libraryId = UUID.randomUUID();
+    HttpServer otherServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    otherServer.start();
+    try {
+      String otherBaseUrl = "http://127.0.0.1:" + otherServer.getAddress().getPort();
+      KnowledgeLibrary library =
+          KnowledgeLibrary.ownedByUser(
+              organizationId,
+              "Bibliothek",
+              null,
+              currentUserId,
+              LibraryVisibility.PRIVATE,
+              false,
+              DocumentSourceType.HTTP_DIRECTORY,
+              null,
+              baseUrl + "/dir/",
+              null,
+              "admin:secret",
+              false);
+      when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+      when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+          .thenReturn(AssetRole.MANAGER);
+      AtomicReference<String> observedAuth = new AtomicReference<>();
+      otherServer.createContext(
+          "/dir/",
+          exchange -> {
+            observedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.sendResponseHeaders(401, -1);
+            exchange.close();
+          });
+
+      // sourceUrl points at otherBaseUrl (a different port, everything else identical) - not the
+      // library's own stored baseUrl.
+      SourceConnectionTestResponse response =
+          service.test(
+              new SourceConnectionTestRequest()
+                  .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                  .sourceUrl(URI.create(otherBaseUrl + "/dir/"))
+                  .libraryId(libraryId),
+              currentUserId,
+              false);
+
+      assertThat(response.getReachable()).isFalse();
+      assertThat(observedAuth.get()).isNull();
+    } finally {
+      otherServer.stop(0);
+    }
+  }
+
+  @Test
+  void libraryIdWithSystemAdminReachesTheSameRequireRoleCallAsAnOrdinaryManager() {
+    // #615 review, finding 3: LibraryController passes the same systemAdmin flag to this test as
+    // to KnowledgeLibraryService#updateLibrary for the save it precedes - hard-coding false here
+    // would let a SYSTEM_ADMIN save a quellkonfiguration without a grant but see 404 from
+    // "Verbindung testen" right before it.
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.FILESYSTEM,
+            "/data/documents",
+            null,
+            null,
+            null,
+            false);
+    when(filesystemAllowlist.isConfigured()).thenReturn(true);
+    when(filesystemAllowlist.isAllowed("/data/documents")).thenReturn(false);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, true, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Bibliothek nicht gefunden"));
+
+    // systemAdmin=false would answer 404 here (no grant on this library at all); systemAdmin=true
+    // reaches past requireRole into the actual FILESYSTEM check below (400, allowlist gate) -
+    // proof that the systemAdmin flag threads all the way from the public test(...) overload into
+    // requireManagedLibrary.
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourcePath("/data/documents")
+                        .libraryId(libraryId),
+                    currentUserId,
+                    true))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void libraryIdBelowManagerIsRejectedWith403() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            baseUrl + "/dir/",
+            null,
+            "admin:secret",
+            false);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenThrow(
+            new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek"));
+
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceUrl(URI.create(baseUrl + "/dir/"))
+                        .libraryId(libraryId),
+                    currentUserId,
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN));
+  }
+
+  @Test
+  void libraryIdOfUnknownLibraryIsRejectedWith404() {
+    UUID libraryId = UUID.randomUUID();
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceUrl(URI.create(baseUrl + "/dir/"))
+                        .libraryId(libraryId),
+                    currentUserId,
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void libraryIdWithMismatchedSourceTypeIsRejectedWith400() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.RSS_FEED,
+            null,
+            baseUrl + "/feed.xml",
+            null,
+            "admin:secret",
+            false);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    new SourceConnectionTestRequest()
+                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceUrl(URI.create(baseUrl + "/dir/"))
+                        .libraryId(libraryId),
+                    currentUserId,
+                    false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST));
   }
 
   // --- UPLOAD ------------------------------------------------------------

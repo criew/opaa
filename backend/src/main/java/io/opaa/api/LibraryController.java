@@ -88,14 +88,19 @@ public class LibraryController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // #514: same permission bar as createLibrary above - any authenticated, known user. There is no
-  // library yet at this point for a role to be checked against, and creating one carries no
-  // higher bar than being an organization member (see KnowledgeLibraryService#createLibrary).
+  // #514: without libraryId, same permission bar as createLibrary above - any authenticated,
+  // known user. There is no library yet at this point for a role to be checked against, and
+  // creating one carries no higher bar than being an organization member (see
+  // KnowledgeLibraryService#createLibrary). With libraryId set (#544), SourceConnectionTestService
+  // itself enforces the additional MANAGER bar on that library, passed the same systemAdmin flag
+  // updateLibrary below gets (#615 review, finding 3) - a SYSTEM_ADMIN who can save the
+  // quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
       @Valid @RequestBody SourceConnectionTestRequest request, @AuthenticationPrincipal Jwt jwt) {
-    currentUser(jwt);
-    return sourceConnectionTestService.test(request);
+    User currentUser = currentUser(jwt);
+    return sourceConnectionTestService.test(
+        request, currentUser.getId(), currentUser.getSystemRole() == SystemRole.SYSTEM_ADMIN);
   }
 
   @GetMapping

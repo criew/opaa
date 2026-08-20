@@ -319,8 +319,20 @@ public class AutoindexCrawlerService {
    * comparison must be at least as strict everywhere it is used ({@link #sendFollowingRedirects}
    * here, and the equivalent foreign-host checks in {@code UrlFileDownloader} and {@code
    * RssFeedIndexingExecutor}).
+   *
+   * <p><b>Both hosts {@code null} must not compare equal (#615 review, finding 1).</b> {@link
+   * URI#getHost()} returns {@code null} for a syntactically valid but non-standard authority - a
+   * hostname containing an underscore, for instance, which {@code java.net.URI} does not recognize
+   * as a valid {@code reg-name}. An implementation that only compared {@code
+   * Objects.equals(a.getHost(), b.getHost())} would then treat two completely unrelated
+   * underscore-hostname URLs as the same origin, since both sides evaluate to {@code null}. The
+   * explicit {@code a.getHost() == null || b.getHost() == null} branch below rejects that case
+   * outright - a host {@code URI} cannot parse is never "the same" as another one it also cannot
+   * parse, regardless of what the two original strings actually said. {@code
+   * io.opaa.library.SourceOriginMatcher} delegates here for the identical reason (#615) rather than
+   * keeping a second, narrower copy of just the {@code Objects.equals} comparison.
    */
-  static boolean sameOrigin(URI a, URI b) {
+  public static boolean sameOrigin(URI a, URI b) {
     if (a.getHost() == null
         || b.getHost() == null
         || a.getScheme() == null
