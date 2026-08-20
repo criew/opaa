@@ -244,7 +244,7 @@ export default function Sidebar() {
                 spaceId={activeChatSpaceId}
                 menuTheme={appTheme}
                 header={
-                  <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
+                  <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
                     Chats
                   </Typography>
                 }
@@ -252,7 +252,7 @@ export default function Sidebar() {
             </Box>
           ) : (
             <>
-              <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
+              <Typography variant="overline" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
                 Chats
               </Typography>
               <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
@@ -332,7 +332,7 @@ export default function Sidebar() {
                   <Typography
                     noWrap
                     component="div"
-                    sx={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}
+                    sx={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.62)' }}
                   >
                     {user.email}
                   </Typography>
