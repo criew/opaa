@@ -16,6 +16,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.IndexingJobRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +55,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorStore vectorStore = mock(VectorStore.class);
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
+    IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
 
     libraryService =
         new KnowledgeLibraryService(
@@ -68,7 +70,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             permissionHistoryService,
             auditEventRecorder,
             vectorStore,
-            filesystemAllowlist);
+            filesystemAllowlist,
+            indexingJobRepository);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

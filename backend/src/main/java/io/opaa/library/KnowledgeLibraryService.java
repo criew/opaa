@@ -20,6 +20,8 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
+import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.JobStatus;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -89,6 +91,7 @@ public class KnowledgeLibraryService {
   private final AuditEventRecorder auditEventRecorder;
   private final VectorStore vectorStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
+  private final IndexingJobRepository indexingJobRepository;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -102,7 +105,8 @@ public class KnowledgeLibraryService {
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorStore vectorStore,
-      FilesystemPathAllowlist filesystemAllowlist) {
+      FilesystemPathAllowlist filesystemAllowlist,
+      IndexingJobRepository indexingJobRepository) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -115,6 +119,7 @@ public class KnowledgeLibraryService {
     this.auditEventRecorder = auditEventRecorder;
     this.vectorStore = vectorStore;
     this.filesystemAllowlist = filesystemAllowlist;
+    this.indexingJobRepository = indexingJobRepository;
   }
 
   @Transactional
@@ -508,6 +513,23 @@ public class KnowledgeLibraryService {
     // LibraryAccessService#canDelete.
     if (!accessService.canDelete(library, currentUserId, systemAdmin)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kein Zugriff auf diese Bibliothek");
+    }
+    // #433: deleting a library while an indexing run for it is RUNNING would let the run's
+    // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
+    // library is gone - previously surfacing per document as a failed
+    // DataIntegrityViolationException
+    // instead of a clean outcome. Rather than have the run cope with a vanished target mid-flight,
+    // the maintainer decided (issue comment, 2026-08-20) to prevent the situation at the root:
+    // block
+    // the delete outright while a run is RUNNING. #501 (stuck RUNNING jobs) is a related but
+    // separate
+    // concern - this guard becomes more useful once that is fixed, since a stuck RUNNING job could
+    // otherwise block deletion indefinitely.
+    if (indexingJobRepository.existsByStatusAndLibraryId(JobStatus.RUNNING, libraryId)) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs geloescht"
+              + " werden");
     }
     // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
     // still contains documents would otherwise surface as an unhandled

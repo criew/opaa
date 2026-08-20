@@ -892,7 +892,8 @@ paths:
         library is rejected with 409 (documents must be removed individually first). A non-empty
         connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) is deleted together with its
         documents and vector store chunks - deleting individual connector documents would be
-        undone by the next indexing run (ADR-0018, Entscheidung 5).
+        undone by the next indexing run (ADR-0018, Entscheidung 5). The delete is also rejected
+        with 409 while an indexing run for the library is RUNNING.
       responses:
         "204":
           description: Library deleted
