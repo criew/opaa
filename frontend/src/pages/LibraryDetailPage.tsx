@@ -22,6 +22,7 @@ import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -665,12 +666,20 @@ function LibraryDocumentsSection({
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
-                <Chip
-                  label={documentStatusLabel(document.status)}
-                  size="small"
-                  color={statusChipColor(document.status)}
-                  variant="outlined"
-                />
+                {/* #434: a FAILED document's asynchronous processing failure is only visible to
+                    the user via this German errorMessage - the status chip alone only says
+                    something went wrong, not what. */}
+                <Tooltip
+                  title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
+                  disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
+                >
+                  <Chip
+                    label={documentStatusLabel(document.status)}
+                    size="small"
+                    color={statusChipColor(document.status)}
+                    variant="outlined"
+                  />
+                </Tooltip>
                 {canDelete && (
                   <IconButton
                     aria-label={`Dokument ${document.fileName} löschen`}
