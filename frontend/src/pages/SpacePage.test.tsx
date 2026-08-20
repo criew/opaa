@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import SpacePage from './SpacePage'
+import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
 
@@ -17,9 +18,41 @@ vi.mock('react-router', async () => {
   }
 })
 
+// #674 re-review: listSpaceMembers and getSpace are mocked (rather than left to MSW's shared
+// 'space-personal' fixture) so the owner-without-ADMIN test below controls its own response
+// instead of depending on mocks/fixtures.ts staying in sync with this test's ad-hoc space/member
+// data - getSpace in particular would otherwise silently overwrite the test's selectedSpace (set
+// directly via useSpaceStore.setState below) with the shared fixture's ADMIN/mock-user-id space
+// once SpacePage's own selectSpace effect resolves. vi.hoisted because vi.mock's factory below is
+// itself hoisted above this module's regular top-level statements.
+const { mockListSpaceMembers } = vi.hoisted(() => ({
+  mockListSpaceMembers: vi.fn(async () => []),
+}))
+
+vi.mock('../services/api', async () => {
+  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+  return {
+    ...actual,
+    getSpace: vi.fn(
+      async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
+    ),
+    listSpaceMembers: mockListSpaceMembers,
+  }
+})
+
 describe('SpacePage', () => {
   beforeEach(() => {
+    mockListSpaceMembers.mockClear()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
+    useAuthStore.setState({
+      mode: 'dev',
+      isAuthenticated: true,
+      isLoading: false,
+      user: null,
+      token: null,
+      error: null,
+      userManager: null,
+    })
     useSpaceStore.setState({
       spaces: [
         {
@@ -99,5 +132,68 @@ describe('SpacePage', () => {
     expect(screen.getByText('Administrator: 1')).toBeInTheDocument()
     expect(screen.queryByText('Admin')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /space verwalten/i })).not.toBeInTheDocument()
+  })
+
+  // #674 re-review: transferOwnership never changes the new owner's own membership role (see
+  // SpaceService#requireMemberListViewer) - an owner whose own role is MEMBER must still see the
+  // full member list and the "Space verwalten" entry point, not just the aggregated counts.
+  it('shows the full member list and the manage button for a non-ADMIN owner', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([
+      {
+        userId: 'owner-1',
+        displayName: 'Owner',
+        role: 'MEMBER',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      { userId: 'admin-1', displayName: 'Admin', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+    ])
+    useAuthStore.setState({
+      mode: 'dev',
+      isAuthenticated: true,
+      isLoading: false,
+      user: { id: 'owner-1', email: 'owner@opaa.local', displayName: 'Owner', systemRole: 'USER' },
+      token: null,
+      error: null,
+      userManager: null,
+    })
+    useSpaceStore.setState({
+      selectedSpace: {
+        id: 'space-personal',
+        name: 'Meine Dokumente',
+        description: 'Private Dokumente',
+        isDefault: true,
+        archived: false,
+        visibility: 'PRIVATE',
+        ownerId: 'owner-1',
+        memberCount: 2,
+        userRole: 'MEMBER',
+        roleCounts: { MEMBER: 1, CURATOR: 0, ADMIN: 1 },
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+      members: [
+        {
+          userId: 'owner-1',
+          displayName: 'Owner',
+          role: 'MEMBER',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+        {
+          userId: 'admin-1',
+          displayName: 'Admin',
+          role: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    // findByText (rather than getByText) lets the effect-triggered loadMembers() call settle
+    // before asserting, avoiding an act() warning from its state update landing after the test
+    // body returns.
+    expect(await screen.findByText('Owner')).toBeInTheDocument()
+    expect(screen.getByText('Admin')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /space verwalten/i })).toBeInTheDocument()
   })
 })

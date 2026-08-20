@@ -15,17 +15,24 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router'
 import ChatList from '../components/chat/ChatList'
+import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
 
-function canManage(role: string | undefined): boolean {
-  return role === 'ADMIN'
+// #674 review: the owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
+// never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
+// which checks the same two conditions on the backend). A non-ADMIN owner and a system admin
+// without their own membership (userRole null) must still see the full member list and the
+// management entry point.
+function canManage(role: string | undefined, isOwner: boolean): boolean {
+  return role === 'ADMIN' || isOwner
 }
 
 export default function SpacePage() {
   const { spaceId } = useParams()
   const navigate = useNavigate()
+  const currentUserId = useAuthStore((s) => s.user?.id)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
   const selectSpace = useSpaceStore((s) => s.selectSpace)
   const loadMembers = useSpaceStore((s) => s.loadMembers)
@@ -34,6 +41,7 @@ export default function SpacePage() {
   const members = useSpaceStore((s) => s.members)
   const isLoadingDetails = useSpaceStore((s) => s.isLoadingDetails)
   const error = useSpaceStore((s) => s.error)
+  const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
 
   const [membersExpanded, setMembersExpanded] = useState(true)
   const [chatsExpanded, setChatsExpanded] = useState(true)
@@ -54,14 +62,14 @@ export default function SpacePage() {
     }
   }, [navigate, selectSpace, spaceId, spaces])
 
-  // #144: the full member list is only fetched for ADMIN (the owner's membership is always ADMIN)
-  // - anyone else would just get a 403 from listSpaceMembers, so the accordion below shows the
-  // aggregated roleCounts to them instead of an empty-looking list.
+  // #144: the full member list is only fetched for ADMIN and the owner - anyone else would just
+  // get a 403 from listSpaceMembers, so the accordion below shows the aggregated roleCounts to
+  // them instead of an empty-looking list.
   useEffect(() => {
-    if (space && canManage(space.userRole)) {
+    if (space && canManage(space.userRole, isOwner)) {
       void loadMembers(space.id)
     }
-  }, [loadMembers, space])
+  }, [loadMembers, space, isOwner])
 
   if (isLoadingDetails && !space) {
     return (
@@ -105,7 +113,7 @@ export default function SpacePage() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {canManage(space.userRole) && (
+              {canManage(space.userRole, isOwner) && (
                 <Button
                   variant="outlined"
                   startIcon={<ManageAccountsIcon />}
@@ -148,7 +156,7 @@ export default function SpacePage() {
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
-            {canManage(space.userRole) ? (
+            {canManage(space.userRole, isOwner) ? (
               members.length === 0 ? (
                 <Typography color="text.secondary">Keine Mitglieder gefunden.</Typography>
               ) : (
