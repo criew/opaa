@@ -29,6 +29,19 @@ import { expect } from '@playwright/test'
  */
 export async function startFreshChat(page: Page): Promise<void> {
   await page.goto('/chat')
+  // Wait for whatever chat ChatRedirect just landed on (the account's most recently used one, or
+  // "new" if it has none yet) to finish its own load before clicking "Neuer Chat" - the sidebar
+  // (and its "Neuer Chat" button) renders independently of ChatPage's loading state, so clicking
+  // it while an existing chat's loadChat() is still in flight is possible well before that fetch
+  // resolves. chatStore's loadChat/startNewChat guard against a *stale* response overwriting the
+  // newer state via a sequence token, but startNewChat does not itself reset `isLoadingChat` back
+  // to false, and the superseded loadChat's own response handler skips its `set()` entirely once
+  // it detects it was superseded - so isLoadingChat can get stuck `true` forever, and ChatPage
+  // never renders anything but its spinner. Observed on CI once this suite started running last,
+  // against accounts that by then already had several persisted chats (PR #554) - reported as a
+  // product bug rather than fixed here. Settling on the landed chat's own input first (instead of
+  // firing the click immediately) avoids ever hitting that window in the first place.
+  await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
   await page.getByRole('button', { name: 'Neuer Chat' }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
   await expect(page.getByPlaceholder('Stellen Sie eine Frage …')).toBeVisible()
