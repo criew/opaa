@@ -449,10 +449,29 @@ public class FileProcessingService {
    * #processUploadedFileAsync}'s own catch block does (its Javadoc has the fuller reasoning) -
    * cheaper than tracking whether {@link #storeChunks} was actually reached on this particular
    * call, and a no-op if it was not.
+   *
+   * <p>The chunk delete is wrapped in its own {@code try/catch} (#636 review round 2, item 1): this
+   * runs from inside the outer {@code catch (Exception e)} block of {@code processFile}/{@code
+   * processUrlFile}/{@code processRssEntry}, which rethrows the <em>original</em> failure once this
+   * method returns. A pgvector outage on this cleanup delete must not swallow that original cause,
+   * nor skip {@link DocumentRepository#markFailed} below it - a caller that never learns the row is
+   * {@code FAILED} (still {@code PENDING}, no {@link IndexingMetrics#recordFailed} either) would be
+   * strictly worse than the orphaned chunks this is trying to avoid.
    */
   private void markConnectorFailedAfterException(UUID documentId) {
-    vectorStore.delete("document_id == '" + documentId + "'");
-    documentRepository.markFailed(documentId, null);
+    try {
+      vectorStore.delete("document_id == '" + documentId + "'");
+    } catch (RuntimeException e) {
+      log.error(
+          "Failed to remove vector store chunks for document {} after a processing error -"
+              + " orphaned chunks may remain",
+          documentId,
+          e);
+    }
+    int updated = documentRepository.markFailed(documentId, null);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked FAILED", documentId);
+    }
   }
 
   /**

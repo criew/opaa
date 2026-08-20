@@ -42,6 +42,7 @@ class FileProcessingServiceTest {
   @TempDir Path tempDir;
 
   private FileProcessingService service;
+  private SimpleMeterRegistry meterRegistry;
 
   // #419: an indexing run always targets a caller-chosen library, never the fixed system
   // library - these two distinct libraries let tests both assert the metadata carries the
@@ -51,6 +52,7 @@ class FileProcessingServiceTest {
 
   @BeforeEach
   void setUp() {
+    meterRegistry = new SimpleMeterRegistry();
     service =
         new FileProcessingService(
             documentService,
@@ -58,7 +60,7 @@ class FileProcessingServiceTest {
             documentRepository,
             vectorStore,
             checksumService,
-            new IndexingMetrics(new SimpleMeterRegistry()));
+            new IndexingMetrics(meterRegistry));
     targetLibrary = library();
     otherLibrary = library();
     // Default happy-path stubs for the conditional status-transition UPDATEs (#632) - tests that
@@ -659,6 +661,11 @@ class FileProcessingServiceTest {
     assertThat(deleteFilterCaptor.getValue()).startsWith("document_id == '");
     // The initial insert is the only save() call - the final transition never falls back to one.
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
+    // #636 review round 2, item 2: the deletion race is counted as skipped, not silently dropped -
+    // processed + failed + skipped must still sum to the number of documents seen.
+    assertThat(
+            meterRegistry.get("opaa.indexing.documents").tag("result", "skipped").counter().count())
+        .isEqualTo(1.0);
   }
 
   @Test
