@@ -3,7 +3,6 @@ package io.opaa.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -168,10 +167,10 @@ class QueryServiceTest {
   }
 
   /**
-   * #557: QueryResponse#chatTitle mirrors the persisted chat's title right after appendTurn - here
-   * simulated via a {@code doAnswer} that mutates the same {@link Chat} instance the way the real
-   * {@code ChatService#appendTurn} does (see that method's Javadoc), since {@code chatService} is
-   * fully mocked in this class.
+   * #561: {@code ChatService#appendTurn} now returns the chat's title after the turn (rather than
+   * QueryService reading it back off the possibly-mutated {@link Chat} instance, which appendTurn
+   * no longer mutates - see that method's Javadoc) - QueryService simply forwards whatever the
+   * (here fully mocked) {@code chatService} returns.
    */
   @Test
   void queryIncludesTheChatsCurrentTitleInTheResponse() {
@@ -187,13 +186,7 @@ class QueryServiceTest {
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), eq(conversationKey)))
         .thenReturn(chatResponse);
-    doAnswer(
-            invocation -> {
-              chat.deriveTitleFromFirstQuestionIfAbsent("Frage zur Frist");
-              return null;
-            })
-        .when(chatService)
-        .appendTurn(eq(chat), any(), any(), any());
+    when(chatService.appendTurn(eq(chat), any(), any(), any())).thenReturn("Frage zur Frist");
 
     QueryResponse response =
         queryService.query("Frage zur Frist", chatId, currentUserId, true, List.of());

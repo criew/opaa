@@ -7,14 +7,13 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Generates a short, German chat title from a chat's first question/answer turn (#557), replacing
  * {@code ChatService}'s mechanical "prefix of the first question" fallback with something more
  * legible - unless the user already set a title themselves (at creation or via a later {@code
- * PATCH}), in which case {@link Chat#applyGeneratedTitle} is a no-op regardless of when the rename
- * happened relative to this call (see that method's Javadoc).
+ * PATCH}), in which case {@link ChatRepository#applyGeneratedTitleIfGenerated} is a no-op
+ * regardless of when the rename happened relative to this call (see that method's Javadoc).
  *
  * <p><b>Runs off the request thread</b> ({@code @Async("chatTitleTaskExecutor")}, see {@link
  * ChatConfiguration}): {@code ChatService#appendTurn} triggers {@link #generateTitleAsync} only
@@ -24,6 +23,20 @@ import org.springframework.transaction.annotation.Transactional;
  * Pfad der Antwort") - the caller sees the fallback title immediately (via {@code
  * QueryResponse#chatTitle}), and the frontend picks up the LLM-derived title, if generation
  * succeeds, on a later reload of the chat.
+ *
+ * <p><b>#561 review, finding 1 - no self-invocation.</b> The title is applied via {@link
+ * ChatRepository#applyGeneratedTitleIfGenerated}, called directly on the injected repository bean -
+ * never through a {@code this.someOtherMethod(...)} call on this class. An earlier version of this
+ * class called a private {@code @Transactional} method on itself from {@link #generateTitleAsync};
+ * that call went through the bare object, not the Spring-managed transactional proxy
+ * (self-invocation bypasses Spring AOP proxies entirely - a well-known Spring limitation), so the
+ * {@code @Transactional} annotation was silently inert and {@code findById}/{@code save} ran as two
+ * unrelated, separately auto-committed operations instead of one atomic unit. Calling the
+ * repository method directly sidesteps the whole problem: {@code @Transactional} lives on {@link
+ * ChatRepository#applyGeneratedTitleIfGenerated} itself now (see that method's Javadoc for why it
+ * belongs there rather than on a service method), and Spring Data's repository proxy applies it
+ * correctly to every caller, this class included, since this class never calls it through {@code
+ * this} - no {@code @Transactional} needed anywhere in this class.
  *
  * <p><b>Failure never surfaces</b>: any exception from the LLM call, or a response with no usable
  * text, is caught and logged here - the fallback title {@code ChatService#appendTurn} already
@@ -65,21 +78,29 @@ public class ChatTitleGenerationService {
 
   @Async("chatTitleTaskExecutor")
   public void generateTitleAsync(UUID chatId, String question, String answer) {
-    String generatedTitle;
     try {
-      generatedTitle = requestTitle(question, answer);
+      String generatedTitle = requestTitle(question, answer);
+      if (generatedTitle == null) {
+        log.warn(
+            "Chat title generation returned no usable title for chat {} - keeping the fallback"
+                + " title",
+            chatId);
+        return;
+      }
+      int updated = chatRepository.applyGeneratedTitleIfGenerated(chatId, generatedTitle);
+      if (updated == 0) {
+        log.debug(
+            "Chat {} already has a CUSTOM title (or no longer exists) - discarding the generated"
+                + " title",
+            chatId);
+      }
     } catch (RuntimeException e) {
+      // #557 acceptance criterion 3: covers both the LLM call and the write itself - any failure
+      // here must leave the fallback title ChatService#appendTurn already committed synchronously
+      // untouched, never surface to the caller (there is none left to surface to - this runs on
+      // chatTitleTaskExecutor, well after QueryService#query already returned its response).
       log.warn("Chat title generation failed for chat {} - keeping the fallback title", chatId, e);
-      return;
     }
-    if (generatedTitle == null) {
-      log.warn(
-          "Chat title generation returned no usable title for chat {} - keeping the fallback"
-              + " title",
-          chatId);
-      return;
-    }
-    applyGeneratedTitle(chatId, generatedTitle);
   }
 
   private String requestTitle(String question, String answer) {
@@ -110,25 +131,5 @@ public class ChatTitleGenerationService {
     return withoutQuotes.length() > GENERATED_TITLE_MAX_LENGTH
         ? withoutQuotes.substring(0, GENERATED_TITLE_MAX_LENGTH - 1).stripTrailing() + "…"
         : withoutQuotes;
-  }
-
-  /**
-   * Own, isolated transaction - safe as a plain {@code @Transactional} here (contrast {@code
-   * ChatService#appendTurn}'s {@code REQUIRES_NEW}/{@code NOT_SUPPORTED} dance): this method only
-   * ever runs on the {@code chatTitleTaskExecutor} thread {@link #generateTitleAsync} was
-   * dispatched to via {@code @Async}, which starts with no ambient transaction of its own - there
-   * is no held outer transaction this could ever nest inside.
-   */
-  @Transactional
-  void applyGeneratedTitle(UUID chatId, String generatedTitle) {
-    chatRepository
-        .findById(chatId)
-        .ifPresentOrElse(
-            chat -> {
-              if (chat.applyGeneratedTitle(generatedTitle)) {
-                chatRepository.save(chat);
-              }
-            },
-            () -> log.debug("Chat {} no longer exists - discarding generated title", chatId));
   }
 }

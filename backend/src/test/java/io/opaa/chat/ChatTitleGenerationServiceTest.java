@@ -1,16 +1,15 @@
 package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,9 +32,20 @@ import org.springframework.ai.chat.prompt.Prompt;
  * the calling thread - deterministic, no {@code Awaitility} needed. {@link
  * io.opaa.query.QueryIntegrationTest} and {@code ChatServiceIntegrationTest} cover the genuinely
  * asynchronous, Spring-managed path end to end.
+ *
+ * <p>#561 review, finding 1/2: the CUSTOM-title guard and the write itself are no longer this
+ * class's own load-check-{@code save()} cycle - they are one atomic {@code
+ * ChatRepository#applyGeneratedTitleIfGenerated} {@code UPDATE}, so this class has nothing left to
+ * unit-test about *whether* a CUSTOM title is protected (that guarantee now lives in the database
+ * query itself, proved by {@code ChatServiceIntegrationTest}'s race tests and {@code
+ * Migration034AddChatTitleSourceTest}) - only that it correctly calls that method with the
+ * sanitized title, and handles "0 rows updated" (rejected, or the chat no longer exists) without
+ * throwing.
  */
 @ExtendWith(MockitoExtension.class)
 class ChatTitleGenerationServiceTest {
+
+  private static final UUID CHAT_ID = UUID.randomUUID();
 
   @Mock private ChatModel chatModel;
   @Mock private ChatRepository chatRepository;
@@ -50,35 +60,30 @@ class ChatTitleGenerationServiceTest {
     service = new ChatTitleGenerationService(builder, chatRepository);
   }
 
-  private Chat generatedTitleChat() {
-    return new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+  private static ChatResponse chatResponseWith(String assistantText) {
+    return new ChatResponse(List.of(new Generation(new AssistantMessage(assistantText))));
   }
 
   @Test
-  void generateTitleAsyncAppliesTheSanitizedLlmTitle() {
-    Chat chat = generatedTitleChat();
-    when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
-    var chatResponse =
-        new ChatResponse(
-            List.of(new Generation(new AssistantMessage("\"Rückstellung Altlastensanierung\""))));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+  void generateTitleAsyncAppliesTheSanitizedLlmTitleViaTheAtomicUpdate() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(chatResponseWith("\"Rückstellung Altlastensanierung\""));
+    when(chatRepository.applyGeneratedTitleIfGenerated(CHAT_ID, "Rückstellung Altlastensanierung"))
+        .thenReturn(1);
 
     service.generateTitleAsync(
-        chat.getId(), "Wie hoch ist die Rückstellung?", "Die Rückstellung beträgt 42.000 EUR.");
+        CHAT_ID, "Wie hoch ist die Rückstellung?", "Die Rückstellung beträgt 42.000 EUR.");
 
-    assertThat(chat.getTitle()).isEqualTo("Rückstellung Altlastensanierung");
-    verify(chatRepository).save(chat);
+    verify(chatRepository)
+        .applyGeneratedTitleIfGenerated(CHAT_ID, "Rückstellung Altlastensanierung");
   }
 
   @Test
   void generateTitleAsyncSendsQuestionAndAnswerInTheGermanPrompt() {
-    Chat chat = generatedTitleChat();
-    when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Titel"))));
     ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
-    when(chatModel.call(promptCaptor.capture())).thenReturn(chatResponse);
+    when(chatModel.call(promptCaptor.capture())).thenReturn(chatResponseWith("Titel"));
 
-    service.generateTitleAsync(chat.getId(), "Meine Frage", "Meine Antwort");
+    service.generateTitleAsync(CHAT_ID, "Meine Frage", "Meine Antwort");
 
     String promptText = promptCaptor.getValue().getInstructions().getFirst().getText();
     assertThat(promptText).contains("Meine Frage");
@@ -86,60 +91,41 @@ class ChatTitleGenerationServiceTest {
     assertThat(promptText).contains("deutschen Titel");
   }
 
+  /**
+   * #561 review, finding 1/2: the CUSTOM guard is now the atomic {@code UPDATE}'s {@code WHERE}
+   * clause, not anything this class decides - this only proves the service does not throw or retry
+   * when the repository reports the update matched no row (0), which is exactly what a CUSTOM title
+   * - or a chat deleted in the meantime - looks like from here.
+   */
   @Test
-  void generateTitleAsyncNeverOverwritesACustomTitle() {
-    Chat chat =
-        new Chat(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Mein Titel", true, Set.of());
-    when(chatRepository.findById(chat.getId())).thenReturn(Optional.of(chat));
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("LLM-Titel"))));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+  void generateTitleAsyncDoesNotThrowWhenTheAtomicUpdateMatchesNoRow() {
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponseWith("LLM-Titel"));
+    when(chatRepository.applyGeneratedTitleIfGenerated(eq(CHAT_ID), any())).thenReturn(0);
 
-    service.generateTitleAsync(chat.getId(), "Frage", "Antwort");
-
-    assertThat(chat.getTitle()).isEqualTo("Mein Titel");
-    verify(chatRepository, never()).save(any());
+    assertThatCode(() -> service.generateTitleAsync(CHAT_ID, "Frage", "Antwort"))
+        .doesNotThrowAnyException();
   }
 
   /**
-   * #557 acceptance criterion: an LLM failure must never surface - the fallback title {@code
-   * ChatService#appendTurn} already committed synchronously (simulated here via {@link
-   * Chat#deriveTitleFromFirstQuestionIfAbsent}) stays exactly as is.
+   * #557 acceptance criterion: an LLM failure must never surface - the repository is never even
+   * called, so whatever fallback title {@code ChatService#appendTurn} already committed
+   * synchronously stays exactly as is.
    */
   @Test
-  void generateTitleAsyncKeepsTheFallbackTitleWhenTheLlmCallFails() {
-    Chat chat = generatedTitleChat();
-    chat.deriveTitleFromFirstQuestionIfAbsent("Fallback-Titel");
+  void generateTitleAsyncNeverCallsTheRepositoryWhenTheLlmCallFails() {
     when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("LLM nicht erreichbar"));
 
-    service.generateTitleAsync(chat.getId(), "Frage", "Antwort");
+    service.generateTitleAsync(CHAT_ID, "Frage", "Antwort");
 
-    assertThat(chat.getTitle()).isEqualTo("Fallback-Titel");
     verifyNoInteractions(chatRepository);
   }
 
   @Test
-  void generateTitleAsyncKeepsTheFallbackTitleWhenTheLlmReturnsOnlyPunctuation() {
-    Chat chat = generatedTitleChat();
-    chat.deriveTitleFromFirstQuestionIfAbsent("Fallback-Titel");
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("\"\"\"."))));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+  void generateTitleAsyncNeverCallsTheRepositoryWhenTheLlmReturnsOnlyPunctuation() {
+    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponseWith("\"\"\"."));
 
-    service.generateTitleAsync(chat.getId(), "Frage", "Antwort");
+    service.generateTitleAsync(CHAT_ID, "Frage", "Antwort");
 
-    assertThat(chat.getTitle()).isEqualTo("Fallback-Titel");
     verifyNoInteractions(chatRepository);
-  }
-
-  @Test
-  void generateTitleAsyncDiscardsTheResultWhenTheChatWasDeletedInTheMeantime() {
-    UUID chatId = UUID.randomUUID();
-    when(chatRepository.findById(chatId)).thenReturn(Optional.empty());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Titel"))));
-    when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
-
-    service.generateTitleAsync(chatId, "Frage", "Antwort");
-
-    verify(chatRepository, never()).save(any());
   }
 }

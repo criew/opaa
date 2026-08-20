@@ -24,6 +24,18 @@ import java.util.UUID;
  * moved to another space. Visible only to {@link #authorId}; not even a space or system admin may
  * read it while {@link #status} is {@link ChatStatus#PRIVATE} - the only value that currently
  * exists, see that enum's Javadoc.
+ *
+ * <p><b>#561 review: {@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an
+ * instance loaded long before the write, then written back with a full {@code
+ * chatRepository.save(chat)} merge</b> - only {@link #applyUpdate} does that, and only because the
+ * load and the save happen in the same short {@code @Transactional} method ({@code
+ * ChatService#updateChat}), not across the multi-second gap {@code QueryService#query} leaves
+ * between loading a chat and {@code ChatService#appendTurn} eventually writing to it (during which
+ * a concurrent {@code PATCH} could rename the chat). Both {@code appendTurn}'s
+ * prefix-fallback/{@code touch} and {@code ChatTitleGenerationService}'s LLM-derived title instead
+ * go through {@link ChatRepository}'s targeted, atomic {@code @Modifying} update methods, which
+ * read and write the current database row in one statement rather than trusting a possibly-stale
+ * in-memory snapshot.
  */
 @Entity
 @Table(name = "chats")
@@ -142,51 +154,6 @@ public class Chat {
       this.referencedLibraryIds.clear();
       this.referencedLibraryIds.addAll(newReferencedLibraryIds);
     }
-  }
-
-  /**
-   * Sets the title from the first question if none was ever set explicitly - called after the first
-   * turn is appended (see {@code ChatService#appendTurn}). A title explicitly set to blank by the
-   * author is left alone; only the true "never set" case (still {@code null}) falls back.
-   */
-  public void deriveTitleFromFirstQuestionIfAbsent(String derivedTitle) {
-    if (this.title == null) {
-      this.title = derivedTitle;
-    }
-  }
-
-  /**
-   * Applies an LLM-derived title (#557, {@code ChatTitleGenerationService}) unless the chat's title
-   * is {@link TitleSource#CUSTOM} - a title the user set explicitly, at creation or via a later
-   * {@code PATCH}, always wins, even one set in the narrow window between the question that
-   * triggered generation being asked and this method eventually being called (title generation runs
-   * asynchronously, well after the answer was already returned - see {@code
-   * ChatTitleGenerationService}'s Javadoc). Stays {@link TitleSource#GENERATED}: the title is still
-   * system-derived, merely a better one than the prefix fallback it replaces.
-   *
-   * @return true if the title was applied, false if it was rejected (a {@code CUSTOM} title, or a
-   *     blank/null {@code generatedTitle} - e.g. the LLM returned nothing usable)
-   */
-  public boolean applyGeneratedTitle(String generatedTitle) {
-    if (this.titleSource == TitleSource.CUSTOM
-        || generatedTitle == null
-        || generatedTitle.isBlank()) {
-      return false;
-    }
-    this.title = generatedTitle;
-    return true;
-  }
-
-  /**
-   * Forces {@link #updatedAt} to the current time even if no other field changed - {@link
-   * #onUpdate} only fires when Hibernate's dirty checking already produces an UPDATE statement for
-   * some other reason, which a turn that neither changes the title nor any other field would not
-   * (#525 review, finding/nit d: without this, the chat list's "sorted by last use" ordering goes
-   * stale for every follow-up question after the first). Called explicitly by {@code
-   * ChatService#appendTurn} before saving.
-   */
-  public void touch() {
-    this.updatedAt = Instant.now();
   }
 
   public UUID getId() {
