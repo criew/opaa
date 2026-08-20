@@ -141,10 +141,20 @@ class Migration046GroupsParentGroupOrganizationBindingTest extends AbstractMigra
 
     rollbackChangelog046();
 
+    // The composite condition is gone - a cross-organization parent link succeeds again, exactly
+    // the pre-#400 defect.
     UUID parentInOrganizationB = insertGroup(ORGANIZATION_B, null);
     UUID childInOrganizationA = insertGroup(ORGANIZATION_A, parentInOrganizationB);
     assertThat(columnValue("groups", "parent_group_id", childInOrganizationA))
         .isEqualTo(parentInOrganizationB.toString());
+
+    // But the single-column fk_groups_parent_group (migration 009) is restored, not merely
+    // absent alongside the composite one: a parent_group_id naming a group that does not exist at
+    // all - regardless of organization - must still be rejected by *some* foreign key.
+    UUID nonExistentParentId = UUID.randomUUID();
+    assertThatThrownBy(() -> insertGroup(ORGANIZATION_A, nonExistentParentId))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("fk_groups_parent_group");
   }
 
   private void applyChangelog046() throws Exception {
