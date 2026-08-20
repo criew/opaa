@@ -33,6 +33,15 @@ public enum AuditEventType {
   LIBRARY_CREATED,
   LIBRARY_CHANGED,
   LIBRARY_DELETED,
+  /**
+   * A library's source configuration (sourcePath/sourceUrl/sourceProxy/sourceCredentials/
+   * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description) and
+   * {@link #ASSET_VISIBILITY_CHANGED} (visibility/listed), neither of which fires for a source
+   * configuration edit alone (#545). Only which fields changed is recorded, never their values - a
+   * stricter version of the "no value, only which field" rule {@link #LIBRARY_CHANGED} already
+   * applies to description, since sourceCredentials must never appear in the log at all.
+   */
+  LIBRARY_SOURCE_UPDATED,
   GROUP_CREATED,
   GROUP_CHANGED,
   /** Also covers a group's dissolution ("Auflösung einer Gruppe"). */
