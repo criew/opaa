@@ -1,0 +1,9 @@
+Chat-Dokument B fuer die E2E-Suite (Issue #529)
+
+Zweites, von chatdokument-a.txt unterscheidbares Dokument fuer chats-in-spaces.spec.ts, damit
+Szenario 2 ("@-Referenz schraenkt die Suche auf die referenzierte Bibliothek ein") und Szenario 4
+(Rechte-Negativfall) eine echte, nicht-leere Gegenprobe haben - siehe chatdokument-a.txt fuer die
+Begruendung, warum diese Suite eigene, in der gesamten Suite einmalige Dateinamen statt
+wissensdokument.txt/eigenesdokument.txt verwendet.
+
+Kennsatz: OPAA-E2E-CHAT-DOKUMENT-B-529

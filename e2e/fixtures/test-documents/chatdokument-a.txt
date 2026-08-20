@@ -1,0 +1,11 @@
+Chat-Dokument A fuer die E2E-Suite (Issue #529)
+
+Dieses Dokument gehoert ausschliesslich chats-in-spaces.spec.ts und wird nie in einer der
+Bibliotheken von knowledge-libraries.spec.ts hochgeladen. Eigener, in der Suite einmaliger
+Dateiname - nicht wissensdokument.txt oder eigenesdokument.txt: io.opaa.query.QueryService fasst
+Quellenangaben ueber ihren Dateinamen zusammen (toMap(SourceReference::getFileName, ...)), und der
+KI-Stub liefert fuer jeden Chunk denselben Embedding-Vektor (siehe e2e/ai-stub/server.mjs). Ein
+wiederverwendeter Dateiname wuerde #424s eigene Assertions also unbemerkt durch diese Datei
+"mitbestehen" lassen, selbst wenn #424s eigener Upload/Freigabe-Pfad kaputt waere.
+
+Kennsatz: OPAA-E2E-CHAT-DOKUMENT-A-529

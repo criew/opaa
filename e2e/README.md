@@ -169,6 +169,34 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 ## Szenarien
 
 - `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
+- `tests/chats-in-spaces.spec.ts` (#529, Teil von Epic #523) — Chats als space-eigene, persistente
+  Objekte samt der neuen Suchbereichssteuerung im Eingabefeld: ein Chat wird im Space erstellt,
+  eine Frage liefert eine Antwort mit Quellenangabe, und ein Neuladen der Seite stellt sowohl den
+  Chatlisten-Eintrag (Sidebar) als auch den Gesprächsverlauf (Hauptbereich) wieder her. Eine
+  `@`-Referenz schränkt bei ausgeschaltetem "Wissen nutzen" die Suche auf genau die referenzierte
+  Bibliothek ein. Ohne Wissensbasis (Schalter aus, keine Referenz) antwortet die KI ohne Quellen
+  und mit sichtbarem Hinweis. Eine nicht mit dem Nutzer geteilte Bibliothek bleibt aus dessen
+  `@`-Vorschlägen ausgeschlossen — mit einer Positivprobe auf der Bibliothek selbst (deren
+  Ersteller sieht sie in den eigenen Vorschlägen sehr wohl), sonst wäre die Abwesenheit ebenso gut
+  durch eine kaputte Mention-Funktion erklärbar wie durch die Rechteprüfung. Ein zweiter, über
+  "Neuer Chat" gestarteter Chat im selben Space hält seinen eigenen, nach einem Neuladen weiterhin
+  getrennten Verlauf und seine eigene, sticky `@`-Referenz.
+
+  Diese Datei sortiert alphabetisch **vor** `knowledge-libraries.spec.ts` (`c` vor `k`) und legt
+  deshalb selbst mehrere Bibliotheken an, bevor dessen Szenarien laufen. Aus demselben Grund wie
+  bei `knowledge-library-nacharbeiten.spec.ts` unten (identischer ai-stub-Embedding-Vektor,
+  `io.opaa.query.QueryService` fasst Quellenangaben über den Dateinamen zusammen) lädt sie
+  ausschließlich eigene, in der gesamten Suite einmalige Fixture-Dateien hoch
+  (`fixtures/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
+  `wissensdokument.txt`/`eigenesdokument.txt`) — sonst könnten `knowledge-libraries.spec.ts`s
+  eigene Upload-/Freigabe-Assertions durch eine gleichnamige Datei aus einer dieser Bibliotheken
+  (z. B. der dauerhaft an dev-user freigegebenen `E2E-Chat-Freigegeben-*`) unbemerkt "mitbestehen",
+  selbst wenn deren eigener Pfad kaputt wäre.
+
+  Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
+  und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
+  `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
+
 - `tests/knowledge-libraries.spec.ts` (#424) — Wissensbibliotheken über den vollen Stack: Nutzer A
   legt eine Bibliothek an und lädt ein Dokument hoch, sieht es nach der Verarbeitung als indiziert,
   und die Suche findet den eigenen Inhalt mit Quellenangabe. A gibt die Bibliothek an Nutzer B frei

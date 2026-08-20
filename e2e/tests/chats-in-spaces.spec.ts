@@ -11,29 +11,33 @@ import {
 } from '../fixtures/chat'
 import type { Page, TestInfo } from '@playwright/test'
 
-// Same two committed fixtures test(e2e) #424 uses (see knowledge-libraries.spec.ts for why these
-// live under fixtures/test-documents/, not fixtures/documents/) - reused here because retrieval
-// in this stack hinges entirely on the permission/reference filter, not on document content (see
-// e2e/ai-stub/server.mjs's module doc comment: every chunk gets the exact same fixed embedding).
-// Two distinctly-named files are all "unterscheidbare Inhalte" (#529, scenario 2) needs to prove
-// which library a query actually reached.
+// Own fixture files, deliberately never uploaded by any other spec in this suite (review finding
+// on PR #554): io.opaa.query.QueryService merges source references by file name
+// (`toMap(SourceReference::getFileName, ...)`), and the KI stub gives every chunk the exact same
+// embedding (see e2e/ai-stub/server.mjs) - reusing knowledge-libraries.spec.ts's
+// wissensdokument.txt/eigenesdokument.txt here (this file sorts alphabetically *before*
+// knowledge-libraries.spec.ts, so its libraries exist first) would let that spec's own
+// "1./2. Bibliothek anlegen und finden" and the positive half of "5. Entzug wirkt" stay green even
+// if their own upload/share path were broken - a same-named document from one of this file's
+// long-lived, differently-shared libraries (e.g. scenario 4's dev-user-shared library) would
+// silently stand in for theirs. See e2e/README.md's "Szenarien" section for the full reasoning.
 const DOCUMENT_A_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
   'fixtures',
   'test-documents',
-  'wissensdokument.txt',
+  'chatdokument-a.txt',
 )
-const DOCUMENT_A_NAME = 'wissensdokument.txt'
+const DOCUMENT_A_NAME = 'chatdokument-a.txt'
 
 const DOCUMENT_B_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
   'fixtures',
   'test-documents',
-  'eigenesdokument.txt',
+  'chatdokument-b.txt',
 )
-const DOCUMENT_B_NAME = 'eigenesdokument.txt'
+const DOCUMENT_B_NAME = 'chatdokument-b.txt'
 
 // Unique per run so re-runs against a stack that was not torn down (or a shared dev stack) never
 // collide with a leftover library/chat of the same name.
@@ -74,10 +78,6 @@ async function toggleUseKnowledgeOff(page: Page) {
   await page.getByLabel('Wissen nutzen').click()
 }
 
-// Set by scenario 2, read by scenario 5 (which reuses that library's reference) - a `let`, not a
-// constant, because the actual name depends on that scenario's own attempt (see uniqueId).
-let libraryAName = ''
-
 /**
  * Covers #529 (part of Epic #523): the persistent, space-owned chat and its `@`-reference /
  * "Wissen nutzen" search scope, built on top of test(e2e) #424's upload/share/search chain and
@@ -85,7 +85,9 @@ let libraryAName = ''
  * (`startFreshChat`) rather than relying on scenario order, for the same reason
  * knowledge-libraries.spec.ts does (see its module doc comment): chats are persisted per account,
  * so a later scenario reusing the same dev user would otherwise still see an earlier scenario's
- * turn in the DOM.
+ * turn in the DOM. Scenarios also each create their own library rather than sharing one across
+ * scenarios (review finding on PR #554, nit 3): a scenario run in isolation (`--grep`) must not
+ * depend on module state a different scenario would otherwise have set.
  */
 test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)', () => {
   test('1. Chat im Space: Frage, Antwort mit Quellen, Verlauf überlebt Neuladen', async (
@@ -126,7 +128,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     testInfo,
   ) => {
     const id = uniqueId(testInfo)
-    libraryAName = `E2E-Chat-Referenz-A-${id}`
+    const libraryAName = `E2E-Chat-Referenz-A-${id}`
     const libraryBName = `E2E-Chat-Referenz-B-${id}`
     const question = `Was steht im referenzierten Dokument (${id})?`
 
@@ -173,6 +175,16 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     await createLibraryWithDocument(adminPage, sharedLibraryName, DOCUMENT_B_PATH, DOCUMENT_B_NAME)
     await shareLibraryWithPerson(adminPage, sharedLibraryName, 'Dev User', /Dev User/)
 
+    // Positive control (review finding on PR #554, nit 4): the private library's own creator can
+    // read it, so it must appear in *their* @-suggestions. Without this, "absent from dev-user's
+    // suggestions" would be indistinguishable from "never suggested to anyone, e.g. because the
+    // mention feature itself is broken" - only the contrast between adminPage and bPage below
+    // makes the absence a real, permission-specific finding.
+    await startFreshChat(adminPage)
+    const adminInput = adminPage.getByPlaceholder('Stellen Sie eine Frage …')
+    await adminInput.fill(`@${privateLibraryName}`)
+    await expect(adminPage.getByRole('option', { name: privateLibraryName })).toBeVisible()
+
     await startFreshChat(bPage)
     const input = bPage.getByPlaceholder('Stellen Sie eine Frage …')
     await input.fill(`@${sharedLibraryName}`)
@@ -187,10 +199,13 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     testInfo,
   ) => {
     const id = uniqueId(testInfo)
+    const libraryName = `E2E-Chat-Zweitchat-${id}`
     const questionChat1 = `Frage im ersten Chat (${id})`
     const questionChat2 = `Frage im zweiten Chat (${id})`
     const main = page.getByRole('main')
     const sidebar = page.getByRole('navigation')
+
+    await createLibraryWithDocument(page, libraryName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
 
     await startFreshChat(page)
     await askQuestion(page, questionChat1)
@@ -202,7 +217,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     // the same space rather than reusing chat 1.
     await startFreshChat(page)
     await toggleUseKnowledgeOff(page)
-    await referenceLibrary(page, libraryAName)
+    await referenceLibrary(page, libraryName)
     await askQuestion(page, questionChat2)
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     const chat2Url = page.url()
@@ -211,14 +226,18 @@ test.describe.serial('Chats im Space, @-Referenzen und Wissens-Schalter (#529)',
     // Chat 2 shows only its own turn and its own sticky reference chip.
     await expect(main.getByText(questionChat1)).toHaveCount(0)
     await expect(main.getByText(questionChat2)).toBeVisible()
-    await expect(page.getByLabel(`Bibliotheksreferenz ${libraryAName} entfernen`)).toBeVisible()
+    await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 
-    // Back to chat 1 via the sidebar list: its own history, no reference chip left over from
-    // chat 2.
+    // Back to chat 1 via the sidebar list, then a reload (review finding on PR #554, nit 5): the
+    // list navigation alone would only prove in-memory Zustand-store state survives switching
+    // chats, not that chat 1's own history and (lack of) reference are actually persisted server-
+    // side, independent of chat 2's.
     await sidebar.getByText(questionChat1, { exact: true }).click()
+    await expect(page).toHaveURL(chat1Url)
+    await page.reload()
     await expect(page).toHaveURL(chat1Url)
     await expect(main.getByText(questionChat1)).toBeVisible()
     await expect(main.getByText(questionChat2)).toHaveCount(0)
-    await expect(page.getByLabel(`Bibliotheksreferenz ${libraryAName} entfernen`)).toHaveCount(0)
+    await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toHaveCount(0)
   })
 })
