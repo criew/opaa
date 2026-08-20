@@ -155,8 +155,9 @@ Drei Zustände werden unterschieden:
   Katalog mit Auffindbarkeit (#215) · Mitbestimmungs-Steuerung (#216)
 - **Epic #523 — Chats im Space und Suchbereich per @-Bibliotheksreferenzen:** Chat-Persistenz in genau
   einem Space (Vorstufe zu #205, das ab dieser Grundlage nur noch den Kollaborationsteil trägt) und
-  Ablösung der wirkungslosen Space-Auswahl im Suchfeld durch den Schalter „Wissen nutzen" und sticky
-  @-Bibliotheksreferenzen je Chat.
+  Ablösung der wirkungslosen Space-Auswahl im Suchfeld durch die Chip-Leiste am Eingabefeld
+  (Spezial-Chip @Alles-Wissen, sticky @-Bibliotheksreferenzen je Chat) als einzige
+  Suchbereichssteuerung — der frühere Schalter „Wissen nutzen" ist mit #560 entfallen.
 
 **Geplant (Phase 3)**
 - Freigabe- und Prüfworkflow über Stufen · organisationsweiter Katalog · Vorlagenkatalog nach
