@@ -126,7 +126,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // only persisted once the first message is sent (see sendMessage).
   startNewChat: (spaceId: string) => {
     // Invalidates any loadChat still in flight - otherwise its eventual response could overwrite
-    // this synchronous reset (#548 review, finding d).
+    // this synchronous reset (#548 review, finding d). The superseded loadChat handler then
+    // returns early (its requestId no longer matches chatLoadSequence) without ever reaching its
+    // own set() call, so isLoadingChat must be cleared here too - otherwise ChatPage's spinner
+    // never clears and the chat input never reappears (#559).
     chatLoadSequence++
     set({
       spaceId,
@@ -136,6 +139,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
       useKnowledge: true,
       referencedLibraryIds: [],
+      isLoadingChat: false,
     })
   },
 
