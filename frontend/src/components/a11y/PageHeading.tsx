@@ -7,8 +7,10 @@ import { usePageTitle } from '../../hooks/usePageTitle'
 export const MAIN_CONTENT_ID = 'main-content'
 
 interface PageHeadingProps {
-  /** Visible heading text; also becomes the document title. */
+  /** Visible heading text; also becomes the document title unless `documentTitle` is given. */
   title: string
+  /** Overrides the document title when it should be more specific than the heading. */
+  documentTitle?: string
   /** Visual size only - the element is always the page's single <h1>. */
   variant?: TypographyProps['variant']
   /** Keeps the <h1> for assistive technology but hides it visually (e.g. the chat page). */
@@ -24,13 +26,14 @@ interface PageHeadingProps {
  */
 export default function PageHeading({
   title,
+  documentTitle,
   variant = 'h5',
   visuallyHidden: hidden = false,
   gutterBottom,
   sx,
 }: PageHeadingProps) {
   const ref = useRef<HTMLHeadingElement>(null)
-  usePageTitle(title)
+  usePageTitle(documentTitle ?? title)
 
   useEffect(() => {
     const main = document.getElementById(MAIN_CONTENT_ID)

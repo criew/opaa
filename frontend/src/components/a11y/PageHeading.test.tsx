@@ -39,4 +39,10 @@ describe('PageHeading', () => {
     renderWithProviders(<PageHeading title="Gruppen" />)
     expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus()
   })
+
+  it('lets the document title be more specific than the heading', () => {
+    renderWithProviders(<PageHeading title="Chat" documentTitle="Architektur des Projekts" />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toBeInTheDocument()
+    expect(document.title).toBe('Architektur des Projekts · OPAA')
+  })
 })

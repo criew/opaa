@@ -88,7 +88,13 @@ export default function ChatPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
-      <PageHeading title={chatTitle ?? (isNewChat ? 'Neuer Chat' : 'Chat')} visuallyHidden />
+      {/* Static heading text on purpose: the chat title falls back to the first question, and a
+          hidden duplicate of a message would confuse text lookups (screen readers and E2E). */}
+      <PageHeading
+        title={isNewChat ? 'Neuer Chat' : 'Chat'}
+        documentTitle={chatTitle ?? undefined}
+        visuallyHidden
+      />
       {error && (
         <Alert severity="error" sx={{ m: 2 }}>
           {error}
