@@ -301,6 +301,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
+    // #651: an http(s)-prefixed link can still be syntactically invalid (e.g. an embedded space
+    // or an illegal host character) - URI.create(entryUrl) deep inside fetchDetailPage would then
+    // throw IllegalArgumentException, uncaught by any of the catch clauses below, and propagate all
+    // the way out to execute()'s outer catch (Exception e), ending the *entire* run instead of just
+    // this one malformed entry - exactly like the scheme check above, but for a validity problem
+    // isHttpOrHttps's plain prefix check cannot detect.
+    if (!isValidUri(entryUrl)) {
+      log.warn("Skipping RSS entry with a syntactically invalid link: {}", entryUrl);
+      events.record(
+          IndexingEventCategory.REJECTED, "Verknüpfung mit ungültiger URL abgelehnt", entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
+      return;
+    }
+
     Optional<Instant> publishedAt = entry.publishedAt();
     if (isUnchanged(entryUrl, publishedAt, targetLibrary)) {
       processUnchangedEntry(
@@ -366,6 +381,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
+      return;
+    } catch (IllegalArgumentException e) {
+      // #651, PR #664 review finding 1: entryUrl itself already passed isValidUri above, but a
+      // redirect hop's own Location header is server-controlled input no pre-validation can cover -
+      // sendDetailPageRequest's currentUri.resolve(location) can still throw this for a Location
+      // value that is not a valid relative/absolute reference at all, uncaught by any of the
+      // clauses above. Skipping only this entry (instead of letting it propagate to execute()'s
+      // outer catch and end the whole run) mirrors every other rejection above.
+      log.warn(
+          "Skipping RSS entry whose detail-page redirect could not be resolved: {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED, "Weiterleitung der Detailseite ungültig", entryUrl);
+      progress.recordSkipped();
+      anyEntryDeferred.set(true);
       return;
     }
 
@@ -495,6 +526,22 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
+      return;
+    } catch (IllegalArgumentException e) {
+      // #651, PR #664 review finding 1 - mirrors processEntry's identical catch above: a redirect
+      // hop's own (server-controlled) Location header can still make currentUri.resolve(location)
+      // throw here, uncaught by any clause above, ending the whole run instead of just deferring
+      // this entry's attachment backfill to a future one.
+      log.warn(
+          "Could not fetch RSS detail page to backfill attachments, its redirect could not be"
+              + " resolved, will retry on a future run: {} ({})",
+          entryUrl,
+          e.getMessage());
+      events.record(
+          IndexingEventCategory.REJECTED,
+          "Weiterleitung der Detailseite beim Nachladen von Anlagen ungültig",
+          entryUrl);
+      anyEntryDeferred.set(true);
       return;
     }
     processAttachments(
@@ -981,15 +1028,28 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * slash). A scheme change (including an {@code http} to {@code https} upgrade) now counts as a
    * different origin too, not only a different host - {@link #sendDetailPageRequest} rejects a
    * downgrade specifically before ever reaching this check.
+   *
+   * <p><b>An unparsable host on either side is foreign, not "not foreign" (#651).</b> Delegates the
+   * comparison entirely to {@link AutoindexCrawlerService#sameOrigin}, which already treats a
+   * {@code null} host on either side (a hostname {@code URI} cannot parse, e.g. one containing an
+   * underscore) as never matching - previously this method special-cased {@code getHost() == null}
+   * itself and returned {@code false} ("not foreign") whenever a host could not be parsed, the
+   * exact opposite of {@code sameOrigin}'s reasoning (#615 review, finding 1): a redirect target
+   * OPAA cannot even identify the host of must never be trusted with the feed's own credentials.
+   *
+   * <p><b>An unparsable {@code originalUrl} is foreign too (PR #664 review, finding 2).</b> {@code
+   * originalUrl} is always {@code entryUrl} or an already-followed, previously-vetted redirect hop
+   * here - by the time this method runs it has no legitimate reason to fail {@code new URI(...)}.
+   * Falling back to "not foreign" on that failure would have silently matched the same
+   * inverted-default bug the null-host fix above closes; {@code true} is the only answer consistent
+   * with the rest of this method's "unparsable = untrustworthy" reasoning.
    */
   private boolean isForeignHostRedirect(String originalUrl, URI finalUri) {
     try {
       URI originalUri = new URI(originalUrl);
-      return originalUri.getHost() != null
-          && finalUri.getHost() != null
-          && !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
+      return !AutoindexCrawlerService.sameOrigin(originalUri, finalUri);
     } catch (URISyntaxException e) {
-      return false;
+      return true;
     }
   }
 
@@ -1054,6 +1114,32 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     String lowerCased = url.strip().toLowerCase(Locale.ROOT);
     return lowerCased.startsWith("http://") || lowerCased.startsWith("https://");
+  }
+
+  /**
+   * Whether {@code url} is a syntactically valid, resolvable {@link URI} (#651) - {@code
+   * isHttpOrHttps} only checks the scheme prefix, so an http(s)-prefixed link with e.g. an embedded
+   * space or an illegal host character still passes it, but would make {@code URI.create(url)}
+   * throw {@link IllegalArgumentException} the moment {@link #fetchDetailPage} (or {@link
+   * #processUnchangedEntry}'s own detail-page fetch) is reached.
+   *
+   * <p><b>{@code getHost() != null} is checked too (PR #664 review, finding 1).</b> {@code
+   * URI.create} itself accepts a link whose host it cannot parse (e.g. a raw, non-punycode IDN like
+   * {@code https://münchen.de/...}, or one containing an underscore) without throwing at all -
+   * {@code getHost()} then simply returns {@code null}. Only the later {@code
+   * HttpRequest.newBuilder().uri(...)} call inside {@link #sendDetailPageRequest} rejects such a
+   * URI (with {@code IllegalArgumentException: unsupported URI}), by which point this check has
+   * long been passed and the same uncaught-exception problem this method exists to close would
+   * recur. This is deliberately a stricter, extra condition on top of validity - not a delegation
+   * to {@link AutoindexCrawlerService#sameOrigin}, which answers a different question (same origin
+   * as another URI) and always needs two URIs to compare, not one to validate on its own.
+   */
+  private static boolean isValidUri(String url) {
+    try {
+      return URI.create(url).getHost() != null;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /**
