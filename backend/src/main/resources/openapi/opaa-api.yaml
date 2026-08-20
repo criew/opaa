@@ -2423,6 +2423,14 @@ components:
           nullable: true
         ownerType:
           $ref: "#/components/schemas/LibraryOwnerType"
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the group or user owner, so the overview can show it instead of
+            a generic "Gruppen-Bibliothek" label. Null if the owner could not be resolved
+            (e.g. the group or user was deleted).
+          example: Referat 50
         visibility:
           $ref: "#/components/schemas/LibraryVisibility"
         listed:

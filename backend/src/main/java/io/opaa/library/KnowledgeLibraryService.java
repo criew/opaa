@@ -25,6 +25,8 @@ import io.opaa.indexing.JobStatus;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -338,6 +340,7 @@ public class KnowledgeLibraryService {
                 Collectors.toMap(
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
+    Map<UUID, String> ownerNames = resolveOwnerNames(libraries);
 
     return libraries.stream()
         .map(
@@ -345,8 +348,44 @@ public class KnowledgeLibraryService {
                 toLibraryListResponse(
                     library,
                     roles.get(library.getId()),
-                    documentCounts.getOrDefault(library.getId(), 0L)))
+                    documentCounts.getOrDefault(library.getId(), 0L),
+                    ownerNames.get(library.getOwnerId())))
         .toList();
+  }
+
+  /**
+   * Resolves each library's owner display name in two batched queries (one per owner kind) instead
+   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toResponses}
+   * already uses for grant subject names. A missing entry (owner deleted) simply leaves {@code
+   * ownerName} {@code null} on the response, matching {@code LibraryListResponse}'s optional field.
+   *
+   * <p>Unlike {@link AssetGrantService#toResponses}, a {@code USER} owner with no {@code
+   * displayName} resolves to {@code null} here rather than falling back to their email address (PR
+   * #601 review, finding 1): that method's audience is limited to a library's own {@code MANAGER}s,
+   * but this list reaches every reader of an organization-wide or shared library - potentially the
+   * whole organization - so leaking an email address here has a materially larger blast radius. The
+   * frontend already falls back to a generic label when {@code ownerName} is absent.
+   */
+  private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
+    Set<UUID> userOwnerIds = new HashSet<>();
+    Set<UUID> groupOwnerIds = new HashSet<>();
+    for (KnowledgeLibrary library : libraries) {
+      if (library.getOwnerType() == LibraryOwnerType.USER) {
+        userOwnerIds.add(library.getOwnerId());
+      } else {
+        groupOwnerIds.add(library.getOwnerId());
+      }
+    }
+    Map<UUID, String> ownerNames = new HashMap<>();
+    for (User user : userRepository.findAllById(userOwnerIds)) {
+      if (user.getDisplayName() != null) {
+        ownerNames.put(user.getId(), user.getDisplayName());
+      }
+    }
+    for (Group group : groupRepository.findAllById(groupOwnerIds)) {
+      ownerNames.put(group.getId(), group.getName());
+    }
+    return ownerNames;
   }
 
   public LibraryResponse getLibrary(UUID libraryId, UUID currentUserId, boolean systemAdmin) {
@@ -914,7 +953,7 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryListResponse toLibraryListResponse(
-      KnowledgeLibrary library, AssetRole myRole, long documentCount) {
+      KnowledgeLibrary library, AssetRole myRole, long documentCount, String ownerName) {
     return new LibraryListResponse(
             library.getId(),
             library.getName(),
@@ -926,7 +965,8 @@ public class KnowledgeLibraryService {
             documentCount,
             library.getCreatedAt(),
             library.getUpdatedAt())
-        .description(library.getDescription());
+        .description(library.getDescription())
+        .ownerName(ownerName);
   }
 
   private LibraryResponse toLibraryResponse(KnowledgeLibrary library, AssetRole myRole) {
