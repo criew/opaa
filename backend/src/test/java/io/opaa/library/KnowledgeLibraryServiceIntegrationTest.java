@@ -24,6 +24,9 @@ import io.opaa.group.PermissionSubjectType;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentSourceType;
+import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingJobRepository;
+import io.opaa.indexing.JobStatus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.SpaceRepository;
@@ -92,6 +95,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
+  @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
@@ -868,6 +872,38 @@ class KnowledgeLibraryServiceIntegrationTest {
     documentRepository.delete(document);
     libraryService.deleteLibrary(library.getId(), owner, false);
     assertThat(libraryRepository.findById(library.getId())).isEmpty();
+  }
+
+  @Test
+  void cannotDeleteALibraryWhileAnIndexingRunIsRunningButCanOnceItFinishes() {
+    // #433: deleting the library a RUNNING indexing run targets used to let that run's
+    // documentRepository.save fail against fk_documents_library_organization once the library was
+    // gone, surfacing per document as a failed DataIntegrityViolationException instead of a clean
+    // outcome. The maintainer decided to block the delete itself with a 409 instead.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Laufende Indizierung", DocumentSourceType.UPLOAD), owner);
+    IndexingJob job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(library.getId());
+    indexingJobRepository.save(job);
+
+    assertThatThrownBy(() -> libraryService.deleteLibrary(library.getId(), owner, false))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ResponseStatusException) ex).getStatusCode())
+                    .isEqualTo(HttpStatus.CONFLICT));
+    assertThat(libraryRepository.findById(library.getId())).isPresent();
+
+    // Once the run leaves RUNNING, deletion succeeds - the check is a live guard against the
+    // current job state, not a one-time flag on the library.
+    job.setStatus(JobStatus.COMPLETED);
+    indexingJobRepository.save(job);
+    libraryService.deleteLibrary(library.getId(), owner, false);
+    assertThat(libraryRepository.findById(library.getId())).isEmpty();
+
+    indexingJobRepository.delete(job);
   }
 
   @Test
