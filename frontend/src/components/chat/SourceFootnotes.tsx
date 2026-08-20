@@ -128,7 +128,13 @@ export default function SourceFootnotes({ messageId, citations }: SourceFootnote
     return null
   }
 
-  const stellen = markerCount === 1 ? '1 Stelle' : `${markerCount} Stellen`
+  // Mockup 1a's count line. Markers are the exact truth; when an answer carries none (older
+  // turns, mock data), the cited sources' matchCount sums to the honest fallback.
+  const stellenCount =
+    markerCount > 0
+      ? markerCount
+      : docs.reduce((sum, doc) => sum + (doc.source?.matchCount ?? 1), 0)
+  const stellen = stellenCount === 1 ? '1 Stelle' : `${stellenCount} Stellen`
   const dokumente = docs.length === 1 ? '1 Dokument' : `${docs.length} Dokumenten`
   const foldedLabel =
     `${foldedDocs.length} ${foldedDocs.length === 1 ? 'weiteres Dokument' : 'weitere Dokumente'}` +
@@ -149,7 +155,7 @@ export default function SourceFootnotes({ messageId, citations }: SourceFootnote
         >
           Fundstellen
         </Typography>
-        {markerCount > 0 && (
+        {docs.length > 0 && (
           <Typography component="span" sx={{ fontSize: 11, color: 'text.disabled' }}>
             {stellen} in {dokumente}
           </Typography>
