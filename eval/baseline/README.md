@@ -163,19 +163,23 @@ Rang 3 rutscht — kein verlorener Treffer nötig —, um die Toleranz mehr als 
 relative Deckelung, die die niedrigsten Werte wirksam schützt, fällt für andere, etwas weniger
 extreme Metriken derselben kleinen Gruppe enger aus als der Ein-Fall-Schutz.
 
-**Fix (Issue #306): fallzahlbasierte statt Mittelwert-Prüfung, ausschließlich für Paare mit
-Toleranz < 1/n.** `BaselineComparator` bestimmt das dynamisch (`usesCaseBasedCheck`, nicht anhand
-einer festen Sechs-Paare-Liste) — ein künftiges Baseline-Update, das die Toleranz oder `n` eines
-Paares verschiebt, nimmt oder verliert die fallzahlbasierte Prüfung dafür automatisch. Für die
-betroffenen Paare ersetzt die Prüfung „Zahl der Fälle mit einem Treffer" (`hitCountAt5` für
-`hitRateAt5`; `hitCountAt10` für `mrr`/`ndcgAt10`/`recallAt10` — dasselbe Ereignis pro Fall, da die
-Rangliste dieses Harness nie mehr als `searchTopK=10` Einträge hat) die Mittelwert-Toleranz: die
-Zahl darf gegenüber der Baseline um höchstens `MAX_CASE_COUNT_DROP=1` sinken. Das ist exakt die in
-ADR-0013s Abschnitt „Offen" vorgeschlagene Prüfung. `hitCountAt5`/`hitCountAt10` sind dafür neue,
-je Gruppe geführte Felder der Baseline-Datei — siehe [Aufbau](#aufbau) oben und `BaselineComparator`s
-Javadoc für die Begründung, warum sie nicht aus den bereits committeten Mittelwerten zurückgerechnet
-werden können (das wäre für `hitRateAt5` exakt, für die drei stetigen Metriken aber nicht). Details,
-Herleitung und die Abwägung gegenüber der verworfenen Alternative: ADR-0013, Nachtrag zu Issue #306.
+**Fix (Issue #306): fallzahlbasierte *und* Mittelwert-Prüfung (Konjunktion), ausschließlich für
+Paare mit Toleranz < 1/n.** `BaselineComparator` bestimmt das dynamisch (`usesCaseBasedCheck`, nicht
+anhand einer festen Sechs-Paare-Liste) — ein künftiges Baseline-Update, das die Toleranz oder `n`
+eines Paares verschiebt, nimmt oder verliert die fallzahlbasierte Prüfung dafür automatisch. Für die
+betroffenen Paare müssen **beide** Bedingungen gelten: die Zahl der Fälle mit einem Treffer
+(`hitCountAt5` für `hitRateAt5`; `hitCountAt10` für `mrr`/`ndcgAt10`/`recallAt10` — dasselbe Ereignis
+pro Fall, da die Rangliste dieses Harness nie mehr als `searchTopK=10` Einträge hat) darf gegenüber
+der Baseline um höchstens `MAX_CASE_COUNT_DROP=1` sinken (exakt die in ADR-0013s Abschnitt „Offen"
+vorgeschlagene Prüfung), **und** der Mittelwert muss innerhalb der auf mindestens `1/n` geweiteten
+Toleranz bleiben (`max(toleranceFor(...), 1/n)`, nie enger als bisher). Eine reine Ersetzung der
+Mittelwert-Prüfung — die erste, im Review zu PR #694 korrigierte Fassung dieses Fixes — hätte für
+diese sechs Paare jeden Schutz gegen eine schwere Rang- oder Teiltreffer-Verschlechterung ohne
+verlorenen Treffer aufgegeben (Beispiel: `numeric_range`/`mrr` kann so um 75 % fallen); Details zur
+Korrektur: ADR-0013, Nachtrag zu Issue #306. `hitCountAt5`/`hitCountAt10` sind dafür neue, je Gruppe
+geführte Felder der Baseline-Datei — siehe [Aufbau](#aufbau) oben und `BaselineComparator`s Javadoc
+für die Begründung, warum sie nicht aus den bereits committeten Mittelwerten zurückgerechnet werden
+können (das wäre für `hitRateAt5` exakt, für die drei stetigen Metriken aber nicht).
 
 Diese engen Toleranzen sind bewusst gewählt, **weil** die Reproduzierbarkeit oben belegt ist: Eine
 weite Toleranz würde bei nachgewiesener Stabilität keinen zusätzlichen Schutz vor falschem

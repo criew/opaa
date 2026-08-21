@@ -5,8 +5,12 @@ import static org.assertj.core.api.Assertions.within;
 
 import io.opaa.eval.EvaluationReport.OneChunkInvariantResult;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -53,51 +57,51 @@ class BaselineComparatorTest {
   // --- issue #306: case-count check for pairs where the mean tolerance is tighter than 1/n -----
 
   @Test
-  void usesCaseBasedCheckIdentifiesExactlyTheSixKnownAffectedPairs() {
-    // Nachgerechnet direkt aus der committeten Baseline (eval/baseline/comic-characters.json,
-    // Stand Issue #306) — siehe eval/baseline/README.md, Abschnitt "Bekannter ... Grenzfall", und
-    // BaselineComparator's class Javadoc for the same table. Recomputing this from the live
-    // toleranceFor(...)/usesCaseBasedCheck(...) formulas (rather than hardcoding "affected" as a
-    // boolean per case) is itself the point of issue #306's chosen design: this test would fail
-    // loudly if a future baseline edit silently changed which pairs are protected.
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.060, 15), 16))
-        .as("numeric_range/recallAt10")
-        .isTrue();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.063, 15), 16))
-        .as("numeric_range/ndcgAt10")
-        .isTrue();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.101, 15), 16))
-        .as("numeric_range/mrr")
-        .isTrue();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.188, 15), 16))
-        .as("numeric_range/hitRateAt5")
-        .isTrue();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.137, 21), 21))
-        .as("multi_attribute_filter/ndcgAt10")
-        .isTrue();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.159, 21), 21))
-        .as("multi_attribute_filter/recallAt10")
-        .isTrue();
+  void usesCaseBasedCheckIdentifiesExactlyTheSixKnownAffectedPairsInTheCommittedBaseline()
+      throws IOException {
+    // Issue #306 review, Befund 2: the previous version of this test hardcoded the baseline's
+    // numeric literals (0.063, 15, 16, ...) instead of loading the committed baseline file, so it
+    // could not actually detect a future baseline edit that shifted which pairs are protected — it
+    // would just keep comparing a frozen snapshot against itself. Loading the real file here means
+    // this test fails loudly exactly when the set of case-based pairs changes, matching what its
+    // comment always claimed.
+    Path baselineFile = RepoPaths.evalDir().resolve("baseline").resolve("comic-characters.json");
+    Baseline baseline = Baseline.load(baselineFile);
 
-    // Not affected — the mean tolerance already covers a single-case shift (1/n) for these:
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.238, 21), 21))
-        .as("multi_attribute_filter/hitRateAt5")
-        .isFalse();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.206, 21), 21))
-        .as("multi_attribute_filter/mrr")
-        .isFalse();
-    assertThat(
-            BaselineComparator.usesCaseBasedCheck(BaselineComparator.toleranceFor(0.521, 94), 121))
-        .as("overall/hitRateAt5")
-        .isFalse();
+    Set<String> affectedPairs = new TreeSet<>();
+    baseline
+        .groups()
+        .forEach(
+            (group, aggregate) -> {
+              int nEff = aggregate.distinctExpectedDocumentSets();
+              int n = aggregate.n();
+              record MetricValue(String name, double value) {}
+              for (var mv :
+                  List.of(
+                      new MetricValue("hitRateAt5", aggregate.hitRateAt5()),
+                      new MetricValue("mrr", aggregate.mrr()),
+                      new MetricValue("ndcgAt10", aggregate.ndcgAt10()),
+                      new MetricValue("recallAt10", aggregate.recallAt10()))) {
+                double tolerance = BaselineComparator.toleranceFor(mv.value(), nEff);
+                if (BaselineComparator.usesCaseBasedCheck(tolerance, n)) {
+                  affectedPairs.add(group + "/" + mv.name());
+                }
+              }
+            });
+
+    // Recorded in eval/baseline/README.md ("Bekannter ... Grenzfall") and BaselineComparator's
+    // class Javadoc as of issue #306 — this assertion is the single source that must be updated,
+    // in lockstep with those two docs, whenever a baseline re-measurement legitimately shifts which
+    // pairs are protected. A silent shift (this set changing without a matching doc update) is
+    // exactly the failure this test now catches that the hardcoded-literals version could not.
+    assertThat(affectedPairs)
+        .containsExactlyInAnyOrder(
+            "category:numeric_range/hitRateAt5",
+            "category:numeric_range/mrr",
+            "category:numeric_range/ndcgAt10",
+            "category:numeric_range/recallAt10",
+            "category:multi_attribute_filter/ndcgAt10",
+            "category:multi_attribute_filter/recallAt10");
   }
 
   @Test
@@ -166,6 +170,119 @@ class BaselineComparatorTest {
         .as("a rank-only flip with no lost hit must not be flagged as a regression")
         .isTrue();
     assertThat(result.passed()).isTrue();
+  }
+
+  @Test
+  void severeRankDegradationWithNoLostHitsIsCaughtByTheWidenedMeanCheck() {
+    // Issue #306 review, Befund 1: the case-count check alone protects against *lost* hits, not
+    // against a same-hit-count regression that is nevertheless severe. Reproduces the reviewer's
+    // exact numeric_range/mrr example against the real committed baseline data: numeric_range's
+    // four hitting cases sit at ranks 1, 4, 5 and 6 today (mrr contributions summing to 0.101 * 16
+    // = 1.616). If all four slide to rank 10 (mrr contribution 0.1 each, sum 0.4, mean 0.025) — no
+    // hit lost, hitCountAt10 stays at 4 — the case-count check alone would have passed this
+    // (issue #306's first, since-corrected version indeed did). The widened mean check
+    // (max(meanTolerance, 1/n) = max(0.0253, 1/16=0.0625) = 0.0625) catches it: the actual drop is
+    // 0.076, above 0.0625.
+    MetricsAggregate baselineNumericRange =
+        new MetricsAggregate(16, 0.188, 0.101, 0.063, 0.060, 0.9382, 15, 3, 4);
+    MetricsAggregate currentNumericRange =
+        new MetricsAggregate(16, 0.188, 0.025, 0.063, 0.060, 0.9382, 15, 3, 4);
+
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("numeric_range"),
+                baselineNumericRange),
+            "2026-08-03",
+            null,
+            "test fixture — issue #306 review Befund 1");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of("numeric_range", currentNumericRange),
+            Map.of(),
+            Map.of(),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    var mrrCheck =
+        result.checks().stream()
+            .filter(
+                c ->
+                    c.group().equals(Baseline.category("numeric_range"))
+                        && c.metric().equals("mrr"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(mrrCheck.caseBasedCheck()).isTrue();
+    assertThat(mrrCheck.tolerance()).isCloseTo(1.0 / 16, within(1e-9));
+    assertThat(mrrCheck.withinTolerance())
+        .as("a 75%% mrr drop with no lost hit must still be flagged as a regression")
+        .isFalse();
+    assertThat(result.passed()).isFalse();
+  }
+
+  @Test
+  void partialRecallDegradationWithNoLostHitsIsCaughtByTheWidenedMeanCheck() {
+    // Same failure mode as the mrr test above, for recallAt10 (per-case continuous, not binary):
+    // reproduces the reviewer's multi_attribute_filter/recallAt10 example — every hitting case
+    // finds only one of its several expected documents instead of its current mix, dropping the
+    // group mean from 0.159 to 0.098 while hitCountAt10 (still >0 recall per hitting case) stays
+    // at 10.
+    MetricsAggregate baselineFilter =
+        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.159, 0.9331, 21, 5, 10);
+    MetricsAggregate currentFilter =
+        new MetricsAggregate(21, 0.238, 0.206, 0.137, 0.098, 0.9331, 21, 5, 10);
+
+    Baseline baseline =
+        new Baseline(
+            1,
+            fixedPoints("m1", "d1", "corpus-a", "golden-a"),
+            Map.of(
+                Baseline.OVERALL,
+                overallMetrics(),
+                Baseline.category("multi_attribute_filter"),
+                baselineFilter),
+            "2026-08-03",
+            null,
+            "test fixture — issue #306 review Befund 1");
+    EvaluationReport report =
+        new EvaluationReport(
+            1,
+            runConfiguration("m1", "d1", "corpus-a", "golden-a"),
+            new OneChunkInvariantResult(1458, List.of()),
+            new EvaluationReport.DatasetNotes(121, 94, "note"),
+            overallMetrics(),
+            Map.of("multi_attribute_filter", currentFilter),
+            Map.of(),
+            Map.of(),
+            List.of(),
+            List.of());
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    var recallCheck =
+        result.checks().stream()
+            .filter(
+                c ->
+                    c.group().equals(Baseline.category("multi_attribute_filter"))
+                        && c.metric().equals("recallAt10"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(recallCheck.caseBasedCheck()).isTrue();
+    assertThat(recallCheck.withinTolerance())
+        .as("a partial-recall regression with no lost hit must still be flagged")
+        .isFalse();
+    assertThat(result.passed()).isFalse();
   }
 
   @Test

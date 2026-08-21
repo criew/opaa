@@ -84,14 +84,15 @@ public final class BaselineMarkdownWriter {
             + "|---|---|---|---|---|---|---|---|\n");
     boolean anyCaseBased = false;
     for (var check : result.checks()) {
-      // Issue #306: for the case-count check, tolerance() is a case count (MAX_CASE_COUNT_DROP),
-      // not a metric-point amount — the "*" plus the footnote below makes that unit switch visible
-      // instead of silently formatting a case count as if it were a fraction of the metric.
+      // Issue #306 (review Befund 1 — conjunction, not replacement): for a case-based pair,
+      // tolerance() is already the *effective* mean tolerance (max(meanTolerance, 1/n)) actually
+      // applied — the "*" plus the footnote below only flags that this pair *additionally*
+      // required the case-count check to pass, not that the unit of tolerance() changed.
       anyCaseBased = anyCaseBased || check.caseBasedCheck();
       sb.append(
           String.format(
               Locale.ROOT,
-              "| %s | %s%s | %d | %.3f | %.3f | %+.3f | %s | %s |\n",
+              "| %s | %s%s | %d | %.3f | %.3f | %+.3f | %.3f | %s |\n",
               check.group(),
               check.metric(),
               check.caseBasedCheck() ? "*" : "",
@@ -99,17 +100,15 @@ public final class BaselineMarkdownWriter {
               check.baselineValue(),
               check.currentValue(),
               check.delta(),
-              check.caseBasedCheck()
-                  ? String.format(Locale.ROOT, "%.0f Fall/Fälle", check.tolerance())
-                  : String.format(Locale.ROOT, "%.3f", check.tolerance()),
+              check.tolerance(),
               check.passed() ? "✅" : "❌"));
     }
     if (anyCaseBased) {
       sb.append(
-          "\n_* fallzahlbasierte Prüfung (issue #306): die Zahl der Fälle mit einem Treffer darf "
-              + "gegenüber der Baseline um höchstens die angegebene Zahl sinken, statt den "
-              + "Mittelwert innerhalb einer Toleranz zu halten — siehe `BaselineComparator`s "
-              + "Javadoc._\n");
+          "\n_* fallzahlbasierte Prüfung (issue #306): zusätzlich zur (auf mindestens eine "
+              + "Fallbreite `1/n` geweiteten) Mittelwert-Toleranz in der Tabelle oben muss die "
+              + "Zahl der Fälle mit einem Treffer gegenüber der Baseline um höchstens einen Fall "
+              + "sinken — beide Bedingungen müssen gelten, siehe `BaselineComparator`s Javadoc._\n");
     }
 
     if (!anyFailed) {
