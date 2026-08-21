@@ -11,6 +11,19 @@
 // AGENTS.md "Git Worktrees für parallele Sessions"). It also uses its own
 // host ports and its own env file (OPAA_ENV_FILE, see docker-compose.yml),
 // so this script never reads or writes a developer's own .env.docker.
+//
+// Two targets, one script (Issue #232 - reuse this infrastructure instead
+// of copying it):
+//   node scripts/run-e2e.mjs                  # default target "e2e" (npm test)
+//   node scripts/run-e2e.mjs --target demo     # demo-profile smoke test (npm run test:demo-smoke)
+// The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
+// Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
+// for the chat/embedding provider, seeds it with `demo/seed/seed.py
+// --profile demo`, and runs the single Playwright spec under
+// e2e/demo-smoke/tests/ - never the regular suite under e2e/tests/. It is
+// deliberately not part of `npm test`: indexing the ~150-300 real
+// documents of the Rheinfurt corpus takes far longer than the minimal e2e
+// seed profile.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
@@ -21,27 +34,69 @@ const e2eDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = resolve(e2eDir, '..')
 const isWindows = process.platform === 'win32'
 
-const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? 'opaa-e2e'
-const backendPort = process.env.OPAA_BACKEND_PORT ?? '18081'
-const frontendPort = process.env.OPAA_FRONTEND_PORT ?? '13000'
-const dbPort = process.env.OPAA_DB_PORT ?? '15432'
+// "--target demo" / "--target=demo" picked out of argv before the rest is forwarded to
+// Playwright as-is (extraTestArgs below) - a bare "npx playwright test --target demo" would
+// otherwise fail with an unknown-option error.
+const rawArgs = process.argv.slice(2)
+let target = process.env.E2E_TARGET ?? 'e2e'
+const targetFlagIndex = rawArgs.findIndex((arg) => arg === '--target' || arg.startsWith('--target='))
+if (targetFlagIndex !== -1) {
+  const flag = rawArgs[targetFlagIndex]
+  if (flag.includes('=')) {
+    target = flag.split('=')[1]
+    rawArgs.splice(targetFlagIndex, 1)
+  } else {
+    target = rawArgs[targetFlagIndex + 1]
+    rawArgs.splice(targetFlagIndex, 2)
+  }
+}
+if (target !== 'e2e' && target !== 'demo') {
+  console.error(`Unbekanntes --target "${target}" (erwartet: "e2e" oder "demo")`)
+  process.exit(1)
+}
+const extraTestArgs = rawArgs
+const isDemo = target === 'demo'
+
+// The "demo" Compose profile's Keycloak realm (keycloak/realm-export.json) has a static
+// redirectUris list scoped to http://localhost:3000 and http://localhost:5173 - unlike the "e2e"
+// target, these ports are therefore not freely relocatable via env vars without also editing the
+// realm export. A demo-smoke run must not run alongside a developer's own dev stack on the same
+// host; it gets its own Compose project name instead (below) so at least container/volume/network
+// names never collide.
+const composeProjectName =
+  process.env.COMPOSE_PROJECT_NAME ?? (isDemo ? 'opaa-demo-smoke' : 'opaa-e2e')
+const backendPort = process.env.OPAA_BACKEND_PORT ?? (isDemo ? '8081' : '18081')
+const frontendPort = process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : '13000')
+const dbPort = process.env.OPAA_DB_PORT ?? (isDemo ? '5432' : '15432')
+const keycloakPort = process.env.OPAA_KEYCLOAK_PORT ?? '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
 const skipBuild = process.env.E2E_SKIP_BUILD === 'true'
-const extraTestArgs = process.argv.slice(2)
 
-const composeArgs = ['compose', '-f', 'docker-compose.yml', '-f', 'e2e/docker-compose.e2e.yml']
+const overlayFile = isDemo ? 'e2e/docker-compose.demo-smoke.yml' : 'e2e/docker-compose.e2e.yml'
+const envFile = isDemo ? 'e2e/demo-smoke.env' : 'e2e/e2e.env'
+const composeArgs = [
+  'compose',
+  ...(isDemo ? ['--profile', 'demo'] : []),
+  '-f',
+  'docker-compose.yml',
+  '-f',
+  overlayFile,
+]
 
-// No auth secrets are needed: the stack runs in the "dev" auth profile,
-// which has neither credentials nor a signing key (see e2e/e2e.env).
+// No auth secrets are needed for the "e2e" target: the stack runs in the "dev" auth profile,
+// which has neither credentials nor a signing key (see e2e/e2e.env). The "demo" target's Keycloak
+// realm carries only documented demo credentials (demo/README.md, "Demo-Zugangsdaten"), never a
+// real secret either.
 
 const composeEnv = {
   ...process.env,
   COMPOSE_PROJECT_NAME: composeProjectName,
-  OPAA_ENV_FILE: 'e2e/e2e.env',
+  OPAA_ENV_FILE: envFile,
   OPAA_BACKEND_PORT: backendPort,
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
+  OPAA_KEYCLOAK_PORT: keycloakPort,
 }
 
 let tornDown = false
@@ -60,7 +115,7 @@ function run(command, args, { cwd = repoRoot, env = process.env } = {}) {
 }
 
 function dumpLogs() {
-  const logPath = join(e2eDir, 'docker-compose.log')
+  const logPath = join(e2eDir, isDemo ? 'docker-compose.demo-smoke.log' : 'docker-compose.log')
   console.log(`\n> Saving container logs to ${logPath}`)
   const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {
     cwd: repoRoot,
@@ -95,12 +150,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   })
 }
 
-// Fills the freshly started stack with the e2e data profile (docs/features/demo-instance.md,
-// "Installation und Seed" - Issue #233): the same seed.py the "demo" Compose profile uses, run
-// here against the E2E stack's own dev-auth backend/port instead of Keycloak. This is the only
-// remaining way this suite gets pre-existing content into a fresh instance - e2e/fixtures/rss-feed/
-// and e2e/fixtures/test-documents/ used to be a second, independent one (see demo/seed/profiles.py
-// and this suite's own spec files for where their content lives now, under demo/seed/e2e-data/).
+// Fills the freshly started stack with test data (docs/features/demo-instance.md, "Installation
+// und Seed" - Issue #233/#232): the same seed.py both the "demo" and "e2e" Compose profiles use,
+// against this run's own backend/port - Keycloak login for "demo", the dev-auth header for "e2e".
 const pythonCmd = isWindows ? 'python' : 'python3'
 const venvDir = join(e2eDir, '.venv')
 // A bare "pip install -r ..." would target whatever interpreter/site-packages "python"/"python3"
@@ -134,13 +186,22 @@ function runSeed() {
     console.error('pip install for demo/seed failed')
     return installStatus
   }
-  return run(venvPython, [
+  const seedArgs = [
     'demo/seed/seed.py',
     '--profile',
-    'e2e',
+    target,
     '--base-url',
     `http://localhost:${backendPort}/api`,
-  ])
+  ]
+  if (isDemo) {
+    // The Rheinfurt corpus (~150-300 documents across four connector-fed libraries plus 26
+    // uploads) takes noticeably longer to index than the "e2e" profile's single seed document,
+    // even with ai-stub's deterministic, near-instant embeddings - most of the time goes into
+    // Tika parsing the PDF/DOCX/PPTX uploads and the HTTP_DIRECTORY/RSS_FEED crawls themselves.
+    // Well above the seed's own 300s default (demo/seed/seed.py, parse_args).
+    seedArgs.push('--keycloak-url', `http://localhost:${keycloakPort}`, '--indexing-timeout-seconds', '600')
+  }
+  return run(venvPython, seedArgs)
 }
 
 async function waitUntilReady(timeoutMs) {
@@ -163,11 +224,19 @@ async function main() {
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
   run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
 
+  // The "e2e" target names its services explicitly (only the ones this suite needs); the "demo"
+  // target relies on `--profile demo` (already in composeArgs above) to pull in
+  // keycloak/demo-corpus/demo-presse alongside the always-on postgres/backend/frontend/ai-stub -
+  // naming a profile-gated service explicitly does not start it without its profile also active,
+  // so composeArgs' `--profile demo` is what actually does the work either way.
+  const services = isDemo
+    ? ['postgres', 'backend', 'frontend', 'keycloak', 'demo-corpus', 'demo-presse', 'ai-stub']
+    : ['ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
   console.log(
-    `> Starting E2E stack (ai-stub, rss-feed, postgres, backend, frontend) as Compose project "${composeProjectName}"` +
+    `> Starting ${isDemo ? 'demo' : 'E2E'} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}`,
   )
-  const upArgs = [...composeArgs, 'up', '-d', 'ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
+  const upArgs = [...composeArgs, 'up', '-d', ...services]
   if (!skipBuild) {
     upArgs.splice(upArgs.indexOf('up') + 1, 0, '--build')
   }
@@ -190,7 +259,7 @@ async function main() {
     return
   }
 
-  console.log('> Seeding e2e data profile (demo/seed/seed.py --profile e2e, Issue #233)')
+  console.log(`> Seeding ${target} data profile (demo/seed/seed.py --profile ${target})`)
   const seedStatus = runSeed()
   if (seedStatus !== 0) {
     console.error('Seed run failed')
@@ -201,7 +270,16 @@ async function main() {
   }
 
   console.log('> Running Playwright tests')
-  const testStatus = run(isWindows ? 'npx.cmd' : 'npx', ['playwright', 'test', ...extraTestArgs], {
+  const playwrightArgs = ['playwright', 'test']
+  if (isDemo) {
+    // A dedicated config (testDir e2e/demo-smoke/tests) instead of testMatch on the default
+    // e2e/playwright.config.ts - that keeps the demo smoke spec out of `npx playwright test`
+    // (no path argument) as run by the "e2e" target and CI's e2e.yml, without either file needing
+    // to know the other exists.
+    playwrightArgs.push('--config', 'demo-smoke/playwright.config.ts')
+  }
+  playwrightArgs.push(...extraTestArgs)
+  const testStatus = run(isWindows ? 'npx.cmd' : 'npx', playwrightArgs, {
     cwd: e2eDir,
     env: {
       ...process.env,

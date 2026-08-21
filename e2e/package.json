@@ -6,6 +6,7 @@
   "description": "Browser-based end-to-end tests for OPAA (Playwright).",
   "scripts": {
     "test": "node scripts/run-e2e.mjs",
+    "test:demo-smoke": "node scripts/run-e2e.mjs --target demo",
     "test:playwright": "playwright test",
     "install:browsers": "playwright install --with-deps chromium",
     "typecheck": "tsc --noEmit -p tsconfig.json"

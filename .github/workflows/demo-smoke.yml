@@ -1,0 +1,132 @@
+name: Demo-Smoke
+
+# Not a Required Check and not run on every pull request (unlike .github/workflows/e2e.yml):
+# indexing the full Rheinfurt corpus (~150-300 documents across four connector-fed libraries plus
+# 26 uploads, docs/features/demo-instance.md) takes noticeably longer than the "e2e" data profile
+# that e2e.yml's own run covers, and this workflow's only job is to catch regressions in the
+# "demo" Compose profile/seed themselves (Issue #232), not to gate every PR on that extra time.
+# Nightly via schedule (same post-merge QA reasoning as e2e.yml) plus workflow_dispatch, so it can
+# be triggered on demand before a presentation or right after a corpus/seed change.
+on:
+  schedule:
+    - cron: '42 3 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: opaa-demo-smoke
+
+jobs:
+  demo-smoke:
+    runs-on: ubuntu-latest
+    # The demo seed itself budgets up to 600s per indexing run (scripts/run-e2e.mjs --target
+    # demo); this workflow's own budget has to cover four such runs plus 26 upload waits, on top
+    # of the image build below - generous on purpose, this job is not on any merge-blocking path.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Same pre-build + load pattern as e2e.yml, tagged for Compose project "opaa-demo-smoke"
+      # (<project>-<service>:latest) so scripts/run-e2e.mjs can run with E2E_SKIP_BUILD=true and
+      # reuse these images instead of rebuilding them from inside the timed run.
+      - name: Build backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          file: backend/Dockerfile
+          tags: opaa-demo-smoke-backend:latest
+          load: true
+          cache-from: type=gha,scope=demo-smoke-backend
+          cache-to: type=gha,mode=max,scope=demo-smoke-backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-demo-smoke-frontend:latest
+          load: true
+          cache-from: type=gha,scope=demo-smoke-frontend
+          cache-to: type=gha,mode=max,scope=demo-smoke-frontend
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      # demo/seed/seed.py needs python3 + pip on the runner, same as e2e.yml.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Type-check E2E suite
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Resolve Playwright version
+        id: playwright-version
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        timeout-minutes: 6
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      - name: Run demo smoke test
+        working-directory: e2e
+        run: npm run test:demo-smoke
+        env:
+          E2E_SKIP_BUILD: 'true'
+
+      # if: !cancelled() (not failure()) on purpose: when the job hits timeout-minutes, GitHub
+      # marks it cancelled, not failed, and if: failure() would silently skip artifact upload in
+      # exactly the case investigators need it most (matches e2e.yml).
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: demo-smoke-playwright-report
+          path: e2e/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload traces & screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: demo-smoke-playwright-traces
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload container logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: demo-smoke-docker-compose-logs
+          path: e2e/docker-compose.demo-smoke.log
+          if-no-files-found: ignore
+          retention-days: 14

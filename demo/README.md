@@ -229,5 +229,6 @@ Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare 
 ## Umfang außerhalb dieses Verzeichnisses
 
 - Demo-Drehbuch und Installationsanleitung — #713
-- Smoke-Test gegen das `demo`-Profil — #232
+- Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `npm run test:demo-smoke` in
+  `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230
