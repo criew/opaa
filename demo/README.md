@@ -204,7 +204,13 @@ python seed.py --profile e2e --base-url http://localhost:18081/api
 Bibliotheken werden vor dem Anlegen per Namenssuche geprüft (Spaces über die Session des jeweiligen
 Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uploads werden anhand von
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
-und `upsertAssetGrant` ersetzt statt zu duplizieren.
+und `upsertAssetGrant` ersetzt statt zu duplizieren. Bricht der Seed beim `demo`-Profil mit „Die
+Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 26 sequentiellen
+Uploads der internen Bibliothek können `uploadTaskExecutor`s Warteschlange füllen, siehe
+[`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md), Abschnitt „Umgebung konfigurieren"),
+behebt genau diese Idempotenz das: Ein zweiter `python seed.py --profile demo`-Lauf lädt die als
+`FAILED` markierten Dokumente erneut hoch, ohne bereits erfolgreich indizierte Dokumente
+anzurühren.
 
 **Ratenbegrenzung:** `RateLimitFilter` schlüsselt die Indizierungsauslösung nach Client-IP **und**
 Bibliothek (`opaa.rate-limit.indexing`, Default 1 Anfrage/60s je IP+Bibliothek) sowie zusätzlich
@@ -232,5 +238,6 @@ ausformulierte Vorführ-Drehbuch mit acht Fragen stehen an einer Stelle, nicht d
 ## Umfang außerhalb dieses Verzeichnisses
 
 - Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
-- Smoke-Test gegen das `demo`-Profil — #232
+- Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `npm run test:demo-smoke` in
+  `e2e/`, siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
 - Rollout auf einen erreichbaren Host — #230
