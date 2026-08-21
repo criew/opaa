@@ -67,6 +67,10 @@ Eine öffentliche Test- und Demo-Instanz läuft unter [opaa.ewerlin.com](https:/
 (Anmeldung erforderlich, kein anonymer Zugang). Details in der
 [Deployment-Dokumentation](docs/deployment.md#öffentliche-testinstanz).
 
+Die eigene, lokal installierbare Demo-Instanz „Stadt Rheinfurt" — fiktiver Verwaltungskorpus, vier
+Demo-Nutzer mit Berechtigungsgrenze, ein ausformuliertes Drehbuch mit acht Vorführfragen — startet mit
+einem Befehl: [docs/demo-walkthrough.md](docs/demo-walkthrough.md).
+
 ## Stand
 
 OPAA ist im Aufbau. Das Fundament steht — Aufnahme und Indizierung von Dokumenten, Abfrage mit

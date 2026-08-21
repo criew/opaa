@@ -216,9 +216,12 @@ Deployment gemäß `docs/deployment.md`, Abschnitt „Härtung für erreichbare 
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | `RheinfurtDemo!2026` |
 | `andrea.vogt` | Amtsleitung Bürgerbüro | `RheinfurtDemo!2026` |
 
+Rollen, Spaces, lesbare Bibliotheken je Konto und das ausformulierte Vorführ-Drehbuch mit acht
+Fragen: [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md).
+
 ## Umfang außerhalb dieses Verzeichnisses
 
-- Demo-Drehbuch und Installationsanleitung — #713
+- Demo-Drehbuch und Installationsanleitung — [`docs/demo-walkthrough.md`](../docs/demo-walkthrough.md) (#713)
 - Smoke-Test gegen das `demo`-Profil — #232
 - Umstellung der bestehenden E2E-Feature-Tests auf das `e2e`-Datenprofil — #233
 - Rollout auf einen erreichbaren Host — #230
