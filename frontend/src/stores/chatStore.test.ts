@@ -1059,6 +1059,72 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual([])
     })
 
+    // #619: the other half of the race #618 only closed for the reverse arrival order - here the
+    // GET is sent *before* the PATCH commits, but the PATCH's response arrives *before* the GET's
+    // own response. Without a guard, loadChat's success handler applies its now-stale snapshot
+    // (read before the PATCH committed) on top of the settings the PATCH just confirmed, silently
+    // diverging the chip bar from the server again.
+    it('does not let a loadChat response overwrite settings a PATCH already confirmed while the GET was still in flight', async () => {
+      const chatGet = deferred<void>()
+      server.use(
+        http.get('/api/v1/chats/:chatId', async ({ params }) => {
+          if (params.chatId === EXISTING_CHAT_ID) {
+            await chatGet.promise
+          }
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            // The GET's snapshot, read before the PATCH below committed - still the pre-change
+            // settings.
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: String(params.chatId),
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: body.useKnowledge,
+            referencedLibraryIds: body.referencedLibraryIds ?? [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      // Seeds state as if a previous loadChat had already established chat A as active - the GET
+      // triggered below is the one whose response arrives late.
+      useChatStore.setState({
+        chatId: EXISTING_CHAT_ID,
+        spaceId: SPACE_ID,
+        scope: 'all',
+        referencedLibraryIds: [],
+      })
+
+      const load = useChatStore.getState().loadChat(EXISTING_CHAT_ID) // GET in flight, held open
+
+      useChatStore.getState().clearScope() // PATCH sent after the GET, and settles before it
+      await useChatStore.getState().pendingSettingsUpdate
+      expect(useChatStore.getState().scope).toBe('none')
+
+      chatGet.resolve() // the GET's stale response now arrives, after the PATCH already landed
+      await load
+
+      const state = useChatStore.getState()
+      expect(state.scope).toBe('none')
+      expect(state.referencedLibraryIds).toEqual([])
+    })
+
     // #618 review: mirrors "does not inherit an error or rolled-back state..." above, but for the
     // success handler's chatId guard - a settings PATCH for chat A that only ends up succeeding
     // after the user has since navigated to chat B (with no further settings change of their own)
