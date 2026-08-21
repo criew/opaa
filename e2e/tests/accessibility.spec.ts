@@ -38,7 +38,9 @@ test.describe('Barrierefreiheit (axe-core, #586)', () => {
       }),
     )
     await page.goto('/login')
-    await expect(page.getByRole('button', { name: 'Mit SSO anmelden' })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Anmelden über den Verzeichnisdienst' }),
+    ).toBeVisible()
 
     await expectNoSeriousA11yViolations(page, 'Anmeldeseite', KNOWN_EXCEPTIONS)
   })
