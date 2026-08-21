@@ -6,6 +6,16 @@ nächtliche Regressionsjob (`.github/workflows/retrieval-regression.yml`, Gradle
 ausgewertet wird sie von `io.opaa.eval.Baseline`/`io.opaa.eval.BaselineComparator` im
 `evalTest`-Source-Set.
 
+## Domäne `city-landmarks` (Issue #234)
+
+`city-landmarks.json` ist die separate Baseline für die zweite Domäne — eigene Gruppen, eigene
+Toleranzen, kein gemeinsames `overall` mit `comic-characters` (Issue #234 Abnahmekriterium). Geladen
+über denselben Mechanismus (`io.opaa.eval.Baseline`/`BaselineComparator`), verglichen über
+`./gradlew checkCityLandmarksRetrievalBaseline` gegen den Report aus
+`./gradlew evaluateCityLandmarksRetrieval`. Alles Weitere in diesem README (Toleranzformel,
+Rundungsregel, Aktualisierungsverfahren) gilt unverändert auch für diese Domäne — nur die
+Gruppennamen, Fallzahlen und Zahlenwerte unterscheiden sich zwischen den beiden Baseline-Dateien.
+
 ## Aufbau
 
 ```json
