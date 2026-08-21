@@ -22,7 +22,17 @@ class IndexingConfigurationThreadPoolTest {
   void uploadPoolSizeIsUnaffectedByRaisingTheIndexingPoolSize() {
     IndexingProperties indexingProperties =
         new IndexingProperties(
-            null, 0, 0, 0, 0, new IndexingProperties.ThreadPool(9, 20, 99), null, null, null, null);
+            null,
+            0,
+            0,
+            0,
+            0,
+            new IndexingProperties.ThreadPool(9, 20, 99),
+            null,
+            null,
+            null,
+            null,
+            0);
     UploadProperties uploadProperties =
         new UploadProperties(null, 0, new UploadProperties.ThreadPool(1, 2, 3), 0, 0);
 

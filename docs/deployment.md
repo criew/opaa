@@ -438,6 +438,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
 | `OPAA_INDEXING_BATCH_SIZE` | `50` | `50` | Chunks pro Embedding-API-Aufruf (1–1.000) |
+| `OPAA_INDEXING_EMBEDDING_CONCURRENCY` | `3` | `3` | Maximale Anzahl gleichzeitiger Embedding-Aufrufe je Dokument, gebündelt über einen gemeinsamen, prozessweiten Pool (1–32, #734). `1` entspricht dem sequenziellen Verhalten vor #734. Konservativer Default für CPU-gebundenes, lokal betriebenes Ollama (im Benchmark zu #734 kein Durchsatzgewinn über Concurrency 1 hinaus — die Embedding-Berechnung serialisiert dort intern). Bei einem netzwerk-/latenzgebundenen API- oder GPU-Backend, das gleichzeitige Anfragen tatsächlich parallel bedient, sind deutlich höhere Werte sinnvoll (8–16 im selben Benchmark) — keine automatische Erkennung, das Betriebsteam kennt sein Backend |
 | `OPAA_INDEXING_RETRY_ATTEMPTS` | `3` | `3` | Wiederholungsanzahl bei vorübergehenden Fehlern (0–10) |
 | `OPAA_INDEXING_THREAD_POOL_CORE_SIZE` | `2` | `2` | Kern-Threads für asynchrone Indizierung |
 | `OPAA_INDEXING_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für asynchrone Indizierung |

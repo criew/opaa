@@ -53,7 +53,9 @@ public class IndexingConfiguration {
       VectorStore vectorStore,
       ChecksumService checksumService,
       IndexingMetrics indexingMetrics,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      IndexingProperties indexingProperties,
+      TaskExecutor embeddingTaskExecutor) {
     return new FileProcessingService(
         documentService,
         chunkingService,
@@ -61,7 +63,9 @@ public class IndexingConfiguration {
         vectorStore,
         checksumService,
         indexingMetrics,
-        libraryStorageQuotaService);
+        libraryStorageQuotaService,
+        indexingProperties,
+        embeddingTaskExecutor);
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: both beans carry @Async
@@ -208,6 +212,35 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(pool.maxSize());
     executor.setQueueCapacity(pool.queueCapacity());
     executor.setThreadNamePrefix("indexing-");
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * Backs {@link FileProcessingService}'s concurrent embedding calls (#734,
+   * opaa.indexing.embedding-concurrency). A single pool shared across every concurrent indexing run
+   * in the process, not one per run or per library - the property's own Javadoc explains why that
+   * is the actual bound this issue asks for ("KEIN unbegrenztes Fan-out"): however many libraries
+   * index at once, the number of Ollama/embedding-provider calls in flight at any moment never
+   * exceeds {@code embeddingConcurrency}.
+   *
+   * <p>Fixed-size (core == max), mirroring {@link #uploadTaskExecutor}'s reasoning for a pool sized
+   * to its own concurrency limit rather than left to grow - the queue capacity is deliberately
+   * generous ({@link Integer#MAX_VALUE}, i.e. effectively unbounded) because the only thing ever
+   * queued here is a document's own chunk sub-batches (bounded by that one document's chunk count,
+   * see {@link IndexingProperties#batchSize()}), never an unbounded external input - unlike {@link
+   * #indexingTaskExecutor}'s queue of whole indexing runs, there is no equivalent "someone
+   * triggered too many runs" scenario to guard against with {@code AbortPolicy} here. {@link
+   * FileProcessingService#storeChunks} only ever reaches this pool at {@code embeddingConcurrency >
+   * 1} with more than one sub-batch to begin with - see that method's Javadoc.
+   */
+  @Bean
+  TaskExecutor embeddingTaskExecutor(IndexingProperties properties) {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(properties.embeddingConcurrency());
+    executor.setMaxPoolSize(properties.embeddingConcurrency());
+    executor.setQueueCapacity(Integer.MAX_VALUE);
+    executor.setThreadNamePrefix("embedding-");
     executor.initialize();
     return executor;
   }

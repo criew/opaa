@@ -20,7 +20,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     #374). Must be smaller than {@code chunkSize}; 0 disables overlap. A negative value is
  *     normalised to 0.
  * @param batchSize number of chunks sent to the embedding model in one call. Default 50: moderate
- *     batch size that avoids memory spikes during embedding generation. Valid range: 1–1 000.
+ *     batch size that avoids memory spikes during embedding generation. Valid range: 1–1 000. Since
+ *     #734, this is also the unit {@link #embeddingConcurrency} slices a document's chunks into
+ *     before dispatching them concurrently (see that parameter's Javadoc) - previously dead
+ *     configuration (nothing in {@code io.opaa.indexing} read it), now load-bearing.
  * @param retryAttempts number of retry attempts for transient failures. Default 3: standard retry
  *     count used with exponential backoff. Valid range: 0–10.
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
@@ -46,6 +49,24 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param targetValidation the SSRF target-address check {@link TargetAddressValidator} applies to
  *     every {@code HTTP_DIRECTORY}/{@code RSS_FEED} fetch (#267) - see {@link TargetValidation}'s
  *     own Javadoc.
+ * @param embeddingConcurrency the maximum number of {@code batchSize}-sized chunk batches a single
+ *     document's {@link io.opaa.indexing.FileProcessingService#storeChunks} may embed and persist
+ *     concurrently (#734, {@code OPAA_INDEXING_EMBEDDING_CONCURRENCY}). Bound to a shared,
+ *     fixed-size pool ({@code IndexingConfiguration#embeddingTaskExecutor}) - not per document, so
+ *     the total number of concurrent embedding calls across every indexing run in the process never
+ *     exceeds this value, regardless of how many libraries index at once. Default 3: moderate
+ *     concurrency chosen from #734's own benchmark - a CPU-bound local Ollama shows no throughput
+ *     gain past concurrency 1 (its embedding computation itself serializes), while a
+ *     network-latency-bound API/GPU backend scales close to linearly with concurrency in the same
+ *     benchmark; 3 stays conservative for the former without giving up all of the latter's
+ *     headroom. An operator fronting a GPU-backed or hosted embedding API can raise this (8-16 is a
+ *     reasonable starting point per that same benchmark - see docs/deployment.md) once they know
+ *     their backend actually serves concurrent requests in parallel. <b>A value of 1 reproduces the
+ *     exact pre-#734 sequential behaviour</b> - {@link
+ *     io.opaa.indexing.FileProcessingService#storeChunks} takes an entirely different, untouched
+ *     code path in that case, not merely a pool of size one. Valid range: 1–32 - the upper bound
+ *     keeps this a moderate, bounded fan-out rather than the unbounded one #734 explicitly warns
+ *     against.
  */
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
@@ -58,7 +79,8 @@ public record IndexingProperties(
     Rss rss,
     List<String> filesystemAllowlist,
     Duration staleJobTimeout,
-    TargetValidation targetValidation) {
+    TargetValidation targetValidation,
+    int embeddingConcurrency) {
 
   public IndexingProperties {
     if (documentPath == null) {
@@ -113,6 +135,13 @@ public record IndexingProperties(
     }
     if (targetValidation == null) {
       targetValidation = new TargetValidation(true, List.of());
+    }
+    if (embeddingConcurrency <= 0) {
+      embeddingConcurrency = 3;
+    }
+    if (embeddingConcurrency > 32) {
+      throw new IllegalArgumentException(
+          "embeddingConcurrency must be at most 32, got " + embeddingConcurrency);
     }
   }
 

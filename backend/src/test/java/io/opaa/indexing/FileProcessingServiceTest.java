@@ -68,7 +68,9 @@ class FileProcessingServiceTest {
             vectorStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
-            storageQuotaService);
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
     targetLibrary = library();
     otherLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
@@ -89,6 +91,13 @@ class FileProcessingServiceTest {
   private KnowledgeLibrary library() {
     return KnowledgeLibrary.ownedByUser(
         UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+  }
+
+  // embeddingConcurrency=1: every test in this class exercises the pre-#734 sequential
+  // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
+  // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
+  private static IndexingProperties defaultIndexingProperties() {
+    return new IndexingProperties(null, 1000, 0, 50, 3, null, null, null, null, null, 1);
   }
 
   @Test
@@ -177,7 +186,9 @@ class FileProcessingServiceTest {
             vectorStore,
             checksumService,
             new IndexingMetrics(meterRegistry),
-            realQuotaService);
+            realQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
 
     Path file = tempDir.resolve("replace-under-quota.txt");
     String newContent = "x".repeat(950);

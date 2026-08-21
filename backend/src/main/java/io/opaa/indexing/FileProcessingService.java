@@ -7,10 +7,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -27,6 +31,9 @@ public class FileProcessingService {
   private final ChecksumService checksumService;
   private final IndexingMetrics metrics;
   private final LibraryStorageQuotaService storageQuotaService;
+  private final int embeddingBatchSize;
+  private final int embeddingConcurrency;
+  private final Executor embeddingExecutor;
 
   public FileProcessingService(
       DocumentService documentService,
@@ -35,7 +42,9 @@ public class FileProcessingService {
       VectorStore vectorStore,
       ChecksumService checksumService,
       IndexingMetrics metrics,
-      LibraryStorageQuotaService storageQuotaService) {
+      LibraryStorageQuotaService storageQuotaService,
+      IndexingProperties indexingProperties,
+      Executor embeddingExecutor) {
     this.documentService = documentService;
     this.chunkingService = chunkingService;
     this.documentRepository = documentRepository;
@@ -43,6 +52,9 @@ public class FileProcessingService {
     this.checksumService = checksumService;
     this.metrics = metrics;
     this.storageQuotaService = storageQuotaService;
+    this.embeddingBatchSize = indexingProperties.batchSize();
+    this.embeddingConcurrency = indexingProperties.embeddingConcurrency();
+    this.embeddingExecutor = embeddingExecutor;
   }
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
@@ -563,6 +575,67 @@ public class FileProcessingService {
                 })
             .toList();
 
-    vectorStore.add(enriched);
+    addToVectorStore(enriched);
+  }
+
+  /**
+   * Embeds and persists {@code enriched} - one call to {@link VectorStore#add} at {@code
+   * embeddingConcurrency == 1} (#734), reproducing the exact behaviour every caller of {@link
+   * #storeChunks} had before this issue: a single Ollama/embedding-provider call (or as many as
+   * {@code VectorStore}'s own default {@code TokenCountBatchingStrategy} needs) covering every
+   * chunk of this one document, on the calling thread, in document order.
+   *
+   * <p><b>At {@code embeddingConcurrency > 1}</b>, {@code enriched} is sliced into fixed-size
+   * sub-batches of {@code opaa.indexing.batchSize} chunks each and every sub-batch is embedded and
+   * persisted via its own {@code vectorStore.add} call, submitted to the shared, bounded {@code
+   * embeddingExecutor} (see {@link IndexingConfiguration#embeddingTaskExecutor}) and awaited before
+   * this method returns - so from every caller's perspective {@link #storeChunks} is still fully
+   * synchronous, only the embedding calls themselves now overlap. A document with only a single
+   * sub-batch (its own chunk count does not exceed {@code batchSize}) takes the same direct,
+   * un-pooled path as {@code embeddingConcurrency == 1} - nothing is gained by round-tripping
+   * through the executor for a single call, and it keeps that common case's behaviour identical to
+   * before #734.
+   *
+   * <p>Chunk order and {@code chunk_index} metadata are unaffected: every sub-batch is a contiguous
+   * slice of the already-enriched, already-indexed list built in {@link #storeChunks} above, so
+   * concurrent embedding never changes which {@code chunk_index} a chunk's text carries - only the
+   * wall-clock order in which sub-batches reach the vector store, which nothing downstream (search
+   * is per-{@code document_id}/{@code chunk_index}, never insertion order) depends on.
+   *
+   * <p><b>Failure propagation</b> mirrors the single-call path: {@link CompletableFuture#allOf} on
+   * every sub-batch's future, unwrapped from {@link CompletionException} to the same {@link
+   * RuntimeException} {@code vectorStore.add} itself would have thrown, so every existing catch
+   * block in {@code processFile}/{@code processUrlFile}/{@code processRssEntry}/{@code
+   * processUploadedFileAsync} - all of which already assume {@code storeChunks} may throw and clean
+   * up written chunks by {@code document_id} - needs no change. A failing sub-batch does not cancel
+   * sibling sub-batches already in flight; whatever they already wrote is cleaned up the same way a
+   * partially-written single {@code vectorStore.add} call already could leave chunks behind before
+   * #734 (see e.g. {@link #markConnectorFailedAfterException}).
+   */
+  private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
+    if (embeddingConcurrency <= 1 || enriched.size() <= embeddingBatchSize) {
+      vectorStore.add(enriched);
+      return;
+    }
+
+    List<List<org.springframework.ai.document.Document>> subBatches = new ArrayList<>();
+    for (int i = 0; i < enriched.size(); i += embeddingBatchSize) {
+      subBatches.add(enriched.subList(i, Math.min(i + embeddingBatchSize, enriched.size())));
+    }
+
+    List<CompletableFuture<Void>> futures =
+        subBatches.stream()
+            .map(
+                subBatch ->
+                    CompletableFuture.runAsync(() -> vectorStore.add(subBatch), embeddingExecutor))
+            .toList();
+    try {
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    } catch (CompletionException e) {
+      if (e.getCause() instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
   }
 }
