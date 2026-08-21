@@ -33,11 +33,19 @@ describe('DemoNotice', () => {
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /LHM-Dienstleistungen-Corpus/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'LHM-Dienstleistungen-Corpus' })).toHaveAttribute(
       'href',
       'https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus',
     )
     expect(screen.getByText(/MIT-Lizenz/)).toBeInTheDocument()
+    // MIT requires redistributing the license text (#728 review, finding "NIT 6") - the dialog
+    // links to the full text committed alongside the corpus, not just the license name.
+    expect(
+      screen.getByRole('link', { name: 'LHM-Dienstleistungen-Corpus-MIT.txt' }),
+    ).toHaveAttribute(
+      'href',
+      'https://github.com/criew/opaa/blob/main/demo/corpus/THIRD-PARTY-LICENSES/LHM-Dienstleistungen-Corpus-MIT.txt',
+    )
 
     await user.click(screen.getByRole('button', { name: 'Schließen' }))
     // MUI's Dialog unmounts only after its exit transition - wait for it instead of asserting

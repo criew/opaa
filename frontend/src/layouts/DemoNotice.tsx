@@ -11,18 +11,21 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { isDemoModeEnabled } from '../utils/runtimeConfig'
 
 const LHM_CORPUS_URL = 'https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus'
+const LHM_CORPUS_LICENSE_URL =
+  'https://github.com/criew/opaa/blob/main/demo/corpus/THIRD-PARTY-LICENSES/LHM-Dienstleistungen-Corpus-MIT.txt'
 
 /**
  * Demo/source notice (#230): only ever rendered when the frontend container's `OPAA_DEMO_MODE`
  * flag is on (see runtimeConfig.ts) - this notice belongs on the demo instance, not on every
  * OPAA installation.
  *
- * Sits in AppFooter, which stays visible without scrolling (AppShell's flex column has
- * `flexShrink: 0` on the footer, see docs/features/demo-instance.md). The demo-character hint
- * itself is always-visible text, satisfying the "sichtbar" acceptance criterion directly; the
- * source/licensing details (dataset origin, MIT license, provenance URL) sit behind the "Quellen
- * & Lizenz" link so the footer stays short - the link itself is reachable without scrolling,
- * satisfying "ohne Scrollen erreichbar".
+ * Sits in AppFooter, which stays visible without scrolling (AppShell.tsx renders the footer in a
+ * `height: '100vh'` flex column, and AppFooter's outer Box sets `flexShrink: 0` so it never gets
+ * squeezed out by scrollable content above it). The demo-character hint itself is always-visible
+ * text, satisfying the "sichtbar" acceptance criterion directly; the source/licensing details
+ * (dataset origin, MIT license, provenance URL) sit behind the "Quellen & Lizenz" link so the
+ * footer stays short - the link itself is reachable without scrolling, satisfying "ohne Scrollen
+ * erreichbar".
  */
 export default function DemoNotice() {
   const [open, setOpen] = useState(false)
@@ -66,6 +69,13 @@ export default function DemoNotice() {
             </Link>{' '}
             der Landeshauptstadt München (MIT-Lizenz), dessen Leistungsbeschreibungen automatisiert
             auf die fiktive Stadt Rheinfurt umgeschrieben wurden.
+          </Typography>
+          <Typography>
+            Vollständiger Lizenztext:{' '}
+            <Link href={LHM_CORPUS_LICENSE_URL} target="_blank" rel="noopener noreferrer">
+              LHM-Dienstleistungen-Corpus-MIT.txt
+            </Link>
+            .
           </Typography>
         </DialogContent>
         <DialogActions>
