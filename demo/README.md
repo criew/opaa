@@ -61,7 +61,15 @@ SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
+OPAA_DEMO_MODE=true
 ```
+
+`OPAA_DEMO_MODE=true` zeigt den Quellen- und Demo-Hinweis in der Fußzeile der Oberfläche (#230) —
+synthetischer Korpus einer fiktiven Stadt, Rohmaterial LHM-Dienstleistungen-Corpus (MIT). Der
+Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
+Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
+bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
+Nicht-Demo-Installation, siehe `docs/deployment.md`, Variablentabelle.
 
 `OPAA_INITIAL_ADMIN_EMAIL` muss die E-Mail-Adresse des Keycloak-Nutzers `demo-admin` treffen
 (`keycloak/realm-export.json`) — sonst bekommt kein Konto der Demo `SYSTEM_ADMIN`, und Schritt 1 des
