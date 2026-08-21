@@ -678,6 +678,14 @@ public class AutoindexCrawlerService {
     return sameOrigin(from, to) || isSameHostSchemeUpgrade(from, to);
   }
 
+  /**
+   * Whether {@code from}/{@code to} is a same-host http-to-https upgrade at the standard ports (PR
+   * #699 review, finding 1) - {@code normalizedPort} (already used by {@link #sameOrigin}) so that
+   * {@code http://host:80/a} -> {@code https://host/a} and {@code http://host/a} -> {@code
+   * https://host:443/a} both count, not only the case where neither side names a port at all. The
+   * original raw-{@code getPort()} comparison missed exactly those two variants of the same
+   * everyday upgrade redirect #693 exists to allow.
+   */
   private static boolean isSameHostSchemeUpgrade(URI from, URI to) {
     if (!"http".equalsIgnoreCase(from.getScheme()) || !"https".equalsIgnoreCase(to.getScheme())) {
       return false;
@@ -688,7 +696,7 @@ public class AutoindexCrawlerService {
     if (!from.getHost().equalsIgnoreCase(to.getHost())) {
       return false;
     }
-    boolean bothDefaultPorts = from.getPort() == -1 && to.getPort() == -1;
+    boolean bothDefaultPorts = normalizedPort(from) == 80 && normalizedPort(to) == 443;
     boolean explicitPortsMatch = from.getPort() != -1 && from.getPort() == to.getPort();
     return bothDefaultPorts || explicitPortsMatch;
   }
@@ -697,9 +705,14 @@ public class AutoindexCrawlerService {
    * Renders {@code uri} as {@code scheme://host[:port]} only - never path, query or fragment, which
    * on a redirect's own {@code Location} target can carry a token or other sensitive data a run-log
    * message must never surface (maintainer nachtrag to #693, 21.08.2026: "nur Schema/Host, NIE die
-   * vollständige Ziel-URL"). Used to name a rejected redirect's target in a user-facing message
-   * without repeating the full, potentially sensitive URL the way logging it (dev-only, never shown
-   * in the UI) already safely does.
+   * vollständige Ziel-URL"). Used to name a rejected redirect's target in the German, user-facing
+   * message every caller shows in the UI.
+   *
+   * <p><b>Not a general-purpose redaction (PR #699 review, nit 2).</b> A caller's own {@code
+   * log.warn}/{@code log.debug} calls (e.g. {@code RssFeedIndexingExecutor}'s rejection handling)
+   * still log the unsanitized target via the underlying exception's {@code getMessage()} - the
+   * application log, unlike this message, is not shown to an ordinary caller, but it is not nothing
+   * either, and this method makes no claim about it.
    */
   static String sanitizedOrigin(URI uri) {
     String scheme = uri.getScheme() == null ? "?" : uri.getScheme();

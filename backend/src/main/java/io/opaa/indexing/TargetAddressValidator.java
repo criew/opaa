@@ -13,8 +13,13 @@ import org.slf4j.LoggerFactory;
  * Rejects a fetch target whose scheme is not {@code http}/{@code https}, or whose resolved IP
  * address(es) fall inside a loopback, link-local (including {@code 169.254.169.254}, the common
  * cloud metadata address), private or otherwise non-routable range (#267) - both IPv4 and IPv6,
- * including an IPv4-mapped IPv6 address ({@code ::ffff:a.b.c.d}) and IPv6 unique local addresses
- * ({@code fc00::/7}, not covered by {@link InetAddress#isSiteLocalAddress()}).
+ * including ranges no plain {@link InetAddress} predicate recognizes on its own: Carrier-Grade NAT
+ * ({@code 100.64.0.0/10}), the reserved block and broadcast address ({@code 240.0.0.0/4}, {@code
+ * 255.255.255.255}), IETF Protocol Assignments ({@code 192.0.0.0/24}), benchmarking ({@code
+ * 198.18.0.0/15}), IPv6 unique local addresses ({@code fc00::/7}, not covered by {@link
+ * InetAddress#isSiteLocalAddress()}), the IPv6 NAT64 prefix ({@code 64:ff9b::/96}) and both
+ * IPv4-embedded IPv6 forms - {@code ::ffff:a.b.c.d} (mapped) and the deprecated {@code ::a.b.c.d}
+ * (compatible) - checked against the embedded IPv4 address.
  *
  * <p><b>Checked before the first request of every crawl/RSS/attachment fetch and again on every
  * redirect hop</b> ({@link AutoindexCrawlerService#sendFollowingRedirects}, {@link
@@ -87,6 +92,29 @@ public class TargetAddressValidator {
     if (host == null) {
       throw new TargetAddressBlockedException("Die Zieladresse enthält keinen gültigen Host.");
     }
+    checkHost(host);
+  }
+
+  /**
+   * Validates a bare hostname with no scheme (PR #699 review, "vorbestehend"): an HTTP(S) proxy's
+   * own address (from {@code sourceProxy}) is exactly as caller-controlled as the target URL itself
+   * and determines where the TCP connection - and any credentials sent over it - actually goes, but
+   * carries no scheme of its own to run {@link #validate}'s scheme check against. Applies the
+   * identical address-range check {@link #validate} applies to a URI's host; a no-op when {@code
+   * host} is {@code null} (no proxy configured - unlike {@link #validate}, a missing proxy host is
+   * not itself an error) or checking is disabled.
+   *
+   * @throws TargetAddressBlockedException (an {@link IOException}) with a German, user-facing
+   *     message when the host is rejected.
+   */
+  public void validateHost(String host) throws IOException {
+    if (!enabled || host == null) {
+      return;
+    }
+    checkHost(host);
+  }
+
+  private void checkHost(String host) throws IOException {
     if (isAllowedHost(host)) {
       return;
     }
@@ -95,9 +123,14 @@ public class TargetAddressValidator {
       addresses = InetAddress.getAllByName(host);
     } catch (UnknownHostException e) {
       // Deliberately not surfaced as a generic "unreachable" - a DNS failure and a resolved-but-
-      // blocked target are different diagnoses for whoever configured this source.
+      // blocked target are different diagnoses for whoever configured this source. Deliberately
+      // the same wording SourceConnectionTestService#translateConnectionError already used for an
+      // ordinary UnknownHostException (PR #699 review, nit 3) - this check runs before the
+      // connection attempt that message was written for, so it is now the only place that wording
+      // is ever reached for an http(s) target, and should not sound harsher than the failure it
+      // replaces.
       throw new TargetAddressBlockedException(
-          "Der Host konnte nicht aufgelöst werden und wird abgelehnt: " + host);
+          "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
     }
     for (InetAddress address : addresses) {
       if (isBlockedAddress(address)) {
@@ -126,11 +159,16 @@ public class TargetAddressValidator {
       return isBlockedIpv4Bytes(bytes) || isCommonBlockedRange(address);
     }
     // IPv6 (16 bytes).
-    if (isIpv4MappedIpv6(bytes)) {
+    if (isIpv4EmbeddedIpv6(bytes)) {
+      // isCommonBlockedRange(address) too, not the embedded check alone: the deprecated
+      // IPv4-compatible form (unlike the mapped one) overlaps with addresses Java already
+      // recognizes directly on the IPv6 side - ::1 (loopback) is bytes[10..11] == 0 the same way
+      // an IPv4-compatible address is, but its embedded "IPv4" (0.0.0.1) is not itself in any
+      // blocked IPv4 range. Without this fallback, ::1 fell through this branch as allowed.
       byte[] embedded = new byte[] {bytes[12], bytes[13], bytes[14], bytes[15]};
-      return isBlockedIpv4Bytes(embedded);
+      return isBlockedIpv4Bytes(embedded) || isCommonBlockedRange(address);
     }
-    if (isUniqueLocalIpv6(bytes)) {
+    if (isUniqueLocalIpv6(bytes) || isNat64Ipv6(bytes)) {
       return true;
     }
     return isCommonBlockedRange(address);
@@ -147,11 +185,14 @@ public class TargetAddressValidator {
 
   /**
    * Whether {@code ipv4Bytes} (4 bytes, big-endian) falls in a blocked range - used both for a
-   * genuine {@link Inet4Address} and for the IPv4 address embedded in an IPv4-mapped IPv6 one,
-   * since {@link InetAddress}'s own {@code isXxxAddress} predicates only recognize a real {@link
-   * Inet4Address} instance, not an IPv6-typed address that merely carries an IPv4 payload.
+   * genuine {@link Inet4Address} and for the IPv4 address embedded in an IPv4-mapped/-compatible
+   * IPv6 one, since {@link InetAddress}'s own {@code isXxxAddress} predicates only recognize a real
+   * {@link Inet4Address} instance, not an IPv6-typed address that merely carries an IPv4 payload.
    */
   private static boolean isBlockedIpv4Bytes(byte[] ipv4Bytes) {
+    if (isAdditionalBlockedIpv4Range(ipv4Bytes)) {
+      return true;
+    }
     try {
       return isCommonBlockedRange(InetAddress.getByAddress(ipv4Bytes));
     } catch (UnknownHostException e) {
@@ -162,8 +203,41 @@ public class TargetAddressValidator {
     }
   }
 
-  /** {@code ::ffff:0:0/96} - an IPv6 address that only carries an embedded IPv4 address. */
-  private static boolean isIpv4MappedIpv6(byte[] bytes) {
+  /**
+   * IPv4 ranges none of {@link InetAddress}'s own {@code isXxxAddress} predicates recognize at all
+   * (PR #699 review, nit 1): the reserved {@code 240.0.0.0/4} block - which also covers the
+   * broadcast address {@code 255.255.255.255}, neither multicast nor "any local" to {@link
+   * InetAddress} - Carrier-Grade NAT ({@code 100.64.0.0/10}, RFC 6598, in active use in many
+   * public-sector networks), the IETF Protocol Assignments block ({@code 192.0.0.0/24}) and the
+   * benchmarking range ({@code 198.18.0.0/15}, RFC 2544). None of these are meant to be reachable
+   * from outside the network that assigned them, the same reasoning that already covers the
+   * private/link-local/loopback ranges {@link #isCommonBlockedRange} does recognize.
+   */
+  private static boolean isAdditionalBlockedIpv4Range(byte[] ipv4Bytes) {
+    int first = ipv4Bytes[0] & 0xFF;
+    int second = ipv4Bytes[1] & 0xFF;
+    if (first >= 240) {
+      return true; // 240.0.0.0/4, including 255.255.255.255
+    }
+    if (first == 100 && second >= 64 && second <= 127) {
+      return true; // 100.64.0.0/10
+    }
+    if (first == 192 && second == 0 && (ipv4Bytes[2] & 0xFF) == 0) {
+      return true; // 192.0.0.0/24
+    }
+    return first == 198 && (second == 18 || second == 19); // 198.18.0.0/15
+  }
+
+  /**
+   * Whether {@code bytes} (16 bytes, an IPv6 address) only carries an embedded IPv4 address -
+   * either {@code ::ffff:a.b.c.d} (IPv4-mapped, RFC 4291) or the older, deprecated {@code
+   * ::a.b.c.d} (IPv4-compatible) - both {@code ::/96} prefixes that differ only in the two bytes
+   * right before the embedded address. Treating both alike (PR #699 review, nit 1) closes a gap the
+   * mapped-only check left: {@code ::7f00:1} (IPv4-compatible for {@code 127.0.0.1}) is not itself
+   * recognized as loopback by {@link InetAddress#isLoopbackAddress()} - only literal {@code ::1} is
+   * - so it passed every check in this class before this fix.
+   */
+  private static boolean isIpv4EmbeddedIpv6(byte[] bytes) {
     if (bytes.length != 16) {
       return false;
     }
@@ -172,7 +246,9 @@ public class TargetAddressValidator {
         return false;
       }
     }
-    return (bytes[10] & 0xFF) == 0xFF && (bytes[11] & 0xFF) == 0xFF;
+    boolean mapped = (bytes[10] & 0xFF) == 0xFF && (bytes[11] & 0xFF) == 0xFF;
+    boolean compatible = bytes[10] == 0 && bytes[11] == 0;
+    return mapped || compatible;
   }
 
   /**
@@ -182,6 +258,31 @@ public class TargetAddressValidator {
    */
   private static boolean isUniqueLocalIpv6(byte[] bytes) {
     return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
+  }
+
+  /**
+   * {@code 64:ff9b::/96} - the well-known NAT64 prefix (RFC 6052), which translates an embedded
+   * IPv4 address on the other side of the NAT64 gateway; not recognized by any {@link InetAddress}
+   * predicate (PR #699 review, nit 1). Deliberately not folded into {@link #isIpv4EmbeddedIpv6} -
+   * unlike the mapped/compatible forms, this class has no reason to inspect the embedded address
+   * itself, the whole prefix is non-routable from OPAA's perspective regardless of what it embeds.
+   */
+  private static boolean isNat64Ipv6(byte[] bytes) {
+    if (bytes.length != 16) {
+      return false;
+    }
+    if (bytes[0] != 0x00
+        || (bytes[1] & 0xFF) != 0x64
+        || (bytes[2] & 0xFF) != 0xFF
+        || (bytes[3] & 0xFF) != 0x9B) {
+      return false;
+    }
+    for (int i = 4; i < 12; i++) {
+      if (bytes[i] != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

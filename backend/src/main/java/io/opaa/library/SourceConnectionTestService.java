@@ -361,6 +361,10 @@ public class SourceConnectionTestService {
     }
 
     try {
+      // PR #699 review, "vorbestehend": sourceProxy is exactly as caller-controlled as the target
+      // URL itself and determines where the TCP connection actually goes - validated the same way
+      // before this test (or the run it mirrors) ever contacts it, not just the target host.
+      targetAddressValidator.validateHost(config.proxyHost());
       // #538: Authorization (the tested source configuration's own credentials) must not be
       // replayed to a redirect target on a different host/scheme - see
       // AutoindexCrawlerService.sendFollowingRedirects's Javadoc.
@@ -449,6 +453,8 @@ public class SourceConnectionTestService {
     }
 
     try {
+      // PR #699 review, "vorbestehend" - see testHttpDirectory's identical call above.
+      targetAddressValidator.validateHost(config.proxyHost());
       // #538: same reasoning as testHttpDirectory above.
       HttpResponse<InputStream> response =
           AutoindexCrawlerService.sendFollowingRedirects(

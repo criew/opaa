@@ -10,10 +10,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit coverage of {@link TargetAddressValidator} (#267): the scheme check, every blocked address
- * range (IPv4 and IPv6, including the IPv4-mapped and unique-local IPv6 cases the plain {@link
- * InetAddress} predicates alone do not cover), the allowlist bypass and the disabled/enabled
- * switch. Reproduces the two acceptance-criteria scenarios directly: a loopback/private target is
- * rejected while enabled, and disabling the check turns the identical target into a no-op.
+ * range (IPv4 and IPv6, including the IPv4-mapped/-compatible, unique-local and NAT64 IPv6 cases,
+ * plus the CGNAT/reserved/benchmarking/protocol-assignments IPv4 ranges added in PR #699 review,
+ * nit 1 - none of which the plain {@link InetAddress} predicates alone cover), the allowlist
+ * bypass, {@link TargetAddressValidator#validateHost} for a bare (schemeless) proxy host, and the
+ * disabled/enabled switch. Reproduces the two acceptance-criteria scenarios directly: a
+ * loopback/private target is rejected while enabled, and disabling the check turns the identical
+ * target into a no-op.
  */
 class TargetAddressValidatorTest {
 
@@ -135,9 +138,60 @@ class TargetAddressValidatorTest {
   }
 
   @Test
+  void rejectsTheDeprecatedIpv4CompatibleIpv6Form() throws Exception {
+    // PR #699 review, nit 1: ::7f00:1 (IPv4-compatible, RFC 4291, for 127.0.0.1) is NOT itself
+    // recognized as loopback by InetAddress#isLoopbackAddress - only literal ::1 is - so it passed
+    // every check before this fix, unlike the structurally similar ::ffff:127.0.0.1 (IPv4-mapped)
+    // above.
+    assertBlocked("::7f00:1");
+  }
+
+  @Test
   void allowsAGenuinelyPublicIpv6Address() throws Exception {
     // 2620:fe::fe (Quad9's public IPv6 resolver).
     assertNotBlocked("2620:fe::fe");
+  }
+
+  @Test
+  void rejectsTheNat64Prefix() throws Exception {
+    // 64:ff9b::/96 (RFC 6052) - not recognized by any InetAddress predicate.
+    assertBlocked("64:ff9b::192.0.2.1");
+  }
+
+  // --- nit 1: IPv4 ranges no InetAddress predicate recognizes -----------------------------
+
+  @Test
+  void rejectsCarrierGradeNat() throws Exception {
+    // 100.64.0.0/10 (RFC 6598) - in active use in many public-sector networks.
+    assertBlocked("100.64.0.1");
+    assertBlocked("100.127.255.255");
+    assertNotBlocked("100.63.255.255");
+    assertNotBlocked("100.128.0.0");
+  }
+
+  @Test
+  void rejectsTheReservedRangeAndBroadcast() throws Exception {
+    // 240.0.0.0/4, which also covers 255.255.255.255 (broadcast) - neither multicast nor "any
+    // local" to InetAddress.
+    assertBlocked("240.0.0.1");
+    assertBlocked("255.255.255.255");
+    // 223.255.255.255 - the last unicast address directly below the (already-blocked, via
+    // isMulticastAddress) 224.0.0.0/4 multicast range and 240.0.0.0/4 above it.
+    assertNotBlocked("223.255.255.255");
+  }
+
+  @Test
+  void rejectsTheIetfProtocolAssignmentsBlock() throws Exception {
+    assertBlocked("192.0.0.1");
+    assertNotBlocked("192.0.1.1");
+  }
+
+  @Test
+  void rejectsTheBenchmarkingRange() throws Exception {
+    // 198.18.0.0/15 (RFC 2544).
+    assertBlocked("198.18.0.1");
+    assertBlocked("198.19.255.255");
+    assertNotBlocked("198.20.0.0");
   }
 
   private static void assertBlocked(String literal) throws Exception {
@@ -186,11 +240,36 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsAHostThatCannotBeResolved() {
+    // PR #699 review, nit 3: the same friendly wording
+    // SourceConnectionTestService#translateConnectionError already used for an ordinary
+    // UnknownHostException - this check now runs before that connection attempt is ever made, so
+    // it is the only place this wording is reached for an http(s) target.
     assertThatThrownBy(
             () ->
                 enabled()
                     .validate(URI.create("http://this-host-does-not-exist.invalid.opaa-test/")))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
-        .hasMessageContaining("aufgelöst");
+        .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+  }
+
+  // --- proxy host (PR #699 review, "vorbestehend") -------------------------
+
+  @Test
+  void validateHostRejectsALoopbackProxyHostWhenEnabled() {
+    assertThatThrownBy(() -> enabled().validateHost("127.0.0.1"))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+        .hasMessageContaining("gesperrten Adressbereich");
+  }
+
+  @Test
+  void validateHostIsANoOpForANullHost() {
+    // No proxy configured - unlike validate(URI), a missing host here is not itself an error.
+    assertThatCode(() -> enabled().validateHost(null)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void validateHostIsANoOpWhenDisabled() {
+    assertThatCode(() -> TargetAddressValidator.disabled().validateHost("127.0.0.1"))
+        .doesNotThrowAnyException();
   }
 }

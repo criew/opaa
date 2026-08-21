@@ -490,6 +490,27 @@ class AutoindexCrawlerServiceTest {
   }
 
   @Test
+  void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpSideNamesTheStandardPortExplicitly() {
+    // PR #699 review, finding 1: the original raw getPort() comparison missed this - an explicit
+    // ":80" on the http side compared unequal to the https side's unspecified (-1) port, even
+    // though both are the standard port for their own scheme.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example:80/a"), URI.create("https://host.example/a")))
+        .isTrue();
+  }
+
+  @Test
+  void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpsSideNamesTheStandardPortExplicitly() {
+    // PR #699 review, finding 1: the mirror image - a server that writes the standard https port
+    // explicitly into its own Location header.
+    assertThat(
+            AutoindexCrawlerService.isRedirectOriginTrusted(
+                URI.create("http://host.example/a"), URI.create("https://host.example:443/a")))
+        .isTrue();
+  }
+
+  @Test
   void redirectOriginTrusted_rejectsAnUpgradeWithDifferingExplicitPorts() {
     // #693's Soll-Zustand is deliberately narrow: "Standard-Ports (80->443) bzw. explizit
     // gleicher Port" - an explicit http port that differs from an explicit https port is not

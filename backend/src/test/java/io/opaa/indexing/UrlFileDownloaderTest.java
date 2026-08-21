@@ -583,4 +583,45 @@ class UrlFileDownloaderTest {
     // credential is resent, not dropped as it would be for a genuine cross-origin redirect.
     assertThat(secondRequest.headers().firstValue("Authorization")).contains("Basic geheim");
   }
+
+  @Test
+  void downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled()
+      throws IOException, InterruptedException {
+    // PR #699 review, finding 2 (#267 acceptance criterion: "Die Prüfung greift auch, wenn erst
+    // eine Weiterleitung auf ein solches Ziel führt"). Deliberately exercises download() (backed
+    // by AutoindexCrawlerService.sendFollowingRedirects), not downloadBounded(): the latter's own
+    // foreign-host check (isForeignHostRedirect) already rejects any cross-origin redirect outright
+    // - the very case this test needs - before the per-hop validate() call underneath it is ever
+    // reached, which would make the test pass without actually exercising the SSRF check.
+    // sendFollowingRedirects has no such origin restriction (it only conditionally drops
+    // Authorization, see its own Javadoc), so its per-hop validate() call is the only thing
+    // rejecting this redirect.
+    //
+    // The start host (127.0.0.1, itself loopback) is allowlisted so this test isolates the
+    // redirect-hop check - without allowlisting it, the very first validate() call would already
+    // reject the start URL, and the test would pass for the wrong reason even if the hop-level
+    // check were accidentally removed.
+    TargetAddressValidator enabledValidator =
+        new TargetAddressValidator(
+            new IndexingProperties.TargetValidation(true, List.of("127.0.0.1")));
+    UrlFileDownloader validatingDownloader = new UrlFileDownloader(enabledValidator);
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          // A different loopback address than the allowlisted one - not itself allowlisted.
+          exchange.getResponseHeaders().set("Location", "http://127.0.0.2:1/anlage.pdf");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                validatingDownloader.download(
+                    AutoindexCrawlerService.buildHttpClient(null, -1, false),
+                    null,
+                    baseUrl + "/anlage.pdf",
+                    "anlage.pdf"))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+        .hasMessageContaining("gesperrten Adressbereich");
+  }
 }
