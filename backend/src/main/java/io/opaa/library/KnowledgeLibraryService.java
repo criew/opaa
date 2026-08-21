@@ -970,7 +970,7 @@ public class KnowledgeLibraryService {
    * (#485) and returns the {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule}
    * takes - {@code cron} built by {@link LibraryScheduleCodec#toCron}. Rejects a schedule on a
    * {@code UPLOAD} library outright (#485, Zuschnitt 21.08.2026: "nur Konnektorbibliotheken"),
-   * mirroring the database's own {@code chk_knowledge_libraries_schedule} (migration 051) as a
+   * mirroring the database's own {@code chk_knowledge_libraries_schedule} (migration 054) as a
    * 400-before-insert.
    */
   private ValidatedSchedule validateSchedule(

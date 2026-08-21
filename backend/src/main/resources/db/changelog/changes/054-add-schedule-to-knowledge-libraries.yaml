@@ -8,7 +8,7 @@ databaseChangeLog:
   # remembering the previous frequency, mirroring how UPLOAD carries none of the source columns
   # (migration 027) rather than a half-filled row.
   - changeSet:
-      id: 051-add-schedule-to-knowledge-libraries
+      id: 054-add-schedule-to-knowledge-libraries
       author: opaa
       comment: >
         Adds schedule_enabled/schedule_cron to knowledge_libraries (#485) plus

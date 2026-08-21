@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,19 @@ import org.springframework.web.server.ResponseStatusException;
  * KnowledgeLibraryService#toLibraryResponse} is what makes repeated failure visible in the UI (via
  * {@code lastScheduledRunsFailed}), not this class turning the schedule off - stille Ausfälle
  * vermeiden, not silent retries either.
+ *
+ * <p><b>Missed due times are skipped, not caught up (#485, PR #705 review).</b> A due time that
+ * falls while the application is not running at all (down for maintenance, a restart spanning
+ * several minutes) is simply never fired - {@link #lastTickAt} resets to {@code null} on every
+ * restart, so the very next tick only ever looks one tick-interval into the past (see {@link
+ * #determineWindowStart}), never further. Catching up every missed run after a longer outage would
+ * risk a burst of simultaneous triggers across every schedule-enabled library at once, which this
+ * design deliberately avoids - an operator who needs the latest content after maintenance still has
+ * the manual "Jetzt indizieren" trigger. What this field <em>does</em> guard against is in-process
+ * jitter between two consecutive ticks (GC pause, a slow previous tick, scheduler thread
+ * contention): without it, a fixed one-minute look-back window anchored purely on "now minus 60s"
+ * can develop a gap between two ticks that fired more than 60s apart, silently dropping a due time
+ * that fell exactly in that gap.
  */
 @Component
 public class LibraryIndexingScheduler {
@@ -44,11 +58,24 @@ public class LibraryIndexingScheduler {
   static final String SCHEDULE_SKIPPED_MESSAGE =
       "Geplanter Lauf übersprungen: Indizierung läuft bereits";
 
+  /** Matches the {@code @Scheduled(cron = "0 * * * * *")} tick interval below. */
+  private static final long TICK_INTERVAL_SECONDS = 60;
+
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentIndexingService indexingService;
   private final IndexingJobService indexingJobService;
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final Clock clock;
+
+  /**
+   * The {@code now} of the previous successful tick, {@code null} before the first tick since
+   * application start (see the class Javadoc's "missed due times" paragraph). An {@link
+   * AtomicReference}, not a plain field, purely for its safe-publication guarantee across the
+   * scheduler thread - {@code @Scheduled} methods on the default single-threaded {@code
+   * TaskScheduler} never actually run concurrently with each other, so no compare-and-set semantics
+   * are needed, only visibility.
+   */
+  private final AtomicReference<Instant> lastTickAt = new AtomicReference<>();
 
   public LibraryIndexingScheduler(
       KnowledgeLibraryRepository libraryRepository,
@@ -69,25 +96,54 @@ public class LibraryIndexingScheduler {
    * io.opaa.indexing.IndexingConfiguration#schedulingClock} - the same "server time, no separate
    * timezone configuration yet" choice {@code AuditRetentionScheduler} already made implicitly for
    * its own {@code @Scheduled(cron = ...)}). A library is due when its stored cron expression has a
-   * fire time in the one-minute window ending now - see {@link #isDueNow}.
+   * fire time in the window between the previous tick and now - see {@link #determineWindowStart}
+   * and {@link #isDueNow}.
+   *
+   * <p><b>PR #705 review, blocker 3.</b> {@link #isDueNow} - and therefore the cron parse it
+   * performs - runs inside this loop's own per-library {@code try/catch}, not before it: one
+   * library with an undecodable stored cron expression (a hand-edited row, a future format change)
+   * must not abort the whole tick and leave every other due library untouched.
    */
   @Scheduled(cron = "0 * * * * *")
   public void triggerDueLibraries() {
     List<KnowledgeLibrary> scheduled = libraryRepository.findByScheduleEnabledTrue();
     Instant now = clock.instant();
+    Instant windowStart = determineWindowStart(now);
     for (KnowledgeLibrary library : scheduled) {
-      if (!isDueNow(library.getScheduleCron(), now)) {
-        continue;
+      try {
+        if (!isDueNow(library.getScheduleCron(), windowStart, now)) {
+          continue;
+        }
+        triggerOrRecordSkip(library);
+      } catch (Exception e) {
+        log.error(
+            "Scheduled tick could not evaluate library {} - skipping it for this tick",
+            library.getId(),
+            e);
       }
-      triggerOrRecordSkip(library);
     }
+    lastTickAt.set(now);
   }
 
-  private boolean isDueNow(String cron, Instant now) {
+  /**
+   * The start of the window {@link #isDueNow} checks a schedule against - the previous tick's
+   * {@code now} when known, so consecutive windows are contiguous with no gap regardless of how
+   * late a tick actually fired (see the class Javadoc). Falls back to exactly one {@link
+   * #TICK_INTERVAL_SECONDS} before {@code now} before the first tick (or after a restart, since
+   * {@link #lastTickAt} does not survive one) - a single tick-interval look-back, matching the
+   * pre-jitter-fix behaviour, deliberately not further back: see the class Javadoc's "missed due
+   * times are skipped, not caught up" paragraph for why a longer look-back after downtime is not
+   * wanted here.
+   */
+  private Instant determineWindowStart(Instant now) {
+    Instant previous = lastTickAt.get();
+    return previous != null ? previous : now.minusSeconds(TICK_INTERVAL_SECONDS);
+  }
+
+  private boolean isDueNow(String cron, Instant windowStart, Instant now) {
     if (cron == null) {
       return false;
     }
-    Instant windowStart = now.minusSeconds(60);
     Instant next = LibraryScheduleCodec.nextRunAt(cron, windowStart, clock.getZone());
     return next != null && !next.isAfter(now);
   }

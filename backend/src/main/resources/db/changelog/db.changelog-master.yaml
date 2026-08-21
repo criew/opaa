@@ -100,8 +100,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/050-drop-redundant-space-memberships-space-fk.yaml
   - include:
-      file: db/changelog/changes/051-add-schedule-to-knowledge-libraries.yaml
+      file: db/changelog/changes/054-add-schedule-to-knowledge-libraries.yaml
   - include:
-      file: db/changelog/changes/052-add-triggered-by-to-indexing-jobs.yaml
+      file: db/changelog/changes/055-add-triggered-by-to-indexing-jobs.yaml
   - include:
-      file: db/changelog/changes/053-widen-indexing-run-event-category-schedule-skipped.yaml
+      file: db/changelog/changes/056-widen-indexing-run-event-category-schedule-skipped.yaml

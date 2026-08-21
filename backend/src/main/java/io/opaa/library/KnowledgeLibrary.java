@@ -124,7 +124,7 @@ public class KnowledgeLibrary {
 
   /**
    * The schedule as a cron expression, non-null exactly when {@link #scheduleEnabled} is {@code
-   * true} (migration 051's check constraint) - never a raw value a client sends: {@code
+   * true} (migration 054's check constraint) - never a raw value a client sends: {@code
    * io.opaa.indexing.LibraryScheduleCodec} is the only place that turns the four UI intervalstufen
    * (#485, Zuschnitt 21.08.2026) into this string and back.
    */

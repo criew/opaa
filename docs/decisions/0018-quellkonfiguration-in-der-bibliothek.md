@@ -154,7 +154,7 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
 
   > **Nachtrag (2026-08-21, #485):** Umgesetzt als feste Intervallstufen (stündlich / täglich um
   > HH:MM / wöchentlich am Wochentag X um HH:MM / aus), an- und abschaltbar je Bibliothek, intern
-  > als Cron-Ausdruck gespeichert (`knowledge_libraries.schedule_cron`, Migration 051) und nur für
+  > als Cron-Ausdruck gespeichert (`knowledge_libraries.schedule_cron`, Migration 054) und nur für
   > Konnektorbibliotheken verfügbar — für `UPLOAD` ergäbe ein Zeitplan keinen Sinn, es gibt keinen
   > Lauf. Ein periodischer Tick (`LibraryIndexingScheduler`, Vorbild `AuditRetentionScheduler`)
   > ermittelt fällige Bibliotheken und löst den vorhandenen Indizierungsanstoß aus. Verteilte
@@ -166,6 +166,18 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
   > Läufe versuchen bei Fehlschlag automatisch weiter (keine automatische Deaktivierung), aber
   > wiederholtes Scheitern (zwei aufeinanderfolgende fehlgeschlagene geplante Läufe) macht die
   > Detailansicht sichtbar (`LibraryResponse.lastScheduledRunsFailed`).
+  >
+  > **Verpasste Termine werden ausgelassen, nicht nachgeholt.** Der Tick läuft minütlich; ein
+  > Fälligkeitsfenster reicht vom Ende des vorigen Ticks bis zum aktuellen (`lastTickAt` in
+  > `LibraryIndexingScheduler`, nicht ein starres „letzte 60 Sekunden") — das schließt die Lücke,
+  > die ein minimal verspäteter Tick (GC-Pause, ein länger laufender vorheriger Tick,
+  > Scheduler-Thread-Kontention) sonst zwischen zwei festen 60-Sekunden-Fenstern reißen könnte, ohne
+  > Termine doppelt auszulösen. Ein Prozessneustart setzt `lastTickAt` dagegen zurück: der erste
+  > Tick nach dem Neustart blickt bewusst nur ein Tick-Intervall (60 Sekunden) zurück, nicht über die
+  > gesamte Ausfallzeit. Ein Wartungsfenster, das mehrere fällige Termine überspringt, holt sie also
+  > nicht gebündelt nach — das würde bei vielen zeitplangesteuerten Bibliotheken einen Ausbruch
+  > gleichzeitiger Läufe direkt nach dem Neustart erzeugen. Wer nach einer Wartung sofort aktuellen
+  > Inhalt braucht, nutzt weiterhin den manuellen „Jetzt indizieren"-Anstoß.
 - **Die Obergrenze der Freigabe** für konnektorgespeiste Bibliotheken (#207). Sie wird durch die
   freie Anlage dringlicher, bleibt aber dort zu entscheiden.
 - **Mehrere Quellen desselben Typs je Bibliothek** (etwa zwei Verzeichnispfade). Der Schnitt „eine

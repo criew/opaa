@@ -839,6 +839,38 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void aDefectiveStoredCronExpressionDoesNotFailTheLibraryLoadOrHideTheSchedule() {
+    // PR #705 review, blocker 3: an undecodable schedule_cron value (a hand-edited row, a
+    // corrupted value) must not turn GET/PUT /api/v1/libraries/{id} into an unhandled 500 for
+    // this one library - mirrors
+    // aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt's
+    // pattern of writing directly via JdbcTemplate to simulate data this class never itself wrote.
+    UUID owner = createUser(organizationA);
+    LibraryResponse library =
+        libraryService.createLibrary(
+            new LibraryRequest("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/")),
+            owner);
+    libraryService.updateLibrary(
+        library.getId(),
+        new LibraryUpdateRequest("Web-Verzeichnis")
+            .schedule(new LibraryScheduleRequest(ScheduleFrequency.HOURLY)),
+        owner,
+        false);
+    // schedule_enabled stays true (only NOT NULL is enforced at the database level, not the cron
+    // syntax itself) - simulates a corrupted value rather than a disabled schedule.
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET schedule_cron = ? WHERE id = ?",
+        "not a cron expression",
+        library.getId());
+
+    LibraryResponse reloaded = libraryService.getLibrary(library.getId(), owner, false);
+
+    assertThat(reloaded.getSchedule()).isNotNull();
+    assertThat(reloaded.getSchedule().getNextRunAt()).isNull();
+  }
+
+  @Test
   void
       updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThemAndTheOriginIsUnchanged() {
     // Issue #516: sourceCredentials is write-only (never returned by any API response,

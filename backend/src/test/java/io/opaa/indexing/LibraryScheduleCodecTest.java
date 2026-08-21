@@ -107,4 +107,25 @@ class LibraryScheduleCodecTest {
 
     assertThat(next).isEqualTo(Instant.parse("2026-08-21T11:00:00Z"));
   }
+
+  // PR #705 review, blocker 3: an undecodable/defective stored cron expression must not crash
+  // GET/PUT /api/v1/libraries/{id} (KnowledgeLibraryService#toLibraryResponse) or the scheduler
+  // tick (LibraryIndexingScheduler) - nextRunAt degrades to "never due" instead of throwing.
+  @Test
+  void nextRunAtDoesNotThrowForASyntacticallyMeaninglessStoredValue() {
+    Instant next =
+        LibraryScheduleCodec.nextRunAt("not a cron expression", Instant.now(), ZoneOffset.UTC);
+
+    assertThat(next).isNull();
+  }
+
+  // Unlike the case above, this value passes parse()'s own field-shape check (six fields, "0"
+  // first, wildcards in the day-of-month/month slots) - it can only be caught by CronExpression's
+  // own range validation, exercised here directly against nextRunAt rather than through parse().
+  @Test
+  void nextRunAtDoesNotThrowForAValueThatPassesTheFieldShapeCheckButFailsRangeValidation() {
+    Instant next = LibraryScheduleCodec.nextRunAt("0 0 99 * * *", Instant.now(), ZoneOffset.UTC);
+
+    assertThat(next).isNull();
+  }
 }

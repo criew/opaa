@@ -6,7 +6,7 @@ databaseChangeLog:
   # Defaults every existing row to MANUAL - every run before this issue was in fact user-triggered,
   # since the scheduler did not exist yet.
   - changeSet:
-      id: 052-add-triggered-by-to-indexing-jobs
+      id: 055-add-triggered-by-to-indexing-jobs
       author: opaa
       comment: "Adds triggered_by to indexing_jobs (#485), defaulting existing rows to MANUAL"
       changes:

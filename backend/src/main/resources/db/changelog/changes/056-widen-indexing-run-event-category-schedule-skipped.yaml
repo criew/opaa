@@ -4,7 +4,7 @@ databaseChangeLog:
   # a library already indexing - widen-only, same shape as 024-allow-rss-feed-source-type (plain
   # DROP/ADD, indexing_run_events carries no special table ownership unlike audit_log).
   - changeSet:
-      id: 053-widen-indexing-run-event-category-schedule-skipped
+      id: 056-widen-indexing-run-event-category-schedule-skipped
       author: opaa
       comment: "Widens chk_indexing_run_events_category to also accept SCHEDULE_SKIPPED (#485)"
       changes:
