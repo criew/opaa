@@ -62,6 +62,17 @@ const confirmedSettingsByChatId = new Map<
   { scope: SearchScope; referencedLibraryIds: string[] }
 >()
 
+// Monotonically increasing, per-chat counter incremented each time applyScopeChange starts a new
+// settings change for that chat (#619). loadChat captures this chat's value before firing its GET
+// and compares it again once the response arrives - if it changed in the meantime, a settings
+// change for this exact chat was initiated while the GET was in flight, and that change's own
+// success/failure handler in applyScopeChange - not this now-stale GET response - is what must
+// decide the chat's scope/referencedLibraryIds. Unlike settingsUpdateChains (removed once the
+// chain settles), this map is never deleted while the chat exists, so the check still works even
+// when the settings PATCH's response arrived - and its chain entry was already cleaned up - before
+// the GET's own response does (the specific ordering #618 left unguarded).
+const settingsChangeSequenceByChatId = new Map<string, number>()
+
 /**
  * Clears both module-level settings-persistence maps (#573 review of #570). Used by the store's
  * own reset() action (logout, #440 review point 3) and exported for chatStore.test.ts's
@@ -71,6 +82,7 @@ const confirmedSettingsByChatId = new Map<
 export function clearSettingsPersistenceCache(): void {
   settingsUpdateChains.clear()
   confirmedSettingsByChatId.clear()
+  settingsChangeSequenceByChatId.clear()
 }
 
 /**
@@ -91,6 +103,7 @@ export function clearSettingsPersistenceCache(): void {
 export function dropChatSettingsCache(chatId: string): void {
   const pendingChain = settingsUpdateChains.get(chatId)
   settingsUpdateChains.delete(chatId)
+  settingsChangeSequenceByChatId.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -202,6 +215,12 @@ function scopeFromChatDetail(useKnowledge: boolean, referencedLibraryIds: string
   return referencedLibraryIds.length > 0 ? 'libraries' : 'none'
 }
 
+// #619 review: loadChat's settings-race guard below needs every field applyChatDetail returns
+// *except* scope/referencedLibraryIds - omitKeys(), not a hand-maintained field list, is what keeps
+// that guarded write-back in sync with this function's return type. Adding a field here (e.g. a
+// future ChatDetail property) is automatically picked up by that write-back without touching
+// loadChat at all; only add a field to omitKeys' call site if the *new* field also needs the same
+// settings-race protection as scope/referencedLibraryIds.
 function applyChatDetail(detail: ChatDetail) {
   const referencedLibraryIds = detail.referencedLibraryIds ?? []
   const scope = scopeFromChatDetail(detail.useKnowledge, referencedLibraryIds)
@@ -215,6 +234,18 @@ function applyChatDetail(detail: ChatDetail) {
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     messages: detail.messages.map(toChatMessage),
   }
+}
+
+/** Shallow-omits `keys` from `obj`, typed so the result is exactly `Omit<T, K>` (#619 review). Used
+ * instead of a hand-picked field list so a write-back that means "everything but a few guarded
+ * fields" stays correct as the source object's shape evolves, rather than silently dropping new
+ * fields until someone remembers to update a parallel list. */
+function omitKeys<T extends object, K extends keyof T>(obj: T, keys: readonly K[]): Omit<T, K> {
+  const clone: Partial<T> = { ...obj }
+  keys.forEach((key) => {
+    delete clone[key]
+  })
+  return clone as Omit<T, K>
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -231,6 +262,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadChat: async (chatId: string) => {
     const requestId = ++chatLoadSequence
+    // #619: this chat's settings-change counter, captured before the GET below is sent. Compared
+    // again once the response arrives - see settingsChangeSequenceByChatId's declaration above for
+    // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
+    const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
     set({ isLoadingChat: true, error: null })
     try {
       const detail = await getChat(chatId)
@@ -239,13 +274,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // (#548 review, finding d).
       if (requestId !== chatLoadSequence) return
       const detailState = applyChatDetail(detail)
-      set({ ...detailState, isLoadingChat: false })
-      // The just-loaded settings are the server's own record - the rollback base for any PATCH
-      // failure while this chat stays active (#565 review).
-      confirmedSettingsByChatId.set(detailState.chatId, {
-        scope: detailState.scope,
-        referencedLibraryIds: detailState.referencedLibraryIds,
-      })
+      // #619: a settings change for this exact chat was started while this GET was in flight - its
+      // own success/failure handler in applyScopeChange is the authoritative source for scope/
+      // referencedLibraryIds now, not this response's snapshot, read before that change committed.
+      // Everything else this response carries (messages, title, ...) is unaffected and still
+      // applied.
+      const settingsRacedByPatch =
+        (settingsChangeSequenceByChatId.get(chatId) ?? 0) !== settingsSequenceAtStart
+      if (settingsRacedByPatch) {
+        set({ ...omitKeys(detailState, ['scope', 'referencedLibraryIds']), isLoadingChat: false })
+      } else {
+        set({ ...detailState, isLoadingChat: false })
+        // The just-loaded settings are the server's own record - the rollback base for any PATCH
+        // failure while this chat stays active (#565 review).
+        confirmedSettingsByChatId.set(detailState.chatId, {
+          scope: detailState.scope,
+          referencedLibraryIds: detailState.referencedLibraryIds,
+        })
+      }
     } catch (err) {
       if (requestId !== chatLoadSequence) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht geladen werden'
@@ -502,6 +548,11 @@ function applyScopeChange(
 
   const chatId = requestChatId
   if (!chatId) return
+
+  // #619: bumps this chat's settings-change counter before the PATCH below is even queued, so any
+  // loadChat GET already in flight for this chat - captured its baseline earlier - recognizes on
+  // arrival that this change now, not its own stale snapshot, decides scope/referencedLibraryIds.
+  settingsChangeSequenceByChatId.set(chatId, (settingsChangeSequenceByChatId.get(chatId) ?? 0) + 1)
 
   const patch: ChatUpdateRequest = {
     useKnowledge: nextScope === 'all',
