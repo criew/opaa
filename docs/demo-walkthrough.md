@@ -109,7 +109,9 @@ unten.
 
 Alle Passwörter sind offene **Demo-Werte, keine Secrets** — vor jedem erreichbaren Deployment gemäß
 [`deployment.md`, „Härtung für erreichbare Deployments"](./deployment.md#härtung-für-erreichbare-deployments)
-zu ersetzen.
+zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weicht davon für `demo-admin`
+bewusst ab — siehe [„Öffentliche Demo-Instanz"](#öffentliche-demo-instanz) unten und die Härtungstabelle,
+Punkt 1.
 
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
 |---|---|---|---|---|
@@ -128,6 +130,19 @@ Berechtigungen"](./features/demo-instance.md#nutzer-spaces-und-berechtigungen).
 nachgeschalteter Filter, ist ein für einen Nutzer unzugänglicher Treffer nicht nur unterdrückt,
 sondern nie geladen — Thomas' Anfrage nach einer internen Meldewesen-Dienstanweisung durchsucht
 diese Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein Chunk daraus wäre.
+
+---
+
+## Öffentliche Demo-Instanz
+
+Unter <https://opaa.ewerlin.com> läuft dieselbe Demo „Stadt Rheinfurt" öffentlich (#230, Epic #708) —
+Anmeldung erforderlich, kein anonymer Zugang. Ein Unterschied zur Tabelle oben: **`demo-admin`
+funktioniert dort nicht mit dem Passwort `RheinfurtDemo!2026`** — sein Passwort ist nach dem Rollout
+bewusst auf einen serverseitig verwahrten Zufallswert rotiert (siehe
+[`deployment.md`, „Öffentliche Testinstanz"](./deployment.md#öffentliche-testinstanz)). Die vier
+Fach-Demokonten (`maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`) gelten dort unverändert
+mit dem oben dokumentierten Passwort und genügen für das komplette Drehbuch unten — keine der acht
+Fragen setzt `demo-admin` voraus.
 
 ---
 
