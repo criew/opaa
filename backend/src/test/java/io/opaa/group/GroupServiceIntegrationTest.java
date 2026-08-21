@@ -3,11 +3,11 @@ package io.opaa.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.TestcontainersConfiguration;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
-import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.AssetGrant;
@@ -16,111 +16,130 @@ import io.opaa.library.AssetRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryVisibility;
-import io.opaa.library.PermissionHistoryService;
-import io.opaa.security.CredentialsEncryptionProperties;
-import io.opaa.security.CredentialsEncryptor;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 /**
- * {@code @Transactional(NOT_SUPPORTED)} disables the transaction Spring Test would otherwise wrap
- * around each test method. Without it, every {@code GroupService} call below would join that single
- * outer test transaction instead of committing on its own, and {@code
- * GroupService#invalidateAfterCommit} would only fire once - when the outer transaction rolls back
- * at the end of the test, not when each individual service call actually completes. That would
- * silently defeat the very assertions this class makes about cache invalidation timing. Cleanup
- * that a rolled-back transaction would otherwise have given us for free is done explicitly in
- * {@link #cleanUp()} instead.
+ * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
+ * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #308.
+ * {@code KnowledgeLibrary.ownerGroupId} and {@code AssetGrant.subjectGroupId} carry composite
+ * foreign keys against {@code groups(id, organization_id)} ({@code
+ * fk_knowledge_libraries_owner_group_organization}, migration 012; {@code
+ * fk_asset_grants_subject_group_organization}, migration 013) that only the versioned changelog
+ * creates - Hibernate's {@code create-drop} schema (used here before #308) never materialised
+ * either constraint, so {@link #cannotDeleteAGroupThatStillOwnsALibrary} could not actually prove
+ * the {@link GroupService#deleteGroup} guard against {@code
+ * fk_knowledge_libraries_owner_group_organization}: without the guard it failed with "expected a
+ * throwable to be thrown" instead of the real foreign-key violation the guard exists to turn into a
+ * clean 409 (see #200/#201/#305). {@code groups.organization_id} and {@code users.organization_id}
+ * are also real, RESTRICT foreign keys to {@code organizations} (migrations 009/008), so every test
+ * below creates real {@link Organization} rows instead of bare random UUIDs, mirroring {@code
+ * SpaceServiceIntegrationTest} and {@code UserServicePersonalSpaceIntegrationTest} (#288).
  *
- * <p>{@link CredentialsEncryptionProperties}/{@link CredentialsEncryptor} are imported explicitly
- * (PR #504 review, finding 3) because this slice's Hibernate entity metadata includes {@code
- * KnowledgeLibrary}, whose {@code source_credentials} column needs a constructor-injected {@code
- * SourceCredentialsConverter} bean to build the entity manager factory at all -
- * {@code @DataJpaTest} does not pull in {@code OpaaApplication}'s
- * {@code @EnableConfigurationProperties}.
+ * <p>Unlike the {@code @DataJpaTest} slice this class used to be, plain {@code @SpringBootTest}
+ * test methods are not wrapped in their own rollback transaction, so every {@code GroupService}
+ * call below commits on its own without needing {@code @Transactional(NOT_SUPPORTED)} to opt out of
+ * one - the cache-invalidation-timing tests below rely on exactly that, the same way {@code
+ * SpaceServiceIntegrationTest} does.
  */
-@DataJpaTest
-@Import({
-  GroupService.class,
-  GroupMembershipResolver.class,
-  PermissionHistoryService.class,
-  CredentialsEncryptor.class
-})
-@EnableConfigurationProperties(CredentialsEncryptionProperties.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfiguration.class)
+@ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
-@TestPropertySource(
-    properties = {"spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class GroupServiceIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer postgres =
-      new PostgreSQLContainer(DockerImageName.parse("pgvector/pgvector:pg18"));
-
-  @DynamicPropertySource
-  static void configureDataSource(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
 
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipRepository membershipRepository;
+  @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
+  @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PlatformTransactionManager transactionManager;
-  // #392: GroupService now also depends on AuditEventRecorder. Mocked here rather than wired for
-  // real (as AuditEventRecordingIntegrationTest does): this class's ddl-auto=create-drop schema
-  // (see the class Javadoc) does not carry Liquibase's audit_actor_pseudonyms unique constraint
-  // that AuditActorPseudonymService's ON CONFLICT insert depends on, and this class's own tests are
-  // about group membership/cache behaviour, not auditing.
-  @MockitoBean private AuditEventRecorder auditEventRecorder;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationA;
   private UUID organizationB;
+  private final List<UUID> createdUserIds = new ArrayList<>();
 
   @BeforeEach
-  void cleanUp() {
-    grantRepository.deleteAll();
-    libraryRepository.deleteAll();
-    membershipRepository.deleteAll();
-    groupRepository.deleteAll();
-    userRepository.deleteAll();
-    organizationA = UUID.randomUUID();
-    organizationB = UUID.randomUUID();
+  void setUp() {
+    createdUserIds.clear();
+    organizationA =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
+    organizationB =
+        organizationRepository.save(new Organization(UUID.randomUUID(), "Org B")).getId();
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Shared @SpringBootTest context (see the class Javadoc): only clean up this test's own rows,
+    // scoped by the two organizations it created, never a blanket deleteAll() - mirrors
+    // SpaceServiceIntegrationTest#tearDown and AuditEventRecordingIntegrationTest#tearDown (#305).
+    grantRepository.deleteAll(
+        grantRepository.findAll().stream()
+            .filter(
+                g ->
+                    g.getOrganizationId().equals(organizationA)
+                        || g.getOrganizationId().equals(organizationB))
+            .toList());
+    libraryRepository.deleteAll(
+        libraryRepository.findAll().stream()
+            .filter(
+                l ->
+                    l.getOrganizationId().equals(organizationA)
+                        || l.getOrganizationId().equals(organizationB))
+            .toList());
+    // #238: group_membership_history.user_id is ON DELETE RESTRICT (migration 018) - deleteGroup
+    // writes one row per removed member before the group itself is deleted, so those rows must be
+    // purged before the users below can go.
+    membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
+    groupRepository.deleteAll(
+        groupRepository.findAll().stream()
+            .filter(
+                g ->
+                    g.getOrganizationId().equals(organizationA)
+                        || g.getOrganizationId().equals(organizationB))
+            .toList());
+    userRepository.deleteAllById(createdUserIds);
+    // #392: GroupService writes real audit_log rows now that this class runs against the real
+    // schema - audit_log is insert-only at the application layer and fk_audit_log_organization is
+    // ON DELETE RESTRICT (migration 017), so these must be purged via JdbcTemplate before the
+    // organizations below can go, exactly like AuditEventRecordingIntegrationTest#tearDown.
+    jdbcTemplate.update(
+        "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
+    organizationRepository.deleteAllById(List.of(organizationA, organizationB));
   }
 
   private UUID createUser(UUID organizationId) {
     User user =
         new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
-    return userRepository.save(user).getId();
+    UUID id = userRepository.save(user).getId();
+    createdUserIds.add(id);
+    return id;
   }
 
   @Test
@@ -180,11 +199,12 @@ class GroupServiceIntegrationTest {
 
   @Test
   void cannotDeleteAGroupThatStillOwnsALibrary() {
-    // #201/#305 code review: deleting a group that still owns an asset must be blocked with a
-    // clean 409, not surface fk_knowledge_libraries_owner_group_organization as an unhandled
+    // #201/#305 code review, #308: deleting a group that still owns an asset must be blocked with
+    // a clean 409, not surface fk_knowledge_libraries_owner_group_organization as an unhandled
     // DataIntegrityViolationException (500). This is exactly the check the class Javadoc and
-    // #200's acceptance criteria describe, made possible now that #201 introduced the first asset
-    // type a group can own.
+    // #200's acceptance criteria describe. Proving it requires the real, versioned Liquibase
+    // schema - see the class Javadoc for why the previous Hibernate-generated schema could not
+    // exercise this at all (#308).
     UUID admin = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
     Group saved = groupRepository.save(group);
@@ -386,23 +406,25 @@ class GroupServiceIntegrationTest {
   }
 
   @Test
-  void listMyGroupsNeverCrossesAnOrganizationBoundaryEvenIfAMembershipRowSomehowDid() {
-    // Second, independent defense line requested in review: today, no path through the regular
-    // API can create a cross-organization membership (addMember enforces
-    // requireUserInOrganization), so this constructs one directly against the repository to prove
-    // the filter in listMyGroups, not merely the absence of a reachable exploit.
+  void aMembershipRowCanNeverCrossAnOrganizationBoundaryAtTheDatabaseLevel() {
+    // #308: this test used to construct a cross-organization membership row directly against the
+    // repository (bypassing addMember's requireUserInOrganization check) to prove listMyGroups'
+    // own filter as a second, independent defense line - see #199/PR #305's review. Against the
+    // real Liquibase schema, fk_group_memberships_user_organization (migration 047's composite key
+    // on user_id, organization_id) now rejects such a row outright: organization_id can no longer
+    // diverge from the member's actual organization at all, so there is nothing left for
+    // listMyGroups' own filter to defend against by construction, only by the database itself.
+    // This replaces the old test rather than merely updating its assertion because the scenario it
+    // set up (a persisted foreign-organization membership) is exactly what the stronger schema now
+    // makes impossible to create in the first place.
     UUID member = createUser(organizationA);
     Group foreignGroup =
         new Group(organizationB, GroupKind.AD_HOC, "Foreign Team", null, null, null);
-    // A real membership row for the wrong organization - unreachable through addMember, which
-    // enforces requireUserInOrganization, but constructed directly here to prove listMyGroups'
-    // own filter rather than the absence of a way to trigger it.
     foreignGroup.addMembership(new GroupMembership(member, organizationB));
-    groupRepository.save(foreignGroup);
 
-    List<GroupListResponse> groups = groupService.listMyGroups(member);
-
-    assertThat(groups).isEmpty();
+    assertThatThrownBy(() -> groupRepository.save(foreignGroup))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("fk_group_memberships_user_organization");
   }
 
   @Test
